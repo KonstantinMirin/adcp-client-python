@@ -29,8 +29,8 @@ version it was against would be the error ``adcp-client-python-2m5`` corrected i
 
 **WHAT THIS FILE DOES NOT GRADE is stated by name and asserted non-empty**, the discipline
 ``tests/test_the_wheel_is_the_artifact.py`` uses for its 39 unnamed records: the 35 names
-whose word ours carries for a DIFFERENT subject, and the 1,212 whose subject ours carries
-under a word the bundle never gives.  Neither set is in the owed 1,052 and neither is
+whose word ours carries for a DIFFERENT subject, and the 1,214 whose subject ours carries
+under a word the bundle never gives.  Neither set is in the owed 1,038 and neither is
 aliased; both are findings, and :func:`test_what_this_file_does_not_grade` reddens the day
 either set empties rather than leaving a stale sentence above.
 """
@@ -87,7 +87,7 @@ def owed(rows: list[dict[str, str]]) -> list[dict[str, str]]:
 def test_every_name_the_table_declares_imports_from_the_module_it_names(
     rows: list[dict[str, str]],
 ) -> None:
-    """The row's own obligation: 1,052 upstream spellings, each at the module declared.
+    """The row's own obligation: 1,038 upstream spellings, each at the module declared.
 
     A REAL IMPORT STATEMENT per name, so what is measured is the import system and not a
     ``getattr`` over an already-bound module object -- the same choice
@@ -257,7 +257,7 @@ def test_the_name_rule_the_table_was_built_with_is_the_one_the_emitter_uses() ->
     assert len(titles) > 500, {"the bundle's vocabulary is implausibly small": len(titles)}
 
 
-def test_the_surveys_do_not_read_their_own_output() -> None:
+def test_the_surveys_do_not_read_their_own_output(tmp_path) -> None:
     """The alias module declares that it restates upstream, and the surveys honour it.
 
     **The failure this stops was measured on the second run of the generator.**  Phase 1
@@ -268,24 +268,79 @@ def test_the_surveys_do_not_read_their_own_output() -> None:
     restates.  Both read ``__adcp_restates_upstream__`` off the module rather than carrying
     its name in a list, so a second alias module needs nothing edited.
 
-    Graded as behaviour: the predicate's return value for this module and for a domain
-    module, which is what the surveys branch on -- not the presence of a line of text.
-    The fixed point itself is measured in the lane's write-up: with the module installed,
-    phase 1 answers the same 2,225 identities and 3,193 names, and no row of the join moves.
+    **AND THE PREDICATE HAS THREE ANSWERS, NOT TWO, WHICH IS THE HALF THAT COST A
+    DIAGNOSIS.**  Its first form returned a boolean and caught every exception into
+    ``False``, so a module that does not IMPORT read as "a module of ours".  Merged against
+    a surface that had dropped one of the table's targets, this test then said
+    "``adcp.types.compat`` does not declare ``__adcp_restates_upstream__``" about a module
+    whose line 1012 declares exactly that -- and a reader was sent after a missing marker
+    rather than after the ``ImportError``.  So the third answer is asserted here too, on a
+    module written for the purpose: ``unimportable`` carries the exception, and the
+    misreading is unrepresentable rather than merely fixed.
+
+    Graded as behaviour -- three return values -- and not as the presence of a line of text.
     """
     import sys
 
     sys.path.insert(0, str(ROOT / "survey"))
     import migration_notes
 
-    assert migration_notes.restates_upstream(MODULE), (
-        f"{MODULE} does not declare {migration_notes.RESTATES}, so the next run of "
-        "survey/alias_surface.py reads its own output as our surface"
+    assert migration_notes.restatement(MODULE)[0] == "restates", (
+        f"{MODULE} does not read as a restatement of upstream, so the next run of "
+        f"survey/alias_surface.py reads its own output as our surface: "
+        f"{migration_notes.restatement(MODULE)}"
     )
-    assert not migration_notes.restates_upstream("adcp.types.core"), (
-        "a DOMAIN module reads as a restatement of upstream, which would drop the "
-        "schema-derived surface out of the partition"
+    assert migration_notes.restatement("adcp.types.core")[0] == "ours", (
+        "a DOMAIN module does not read as ours, which would drop the schema-derived "
+        f"surface out of the partition: {migration_notes.restatement('adcp.types.core')}"
     )
+    # The third answer, on a module that raises at import.  Written here rather than
+    # fixtured: what is being graded is that a raise is reported AS a raise, so the raise
+    # has to be real.
+    (tmp_path / "a_module_that_raises.py").write_text(
+        "raise ImportError('cannot import name Gone from adcp.types.core')\n"
+    )
+    sys.path.insert(0, str(tmp_path))
+    answer, detail = migration_notes.restatement("a_module_that_raises")
+    assert answer == "unimportable", (answer, detail)
+    assert "ImportError" in detail and "Gone" in detail, detail
+
+
+def test_the_generator_refuses_to_write_a_table_that_points_at_nothing() -> None:
+    """A dangling target is caught where the table is MADE, not where a consumer imports it.
+
+    **THE DEFECT, measured on this branch.**  The table was derived against a dump of our
+    surface and committed; ``sdk/home2`` landed meanwhile and took the surface from 1,881
+    names to 1,879, removing ``DAASTTrackerConstraintsDaastTarget``.  One stale row then
+    made ``adcp.types.compat`` raise ``ImportError`` at import, which took down six clauses
+    of the reading-8 wheel gate with it -- "the installed wheel's own probe exited 1, so
+    every reading below is about nothing" -- and reported itself, through the predicate
+    above, as a missing marker.  One row, six gates saying nothing, one wrong diagnosis.
+
+    So ``survey/alias_surface.prove_the_targets`` imports every target before anything is
+    written and a miss is a refusal naming every row.  **SHOWN RED** off the test, as this
+    repository's own banked-perturbation idiom: a dump repointed from
+    ``adcp.types.core.Account`` to ``adcp.types.enums.Account`` -- a module that exists and
+    a name it does not carry -- makes the generator exit 1 and write neither file.
+
+    Graded on the function's RETURN VALUE and not on a message: the fabricated row is the
+    one reported, and a row whose target does resolve is not.
+    """
+    import sys
+
+    sys.path.insert(0, str(ROOT / "survey"))
+    import alias_surface
+
+    decided = {
+        "Account": {"bucket": "RELOCATED", "target": "adcp.types.core.Account"},
+        "GoneAway": {"bucket": "RELOCATED", "target": "adcp.types.enums.GoneAway"},
+        "WrongModule": {"bucket": "RENAMED", "target": "adcp.types.no_such_domain.Thing"},
+        "NotOwed": {"bucket": "ABSENT", "why": "not a target at all"},
+    }
+    dangling = alias_surface.prove_the_targets(decided)
+    assert set(dangling) == {"GoneAway", "WrongModule"}, dangling
+    assert "is not a name adcp.types.enums carries" in dangling["GoneAway"], dangling
+    assert "ModuleNotFoundError" in dangling["WrongModule"], dangling
 
 
 def test_what_this_file_does_not_grade(rows: list[dict[str, str]]) -> None:

@@ -57,10 +57,31 @@ reported with the module it resolves at:
                `docs/migration-from-upstream.md` own these; this script only counts them.
     NOT-A-TYPE upstream's object is a module, a function or a constant.  Only a type gets
                an alias; the guide is where a caller is told what to call instead.
+
     UNRESOLVABLE-UPSTREAM
                the spelling raises on upstream's OWN wheel.  Reading 10: "a name that
                raises on upstream's own wheel is not a name we owe".
 
+**WHAT A TARGET DISAPPEARING MEANS, because the surface shrinks and this will recur.**  When
+`sdk/home2` took the surface from 1,881 names to 1,879 it removed
+`DAASTTrackerConstraintsDaastTarget`, which one row aliased.  The verdict is neither "a gap
+in our surface" nor "patch the row": measured, our tree still DECLARES that subject three
+times -- `_schemas.core.daast_tracker_constraints.DaastTarget` and two siblings, the enum
+whose value list is `{companion, linear}` -- and declares it under upstream's own word.  What
+`home2` removed was a public EXPORT of one spelling, not the declaration, so no fact the
+schema states was lost.  That makes the name `V1-FOLD-UNEXPORTED`: "we declare the class,
+reading 6 does not export inner shapes, and the answer is an EXPORT or a NAME, never a split"
+(`adcp-client-python-2m5`).  The alias layer cannot reach a private name, so the row leaves
+it -- and if a caller needs the word, the repair is reading 6 exporting it, not a compat
+binding to a name no public module carries.
+
+The second removed name, `PublisherPlacementReference`, was the target of NO row before or
+after -- measured, not assumed -- so its removal costs this layer nothing.
+
+**AND A REMOVED TARGET IS NOW IMPOSSIBLE TO COMMIT**: `prove_the_targets` imports every
+target before anything is written and refuses on a miss, so the failure arrives at
+GENERATION time naming the row rather than at import time as an `ImportError` that takes the
+whole reading-8 gate down with it.
 **AN ALIAS IS A NAME AND NEVER A SECOND TYPE.**  The module this writes contains nothing
 but `from ... import X as Y` statements and one `__all__`, so the object a consumer reaches
 through it IS the object the walk emitted: `isinstance` holds across every spelling and
@@ -80,9 +101,14 @@ compatible (`.adcp-cache/readings/dropin-crosscheck.md` measured it):
     uv venv $T/up && uv pip install --python $T/up/bin/python adcp==9.6.1
     $T/up/bin/python survey/alias_surface.py --dump-upstream $T/up.json
 
-    # phase 3, offline, on any interpreter: the join, the counts, and the module
-    python3 survey/alias_surface.py --ours $T/ours.json --upstream $T/up.json \
-        --module adcp.types.compat --write src/adcp/types/compat.py --report $T/report.json
+    # phase 3, the join, the counts, the module and the table.  ON THE PROJECT'S OWN
+    # INTERPRETER, because `prove_the_targets` imports every target before writing
+    # anything -- the join itself is standard-library only, but a table nobody proved is
+    # the defect that cost six gates, so being unable to import ours is a refusal here.
+    PYTHONPATH=.:src ./.venv/bin/python survey/alias_surface.py \
+        --ours $T/ours.json --upstream $T/up.json --deliberate-only \
+        --module adcp.types.compat --write src/adcp/types/compat.py \
+        --table survey/alias-surface-9.6.1.tsv --report $T/report.json
 
 **WHICH UPSTREAM VERSION A FIGURE IS AGAINST IS RECORDED IN THE DUMP** and printed with
 every count, because the project has already carried a figure read off 9.2.0 beside one
@@ -256,10 +282,28 @@ def _ours_views(blob: dict) -> tuple[dict[str, list[dict]], dict[str, list[dict]
             if any(seg.startswith("_") for seg in row["path"].split(".")[2:]):
                 continue
             if not any(k["path"] == row["path"] for k in out):
-                out.append(row)
+                # **THE WORD IS THE ONE AT THE PATH, NOT THE DUMP'S KEY**, and the two part
+                # company for exactly the objects this layer is most likely to get wrong.
+                # `migration_notes.dump_ours` records `path = exported[id(obj)]` -- the FIRST
+                # public spelling that object was seen at -- while the row sits under the key
+                # it was found by, so for an interned `Annotated`, `Literal` or enum the two
+                # are different words for one object.  Keyed on the dump's key, 13 rows read
+                # as RELOCATED ("the name is ours, at another module") while naming a target
+                # spelled otherwise, and three of them were plainly not that name's subject
+                # at all: `IanaTimezones` and `Supported` both onto our
+                # `TargetingOverlayRequirementsRequired`, `RefreshCadence` onto
+                # `LookbackWindow`.  What is ours there is the OBJECT, by interning, and not
+                # the word -- so the word key reads the path's own tail, which is the only
+                # spelling `from <module> import <word>` can actually resolve.
+                out.append({**row, "name": row["path"].rsplit(".", 1)[1]})
         return out
 
-    by_name = {n: p for n, rows in blob["names"].items() if (p := public(rows))}
+    by_name: dict[str, list[dict]] = collections.defaultdict(list)
+    for rows in blob["names"].values():
+        for row in public(rows):
+            if not any(k["path"] == row["path"] for k in by_name[row["name"]]):
+                by_name[row["name"]].append(row)
+    by_name = dict(by_name)
     by_identity = {k: p for k, rows in blob["identities"].items() if (p := public(rows))}
     # **THE DOCUMENT VIEW IS ITS ROOT AND NOT EVERY CLASS THE DOCUMENT STATES.**  A
     # document compiles to a root plus its inner shapes, and `pointer == "#"` is the root:
@@ -587,9 +631,20 @@ def write_table(path: Path, module: str, decided: dict[str, dict], report: dict,
     `PRESENT` it is the module the upstream spelling already resolves at, for `RELOCATED`
     and `RENAMED` it is `module`, and for a refusal it is empty, because a refused name is
     declared nowhere and saying otherwise would make the table claim an import that fails.
+
+    **NO ABSOLUTE PATH IN THE HEADER, which is what makes the fixed point CHECKABLE.**  The
+    header used to name the venv the dump was read off, so two runs of the same derivation
+    from two throwaway venvs produced tables differing in one line -- and "re-run it and the
+    table is byte-identical" then needed a `sed` to be true, which is the kind of caveat that
+    hides a real difference next time.  What the committed file owes a reader is WHICH
+    SURFACE, not which directory: `adcp_emit <version>, installed wheel` is the identity, and
+    the absolute path stays in `--report`, which is not committed.
     """
     lines = [
-        f"# The alias surface, upstream adcp {version} against {report['ours']}.\n",
+        (
+            f"# The alias surface, upstream adcp {version} against adcp_emit "
+            f"{report.get('ours_version') or 'unknown'} (installed wheel).\n"
+        ),
         (
             f"# Population: {report['population']} -- {report['names']} names over "
             f"{report['spellings']} spellings.\n"
@@ -613,6 +668,62 @@ def write_table(path: Path, module: str, decided: dict[str, dict], report: dict,
         )
     path.write_text("".join(lines))
     print(f"{len(lines) - 4} decided names -> {path}")
+
+
+def prove_the_targets(decided: dict[str, dict]) -> dict[str, str]:
+    """Every target IMPORTED, in this interpreter, before anything is written.
+
+    **THE DEFECT THIS EXISTS FOR, measured.**  The table was derived against a dump of our
+    surface and then committed; `sdk/home2` landed meanwhile and took the surface from 1,881
+    names to 1,879, removing `DAASTTrackerConstraintsDaastTarget`.  The table still named it,
+    so `adcp.types.compat` raised `ImportError` at import -- which took down the whole
+    reading-8 wheel gate with it ("the installed wheel's own probe exited 1, so every reading
+    below is about nothing") and reported itself, through a predicate that caught the
+    exception, as a missing marker.  One stale row, six gates saying nothing about the
+    artifact and one diagnosis pointing at the wrong file.
+
+    So the generator proves its own output at GENERATION time: a dangling target is a refusal
+    to write, naming every row, rather than an `ImportError` a consumer finds later.  This is
+    the same discipline the emitted tree already has -- a claim is checked where it is made.
+
+    **IT IMPORTS THE TARGETS AND NEVER THE ALIAS MODULE ITSELF**, which is what keeps the
+    check from depending on the file it is about -- and is why it takes no `module`
+    argument: a stale or broken alias module must not be able to make this pass OR fail.
+
+    **AND BEING UNABLE TO IMPORT OURS AT ALL IS A REFUSAL, NOT A SKIP.**  Phase 3 is
+    otherwise standard-library only; if `adcp.types` cannot be imported here the table cannot
+    be proved, and a check that cannot run must say so rather than pass.
+    """
+    import importlib
+
+    targets = {
+        got["target"]
+        for got in decided.values()
+        if got["bucket"] in ("RELOCATED", "RENAMED")
+    }
+    if not targets:
+        return {}
+    try:
+        importlib.import_module("adcp.types")
+    except BaseException as exc:  # noqa: BLE001
+        raise SystemExit(
+            f"cannot import `adcp.types` here ({type(exc).__name__}: {exc}), so the "
+            f"{len(targets)} targets cannot be proved and the table must not be written.  "
+            "Run phase 3 with PYTHONPATH=.:src on the project's own interpreter."
+        ) from exc
+    dangling: dict[str, str] = {}
+    for name, got in sorted(decided.items()):
+        if got["bucket"] not in ("RELOCATED", "RENAMED"):
+            continue
+        where, ours = got["target"].rsplit(".", 1)
+        try:
+            found = importlib.import_module(where)
+        except BaseException as exc:  # noqa: BLE001
+            dangling[name] = f"{got['target']} ({type(exc).__name__}: {exc})"
+            continue
+        if not hasattr(found, ours):
+            dangling[name] = f"{got['target']} is not a name {where} carries"
+    return dangling
 
 
 def main() -> None:
@@ -703,6 +814,18 @@ def main() -> None:
     print(f"  {'OWED (P+REL+REN)':24} {len(owed):6}")
     for key, count in report["keys"].items():
         print(f"    {key:62} {count:6}")
+    dangling = prove_the_targets(decided)
+    report["dangling"] = dangling
+    if dangling and (args.write or args.table):
+        raise SystemExit(
+            f"REFUSING TO WRITE: {len(dangling)} of the {len(owed)} owed rows name a target "
+            f"that does not resolve in THIS tree, so the table would be committed pointing "
+            f"at nothing.\n"
+            + "\n".join(f"  {name} -> {why}" for name, why in sorted(dangling.items()))
+            + f"\n\nThe dump was read off {ours_blob['ours']}.  If the tree has moved since, "
+            "re-run phase 1 against a wheel built from THIS tree; if the name is gone for "
+            "good, that is a verdict to record and not a row to hand-patch."
+        )
     if args.write:
         write_module(args.write, args.module, decided, report, up_blob["version"])
     if args.table:
