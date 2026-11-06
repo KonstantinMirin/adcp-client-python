@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -16,7 +17,7 @@ from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetCreativeFeaturesRequest(AdCPVersionEnvelope):
+class GetCreativeFeaturesRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request payload for the get_creative_features task. Submits a creative manifest for evaluation by a governance agent, which analyzes the creative and returns scored feature values (brand safety, content categorization, quality metrics, etc.). Although named like a read, this operation creates a provider-side evaluation and may record consumption or cost, so it is replay-protected and economically consequential.
     """

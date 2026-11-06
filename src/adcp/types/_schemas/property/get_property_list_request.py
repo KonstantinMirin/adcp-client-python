@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..collection.get_collection_list_request import ObjMaxResultsCursor
 from ..core.account_ref import AccountReference
@@ -14,7 +15,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetPropertyListRequest(AdCPVersionEnvelope):
+class GetPropertyListRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for retrieving a property list with resolved identifiers
     """

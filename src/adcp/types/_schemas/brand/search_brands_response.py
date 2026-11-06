@@ -9,7 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import DictMinProperties1, HttpUrl
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..brand import Background, KellerType, LogoOrientation, LogoVariant
 from ..core.context import ContextObject
@@ -24,7 +24,7 @@ from ..enums.right_use import RightUse
 from .get_brand_identity_response import ObjDomainName
 
 
-class SearchBrandsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class SearchBrandsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Brand stubs matching the search query. Each stub carries the public identity tier — enough to evaluate a brand and follow up with get_brand_identity (for full identity) or get_rights (for pricing). Rich authorized data (voice synthesis, high-res assets, tone guidelines) is not included.
     """

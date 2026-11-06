@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -14,7 +15,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.purchase_type import PurchaseType
 
 
-class GetPlanAuditLogsRequest(AdCPVersionEnvelope):
+class GetPlanAuditLogsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Retrieve governance state and audit trail for one or more plans.
     """

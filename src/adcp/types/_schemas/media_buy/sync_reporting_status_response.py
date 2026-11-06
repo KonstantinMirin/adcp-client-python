@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrIdempotencyKey
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -58,7 +59,7 @@ class FailedReportingConsumerStatus(AdCPBaseModel):
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
 
-class SyncReportingStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncReportingStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Per-statement durable recording results. Successful readback proves that the seller recorded the authenticated consumer's status without treating it as seller-authored reporting evidence.
     """

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -17,7 +17,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .content_standards import ContentStandards
 
 
-class ListContentStandardsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class ListContentStandardsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload with list of content standards configurations
     """

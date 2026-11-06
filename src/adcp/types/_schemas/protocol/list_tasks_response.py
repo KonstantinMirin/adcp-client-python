@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -15,7 +16,7 @@ from ..core.tasks_list_response import QuerySummary, TasksItem
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ListTasksResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class ListTasksResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from the list_tasks AdCP tool, a 3.x protocol-namespace alias for legacy AdCP tasks/list. Contains filtered AdCP application-layer task results and reconciliation data while preserving the legacy 3.x domain field shape; distinct from transport-native MCP/A2A task responses.
     """

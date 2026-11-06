@@ -36,4 +36,16 @@ class FailedResponse(BaseModel):
     ext: ExtensionObject | None = None
 
 
-__all__ = ["FailedResponse"]
+class AdcpRequest(BaseModel):
+    """
+    The request half of a task, as one type to program against. Every document the bundle's manifest.json names at a tool's request_schema takes this base, so isinstance(x, AdcpRequest) answers 'is this a call' -- which no composed envelope answers, because a response composes the version envelope too. A NOMINAL supertype and not a conformance claim: it states no field, because every field a request shares is already stated by core/version-envelope.json and restating it would be one fact in two classes. It carries no __adcp_schema__, so nothing grades it and strict_validate does not resolve on it; the concrete class for a document decides what that document accepts.
+    """
+
+
+class AdcpResponse(BaseModel):
+    """
+    The response half of a task, as one type to program against. Every document the bundle's manifest.json names at a tool's response_schema takes this base. A NOMINAL supertype and not a conformance claim: it states no field, because every field a response shares is already stated by core/protocol-envelope.json and core/version-envelope.json, which arrive as bases from the document's own allOf. It carries no __adcp_schema__, so nothing grades it and strict_validate does not resolve on it. The 39 documents the manifest names at async_response_schemas are a task RESULT rather than the answer to the call and do not take this base.
+    """
+
+
+__all__ = ["AdcpRequest", "AdcpResponse", "FailedResponse"]

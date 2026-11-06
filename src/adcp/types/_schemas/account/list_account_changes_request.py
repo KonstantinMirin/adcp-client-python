@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1Max100, ListAccountChangesRequestResourceTypesItem, StrMinLen1MaxLen4096
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -24,7 +25,7 @@ class StartingPosition(StrEnum):
     LATEST = 'latest'
 
 
-class ListAccountChangesRequest(AdCPVersionEnvelope):
+class ListAccountChangesRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Read a durable, ordered feed of material changes to AdCP-visible state for one account. Use a latest checkpoint before snapshot bootstrap, then drain from that cursor to close the bootstrap race. Experimental in 3.2 (RFC #6810): sellers implementing this task MUST list account.change_feed in experimental_features.
     """

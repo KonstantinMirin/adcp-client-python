@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1Max200
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -63,7 +64,7 @@ class FieldsItem(StrEnum):
     PRICING_OPTIONS = 'pricing_options'
 
 
-class ListCreativesRequest(AdCPVersionEnvelope):
+class ListCreativesRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for querying creative assets from a creative library with filtering, sorting, and pagination. Implemented by any agent that hosts a creative library — creative agents (ad servers, creative platforms) and sales agents that manage creatives.
     """

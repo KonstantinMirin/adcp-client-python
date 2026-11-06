@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
 from adcp.types.constraints import IntMin1, StrMinLen1
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -122,7 +123,7 @@ AccountsItem._branch_models = (ProvisioningMode, SettingsUpdateMode,)
 AccountsItem.model_rebuild(force=True)
 
 
-class SyncAccountsRequest(AdCPVersionEnvelope):
+class SyncAccountsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Sync advertiser account state with a seller. Two modes, distinguished by the key on each per-account entry:
 

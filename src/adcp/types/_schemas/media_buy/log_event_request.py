@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.event import Event
@@ -14,7 +15,7 @@ from ..core.idempotency_key import IdempotencyKey
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class LogEventRequest(AdCPVersionEnvelope):
+class LogEventRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for logging marketing events
     """

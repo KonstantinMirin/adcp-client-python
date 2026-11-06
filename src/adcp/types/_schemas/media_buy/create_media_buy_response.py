@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.account import Account
 from ..core.bidding_policy import BiddingPolicy
@@ -30,7 +30,7 @@ from ..enums.media_buy_valid_action import MediaBuyValidAction
 from ..enums.pacing import Pacing
 
 
-class CreateMediaBuyResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class CreateMediaBuyResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for create_media_buy. Exactly one of three shapes: (1) synchronous success — media_buy_id and packages are issued in-line, optional warnings[] reports non-blocking observations, media_buy_status MAY carry the lifecycle value (pending_creatives / pending_start / active / paused), and confirmed_at is either the seller commitment timestamp or null for a provisional buy that already exists; provisional buys with confirmed_at: null cannot be active and cannot carry packages[].committed_metrics; (2) terminal failure — an errors array with no media-buy artifact and status != 'submitted'; (3) submitted task envelope — status 'submitted' with task_id when no media_buy_id is being returned to the buyer and the media buy is queued or awaiting a human decision (e.g., IO signing). In the submitted branch, media_buy_id / packages land on the task's completion artifact, not this response. The submitted branch MAY carry advisory errors for non-blocking warnings; terminal failures belong in the error branch. A continuing condition first surfaced as a synchronous success warning MUST also appear on its authoritative read surface. These three shapes are mutually exclusive — a response has exactly one.
     """

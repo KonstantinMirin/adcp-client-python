@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.agent_notification_config import AgentNotificationConfig
 from ..core.agent_reporting_destination import AgentReportingDestination
@@ -51,7 +52,7 @@ class Configuration(AdCPBaseModel):
     declarations: Annotated[AgentDeclarations | None, Field(description='Complete declared consumption facts for this principal record. A present object replaces the declared set wholesale; {} clears it; omission leaves it unchanged. The seller computes and returns the accepted intersection in state.')] = None
 
 
-class SyncPrincipalRequest(AdCPVersionEnvelope):
+class SyncPrincipalRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     This task begins after authentication: AdCP defines no credential-registration protocol, and the seller’s authorization system (OAuth, API keys, signed requests, workload identity) issues and maps credentials before the first call. Declaratively synchronize selected sections of the authenticated principal's standing configuration with one AdCP agent. The principal is a party: a buyer agent, or an operator-side identity acting through any client. Use this task only to change state; read current state, the configuration version, and destination setup progress through get_principal, and prefer this task over the narrower sync_agent_notification_configs when both are advertised. This task does not register a buyer agent: the stable principal MAY be a delegated human user or an autonomous workload. Identity is resolved from authenticated transport and MUST NOT be accepted from request-body agent URLs, signing key IDs, account IDs, or other self-asserted fields. Each present section is the caller's complete desired set and replaces only that section; omitted sections remain unchanged. All submitted sections apply atomically or none do. This task configures reusable principal resources but grants no advertiser-account authority. Sellers implementing it MUST advertise adcp.principal and protocol.principal.
     """

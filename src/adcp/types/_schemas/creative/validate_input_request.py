@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -51,7 +52,7 @@ TargetsItem._branch_models = (CanonicalFormatTarget, ProductTarget, ThirdPartyFo
 TargetsItem.model_rebuild(force=True)
 
 
-class ValidateInputRequest(AdCPBaseModel):
+class ValidateInputRequest(AdcpRequest):
     """
     Request payload for the validate_input task. Lets buyers preflight a creative manifest against canonical formats and/or specific products before committing to a render or other expensive creative-production step. It validates manifest structure and target format constraints only: slot counts, asset types, parameter ranges, and format-shape constraints. It does not rehearse a seller's library mutation, creative_id upsert semantics, package assignments, account authorization, active-delivery protections, or other trafficking-time gates. When the question is final seller acceptance for a creative that is ready to traffic, call sync_creatives directly; use dry_run: true for a non-mutating rehearsal of that operation. Used by build_creative internally to validate inputs before producing output. For genuinely nondeterministic generative systems where predictive validation is impossible, the platform's own post-synthesis QA loop applies — validate_input is the predictable-case primitive.
 

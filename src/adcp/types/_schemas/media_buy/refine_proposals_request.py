@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.idempotency_key import IdempotencyKey
@@ -16,7 +17,7 @@ from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEn
 from .proposal_refinement import ProposalRefinement
 
 
-class RefineProposalsRequest(AdCPVersionEnvelope):
+class RefineProposalsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Create draft revisions or finalize draft proposals into held committed snapshots. Each result receives a new proposal_id and every source remains unchanged.
     """

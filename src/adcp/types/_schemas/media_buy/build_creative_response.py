@@ -14,7 +14,7 @@ from adcp.types.constraints import (
     IntMin1,
     StrMaxLen2000,
 )
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.creative_consumption import CreativeConsumption
@@ -31,7 +31,7 @@ from ..creative.preview_render import PreviewRender
 from ..enums.creative_selection_strategy import CreativeSelectionStrategy
 
 
-class BuildCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class BuildCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for build_creative. Exactly one of six shapes: (1) synchronous single-capability success — creative_manifest issued in-line; (2) synchronous multi-capability success — creative_manifests issued in request order; (3) multiplicity success — creatives[] each carrying variants[]; (4) dry-run estimate; (5) terminal failure; (6) submitted task envelope. Canonical 3.2 requests use target_capability_id(s); deprecated target_format_id(s) retain the same response branches during the 3.x compatibility window.
     """

@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -16,7 +17,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .property_list import PropertyList
 
 
-class GetPropertyListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetPropertyListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for get_property_list task. Returns identifiers only (not full property objects or scores). Consumers should cache the resolved identifiers and refresh based on cache_valid_until.
     """

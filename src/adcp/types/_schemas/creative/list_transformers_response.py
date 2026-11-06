@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -16,7 +17,7 @@ from ..core.transformer import Transformer
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ListTransformersResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnvelope):
+class ListTransformersResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for list_transformers — account-scoped transformer descriptors matching the query, with optional per-param enumerated option values (when expanded) and per-account pricing (when requested).
     """

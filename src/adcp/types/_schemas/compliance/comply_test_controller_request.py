@@ -19,6 +19,7 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen1000,
     StrMinLen1MaxLen2000,
 )
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account import CreditLimit
 from ..core.brand_ref import BrandReference
@@ -207,7 +208,7 @@ class ComplyTestControllerRequestAccount(AdCPBaseModel):
     sandbox: Annotated[Literal[True], Field(description='MUST be true. The seller MUST verify the targeted account is sandbox by looking up the persisted account record, not by trusting this field. A request asserting sandbox: false schema-rejects before reaching the seller — defense-in-depth on top of the per-request gate.')]
 
 
-class ComplyTestControllerRequest(AdCPVersionEnvelope):
+class ComplyTestControllerRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request payload for the comply_test_controller tool. Triggers seller-side state transitions for compliance testing. Sandbox only — sellers MUST NOT expose this tool in production. Naturally idempotent: each known `scenario` is either a lookup (`list_scenarios`) or a state-forcing operation whose target state is carried in the payload (`force_*_status`, `simulate_*`), so replays converge to the same observable state without needing an idempotency_key. The compliance harness drives this tool deterministically and does not rely on the seller's at-most-once replay cache.
     """

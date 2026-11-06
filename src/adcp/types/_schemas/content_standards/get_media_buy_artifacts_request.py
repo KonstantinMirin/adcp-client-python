@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..collection.get_collection_list_request import ObjMaxResultsCursor
 from ..core.account_ref import AccountReference
@@ -23,7 +24,7 @@ class TimeRange(AdCPBaseModel):
     end: Annotated[AwareDatetime | None, Field(description='End of time range (exclusive)')] = None
 
 
-class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope):
+class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for retrieving content artifacts from a media buy for validation
     """

@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMaxLen2000
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.account import Account
 from ..core.context import ContextObject
@@ -23,7 +23,7 @@ from ..enums.creative_action import CreativeAction
 from ..enums.creative_status import CreativeStatus
 
 
-class SyncCreativesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncCreativesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from creative sync operation. Exactly one of three shapes: (1) synchronous success — per-creative results in the creatives array (best-effort processing with per-item status/failures); (2) terminal failure — errors array with no creatives processed; (3) submitted task envelope — status 'submitted' with task_id when the whole operation is queued (batch ingestion, async review that must settle before per-item results can be issued). The submitted branch MAY carry advisory errors for non-blocking warnings; terminal failures belong in the error branch. Final per-item results land on the task completion artifact, not this envelope. These three shapes are mutually exclusive — a response has exactly one.
     """

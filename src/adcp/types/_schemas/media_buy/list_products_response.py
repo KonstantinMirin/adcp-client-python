@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMinLen1
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.canonical_product import CanonicalProduct
 from ..core.context import ContextObject
@@ -42,7 +43,7 @@ class IncompleteItem(AdCPBaseModel):
     estimated_wait: Duration | None = None
 
 
-class ListProductsResponse(BranchDispatchMixin, AdCPBaseModel):
+class ListProductsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
     """
     Canonical product offers and continuation state. Every product carries product_id and name; other compact detail fields follow the request's fields selection. Legacy named-format identifiers are never returned. This response never contains proposals or proposal-lifecycle fields.
     """

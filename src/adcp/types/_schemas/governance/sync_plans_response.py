@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -71,7 +72,7 @@ class PlansItem(AdCPBaseModel):
     resolved_policies: Annotated[list[ResolvedPoliciesItem] | None, Field(description='Policies the governance agent will enforce for this plan. Includes explicitly referenced policies from the brand compliance configuration and auto-applied policies matched by jurisdiction or policy category. Present when the governance agent supports policy resolution.')] = None
 
 
-class SyncPlansResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncPlansResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from syncing campaign plans. Returns status and active validation categories for each plan.
     """

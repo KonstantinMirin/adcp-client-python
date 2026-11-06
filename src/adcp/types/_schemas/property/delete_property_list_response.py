@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -13,7 +14,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class DeletePropertyListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class DeletePropertyListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for delete_property_list task
     """

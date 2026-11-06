@@ -366,6 +366,18 @@ def class_name(title: str) -> str:
     return "".join(w[:1].upper() + w[1:] for w in words)
 
 
+#: The bundle's projection directories, which :func:`bundle_index` does not walk.
+#:
+#: **A SECOND SPELLING OF ``codegen.bundle.PROJECTIONS``, and deliberately so**, for the
+#: reason :func:`class_name` is a second spelling of ``codegen.lower.names.class_name``:
+#: this module reads the bundle with ``json`` over the directory and imports no part of
+#: the compiler, so that the survey can be run against a tree whose compiler does not
+#: import.  ``tests/test_the_alias_layer_is_names.py`` asserts the two agree, which is
+#: what keeps the duplication from becoming a divergence -- the same guard the name rule
+#: already has.
+PROJECTIONS = ("bundled", "mcp")
+
+
 def bundle_index(bundle: Path) -> dict[str, dict]:
     """The bundle's own words: every document PATH slug and every `title` it states.
 
@@ -377,12 +389,33 @@ def bundle_index(bundle: Path) -> dict[str, dict]:
     `enums/channels.json`, whose root ours calls `MediaChannel`.  `titles` answers the
     weaker question "is this word one the schema uses at all", which is what separates a
     subject from `MacroDeclaration16`.
+
+    **A PROJECTION IS NOT A DOCUMENT HERE, AND LEAVING IT IN SILENTLY BROKE THE DOCUMENT
+    KEY FOR 119 WORDS.**  `codegen.bundle.PROJECTIONS` names `bundled/` and `mcp/` as
+    "top-level directories holding projections of documents published elsewhere" and
+    `codegen.bundle.portable` excludes them, so no module of ours is emitted from one and
+    no class of ours carries one at `__adcp_schema__`.  `stems` is `setdefault` over a
+    SORTED walk, so `bundled/creative/list-transformers-request.json` reached the key
+    before `creative/list-transformers-request.json` did and won it -- and `verdict`'s
+    document key then asked `by_document` for a path no class of ours declares, missed,
+    and fell through to `ABSENT-SUBJECT-NO-WORD`.  `ListTransformersRequest` is that miss,
+    and `src/adcp/server/base.py:31` failing on it is 929 of the 1,218 collection errors
+    the 9.6.1 drop-in measurement reported.  The word, the subject and our class were all
+    there; the index was reading the copy.
+
+    Measured over bundle 3.2: 119 of 1,225 stems pointed at a projection, 0 keys of
+    `by_document` are ever a projection path, and excluding them moves the stem to the
+    published document in every case and changes no other reading -- `titles` is a SET and
+    a projection states the same titles as its original, so the weaker question's answer
+    is unchanged.
     """
     stems: dict[str, str] = {}
     titles: set[str] = set()
     documents: list[str] = []
     for path in sorted(bundle.rglob("*.json")):
         relative = str(path.relative_to(bundle))
+        if relative.split("/", 1)[0] in PROJECTIONS:
+            continue
         documents.append(relative)
         stem = relative[: -len(".json")].rsplit("/", 1)[-1]
         stems.setdefault(norm(class_name(stem)), relative)

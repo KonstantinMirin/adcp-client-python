@@ -17,7 +17,7 @@ from adcp.types.constraints import (
     StrMaxLen100,
     StrMinLen1,
 )
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..brand import Background, KellerType, LogoOrientation, LogoVariant, ObjUrlWeightWeightRangeStyle
 from ..core.context import ContextObject
@@ -31,7 +31,7 @@ from ..enums.right_use import RightUse
 from .get_brand_identity_request import BrandIdentityField
 
 
-class GetBrandIdentityResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class GetBrandIdentityResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Brand identity data from a brand agent. Core identity (house, names, description, logos) is always public. Authorized callers receive richer data (high-res assets, voice synthesis, tone guidelines, rights availability). Includes available_fields to signal what the caller could unlock by linking their account.
     """

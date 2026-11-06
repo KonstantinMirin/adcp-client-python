@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.canonical_product import CanonicalProduct
 from ..core.canonical_proposal import CanonicalProposal
@@ -146,7 +147,7 @@ class Status(StrEnum):
     SUBMITTED = 'submitted'
 
 
-class RefineProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
+class RefineProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
     """
     One ordered result per requested source proposal. Revision results may carry multiple immutable draft proposals when alternatives were requested; finalization remains one committed proposal per source. Products contains the compact canonical products needed to evaluate the resulting terms.
     """

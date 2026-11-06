@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.deployment import Deployment
@@ -17,7 +17,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ActivateSignalResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class ActivateSignalResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for activate_signal task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the signal is either fully activated or not activated at all.
     """

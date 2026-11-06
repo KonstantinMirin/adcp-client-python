@@ -7,6 +7,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from ..core.context import ContextObject
@@ -55,7 +56,7 @@ class PlanSummary(AdCPBaseModel):
     budget_remaining: Annotated[float | None, Field(description='Authorized budget minus total committed.')] = None
 
 
-class ReportPlanOutcomeResponse(AdCPVersionEnvelope):
+class ReportPlanOutcomeResponse(AdCPVersionEnvelope, AdcpResponse):
     """
     Response from reporting an action outcome. Only returned to the orchestrator (buyer-side agent) that manages the plan. Sellers report delivery data via check_governance with phase 'delivery', not via this task.
     """

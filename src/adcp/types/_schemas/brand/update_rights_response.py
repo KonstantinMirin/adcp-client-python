@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import ZipAssetDigest
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
@@ -21,7 +21,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .rights_terms import RightsTerms
 
 
-class UpdateRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class UpdateRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Result of a rights update request. Returns updated terms and re-issued credentials on success, or errors if the update cannot be applied.
     """

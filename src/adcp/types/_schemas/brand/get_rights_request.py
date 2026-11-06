@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import StrMaxLen2000
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
@@ -18,7 +19,7 @@ from ..enums.right_type import RightType
 from ..enums.right_use import RightUse
 
 
-class GetRightsRequest(AdCPVersionEnvelope):
+class GetRightsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Search for licensable rights across a brand agent's roster. Returns matches with pricing. Discovery is natural-language-first — no taxonomy for categories. The agent interprets intent from the query and filters based on the buyer's brand compatibility.
     """

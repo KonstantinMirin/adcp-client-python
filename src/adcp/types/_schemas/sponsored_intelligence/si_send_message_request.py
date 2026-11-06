@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -27,7 +28,7 @@ class ActionResponse(AdCPBaseModel):
     payload: Annotated[dict[str, Any] | None, Field(description='Action-specific response data')] = None
 
 
-class SISendMessageRequest(AdCPVersionEnvelope):
+class SISendMessageRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Send a message to the brand agent within an active session
     """

@@ -14,6 +14,7 @@ from adcp.types.constraints import (
     StrMaxLen255,
     StrMinLen1MaxLen4096,
 )
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.account_change import AccountChange
 from ..core.context import ContextObject
@@ -57,7 +58,7 @@ class SourceCoverageItem(AdCPBaseModel):
     resource_types: Annotated[list[ListAccountChangesRequestResourceTypesItem], Field(json_schema_extra={'uniqueItems': True}, max_length=50)]
 
 
-class ListAccountChangesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class ListAccountChangesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Durable account change feed page. cursor is always present, including for an empty page at the tail; ordinary pagination-response semantics do not apply. Experimental in 3.2 (RFC #6810): sellers returning this response MUST list account.change_feed in experimental_features.
     """

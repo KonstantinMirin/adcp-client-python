@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -17,7 +18,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .get_creative_features_terminal_success import GetCreativeFeaturesSuccess
 
 
-class GetCreativeFeaturesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class GetCreativeFeaturesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for the get_creative_features task. Exactly one shape is returned: terminal success with results, terminal error, or a submitted acknowledgement carrying the pollable task identity. In AdCP 3.x providers SHOULD also include a stable evaluation_id on accepted work; it becomes required in AdCP 4.0.
     """

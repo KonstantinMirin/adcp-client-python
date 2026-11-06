@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import IntMin1Max200
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -16,7 +17,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.account_status import AccountStatus
 
 
-class ListAccountsRequest(AdCPVersionEnvelope):
+class ListAccountsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for listing accounts accessible to the authenticated agent. For upstream-managed namespaces, this discovers seller/storefront account_id values. For buyer-declared accounts, responses return the natural-key fields needed to reconstruct an AccountRef after a cold start.
     """

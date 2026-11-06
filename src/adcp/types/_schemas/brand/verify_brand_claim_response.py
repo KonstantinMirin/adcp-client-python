@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen500
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -20,7 +20,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .verification_status import VerificationStatus
 
 
-class VerifyBrandClaimResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class VerifyBrandClaimResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     The brand-agent's authoritative answer to a verification claim. Always returns claim_type + verification_status; richer per-claim-type fields ride on the `details` object (shape varies by claim_type — see the task page).
     """

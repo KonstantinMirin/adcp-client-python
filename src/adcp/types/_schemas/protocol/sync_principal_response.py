@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -68,7 +69,7 @@ class FailedPrincipalSync(AdCPBaseModel):
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
 
-class SyncPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Result of synchronizing selected sections of the principal's standing configuration. Applied responses return the complete current credential-free configuration. Validated dry-run responses report the would-be action without issuing durable identifiers. Failed responses deliberately cannot carry principal identifiers, versions, or configuration state.
     """

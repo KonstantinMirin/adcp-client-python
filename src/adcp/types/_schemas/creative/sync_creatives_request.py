@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, StrMinLen1
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -88,7 +89,7 @@ class ReplaceAssignment(AdCPBaseModel):
     placement_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
-class SyncCreativesRequest(AdCPVersionEnvelope):
+class SyncCreativesRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for syncing creative assets with upsert semantics. Provide at least one of creatives, assignments, or assignment_operations. assignments and assignment_operations are mutually exclusive; delete_missing: true requires creatives; assignment_operations requires validation_mode: strict.
     """

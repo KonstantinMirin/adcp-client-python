@@ -13,6 +13,7 @@ from adcp.types.constraints import (
     IntMin1,
     NonEmptyList,
 )
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.attribution_window import AttributionWindow
@@ -173,7 +174,7 @@ class ReportingDimensions(AdCPBaseModel):
     placement_property: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery at the placement × property intersection. Use when a placement may span multiple web, app, social, or assistant properties. Check reporting_capabilities.supports_placement_property_breakdown.')] = None
 
 
-class GetMediaBuyDeliveryRequest(AdCPVersionEnvelope):
+class GetMediaBuyDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for retrieving comprehensive delivery metrics
     """

@@ -14,12 +14,13 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen200,
     StrMinLen2MaxLen2,
 )
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.property_type import PropertyType
 
 
-class VerifyBrandClaimRequest(BranchDispatchMixin, AdCPVersionEnvelope):
+class VerifyBrandClaimRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
     """
     Ask a brand-agent a verification question — does the brand's own data confirm or reject a specific claim about a facet of its identity? The unified replacement for the per-dimension verify_* tools. claim_type discriminates the kind of question (subsidiary / parent / property / trademark); the claim payload carries the question. Read-only; naturally idempotent — the brand's internal bookkeeping deduplicates per {caller_identity, claim_type, claim-target}.
     """

@@ -17,6 +17,7 @@ from adcp.types.constraints import (
     StrMinLen1,
     StrMinLen1MaxLen255,
 )
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.attribution_window import AttributionWindow
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -388,7 +389,7 @@ class MediaBuyDeliveriesItem(AdCPBaseModel):
     daily_breakdown: Annotated[list[MediaBuyDeliveriesItemDailyBreakdownItem] | None, Field(description="Day-by-day delivery for a media-buy row with one currency. Sellers MUST omit this aggregate breakdown for a legacy or externally created mixed-currency buy because these rows have no package currency field. Sellers MUST also omit this aggregate breakdown when the media buy's packages span more than one reporting timezone; package-level daily_breakdown remains, each in its own product's reporting timezone.")] = None
 
 
-class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for get_media_buy_delivery task
     """

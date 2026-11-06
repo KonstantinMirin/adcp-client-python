@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import HttpUrl, ZipAssetDigest
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
@@ -22,7 +22,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .rights_terms import RightsTerms
 
 
-class AcquireRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class AcquireRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Result of a rights acquisition request. Returns one of three rights_status values: acquired (with terms and generation credentials), pending_approval (requires rights holder review), or rejected (with reason). Uses discriminated union on `rights_status` field.
     """

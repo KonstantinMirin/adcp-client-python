@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import PaginationMaxResults
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -26,7 +27,7 @@ class ObjMaxResultsCursor(AdCPBaseModel):
     cursor: Annotated[str | None, Field(description='Opaque cursor from a previous response to fetch the next page')] = None
 
 
-class GetCollectionListRequest(AdCPVersionEnvelope):
+class GetCollectionListRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for retrieving a collection list with resolved collections
     """

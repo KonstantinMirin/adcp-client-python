@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -13,7 +14,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetTaskStatusRequest(AdCPVersionEnvelope):
+class GetTaskStatusRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for the get_task_status AdCP tool. This is a 3.x protocol-namespace alias for the legacy AdCP tasks/get polling surface, not a transport-native MCP/A2A tasks/* method. It retrieves a specific AdCP application-layer async task by ID with optional conversation history and terminal result payload.
     """

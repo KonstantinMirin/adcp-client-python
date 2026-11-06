@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -36,7 +37,7 @@ class EventSourcesItem(AdCPBaseModel):
     surface: Annotated[EventSurface | None, Field(description='Optional structured surface this source represents, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements the flat `action_source` returned by sellers and avoids putting optimization-relevant surface meaning only in `ext`.')] = None
 
 
-class SyncEventSourcesRequest(AdCPVersionEnvelope):
+class SyncEventSourcesRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for configuring event sources on an account with upsert semantics. Existing event sources matched by event_source_id are updated, new ones are created. When delete_missing is true, buyer-managed event sources on the account not in this request are removed. When event_sources is omitted, the call is discovery-only: it returns all event sources on the account without modification. The response always includes both synced and seller-managed event sources for full visibility.
     """

@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max100, HttpUrl, IntMin1, StrMaxLen2000
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
@@ -185,7 +186,7 @@ class PlansItem(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class SyncPlansRequest(AdCPVersionEnvelope):
+class SyncPlansRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Push campaign plans to the governance agent. A plan defines the authorized parameters for a campaign -- budget limits, channels, flight dates, and authorized markets.
     """

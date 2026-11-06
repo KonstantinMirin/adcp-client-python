@@ -16,6 +16,7 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen1024,
     ZipAssetDigest,
 )
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.context import ContextObject
@@ -120,7 +121,7 @@ class RuntimeAttestationEvaluationsItem(AttestationEvaluation):
     action_binding: Annotated[ActionBinding, Field(description='Optional binding to the consuming action or readback. Domain consumers that rely on an evaluation MUST carry either an action id or an action digest so the result cannot be transplanted to an unrelated decision.')]
 
 
-class CheckGovernanceResponse(AdCPVersionEnvelope):
+class CheckGovernanceResponse(AdCPVersionEnvelope, AdcpResponse):
     """
     Governance agent's response to a check request. Only an approved verdict authorizes execution. Conditions are an intent-phase counterproposal and never carry authorization context; the caller must adjust and re-check.
     """

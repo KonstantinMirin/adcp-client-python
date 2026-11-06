@@ -38,6 +38,7 @@ from adcp.types.constraints import (
     WebhookSigningDeliveryRetryHorizonSeconds,
     ZipAssetDigest,
 )
+from adcp.types.envelopes import AdcpResponse
 
 from ..common._vocabularies import (
     _VALUES_BINARY_QUANTITATIVE_CATEGORICAL,
@@ -1536,7 +1537,7 @@ class WholesaleFeedWebhooks(AdCPBaseModel):
     event_types: Annotated[list[WholesaleFeedEventType] | None, Field(description='Wholesale feed webhook event types this agent can emit. Sales agents emit product.* events and MUST expose list_products or the deprecated 3.x wholesale get_products compatibility path. Signals agents emit signal.* events and MUST support wholesale get_signals. wholesale_feed.bulk_change requires at least one corresponding repair path.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
-class GetAdCPCapabilitiesResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetAdCPCapabilitiesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for get_adcp_capabilities task. Protocol-level capability discovery across all AdCP protocols. Each protocol has its own capability section.
     """

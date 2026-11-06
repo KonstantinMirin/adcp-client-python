@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMinLen1, StrMinLen1MaxLen500, StrMinLen1MaxLen4096
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.canonical_account_ref import CanonicalAccountReference
@@ -24,7 +25,7 @@ from .change_term_constraints import Money
 from .package_control import PackageControl
 
 
-class ControlMediaBuyRequest(AdCPVersionEnvelope):
+class ControlMediaBuyRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Apply revision-checked delivery controls or non-commercial metadata changes authorized by the MediaBuy's current available_actions[]. For a proposal-bound buy, the accepted envelope includes any applicable commercial_terms.change_terms[]: a self-serve control inside that term's typed constraints is already authorized. A control with no negotiated right returns ACTION_NOT_ALLOWED; a control that exercises an existing right outside its typed bounds returns REQUOTE_REQUIRED, after which the buyer can fork the accepted proposal through refine_proposals. Provide at least one control field. cancellation_reason requires canceled: true; cancellation is mutually exclusive with every other control. Creative mutation, new products/packages, flight changes, pricing changes, and billing-term changes are not accepted here.
     """

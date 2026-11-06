@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IncludeHistory, IntMin1Max200, NonEmptyList
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -18,7 +19,7 @@ from ..enums.indicator_type import IndicatorType
 from ..enums.media_buy_status import MediaBuyStatus
 
 
-class GetMediaBuysRequest(AdCPVersionEnvelope):
+class GetMediaBuysRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for retrieving media buy status, creative approval state, and optional delivery snapshots
     """

@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -27,7 +28,7 @@ class Scope(AdCPBaseModel):
     description: Annotated[str | None, Field(description='Human-readable description of this scope')] = None
 
 
-class UpdateContentStandardsRequest(AdCPVersionEnvelope):
+class UpdateContentStandardsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for updating an existing content standards configuration. Creates a new version.
     """

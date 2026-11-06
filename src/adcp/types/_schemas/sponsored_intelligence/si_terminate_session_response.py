@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -50,7 +51,7 @@ class FollowUp(AdCPBaseModel):
     data: Annotated[dict[str, Any] | None, Field(description='Data for follow-up action')] = None
 
 
-class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Confirmation of session termination
     """

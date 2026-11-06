@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import HttpUrl
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -62,7 +63,7 @@ class CalibrationExemplars(AdCPBaseModel):
     fail: Annotated[list[ObjTypeValueLanguage | Artifact] | None, Field(description='Content that fails the standards')] = None
 
 
-class CreateContentStandardsRequest(AdCPVersionEnvelope):
+class CreateContentStandardsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for creating a new content standards configuration
     """

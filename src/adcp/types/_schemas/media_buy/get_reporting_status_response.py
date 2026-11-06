@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen1MaxLen64, StrMinLen1MaxLen255, StrMinLen1MaxLen2048
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -84,7 +85,7 @@ class ObligationCounts(AdCPBaseModel):
     consumer_status_pending: Annotated[NonNegativeInt | None, Field(description="Obligations in this scope whose elapsed expected period has passed its consumer-status deadline — expected_at plus automated_recovery_window_seconds — without a current consumer status from the authenticated caller. A chain with any unsuperseded leaf counts as current whatever that leaf says; only an empty chain is pending. Because it counts obligations, a period the seller omitted entirely has no obligation and is not counted here — the buyer's independently derived denominator, not this field, remains the authority on omitted periods. It is a visibility count over the caller's own silence, never a health input: it MUST NOT change health, any other count, or seller-advertised reliability_statistics, and it overlaps the health counts rather than partitioning them. Required when the seller advertises consumer_status_task.")] = None
 
 
-class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Authoritative caller/account-isolated reporting status response. The view echoes the request and discriminates summary, periods, exact revision, and fatal error shapes. Seller obligation/revision state and separately attributed consumer status remain distinct but are compared in the caller-scoped health projection. Every identifier, cursor, ledger snapshot, destination, revision, materialization, consumer status, and resource is scoped to the authenticated caller and account.
     """

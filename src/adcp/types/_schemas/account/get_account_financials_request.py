@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -14,7 +15,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetAccountFinancialsRequest(AdCPVersionEnvelope):
+class GetAccountFinancialsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request financial status for an operator-billed account. Returns spend summary, credit/balance status, and invoice history. Only applicable when the seller declares account_financials capability.
     """

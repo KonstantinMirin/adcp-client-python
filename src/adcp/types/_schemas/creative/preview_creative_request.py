@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, IntMin1
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.creative_manifest import CreativeManifest
@@ -51,7 +52,7 @@ class RequestsItem(AdCPBaseModel):
     item_limit: Annotated[IntMin1 | None, Field(description='Maximum number of catalog items to render in this preview.')] = None
 
 
-class PreviewCreativeRequest(AdCPVersionEnvelope):
+class PreviewCreativeRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request to generate previews of creative manifests. Uses request_type to select single, batch, or variant mode.
     """

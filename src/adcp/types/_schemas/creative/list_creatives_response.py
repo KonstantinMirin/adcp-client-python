@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, CreativesItemAssignmentsReturnedAssignmentCount
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.account import Account
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -247,7 +248,7 @@ class StatusSummary(AdCPBaseModel):
     archived: Annotated[NonNegativeInt | None, Field(description='Number of archived creatives')] = None
 
 
-class ListCreativesResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class ListCreativesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from creative library query with filtered results, metadata, and optional enriched data
     """

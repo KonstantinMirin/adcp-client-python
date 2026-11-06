@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.agent_notification_config import AgentNotificationConfig
 from ..core.context import ContextObject
@@ -26,7 +27,7 @@ class Action(StrEnum):
     FAILED = 'failed'
 
 
-class SyncAgentNotificationConfigsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncAgentNotificationConfigsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from caller-scoped agent-level notification subscriber replacement. Echoes the authenticated caller's persisted subscriber set with legacy credentials redacted, or reports operation-level errors when the replacement failed.
     """

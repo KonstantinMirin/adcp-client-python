@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -122,7 +123,7 @@ class TimeBudget(Duration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-request.json', pointer='#/properties/time_budget')
 
 
-class GetProductsRequest(AdCPVersionEnvelope):
+class GetProductsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     AdCP 3.x compatibility request for discovering and changing advertising products and proposals. Buyers SHOULD express every campaign constraint that has a structured field in that field rather than relying on prose: structured input is cheaper to transmit, deterministic to process, and avoids lossy inference. Exact targeting_overlay values scope returned products, pricing, and forecasts; required_overlay_support identifies targeting dimensions whose values will be supplied on packages later. Explicit hard targeting stated only in a brief remains binding. AdCP 3.2 introduces the narrower list_products, request_proposals, refine_proposals, and decline_proposals tasks; new callers SHOULD use those tasks while existing get_products payloads remain valid throughout 3.x.
     """

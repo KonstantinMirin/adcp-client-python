@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, GovernanceContext, IntMin1
+from adcp.types.envelopes import AdcpRequest
 
 from ..common._vocabularies import _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
 from ..core.account_ref import AccountReference
@@ -122,7 +123,7 @@ class VariantAxis(AdCPBaseModel):
     label: Annotated[str | None, Field(description='Human-readable description of the axis, especially for `custom`.')] = None
 
 
-class BuildCreativeRequest(AdCPVersionEnvelope):
+class BuildCreativeRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request to transform, generate, resolve, refine, or retrieve a creative manifest. Supports five modes: (1) generation from a brief or seed assets, (2) transformation of an existing manifest, (3) deterministic seller-bound selection from a pre-binding CreativeRepresentationSet, (4) refinement of a prior produced variant via refine_from_build_variant_id, and (5) retrieval from a creative library by creative_id. Produces target manifest(s) through canonical capabilities advertised in `get_adcp_capabilities.creative.supported_formats[]`. CreativeRepresentationSet input is a non-generative, single-output mode available only on the destination sales agent and additionally requires `creative.representation_resolution.supported: true`. In 3.2, provide `target_capability_id` for one output or `target_capability_ids` for multiple outputs. Legacy named-format selectors remain accepted during the 3.x compatibility window but are deprecated.
     """

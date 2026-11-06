@@ -6,13 +6,14 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from .validate_input_result import ValidateInputResult
 
 
-class ValidateInputResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class ValidateInputResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for the validate_input task. Returns per-target manifest validation results — one entry per canonical, product, third-party, or agent-local capability target requested. A capability target selects an advertised creative.supported_formats entry whose operations contains validate; the response echoes kind capability and the same capability_id. Each result carries a `result_kind` discriminator (`validated_pass` / `validated_fail` / `unvalidatable_nondeterministic`) so callers can branch on three meaningfully different outcomes. A pass means the manifest is structurally valid against that target; it does not mean a later sync_creatives call will be accepted, because trafficking-time gates such as account authorization, creative_id upsert state, package assignments, active-delivery protections, and seller review policy are outside validate_input's scope. The `predicted` field on violations carries the platform's pre-flight estimate (e.g., predicted audio duration from text-length analysis), NOT the actual output — there is no protocol state for orphaned out-of-spec artifacts. For nondeterministic generative systems with `synthesis_nondeterministic: true`, the result_kind is `unvalidatable_nondeterministic` — predictive validation is impossible, the platform's post-synthesis QA loop applies on `build_creative`, and out-of-spec output never reaches this surface (instead `build_creative` returns task_failed with synthesis_failed reason).
 
