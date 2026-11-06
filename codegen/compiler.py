@@ -1594,7 +1594,7 @@ def rules_at(
     *also: Mapping[str, Any],
     position: Position = Position.ROOT,
     resolve: Resolver = None,
-    at: Sequence[str] = (),
+    at: Sequence[str | None] = (),
     keeps_every_key: bool | None = None,
     root: Mapping[str, Any] | None = None,
 ) -> Rules:

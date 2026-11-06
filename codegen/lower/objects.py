@@ -427,7 +427,7 @@ def declare_object(
     bases: tuple[ir.TypeRef, ...] = (),
     branches: tuple[ir.TypeRef, ...] | None = None,
     rule_nodes: Sequence[Mapping[str, Any]] = (),
-    rule_sites: Sequence[str] = (),
+    rule_sites: Sequence[str | None] = (),
     description: str | None = None,
     root_required: tuple[str, ...] | None = None,
     discriminator: str | None = None,
