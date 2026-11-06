@@ -2205,6 +2205,21 @@ class AcceptsResult:
     #: costs nothing.
     stated: int = 0
 
+    #: Why §8's SUBSTITUTED node was abandoned and the pair redrawn from its own node, or
+    #: ``""`` where the substitution answered.  ``hypothesis``'s own sentence, which
+    #: carries the filtered-draw count.
+    #:
+    #: **§8 requires this to be loud: "A reduction reports emptiness as a failure, loudly,
+    #: and a pair whose reduction came back empty is a defect report and not a slow
+    #: pair."**  A substitution is this module's own derivation, so a substitution that
+    #: admits nothing is a defect HERE and never a fact about the document -- and the whole
+    #: hazard is that the fallback hides it: the pair goes green on its unreduced draw,
+    #: pays the time the rule exists to remove, and reads as a pair that is inherently
+    #: large.  A non-empty value beside ``outcome == "pass"`` is therefore a pass with a
+    #: defect report attached, exactly as a non-empty :attr:`dump_exempt` is a conditional
+    #: one; ``tests/test_emit.py`` ranges over the population and names them.
+    abandoned: str = ""
+
 
 def stated_instances(node: Any, *, validator_cls: Any = None) -> list[Any]:
     """The members of ``node``'s own ``examples`` that ``node`` ADMITS, in document order.
@@ -3350,29 +3365,90 @@ def check_accepts(
                 #: whatever the substitution did: ``oneOf`` is not monotone branch by
                 #: branch, a ``properties`` pin can meet another statement about the same
                 #: key through a keyword the frontier guards did not foresee, and neither
-                #: can now reach a verdict.  What a substitution can still do is produce
-                #: NOTHING the node admits, and that is reported as ``strategy_error``
-                #: with ``hypothesis``'s own filtered-draw count in the detail -- a
-                #: non-pass with a name, which is what §8 requires of a residue.
+                #: can now reach a verdict.
                 #:
                 #: ``schema`` and not ``dump_schema``: the exemptions are the DUMP's and
                 #: an instance going IN is decided by the node as the document writes it.
                 drawn_from_schema = drawing is None or drawing is schema
-                payloads = (
-                    strategy(schema, cf)
-                    if drawn_from_schema
-                    else strategy(drawing, cf).filter(
-                        lambda value: conforms(schema, value, validator_cls=validator_cls)
-                        is True
-                    )
-                )
-                run = given(instance=payloads)(body)
-                run = settings(
-                    max_examples=examples,
-                    phases=[Phase.explicit, Phase.generate],
-                    **_SETTINGS,
-                )(run)
-                run()
+
+                def drawn(node: Any, *, substituted: bool) -> None:
+                    payloads = strategy(node, cf)
+                    if substituted:
+                        payloads = payloads.filter(
+                            lambda value: conforms(schema, value, validator_cls=validator_cls)
+                            is True
+                        )
+                    run = given(instance=payloads)(body)
+                    run = settings(
+                        max_examples=examples,
+                        phases=[Phase.explicit, Phase.generate],
+                        **_SETTINGS,
+                    )(run)
+                    run()
+
+                if drawn_from_schema:
+                    drawn(schema, substituted=False)
+                else:
+                    #: **A SUBSTITUTION THAT ADMITS NOTHING IS ABANDONED, AND THE
+                    #: ABANDONMENT IS REPORTED.**  §8: *"AND A REDUCTION THAT YIELDS AN
+                    #: EMPTY NODE IS A DEFECT, NEVER A LOST SAVING. ... A reduction reports
+                    #: emptiness as a failure, loudly, and a pair whose reduction came back
+                    #: empty is a defect report and not a slow pair."*
+                    #:
+                    #: **AND THE SCREEN IS OVER THE WHOLE NODE, which is the half neither
+                    #: fail-safe above can reach.**  :meth:`Fixtures._pin`'s fail-safe is
+                    #: per-LOCATION -- "an item no value survives for is left exactly as it
+                    #: stands" -- and :meth:`Fixtures.substitute` has none at all, so both
+                    #: pin instance locations INDEPENDENTLY and a document whose ``anyOf``
+                    #: or ``if`` RELATES two locations has no such independent value.  §8
+                    #: states the consequence one line earlier: *"two pins on one location
+                    #: do not narrow the node -- they empty it."*
+                    #:
+                    #: **MEASURED, and it is a wrong verdict rather than a slow draw.**
+                    #: ``core/postal-country-system.json`` states a cross-field ``anyOf``
+                    #: pairing a ``country`` with the postal systems that country admits.
+                    #: Where ``country`` is inline only ``system`` is pinned and the
+                    #: generator draws a country that agrees with it; where ``country`` is
+                    #: a ``$ref``, both are pinned independently -- ``country="AA"`` with
+                    #: ``system="cep"`` -- and no branch of the ``anyOf`` admits that pair.
+                    #: The ``.filter()`` above then turns the empty node into
+                    #: ``Unsatisfiable: 459 of 459 test cases failed a .filter()``, which
+                    #: this check used to report as ``strategy_error``: a RED PAIR
+                    #: manufactured by the instrument, over a node whose own draw passes.
+                    #: Five pairs of the patched bundle and 33 more the committed floor was
+                    #: masking (``adcp-client-python-lzzj.1``).
+                    #:
+                    #: **The retry is the UNREDUCED draw and nothing cleverer**, because
+                    #: that is the fail-safe direction this module already takes everywhere
+                    #: else: lose the saving, never place a value the document does not
+                    #: admit.  It costs what the pair cost before the rule existed -- 0.0
+                    #: to 0.2 s for four of those five, measured -- and a pair that cannot
+                    #: draw unreduced either is then reported on its own node, which is the
+                    #: verdict it is entitled to.
+                    #:
+                    #: **The counters are wound back with it**, so a partial substituted
+                    #: draw cannot leave instances in ``seen`` that the retry then counts
+                    #: twice, and ``dump_exempt`` cannot report an exemption the graded draw
+                    #: never needed.
+                    standing = (len(seen), res.examples, res.round_tripped, list(res.dump_exempt))
+                    try:
+                        drawn(drawing, substituted=True)
+                    except (
+                        HypothesisRefResolutionError,
+                        HypothesisException,
+                        RecursionError,
+                    ) as e:
+                        #: The CLOCK first, for the reason the handler below reads it: a
+                        #: cut arrives wearing hypothesis's own exception, and retrying a
+                        #: draw the budget has already stopped would charge this pair the
+                        #: whole budget twice.
+                        if budget_expired():
+                            raise
+                        res.abandoned = _why(e)
+                        del seen[standing[0]:]
+                        res.examples, res.round_tripped = standing[1], standing[2]
+                        res.dump_exempt = standing[3]
+                        drawn(schema, substituted=False)
         else:
             #: The FIRST ``examples`` of the held list and not all of it, which is the n <=
             #: N reading :func:`corpus_key` argues for: the instances are offered in order,
