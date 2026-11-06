@@ -30,9 +30,9 @@ version it was against would be the error ``adcp-client-python-2m5`` corrected i
 **WHAT THIS FILE DOES NOT GRADE is stated by name and asserted non-empty**, the discipline
 ``tests/test_the_wheel_is_the_artifact.py`` uses for its 39 unnamed records: the 35 names
 whose word ours carries for a DIFFERENT subject, and the 1,212 whose subject ours carries
-under a word the bundle never gives.  Neither is aliased, both are findings, and
-:func:`test_what_this_file_does_not_grade` reddens the day either set empties rather than
-leaving a stale sentence above.
+under a word the bundle never gives.  Neither set is in the owed 1,052 and neither is
+aliased; both are findings, and :func:`test_what_this_file_does_not_grade` reddens the day
+either set empties rather than leaving a stale sentence above.
 """
 
 from __future__ import annotations
@@ -87,7 +87,7 @@ def owed(rows: list[dict[str, str]]) -> list[dict[str, str]]:
 def test_every_name_the_table_declares_imports_from_the_module_it_names(
     rows: list[dict[str, str]],
 ) -> None:
-    """The row's own obligation: 1,063 upstream spellings, each at the module declared.
+    """The row's own obligation: 1,052 upstream spellings, each at the module declared.
 
     A REAL IMPORT STATEMENT per name, so what is measured is the import system and not a
     ``getattr`` over an already-bound module object -- the same choice
@@ -104,7 +104,7 @@ def test_every_name_the_table_declares_imports_from_the_module_it_names(
     for row in population:
         namespace: dict[str, object] = {}
         try:
-            exec(f"from {row['declared_at']} import {row['name']}", namespace)
+            exec(f"from {row['declared_at']} import {row['name']}", namespace)  # noqa: S102
         except BaseException as error:  # noqa: BLE001 -- the payload is the report
             failed[f"{row['declared_at']}.{row['name']}"] = f"{type(error).__name__}: {error}"
     assert not failed, {
@@ -191,7 +191,6 @@ def test_the_alias_layer_adds_no_declaration(rows: list[dict[str, str]]) -> None
     declarations = {key for key in behind.values() if key is not None}
 
     population = [r for r in owed(rows) if r["bucket"] in ("RELOCATED", "RENAMED")]
-    compat = importlib.import_module(MODULE)
     # **EVERY ALIAS IS A PATH TO A DECLARATION THE SURFACE ALREADY COUNTED**, which is
     # asked by resolving the alias's TARGET on the surface rather than by keying the alias
     # on its own module -- "keying such a path on its OWN module would count a second path
@@ -256,6 +255,37 @@ def test_the_name_rule_the_table_was_built_with_is_the_one_the_emitter_uses() ->
     }
     assert not disagree, {"two spellings of §4's name rule": disagree}
     assert len(titles) > 500, {"the bundle's vocabulary is implausibly small": len(titles)}
+
+
+def test_the_surveys_do_not_read_their_own_output() -> None:
+    """The alias module declares that it restates upstream, and the surveys honour it.
+
+    **The failure this stops was measured on the second run of the generator.**  Phase 1
+    reads OUR surface off the installed wheel, and the wheel ships the alias module -- so
+    with no marker the next run finds every upstream spelling "already a name of ours, at
+    ``adcp.types.compat``" and binds each alias to itself, and
+    ``survey/migration_notes.py`` stops owing a migration note for any name this module
+    restates.  Both read ``__adcp_restates_upstream__`` off the module rather than carrying
+    its name in a list, so a second alias module needs nothing edited.
+
+    Graded as behaviour: the predicate's return value for this module and for a domain
+    module, which is what the surveys branch on -- not the presence of a line of text.
+    The fixed point itself is measured in the lane's write-up: with the module installed,
+    phase 1 answers the same 2,225 identities and 3,193 names, and no row of the join moves.
+    """
+    import sys
+
+    sys.path.insert(0, str(ROOT / "survey"))
+    import migration_notes
+
+    assert migration_notes.restates_upstream(MODULE), (
+        f"{MODULE} does not declare {migration_notes.RESTATES}, so the next run of "
+        "survey/alias_surface.py reads its own output as our surface"
+    )
+    assert not migration_notes.restates_upstream("adcp.types.core"), (
+        "a DOMAIN module reads as a restatement of upstream, which would drop the "
+        "schema-derived surface out of the partition"
+    )
 
 
 def test_what_this_file_does_not_grade(rows: list[dict[str, str]]) -> None:

@@ -1,6 +1,6 @@
 # The alias surface, upstream adcp 9.6.1 against /srv/ws/.adcp-scratch/alias3/ours-venv/lib/python3.12/site-packages/adcp/types.
 # Population: deliberate -- 5299 names over 14737 spellings.
-# ABSENT=2951  ABSENT-SUBJECT-NO-WORD=1212  MEANING-DIFFERS=35  PRESENT=79  RELOCATED=859  RENAMED=125  UNRESOLVABLE-UPSTREAM=38
+# ABSENT=2277  ABSENT-SUBJECT-NO-WORD=1212  MEANING-DIFFERS=35  NOT-A-TYPE=685  PRESENT=79  RELOCATED=859  RENAMED=114  UNRESOLVABLE-UPSTREAM=38
 name	bucket	declared_at	ours	key	corroborated	why
 A2UiBoundValue	RENAMED	adcp.types.compat	adcp.types.a2ui.A2UIBoundValue	word-recased	none	ours is A2UIBoundValue
 A2UiBoundValue1	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
@@ -2301,14 +2301,3 @@ WholesaleFeedEvent9	ABSENT-SUBJECT-NO-WORD					identity equal under a word the b
 WholesaleFeedWebhook	RELOCATED	adcp.types.compat	adcp.types.core.WholesaleFeedWebhook	word	identity	upstream spells it at adcp, adcp.feed_mirror, adcp.types
 XEntityTypes	RELOCATED	adcp.types.compat	adcp.types.core.XEntityTypes	word	identity	upstream spells it at adcp.types.domains.core, adcp.types.domains.core.x_entity_types
 ZipAsset	RELOCATED	adcp.types.compat	adcp.types.core.ZipAsset	word	identity	upstream spells it at adcp, adcp.types, adcp.types.aliases
-activate_signal_response	RENAMED	adcp.types.compat	adcp.types.signals.ActivateSignalResponse	word-recased	none	ours is ActivateSignalResponse
-build_creative_response	RENAMED	adcp.types.compat	adcp.types.media_buy.BuildCreativeResponse	word-recased	none	ours is BuildCreativeResponse
-list_creatives_response	RENAMED	adcp.types.compat	adcp.types.creative.ListCreativesResponse	word-recased	none	ours is ListCreativesResponse
-log_event_response	RENAMED	adcp.types.compat	adcp.types.media_buy.LogEventResponse	word-recased	none	ours is LogEventResponse
-media_buy	RENAMED	adcp.types.compat	adcp.types.core.MediaBuy	word-recased	none	ours is MediaBuy
-preview_creative_response	RENAMED	adcp.types.compat	adcp.types.creative.PreviewCreativeResponse	word-recased	none	ours is PreviewCreativeResponse
-sync_accounts_response	RENAMED	adcp.types.compat	adcp.types.account.SyncAccountsResponse	word-recased	none	ours is SyncAccountsResponse
-sync_catalogs_response	RENAMED	adcp.types.compat	adcp.types.media_buy.SyncCatalogsResponse	word-recased	none	ours is SyncCatalogsResponse
-sync_creatives_response	RENAMED	adcp.types.compat	adcp.types.creative.SyncCreativesResponse	word-recased	none	ours is SyncCreativesResponse
-sync_governance_response	RENAMED	adcp.types.compat	adcp.types.account.SyncGovernanceResponse	word-recased	none	ours is SyncGovernanceResponse
-update_media_buy_response	RENAMED	adcp.types.compat	adcp.types.media_buy.UpdateMediaBuyResponse	word-recased	none	ours is UpdateMediaBuyResponse

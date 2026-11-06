@@ -32,7 +32,7 @@ So a candidate is proposed by a WORD or by a DOCUMENT and then has to survive th
   to compare, the row records `corroborated=none` and says so.
 
 **AND AN IDENTITY MATCH WITH NO WORD AND NO DOCUMENT IS NOT AN ALIAS EITHER.**  Measured
-against 9.6.1: 2,084 of upstream's deliberate names reach an identity of ours under a word
+against 9.6.1: 1,212 of upstream's deliberate names reach an identity of ours under a word
 the bundle never gives -- `MacroDeclaration16`, `Payload6`, `AuthorizedAgents41`, and 1,026
 of them a bare digit suffix.  Those are their generator disambiguating a collision rather
 than a subject the schema names, they already carry the cross-check's `V1-FOLD-NONODE` and
@@ -55,6 +55,8 @@ reported with the module it resolves at:
                module: `--module`.
     ABSENT     no subject of ours.  `survey/migration_notes.py` and
                `docs/migration-from-upstream.md` own these; this script only counts them.
+    NOT-A-TYPE upstream's object is a module, a function or a constant.  Only a type gets
+               an alias; the guide is where a caller is told what to call instead.
     UNRESOLVABLE-UPSTREAM
                the spelling raises on upstream's OWN wheel.  Reading 10: "a name that
                raises on upstream's own wheel is not a name we owe".
@@ -321,7 +323,8 @@ def bundle_index(bundle: Path) -> dict[str, dict]:
     for path in sorted(bundle.rglob("*.json")):
         relative = str(path.relative_to(bundle))
         documents.append(relative)
-        stems.setdefault(norm(class_name(relative[: -len(".json")].split("/")[-1])), relative)
+        stem = relative[: -len(".json")].rsplit("/", 1)[-1]
+        stems.setdefault(norm(class_name(stem)), relative)
         try:
             doc = json.loads(path.read_text())
         except ValueError:
@@ -390,6 +393,19 @@ def verdict(row: dict, views: tuple[dict, dict, dict], index: dict) -> dict:
             "bucket": "UNRESOLVABLE-UPSTREAM",
             "why": next(iter(row.get("raises", {}).values()), "reachable at no module"),
         }
+    # **ONLY A TYPE GETS AN ALIAS, and the two failures this stops were both measured.**
+    # `norm` drops separators as well as case, which is what makes `ADCP_MAJOR_VERSION` and
+    # `AdcpMajorVersion` one word -- and it also made upstream's `media_buy`, a MODULE, the
+    # re-casing of our `MediaBuy` class, so the layer bound a class to a module's name.  The
+    # other is a function: upstream's 10 callables in this population would have been bound
+    # to a class of ours wearing their word.  Both belong to `migration_notes`'s `NOT A
+    # TYPE` bucket and `docs/migration-from-upstream.md`, which is where a caller is told
+    # what to call instead.
+    if row["kind"] == "module" or row["kind"] in migration_notes.NONTYPE_KINDS:
+        return {
+            "bucket": "NOT-A-TYPE",
+            "why": f"upstream's object is a {row['kind']}, and only a type gets an alias",
+        }
 
     # ---- a candidate, proposed by a word or by a document, in order of strength.
     hits, by = [], None
@@ -398,7 +414,7 @@ def verdict(row: dict, views: tuple[dict, dict, dict], index: dict) -> dict:
     if not hits:
         cased = [n for n in by_name if n != name and norm(n) == norm(name)]
         if cased:
-            hits, by = by_name[sorted(cased)[0]], "word-recased"
+            hits, by = by_name[min(cased)], "word-recased"
     # **A DOCUMENT KEY NEEDS THE NAME TO BE A WORD THE BUNDLE GIVES, and that gate is the
     # difference between 143 renames and 2,029.**  Upstream's generated module for a
     # document binds its root, its inner shapes and its generator's disambiguations alike,
@@ -490,11 +506,25 @@ from __future__ import annotations
 
 '''
 
+MODULE_MARKER = '''
+#: **THIS MODULE IS NOT A SUBJECT OF OURS AND SAYS SO**, which is what keeps the surveys
+#: from reading their own output.  `survey/alias_surface.py` derives these bindings by
+#: joining upstream's surface against OURS; with no marker, its next run would find every
+#: upstream spelling "already a name of ours, at `adcp.types.compat`" and bind each alias to
+#: itself, and `survey/migration_notes.py` would stop owing a migration note for any name
+#: this module restates.  Both skip an `adcp.types` module carrying this attribute, so the
+#: rule is declared by the module rather than listed in the scripts -- a second alias module
+#: needs nothing edited.
+__adcp_restates_upstream__ = "adcp %(version)s"
+'''
 
-def write_module(path: Path, module: str, decided: dict[str, dict], report: dict) -> None:
-    """Write the alias module: re-export statements, grouped by the module they reach into.
 
-    The GROUPING is by our module and the ORDER is the name, so a diff of this file after a
+def write_module(
+    path: Path, module: str, decided: dict[str, dict], report: dict, version: str
+) -> None:
+    """Write the alias module: one re-export statement per upstream spelling.
+
+    The ORDER is our module and then the upstream name, so a diff of this file after a
     re-run shows which subjects moved rather than a reshuffle.
     """
     groups: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
@@ -503,13 +533,31 @@ def write_module(path: Path, module: str, decided: dict[str, dict], report: dict
             continue
         where, ours = got["target"].rsplit(".", 1)
         groups[where].append((ours, name))
-    lines = [MODULE_HEADER]
-    for where in sorted(groups):
-        pairs = sorted(groups[where])
-        lines.append(f"from {where} import (  # {len(pairs)} names\n")
-        for ours, name in pairs:
-            lines.append(f"    {ours} as {name},\n" if ours != name else f"    {name} as {name},\n")
-        lines.append(")\n")
+    # **ONE STATEMENT PER ALIAS, and that is ruff's reading rather than a taste.**  Grouped
+    # into one `from X import (a as b, c as d)` the module is shorter and `I001` fires on it
+    # -- isort's `combine-as-imports` is off by default, so a re-export under a NEW name is
+    # a statement of its own.  `pyproject.toml`'s `[tool.ruff]` says what to do about a
+    # finding in generated code and it is not to exclude the file: "a finding in a generated
+    # module is a row against the generator", and this is the generator, so the shape moves
+    # here rather than the rule moving there.
+    #
+    # **TWO FINDINGS REMAIN AND ARE NOT CLOSED BY A SHAPE: `I001` once and `E501` on 11
+    # lines.**  Matching isort exactly means reproducing its line-wrapping as well as its
+    # order, and the only way to get that right is to RUN the formatter over this output --
+    # which would make a shipped file a function of the linter version.  `pyproject.toml`
+    # refuses that in the opposite direction and for the reason that applies here: "a
+    # checker is an instrument and the artifact does not depend on it", which is why `ruff`
+    # is the one dependency NOT pinned exactly.  So the two are recorded as this
+    # generator's own row rather than closed by coupling the artifact to the checker --
+    # the same standing as the 399 `I001` findings `codegen/render.py` already owns in the
+    # emitted tree.  `E501` is not in the selected set at all.
+    lines = [MODULE_HEADER % {"version": version}]
+    lines += [
+        f"from {where} import {ours} as {name}\n"
+        for where in sorted(groups)
+        for ours, name in sorted(groups[where], key=lambda pair: (pair[0].lower(), pair[1].lower()))
+    ]
+    lines.append(MODULE_MARKER % {"version": version})
     exported = sorted(n for pairs in groups.values() for _, n in pairs)
     lines.append("\n__all__ = [\n")
     lines += [f'    "{n}",\n' for n in exported]
@@ -525,8 +573,10 @@ def write_module(path: Path, module: str, decided: dict[str, dict], report: dict
 #: are its refusals.  A refusal with no row is indistinguishable from an oversight, which
 #: is why `MEANING-DIFFERS` and `ABSENT-SUBJECT-NO-WORD` are written out by name rather
 #: than counted -- the question a reader asks about a name that does not resolve is "why",
-#: and only the row answers it.  Plain `ABSENT` is `docs/migration-from-upstream.md`'s and
-#: is counted in the header instead of repeated here.
+#: and only the row answers it.  Plain `ABSENT` and `NOT-A-TYPE` are
+#: `survey/migration_notes.py`'s partition and `docs/migration-from-upstream.md`'s, which
+#: already tell a caller what to use instead; they are counted in the header rather than
+#: repeated here, because a second answer to one question is how the two go out of step.
 TABLED = ("PRESENT", "RELOCATED", "RENAMED", "MEANING-DIFFERS", "ABSENT-SUBJECT-NO-WORD")
 
 
@@ -540,8 +590,10 @@ def write_table(path: Path, module: str, decided: dict[str, dict], report: dict,
     """
     lines = [
         f"# The alias surface, upstream adcp {version} against {report['ours']}.\n",
-        f"# Population: {report['population']} -- {report['names']} names over "
-        f"{report['spellings']} spellings.\n",
+        (
+            f"# Population: {report['population']} -- {report['names']} names over "
+            f"{report['spellings']} spellings.\n"
+        ),
         "# " + "  ".join(f"{b}={n}" for b, n in sorted(report["buckets"].items())) + "\n",
         "name\tbucket\tdeclared_at\tours\tkey\tcorroborated\twhy\n",
     ]
@@ -652,7 +704,7 @@ def main() -> None:
     for key, count in report["keys"].items():
         print(f"    {key:62} {count:6}")
     if args.write:
-        write_module(args.write, args.module, decided, report)
+        write_module(args.write, args.module, decided, report, up_blob["version"])
     if args.table:
         write_table(args.table, args.module, decided, report, up_blob["version"])
     if args.report:

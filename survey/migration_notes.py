@@ -130,6 +130,26 @@ OWED = (
 )
 
 
+#: **A MODULE THAT RESTATES UPSTREAM'S WORDS IS NOT A SUBJECT OF OURS.**  The alias layer
+#: (`survey/alias_surface.py`, `adcp.types.compat`) binds upstream's spellings to classes
+#: this tree already declares, so counting its names here would make this partition read
+#: every aliased name as "a name we carry" and stop owing it a migration note -- on the
+#: evidence of a file derived FROM this partition's own sibling.  The module declares its
+#: nature in `__adcp_restates_upstream__` and this reads the declaration, so the rule lives
+#: in one place and a second alias module needs nothing edited here.
+RESTATES = "__adcp_restates_upstream__"
+
+
+def restates_upstream(mod_name: str) -> bool:
+    """Whether `mod_name` is an alias layer rather than a surface of ours."""
+    import importlib
+
+    try:
+        return hasattr(importlib.import_module(mod_name), RESTATES)
+    except Exception:
+        return False
+
+
 def ident_key(kind: str, members) -> str:
     """One hashable spelling of an identity, so the two phases join on equality."""
     return json.dumps([kind, sorted(members)])
@@ -164,7 +184,7 @@ def dump_ours(out_path: Path) -> None:
     names: dict[str, list[dict[str, str | None]]] = {}
     exported: dict[int, str] = {}
     for mod_name in walk("adcp.types"):
-        if "._schemas" in mod_name:
+        if "._schemas" in mod_name or restates_upstream(mod_name):
             continue
         try:
             mod = importlib.import_module(mod_name)
@@ -179,6 +199,8 @@ def dump_ours(out_path: Path) -> None:
                 continue
     seen: set[tuple[str, str]] = set()
     for mod_name in walk("adcp.types"):
+        if restates_upstream(mod_name):
+            continue
         try:
             mod = importlib.import_module(mod_name)
         except Exception:
