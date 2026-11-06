@@ -14,7 +14,7 @@ from ...enums.macro_value_context import MacroValueContext
 from ..macro_bearing_url import MacroBearingURL
 from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
-from .daast_tracker_asset import Location
+from .url_asset import Location
 
 
 class DAASTAsset(BranchDispatchMixin, AdCPBaseModel):

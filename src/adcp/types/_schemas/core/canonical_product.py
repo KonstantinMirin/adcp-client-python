@@ -28,11 +28,11 @@ from .canonical_placement import CanonicalProductPlacement
 from .canonical_pricing_option import CanonicalPricingOption
 from .canonical_product_action import CanonicalProductAction
 from .canonical_reporting_capabilities import CanonicalReportingCapabilities
+from .collection_selection import CollectionsItem
 from .demographic_targeting_capability import DemographicTargetingCapability
 from .ext import ExtensionObject
 from .inventory_list_application import InventoryListApplication
 from .media_buy_support import ProductMediaBuySupport
-from .product import CollectionsItem
 from .product_execution_requirement import ProductExecutionRequirement
 from .product_identity import ProductIdentity
 from .product_targeting_resolution import ProductTargetingResolution

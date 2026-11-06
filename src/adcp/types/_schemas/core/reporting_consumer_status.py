@@ -15,10 +15,22 @@ from adcp.types.constraints import (
     IntMin1,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
     StrIdempotencyKey,
+    StrMinLen1,
     StrMinLen1MaxLen255,
 )
 
-from .reporting_revision import ObjStartEndSourceTimezone
+
+class ObjStartEndSourceTimezone(AdCPBaseModel):
+    """
+    Expected half-open reporting period derived from the accepted configuration generation. This identity works even when the seller omitted the corresponding obligation.
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-consumer-status.json', pointer='#/properties/period')
+    start: AwareDatetime
+    end: AwareDatetime
+    source_timezone: StrMinLen1
 
 
 class ConsumerStatus(StrEnum):

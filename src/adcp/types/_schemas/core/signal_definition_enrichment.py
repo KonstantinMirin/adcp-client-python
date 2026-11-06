@@ -7,95 +7,15 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import (
-    DataSubjectRightsResponseSlaDays,
-    DataSubjectRightsUpstreamSourceDomain,
-    HttpUrl,
-    IntMin1,
-    StrMaxLen500,
-    StrMinLen1,
-)
+from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types.constraints import HttpUrl, StrMaxLen500
 
 from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
 from ._vocabularies import _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY
 from .country_code import CountryCode
 from .demographic_predicate import DemographicPredicate
-from .https_url import HTTPSURL
-from .signal_modeling_disclosure import SignalModelingDisclosure
-
-
-class ObjIdPathModifiers(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/taxonomy/properties/values/items')
-    id: StrMinLen1
-    path: str | None = None
-    modifiers: list[str] | None = None
-
-
-class ValueMappingsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/taxonomy/properties/value_mappings/items')
-    value: str
-    taxonomy_value_id: str
-    path: str | None = None
-    modifiers: list[str] | None = None
-
-
-class ParentMatchBehavior(StrEnum):
-    EXACT_ONLY = 'exact_only'
-    DESCENDANTS_SUPPORTED = 'descendants_supported'
-    UNKNOWN = 'unknown'
-
-
-class Taxonomy(AdCPBaseModel):
-    """
-    Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/taxonomy')
-    ref: HttpUrl
-    version: str | None = None
-    segtax: IntMin1 | None = None
-    etag: str | None = None
-    values: Annotated[list[ObjIdPathModifiers], Field(min_length=1)]
-    value_mappings: Annotated[list[ValueMappingsItem] | None, Field(min_length=1)] = None
-    parent_match_behavior: ParentMatchBehavior | None = None
-
-
-class DataSourcesItem(StrEnum):
-    APP_BEHAVIOR = 'app_behavior'
-    APP_USAGE = 'app_usage'
-    WEB_USAGE = 'web_usage'
-    GEO_LOCATION = 'geo_location'
-    EMAIL = 'email'
-    TV_OTT_OR_STB_DEVICE = 'tv_ott_or_stb_device'
-    PANEL = 'panel'
-    ONLINE_ECOMMERCE = 'online_ecommerce'
-    CREDIT_DATA = 'credit_data'
-    LOYALTY_CARD = 'loyalty_card'
-    TRANSACTION = 'transaction'
-    ONLINE_SURVEY = 'online_survey'
-    OFFLINE_SURVEY = 'offline_survey'
-    PUBLIC_RECORD_CENSUS = 'public_record_census'
-    PUBLIC_RECORD_VOTER_FILE = 'public_record_voter_file'
-    PUBLIC_RECORD_OTHER = 'public_record_other'
-    OFFLINE_TRANSACTION = 'offline_transaction'
-
-
-class Methodology(StrEnum):
-    OBSERVED = 'observed'
-    DECLARED = 'declared'
-    DERIVED = 'derived'
-    INFERRED = 'inferred'
-    MODELED = 'modeled'
+from .signal_definition import Art9Basis, DataSourcesItem, DataSubjectRights, Methodology, Modeling, Onboarder, Taxonomy
 
 
 class RefreshCadence(StrEnum):
@@ -110,127 +30,6 @@ class RefreshCadence(StrEnum):
 
 
 LookbackWindow = RefreshCadence
-
-
-class MatchKeysItem(StrEnum):
-    NAME = 'name'
-    ADDRESS = 'address'
-    EMAIL = 'email'
-    POSTAL = 'postal'
-    LAT_LONG = 'lat_long'
-    MOBILE_ID = 'mobile_id'
-    COOKIE_ID = 'cookie_id'
-    IP = 'ip'
-    CUSTOMER_ID = 'customer_id'
-    PHONE = 'phone'
-
-
-class PreOnboardingPrecisionLevel(StrEnum):
-    INDIVIDUAL = 'individual'
-    HOUSEHOLD = 'household'
-    BUSINESS = 'business'
-    GEOGRAPHY = 'geography'
-
-
-class Onboarder(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/onboarder')
-    match_keys: Annotated[list[MatchKeysItem], Field(min_length=1)]
-    pre_onboarding_audience_expansion: bool | None = None
-    pre_onboarding_device_expansion: bool | None = None
-    pre_onboarding_precision_level: PreOnboardingPrecisionLevel | None = None
-
-
-class Art9Basis(StrEnum):
-    """
-    Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis.
-    """
-    EXPLICIT_CONSENT = 'explicit_consent'
-    MANIFESTLY_MADE_PUBLIC = 'manifestly_made_public'
-    SUBSTANTIAL_PUBLIC_INTEREST = 'substantial_public_interest'
-    VITAL_INTERESTS = 'vital_interests'
-
-
-class Method(StrEnum):
-    LOOKALIKE = 'lookalike'
-    SUPERVISED = 'supervised'
-    EMBEDDING = 'embedding'
-    RULES = 'rules'
-
-
-class SeedSourceType(StrEnum):
-    FIRST_PARTY_CRM = 'first_party_crm'
-    PANEL = 'panel'
-    DECLARED_SURVEY = 'declared_survey'
-    TRANSACTIONAL = 'transactional'
-    BEHAVIORAL = 'behavioral'
-
-
-class ObjTypeProviderSigned(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/modeling/properties/seed_source')
-    type: SeedSourceType
-    provider_signed: Annotated[bool, Field(description='Provider assertion that the seed source carries a signed attestation. Consumers MUST NOT treat this boolean alone as cryptographic proof.')]
-
-
-class AiActRiskClass(StrEnum):
-    MINIMAL = 'minimal'
-    LIMITED = 'limited'
-    HIGH_RISK = 'high_risk'
-
-
-class Modeling(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/modeling')
-    method: Method
-    seed_source: ObjTypeProviderSigned
-    training_data_jurisdictions: Annotated[list[CountryCode], Field(min_length=1)]
-    ai_act_risk_class: AiActRiskClass
-    disclosure: SignalModelingDisclosure | None = None
-
-
-class RightsItem(StrEnum):
-    ACCESS = 'access'
-    RECTIFICATION = 'rectification'
-    ERASURE = 'erasure'
-    PORTABILITY = 'portability'
-    OBJECTION = 'objection'
-
-
-class ChannelsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/data_subject_rights/properties/channels/items')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        RequiredGroups((('url',), ('email',)), 'anyOf'),
-        UniqueItems('rights'),
-    )
-    rights: Annotated[list[RightsItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    url: HTTPSURL | None = None
-    email: Annotated[str | None, Field(json_schema_extra={'format': 'email'})] = None
-    languages: list[str] | None = None
-    countries: list[CountryCode] | None = None
-
-
-class DataSubjectRights(AdCPBaseModel):
-    """
-    Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/data_subject_rights')
-    upstream_source_domain: Annotated[DataSubjectRightsUpstreamSourceDomain | None, Field(json_schema_extra={'format': 'hostname'})] = None
-    channels: Annotated[list[ChannelsItem], Field(min_length=1)]
-    response_sla_days: DataSubjectRightsResponseSlaDays | None = None
-    ccpa_opt_out_url: HTTPSURL | None = None
 
 
 class SignalDefinitionEnrichment(AdCPBaseModel):

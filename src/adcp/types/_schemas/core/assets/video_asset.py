@@ -15,7 +15,6 @@ from ...enums.gop_type import GOPType
 from ...enums.moov_atom_position import MoovAtomPosition
 from ...enums.scan_type import ScanType
 from ..provenance import Provenance
-from .audio_asset import AudioBitDepth
 
 
 class ColorSpace(StrEnum):
@@ -56,6 +55,15 @@ class VideoBitDepth(IntEnum):
     V_8 = 8
     V_10 = 10
     V_12 = 12
+
+
+class AudioBitDepth(IntEnum):
+    """
+    Audio bit depth
+    """
+    V_16 = 16
+    V_24 = 24
+    V_32 = 32
 
 
 class VideoAsset(AdCPBaseModel):

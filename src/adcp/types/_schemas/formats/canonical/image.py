@@ -11,10 +11,10 @@ from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, FloatGt0, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
-from ...core.canonical_projection_ref import AssetSource
 from ...enums.activation_method import CreativeActivationMethod
 from ...enums.ctv_ad_experience import CTVAdExperience
 from ._base import CanonicalFormatBase, SlotsItem
+from .audio_hosted import AssetSource
 
 
 class SizesItem(AdCPBaseModel):

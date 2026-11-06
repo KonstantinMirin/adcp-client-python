@@ -23,9 +23,9 @@ from ..core.signal_listing import ObjMinMax, SignalListing
 from ..core.signal_ref import SignalRef
 from ..core.vendor_pricing_option import VendorPricingOption
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..core.wholesale_feed_webhook import CacheScope
 from ..enums.signal_catalog_type import SignalAvailabilityType
 from ..enums.signal_value_type import SignalValueType
+from ..media_buy.get_products_response import CacheScope
 
 
 class SignalsItem(SignalListing, SignalDefinitionEnrichment):

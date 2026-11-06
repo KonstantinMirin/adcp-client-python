@@ -14,7 +14,7 @@ from ..core.currency_code import CurrencyCode
 from ..core.ext import ExtensionObject
 from ..core.idempotency_key import IdempotencyKey
 from ..core.planned_delivery import PlannedDelivery
-from ..core.reporting_reliability_statistics import ObjStartEnd
+from ..core.reporting_adjustment import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.outcome_type import OutcomeType
 from ..enums.purchase_type import PurchaseType

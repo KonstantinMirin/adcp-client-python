@@ -10,7 +10,7 @@ from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.channels import MediaChannel
 from ..enums.property_type import PropertyType
-from .canonical_placement import IdentifiersItem
+from .placement_definition import IdentifiersItem
 from .property_id import PropertyID
 from .property_tag import PropertyTag
 

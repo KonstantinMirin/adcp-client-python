@@ -20,7 +20,6 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdcpVersion
 from .get_products_response import Scope
 from .get_products_targeting_resolution import ProductDiscoveryTargetingResolution
-from .legacy_purchase_continuation_input import LossesItem
 from .refine_proposals_response import Status
 
 
@@ -74,6 +73,12 @@ class SourceAdcpVersion(StrEnum):
     V_2_5 = '2.5'
     V_3_0 = '3.0'
     V_3_1 = '3.1'
+
+
+class LossesItem(StrEnum):
+    FEED_VERSION_NOT_ATOMIC = 'feed_version_not_atomic'
+    PRICING_VERSION_NOT_ATOMIC = 'pricing_version_not_atomic'
+    MUTATION_IDEMPOTENCY_NOT_GUARANTEED = 'mutation_idempotency_not_guaranteed'
 
 
 class PurchaseContinuationLegacyCreate(AdCPBaseModel):

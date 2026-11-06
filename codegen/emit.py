@@ -1369,36 +1369,41 @@ def lowered_edges(bundle_dir: Path) -> dict[str, list[bundle.Edge]]:
 
 
 def standing_order(bundle_dir: Path) -> dict[str, int]:
-    """document -> its index in the dependency order of the edges that ALREADY EXIST.
+    """document -> its index in a topological order of the bundle's REFERENCE graph.
 
-    **§3a's home rule for a catalogue entry the bundle names nowhere needs a total order
-    on the bundle's documents, and this is it** (``catalogue.shape_declared_at``): the
-    entry is declared at its group's EARLIEST document here, so every edge the collection
-    adds runs backwards along a topological order of all the other edges and the graph
-    with those edges in it is acyclic **by construction**.  §3a: "the dependency arrows
-    point one way, so a cycle is not avoided by care -- it is unrepresentable".
+    **§3a's home rule needs a total order on the bundle's documents, and this is it**
+    (``catalogue.declared_at``, ``catalogue.shape_declared_at``): a catalogue entry is
+    declared at its group's EARLIEST document here, so every edge the collection adds runs
+    backwards along a topological order of all the reference edges and the unioned graph is
+    acyclic **by construction**.  §3a: "the dependency arrows point one way, so a cycle is
+    not avoided by care -- it is unrepresentable".
 
-    **The graph is every reference the walk lowers AND every edge L0's collection adds**,
-    and both halves are load-bearing.  Measured over this bundle on the emitter's own run,
-    ranking by an order of the references ALONE emits 1,007 and refuses 47 -- 8 documents
-    on a cycle and 39 chained behind them -- because L0's edges are not reference edges, so
-    an extension of the reference graph has them pointing against it.  With them in, 1,054
-    and 0.
+    **THE GRAPH IS THE REFERENCES THE WALK LOWERS AND NOTHING ELSE, and dropping the
+    second half is what made the construction total** (``adcp-client-python-6qi7``).  It
+    held L0's own catalogue edges too, which is a FIXED POINT and not an order: L0 chose
+    its homes by a reach census, those homes became edges of this graph, and L2's homes
+    were then earliest in an order whose acyclicity rested on the census.  The docstring
+    measured the half-way state and read it as a reason to keep the edges -- ranking L2 by
+    the references alone emitted 1,007 of 1,054 "because L0's edges are not reference edges,
+    so an extension of the reference graph has them pointing against it".  That is true of
+    the reach census and false of this order: with L0 ranking by it as well
+    (:func:`catalogue.declared_at`), BOTH layers' edges run backwards along it, so there is
+    nothing left pointing against it and nothing left for this graph to be told.
+
+    So the order is a function of the reference graph alone, the home rule is a function of
+    the order, and neither reads the other's output.  ``tests/test_catalogue_homes.py`` is
+    the gate on the property that follows.
 
     **A reading of the BUNDLE and never of the run**, which is §9's rule and the one that
     permits §3a's collection at all: ``bundle.portable`` is the document set and nothing
     here is told which documents a run was given, so a one-document command and a
     whole-population emission are handed the same order.
 
-    L2's own edges are NOT in it, and cannot be: they are what this order decides.  The
-    run's order (:func:`order`) is computed again with them included, and is a refinement
-    of this one rather than a second answer -- every edge it adds already runs this way.
+    The run's order (:func:`order`) is computed again with both catalogue layers' edges
+    included, and is a refinement of this one rather than a second answer -- every edge it
+    adds already runs this way.
     """
-    lowering = lowered_edges(bundle_dir)
-    homes: dict[str, set[str]] = {}
-    for document, row in catalogue.collect(bundle_dir).restating().items():
-        homes.setdefault(document, set()).update(home.document for home in row.values())
-    reaches = needs(lowering, homes)
+    reaches = needs(lowered_edges(bundle_dir))
     documents = sorted(bundle.portable(bundle_dir))
     ordered, cycles = order(closure(documents, reaches), reaches)
     # A document on a cycle of the STANDING graph, and one no edge of it reaches, are both
@@ -1712,13 +1717,24 @@ def emit(
     #: imports -- measured on the suite's own population: 22 documents more than the
     #: committed tree, which is exactly the set those two sentences exclude.
     lowering = lowered_edges(bundle_dir)
+    #: **§3a's home rule's one input, for every catalogue layer alike**
+    #: (:func:`standing_order`): a topological index of the bundle's REFERENCE graph.  An
+    #: entry is declared at its group's earliest document in it, so the edge the collection
+    #: adds runs backwards along an order of all the reference edges and a cycle in the
+    #: unioned graph is unrepresentable rather than absent.
+    #:
+    #: Computed ONCE and handed to all three collections below, which is
+    #: ``docs/plan/architecture.md``'s rule that a derived reading of the bundle is an
+    #: argument rather than something a callee recomputes.
+    standing = standing_order(bundle_dir)
     #: **§3a's CATALOGUE, layer L0, read off the BUNDLE before any document is parsed.**
     #: "This places the catalogue before naming, which §9's census rule permits and §1's
     #: domain-scope collision rule already requires: both read the BUNDLE, which is
     #: pinned and is an input to every run alike, and neither reads the run's document
-    #: set."  The call takes ``bundle_dir`` and nothing else, which is that rule held by
-    #: the signature -- a collection handed ``documents`` would be the census §9 forbids.
-    l0 = catalogue.collect(bundle_dir)
+    #: set."  The call takes ``bundle_dir`` and the standing order and nothing else, which
+    #: is that rule held by the signature -- a collection handed ``documents`` would be the
+    #: census §9 forbids.
+    l0 = catalogue.collect(bundle_dir, standing)
     #: **§3a's CATALOGUE, layer L2: the OBJECT TYPES**, read off the same bundle under the
     #: key decided 2026-11-03 (``catalogue.Admitted``).  Reading 4 "ranges over ALL FOUR of
     #: the catalogue's layers, not the first", and this is the second of them to be
@@ -1741,13 +1757,12 @@ def emit(
     #: (:func:`standing_order`): the order the arrows already run in, so the arrows this
     #: layer adds cannot close a cycle.
     #:
-    #: ``standing`` and the ``Admitted`` reading are both computed ONCE and handed to both
-    #: structural layers, which is ``docs/plan/architecture.md``'s rule that a derived
-    #: reading of the bundle is an argument rather than something a callee recomputes:
-    #: ``standing_order`` is a dependency order over the whole bundle and ``Admitted``
-    #: memoises every document it has read, so two collections sharing one of each read the
-    #: bundle once between them.
-    standing = standing_order(bundle_dir)
+    #: ``standing`` and the ``Admitted`` reading are both computed ONCE and handed to every
+    #: layer, which is ``docs/plan/architecture.md``'s rule that a derived reading of the
+    #: bundle is an argument rather than something a callee recomputes: ``standing_order``
+    #: is a dependency order over the whole bundle and ``Admitted`` memoises every document
+    #: it has read, so collections sharing one of each read the bundle once between them.
+    #: ``standing`` is bound above, where L0 takes it.
     admitted = catalogue.Admitted(bundle_dir)
     l2 = catalogue.collect_shapes(admitted, "L2", standing)
     #: **§3a's CATALOGUE, layer L1: the CONSTRAINED SCALARS**, read off the same bundle,
@@ -2480,17 +2495,50 @@ def emit(
           position because a position's own name is its PROPERTY KEY -- which claims a
           subject the structure cannot prove, and is what §3a refuses.
 
-        ``assign`` takes both as an extra FIRST RUNG, so §4's collision rule still decides
-        and a derived name that collides falls to the chain the position would have been
-        named by anyway.
+        * **THE BUNDLE'S OWN TITLE, at a home that does not carry it**, which is the one
+          row that is not a derivation at all -- §4's step 1, read at the pointer the
+          entry is DECLARED at rather than at the pointer the word is written at.
 
-        **Empty for every entry the bundle TITLES, and for §4's step 3 at L2**, and for one
-        reason: there the name §4 already derives at the home IS the answer -- the title at
-        a titled position, measured at all of them, and the declaring position itself at
-        step 3, which is what §4's third step names.  A row would be a second statement of
-        one answer.
+        ``assign`` takes all of them as an extra FIRST RUNG, so §4's collision rule still
+        decides and a derived name that collides falls to the chain the position would have
+        been named by anyway.
+
+        **WHY THE TITLE NEEDS A ROW AT ALL, and it is the home rule's own consequence.**
+        A title answers *what is this entry CALLED* and the home rule answers *which
+        document may declare it*, and the two were separated because a title deciding the
+        home put the home wherever the bundle happened to write the word -- measured at
+        *emitted 896 / refused 163* (``catalogue.shape_ranked``).  Once separated, a titled
+        entry's home can be an UNTITLED position, and §4's derivation there is the position's
+        own PROPERTY KEY: measured on this bundle, ``Publisher Placement Reference`` came to
+        be declared as ``PlacementRefsItem`` and ``DAASTTrackerConstraintsDaastTarget`` left
+        the ``core`` surface entirely.  The title is the bundle's name for the entry at
+        every position alike, so it is carried to the home -- which is §3a's "its name
+        lengthens by its HOME's chain, never by an arbitrary stating position" read for the
+        name's FIRST segment as well as its last.
+
+        **Empty where the home's own position carries the entry's title**, which is every
+        entry whose home the title also sits at, and for §4's step 3 at L2: there the name
+        §4 already derives at the home IS the answer -- the title at a titled position, the
+        declaring position itself at step 3 -- and a row would be a second statement of one
+        answer.
         """
+        #: The home of every collected entry of every layer, with the title the BUNDLE
+        #: gives the entry beside it.  ``catalogue.Stated`` and ``catalogue.Shaped`` are
+        #: different classes and the three fields read here -- the document, the pointer
+        #: and the position's OWN title -- are on both, which is what lets one loop ask
+        #: one question of all three layers.
+        homes: list[tuple[catalogue.Stated | catalogue.Shaped, str | None]] = [
+            *((entry.naming, entry.title) for entry in l0.entries.values()),
+            *((entry.at, entry.title) for entry in l2.entries.values()),
+            *((entry.at, entry.title) for entry in l2c.entries.values()),
+        ]
+        titled: dict[str, str] = {}
+        for at, entry_title in homes:
+            if entry_title is None or at.document != document or at.title == entry_title:
+                continue
+            titled[at.pointer] = lower_names.class_name(entry_title)
         return {
+            **titled,
             **{
                 entry.naming.pointer: entry.name
                 for entry in l0.entries.values()

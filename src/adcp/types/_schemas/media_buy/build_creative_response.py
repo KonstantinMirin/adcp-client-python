@@ -29,7 +29,6 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..creative.creative_feature_result import CreativeFeatureResult
 from ..creative.preview_render import PreviewRender
 from ..enums.creative_selection_strategy import CreativeSelectionStrategy
-from .build_creative_request import KeepMode, PreviewInputsItem
 
 
 class BuildCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
@@ -51,11 +50,24 @@ class BuildCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEn
     )
 
 
+class BuildCreativeSuccessPreviewPreviewsItemInput(AdCPBaseModel):
+    """
+    The input parameters that generated this preview variant. Echoes back the request input or shows defaults used.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/0/properties/preview/properties/previews/items/properties/input')
+    name: Annotated[str, Field(description='Human-readable name for this variant')]
+    macros: Annotated[dict[str, str] | None, Field(description='Macro values applied to this variant')] = None
+    context_description: Annotated[str | None, Field(description='Context description applied to this variant')] = None
+
+
 class BuildCreativeSuccessPreviewPreviewsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/0/properties/preview/properties/previews/items')
     preview_id: Annotated[str, Field(description='Unique identifier for this preview variant')]
     renders: Annotated[list[PreviewRender], Field(description='Array of rendered pieces for this preview variant. Most formats render as a single piece. Companion ad formats render as multiple pieces.', min_length=1)]
-    input: Annotated[PreviewInputsItem, Field(description='The input parameters that generated this preview variant. Echoes back the request input or shows defaults used.')]
+    input: Annotated[BuildCreativeSuccessPreviewPreviewsItemInput, Field(description='The input parameters that generated this preview variant. Echoes back the request input or shows defaults used.')]
 
 
 class BuildCreativeSuccessPreview(AdCPBaseModel):
@@ -91,6 +103,19 @@ class BuildCreativeSuccess(BuildCreativeResponse):
     ext: ExtensionObject | None = None
 
 
+class BuildCreativeMultiSuccessPreviewPreviewsItemInput(AdCPBaseModel):
+    """
+    The input parameters that generated this preview. For multi-format responses, this is always a default input.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/1/properties/preview/properties/previews/items/properties/input')
+    name: Annotated[str, Field(description='Human-readable name for this preview')]
+    macros: Annotated[dict[str, str] | None, Field(description='Macro values applied to this preview')] = None
+    context_description: Annotated[str | None, Field(description='Context description applied to this preview')] = None
+
+
 class BuildCreativeMultiSuccessPreviewPreviewsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/1/properties/preview/properties/previews/items')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
@@ -100,7 +125,7 @@ class BuildCreativeMultiSuccessPreviewPreviewsItem(AdCPBaseModel):
     format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='Deprecated named-format correlation for a legacy target_format_ids request.')] = None
     capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Canonical creative capability this preview was generated through. Matches one requested target_capability_ids entry.')] = None
     renders: Annotated[list[PreviewRender], Field(description="Array of rendered pieces for this format's preview. Most formats render as a single piece. Companion ad formats render as multiple pieces.", min_length=1)]
-    input: Annotated[PreviewInputsItem, Field(description='The input parameters that generated this preview. For multi-format responses, this is always a default input.')]
+    input: Annotated[BuildCreativeMultiSuccessPreviewPreviewsItemInput, Field(description='The input parameters that generated this preview. For multi-format responses, this is always a default input.')]
 
 
 class BuildCreativeMultiSuccessPreview(AdCPBaseModel):
@@ -198,6 +223,15 @@ class CreativesItem(AdCPBaseModel):
     signal_condition: Annotated[SignalTargeting | None, Field(description='When this creative group was produced by fanning out over signal_conditions, the SignalTargeting condition this group is FOR (e.g. weather=rain). Sibling to catalog_item_ref. Carries the SAME signal_ref identity the sales-side package targeting uses, so a sales agent can structurally match condition identity and reject-at-trafficking (SIGNAL_TARGETING_INCOMPATIBLE) when a creative is assigned to an incompatible package.')] = None
     variants: Annotated[list[VariantsItem] | None, Field(description='Choose-among alternatives produced for this creative group (voices, themes, best-of-N, etc.). At least one. Each is an independently-tagged, independently-billed build.', min_length=1)] = None
     errors: Annotated[list[Error] | None, Field(description='Per-creative errors when this catalog item failed to build. Present only on failed items; does not fail the batch (per-item non-atomic). A failed entry carries errors[] and no variants[]; a successful entry carries variants[] and SHOULD NOT carry errors.', min_length=1)] = None
+
+
+class KeepMode(StrEnum):
+    """
+    Echoes the `keep_mode` the agent applied (mirrors the request hint). Present when the request set `keep_mode`. `keep_mode` is advisory — it does not change what is produced or billed (you pay for every leaf in `variants[]`) — so this echo is the buyer's confirmation that the hint was received, the audit paper trail for a 'I asked for keep_one but was billed for N' dispute. Whether the agent acted on it shows in the `recommended`/`rank` it set on the leaves.
+    """
+    KEEP_ALL = 'keep_all'
+    KEEP_ONE = 'keep_one'
+    KEEP_SOME = 'keep_some'
 
 
 class BudgetStatus(StrEnum):

@@ -32,7 +32,6 @@ from .audience_evidence_requirements import AudienceEvidenceRequirements
 from .brand_ref import BrandReference
 from .budget_range import BudgetRange
 from .canonical_format_kind import CanonicalFormatKind
-from .catchment import ObjTypeCoordinates, Radius, TravelTime
 from .country_code import CountryCode
 from .currency_code import CurrencyCode
 from .ext import ExtensionObject
@@ -42,6 +41,7 @@ from .media_buy_features import MediaBuyFeatures
 from .performance_standard import PerformanceStandard
 from .postal_area import PostalArea
 from .signal_targeting import SignalTargetingBinary, SignalTargetingCategorical, SignalTargetingNumeric
+from .targeting import ObjTypeCoordinates, Radius, TravelTime
 from .vendor_metric_id import VendorMetricID
 
 
