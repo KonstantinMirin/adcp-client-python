@@ -106,6 +106,14 @@ BY_DESIGN = {
         "two bundles are its subject: _bundles() is {published 3.2, patch.for_build(it)} and "
         "a property read over one of them would be the census the file exists not to be"
     ),
+    "test_the_run_writes_its_verdicts": (
+        "its subject is the ENTRY POINT: it runs `python -m codegen --bundle <this>`, and "
+        "--bundle is D9's ARGUMENT -- codegen/__main__.py applies patch.for_build to "
+        "whatever it is handed, so the published directory is the command's input and the "
+        "patched one applies the table twice (ValueError: core/currency-code.json: the "
+        "published bundle already holds it).  Measured by adcp-client-python-lzzj.11.1, "
+        "which moved it to fresh.BUNDLE and reddened it"
+    ),
     "test_a_bundle_states_which_upstream_it_is": (
         "every PUBLISHED bundle is its subject -- BUNDLES is provenance.bundles(), and what "
         "it grades is that each one states which upstream it came from.  A patched "
@@ -132,18 +140,11 @@ OWED = frozenset(
         "test_decision_set",
         "test_dump_exemptions",
         "test_emit_product",
-        "test_envelope_base",
-        "test_immaterial_presence",
-        "test_import_rule",
         "test_nested_union_sibling",
         "test_ref_branch_union",
-        "test_reported_drop",
         "test_required_with_no_declaration",
         "test_the_declared_backlog",
-        "test_the_export_census_store",
-        "test_the_run_writes_its_verdicts",
         "test_union_disjointness",
-        "test_union_dispatch",
     }
 )
 

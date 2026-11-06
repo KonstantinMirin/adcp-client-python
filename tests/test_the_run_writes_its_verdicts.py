@@ -31,11 +31,26 @@ import subprocess
 import sys
 from pathlib import Path
 
+import fresh
+
 from adcp.types._base import SchemaRef
 from codegen import harness
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+#: **The PUBLISHED bundle, taken from the ONE declaration of it, and it is the right one
+#: here** -- which is the answer ``adcp-client-python-lzzj.11.1`` got by measuring instead
+#: of assuming.  This module's subject is the ENTRY POINT: it runs ``python -m codegen
+#: --bundle <this>`` and reads the verdict table off that run's stdout.  ``--bundle`` is
+#: D9's ARGUMENT and ``codegen/__main__.py`` applies ``patch.for_build`` to whatever it is
+#: handed, so the run writes a tree from the PATCHED bundle either way and handing it the
+#: patched directory applies the table TWICE:
+#:
+#:     ValueError: core/currency-code.json: the published bundle already holds it
+#:
+#: So the second bundle is not an oversight here, it is the command's input, and the
+#: declaration this module needs is ``fresh.PUBLISHED`` rather than a literal of its own.
+#: Named in :data:`tests.test_the_bundle_a_module_reads.BY_DESIGN` for that reason.
+BUNDLE = fresh.PUBLISHED
 
 #: One document with one pair, a committed corpus entry and no declaration, so the
 #: subprocess below costs an emit and no draw.  Named rather than selected: what this file
