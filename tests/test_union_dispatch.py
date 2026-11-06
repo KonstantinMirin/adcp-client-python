@@ -360,28 +360,31 @@ def _answering_pointer(base: type, got: type) -> str:
     return "#" + ref.pointer.lstrip("#")
 
 
-def _widened_one_document_away(got: type) -> bool:
-    """Does the class that answered inherit a ROOT that DECLARES itself wider than its
-    document?
+def _branches_the_document_admits(base: type, root: dict, payload: Any) -> list[str]:
+    """The branch pointers of ``base`` whose own node the DOCUMENT admits ``payload`` at.
 
-    Reading 2's declaration, read off the class a consumer holds exactly as
-    :func:`_underdetermined` reads the combinator's -- and read over the MRO, because that
-    is the whole of the relation: a branch that is a bare ``$ref`` has the target
-    document's root as its base, the widening is declared at that root's own pointer, and
-    the branch class re-declares nothing.  Measured on this bundle:
-    ``AdCPAsyncResponseDataGetProductsResponse`` carries only the base's
-    ``('UNDERDETERMINED', '#/anyOf')`` while ``GetProductsResponse`` -- its base, in
-    ``media-buy/get-products-response.json`` -- carries ``('WIDENED', '#')``.
+    The question ``adcp-client-python-1bj`` says has to be asked before any landing is
+    called a defect, asked of EVERY branch rather than of the two the verdict names: a
+    dispatch that answers with one of several admissible branches has dropped the fact
+    the UNDERDETERMINED declaration at the combinator says is dropped, and a dispatch
+    that REFUSES where exactly one branch is admissible has thrown away an answer the
+    document determined.  Those are different outcomes and the count is what separates
+    them.
 
-    **A ROOT pointer and not any pointer**, because the fact that reaches a dispatch is
-    the one about the WHOLE instance: a widening declared at an inner property widens a
-    field and cannot make a branch admit an instance its own ``required`` refuses.
+    **It also refutes one sentence of ``adcp-client-python-84a9``, which is why it is
+    derived here rather than taken from that row.**  84a9 reads "the branches do NOT
+    overlap in the DOCUMENT for these four payloads -- the document names exactly one
+    admissible branch each".  Measured over the documents of record, the document admits
+    17, 16, 16 and 32 of ``core/async-response-data.json``'s 42 branches for those four
+    payloads.  The defect stands -- the branch that ANSWERED is one the document refuses
+    -- and the repair 84a9's sentence implies, re-dispatching to "the document's branch",
+    does not exist.
     """
-    for cls in type.mro(got):
-        for a in cls.__dict__.get("__adcp_approximations__", ()):
-            if a.kind == "WIDENED" and a.pointer.lstrip("#").strip("/") == "":
-                return True
-    return False
+    return [
+        pointer
+        for branch in base.__dict__["_branch_models"]
+        if not _admits(root, (pointer := _answering_pointer(base, branch)), payload)
+    ]
 
 
 def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_from() -> None:
@@ -415,23 +418,34 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     nothing gets no exemption, and a base that declares one must still land INSIDE its own
     branch list.
 
-    **Measured on trunk at 8dc73a217**: 141 bases naming 586 branch positions, 584 of which
-    the committed floor answers for (the two it does not are
+    **AND THE EXEMPTION A DECLARED WIDENING USED TO BUY IS GONE, which is
+    ``adcp-client-python-84a9`` answered by the owner's ruling of 2026-11-06** -- *"if the
+    discriminator is empty, I believe that's a schema error"*, and a dispatch must not
+    guess where the document gives it nothing to dispatch on.  A landing the document
+    REFUSES at the answering branch is now ``wrong`` whatever any document declares, and
+    nothing is exempted for being widened one document away.  What takes its place is the
+    REFUSAL the keyless dispatch now raises
+    (``adcp.types._base.BranchDispatchMixin._undetermined``) and the one obligation a
+    refusal owes: **where the document admits exactly ONE branch, the dispatch may not
+    refuse** -- it had an answer the document determined and threw it away.  Over 0 or 2
+    or more admissible branches there is no such answer and the refusal is the only thing
+    that is not a guess.
+
+    **Measured on this bundle at this commit**: 141 bases naming 586 branch positions, 584
+    of which the committed floor answers for (the two it does not are
     ``adcp-client-python-rgoo``, and ``unheld`` below is what reports them); 497 of those
     584 the document admits at its ROOT, and the 87 it refuses are not what this reading is
     about -- ``trusted-match/provider-registration.json`` is the instructive one, where the
     root's ``if``/``then`` requires ``countries``, the instance drawn at ``#/anyOf/1`` is
     admitted by that branch node and refused by the document, and the base refuses it
-    correctly.  Of the 497: 447 reach the branch they were drawn
-    from or a branch of it, 50 land elsewhere and every one of the 50 is under a base
-    declaring UNDERDETERMINED -- 46 of them on a branch the document ALSO admits, and 4 on
-    ``core/async-response-data.json#/anyOf/0``, which the document REFUSES on ``errors`` or
-    ``products``.  Those 4 are the declared ``('#', 'WIDENED', 'if')`` of
-    ``media-buy/get-products-response.json`` arriving at a dispatch: branch 0 is a bare
-    ``$ref`` to that document, its class is declaredly wider than its node, so structural
-    first-match selection reaches it for payloads the document gives to another branch.
-    The consequence is accounted at the union's own pointer and nowhere else, which is
-    ``adcp-client-python-84a9``.
+    correctly.  Of the 497: 447 reach the branch they were drawn from or a branch of it, 46
+    land on a branch the document ALSO admits under a base declaring UNDERDETERMINED, and 4
+    are REFUSED by the base -- the four of 84a9, each drawn at a branch of
+    ``core/async-response-data.json``'s 42-branch ``anyOf``, each of which used to come
+    back as ``#/anyOf/0``'s ``AdCPAsyncResponseDataGetProductsResponse``, which the
+    document refuses on ``'errors' is a required property`` or ``'products' is a required
+    property``.  The document admits 17, 16, 16 and 32 branches for them, so not one has a
+    branch the document determines.
 
     **AND NONE OF THOSE NUMBERS IS ASSERTED, which is deliberate and is this suite's own
     rule** (``tests/test_every_check_names_its_set.py``: a check may not pin a census as an
@@ -459,7 +473,7 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     refused_by_the_document: set[tuple[str, str]] = set()
     reached_its_branch: set[tuple[str, str]] = set()
     elsewhere_the_document_also_admits: set[tuple[str, str]] = set()
-    elsewhere_through_a_declared_widening: set[tuple[str, str]] = set()
+    refused_as_undetermined: set[tuple[str, str]] = set()
     wrong: dict[str, tuple[str, str, str, str]] = {}
     for name in sorted(graded_bases):
         base = bases[name]
@@ -486,7 +500,28 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
                 refused_by_the_document.add(site)
                 continue
             admitted.add(site)
-            got = type(base.model_validate(payload))
+            try:
+                got = type(base.model_validate(payload))
+            except ValidationError:
+                # **THE KEYLESS DISPATCH REFUSED RATHER THAN GUESSED**
+                # (``adcp.types._base.BranchDispatchMixin._undetermined``,
+                # ``adcp-client-python-84a9``).  The one obligation a refusal owes is that
+                # the document determined no branch: where it admits exactly ONE, the
+                # dispatch had the answer and threw it away, and that is a defect of ours
+                # whatever the document does.
+                where = f"{name} <- {branch.__name__} -> REFUSED"
+                determined = _branches_the_document_admits(base, root, payload)
+                if len(determined) == 1:
+                    wrong[where] = (
+                        ref.document,
+                        ref.pointer,
+                        "the document admits exactly one branch "
+                        f"({determined[0]}) and the dispatch refused",
+                        repr(payload)[:200],
+                    )
+                else:
+                    refused_as_undetermined.add(site)
+                continue
             if _dispatched_to(branch, got):
                 reached_its_branch.add(site)
                 continue
@@ -512,39 +547,22 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
                 # UNDERDETERMINED declaration at the combinator describes in its own words:
                 # "WHICH branch an overlapping payload becomes is the fact dropped".
                 elsewhere_the_document_also_admits.add(site)
-            elif _widened_one_document_away(got):
-                # **AND THIS IS THE OTHER CASE, WHICH THE DECLARATION AT THE COMBINATOR
-                # DOES NOT DESCRIBE** (``adcp-client-python-84a9``).  The document names
-                # exactly ONE admissible branch for this payload and it is not the one that
-                # answered, so the fact dropped is not the one UNDERDETERMINED names.  What
-                # reaches the dispatch is a WIDENING declared in a document this root's
-                # consumer never reads: the answering branch is a bare ``$ref``, so its
-                # class inherits a root that declares ``WIDENED`` at ``#``, and the
-                # dispatch SELECTS with ``model_validate`` -- the wide verdict -- over a
-                # structural first match (``_BRANCH_DISCRIMINATOR`` is ``""``).
-                #
-                # **The two verdicts and the two reasons, measured over this bundle's four:
-                # the CLASS AGREES WITH ITS DOCUMENT and the DISPATCH does not.**  The
-                # document refuses the payload at the answering branch on ``'errors' is a
-                # required property`` (three) or ``'products' is a required property``
-                # (one), and ``strict_validate`` on that very class refuses it with THAT
-                # SAME reason; only ``model_validate`` admits.  The drawn branch admits on
-                # both sides.  So this is not ``adcp-client-python-1bj``, where the other
-                # branch REFUSED and the hop was the only admissible answer.
-                #
-                # It is held apart from the overlap above rather than narrowed to red
-                # because the repair is a DECLARATION AT THE BRANCH, which 84a9 records as
-                # the owner's reading to make: measured, the answering class carries only
-                # the base's ``('UNDERDETERMINED', '#/anyOf')`` and no widening of its own.
-                # Separating the two parts is what makes a FIFTH visible, and an off-branch
-                # landing the document refuses with no widening behind it now reddens.
-                elsewhere_through_a_declared_widening.add(site)
             else:
+                # **A LANDING THE DOCUMENT REFUSES IS A WRONG OBJECT IN A CALLER'S HANDS,
+                # and nothing exempts it** (``adcp-client-python-84a9``, the owner's ruling
+                # of 2026-11-06).  A declared widening one document away used to: the
+                # answering branch is a bare ``$ref``, its class inherits a root declaring
+                # ``WIDENED`` at ``#``, and the keyless dispatch SELECTS with
+                # ``model_validate`` -- the wide verdict -- so a structural first match
+                # reached a branch the document gives to someone else.  The exemption is
+                # removed rather than narrowed, and what answers the four payloads it
+                # covered is the dispatch's own refusal above.
                 wrong[where] = (
                     ref.document,
                     ref.pointer,
-                    "the document refuses the answering branch and no widening is declared "
-                    "one document away from it",
+                    "the document REFUSES the answering branch "
+                    f"({_answering_pointer(base, got)}): "
+                    f"{_admits(root, _answering_pointer(base, got), payload)}",
                     repr(payload)[:200],
                 )
     assert wrong == {}, wrong
@@ -557,9 +575,102 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
         admitted,
         reached_its_branch=reached_its_branch,
         elsewhere_the_document_also_admits=elsewhere_the_document_also_admits,
-        elsewhere_through_a_declared_widening=elsewhere_through_a_declared_widening,
+        refused_as_undetermined=refused_as_undetermined,
     )
     claimed("branch payloads that reached their own branch", reached_its_branch)
+
+
+# --------------------------------------------------------------------------- #
+# adcp-client-python-84a9: a keyless dispatch, and the four payloads it answered wrong
+# --------------------------------------------------------------------------- #
+ASYNC = "core/async-response-data.json"
+
+#: The owner's own payload, 2026-11-06: *"The failure payload has to be a get-products
+#: error response.  Why does it get differently?"*  It is the committed accepts floor's
+#: instance at ``core/async-response-data.json#/anyOf/18`` -- a ``create_media_buy``
+#: FAILURE -- and it is spelled here rather than read from the store because a row has to
+#: carry its own evidence (``adcp-client-python``'s memory on a bead citing lane scratch).
+A_CREATE_MEDIA_BUY_FAILURE = {
+    "confirmed_at": None,
+    "media_buy_id": "",
+    "packages": [],
+    "revision": 1,
+    "status": "failed",
+}
+#: The CONTROL, and the floor's instance at ``#/anyOf/0`` itself: a payload the document
+#: ADMITS at that branch comes back as that branch, so the row below is a narrowing of the
+#: dispatch and not a closing of the base.
+A_GET_PRODUCTS_RESPONSE = {
+    "cache_scope": "public",
+    "status": "failed",
+    "unchanged": True,
+    "wholesale_feed_version": "",
+}
+
+
+def test_a_keyless_dispatch_refuses_rather_than_answering_with_a_branch_the_document_refuses() -> (
+    None
+):
+    """``adcp-client-python-84a9``, graded by a VALUE on both sides.
+
+    ``core/async-response-data.json``'s root is a 42-branch ``anyOf`` whose branches pin
+    no property the document guarantees, so ``_BRANCH_DISCRIMINATOR`` is ``""`` and the
+    branch is selected by a structural first match.  ``#/anyOf/0`` is a bare ``$ref`` to
+    ``media-buy/get-products-response.json``, whose root DECLARES ``('#', 'WIDENED',
+    'if')`` -- its ``if``/``then``/``else`` chain is what requires ``errors`` on a failed
+    response, a rule ``model_validate`` does not apply -- so the branch class admits
+    payloads its own node refuses and the first match reached it.
+
+    **The four facts, each a value and not a structure.**  The document admits the payload
+    at its ROOT; the document REFUSES it at ``#/anyOf/0``; the class at ``#/anyOf/0``
+    agrees with its document, because ``strict_validate`` refuses it with THAT SAME reason
+    while ``model_validate`` admits; and the BASE therefore refuses, naming the combinator,
+    the branch that matched and the document's own sentence.
+
+    **It is not ``adcp-client-python-1bj``**, where the other root branch REFUSED the
+    payload and the hop was the only admissible answer.  Here the DRAWN branch
+    (``#/anyOf/18``) admits on both sides and ``#/anyOf/0`` refuses on both sides, so the
+    class is right and the dispatch was wrong.
+
+    **And the refusal is not a closing of the base**: the control payload, the floor's own
+    instance at ``#/anyOf/0``, is admitted by the document there and still comes back as
+    that branch's class.
+    """
+    root = _records()[ASYNC]
+    module = importlib.import_module("adcp.types._schemas.core.async_response_data")
+    base = module.AdCPAsyncResponseData
+    at_zero = next(
+        b for b in base.__dict__["_branch_models"] if b.__adcp_schema__.pointer == "#/anyOf/0"
+    )
+
+    # The document's own verdicts, with their reasons, on both sides of the dispatch.
+    assert _admits(root, "#", A_CREATE_MEDIA_BUY_FAILURE) == ""
+    assert _admits(root, "#/anyOf/18", A_CREATE_MEDIA_BUY_FAILURE) == ""
+    assert (
+        "'errors' is a required property"
+        in _admits(root, "#/anyOf/0", A_CREATE_MEDIA_BUY_FAILURE)
+    )
+
+    # The CLASS at #/anyOf/0 agrees with its document and only the wide verdict admits,
+    # which is the widening arriving at a dispatch.
+    assert isinstance(
+        at_zero.model_validate(A_CREATE_MEDIA_BUY_FAILURE), at_zero
+    ), "the branch class's wide verdict is the premise of this row"
+    with pytest.raises(ValidationError) as refused_strictly:
+        at_zero.strict_validate(A_CREATE_MEDIA_BUY_FAILURE)
+    assert "'errors' is a required property" in str(refused_strictly.value)
+
+    # THE DISPATCH REFUSES, and it names what it refused on.
+    with pytest.raises(ValidationError) as refused:
+        base.model_validate(A_CREATE_MEDIA_BUY_FAILURE)
+    reported = refused.value.errors()[0]
+    assert reported["type"] == "anyOf", reported
+    assert "#/anyOf/0" in reported["msg"] and "no discriminator" in reported["msg"], reported
+    assert "'errors' is a required property" in reported["msg"], reported
+
+    # THE CONTROL: a payload the document admits at #/anyOf/0 still resolves to it.
+    assert _admits(root, "#/anyOf/0", A_GET_PRODUCTS_RESPONSE) == ""
+    assert _dispatched_to(at_zero, type(base.model_validate(A_GET_PRODUCTS_RESPONSE)))
 
 
 #: A union root with a dispatch key, as a module declares one: a base naming the key, two

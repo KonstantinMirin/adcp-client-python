@@ -1771,9 +1771,103 @@ class BranchDispatchMixin(_MixedInto):
         if absent:
             raise cls._required(value, absent)
         try:
-            return cls._branch_adapter().validate_python(value)
+            got = cls._branch_adapter().validate_python(value)
         except ValidationError as err:
             raise cls._no_branch(value, err) from None
+        undetermined = cls._undetermined(got, value)
+        if undetermined is not None:
+            raise undetermined
+        return got
+
+    @classmethod
+    def _undetermined(cls, got: Any, value: Any) -> ValidationError | None:
+        """**A KEYLESS DISPATCH MAY NOT ANSWER WITH A BRANCH ITS DOCUMENT REFUSES.**
+
+        ``adcp-client-python-84a9``, and the owner's ruling of 2026-11-06: *"if the
+        discriminator is empty, I believe that's a schema error"*.  Where
+        :attr:`_BRANCH_DISCRIMINATOR` is empty there is no key the document guarantees,
+        so the branch is selected by a STRUCTURAL FIRST MATCH -- pydantic tries the
+        branches in declaration order and keeps the first whose CLASS admits the payload.
+        A branch class may be WIDER than its node (reading 2's declared widenings), so
+        the first class that admits can be a branch the DOCUMENT refuses, and the caller
+        is then handed an object of a type the document says the payload is not.  **A
+        caller receiving the wrong type silently is worse than an error**, so this
+        refuses.
+
+        **Measured on this bundle, over the 228 committed branch payloads of the keyless
+        bases**: 177 reach the branch they were drawn from and the document admits every
+        one of them at the answering branch, 46 reach another branch the document ALSO
+        admits, 1 the base already refuses -- and **4 reach**
+        ``core/async-response-data.json#/anyOf/0``, which the document refuses on
+        ``'errors' is a required property`` (three) or ``'products' is a required
+        property`` (one).  Those 4 are the whole of what this screen changes: it refuses
+        nothing that reached its own branch and nothing the document admits where it
+        landed.
+
+        **IT DOES NOT TRY ANOTHER BRANCH, and that is measured rather than preferred.**
+        84a9 records that "the document names exactly one admissible branch each" for
+        those four, and over the documents of record that is REFUTED: the document admits
+        17, 16, 16 and 32 of the 42 branches for those payloads.  So there is no branch
+        the document determines, "another branch" would be a second guess, and the only
+        answer that is not a guess is a refusal.  Where exactly one branch IS admissible
+        the first match already finds it -- 167 of the 177 above.
+
+        **The REASON is the document's, at the branch's own pointer**, read by the
+        production schema half (:func:`_refuse_at`) and not by a second reading written
+        here, so the sentence a caller gets is the sentence ``strict_validate`` on that
+        very class gives.  ``None`` where nothing is wrong, so the cost on the common
+        path is one document validation and no exception.
+
+        **Asked of a KEYLESS base only.**  With a key, pydantic validates against the one
+        branch the key names and the answer is the document's own function of the
+        instance; there is nothing selected by order and nothing to screen.
+
+        **AND ASKED OF A MAPPING ONLY, which is measured and not a precaution.**  A
+        branch of an object union is an object class, so a WIRE payload reaching one is a
+        mapping -- but pydantic also validates a base-typed field from an already
+        constructed MODEL INSTANCE, and the document half grades JSON.  Without this
+        screen ``tests/test_emit.py::test_a_union_base_instance_and_a_branch_each_serialise_as_what_they_are``
+        refused ``A2UIBoundValueLiteralString(literalString='')`` with
+        ``is not of type 'object'`` -- the schema's verdict about a Python object, which is
+        a statement about the instrument and not about the payload.  An instance has
+        already been through this dispatch once, so there is nothing selected by order on
+        that path either.
+        """
+        if cls._BRANCH_DISCRIMINATOR or not isinstance(value, Mapping):
+            return None
+        answered = type(got)
+        ref = answered.__dict__.get("__adcp_schema__") or getattr(
+            answered, "__adcp_schema__", None
+        )
+        if ref is None:
+            return None
+        try:
+            _refuse_at(ref, value, answered.__name__, module=answered.__module__)
+        except ValidationError as err:
+            why = err.errors()[0]
+            return ValidationError.from_exception_data(
+                cls.__name__,
+                [
+                    InitErrorDetails(
+                        type=PydanticCustomError(
+                            cls._branch_combinator(),
+                            "{detail}",
+                            {
+                                "detail": (
+                                    f"this union states no discriminator its document "
+                                    f"guarantees, so the branch is selected by structure; "
+                                    f"the branch that matched is {ref.document}"
+                                    f"{ref.pointer} ({answered.__name__}), which the "
+                                    f"document refuses: {why['msg']}"
+                                )
+                            },
+                        ),
+                        loc=(),
+                        input=value,
+                    )
+                ],
+            )
+        return None
 
     @classmethod
     def _required(cls, value: Any, absent: Sequence[str]) -> ValidationError:
