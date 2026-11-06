@@ -6,13 +6,11 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    GetAccountFinancialsResponseSuccessCurrency,
-    StrMinLen1,
-)
+from adcp.types.constraints import StrMinLen1
 
 from .brand_key import BrandKey
+from .currency_code import CurrencyCode
+from .domain_name import DomainName
 from .operator_unit import OperatorUnit
 
 
@@ -43,9 +41,9 @@ class CanonicalAccountReferenceBrandOperator(CanonicalAccountReference):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-account-ref.json', pointer='#/anyOf/1')
     brand: BrandKey
-    operator: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
+    operator: DomainName
     operator_unit: Annotated[OperatorUnit | None, Field(description='Optional operator-owned business unit, agency seat, or platform account. Only id participates in identity; name is mutable display metadata.')] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Immutable ISO 4217 transaction currency when the advertiser object is currency-bound. When present, this is part of the natural key and all media buys on the account use it. Omit for per-media-buy currency selection.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='Immutable ISO 4217 transaction currency when the advertiser object is currency-bound. When present, this is part of the natural key and all media buys on the account use it. Omit for per-media-buy currency selection.')] = None
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable account timezone. Include it in the natural key only for buyer-selected account_fixed provisioning.')] = None
     sandbox: bool | None = False
 

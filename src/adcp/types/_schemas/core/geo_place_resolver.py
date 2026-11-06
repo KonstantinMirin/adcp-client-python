@@ -7,7 +7,8 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl
+
+from .https_url import HTTPSURL
 
 
 class Auth(StrEnum):
@@ -26,7 +27,7 @@ class GeographicPlaceResolver(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-place-resolver.json', pointer='#')
-    url: Annotated[AdCPUrl, Field(description='HTTPS endpoint accepting the standard geo-place resolution query parameters.')]
+    url: Annotated[HTTPSURL, Field(description='HTTPS endpoint accepting the standard geo-place resolution query parameters.')]
     auth: Annotated[Auth, Field(description="Authentication mode. seller_credentials means use the same authorization credentials as the seller's AdCP endpoint and is valid only for a same-origin resolver URL; credentials MUST NOT be forwarded cross-origin.")]
     protocol: Annotated[Literal['adcp_geo_place_resolver_v1'], Field(description='Resolver request/response contract version.')]
 

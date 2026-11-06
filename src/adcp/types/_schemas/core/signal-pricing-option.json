@@ -127,8 +127,10 @@
           "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM \u2014 useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
           "properties": {
             "currency": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "ISO 4217 currency code for the resulting charge",
               "pattern": "^[A-Z]{3}$",
+              "title": "Currency Code",
               "type": "string"
             },
             "ext": {
@@ -235,8 +237,10 @@
           "description": "Escape hatch for pricing constructs that do not fit cpm, percent_of_media, flat_fee, or per_unit. Use when a vendor prices via performance kickers, tiered volume, hybrid formulas, outcome-sharing, or any other model the standard forms cannot express. Requires a human-readable description and a structured metadata object that captures the parameters a buyer needs to reason about the charge. Buyers SHOULD route custom pricing through operator review before commitment \u2014 automatic selection is not recommended.",
           "properties": {
             "currency": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "ISO 4217 currency code. Present when the pricing resolves to a monetary charge in a specific currency.",
               "pattern": "^[A-Z]{3}$",
+              "title": "Currency Code",
               "type": "string"
             },
             "description": {
@@ -280,8 +284,10 @@
   ],
   "definitions": {
     "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 4217 currency code",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "Shared1": {

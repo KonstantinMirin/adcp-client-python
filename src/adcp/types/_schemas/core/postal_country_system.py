@@ -2,16 +2,16 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import NotValue
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
 
 from ..enums.postal_system import PostalCodeSystem
 from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
+from .country_code import CountryCode
 from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
 
 
@@ -26,7 +26,7 @@ class PostalCountrySystem(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, Field(description='ISO 3166-1 alpha-2 country code.')]
+    country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code.')]
     system: Annotated[PostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
@@ -103,7 +103,7 @@ class System(StrEnum):
 
 class PostalCountrySystemBranch9(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/9')
-    country: Annotated[Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AfterValidator(NotValue(('US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA')))], Field(description='ISO 3166-1 alpha-2 country code.')]
+    country: Annotated[Annotated[Any, AfterValidator(NotValue(('US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA')))], Field(description='ISO 3166-1 alpha-2 country code.')]
     system: Annotated[System, Field(description='Country-local postal code system.')]
 
 

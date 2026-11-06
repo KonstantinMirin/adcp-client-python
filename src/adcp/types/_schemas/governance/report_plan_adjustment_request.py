@@ -8,16 +8,11 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import (
-    StrMinLen1,
-    StrMinLen1MaxLen255,
-    StrMinLen1MaxLen1000,
-    SyncAccountsRequestIdempotencyKey,
-    ZipAssetDigest,
-)
+from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen1000, ZipAssetDigest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.version_envelope import AdCPVersionEnvelope
 from .get_plan_audit_logs_response import AdjustmentType, Amount, EvidenceType
 
@@ -77,7 +72,7 @@ class ReportPlanAdjustmentRequest(AdCPVersionEnvelope):
     reason: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Human-readable reason retained in the audit trail.')] = None
     effective_at: Annotated[AwareDatetime | None, Field(description="When the seller's adjustment became effective.")] = None
     evidence: Annotated[Evidence | None, Field(description='Integrity-bound commercial source record supplied by the seller. Its evidence_type must correspond to adjustment_type.')] = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Caller-generated retry key. Exact replays return the original report or review; reuse with another payload is rejected.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Caller-generated retry key. Exact replays return the original report or review; reuse with another payload is rejected.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

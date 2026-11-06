@@ -117,10 +117,12 @@
       "type": "object"
     },
     "idempotency_key": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Client-generated key for safe retries. Resubmitting with the same key returns the original response. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",
       "maxLength": 255,
       "minLength": 16,
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "title": "Idempotency Key",
       "type": "string"
     },
     "metadata": {

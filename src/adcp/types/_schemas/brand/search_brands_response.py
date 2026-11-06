@@ -8,11 +8,12 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, DictMinProperties1, HttpUrl
+from adcp.types.constraints import DictMinProperties1, HttpUrl
 from adcp.types.envelopes import FailedResponse
 
 from ..brand import Background, KellerType, LogoOrientation, LogoVariant
 from ..core.context import ContextObject
+from ..core.country_code import CountryCode
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.pagination_response import PaginationResponse
@@ -71,8 +72,8 @@ class Rights(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/rights')
     available_uses: list[RightUse] | None = None
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). If omitted, rights are available worldwide.')] = None
-    excluded_countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)')] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). If omitted, rights are available worldwide.')] = None
+    excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)')] = None
 
 
 class SearchBrandResult(AdCPBaseModel):

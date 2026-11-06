@@ -9,6 +9,8 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Distinct, Presence, PresenceGroups, PropertyCount, Rule
 from adcp.types.constraints import AdCPUrl, NonEmptyList, StrMinLen1
 
+from .https_url import HTTPSURL
+
 
 class Range(AdCPBaseModel):
     """
@@ -33,7 +35,7 @@ class Taxonomy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-characteristic.json', pointer='#/properties/taxonomy')
-    system: AdCPUrl
+    system: HTTPSURL
     version: StrMinLen1 | None = None
     value_id: StrMinLen1 | None = None
 

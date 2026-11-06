@@ -12,11 +12,11 @@ from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     StrMinLen1,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..enums.reporting_finality import ReportingFinality
 from .ext import ExtensionObject
+from .idempotency_key import IdempotencyKey
 
 
 class ChangeKind(StrEnum):
@@ -36,7 +36,7 @@ class ReportingLedgerChangedWebhook(AdCPBaseModel):
         ConditionalRequired((Match('change_kind', True, ('revision_published',)),), require=('reporting_revision_id', 'finality'), forbid=('reporting_adjustment_id', 'adjusts_reporting_revision_id')),
         NegatedConditional((Match('change_kind', True, ('revision_published',)),), require=('reporting_adjustment_id', 'adjusts_reporting_revision_id'), forbid=('reporting_revision_id', 'supersedes_reporting_revision_id', 'finality')),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Random per distinct fire and stable across transport retries, scoped to the authenticated sender.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Random per distinct fire and stable across transport retries, scoped to the authenticated sender.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable per committed ledger record; re-emissions reuse it.')]
     notification_type: Literal['reporting.ledger_changed']
     fired_at: AwareDatetime

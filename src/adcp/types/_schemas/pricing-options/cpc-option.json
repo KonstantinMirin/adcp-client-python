@@ -24,6 +24,7 @@
   "description": "Cost Per Click pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "properties": {
     "currency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 4217 currency code",
       "examples": [
         "USD",
@@ -32,6 +33,7 @@
         "JPY"
       ],
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "eligible_adjustments": {

@@ -14,8 +14,8 @@ from adcp.types.constraints import (
     ConsumerCommitRef,
     IntMin1,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
+    StrIdempotencyKey,
     StrMinLen1MaxLen255,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from .reporting_revision import ObjStartEndSourceTimezone
@@ -72,8 +72,8 @@ class ReportingConsumerStatus(AdCPBaseModel):
         ConditionalRequired((Match('seller_ledger_snapshot_id', True, None),), require=('seller_ledger_as_of',), forbid=()),
         NegatedConditional((Match('seller_ledger_snapshot_id', True, None),), require=(), forbid=('seller_ledger_as_of',)),
     )
-    reporting_status_id: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Consumer-issued immutable identity for this status statement. Exact retries reuse the ID and content; changed status uses a new ID and supersedes_reporting_status_id.')]
-    supersedes_reporting_status_id: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description="The authenticated consumer's current status leaf replaced by this statement. It must identify the same account, configuration generation, report definition, and period.")] = None
+    reporting_status_id: Annotated[StrIdempotencyKey, Field(description='Consumer-issued immutable identity for this status statement. Exact retries reuse the ID and content; changed status uses a new ID and supersedes_reporting_status_id.')]
+    supersedes_reporting_status_id: Annotated[StrIdempotencyKey | None, Field(description="The authenticated consumer's current status leaf replaced by this statement. It must identify the same account, configuration generation, report definition, and period.")] = None
     delivery_config_id: AccountChangeRecordedWebhookSubscriberId
     delivery_config_version: IntMin1
     report_definition_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Exact immutable report definition accepted with the configuration generation, preventing unlike reporting promises from sharing a status chain.')]

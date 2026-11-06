@@ -8,12 +8,9 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    ReplaceTargetingValuePath,
-    StrMinLen1,
-)
+from adcp.types.constraints import ReplaceTargetingValuePath, StrMinLen1
 
+from .country_code import CountryCode
 from .ext import ExtensionObject
 
 
@@ -71,7 +68,7 @@ class Selector(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-modification.json', pointer='#/oneOf/1/properties/selector')
-    country: AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
+    country: CountryCode
     system: StrMinLen1
 
 

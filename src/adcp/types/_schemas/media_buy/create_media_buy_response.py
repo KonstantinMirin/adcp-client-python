@@ -7,13 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import (
-    GetAccountFinancialsResponseSuccessCurrency,
-    IntMin1,
-    MediaBuyName,
-    StrMaxLen2000,
-    StrMinLen1,
-)
+from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import FailedResponse
 
 from ..core.account import Account
@@ -21,6 +15,7 @@ from ..core.bidding_policy import BiddingPolicy
 from ..core.budget_allocation import BudgetAllocation
 from ..core.business_entity import BusinessEntity
 from ..core.context import ContextObject
+from ..core.currency_code import CurrencyCode
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.media_buy_available_action import MediaBuyAvailableAction
@@ -83,7 +78,7 @@ class CreateMediaBuySuccess(CreateMediaBuyResponse):
     confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this media buy was committed by the seller. Stable after it is set; do not update on later pause/resume/status/reporting transitions. May be null in deferred or manual-approval flows until seller commitment occurs.')]
     creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for creative upload deadline')] = None
     revision: Annotated[IntMin1, Field(description='Initial revision number for this media buy. Use in subsequent update_media_buy requests intended to change state for optimistic concurrency.')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Single ISO 4217 currency code for total_budget, package budget constraints, and canonical BiddingPolicy monetary fields. Every selected pricing option MUST declare this currency; packages needing another currency belong in another media buy. In proposal mode the seller derives it from total_budget.currency; in explicit-package mode the seller derives or validates one common pricing-option currency. Matches subsequent get_media_buys responses.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='Single ISO 4217 currency code for total_budget, package budget constraints, and canonical BiddingPolicy monetary fields. Every selected pricing option MUST declare this currency; packages needing another currency belong in another media buy. In proposal mode the seller derives it from total_budget.currency; in explicit-package mode the seller derives or validates one common pricing-option currency. Matches subsequent get_media_buys responses.')] = None
     total_budget: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate lifetime budget, denominated in currency. The request encodes total_budget as an object {amount, currency}; this response flattens amount and promotes currency to its sibling field. Present for proposal and seller-optimized modes, and when supplied or deterministically derived in fixed explicit-package mode. Matches subsequent get_media_buys responses.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Accepted hard aggregate daily spend ceiling, denominated in currency. Sellers MUST echo it whenever the request set an aggregate daily cap.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Accepted shared MediaBuy frequency cap. Sellers MUST echo it whenever the request or executed proposal set one.')] = None

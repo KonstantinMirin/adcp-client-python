@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
 
 from ..core.brand_key import BrandKey
 from ..core.canonical_account_ref import (
@@ -15,10 +15,18 @@ from ..core.canonical_account_ref import (
     CanonicalAccountReferenceBrandOperator,
 )
 from ..core.context import ContextObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 from .product_discovery_criteria import ProductDiscoveryCriteria
+
+
+class RequestProposalsRequestPushNotificationConfig(PushNotificationConfig):
+    """
+    Webhook configuration for asynchronous task notifications. Uses A2A-compatible PushNotificationConfig structure. By default, webhooks are signed with the AdCP RFC 9421 profile (see docs/building/by-layer/L1/security.mdx#webhook-callbacks) — the seller signs outbound with a key published at the jwks_uri on its own brand.json `agents[]` entry and the buyer verifies against that JWKS, so no shared secret crosses the wire. The optional `authentication` block selects the legacy Bearer or HMAC-SHA256 fallback for compatibility with receivers that have not yet adopted the 9421 profile; this fallback is deprecated and will be removed in AdCP 4.0. Note: the `idempotency_key` that receivers dedup on lives inside the webhook **payload** body (see docs/building/by-layer/L3/webhooks.mdx#reliability and the mcp-webhook-payload schema), not in this configuration object — this schema only describes the receiver-side transport config sent to the seller. This schema is designed for composition via allOf - consuming schemas should define their own additionalProperties constraints.
+    """
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/properties/push_notification_config')
 
 
 class Opportunity(OpportunityContext):
@@ -54,8 +62,8 @@ class RequestProposalsRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.')] = None
     context: ContextObject | None = None
     governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: PushNotificationConfig | None = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key required for retry-safe proposal creation.')]
+    push_notification_config: RequestProposalsRequestPushNotificationConfig | None = None
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key required for retry-safe proposal creation.')]
     account: Annotated[CanonicalAccountReference | None, Field(description='Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.')] = None
     brand: Annotated[BrandKey | None, Field(description='Alternative brand source for proposal terms. Provide either top-level brand or a natural-key account containing brand and operator, not both.')] = None
     brief: Annotated[StrMinLen1, Field(description='Campaign goal, strategy, and requirements that are not represented in structured criteria.')]

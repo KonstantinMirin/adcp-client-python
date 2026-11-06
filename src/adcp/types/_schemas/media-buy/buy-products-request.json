@@ -64,7 +64,10 @@
       "type": "integer"
     },
     "Shared10": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 4217 alphabetic currency code. Extracted unchanged from the 83 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "Shared11": {
@@ -84,7 +87,10 @@
       ]
     },
     "Shared14": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared15": {
@@ -982,8 +988,10 @@
               "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
               "properties": {
                 "country": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "description": "ISO 3166-1 alpha-2 country code.",
                   "pattern": "^[A-Z]{2}$",
+                  "title": "Country Code",
                   "type": "string"
                 },
                 "system": {
@@ -1028,8 +1036,10 @@
           ],
           "properties": {
             "country": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "ISO 3166-1 alpha-2 country code for the postal values.",
               "pattern": "^[A-Z]{2}$",
+              "title": "Country Code",
               "type": "string"
             },
             "system": {
@@ -1158,8 +1168,10 @@
       "description": "A catalog-backed named place target. Values are stable identifiers in the declared system. Entries within geo_places form a union; different geographic inclusion dimensions intersect. value_labels are diagnostic only and MUST NOT be used to resolve targeting.",
       "properties": {
         "country": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "ISO 3166-1 alpha-2 country code containing the place.",
           "pattern": "^[A-Z]{2}$",
+          "title": "Country Code",
           "type": "string"
         },
         "ext": {
@@ -1398,8 +1410,10 @@
       "type": "integer"
     },
     "Shared6": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared60": {
@@ -1438,8 +1452,10 @@
           "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
           "properties": {
             "data_provider_domain": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json",
               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "title": "Domain Name",
               "type": "string"
             },
             "id": {
@@ -1548,8 +1564,11 @@
       "x-entity": "advertiser_brand"
     },
     "Shared70": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "Shared71": {
@@ -1613,8 +1632,10 @@
       },
       "properties": {
         "data_provider_domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain that publishes the signal definition in its adagents.json signals[].",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         },
         "scope": {
@@ -1809,12 +1830,17 @@
                   "$ref": "#/definitions/Shared28"
                 },
                 "currency": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "description": "Immutable ISO 4217 transaction currency when the advertiser object is currency-bound. When present, this is part of the natural key and all media buys on the account use it. Omit for per-media-buy currency selection.",
                   "pattern": "^[A-Z]{3}$",
+                  "title": "Currency Code",
                   "type": "string"
                 },
                 "operator": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "A lowercase DNS domain name, dot-separated LDH labels. Extracted unchanged from the 54 sites that stated it inline; see adcontextprotocol/adcp#8525.",
                   "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                  "title": "Domain Name",
                   "type": "string",
                   "x-entity": "operator"
                 },
@@ -2247,9 +2273,12 @@
       "type": "string"
     },
     "idempotency_key": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Client-generated key for at-most-once execution, at least 16 characters. Extracted unchanged from the 59 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "maxLength": 255,
       "minLength": 16,
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "title": "Idempotency Key",
       "type": "string"
     },
     "invoice_recipient": {
@@ -2320,8 +2349,10 @@
               "$ref": "#/definitions/Shared4"
             },
             "country": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "ISO 3166-1 alpha-2 country code",
               "pattern": "^[A-Z]{2}$",
+              "title": "Country Code",
               "type": "string"
             },
             "postal_code": {
@@ -2994,8 +3025,10 @@
                       "type": "string"
                     },
                     "publisher_domain": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "Publisher domain where the adagents.json declaring this format option is hosted.",
                       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                      "title": "Domain Name",
                       "type": "string"
                     },
                     "scope": {
@@ -3767,8 +3800,10 @@
                                       "type": "array"
                                     },
                                     "publisher_domain": {
+                                      "$schema": "http://json-schema.org/draft-07/schema#",
                                       "description": "Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.",
                                       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                      "title": "Domain Name",
                                       "type": "string"
                                     }
                                   },
@@ -4659,8 +4694,10 @@
                                           "x-entity": "placement"
                                         },
                                         "publisher_domain": {
+                                          "$schema": "http://json-schema.org/draft-07/schema#",
                                           "description": "Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.",
                                           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                          "title": "Domain Name",
                                           "type": "string"
                                         }
                                       },
@@ -4694,8 +4731,10 @@
                                           "x-entity": "placement"
                                         },
                                         "publisher_domain": {
+                                          "$schema": "http://json-schema.org/draft-07/schema#",
                                           "description": "Domain whose adagents.json declares placement_id.",
                                           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                          "title": "Domain Name",
                                           "type": "string"
                                         }
                                       },

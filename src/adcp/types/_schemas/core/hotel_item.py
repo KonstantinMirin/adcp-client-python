@@ -7,13 +7,9 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    HotelItemCheckInTime,
-    HttpUrl,
-    StarRating,
-)
+from adcp.types.constraints import HotelItemCheckInTime, HttpUrl, StarRating
 
+from .country_code import CountryCode
 from .destination_item import ObjLatLng
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -32,7 +28,7 @@ class Address(AdCPBaseModel):
     city: Annotated[str | None, Field(description='City name.')] = None
     region: Annotated[str | None, Field(description='State, province, or region.')] = None
     postal_code: Annotated[str | None, Field(description='Postal or ZIP code.')] = None
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
+    country: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
 
 
 class HotelItem(AdCPBaseModel):

@@ -74,12 +74,24 @@ import pytest
 from nodeset import claimed
 from pydantic import BaseModel, ConfigDict
 
+import fresh
+
 from adcp.types._base import PACKAGE, SchemaRef
 from codegen import bundle, harness
 from codegen.harness import Pair, check_accepts, check_pair, corpus_defect, corpus_key
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+
+#: **The bundle a RUN reads**, re-exported from ``tests/fresh.py`` (``patch.for_build``).
+#:
+#: The population this file grades the draw floor FOR is the graded population, which is the
+#: emitted tree's -- so the identity it keys an entry on has to be read from the bundle that
+#: tree was emitted from.  Spelled as the published bundle it asked
+#: ``bundle.source_identities`` for ``core/currency-code.json``, which ``patches/8525``
+#: extracts and the published bundle does not hold, and read ``FileNotFoundError``: two
+#: bundles and a reader of each, which is the defect ``patch.for_build`` exists to make
+#: impossible by having one derivation.
+BUNDLE = fresh.BUNDLE
 
 #: The packaged records, reached the way ``adcp.types._base._document`` reaches them --
 #: through the package rather than through a path spelled here, so this cannot grade a

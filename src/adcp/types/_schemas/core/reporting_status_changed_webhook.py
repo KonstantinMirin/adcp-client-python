@@ -12,11 +12,11 @@ from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     IntMin1,
     StrMinLen1,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..enums.reporting_health import ReportingHealth
 from .ext import ExtensionObject
+from .idempotency_key import IdempotencyKey
 from .reporting_delivery_offering import ReportingFeedPurpose
 
 
@@ -32,7 +32,7 @@ class ReportingStatusChangedWebhook(AdCPBaseModel):
         UniqueItems('issue_ids'),
         ConditionalRequired((Match('health', True, ('delayed', 'action_required')),), require=('issue_ids',), forbid=()),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable per logical health transition; re-emissions reuse it, and a later distinct transition receives a new id.')]
     notification_type: Literal['reporting.status_changed']
     fired_at: AwareDatetime

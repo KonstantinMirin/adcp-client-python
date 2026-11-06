@@ -8,7 +8,6 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
     AdCPVersionEnvelopeAdcpVersion,
     ContextSignalsEmbeddingDims,
     ContextSignalsLanguage,
@@ -20,6 +19,7 @@ from adcp.types.constraints import (
 )
 
 from ..content_standards.artifact import Artifact
+from ..core.country_code import CountryCode
 from ..core.property_id import PropertyID
 from ..enums.metro_system import MetroAreaSystem
 from ..enums.property_type import PropertyType
@@ -69,7 +69,7 @@ class Geo(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-request.json', pointer='#/properties/geo')
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'DE').")] = None
+    country: Annotated[CountryCode | None, Field(description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'DE').")] = None
     region: Annotated[GeoForecastDimensionCode | None, Field(description="ISO 3166-2 subdivision code (e.g., 'US-CA', 'GB-SCT').")] = None
     metro: Annotated[Metro | None, Field(description='Metro area, using the same classification systems as AdCP targeting.')] = None
 

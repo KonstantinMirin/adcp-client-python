@@ -61,10 +61,12 @@
       "type": "string"
     },
     "idempotency_key": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Sender-generated key stable across retries of the same fire.",
       "maxLength": 255,
       "minLength": 16,
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "title": "Idempotency Key",
       "type": "string"
     },
     "initiator": {

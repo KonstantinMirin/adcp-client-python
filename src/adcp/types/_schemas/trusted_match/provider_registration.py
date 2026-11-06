@@ -9,7 +9,6 @@ from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
     ContextMatchResponseRouterPublisherSignalsByProvider,
     HttpUrl,
     IntMin5Max5000,
@@ -17,6 +16,7 @@ from adcp.types.constraints import (
     TMPProviderRegistrationTmpxSlotsItem,
 )
 
+from ..core.country_code import CountryCode
 from ..enums.uid_type import UIDType
 
 
@@ -54,7 +54,7 @@ class TMPProviderRegistration(BranchDispatchMixin, AdCPBaseModel):
     endpoint: Annotated[HttpUrl, Field(description='Base URL the router calls. The router appends /context for Context Match and /identity for Identity Match. MUST be HTTPS in production, validated against the canonical reserved IPv4 and IPv6 ranges, with the TCP connection pinned to the validated IP (DNS re-resolution alone is insufficient against rebinding). Publishers comparing two provider registrations for the same `endpoint` MUST canonicalize both per the AdCP URL canonicalization rules; two registrations differing only in case, default port, or path-slash collapsing are the same provider. See docs/trusted-match/specification#provider-registration-security, docs/building/by-layer/L1/security#webhook-url-validation-ssrf, and docs/reference/url-canonicalization.')]
     context_match: Annotated[bool | None, Field(description='Provider handles Context Match requests (POST /context).')] = None
     identity_match: Annotated[bool | None, Field(description='Provider handles Identity Match requests (POST /identity).')] = None
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves. The router filters Identity Match providers by the request's country field. MUST be present and non-empty when identity_match is true.", min_length=1)] = None
+    countries: Annotated[list[CountryCode] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves. The router filters Identity Match providers by the request's country field. MUST be present and non-empty when identity_match is true.", min_length=1)] = None
     uid_types: Annotated[list[UIDType] | None, Field(description="Identity types this provider can resolve. The router selects Identity Match providers whose uid_types overlaps with any uid_type in the request's identities array. MUST be present and non-empty when identity_match is true.", min_length=1)] = None
     properties: Annotated[list[StrFormatUuid] | None, Field(description='Property RIDs (UUID v7) this provider serves. When present, the router only sends requests from these properties to this provider. When absent, the provider serves all properties.', min_length=1)] = None
     timeout_ms: Annotated[IntMin5Max5000 | None, Field(description="Per-provider timeout in milliseconds. The router skips this provider if it does not respond within this budget. Must be less than or equal to the router's overall latency_budget_ms. The router may further reduce this based on adaptive timeout allocation.")] = 50

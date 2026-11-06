@@ -8,13 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    FloatMin0Max1,
-    GeoForecastDimensionCode,
-    GetAccountFinancialsResponseSuccessCurrency,
-    IntMin1,
-)
+from adcp.types.constraints import FloatMin0Max1, GeoForecastDimensionCode, IntMin1
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.available_metric import AvailableMetric
@@ -31,6 +25,8 @@ from .brand_key import BrandKey
 from .budget_range import BudgetRange
 from .canonical_format_kind import CanonicalFormatKind
 from .canonical_media_buy_features import CanonicalMediaBuyFeatures
+from .country_code import CountryCode
+from .currency_code import CurrencyCode
 from .ext import ExtensionObject
 from .format_option_ref import FormatOptionReference
 from .postal_area import PostalArea
@@ -110,7 +106,7 @@ class ProductOfferFilters(AdCPBaseModel):
     exclusivity: Exclusivity | None = None
     is_fixed_price: Annotated[bool | None, Field(description='Filter fixed-price versus auction offers. Contingent pricing matches neither value.')] = None
     pricing_structures: Annotated[list[PricingStructure] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    pricing_currencies: Annotated[list[GetAccountFinancialsResponseSuccessCurrency] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    pricing_currencies: Annotated[list[CurrencyCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     format_option_refs: Annotated[list[FormatOptionReference] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     standard_formats_only: bool | None = None
@@ -119,7 +115,7 @@ class ProductOfferFilters(AdCPBaseModel):
     end_date: Annotated[date | None, Field(description='Fixed-flight availability filter end. See start_date. Mutually exclusive with availability_horizon.')] = None
     availability_horizon: Annotated[AvailabilityHorizon | None, Field(description="Flexible-window availability discovery: the buyer is open to any bookable window inside [start_time, end_time) and asks the seller to describe when the returned inventory can run, instead of filtering to one exact flight. Sellers that support this field partition the horizon into time-dimensioned forecast rows (forecast-dimension-time) carrying availability_status; sellers that cannot cover the full horizon signal the gap via the response's incomplete[] mechanism. Unlike start_date/end_date this is not an eligibility filter — products remain returnable when only part of the horizon is open. The resulting availability is a snapshot bounded by the forecast's valid_until, never a hold. Mutually exclusive with start_date and end_date, which declare a fixed flight; buyers that already know their dates use those instead.")] = None
     budget_range: BudgetRange | None = None
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="Filter by country coverage using ISO 3166-1 alpha-2 codes (e.g., ['US', 'CA', 'GB']). Returns products whose geographic coverage includes at least one of the specified countries. This is a product attribute filter, not a delivery-targeting instruction.", min_length=1)] = None
+    countries: Annotated[list[CountryCode] | None, Field(description="Filter by country coverage using ISO 3166-1 alpha-2 codes (e.g., ['US', 'CA', 'GB']). Returns products whose geographic coverage includes at least one of the specified countries. This is a product attribute filter, not a delivery-targeting instruction.", min_length=1)] = None
     regions: Annotated[list[GeoForecastDimensionCode] | None, Field(description='Inventory coverage in the specified ISO 3166-2 subdivisions: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
     metros: Annotated[list[ObjSystemCode] | None, Field(description='Inventory coverage in the specified metro areas (system and code): OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
     postal_areas: Annotated[list[PostalArea] | None, Field(description='Inventory coverage in the specified postal areas: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None

@@ -140,7 +140,13 @@ REPO = Path(__file__).resolve().parents[1]
 #: parent's is.  Not a relaxation of either assertion: both still grade the tree this file
 #: sits in, which is the tree they claim to grade.
 SUBPROCESS_PATH = os.pathsep.join((str(REPO / "src"), str(REPO)))
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+
+#: **The bundle every check in this file reads: the one a RUN reads** -- re-exported from
+#: ``tests/fresh.py``, which is where the tree beneath it is materialised from.  ONE name for
+#: one value, so :func:`tree_population` and ``./check``'s three numbers cannot range over
+#: two bundles; before this line one of them read the published bundle and the override table
+#: reached neither.
+BUNDLE = fresh.BUNDLE
 
 #: **The tree every check in this file reads: the one a fresh run emits.**
 #: ``tests/fresh.py`` materialises it and binds ``adcp.types``'s generated half to it, so

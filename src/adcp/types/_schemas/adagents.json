@@ -1184,8 +1184,10 @@
       "type": "object"
     },
     "Shared13": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Namespace for `format_option_id` when this declaration references or narrows a publisher-declared format option from that publisher's adagents.json top-level `formats[]`. Product-local options omit this field and are selected by `format_option_id` within the target product.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared130": {
@@ -2043,8 +2045,10 @@
       }
     },
     "Shared149": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared15": {
@@ -2580,7 +2584,10 @@
       "type": "string"
     },
     "Shared174": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A lowercase DNS domain name, dot-separated LDH labels. Extracted unchanged from the 54 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared175": {
@@ -2611,9 +2618,11 @@
       "type": "string"
     },
     "Shared18": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Optional public HTTPS page where a human can inspect a sample render of this declaration using assets chosen by the party publishing the enclosing declaration. Consumers MUST identify that source correctly: publisher or community mirror for `adagents.json` `formats[]`, seller for product or inline-placement declarations, and creative agent for `creative.supported_formats`. Informational only: this is not a renderer endpoint, buyer-asset preview, validation result, creative approval, proof of publisher acceptance, or guarantee of live delivery. Declaring parties SHOULD keep the URL stable while the declaration is active.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "Shared180": {
@@ -3776,8 +3785,10 @@
                             "type": "string"
                           },
                           "publisher_domain": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "Publisher domain where the adagents.json declaring this format option is hosted.",
                             "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                            "title": "Domain Name",
                             "type": "string"
                           },
                           "scope": {
@@ -3834,8 +3845,10 @@
                         "x-entity": "placement"
                       },
                       "publisher_domain": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
                         "description": "Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.",
                         "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                        "title": "Domain Name",
                         "type": "string"
                       }
                     },
@@ -4013,8 +4026,10 @@
             "type": "array"
           },
           "publisher_domain": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
             "description": "Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.",
             "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+            "title": "Domain Name",
             "type": "string"
           }
         },
@@ -4272,7 +4287,10 @@
       ]
     },
     "Shared60": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared61": {
@@ -4313,9 +4331,11 @@
       "uniqueItems": true
     },
     "Shared63": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "HTTPS URL identifying the extension. `https://` is mandatory \u2014 `http://`, `file://`, `data:`, and other schemes are rejected at the schema layer (defense-in-depth on top of the fetch-contract normative rules). The URI base is the owning agent's URL; the path identifies the extension within that agent. Example: 'https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel'. The full fetch contract \u2014 SSRF allowlist, response-size cap, $ref sandbox, schema-compile bounds \u2014 is documented on `product-format-declaration.json#format_schema` and applies to ALL fetches of this reference shape regardless of whether the field is named `format_schema` (load-bearing for validation) or `platform_extensions` (informational); the *transport* rules are identical, only the *consumption* semantics differ.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "Shared64": {
@@ -7942,9 +7962,11 @@
           "$ref": "#/definitions/Shared0"
         },
         "authoritative_location": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "HTTPS URL of the authoritative adagents.json file. When present, this file is a reference and the authoritative location contains the actual agent authorization data. Because one deploy can change authorization across every publisher in the network, validators MUST cap response size, refuse redirects on the fetch, enforce short timeouts, and serve the previously cached file on transient 5xx. Two-tier size cap: pointer files served at `/.well-known/adagents.json` use the general 5 MB SSRF cap; dereferenced authoritative files (this URL's response, after the indirection) use a recommended 20 MB cap because the origin has explicitly opted in to fanning out across a publisher network. See docs/governance/property/managed-networks#security-considerations.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         },
         "last_updated": {
@@ -8310,8 +8332,10 @@
                               "type": "array"
                             },
                             "publisher_domain": {
+                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com').",
                               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                              "title": "Domain Name",
                               "type": "string"
                             },
                             "selection_type": {
@@ -8804,8 +8828,10 @@
                 "type": "string"
               },
               "publisher_domain": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "Publisher namespace that owns this collection. Required for supply-path verification when the declaration is read from a cross-origin authoritative document; it must match the publisher whose origin delegated retrieval. A pointer alone cannot claim another publisher's collection. May be omitted for a publisher-origin document, where that origin supplies the namespace.",
                 "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "title": "Domain Name",
                 "type": "string"
               },
               "related_collections": {
@@ -8998,8 +9024,10 @@
           "description": "Contact information for the entity managing this adagents.json file (may be publisher or third-party operator)",
           "properties": {
             "domain": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Primary domain of the entity managing this file",
               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "title": "Domain Name",
               "type": "string"
             },
             "email": {
@@ -10052,9 +10080,11 @@
                     "type": "string"
                   },
                   "uri": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "Publisher-controlled HTTPS URL for the presentation metadata. Consumers MUST apply the same SSRF, redirect, response-size, timeout, and DNS-rebinding protections used for format_schema fetches.",
                     "format": "uri",
                     "pattern": "^https://",
+                    "title": "HTTPS URL",
                     "type": "string"
                   }
                 },
@@ -10073,9 +10103,11 @@
                 "description": "Optional publisher delegation to a callable AdCP preview provider for specific format options on this placement. This publisher-origin route is the only mechanism that grants preview authority inside the placement's scope; an agent's own rendering_origin description does not.",
                 "properties": {
                   "agent_url": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "HTTPS URL of the delegated creative-agent endpoint. Buyers call get_adcp_capabilities and preview_creative on this endpoint. They MUST allow only public IPs, pin DNS resolution through connection, refuse redirects, cap time and response size, and attach provider credentials only after exact normalized-origin binding.",
                     "format": "uri",
                     "pattern": "^https://",
+                    "title": "HTTPS URL",
                     "type": "string"
                   },
                   "authority": {
@@ -10290,8 +10322,10 @@
             "additionalProperties": true,
             "properties": {
               "publisher_domain": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "Publisher domain being revoked. Matches against the same canonicalized form used in `publisher_properties[].publisher_domain`.",
                 "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "title": "Domain Name",
                 "type": "string"
               },
               "reason": {
@@ -10542,9 +10576,11 @@
                 "description": "Per-signal data-subject-rights routing. Inline on the signal because upstream source, rights routing, and response commitments can differ by segment or may be unavailable from a public provider document for custom/private signals. This is a contact/routing reference, not a machine-callable AdCP API.",
                 "properties": {
                   "ccpa_opt_out_url": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "US-specific 'Do Not Sell or Share' opt-out URL where required.",
                     "format": "uri",
                     "pattern": "^https://",
+                    "title": "HTTPS URL",
                     "type": "string"
                   },
                   "channels": {
@@ -10618,9 +10654,11 @@
                           "uniqueItems": true
                         },
                         "url": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "description": "HTTPS URL for submitting the rights request.",
                           "format": "uri",
                           "pattern": "^https://",
+                          "title": "HTTPS URL",
                           "type": "string"
                         }
                       },
@@ -10817,8 +10855,10 @@
                               "type": "string"
                             },
                             "country": {
+                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "ISO 3166-1 alpha-2 country code.",
                               "pattern": "^[A-Z]{2}$",
+                              "title": "Country Code",
                               "type": "string"
                             },
                             "disclosure_text": {
@@ -11217,9 +11257,11 @@
           "type": "array"
         },
         "superseded_by": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Optional pointer indicating this adagents.json file has been superseded by another adagents.json at a different URL. Used by the AAO community-mirror lifecycle: when a platform (e.g., Meta) adopts AdCP and publishes its own adagents.json at `<platform-domain>/.well-known/adagents.json`, the AAO mirror file at `creative.adcontextprotocol.org/translated/<platform>/adagents.json` sets `superseded_by` to the platform-hosted URL. Buyer SDKs encountering a file with `superseded_by` SHOULD short-circuit and re-fetch from the named URL rather than serving stale content from the mirror. The mirror SHOULD continue serving with `superseded_by` set for \u22651 minor release after platform adoption so buyer caches keyed on the mirror URL get an explicit migration signal rather than a silent break.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         },
         "tags": {

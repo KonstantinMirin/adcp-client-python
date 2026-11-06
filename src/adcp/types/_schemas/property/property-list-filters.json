@@ -61,7 +61,10 @@
     "countries_all": {
       "description": "Property must have feature data for ALL listed countries (ISO codes). When omitted, no country restriction is applied.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
         "pattern": "^[A-Z]{2}$",
+        "title": "Country Code",
         "type": "string"
       },
       "minItems": 1,

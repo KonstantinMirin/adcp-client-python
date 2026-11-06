@@ -14,12 +14,12 @@ from adcp.types.constraints import (
     StrMinLen1,
     StrMinLen1MaxLen255,
     StrMinLen1MaxLen4096,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.reporting_webhook import ReportingWebhook
@@ -62,7 +62,7 @@ class AcceptProposalRequest(AdCPVersionEnvelope):
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None
-    idempotency_key: SyncAccountsRequestIdempotencyKey
+    idempotency_key: IdempotencyKey
     name: Annotated[MediaBuyName | None, Field(description='Human-readable MediaBuy name supplied by the buyer for trafficking UI display and operational communication. When supplied, this value wins over proposal.name; the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. It is operational metadata outside accepted_proposal and is not covered by proposal_terms_digest or terms_digest. When an acceptance creates a MediaBuy and name is absent, the seller MAY seed the MediaBuy name from proposal.name only when proposal.name already satisfies the MediaBuy name constraints (non-whitespace and no longer than 255 characters); the seller MUST NOT silently truncate or otherwise rewrite it. A seeded value counts as a name created through AdCP and MUST be reported on commitment and read surfaces. This display label is not an identifier or financial reference.')] = None
     account: CanonicalAccountReference
     proposal_id: StrMinLen1

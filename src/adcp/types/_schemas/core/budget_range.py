@@ -7,7 +7,8 @@ from pydantic import ConfigDict, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
-from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency
+
+from .currency_code import CurrencyCode
 
 
 class BudgetRange(AdCPBaseModel):
@@ -23,7 +24,7 @@ class BudgetRange(AdCPBaseModel):
     )
     min: NonNegativeFloat | None = None
     max: NonNegativeFloat | None = None
-    currency: GetAccountFinancialsResponseSuccessCurrency
+    currency: CurrencyCode
 
 
 __all__ = ["BudgetRange"]

@@ -192,8 +192,10 @@
                 "type": "array"
               },
               "publisher_domain": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.",
                 "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "title": "Domain Name",
                 "type": "string"
               }
             },
@@ -396,8 +398,10 @@
                     "type": "array"
                   },
                   "publisher_domain": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com').",
                     "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "title": "Domain Name",
                     "type": "string"
                   },
                   "selection_type": {
@@ -1007,8 +1011,10 @@
               "type": "string"
             },
             "publisher_domain": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Publisher namespace that owns this collection. Required for supply-path verification when the declaration is read from a cross-origin authoritative document; it must match the publisher whose origin delegated retrieval. A pointer alone cannot claim another publisher's collection. May be omitted for a publisher-origin document, where that origin supplies the namespace.",
               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "title": "Domain Name",
               "type": "string"
             },
             "related_collections": {
@@ -1585,7 +1591,10 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
     "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A lowercase DNS domain name, dot-separated LDH labels. Extracted unchanged from the 54 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared1": {
@@ -1614,7 +1623,10 @@
       "type": "string"
     },
     "Shared15": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared16": {
@@ -1866,8 +1878,10 @@
       "type": "string"
     },
     "Shared29": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared3": {

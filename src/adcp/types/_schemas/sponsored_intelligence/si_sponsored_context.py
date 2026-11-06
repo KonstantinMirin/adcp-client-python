@@ -7,13 +7,11 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    AdCPUrl,
-)
 
 from ..core.brand_ref import BrandReference
+from ..core.domain_name import DomainName
 from ..core.ext import ExtensionObject
+from ..core.https_url import HTTPSURL
 from .si_context_use import SIContextUse
 
 
@@ -38,7 +36,7 @@ class PayingPrincipal(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/paying_principal')
     brand: Annotated[BrandReference, Field(description='Brand economically accountable for the sponsored context.')]
     account: Annotated[PayingPrincipalAccount | None, Field(description='Optional seller-assigned account context for the paying principal. This intentionally carries only an account_id so the canonical economic principal remains paying_principal.brand.')] = None
-    operator: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description='Domain of the operator acting for the paying principal, when different from the brand domain.')] = None
+    operator: Annotated[DomainName | None, Field(description='Domain of the operator acting for the paying principal, when different from the brand domain.')] = None
     display_name: Annotated[str | None, Field(description='Human-readable label for disclosure rendering. The canonical identity remains the brand/account reference.')] = None
 
 
@@ -117,7 +115,7 @@ class DeclaredBy(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/declared_by')
-    agent_url: Annotated[AdCPUrl | None, Field(description='HTTPS URL of the declaring agent or service.')] = None
+    agent_url: Annotated[HTTPSURL | None, Field(description='HTTPS URL of the declaring agent or service.')] = None
     role: Annotated[Role, Field(description='Role of the declaring party.')]
 
 

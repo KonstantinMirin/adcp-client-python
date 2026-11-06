@@ -73,7 +73,10 @@
       "uniqueItems": true
     },
     "Shared8": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared9": {

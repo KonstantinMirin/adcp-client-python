@@ -9,11 +9,12 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import FloatMin0Max100, GetAccountFinancialsResponseSuccessCurrency
+from adcp.types.constraints import FloatMin0Max100
 from adcp.types.envelopes import FailedResponse
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
+from ..core.currency_code import CurrencyCode
 from ..core.date_range import DateRange
 from ..core.error import Error
 from ..core.ext import ExtensionObject
@@ -117,7 +118,7 @@ class GetAccountFinancialsSuccess(GetAccountFinancialsResponse):
         ForbiddenGroups((('errors',),)),
     )
     account: Annotated[AccountReference, Field(description='Account reference, echoed from the request')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code for all monetary amounts in this response')]
+    currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code for all monetary amounts in this response')]
     period: Annotated[DateRange, Field(description='The actual period covered by spend data. May differ from the requested period if the seller adjusts to billing cycle boundaries.')]
     timezone: Annotated[str, Field(description="IANA timezone of the seller's billing day boundaries (e.g., 'America/New_York'). All dates in this response — period, invoice periods, due dates — are calendar dates in this timezone. This may differ from Account.timezone or a feature-specific cap/reporting timezone when the upstream platform uses distinct clocks; buyers MUST use this value for financial periods rather than infer equality.")]
     spend: Annotated[Spend | None, Field(description='Spend summary for the period')] = None

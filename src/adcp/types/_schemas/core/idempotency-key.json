@@ -1,0 +1,9 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Client-generated key for at-most-once execution, at least 16 characters. Extracted unchanged from the 59 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+  "maxLength": 255,
+  "minLength": 16,
+  "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+  "title": "Idempotency Key",
+  "type": "string"
+}

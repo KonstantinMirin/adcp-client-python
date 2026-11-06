@@ -8,7 +8,6 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     GetCreativeDeliveryRequestEndDate,
     IntMin1,
@@ -18,6 +17,7 @@ from adcp.types.constraints import (
 from ..core.account_ref import AccountReference
 from ..core.attribution_window import AttributionWindow
 from ..core.context import ContextObject
+from ..core.country_code import CountryCode
 from ..core.delivery_breakdown_controls import DeliveryBreakdownControls
 from ..core.demographic_age_range import DemographicAgeRange
 from ..core.ext import ExtensionObject
@@ -48,7 +48,7 @@ class Geo(AdCPBaseModel):
     )
     geo_level: Annotated[GeographicTargetingLevel, Field(description='Geographic granularity level for the breakdown')]
     system: Annotated[MetroAreaSystem | PostalCodeSystem | CountryFusedPostalCodeSystem | None, Field(description="Optional classification system for metro or postal_area levels. Metro uses metro-system values (e.g., 'nielsen_dma'); native postal_area uses country-local postal-system values with country (e.g., country 'US', system 'zip'); deprecated legacy postal_area requests may use legacy-postal-system values such as 'us_zip'. Omit to request the level without selecting a specific system.")] = None
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code. Required for native postal_area requests; omitted for legacy postal_area and non-postal geo requests.')] = None
+    country: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code. Required for native postal_area requests; omitted for legacy postal_area and non-postal geo requests.')] = None
     limit: Annotated[IntMin1 | None, Field(description='Maximum number of geo entries to return. Defaults to 25. When truncated, by_geo_truncated is true in the response.')] = 25
     sort_by: Annotated[SortMetric | None, Field(default_factory=lambda: TypeAdapter(SortMetric).validate_python('spend'), description="Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.", json_schema_extra={'default': 'spend'})]
     sort_direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.", json_schema_extra={'default': 'desc'})]

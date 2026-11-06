@@ -141,8 +141,10 @@
           "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
           "properties": {
             "country": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "ISO 3166-1 alpha-2 country code.",
               "pattern": "^[A-Z]{2}$",
+              "title": "Country Code",
               "type": "string"
             },
             "system": {
@@ -187,8 +189,10 @@
       ],
       "properties": {
         "country": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "ISO 3166-1 alpha-2 country code for the postal values.",
           "pattern": "^[A-Z]{2}$",
+          "title": "Country Code",
           "type": "string"
         },
         "system": {

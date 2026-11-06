@@ -274,10 +274,15 @@ regenerate the whole tree, name the population and the package together:
 
 ```bash
 PYTHONPATH=.:tests uv run --no-sync python -c \
-  'from codegen import emit; from test_emit import tree_population; from pathlib import Path; \
-   out = emit.emit(Path("schemas/cache/3.2"), tree_population()); \
+  'from codegen import emit, patch; from test_emit import tree_population; from pathlib import Path; \
+   out = emit.emit(patch.for_build(Path("schemas/cache/3.2")), tree_population()); \
    emit.write(out, Path("src/adcp/types/_schemas"), Path("src/adcp/types"))'
 ```
+
+`patch.for_build` is the bundle a RUN reads: the published one with every patch set the build
+applies (`patch.BUILD`, today `patches/8735`). It is the one derivation, shared with `./check`
+and `tests/fresh.py`, so the fast loop's figures and the gate's range over one input — before
+it existed the override table was applied in two test files and in no compile path.
 
 `tree_population()` is deliberately NOT the union of the seven step selectors
 (`population()`, 991 documents, which grades the rebuild's phases): a step is a phase and

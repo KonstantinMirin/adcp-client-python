@@ -7,14 +7,11 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    StrMinLen1,
-    ZipAssetDigest,
-)
+from adcp.types.constraints import StrMinLen1, ZipAssetDigest
 
 from ..enums.daast_version import DAASTVersion
 from ..enums.vast_version import VASTVersion
+from .domain_name import DomainName
 from .placement_ref import PlacementReference
 from .product_format_declaration import (
     AgentPlacementFormatDeclaration,
@@ -44,7 +41,7 @@ class PlacementRefsItem(PlacementReference):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/properties/placement_refs/items')
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.')]
+    publisher_domain: Annotated[DomainName, Field(description='Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.')]
 
 
 class PackageFormatSnapshot(BranchDispatchMixin, AdCPBaseModel):

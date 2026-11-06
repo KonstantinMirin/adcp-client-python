@@ -700,9 +700,11 @@
           "type": "string"
         },
         "uri": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "HTTPS URL identifying the extension. `https://` is mandatory \u2014 `http://`, `file://`, `data:`, and other schemes are rejected at the schema layer (defense-in-depth on top of the fetch-contract normative rules). The URI base is the owning agent's URL; the path identifies the extension within that agent. Example: 'https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel'. The full fetch contract \u2014 SSRF allowlist, response-size cap, $ref sandbox, schema-compile bounds \u2014 is documented on `product-format-declaration.json#format_schema` and applies to ALL fetches of this reference shape regardless of whether the field is named `format_schema` (load-bearing for validation) or `platform_extensions` (informational); the *transport* rules are identical, only the *consumption* semantics differ.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         }
       },
@@ -1115,13 +1117,18 @@
       "type": "object"
     },
     "publisher_domain": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Publisher namespace for format_option_id when this operation claims compatibility with a publisher declaration.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "sample_render_url": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "seller_preference": {

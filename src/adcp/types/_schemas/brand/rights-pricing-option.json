@@ -4,8 +4,10 @@
   "description": "A pricing option for licensable rights. Separate from media-buy pricing options \u2014 rights pricing includes period, impression caps, overage rates, and use-type scoping.",
   "properties": {
     "currency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 4217 currency code",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "description": {

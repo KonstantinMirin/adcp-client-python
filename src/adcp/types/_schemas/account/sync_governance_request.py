@@ -6,11 +6,13 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMinLen32, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import StrMinLen32
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.https_url import HTTPSURL
+from ..core.idempotency_key import IdempotencyKey
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
@@ -31,7 +33,7 @@ class GovernanceAgentsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-request.json', pointer='#/properties/accounts/items/properties/governance_agents/items')
-    url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
+    url: Annotated[HTTPSURL, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
     authentication: Annotated[Authentication, Field(description='Authentication the seller presents when calling this governance agent.')]
 
 
@@ -56,7 +58,7 @@ class SyncGovernanceRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-request.json', pointer='#')
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. `account` gives resource-level dedup, but governance changes emit audit events and can trigger reapproval flows — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. `account` gives resource-level dedup, but governance changes emit audit events and can trigger reapproval flows — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     accounts: Annotated[list[AccountsItem], Field(description='Per-account governance agent configuration. Each entry pairs an account reference with the governance agents for that account.', max_length=100, min_length=1)]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

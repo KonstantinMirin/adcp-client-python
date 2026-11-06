@@ -8,13 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    HttpUrl,
-    IntMin1,
-    StrMinLen1,
-    ZipAssetDigest,
-)
+from adcp.types.constraints import HttpUrl, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.right_type import RightType
 from ..enums.right_use import RightUse
@@ -22,6 +16,7 @@ from .attestation_issuer import AttestationBrandIssuer
 from .attestation_reference import AttestationReference
 from .attestation_subject import AttestationResourceSubject
 from .brand_ref import BrandReference
+from .country_code import CountryCode
 from .ext import ExtensionObject
 
 
@@ -116,8 +111,8 @@ class RightsConstraint(AdCPBaseModel):
     valid_from: Annotated[AwareDatetime | None, Field(description='Start of the rights validity period')] = None
     valid_until: Annotated[AwareDatetime | None, Field(description='End of the rights validity period. Creative should not be served after this time.')] = None
     uses: Annotated[list[RightUse], Field(description='Rights uses covered by this constraint', min_length=1)]
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where this creative may be served under these rights (ISO 3166-1 alpha-2). If omitted, no country restriction. When both countries and excluded_countries are present, the effective set is countries minus excluded_countries.')] = None
-    excluded_countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries excluded from rights availability (ISO 3166-1 alpha-2). Use when the grant is worldwide except specific markets.')] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where this creative may be served under these rights (ISO 3166-1 alpha-2). If omitted, no country restriction. When both countries and excluded_countries are present, the effective set is countries minus excluded_countries.')] = None
+    excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from rights availability (ISO 3166-1 alpha-2). Use when the grant is worldwide except specific markets.')] = None
     impression_cap: Annotated[IntMin1 | None, Field(description='Maximum total impressions allowed for the full validity period (valid_from to valid_until). This is the absolute cap across all creatives using this rights grant, not a per-creative or per-period limit.')] = None
     right_type: Annotated[RightType | None, Field(description='Type of rights (talent, music, etc.). Helps identify constraints when a creative combines multiple rights types.')] = None
     approval_status: Annotated[ApprovalStatus | None, Field(description='Approval status from the rights holder at manifest creation time (snapshot, not a live value)')] = None

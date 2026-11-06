@@ -8,13 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
-    GetAccountFinancialsResponseSuccessCurrency,
-    GovernanceContext,
-    IntMin1,
-    SyncAccountsRequestIdempotencyKey,
-)
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, GovernanceContext, IntMin1
 
 from ..common._vocabularies import _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
 from ..core.account_ref import AccountReference
@@ -22,9 +16,11 @@ from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
 from ..core.creative_manifest import CreativeManifest
 from ..core.creative_representation_set import CreativeRepresentationSet
+from ..core.currency_code import CurrencyCode
 from ..core.evaluator_spec import EvaluatorSpec
 from ..core.ext import ExtensionObject
 from ..core.format_id import FormatReferenceStructuredObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.representation_destination import RepresentationDestination
 from ..core.signal_targeting import SignalTargetingBinary, SignalTargetingCategorical, SignalTargetingNumeric
@@ -52,7 +48,7 @@ class MaxSpend(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/max_spend')
     amount: Annotated[NonNegativeFloat, Field(description='Maximum aggregate vendor_cost to incur on this call, in `currency`.')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency; MUST match the rate card.')]
+    currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency; MUST match the rate card.')]
 
 
 class SignalConditionsItem(BranchDispatchMixin, AdCPBaseModel):
@@ -201,7 +197,7 @@ class BuildCreativeRequest(AdCPVersionEnvelope):
     preview_quality: Annotated[CreativeQuality | None, Field(description="Render quality for inline preview when include_preview is true. 'draft' produces fast, lower-fidelity renderings. 'production' produces full-quality renderings. Independent of the build quality parameter — you can build at draft quality and preview at production quality, or vice versa. If omitted, the creative agent uses its own default. Ignored when include_preview is false or omitted.")] = None
     preview_output_format: Annotated[PreviewOutputFormat | None, Field(default_factory=lambda: TypeAdapter(PreviewOutputFormat).validate_python('url'), description="Output format for preview renders when include_preview is true. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML). Ignored when include_preview is false or omitted.", json_schema_extra={'default': 'url'})]
     macro_values: Annotated[dict[str, str] | None, Field(description="Raw concrete values offered for build-time binding, keyed by AdCP universal semantic (for example CLICK_URL or CACHEBUSTER). With declarations, a value binds only a verified-universal `resolve_value` occurrence performed_by `creative_agent`, using that declaration's exact context and encoding; callers MUST NOT pre-encode it. The selected `creative.supported_formats[]` route's macro_resolution_capabilities is the binding build/preview capability set; seller-wide and product sets apply only on the sales execution path. Values never short-circuit `translate_to_native`: translation emits its target declaration and the complete target capability chain remains required. For creative_representation_set, selection happens before binding and the complete representation set remains byte-identical. Without declarations, the 3.x legacy path remains: creative agents may translate recognized AdCP tokens using the existing `translateUniversalMacros` contract, preserve omitted placeholders for the sales agent, and ignore unknown keys. Existing unmapped/frozen-consent diagnostics remain required.")] = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate creative generation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate creative generation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async terminal completion/failure notifications on build_creative. Meaningful only when the request enters the async lifecycle and returns a Submitted envelope. Submitted envelopes with `task_id` remain pollable through `get_task_status` (legacy `tasks/get`) whether or not this field is present. If a request includes this field and the agent returns a Submitted envelope, the agent MUST deliver at least the terminal completion/failure notification to the configured URL; intermediate progress notifications are MAY. If the agent cannot honor the webhook channel, it MUST reject the request with a structured error instead of silently accepting. This field does not change response timing semantics: agents MUST NOT route a request through the async/Submitted arm or emit async delivery solely because `push_notification_config` is present; requests that can be completed inline still return the synchronous success shape.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

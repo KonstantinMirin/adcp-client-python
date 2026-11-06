@@ -12,10 +12,10 @@ from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     IntMin1,
     StrMinLen1,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..enums.reporting_finality import ReportingFinality
+from .idempotency_key import IdempotencyKey
 from .reporting_delivery_offering import ReportingFeedPurpose
 
 
@@ -32,7 +32,7 @@ class ReportingDeliveryReadyWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-ready-webhook.json', pointer='#')
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Stable across transport retries of this fire; new for a later re-emission.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Stable across transport retries of this fire; new for a later re-emission.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable for this logical materialization-ready event across re-emissions.')]
     notification_type: Literal['reporting.delivery_ready']
     fired_at: AwareDatetime

@@ -692,8 +692,10 @@
           "$ref": "#/definitions/Shared0"
         },
         "currency": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "ISO 4217 currency code for vendor_cost.",
           "pattern": "^[A-Z]{3}$",
+          "title": "Currency Code",
           "type": "string"
         },
         "detail_url": {

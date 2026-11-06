@@ -6,7 +6,7 @@
       "if": {
         "properties": {
           "dimension": {
-            "const": "age"
+            "$ref": "#/definitions/Shared0"
           }
         },
         "required": [
@@ -20,12 +20,10 @@
             "minProperties": 1,
             "properties": {
               "max": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared5"
               },
               "min": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared5"
               }
             },
             "type": "object"
@@ -33,13 +31,11 @@
           "value": {
             "oneOf": [
               {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared5"
               },
               {
                 "items": {
-                  "minimum": 0,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared5"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -73,12 +69,34 @@
       ]
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "const": "age"
+    },
+    "Shared1": {
+      "type": "string"
+    },
+    "Shared2": {
+      "type": "number"
+    },
+    "Shared3": {
+      "type": "boolean"
+    },
+    "Shared4": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared5": {
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
   "description": "A machine-comparable audience dimension and value or numeric range used in population-level audience evidence. The built-in `age` dimension uses completed years: scalar and set values and range bounds MUST be non-negative integers, and a range's min MUST be less than or equal to its max. Provider-defined dimensions SHOULD use an HTTPS URI and SHOULD identify their taxonomy so two similarly named dimensions are not assumed equivalent.",
   "properties": {
     "dimension": {
       "anyOf": [
         {
-          "const": "age"
+          "$ref": "#/definitions/Shared0"
         },
         {
           "format": "uri",
@@ -98,10 +116,10 @@
       "minProperties": 1,
       "properties": {
         "max": {
-          "type": "number"
+          "$ref": "#/definitions/Shared2"
         },
         "min": {
-          "type": "number"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "type": "object"
@@ -111,17 +129,18 @@
       "description": "External system that defines the dimension or value. Taxonomy metadata is descriptive and does not create exact demographic targeting semantics.",
       "properties": {
         "system": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         },
         "value_id": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "version": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         }
       },
       "required": [
@@ -133,25 +152,25 @@
       "description": "Scalar or set value for the dimension.",
       "oneOf": [
         {
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         {
-          "type": "number"
+          "$ref": "#/definitions/Shared2"
         },
         {
-          "type": "boolean"
+          "$ref": "#/definitions/Shared3"
         },
         {
           "items": {
             "oneOf": [
               {
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               },
               {
-                "type": "number"
+                "$ref": "#/definitions/Shared2"
               },
               {
-                "type": "boolean"
+                "$ref": "#/definitions/Shared3"
               }
             ]
           },

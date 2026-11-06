@@ -11,11 +11,11 @@ from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     StrMaxLen500,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..compliance.comply_test_controller_request import PurgeKind
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..enums.creative_event_reason_code import CreativeEventReasonCode
 
 
@@ -35,7 +35,7 @@ class CreativePurgedWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/creative-purged-webhook.json', pointer='#')
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identifier for this purge event. Receivers correlate fires by this id; a single creative can only be purged once, so a new id implies a different creative or (rare) a re-emission of the same purge after retention-driven snapshot loss.')]
     notification_type: Annotated[Literal['creative.purged'], Field(description='Fixed notification type discriminator.')]
     fired_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Sellers MUST fire `creative.purged` immediately after purge — coalescence is not permitted on this notification type.')]

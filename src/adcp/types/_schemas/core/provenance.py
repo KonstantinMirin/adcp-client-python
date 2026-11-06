@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, FloatMin0Max1, HttpUrl, IntMin1
+from adcp.types.constraints import FloatMin0Max1, HttpUrl, IntMin1
 
 from ..enums.c2pa_watermark_action import C2PAWatermarkAction
 from ..enums.digital_source_type import DigitalSourceType
@@ -17,6 +17,7 @@ from ..enums.disclosure_position import DisclosurePosition
 from ..enums.embedded_provenance_method import EmbeddedProvenanceMethod
 from ..enums.watermark_media_type import WatermarkMediaType
 from .ext import ExtensionObject
+from .https_url import HTTPSURL
 
 
 class AiTool(AdCPBaseModel):
@@ -102,7 +103,7 @@ class ObjAgentUrlFeatureId(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/embedded_provenance/items/properties/verify_agent')
-    agent_url: Annotated[AdCPUrl, Field(description="URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.")]
+    agent_url: Annotated[HTTPSURL, Field(description="URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.")]
     feature_id: Annotated[str | None, Field(description="Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `encypher.markers_present_v2`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.")] = None
 
 
@@ -123,7 +124,7 @@ class VerifyAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/watermarks/items/properties/verify_agent')
-    agent_url: Annotated[AdCPUrl, Field(description="URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.")]
+    agent_url: Annotated[HTTPSURL, Field(description="URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.")]
     feature_id: Annotated[str | None, Field(description="Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `imatag.watermark_detected`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.")] = None
 
 

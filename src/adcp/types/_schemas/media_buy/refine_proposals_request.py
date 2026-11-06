@@ -7,12 +7,20 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
 
 from ..core.context import ContextObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 from .proposal_refinement import ProposalRefinement
+
+
+class RefineProposalsRequestPushNotificationConfig(PushNotificationConfig):
+    """
+    Webhook configuration for asynchronous task notifications. Uses A2A-compatible PushNotificationConfig structure. By default, webhooks are signed with the AdCP RFC 9421 profile (see docs/building/by-layer/L1/security.mdx#webhook-callbacks) — the seller signs outbound with a key published at the jwks_uri on its own brand.json `agents[]` entry and the buyer verifies against that JWKS, so no shared secret crosses the wire. The optional `authentication` block selects the legacy Bearer or HMAC-SHA256 fallback for compatibility with receivers that have not yet adopted the 9421 profile; this fallback is deprecated and will be removed in AdCP 4.0. Note: the `idempotency_key` that receivers dedup on lives inside the webhook **payload** body (see docs/building/by-layer/L3/webhooks.mdx#reliability and the mcp-webhook-payload schema), not in this configuration object — this schema only describes the receiver-side transport config sent to the seller. This schema is designed for composition via allOf - consuming schemas should define their own additionalProperties constraints.
+    """
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-request.json', pointer='#/properties/push_notification_config')
 
 
 class RefineProposalsRequest(AdCPVersionEnvelope):
@@ -31,8 +39,8 @@ class RefineProposalsRequest(AdCPVersionEnvelope):
     context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.')] = None
     context: ContextObject | None = None
     governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: PushNotificationConfig | None = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key required for retry-safe proposal refinement.')]
+    push_notification_config: RefineProposalsRequestPushNotificationConfig | None = None
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key required for retry-safe proposal refinement.')]
     refinements: Annotated[list[ProposalRefinement], Field(description='Proposal operations to apply, with at most 25 entries per request. revise creates a draft successor from a draft, committed, or accepted source. finalize MUST target a draft, reserves inventory, and creates a committed successor whose expires_at is the hold deadline. A batch containing finalize MUST contain only finalize entries and is atomic. proposal_id values MUST be unique; results preserve request order.', json_schema_extra={'uniqueItems': True}, max_length=25, min_length=1)]
 
 

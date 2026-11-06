@@ -8,12 +8,7 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    HttpUrl,
-    StrFormatUuid,
-)
+from adcp.types.constraints import HttpUrl, StrFormatUuid
 
 from ..adagents import DelegationType
 from ..enums.adcp_protocol import AdCPProtocol
@@ -23,6 +18,8 @@ from .agent_signing_key import AgentSigningKey
 from .canonical_format_kind import CanonicalFormatKind
 from .collection import Collection
 from .collection_selector import CollectionSelector
+from .country_code import CountryCode
+from .domain_name import DomainName
 from .format_id import FormatReferenceStructuredObject
 from .identifier import Identifier
 from .property import Property
@@ -102,9 +99,6 @@ class PropertySource(StrEnum):
     CONTRIBUTED = 'contributed'
 
 
-Domain = AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
-
-
 ChangedFields = Annotated[Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(description='Advisory list of changed top-level field names from the source document. Example values for publisher.adagents_changed include "formats", "placements", and "authorized_agents"; for agent.profile_updated these are profile field names such as "channels" or "format_kinds". Producers SHOULD enumerate every changed semantic field, explicitly including formats and placements for catalog-only revisions (additive from 3.2). Consumers MAY use this for targeted index refresh but MUST re-resolve every depended-on field when reading an older retained event that lacks this list.', min_length=1)]
 
 
@@ -117,7 +111,7 @@ class PropertyPayload(AdCPBaseModel):
     classification: Classification | None = None
     source: PropertySource | None = None
     identifiers: Annotated[list[Identifier] | None, Field(min_length=1)] = None
-    publisher_domain: Domain | None = None
+    publisher_domain: DomainName | None = None
     property: Annotated[Property | None, Field(description='Optional full post-change property object when available.')] = None
     changed_fields: ChangedFields | None = None
 
@@ -245,7 +239,7 @@ class CollectionIdentifier(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/collectionIdentifier')
-    publisher_domain: Annotated[Domain, Field(description='Distribution platform domain, such as youtube.com or spotify.com.')]
+    publisher_domain: Annotated[DomainName, Field(description='Distribution platform domain, such as youtube.com or spotify.com.')]
     type: DistributionIdentifierType
     value: str
 
@@ -256,7 +250,7 @@ class CollectionPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/collectionPayload')
     collection_rid: Annotated[str | None, Field(json_schema_extra={'format': 'uuid'})] = None
-    publisher_domain: Domain | None = None
+    publisher_domain: DomainName | None = None
     collection_id: Annotated[str | None, Field(description='Publisher-local collection_id from the authoritative adagents.json.')] = None
     name: str | None = None
     kind: CollectionKind | None = None
@@ -278,7 +272,7 @@ class RegistryEventCollectionCreatedCollectionPayload(CollectionPayload):
     collection_id: Annotated[str | None, Field(description='Publisher-local collection_id from the authoritative adagents.json.')]
     collection_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
     identifiers: Annotated[list[CollectionIdentifier], Field(description='Distribution identifiers that alias this collection across platforms.')]
-    publisher_domain: Domain
+    publisher_domain: DomainName
 
 
 class RegistryEventCollectionCreatedCollection(RegistryEvent):
@@ -345,7 +339,7 @@ class RegistryEventCollectionRemovedCollectionPayload(CollectionPayload):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/8/properties/payload')
     status: Literal[Status.REMOVED]
     collection_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
-    publisher_domain: Domain
+    publisher_domain: DomainName
 
 
 class RegistryEventCollectionRemovedCollection(RegistryEvent):
@@ -384,7 +378,7 @@ class AgentProfilePayload(AdCPBaseModel):
     type: AgentProfilePayloadType | None = None
     channels: StringArray | None = None
     property_types: StringArray | None = None
-    markets: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(json_schema_extra={'uniqueItems': True})] = None
+    markets: Annotated[list[CountryCode] | None, Field(json_schema_extra={'uniqueItems': True})] = None
     categories: StringArray | None = None
     category_taxonomy: str | None = None
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Named-format profile projection. Use canonical `format_kinds` and `format_option_refs`.')] = None
@@ -427,7 +421,7 @@ class RegistryEventAgentRemovedAgentPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload')
     agent_url: HttpUrl
-    removed_from_publishers: Annotated[list[Domain] | None, Field(min_length=1)] = None
+    removed_from_publishers: Annotated[list[DomainName] | None, Field(min_length=1)] = None
 
 
 class RegistryEventAgentRemovedAgent(RegistryEvent):
@@ -592,8 +586,8 @@ class PublisherAdagentsPayload(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('publisher_domain',), ('domain',)), 'anyOf'),
     )
-    publisher_domain: Domain | None = None
-    domain: Annotated[Domain | None, Field(description='Legacy alias for publisher_domain retained for early feed examples.')] = None
+    publisher_domain: DomainName | None = None
+    domain: Annotated[DomainName | None, Field(description='Legacy alias for publisher_domain retained for early feed examples.')] = None
     properties_added: NonNegativeInt | None = None
     properties_removed: NonNegativeInt | None = None
     agents_added: list[HttpUrl] | None = None
@@ -651,7 +645,7 @@ class AuthorizationType(StrEnum):
     SIGNAL_TAGS = 'signal_tags'
 
 
-Countries = Annotated[Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
+Countries = Annotated[Annotated[list[CountryCode], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
 
 
 class Evidence(StrEnum):
@@ -672,7 +666,7 @@ class AuthorizationPayload(AdCPBaseModel):
     id: Annotated[str | None, Field(description='Registry authorization row id when the event is backed by a materialized effective authorization row.', json_schema_extra={'format': 'uuid'})] = None
     agent_url: HttpUrl
     agent_url_canonical: Annotated[str | None, Field(description='Registry-canonicalized form of agent_url for equality checks.')] = None
-    publisher_domain: Domain
+    publisher_domain: DomainName
     authorization_type: Annotated[AuthorizationType | None, Field(description='When present, identifies the adagents.json authorization variant represented by this payload.')] = None
     authorized_for: str | None = None
     property_ids: Annotated[list[PropertyID] | None, Field(min_length=1)] = None
@@ -734,4 +728,4 @@ RegistryEvent._branch_models = (RegistryEventPropertyCreatedProperty, RegistryEv
 RegistryEvent.model_rebuild(force=True)
 
 
-__all__ = ["AgentProfilePayload", "AuthorizationPayload", "ChangedFields", "Classification", "CollectionIdentifier", "CollectionPayload", "CompliancePayload", "ComplianceStatus", "Countries", "Domain", "PropertyPayload", "PropertySource", "PublisherAdagentsPayload", "RegistryEvent", "StoryboardStatus", "StringArray"]
+__all__ = ["AgentProfilePayload", "AuthorizationPayload", "ChangedFields", "Classification", "CollectionIdentifier", "CollectionPayload", "CompliancePayload", "ComplianceStatus", "Countries", "PropertyPayload", "PropertySource", "PublisherAdagentsPayload", "RegistryEvent", "StoryboardStatus", "StringArray"]

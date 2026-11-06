@@ -430,7 +430,10 @@
       "x-status": "experimental"
     },
     "Shared15": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared2": {
@@ -700,8 +703,10 @@
                   "description": "A pricing option for licensable rights. Separate from media-buy pricing options \u2014 rights pricing includes period, impression caps, overage rates, and use-type scoping.",
                   "properties": {
                     "currency": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "ISO 4217 currency code",
                       "pattern": "^[A-Z]{3}$",
+                      "title": "Currency Code",
                       "type": "string"
                     },
                     "description": {

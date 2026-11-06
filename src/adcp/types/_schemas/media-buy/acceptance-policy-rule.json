@@ -106,7 +106,10 @@
     "jurisdictions": {
       "description": "Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
         "pattern": "^[A-Z]{2}$",
+        "title": "Country Code",
         "type": "string"
       },
       "minItems": 1,

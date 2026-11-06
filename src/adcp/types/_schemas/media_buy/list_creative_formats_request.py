@@ -7,10 +7,10 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
+from ..core.domain_name import DomainName
 from ..core.ext import ExtensionObject
 from ..core.format_id import FormatReferenceStructuredObject
 from ..core.pagination_request import PaginationRequest
@@ -42,7 +42,7 @@ class ListCreativeFormatsRequest(AdCPVersionEnvelope):
     min_height: Annotated[int | None, Field(description='Minimum height in pixels (inclusive). Returns formats where ANY render has height >= this value.')] = None
     is_responsive: Annotated[bool | None, Field(description='Filter for responsive formats that adapt to container size. When true, returns formats without fixed dimensions.')] = None
     name_search: Annotated[str | None, Field(description='Search for formats by name (case-insensitive partial match)')] = None
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description="Deprecated compatibility filter for older 3.x callers. A compatibility implementation MAY project publisher-origin or community-catalog declarations obtained through the registry publisher lookup, but MUST NOT synthesize a publisher catalog from seller products. New callers use `GET /api/registry/publisher?domain=...` for publisher acceptance and `get_products` for this seller's deliverability. The pattern below is a syntactic floor, not an SSRF guard.")] = None
+    publisher_domain: Annotated[DomainName | None, Field(description="Deprecated compatibility filter for older 3.x callers. A compatibility implementation MAY project publisher-origin or community-catalog declarations obtained through the registry publisher lookup, but MUST NOT synthesize a publisher catalog from seller products. New callers use `GET /api/registry/publisher?domain=...` for publisher acceptance and `get_products` for this seller's deliverability. The pattern below is a syntactic floor, not an SSRF guard.")] = None
     property_id: Annotated[PropertyID | None, Field(description="Filter to formats supported on the named property within the publisher's catalog. Resolves to a property in the publisher's `adagents.json` `properties[]`; the agent returns only `formats[]` entries whose `applies_to_property_ids` includes this property (or entries with no scope, which apply to all properties). Typically used in combination with `publisher_domain`.")] = None
     wcag_level: Annotated[WCAGLevel | None, Field(description='Filter to formats that meet at least this WCAG conformance level (A < AA < AAA)')] = None
     disclosure_positions: Annotated[list[DisclosurePosition] | None, Field(description="Filter to formats that support all of these disclosure positions. When a format has disclosure_capabilities, match against those positions. Otherwise fall back to supported_disclosure_positions. Use to find formats compatible with a brief's compliance requirements.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None

@@ -10,17 +10,14 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
 from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
     AccountAuthorizationAllowedTasksItem,
     AccountChangeFeedSupportedRetentionDays,
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     AdcpCapabilityChangesCacheTtlSeconds,
     AdcpIdempotencyIdempotencySupportedInFlightMaxSeconds,
     AdcpIdempotencyIdempotencySupportedReplayTtlSeconds,
     AdcpPrincipalMaxReportingDestinations,
     AdcpPrincipalSuspensionIntervalSeconds,
-    AdCPUrl,
     AdCPVersionEnvelopeAdcpVersion,
     AgentReportingDestinationFileTransferDestinationTransport,
     CreativeCanonicalCatalogVersion,
@@ -53,7 +50,9 @@ from ..core.attestation_capabilities import AttestationCapabilities
 from ..core.audience_activation_method import AudienceActivationMethod
 from ..core.audience_evidence_requirements import EvidencePresence, RequirementMode
 from ..core.context import ContextObject
+from ..core.country_code import CountryCode
 from ..core.creative_operation_format_declaration import CreativeOperationFormatDeclaration
+from ..core.domain_name import DomainName
 from ..core.duration import Duration
 from ..core.error import Error
 from ..core.experimental_feature_id import ExperimentalFeatureID
@@ -61,6 +60,7 @@ from ..core.ext import ExtensionObject
 from ..core.geo_place_support import GeographicPlaceSystemSupport
 from ..core.geo_place_system import GeographicPlaceIdentifierSystem
 from ..core.geo_region_support import GeographicRegionSupport
+from ..core.https_url import HTTPSURL
 from ..core.locale_tag import LanguageTag
 from ..core.macro_resolution_capability import MacroProcessingCapability
 from ..core.media_buy_features import MediaBuyFeatures
@@ -521,7 +521,7 @@ class AcceptancePolicyDiscovery(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('default_profile_ids'),
     )
-    catalog_url: Annotated[AdCPUrl, Field(description='HTTPS document that validates against acceptance-policy-catalog.json.')]
+    catalog_url: Annotated[HTTPSURL, Field(description='HTTPS document that validates against acceptance-policy-catalog.json.')]
     catalog_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the exact catalog representation fetched from catalog_url.')]
     default_profile_ids: Annotated[list[StrMinLen1] | None, Field(description='Local or registry-referenced catalog profiles that apply seller-wide unless a product adds further profiles. IDs MUST resolve uniquely across profiles and registry_profiles; all referenced profiles compose restrictively.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
@@ -962,9 +962,9 @@ class Portfolio(AdCPBaseModel):
     Information about the seller's media inventory portfolio. Media-buy sellers SHOULD publish primary_channels and primary_countries as their complete brief-routing scope. Buyers use publisher_domains to verify authorization via adagents.json. Omitted routing arrays mean unknown scope and MUST NOT be interpreted as global coverage.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/media_buy/properties/portfolio')
-    publisher_domains: Annotated[list[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain], Field(description="Publisher domains this seller is authorized to represent. Buyers should fetch each publisher's adagents.json for property definitions.", min_length=1)]
+    publisher_domains: Annotated[list[DomainName], Field(description="Publisher domains this seller is authorized to represent. Buyers should fetch each publisher's adagents.json for property definitions.", min_length=1)]
     primary_channels: Annotated[list[MediaChannel] | None, Field(description="Complete list of AdCP media channels for which this sales agent accepts and can meaningfully answer product-discovery briefs. When present, this is an exhaustive brief-routing allowlist: buyers MAY skip the agent when a brief's requested channels do not intersect it. Omission means channel scope is unknown and MUST NOT be interpreted as support for every channel. This is a routing pre-filter, not a promise of current product availability.")] = None
-    primary_countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="Complete list of ISO 3166-1 alpha-2 countries for which this sales agent accepts and can meaningfully answer product-discovery briefs. When present, this is an exhaustive brief-routing allowlist: buyers MAY skip the agent when a brief's requested countries do not intersect it. Omission means country scope is unknown and MUST NOT be interpreted as global coverage. This is a routing pre-filter, not a promise of current product availability and not an executable geo-targeting declaration; media_buy.execution.targeting geo capabilities and each product's overlay_support remain authoritative for targeting execution.")] = None
+    primary_countries: Annotated[list[CountryCode] | None, Field(description="Complete list of ISO 3166-1 alpha-2 countries for which this sales agent accepts and can meaningfully answer product-discovery briefs. When present, this is an exhaustive brief-routing allowlist: buyers MAY skip the agent when a brief's requested countries do not intersect it. Omission means country scope is unknown and MUST NOT be interpreted as global coverage. This is a routing pre-filter, not a promise of current product availability and not an executable geo-targeting declaration; media_buy.execution.targeting geo capabilities and each product's overlay_support remain authoritative for targeting execution.")] = None
     description: Annotated[StrMaxLen5000 | None, Field(description='Markdown-formatted description of the inventory portfolio')] = None
     advertising_policies: Annotated[MediaBuyPortfolioAdvertisingPolicies | None, Field(description='Advertising content policies, restrictions, and guidelines')] = None
 
@@ -1048,7 +1048,7 @@ class Signals(AdCPBaseModel):
         UniqueItems('discovery_modes'),
     )
     anonymous_discovery: Annotated[bool | None, Field(description='Whether this agent accepts get_signals discovery without caller credentials in brief or wholesale mode. true means an anonymous discovery request can produce a successful response, but the response may be a public subset and may differ from results for an authenticated principal or selected account. false means get_signals requires an authenticated principal. Absence means unspecified legacy behavior, so callers probe and handle AUTH_MISSING. A valid authenticated request is never rejected merely because credentials were supplied.')] = None
-    data_provider_domains: Annotated[list[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain] | None, Field(description="Data provider domains this signals agent is authorized to resell. Buyers should fetch each data provider's adagents.json for published signal definitions and to verify authorization.", min_length=1)] = None
+    data_provider_domains: Annotated[list[DomainName] | None, Field(description="Data provider domains this signals agent is authorized to resell. Buyers should fetch each data provider's adagents.json for published signal definitions and to verify authorization.", min_length=1)] = None
     discovery_modes: Annotated[list[DiscoveryMode] | None, Field(default_factory=lambda: TypeAdapter(list[DiscoveryMode]).validate_python(['brief']), description="Discovery modes this signals agent supports on get_signals. 'brief' (default — every signals agent supports this): semantic discovery driven by signal_spec or signal_refs, with deprecated signal_ids accepted for older clients. 'wholesale': raw wholesale signals feed enumeration — caller omits signal_spec, signal_refs, and signal_ids and the agent returns its full priced signals feed, paginated, scoped by filters/account/destinations/countries. Agents that do not declare 'wholesale' MAY return INVALID_REQUEST for wholesale calls. Absent declaration is treated as ['brief'].", json_schema_extra={'uniqueItems': True, 'default': ['brief']}, min_length=1)]
     features: Annotated[SignalsFeatures | None, Field(description='Optional signals features supported')] = None
 
@@ -1415,7 +1415,7 @@ class Identity(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/identity')
-    brand_json_url: Annotated[AdCPUrl | None, Field(description="HTTPS URL of the operator's brand.json (typically `https://{operator-domain}/.well-known/brand.json`). Trust-root pointer for this agent's signing keys. See [security.mdx §Discovering an agent's signing keys via `brand_json_url`](https://adcontextprotocol.org/docs/building/by-layer/L1/security#discovering-an-agents-signing-keys-via-brand_json_url) for the verifier algorithm and `x-adcp-validation` for structured constraints. Distinct from `sponsored_intelligence.brand_url`, which is a rendering pointer for SI agent visuals — verifiers MUST use this field for key discovery and MUST NOT fall back to `sponsored_intelligence.brand_url` as a trust-root pointer.")] = None
+    brand_json_url: Annotated[HTTPSURL | None, Field(description="HTTPS URL of the operator's brand.json (typically `https://{operator-domain}/.well-known/brand.json`). Trust-root pointer for this agent's signing keys. See [security.mdx §Discovering an agent's signing keys via `brand_json_url`](https://adcontextprotocol.org/docs/building/by-layer/L1/security#discovering-an-agents-signing-keys-via-brand_json_url) for the verifier algorithm and `x-adcp-validation` for structured constraints. Distinct from `sponsored_intelligence.brand_url`, which is a rendering pointer for SI agent visuals — verifiers MUST use this field for key discovery and MUST NOT fall back to `sponsored_intelligence.brand_url` as a trust-root pointer.")] = None
     per_principal_key_isolation: Annotated[bool | None, Field(description="When true, this multi-principal operator scopes signing keys per-principal so a single principal's key compromise does not silently re-scope across principals served by the same operator. `kid` values remain opaque to verifiers per RFC 7517; any operator-side naming convention (e.g., `{operator}:{principal}:{key_version}`) is internal bookkeeping and MUST NOT be parsed by verifiers. See docs/building/understanding/security-model.mdx.")] = False
     key_origins: Annotated[KeyOrigins | None, Field(description='Map of signing-key surface/purpose → publishing origin, so counterparties can verify origin separation (e.g., governance keys served from a separate origin than transport/webhook keys) at onboarding. Absent means the operator has not declared a separation scheme; receivers SHOULD assume shared-origin. Every entry listed MUST have a corresponding signing posture declared elsewhere — `request_signing` requires non-empty `request_signing.supported_for`/`required_for`/`protocol_methods_supported_for`/`protocol_methods_required_for`; `webhook_signing` requires `webhook_signing.supported === true` and names the webhook delivery surface, not a required live `adcp_use: "webhook-signing"` key purpose — otherwise the consistency check at signature-verification time has nothing to anchor against. See `x-adcp-validation` and docs/building/by-layer/L1/security.mdx §Origin separation.')] = None
     compromise_notification: Annotated[CompromiseNotification | None, Field(description='Whether this agent emits the `identity.compromise_notification` webhook event on key revocation due to known or suspected compromise (as opposed to scheduled rotation). Subscribers use this to bound the window between compromise detected and verifiers converging on revocation. See docs/building/implementation/webhooks.mdx §identity.compromise_notification.')] = None

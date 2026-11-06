@@ -6,10 +6,9 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    StrMinLen1,
-)
+from adcp.types.constraints import StrMinLen1
+
+from .domain_name import DomainName
 
 
 class CollectionReference(AdCPBaseModel):
@@ -20,7 +19,7 @@ class CollectionReference(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection-ref.json', pointer='#')
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain where the adagents.json declaring this collection is hosted.')]
+    publisher_domain: Annotated[DomainName, Field(description='Domain where the adagents.json declaring this collection is hosted.')]
     collection_id: Annotated[StrMinLen1, Field(description="Collection ID from the publisher's adagents.json collection catalog.")]
 
 

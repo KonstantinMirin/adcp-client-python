@@ -34,8 +34,10 @@
       "type": "number"
     },
     "currency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP').",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "period": {

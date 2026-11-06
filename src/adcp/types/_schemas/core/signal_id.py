@@ -6,11 +6,9 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
-    HttpUrl,
-)
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
+
+from .domain_name import DomainName
 
 
 class SignalID(BranchDispatchMixin, AdCPBaseModel):
@@ -35,7 +33,7 @@ class SignalIDCatalog(SignalID):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-id.json', pointer='#/oneOf/0')
     source: Annotated[Literal['catalog'], Field(description="Discriminator indicating this signal is from a data provider's published adagents.json signals[]")]
-    data_provider_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description="Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json")]
+    data_provider_domain: Annotated[DomainName, Field(description="Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json")]
     id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the data provider's catalog (e.g., 'likely_ev_buyers', 'income_100k_plus')")]
 
 

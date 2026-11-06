@@ -25,7 +25,6 @@ from ._schemas.brand import ColorRefName as ColorRefName
 from ._schemas.brand import ColorRefSurface as ColorRefSurface
 from ._schemas.brand import ColorRefValue as ColorRefValue
 from ._schemas.brand import ColorValue as ColorValue
-from ._schemas.brand import Domain as Domain
 from ._schemas.brand import HexColor as HexColor
 from ._schemas.brand import HousePortfolio as HousePortfolio
 from ._schemas.brand import HouseRedirect as HouseRedirect
@@ -119,7 +118,6 @@ __all__ = [
     'CreativeApproved',
     'CreativePendingReview',
     'CreativeRejected',
-    'Domain',
     'GetBrandIdentityError',
     'GetBrandIdentityRequest',
     'GetBrandIdentityResponse',

@@ -85,7 +85,10 @@
       "x-status": "experimental"
     },
     "Shared16": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared17": {
@@ -702,9 +705,11 @@
           "type": "string"
         },
         "url": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Brand agent MCP endpoint URL. Callers comparing this URL against another value (e.g., resolving 'is this the brand's declared agent?' against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         }
       },
@@ -745,9 +750,11 @@
           "type": "string"
         },
         "jwks_uri": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "HTTPS URL of the agent's JWKS (RFC 7517) containing public keys used to verify artifacts this agent signs or requests it sends. Verified artifacts include signed governance_context tokens (for governance agents) and RFC 9421 HTTP Signatures on outgoing requests (for any agent). When absent, verifiers MUST default to /.well-known/jwks.json on the origin of `url`. Keys are identified by `kid` in the JWS header or RFC 9421 `keyid` parameter; JWKS MAY contain multiple keys to support rotation and per-purpose separation via `key_ops` and `use`.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         },
         "right_types": {
@@ -785,9 +792,11 @@
           "type": "string"
         },
         "url": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Agent endpoint URL (MCP or A2A). Callers comparing a brand's declared agent URL against another value (e.g., resolving 'is this the agent that signed this artifact?' or matching against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. After the publication chain and an authorized request-signing key verify, this exact entry's canonical URL is the stable Agent identity input for principal mapping; the domain, JWKS URI, kid, and key material are credential or trust facts beneath it, not the Agent identity. See docs/reference/url-canonicalization.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         }
       },
@@ -1209,12 +1218,15 @@
           "type": "array"
         },
         "url": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "HTTPS URL to a human-accessible contestation form or information page.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         }
       },
+      "title": "Data Subject Contestation",
       "type": "object"
     },
     "default_language": {
@@ -1249,8 +1261,10 @@
       "description": "BCP 47 language tag for legacy plain-string and plain-array content in this document. Readers assume en when omitted."
     },
     "domain": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "A valid domain name",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "elevation": {
@@ -1292,9 +1306,11 @@
           "type": "string"
         },
         "url": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "HTTPS URL to the font file (WOFF2, TTF, or OTF)",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         },
         "weight": {
@@ -1945,9 +1961,11 @@
                                 "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
                                 "properties": {
                                   "agent_url": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
                                     "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                                     "format": "uri",
                                     "pattern": "^https://",
+                                    "title": "HTTPS URL",
                                     "type": "string"
                                   },
                                   "feature_id": {
@@ -2089,9 +2107,11 @@
                                 "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
                                 "properties": {
                                   "agent_url": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
                                     "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                                     "format": "uri",
                                     "pattern": "^https://",
+                                    "title": "HTTPS URL",
                                     "type": "string"
                                   },
                                   "feature_id": {
@@ -2182,16 +2202,21 @@
                   "$ref": "#/definitions/Shared1"
                 },
                 "url": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
                   "format": "uri",
                   "pattern": "^https://",
+                  "title": "HTTPS URL",
                   "type": "string"
                 }
               },
               "type": "object"
             },
             "domain": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "title": "Domain Name",
               "type": "string"
             },
             "industries": {
@@ -3088,9 +3113,11 @@
           "type": "array"
         },
         "url": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Rights agent MCP endpoint URL. Callers comparing this URL against another value (e.g., matching against a brand's declared rights endpoint) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         }
       },
@@ -4032,9 +4059,11 @@
           "$ref": "#/definitions/Shared0"
         },
         "authoritative_location": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "HTTPS URL of the authoritative brand.json file",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         },
         "last_updated": {
@@ -4080,8 +4109,10 @@
           "$ref": "#/definitions/Shared7"
         },
         "region": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "ISO 3166-1 alpha-2 country code if this is a regional domain",
           "pattern": "^[A-Z]{2}$",
+          "title": "Country Code",
           "type": "string"
         }
       },

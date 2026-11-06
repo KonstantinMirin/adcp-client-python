@@ -8,10 +8,9 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    HttpUrl,
-)
+from adcp.types.constraints import HttpUrl, StrDomainName
+
+from ..core.domain_name import DomainName
 
 
 class DiscoveryMethod(StrEnum):
@@ -40,9 +39,9 @@ class PublisherEntry(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('discovery_method', None, ('authoritative_location', 'adagents_authoritative', 'ads_txt_managerdomain')),), require=('manager_domain',), forbid=()),
     )
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Publisher whose adagents.json authorizes the agent.')]
+    publisher_domain: Annotated[DomainName, Field(description='Publisher whose adagents.json authorizes the agent.')]
     discovery_method: Annotated[DiscoveryMethod, Field(description="How the directory discovered this authorization. `direct`: agent listed in publisher's own /.well-known/adagents.json. `authoritative_location`: publisher's /.well-known/adagents.json declared `authoritative_location` pointing to a manager file that lists the agent. `adagents_authoritative`: discovered via the manager file (publisher-declared in the manager's own properties[]). `ads_txt_managerdomain`: discovered via the publisher's ads.txt `MANAGERDOMAIN=` directive pointing to the manager file. The last three paths converge on the same manager file but have different trust profiles — the `managerdomain` path is the weakest because the manager file's `publisher_domain` anchor (the `managerdomain` fallback safety rule) is the only positive cross-check.")]
-    manager_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description='Domain of the manager file that authorizes this publisher → agent edge. Required when `discovery_method` is `authoritative_location`, `adagents_authoritative`, or `ads_txt_managerdomain`. Null or absent when `discovery_method` is `direct`.')] = None
+    manager_domain: Annotated[StrDomainName | None, Field(description='Domain of the manager file that authorizes this publisher → agent edge. Required when `discovery_method` is `authoritative_location`, `adagents_authoritative`, or `ads_txt_managerdomain`. Null or absent when `discovery_method` is `direct`.')] = None
     properties_authorized: Annotated[NonNegativeInt, Field(description="Count of properties under THIS `publisher_domain` only that the agent's selectors resolve to. Never a network-wide count. The directory computes this by applying the publisher's `adagents.json` selector predicates against the publisher's own properties (federated) OR against the parent file's inline properties carrying matching `publisher_domain` (inline, per adcp#4825 resolution rule).")]
     properties_total: Annotated[NonNegativeInt, Field(description="Count of properties under THIS `publisher_domain` only — total inventory the publisher's file declares. Never a network-wide count. On managed-network-shape parent files (per adcp#4825 inline resolution), this is the count of inline `properties[]` entries whose `publisher_domain` field matches this row's domain.")]
     property_ids: Annotated[list[str] | None, Field(description="Canonical list of `property_id`s under THIS `publisher_domain` that the agent's selectors resolve to. Present iff the request included `?include=properties`; absent otherwise. The set is the same population `properties_authorized` counts, surfaced as IDs so consumers can run full set-diff against a federated fetch (count-equality is not set-equality — a publisher rotating N properties leaves the count unchanged but the set entirely different). Per-publisher scope; never network-wide. Order is unspecified; consumers should treat as a set.")] = None
