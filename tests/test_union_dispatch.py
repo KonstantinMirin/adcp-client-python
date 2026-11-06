@@ -47,7 +47,7 @@ from pydantic import BaseModel, ValidationError
 import adcp.types._schemas as schemas_pkg
 from adcp.types._base import BranchDispatchMixin, applied_schema, through_the_store
 from codegen import bundle, catalogue, harness, held
-from tests.nodeset import claimed
+from tests.nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
 #: **The bundle a run reads, taken from the ONE declaration of it**
@@ -347,34 +347,6 @@ def _underdetermined(base: type) -> bool:
     )
 
 
-#: **The denominators this gate ranges over, measured on trunk at 8dc73a217.**  Stated
-#: because the gate's own failure mode is that it grades nothing: the payloads come from a
-#: committed store, so a key derivation that stops matching makes every assertion below
-#: hold over an empty loop and the check is green for free.  An equality here is what makes
-#: that reddening rather than silent -- the defence
-#: :func:`test_every_union_bases_dispatch_constructs` has none of and says so in its own
-#: docstring.  Measured: pointing :data:`codegen.held.COMMITTED` at a directory that is not
-#: there takes this clause from green to ``AssertionError: (0, 584)``.
-#:
-#: ``BRANCHES_WITH_A_HELD_PAYLOAD`` is how many branch positions the committed accepts
-#: floor answers for (584 of the 586 a base names; the two it does not are
-#: ``media-buy/buy-products-request.json#/anyOf/1/properties/account/allOf/0/anyOf/0`` and
-#: ``media-buy/request-proposals-request.json``'s, which is
-#: ``adcp-client-python-82m.65``), and :data:`GRADED` is how many of those the DOCUMENT
-#: admits at its ROOT -- the 87 it does not are skipped, because a payload the document
-#: refuses is not one this reading is about.  ``trusted-match/provider-registration.json``
-#: is the instructive one of the 87: its root carries an ``if``/``then`` requiring
-#: ``countries``, so the instance drawn at ``#/anyOf/1`` is admitted by that branch node
-#: and refused by the document, and the base refuses it -- correctly.
-UNION_BASES = 141
-BRANCHES_WITH_A_HELD_PAYLOAD = 584
-GRADED = 497
-#: Of the graded payloads, how many land on a branch OTHER than the one they were drawn
-#: from -- every one of them under a union that DECLARES ``UNDERDETERMINED`` at its own
-#: combinator, which is what the assertion below says and this number only sizes.
-LANDED_ELSEWHERE_UNDER_A_DECLARATION = 50
-
-
 def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_from() -> None:
     """Reading 3's SENTENCE, graded on behaviour: offer a payload, read the class back.
 
@@ -416,22 +388,40 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     first-match selection reaches it for payloads the document gives to another branch.
     The consequence is accounted at the union's own pointer and nowhere else, which is
     ``adcp-client-python-82m.66``.
+
+    **AND NONE OF THOSE NUMBERS IS ASSERTED, which is deliberate and is this suite's own
+    rule** (``tests/test_every_check_names_its_set.py``: a check may not pin a census as an
+    equality).  The non-vacuity defence this clause needs is real all the same, because the
+    payloads come from a committed store and a key derivation that stopped matching would
+    make every assertion here hold over an empty loop.  So it is :func:`claimed` and
+    :func:`partitions` instead: the bases are named, the branch positions the floor answers
+    for are named, and both the screen and the outcome are PARTITIONS -- every branch
+    position is offered-or-unheld, every offered payload is admitted-or-refused by the
+    document, and every graded payload reached its branch or landed elsewhere under a
+    declaration.  Measured: pointing :data:`codegen.held.COMMITTED` at a directory that is
+    not there takes this clause from green to ``empty set of nodes -- every assertion over
+    it holds vacuously``.
     """
     bases = _declaring_bases()
     population = claimed("emitted union bases declaring a branch list", bases)
-    assert len(population) == UNION_BASES, (len(population), UNION_BASES)
     records = _records()
     identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
     floor = held.Store(held.COMMITTED)
 
-    offered = 0
-    graded = 0
-    elsewhere: list[tuple[str, str, str, str]] = []
+    positions: set[tuple[str, str]] = set()
+    offered: set[tuple[str, str]] = set()
+    unheld: set[tuple[str, str]] = set()
+    admitted: set[tuple[str, str]] = set()
+    refused_by_the_document: set[tuple[str, str]] = set()
+    reached_its_branch: set[tuple[str, str]] = set()
+    elsewhere_under_a_declaration: set[tuple[str, str]] = set()
     wrong: dict[str, tuple[str, str, str, str]] = {}
     for name in sorted(population):
         base = bases[name]
         for branch in base.__dict__["_branch_models"]:
             ref = branch.__dict__["__adcp_schema__"]
+            site = (ref.document, ref.pointer)
+            positions.add(site)
             key = harness.corpus_key(
                 {
                     "document": ref.document,
@@ -442,14 +432,18 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
             )
             payload = (floor.get(key) or [None])[0]
             if payload is None:
+                unheld.add(site)
                 continue
-            offered += 1
+            offered.add(site)
             root = records[ref.document]
             if _admits(root, "#", payload):
-                continue  # not a payload the document admits: not this reading's subject
-            graded += 1
+                # Not a payload the DOCUMENT admits, so not what this reading is about.
+                refused_by_the_document.add(site)
+                continue
+            admitted.add(site)
             got = type(base.model_validate(payload))
             if _dispatched_to(branch, got):
+                reached_its_branch.add(site)
                 continue
             where = f"{name} <- {branch.__name__} -> {got.__name__}"
             if not _underdetermined(base):
@@ -469,15 +463,19 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
                     repr(payload)[:200],
                 )
             else:
-                elsewhere.append((name, branch.__name__, got.__name__, ref.pointer))
+                elsewhere_under_a_declaration.add(site)
     assert wrong == {}, wrong
-    assert offered == BRANCHES_WITH_A_HELD_PAYLOAD, (offered, BRANCHES_WITH_A_HELD_PAYLOAD)
-    assert graded == GRADED, (graded, GRADED)
-    assert len(elsewhere) == LANDED_ELSEWHERE_UNDER_A_DECLARATION, (
-        len(elsewhere),
-        LANDED_ELSEWHERE_UNDER_A_DECLARATION,
-        elsewhere,
+    claimed("branch positions a union base names", positions)
+    claimed("branch positions the committed accepts floor answers for", offered)
+    partitions(positions, offered=offered, unheld=unheld)
+    partitions(offered, admitted=admitted, refused_by_the_document=refused_by_the_document)
+    claimed("branch payloads the document admits at its root", admitted)
+    partitions(
+        admitted,
+        reached_its_branch=reached_its_branch,
+        elsewhere_under_a_declaration=elsewhere_under_a_declaration,
     )
+    claimed("branch payloads that reached their own branch", reached_its_branch)
 
 
 #: A union root with a dispatch key, as a module declares one: a base naming the key, two
