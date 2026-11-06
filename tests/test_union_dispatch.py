@@ -291,7 +291,7 @@ def _dispatched_to(branch: type, got: type) -> bool:
     all.
 
     **This is a SECOND SPELLING of ``tests/test_emit.py``'s ``_dispatched_to`` and that is
-    ``adcp-client-python-82m.64``'s row**, not a decision taken here: the relation belongs
+    ``adcp-client-python-mz8l``'s row**, not a decision taken here: the relation belongs
     beside ``_branch_models``, which ``adcp/types/_base.py`` declares, and moving it is a
     change to a file two other lanes are live in.
     """
@@ -378,8 +378,15 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     nothing gets no exemption, and a base that declares one must still land INSIDE its own
     branch list.
 
-    **Measured on trunk at 8dc73a217**: 497 graded, 447 reaching the branch they were drawn
-    from or a branch of it, 50 landing elsewhere and every one of the 50 under a base
+    **Measured on trunk at 8dc73a217**: 141 bases naming 586 branch positions, 584 of which
+    the committed floor answers for (the two it does not are
+    ``adcp-client-python-rgoo``, and ``unheld`` below is what reports them); 497 of those
+    584 the document admits at its ROOT, and the 87 it refuses are not what this reading is
+    about -- ``trusted-match/provider-registration.json`` is the instructive one, where the
+    root's ``if``/``then`` requires ``countries``, the instance drawn at ``#/anyOf/1`` is
+    admitted by that branch node and refused by the document, and the base refuses it
+    correctly.  Of the 497: 447 reach the branch they were drawn
+    from or a branch of it, 50 land elsewhere and every one of the 50 is under a base
     declaring UNDERDETERMINED -- 46 of them on a branch the document ALSO admits, and 4 on
     ``core/async-response-data.json#/anyOf/0``, which the document REFUSES on ``errors`` or
     ``products``.  Those 4 are the declared ``('#', 'WIDENED', 'if')`` of
@@ -387,7 +394,7 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     ``$ref`` to that document, its class is declaredly wider than its node, so structural
     first-match selection reaches it for payloads the document gives to another branch.
     The consequence is accounted at the union's own pointer and nowhere else, which is
-    ``adcp-client-python-82m.66``.
+    ``adcp-client-python-84a9``.
 
     **AND NONE OF THOSE NUMBERS IS ASSERTED, which is deliberate and is this suite's own
     rule** (``tests/test_every_check_names_its_set.py``: a check may not pin a census as an
