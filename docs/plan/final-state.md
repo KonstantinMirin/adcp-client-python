@@ -258,6 +258,25 @@ So the three layers are:
   actually imports today, pointing at the generated class.** An alias is a NAME, so reading 6 holds
   with the aliases counted.
 
+**AND "ALREADY RESOLVES" IS MEASURED AT THE SPELLING A CONSUMER WRITES, NEVER AT THE MODULE THAT
+DECLARES IT.** A name upstream carries at `adcp.types.<domain>.<Name>` and that we also declare at
+`adcp.types.<domain>.<Name>` is **not thereby reachable**: the import an application has already
+written is `from adcp.types import <Name>`, and the flat namespace is where that resolves or raises.
+So a name counted *present* because its domain path matches **owes a flat alias exactly as a
+relocated one does** — the buckets differ in where the alias points, never in whether one is owed.
+
+**THIS IS NOT THE SPELLING RULE'S OPPOSITE, IT IS ITS BOUNDARY.** Refusing to reproduce upstream's
+spellings means refusing to put one object at every module upstream happens to expose it from. It
+does not mean refusing the **one** namespace an application imports from, which this reading names
+as a layer. One declared flat surface is a canonical location; a name at every module that mentions
+it is the accident.
+
+**AND THE CLAUSE IS GRADED OVER WHAT CONSUMER CODE ACTUALLY WRITES, NOT OVER THE TABLE'S OWN ROWS.**
+A table can be complete against itself and leave the written import failing — so the measurement is
+the set of flat spellings appearing in upstream's own examples, scripts and documentation, resolved
+from an environment holding only the installed wheel. A bucket that explains why a row needs no
+alias is only sound if the spelling it refers to is the one a caller uses.
+
 **A NAME WITH NO SCHEMA SUBJECT GETS A MIGRATION NOTE AND NEVER A CLASS.** Where upstream's flat
 namespace carries something no document states — a hand-written ergonomic, eager, legacy or
 registry layer — an alias has nothing to point at, and **minting a nodeless class to satisfy an
