@@ -136,7 +136,6 @@ OWED = frozenset(
     {
         "test_conj_rule_beside_a_type",
         "test_emit_product",
-        "test_ref_branch_union",
         "test_required_with_no_declaration",
         "test_union_disjointness",
     }

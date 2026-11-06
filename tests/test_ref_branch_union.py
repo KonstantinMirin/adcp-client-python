@@ -35,6 +35,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import fresh
 import pytest
 from compiled import compiled
 from nodeset import claimed, partitions
@@ -47,7 +48,16 @@ from codegen.lower import union as lower_union
 from codegen.refusal import Kind
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+#: **The bundle a run reads, taken from the ONE declaration of it**
+#: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while
+#: every class it grades was emitted from the PATCHED bundle, so its two halves ranged over
+#: two different document sets.  Measured against ``fresh.PUBLISHED``: the published
+#: directory is portable over 1,054 documents and the run's over 1,059, the five only the
+#: patched one holds are documents ``patches/8525`` ADDS, and of the 1,054 they share 211
+#: differ -- 200 of those beyond ``$schema``/``title``/``description``.  So the published
+#: path is ``adcp-client-python-fr4r``'s lookup error waiting at whichever clause names a
+#: document first, and a quietly different answer at each of the others.
+BUNDLE = fresh.BUNDLE
 
 #: One target document per branch, each pinning ``kind`` to its own value.  Object roots
 #: with their own ``title``, because a bare ``$ref`` branch's SECOND base is the target's
@@ -330,20 +340,30 @@ def test_a_ref_branch_whose_target_is_not_a_class_refuses_by_name() -> None:
 
 
 def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targets() -> None:
-    """The row's REAL population, named, and why none of it emits yet.
+    """The row's REAL population, named, and the verdict each one reaches.
 
-    Claimed from the bundle rather than listed, so a twelfth appearing upstream lands
+    Claimed from the bundle rather than listed, so a fourteenth appearing upstream lands
     here, and PARTITIONED by whether the branch list is reached at all: four of the
-    eleven carry a root ``allOf`` or ``properties``, which is a conjunction with every
+    THIRTEEN carry a root ``allOf`` or ``properties``, which is a conjunction with every
     branch that no pointer addresses (``ROOT_CONJUNCTS``), so they refuse before any
-    branch is planned and this row never sees them.  The other SEVEN are the row's own
-    population and are the seven its description names.
+    branch is planned and this row never sees them.  The other NINE are the row's own
+    population.
+
+    **IT WAS ELEVEN AND SEVEN, AND THE TWO THAT ARRIVED ARE THE PATCH SET'S**
+    (``adcp-client-python-lzzj.11.1``).  This module read the published bundle while the
+    classes it grades were emitted from the patched one; moved onto the run's own bundle,
+    ``core/geo-place-system.json`` and ``core/geo-place-type.json`` join the population,
+    because ``patches/8525`` rewrites each one's ``/anyOf/1`` from
+    ``{"type": "string", "format": "uri", "pattern": "^https://"}`` to a bare
+    ``$ref`` on ``core/https-url.json`` -- which is what "a union root with a bare ``$ref``
+    branch" names.  Pure GROWTH, measured in both directions: 11 roots against 13, the
+    original seven all still planned, nothing left.  Re-derived rather than re-pasted
+    (``a-frozen-set-can-be-the-only-thing-stopping-a-loop-from-running``), and the loop the
+    pin was standing in front of is re-derived with it below.
 
     What is asserted of each is the property this row is responsible for -- that no
     refusal anywhere in the run still reads "a bare $ref branch has no node to declare a
-    subclass from" -- and the property it is NOT: five of the seven still refuse, through
-    a target of their own that another row's gap blocks, so the emitted count this row
-    moves is ZERO and the constructed pair above is where the mechanism is graded.
+    subclass from" -- and, now, the verdict: ALL NINE EMIT.
 
     **The second emitter arrives at ``adcp-client-python-10l.55``:**
     ``core/assets/asset-union.json``, whose ``/oneOf/3`` branch references the UNION root
@@ -354,7 +374,7 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
     supplies the dispatch.
 
     The retired sentence is asserted absent over the WHOLE refusal set and not over
-    these eleven, because four further documents reached it through a CHAIN and a check
+    these thirteen, because four further documents reached it through a CHAIN and a check
     over the roots alone would not see them.
     """
     population = sorted(bundle.portable(BUNDLE))
@@ -388,6 +408,10 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
         "compliance/task-completion-data.json",
         "core/assets/asset-union.json",
         "core/async-response-data.json",
+        # The two ``patches/8525`` adds to this population, by rewriting ``/anyOf/1`` from
+        # a ``pattern``ed URI string to a bare ``$ref`` on ``core/https-url.json``.
+        "core/geo-place-system.json",
+        "core/geo-place-type.json",
         "core/media-buy-available-action-id.json",
         "core/pricing-option.json",
         "core/requirements/asset-requirements.json",
@@ -404,29 +428,35 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
     for document, row in sorted(out.refusals.items()):
         assert "has no node to declare a subclass from" not in row["detail"], document
 
-    # Each of the seven still refuses but TWO, and every refusal is on something OTHER
-    # than this row's ground: four through a target of their own, one on a nested
-    # union's ``discriminator`` sibling (``salesagent-j3k2l.67``).  Asserted as "refused, by name and pointer"
-    # rather than pinned to a keyword, because which gap each waits on is the other
-    # rows' fact and moves when they land.
-    # ``core/assets/asset-union.json`` is the second emitter and it DOES emit through
-    # this row, at ``adcp-client-python-10l.55``: a ``$ref`` branch onto a UNION root is
-    # §4's two bases like any other, once the gate asks ``compiler.TargetKind`` instead
-    # of asking whether the target has a ``compiler.Shape``.
+    # ``core/assets/asset-union.json`` is the second emitter, at
+    # ``adcp-client-python-10l.55``: a ``$ref`` branch onto a UNION root is §4's two bases
+    # like any other, once the gate asks ``compiler.TargetKind`` instead of asking whether
+    # the target has a ``compiler.Shape``.
     # ``core/media-buy-available-action-id.json`` is the first, and it does not emit
-    # through this row: its other branch declares
-    # ``type: "string"``, so the DOCUMENT says its instance is a scalar and §4 "What
-    # becomes what" makes the root an ``Annotated`` alias with no branch classes
-    # and no dispatch at all
-    # (``states_a_scalar_instance``).  The row's own description predicted it would
-    # REFUSE for want of a discriminant; it was already emitting, by the alias path, at
-    # the trunk this row branched from.
+    # through this row: its other branch declares ``type: "string"``, so the DOCUMENT says
+    # its instance is a scalar and §4 "What becomes what" makes the root an ``Annotated``
+    # alias with no branch classes and no dispatch at all (``states_a_scalar_instance``).
+    # The row's own description predicted it would REFUSE for want of a discriminant; it
+    # was already emitting, by the alias path, at the trunk this row branched from.
     assert "core/media-buy-available-action-id.json" in out.emitted
-    for document in roots - before_the_branches:
-        if document in out.emitted:
-            continue
-        row = out.refusals[document]
-        assert row["keyword"] and row["pointer"], document
+    # **ALL NINE EMIT, STATED -- and the form this replaces was a loop that could not
+    # fail.**  It read ``for document in roots - before_the_branches: if document in
+    # out.emitted: continue; assert out.refusals[document]["keyword"] and [...]["pointer"]``
+    # beside a comment saying "each of the seven still refuses but TWO".  Measured when
+    # ``adcp-client-python-lzzj.11.1`` moved this module onto the run's own bundle: all
+    # nine emit, and all SEVEN emitted on the published bundle too -- so the body never ran
+    # at the trunk this re-derivation branched from either, and the sentence beside it had
+    # been wrong for longer than the pin above was stale.  The emitted count this row moves
+    # is not ZERO and has not been.  A loop whose every member hits ``continue`` is the
+    # dead gate ``a-frozen-set-can-be-the-only-thing-stopping-a-loop-from-running``
+    # measured, so the fact is asserted instead of iterated: a root that stops emitting
+    # lands here by NAME, which is what the skipped loop could not do.
+    refusing = sorted(document for document in roots - before_the_branches if document not in out.emitted)
+    assert refusing == [], (
+        "a ref-branch union root that emits today stopped emitting, so this clause's own "
+        "sentence and the pinned population above are both out of date about it; re-measure "
+        f"before re-pinning: { {d: out.refusals.get(d) for d in refusing} }"
+    )
 
 
 # --------------------------------------------------------------------------- #
