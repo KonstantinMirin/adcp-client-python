@@ -44,11 +44,17 @@ inliner -- the address moved with every change to how we inline, for the share o
 bundle whose record differs from its raw document at all (the reading is ``bundle.record``
 against ``bundle.read`` over ``bundle.portable``, and it is most of it), so every entry
 below was redrawn at the per-pair cost tabulated above for a change that altered no
-document.  So the key is over ``bundle.source_identities`` instead: a document's own raw
-bytes and the raw bytes of its reference closure, which is where the closure the record's
-self-containment used to buy now comes from.  There is still no edge list anybody
-maintains -- the graph is read off the ``$ref`` strings the documents write -- and a
-hand-maintained map would be the second copy §3 forbids.
+document.  So the key is over ``catalogue.admitted_identities`` instead: what a document
+ADMITS with every ``$ref`` resolved to the node it names, and the instances it STATES and
+ADMITS, which is where the closure the record's self-containment used to buy now comes
+from.  There is still no edge list anybody maintains -- the graph is read off the ``$ref``
+strings the documents write -- and a hand-maintained map would be the second copy §3
+forbids.  **It is admission and not BYTES, which is the other half of the same sentence**
+(``adcp-client-python-lzzj.8``): keyed on a document's raw text, an acceptance-preserving
+rewrite of the bundle redrew the whole population -- 1,054 of 1,054 identities moved on
+22,338 differences no validator can see, 854 of them a trailing newline -- so an
+improvement to the schema cost exactly what a regression cost.  Keyed on admission, 0 of
+1,054 move.
 
 **AND THE DRAW THIS REPLACES IS NOT REPRODUCIBLE.**  Measured before the store was built,
 because the answer decided whether to build one: two full passes over the same 1,664 pairs

@@ -821,8 +821,37 @@ def _matches(pattern: str, key: str) -> bool:
         return False
 
 
+def _admitting(node: Any) -> Any:
+    """``node`` with every key that does not change what it ADMITS struck, recursively.
+
+    :data:`keywords.ANNOTATIONS` by name and the ``x-`` namespace by prefix, which is §6's
+    own two-part admission and the screen ``catalogue.Admitted`` applies for the same
+    sentence -- "an annotation does not change what a node admits".  The set is declared
+    once, in ``codegen/keywords.py``, as a reading of the keyword table; a second list here
+    would be the hand-written one that derivation exists to have deleted.
+
+    **A definitions SECTION is KEPT, and that is the one place this differs from
+    ``catalogue.Admitted``.**  That class RESOLVES a ``$ref`` before keying, so the section
+    it drops is already in the key at every referring site.  This one does not resolve:
+    the nodes it keys are statements lifted out of one already-inlined record, and a local
+    ``$ref`` into the record's own storage is still a ``$ref`` here.  Dropping the section
+    while keeping the reference string would make two nodes that spell one pointer and
+    store two different subtrees under it collide -- the memo would hand one the other's
+    pin, which is a wrong value and not a coarse key.
+    """
+    if isinstance(node, list):
+        return [_admitting(member) for member in node]
+    if not isinstance(node, Mapping):
+        return node
+    return {
+        word: _admitting(value)
+        for word, value in node.items()
+        if word not in keywords.ANNOTATIONS and not keywords.admitted_by_prefix(word)
+    }
+
+
 def _content_key(nodes: Sequence[Mapping[str, Any]], *, kind: bytes = b"") -> bytes | None:
-    """A digest of what these statements SAY, for the pin memo, or ``None``.
+    """A digest of what these statements ADMIT, for the pin memo, or ``None``.
 
     A digest and not the text, for the reason
     :func:`canonicalisation_shared_within_one_call` measures one layer down: the text of a
@@ -831,11 +860,36 @@ def _content_key(nodes: Sequence[Mapping[str, Any]], *, kind: bytes = b"") -> by
     key decides -- whether these are the statements an entry was made for -- with the same
     equivalence classes.
 
+    **WHAT THEY ADMIT AND NOT THEIR RAW TEXT, WHICH IS THE SAME RULE
+    :func:`corpus_key` TAKES ONE LAYER UP** (``adcp-client-python-lzzj.8``, and
+    ``docs/plan/final-state.md`` reading 1 is the sentence: "**A stored value, a key over a
+    document's bytes, or any artifact that must be re-derived when the bundle moves makes
+    an improvement to the schema cost exactly as much as a regression** -- and it makes the
+    instrument answer for the bundle it was built against instead of for the compiler.").
+    This key was ``json.dumps(list(nodes), sort_keys=True)`` -- the raw text, annotations
+    included -- and the memo it addresses decides WHICH VALUE gets pinned at a fixture
+    position.  So an annotation-only edit re-bucketed the memo, two statements that admit
+    exactly the same instances stopped sharing one derivation, and a different value was
+    drawn and pinned: **that is how two of the six pairs the patch was blamed for flipped
+    verdict on a node that is byte-identical between the two bundles.**  Struck of what no
+    instance can see (:func:`_admitting`), the bucket is the admitted set, two statements
+    that admit alike share one pin, and a gained ``title`` moves nothing.
+
+    It is sound in the direction a memo has to be sound in, and that is not an appeal to
+    the strike being "only annotations": two statements with one admitted set admit the
+    same values, so a value derived for one is a value the other admits, and
+    :meth:`Fixtures.value` screens every pin against the conjunction it is placed into
+    before it is kept.  A coarser bucket can therefore cost a screen, never a wrong pin.
+
     ``None`` where ``json`` declines the node, which is a node that simply gets no entry.
     """
     try:
         return hashlib.sha256(
-            kind + b"\0" + json.dumps(list(nodes), sort_keys=True, separators=(",", ":")).encode()
+            kind
+            + b"\0"
+            + json.dumps(
+                _admitting(list(nodes)), sort_keys=True, separators=(",", ":")
+            ).encode()
         ).digest()
     except (TypeError, ValueError):
         return None
@@ -1350,6 +1404,39 @@ def corpus_key(
     which is the last time a count can move one, and the entries are RE-KEYED rather than
     redrawn -- the content is the instances and the instances did not change.
 
+    **AND THE IDENTITY IS OVER WHAT THE DOCUMENT ADMITS, NEVER OVER ITS BYTES, WHICH IS
+    THIS FUNCTION'S OTHER CURRENT CHANGE** (``adcp-client-python-lzzj.8``).  That is a
+    statement about what a CALLER may hand in, so it is stated here and enforced where the
+    identity is built (``catalogue.admitted_identities``, which carries the measurement).
+    ``docs/plan/final-state.md`` reading 1 is the rule:
+
+        "**BOTH CHECKS ARE A FUNCTION OF (class, document) AND OF NOTHING ELSE.** Point
+        them at another bundle and they answer for that bundle, because there is nothing to
+        carry over and nothing to expire. **A stored value, a key over a document's bytes,
+        or any artifact that must be re-derived when the bundle moves makes an improvement
+        to the schema cost exactly as much as a regression** -- and it makes the instrument
+        answer for the bundle it was built against instead of for the compiler."
+
+    The identity used to be a digest of a document's raw bytes and its raw reference
+    closure's, which satisfied the paragraph below and nothing more: an
+    ACCEPTANCE-PRESERVING rewrite of the bundle moved every key.  Measured over the
+    published bundle against the patched one: 22,338 differences,
+    ``patch.seen_by_a_validator`` zero -- nothing lost, nothing changed, every difference a
+    gained ``$schema``/``title``/``description`` -- and all 1,054 identities moved, 854 of
+    them by a TRAILING NEWLINE.  Over that same pair the admitted identity moves 0 of 1,054.
+
+    Three things stay IN the key, and the test for each is whether it changes WHICH VALUE
+    IS DRAWN: the format strategies and the generator version (this function's own two
+    facts), and -- inside the identity -- the instances the node's document STATES and
+    ADMITS, because ``check_accepts`` answers "the store, then the document's own
+    ``examples``, then the draw" and ``examples`` is a dropped annotation that is also a
+    source of witnesses.  The DIALECT is the fourth such fact and is deliberately NOT
+    digested: the measured patch adds ``$schema: draft-07`` where none was stated, which
+    changes no keyword's meaning, so carrying the string would move keys for an improvement
+    -- and a document in ANOTHER dialect is a question about the whole bundle rather than
+    about one key, asserted by
+    ``tests/test_accepts_corpus.py::test_every_portable_document_states_one_dialect``.
+
     **THE SCHEMA IS NOT A STATIC FACT ABOUT THE DOCUMENT, BECAUSE THE RESOLVER IS OURS.**
     The schema ``check_accepts`` draws from is ``bundle.record``'s output -- this package's
     own inliner -- read at a pointer and inlined again by :func:`resolve`.  Keyed on that,
@@ -1365,9 +1452,10 @@ def corpus_key(
     so hashing it is hashing the input -- correct if the resolved document were a given,
     wrong because this package resolves it and this package changes.  So the identity comes
     from the caller, which is the half of the seam that can see upstream:
-    ``bundle.source_identities`` is one answer for a bundle document -- that document's own
-    raw bytes and its raw reference closure's -- and a caller handing a literal schema is
-    its own answer, since a literal is already static.
+    ``catalogue.admitted_identities`` is one answer for a bundle document -- what that
+    document ADMITS with every ``$ref`` resolved, and the instances it STATES and ADMITS --
+    and a caller handing a literal schema is its own answer, since a literal is already
+    static.
 
     **THE KEY WAS NEVER THE SAFETY NET AND MUST NOT BE MISTAKEN FOR ONE.**
     :func:`corpus_defect` re-offers every held instance to the DOCUMENT on every read, and
@@ -2928,7 +3016,7 @@ def check_accepts(
             "a corpus needs the draw's STATIC identity: the schema handed here is "
             "bundle.record's rendering of a document, so keying on it misses every "
             "entry whenever the inliner moves.  Pass identity= (see "
-            "bundle.source_identities) or corpus=None."
+            "catalogue.admitted_identities) or corpus=None."
         )
     res = AcceptsResult()
     cf = dict(custom_formats)
@@ -5614,9 +5702,9 @@ class Pair:
     #: :attr:`schema` is ``bundle.record``'s rendering of a document -- our inliner's
     #: output read at a pointer -- so an identity taken from it moves when the inliner
     #: does and the corpus is redrawn for a bundle nobody changed.  The caller is the half
-    #: of the seam that can see upstream: ``bundle.source_identities`` is the raw bytes of
-    #: a document and of its raw reference closure, and the pointer beside it says which
-    #: node of that document this pair is.
+    #: of the seam that can see upstream: ``catalogue.admitted_identities`` is what a
+    #: document ADMITS with every reference resolved and the instances it STATES, and the
+    #: pointer beside it says which node of that document this pair is.
     #:
     #: ``None`` is NOT fail-safe here and is not treated as such: ``check_accepts`` raises
     #: rather than falling back to the schema, because a silent fallback is the defect
