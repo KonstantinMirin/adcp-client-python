@@ -21,10 +21,20 @@ is only its corollary.
 
 **THE EDGES ARE READ OFF THE EMITTER'S OWN DERIVATIONS and the graph is assembled exactly
 as ``emit.emit`` assembles it** -- ``emit.lowered_edges`` for the references,
-``catalogue.collect`` and two ``collect_shapes`` calls for L0, L2 and L2C, and
-``bundle.repeated`` for the document layer -- so a layer that stops running this way
-reddens here and not in a report.  Nothing in this file reads ``codegen/`` as TEXT: a
-grep over ``emit.py`` is not a gate on where a home lands.
+``catalogue.collect`` and two ``collect_shapes`` calls for L0, L2 and L2C,
+``catalogue.collect_applied`` for L2A, and ``bundle.repeated`` for the document layer --
+so a layer that stops running this way reddens here and not in a report.  Nothing in this
+file reads ``codegen/`` as TEXT: a grep over ``emit.py`` is not a gate on where a home
+lands.
+
+**AND L2A IS HERE BECAUSE IT ADDS EDGES, which is the whole reason a fourth source had to
+come with this file and not after it.**  That layer reads a position as the type the
+DOCUMENT APPLIES there and binds it to an entry L2C already collected, so its rows are
+``restating`` rows exactly like the three before them, and the potential has to range over
+them or the construction is a derivation over three quarters of the graph.  Its home is
+``catalogue.shape_declared_at``'s re-decided over the union of the entry's own positions
+and the applied ones, which is the same rule and therefore the same argument: measured over
+both bundles, every L2A edge strictly decreases ``φ``.
 
 **TWO EXEMPTIONS, BOTH NAMED BY ANOTHER SECTION AND BOTH GRADED SEPARATELY.**  A
 construction with an unexamined exception is a census wearing a derivation's clothes, so
@@ -102,6 +112,7 @@ def _graph(bundle_dir: Path) -> tuple[tuple[Edge, ...], dict[str, int], frozense
     l0 = catalogue.collect(bundle_dir, standing)
     l2 = catalogue.collect_shapes(admitted, "L2", standing)
     l2c = catalogue.collect_shapes(admitted, "L2C", standing)
+    l2a = catalogue.collect_applied(admitted, l2c, standing)
 
     edges: list[Edge] = [
         Edge(document, site.target, "$ref", f"{document}{site.pointer}")
@@ -124,7 +135,7 @@ def _graph(bundle_dir: Path) -> tuple[tuple[Edge, ...], dict[str, int], frozense
     ]
     rows += [
         (layer, entry.at, entry.restating, entry.spelled)
-        for layer, shapes in (("L2", l2), ("L2C", l2c))
+        for layer, shapes in (("L2", l2), ("L2C", l2c), ("L2A", l2a))
         for entry in shapes.entries.values()
     ]
     for layer, home, restating, spelled in rows:

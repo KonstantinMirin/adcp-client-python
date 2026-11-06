@@ -685,6 +685,174 @@ def test_every_repeated_array_type_is_owned_by_a_layer_beneath_it(
     assert sum(owners.values()) == len(cross), (dict(owners), len(cross))
 
 
+@pytest.fixture(scope="module")
+def l2c(admitted: catalogue.Admitted, standing: dict[str, int]) -> catalogue.Shapes:
+    """§3a's layer L2C: the object type a node states through its CONJUNCTS."""
+    return catalogue.collect_shapes(admitted, "L2C", standing)
+
+
+@pytest.fixture(scope="module")
+def l2a(
+    admitted: catalogue.Admitted, standing: dict[str, int], l2c: catalogue.Shapes
+) -> catalogue.Applied:
+    """§3a's layer L2A: the positions a DOCUMENT applies an already-named type at."""
+    return catalogue.collect_applied(admitted, l2c, standing)
+
+
+def test_the_applied_layer_joins_only_a_type_the_bundle_already_names(
+    admitted: catalogue.Admitted, l2c: catalogue.Shapes, l2a: catalogue.Applied
+) -> None:
+    """**L2A's census PARTITIONS, and every position it collects joins a NAMED entry.**
+
+    The layer reads a position as the type the DOCUMENT APPLIES there rather than as the
+    node's own text (``catalogue.applied_conjunction``), which is the only reading under
+    which a ``oneOf`` branch narrowing a property its root also states is one type with the
+    position that spells the composition inline.  The two obligations are the ones the
+    reading cannot carry by itself:
+
+    **ONE.  THE CENSUS PARTITIONS**, so no position is quietly dropped: a censused position
+    either already states the type in its own text and is a position of the entry already,
+    or it declares no class, or the type it applies is one no entry names, or it is
+    COLLECTED.  Four parts and no fifth.
+
+    **TWO.  A COLLECTED POSITION JOINS AN ENTRY THE BUNDLE NAMES AT EVERY POSITION THAT CAN
+    CARRY A TITLE**, which is what licenses collapsing onto it without minting anything.
+    L2C's own evidence rule is untouched and is what this reads: that layer collects a group
+    only where the bundle titles EVERY position whose own text states the type, so an entry
+    reached here carries a ``title`` the bundle states -- ``ShapeEntry.step == 1`` -- and
+    reading 4's *"a name is minted per ENTRY and never per position"* is why the applied
+    position owes none of its own.  A derived name (step 2 or 3) would be a placeholder, and
+    §4 forbids a collapse onto one.
+
+    **AND A COLLECTED POSITION'S OWN TEXT DOES NOT STATE THE TYPE**, which is what keeps
+    this a layer and not a second answer to L2C's question: where a position states the
+    composition itself, L2C has it already and this layer must add nothing.
+    """
+    censused = claimed(
+        "positions the document applies a composed type at",
+        [f"{p.document}{p.pointer}" for p in l2a.positions],
+    )
+    already = {
+        f"{p.document}{p.pointer}"
+        for entry in l2c.entries.values()
+        for p in entry.positions
+    }
+    partitions(
+        censused,
+        **{
+            "collected: the document applies a named type here": {
+                f"{document}{pointer}" for document, pointer in l2a.collected
+            },
+            "already a position of the entry in its own text": already & censused,
+            "declares no class": {f"{p.document}{p.pointer}" for p in l2a.undeclared},
+            "applies a type no entry names": {
+                f"{p.document}{p.pointer}" for p in l2a.unmatched
+            },
+        },
+    )
+    unnamed = {
+        f"{document}{pointer}": (entry.spelled, entry.step)
+        for entry in l2a.entries.values()
+        for document, pointer in l2a.collected
+        if (document, pointer) in {(p.document, p.pointer) for p in entry.positions}
+        and (entry.step != 1 or not entry.title)
+    }
+    assert not unnamed, json.dumps(unnamed, indent=2, default=repr)
+    #: **AND THE APPLIED READING IS NOT THE NODE'S OWN**, which is the layer's reason for
+    #: existing stated as a property of what it collected: at every collected position the
+    #: document applies a conjunction the node's own text does not state, so the two keys
+    #: differ and L2C could not have seen the position.  A collected position whose own
+    #: text already keys into the entry would mean this layer answering a question L2C
+    #: answers, and the partition above could not tell that apart from a real join.
+    its_own_text = {
+        f"{position.document}{position.pointer}": entry.spelled
+        for entry in l2a.entries.values()
+        for position in entry.positions
+        if (position.document, position.pointer) in l2a.collected
+        and admitted.key(
+            position.document,
+            bundle.node_at(admitted.document(position.document), position.pointer),
+        )
+        == entry.key
+    }
+    assert not its_own_text, json.dumps(its_own_text, indent=2)
+    #: **AND A POSITION THAT DECLARES NO CLASS IS NOT COLLECTED**, which the partition above
+    #: cannot report on its own: ``declares_no_class`` positions are screened out again
+    #: downstream -- ``ShapeEntry.restating`` drops them and ``shape_declared_at`` ranks them
+    #: last -- so collecting one moves no emitted byte and the partition would still
+    #: partition.  What it DOES move is ``collected``, which is L2's ``applied`` screen, so a
+    #: CONJ position admitted here is a position struck from L2's census for no reason.  §5's
+    #: ``allOf`` row is the reason it is not collected: a conjunct's properties are declared
+    #: on the node holding the ``allOf``, so the conjunct's own pointer declares nothing and
+    #: there is nothing at it to collapse.
+    consumed = claimed(
+        "censused positions whose subschema the node holding it consumes",
+        [f"{p.document}{p.pointer}" for p in l2a.positions if p.declares_no_class],
+    )
+    assert not consumed & {f"{document}{pointer}" for document, pointer in l2a.collected}
+    # :attr:`Applied.undeclared` is the part of that set which reached an ENTRY -- the rest
+    # apply a type no entry names and are reported as such, which is the earlier question.
+    assert {f"{p.document}{p.pointer}" for p in l2a.undeclared} <= consumed
+
+
+def test_resolving_a_reference_is_memoised_and_the_keys_are_the_same(
+    standing: dict[str, int]
+) -> None:
+    """**THE KEY IS THE SAME KEY WITH THE MEMO AND WITHOUT IT, over every censused position
+    of every structural layer.**
+
+    ``catalogue.Admitted._targets`` holds the key of a ``$ref``'s TARGET, which the same few
+    referenced documents are re-keyed for once per position that names them; the layers read
+    5,428 positions of this bundle between them and the collection cost 22 s of it.  A memo
+    is the one optimisation that can silently become a second answer -- a stale entry is
+    indistinguishable from a different identity -- so the equality is asserted rather than
+    argued, in the only form that means anything here: BOTH readings, side by side, over
+    every position each layer censuses and over the entry each one lands in.
+
+    The memo is disabled by a mapping that keeps nothing, so the second reading takes the
+    uncached path at every reference and not merely a cold cache.
+    """
+
+    class _Nothing(dict):
+        """A mapping that accepts every write and holds nothing."""
+
+        def __setitem__(self, key: object, value: object) -> None:
+            return None
+
+    def censused(*, memoised: bool) -> dict[str, object]:
+        admitted = catalogue.Admitted(BUNDLE)
+        if not memoised:
+            admitted._targets = _Nothing()
+        out: dict[str, object] = {
+            layer: sorted(
+                (p.document, p.pointer, p.key)
+                for p in catalogue.shape_states(admitted, layer)
+            )
+            for layer in ("L2", "L2C", "L3")
+        }
+        composed = catalogue.collect_shapes(admitted, "L2C", standing)
+        applied = catalogue.collect_applied(admitted, composed, standing)
+        out["L2A"] = sorted((p.document, p.pointer, p.key) for p in applied.positions)
+        out["entries"] = sorted(
+            (key, entry.title, entry.at.document, entry.at.pointer)
+            for key, entry in applied.entries.items()
+        )
+        return out
+
+    with_memo = censused(memoised=True)
+    claimed(
+        "positions the structural layers key",
+        [
+            f"{layer} {at[0]}{at[1]}"
+            for layer in ("L2", "L2C", "L3", "L2A")
+            for at in with_memo[layer]  # type: ignore[union-attr]
+        ],
+    )
+    without = censused(memoised=False)
+    moved = {layer: rows for layer, rows in with_memo.items() if rows != without[layer]}
+    assert not moved, sorted(moved)
+
+
 # ---------------------------------------------------------------------------
 # §3a's L1: the CONSTRAINED SCALARS, and the name each one takes.
 #

@@ -14,7 +14,7 @@ from ...enums.macro_value_context import MacroValueContext
 from ..macro_bearing_url import MacroBearingURL
 from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
-from .url_asset import Location
+from .url_asset import MacroDeclarationsItem
 
 
 class DAASTAsset(BranchDispatchMixin, AdCPBaseModel):
@@ -41,17 +41,6 @@ class DAASTAsset(BranchDispatchMixin, AdCPBaseModel):
     macro_declarations: Annotated[list[MacroDeclaration] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1)] = None
 
 
-class DAASTAssetUrlMacroDeclarationsItem(MacroDeclaration):
-    """
-    The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/0/properties/macro_declarations/items')
-    location: Location
-
-
 class DAASTAssetUrl(DAASTAsset):
     model_config = ConfigDict(
         extra='allow',
@@ -59,10 +48,10 @@ class DAASTAssetUrl(DAASTAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/0')
     delivery_type: Annotated[Literal['url'], Field(description='Discriminator indicating DAAST is delivered via URL endpoint')]
     url: Annotated[MacroBearingURL, Field(description='URL endpoint returning DAAST XML. Macro delimiters remain byte-preserved and are processed only under attached occurrence declarations.')]
-    macro_declarations: Annotated[list[DAASTAssetUrlMacroDeclarationsItem] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1)] = None
+    macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1)] = None
 
 
-class MacroDeclarationsItemLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -72,7 +61,7 @@ class MacroDeclarationsItemLocation(AdCPBaseModel):
     context: MacroValueContext
 
 
-class DAASTAssetInlineMacroDeclarationsItem(MacroDeclaration):
+class ObjLocation(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
@@ -80,7 +69,7 @@ class DAASTAssetInlineMacroDeclarationsItem(MacroDeclaration):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items')
-    location: MacroDeclarationsItemLocation
+    location: Location
 
 
 class DAASTAssetInline(DAASTAsset):
@@ -90,7 +79,7 @@ class DAASTAssetInline(DAASTAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/1')
     delivery_type: Annotated[Literal['inline'], Field(description='Discriminator indicating DAAST is delivered as inline XML content')]
     content: Annotated[str, Field(description='Inline DAAST XML content')]
-    macro_declarations: Annotated[list[DAASTAssetInlineMacroDeclarationsItem] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1)] = None
+    macro_declarations: Annotated[list[ObjLocation] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1)] = None
 
 
 DAASTAsset._branch_models = (DAASTAssetUrl, DAASTAssetInline,)

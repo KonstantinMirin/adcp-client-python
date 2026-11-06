@@ -795,12 +795,20 @@ def test_every_cross_document_duplicate_group_is_decided() -> None:
     ratchet(
         "cross-document duplicate groups the table answers locally",
         len(decided),
-        at_most=9,
+        at_most=8,
         because="the table's size IS the debt figure: a row names the ask that deletes it, "
         "so this falls to zero for a bundle that titles what it restates and a compiler "
         "that declares a type once.  A RISE is a new duplicate nobody decided, which is "
         "what the equality above reports before this ratchet is reached",
     )
+    # **AND NO ROW IS A COLLAPSE, which is a stronger statement than the count and is the
+    # one the architecture makes**: a COLLAPSE is the outcome whose defect is OURS -- one
+    # subject declared twice and the bundle naming it -- so such a row IS "an override the
+    # build does not apply".  The three this table held are applied by the build now
+    # (``adcp-client-python-8212``, ``-nlkz``, ``-e4z``), and a new one may not be written
+    # here in place of the repair it owes: the ratchet above would admit a ninth row
+    # dropping to eight elsewhere, and this clause would not.
+    assert [row.at for row in duplicates.DECIDED if row.outcome == duplicates.COLLAPSE] == []
     for row in duplicates.DECIDED:
         assert row.defect.strip() and row.ask.strip(), row
         assert "the bundle" in row.defect or row.defect.startswith("NONE"), row.defect
@@ -1021,7 +1029,14 @@ def test_a_decision_whose_evidence_does_not_support_it_reddens_the_gate() -> Non
     3. a ``SPLIT``-by-titles group re-declared ``PENDING A NAME`` -- the bundle titles it,
        so the silence the outcome claims is not there;
     4. a row's proving payload replaced by one the group's documents agree on;
-    5. a ``COLLAPSE``'s named subject pointed at a title the bundle does not state there.
+    5. a ``COLLAPSE``'s named subject pointed at a title the bundle does not state there --
+       **asked of a group re-declared a COLLAPSE and not of a live one, because there is no
+       live COLLAPSE row left and the clause still has to be graded.**  All three were
+       applied by the build (``tests/duplicates.py``'s own docstring), so the licence half
+       of the COLLAPSE evidence form is reached the only way it can be: perturb a row into
+       that outcome, then perturb the licence, and require the second finding by its own
+       sentence.  Asserting the LIST is non-empty would pass on the wrong finding, since a
+       re-declared ``NOT ONE TYPE`` group reddens the member-versus-document clause too.
 
     The green state is asserted beside each one, so a perturbation that reddens because the
     function reddens on everything is reported as such.
@@ -1041,17 +1056,28 @@ def test_a_decision_whose_evidence_does_not_support_it_reddens_the_gate() -> Non
                 row, outcome=duplicates.COLLAPSE, names_the_subject=row.names_the_subject
             ), at
             assert perturbed(row, payload={}), at
+            # The LICENCE half of the COLLAPSE evidence form, reached through this row
+            # because no live row carries that outcome any more.  A position of this
+            # group the bundle DOES title, with a title it does not state there.
+            titled = sorted(
+                position for position in at if "title" in (_states(position) or {})
+            )
+            for position in titled[:1]:
+                assert any(
+                    "no longer names the subject" in sentence
+                    for found in perturbed(
+                        row,
+                        outcome=duplicates.COLLAPSE,
+                        names_the_subject=(*position, "A Title No Document States"),
+                    )
+                    for sentence in found
+                ), (at, position)
         if row.outcome == duplicates.PENDING_A_NAME:
             assert perturbed(row, outcome=duplicates.SPLIT), at
         if row.outcome == duplicates.SPLIT and row.payload is duplicates.NO_PAYLOAD:
             assert perturbed(row, outcome=duplicates.PENDING_A_NAME), at
         if row.outcome == duplicates.SPLIT and row.payload is not duplicates.NO_PAYLOAD:
             assert perturbed(row, payload={}), at
-        if row.outcome == duplicates.COLLAPSE:
-            document, pointer, _ = row.names_the_subject or ("", "", None)
-            assert perturbed(
-                row, names_the_subject=(document, pointer, "A Title No Document States")
-            ), at
 
 
 def test_a_group_with_no_row_and_a_row_with_no_group_both_redden_the_gate() -> None:

@@ -113,6 +113,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from adcp.types._base import SAME_INSTANCE_FACTS, SAME_INSTANCE_LIST, SAME_INSTANCE_ONE, applied_schema
 from codegen import bundle, keywords, vocabularies
 from codegen.lower import names
 
@@ -911,6 +912,36 @@ class Admitted:
         self.documents = frozenset(bundle.portable(bundle_dir))
         self._read: dict[str, dict] = {}
         self._keys: dict[tuple[str, str], str] = {}
+        #: ``(the reference's target, the resolution stack) -> the target's key.``  A MEMO
+        #: over a pure function of the bundle and not a second reading of it: the target is
+        #: ``(document, pointer)``, the stack is what the cycle arm reads, and
+        #: :meth:`reached` derives the node from the first alone -- so the pair fixes every
+        #: argument :meth:`of` would be called with and the cached answer is the computed
+        #: one.
+        #:
+        #: It exists because the same few targets are resolved thousands of times: every
+        #: composed position of this bundle conjoins one of a handful of referenced
+        #: documents, and ``core/macro-declaration.json`` alone is re-keyed once per
+        #: position that names it.  Measured on ``schemas/cache/3.2``: the L2A collection
+        #: falls from 13.7 s to 4.1 s, L2 from 6.7 s to 2.5 s and L2C from 1.7 s to 1.0 s,
+        #: and every key of every entry of all four layers is byte-identical either way
+        #: (``tests/test_catalogue.py::test_resolving_a_reference_is_memoised_and_the_keys_
+        #: are_the_same``).
+        self._targets: dict[tuple[tuple[str, str], tuple[tuple[str, str], ...]], object] = {}
+        #: The document set a collection ranged over -> L2A's collected positions over it,
+        #: which is L2's own screen (:func:`shape_states`' ``applied``).  **PUBLIC, unlike
+        #: the three memos above**, because :func:`collect_shapes` is what fills it: it is
+        #: part of what this object carries FOR the layers that share it rather than state
+        #: of its own keying.
+        #:
+        #: **IT IS HELD HERE SO THE SCREEN IS NOT A PARAMETER ANY CALLER CAN PASS WRONGLY.**
+        #: §3a asks that a derived reading be an argument rather than something a callee
+        #: recomputes, and the point of that rule is that one run reads one collection; a
+        #: screen a caller could supply differently is the same defect the rule forbids,
+        #: arriving through the argument instead of around it.  So :func:`collect_shapes`
+        #: derives it and this object -- which is already what a run shares between its
+        #: layers -- holds it, and the emitter's two passes collect L2A once between them.
+        self.screens: dict[object, frozenset[tuple[str, str]]] = {}
 
     def document(self, name: str) -> dict:
         if name not in self._read:
@@ -987,8 +1018,16 @@ class Admitted:
                     out.append((word, (CYCLE, len(stack) - stack.index(at))))
                 elif resolved is None:
                     out.append((word, ("unresolved", json.dumps(held))))
+                elif at is None:
+                    # Unreachable beside ``resolved is None`` -- :meth:`reached` answers
+                    # ``None`` for every reference :meth:`target` answers ``None`` for --
+                    # and spelled so the memo's key is a pair of two known halves.
+                    out.append((word, ("unresolved", json.dumps(held))))
+                elif (memo := (at, stack)) in self._targets:
+                    out.append((word, self._targets[memo]))
                 else:
-                    out.append((word, self.of(*resolved)))
+                    self._targets[memo] = reached_key = self.of(*resolved)
+                    out.append((word, reached_key))
             elif word in BY_NAME and isinstance(held, dict):
                 out.append(
                     (word, tuple(sorted((k, self.of(document, v, stack)) for k, v in held.items())))
@@ -1640,8 +1679,95 @@ class Shapes:
         return out
 
 
+#: The pointer segments at which draft-07 keeps the SAME instance, so a node below one
+#: carries what the nodes above it assert about that instance.  ``adcp.types._base``'s own
+#: two lists and not a third: :func:`applied_schema` conjoins at exactly these hops and at
+#: no other, so a pointer holding none of them applies nothing and this is an exact screen
+#: rather than a cheaper approximation of one.
+_SAME_INSTANCE_HOPS = frozenset((*SAME_INSTANCE_LIST, *SAME_INSTANCE_ONE))
+
+
+def applied_conjunction(doc: dict, pointer: str, node: Mapping[str, object]) -> dict | None:
+    """The object type the DOCUMENT APPLIES at ``pointer``, written as ONE conjunction.
+
+    ``None`` wherever the question does not arise, and the three reasons are below.
+
+    **THE DEFECT.** ``core/assets/daast-asset.json`` states
+    ``macro_declarations.items: {"$ref": "core/macro-declaration.json"}`` at its root and,
+    in its ``url`` delivery branch, narrows the SAME property to
+    ``{"properties": {"location": {"properties": {"field": {"const": "url"}}}}}``.
+    draft-07 holds a root's assertions and its branch's against one instance, so the type
+    the document applies at ``#/oneOf/0/properties/macro_declarations/items`` is the
+    narrowing CONJOINED with the reference -- which is, statement for statement, what
+    ``core/assets/url-asset.json`` spells inline at
+    ``#/properties/macro_declarations/items`` and the bundle titles *URL Macro
+    Declaration* there.  Read as its own text alone, the branch's node is a different node
+    from url-asset's and :class:`Admitted` correctly reports two keys, so the layer whose
+    whole job is to stop a second declaration could not see the two were one type and the
+    tree declared it twice.  **The node's own text cannot be titled into agreement
+    either**: it says nothing about a macro declaration, the subject exists only once the
+    root's reference is applied, and a title there would be a claim the node does not
+    support.  So the repair is at what a STATING POSITION IS and not in a name.
+
+    **THE RULE IS ``_base.applied_schema``'S AND IS NOT RESTATED HERE**, which is
+    ``bundle.constrained_to_object``'s own reason at the same seam: that function is what
+    the RUNTIME resolves a class's ``__adcp_schema__`` through, so a second derivation of
+    "what does the document apply here" is exactly how the emitter comes to declare a class
+    the runtime would grade against a different schema.  Nothing of draft-07 is decided
+    here; what is decided is that this layer asks it.
+
+    **THE CONJUNCTION IS THE DOCUMENT'S OWN ``allOf`` AND NOT A MERGE.**  A node's own
+    ``properties``/``required``/``additionalProperties`` and its ``allOf`` conjuncts hold
+    against the same instance, so folding the first into the second changes no statement --
+    and it is what makes the two spellings of one type key alike, which an intersection
+    could not do without discarding the ``$ref`` the key is built around (the admission key
+    keeps a reference AS a member, ``adcp-client-python-32yh``).  **So this needs no splice
+    of that key**: both sides reach ``(('allOf', (<the reference's key>, <the narrowing's
+    key>)),)`` and the equality is the key's own.
+
+    The five ``None``\\ s, the first two of which are also what keeps this an exact screen
+    rather than a walk of the whole bundle from every pointer -- :func:`applied_schema`
+    rebuilds a node from its document's root, so the two cheap readings are asked first and
+    neither can change the answer:
+
+    * the pointer crosses no hop at which draft-07 keeps the SAME instance, so nothing
+      enclosing this node asserts anything about the instance it describes;
+    * the node's own text states none of the facts a conjunction is made of -- and
+      :func:`applied_schema` adds no such key, it only adds the ``allOf``, so a node silent
+      in all three is silent in the applied reading too;
+    * the document applies nothing -- :func:`applied_schema` returns the node UNCHANGED,
+      as the same object, so identity is the answer and not a comparison;
+    * nothing is COMPOSED at the position, so this is not the composed layer's question and
+      the node's own ``properties`` are the whole of what it states (L2's reading, intact);
+    * the applied node states NO facts of its own beside the conjunction, so it is already
+      spelled as a conjunction and L2C reads it as it stands.
+    """
+    if not any(part in _SAME_INSTANCE_HOPS for part in pointer.split("/")):
+        return None
+    if not any(node.get(word) for word in SAME_INSTANCE_FACTS):
+        return None
+    applied = applied_schema(doc, "#" + pointer)
+    if applied is node or not isinstance(applied, dict):
+        return None
+    conjuncts = applied.get("allOf")
+    if not isinstance(conjuncts, list) or not conjuncts:
+        return None
+    own = {word: applied[word] for word in SAME_INSTANCE_FACTS if applied.get(word)}
+    if not own:
+        return None
+    beside = {
+        word: value
+        for word, value in applied.items()
+        if word != "allOf" and word not in SAME_INSTANCE_FACTS
+    }
+    return {**beside, "allOf": [*conjuncts, own]}
+
+
 def shape_states(
-    admitted: Admitted, layer: str, documents: Collection[str] | None = None
+    admitted: Admitted,
+    layer: str,
+    documents: Collection[str] | None = None,
+    applied: Collection[tuple[str, str]] = (),
 ) -> Iterator[Shaped]:
     """Every position of the bundle that STATES an object type (``"L2"``) or an array
     type (``"L3"``).
@@ -1702,7 +1828,29 @@ def shape_states(
     BRANCH position with the ``not`` one hop above it and is collected.  Changing the
     population is that row's decision; what this layer does with the mark is this one's,
     and the answer is that the COLLAPSE declines to reach such a position.
+
+    **``applied`` IS WHERE THE NODE'S OWN TEXT IS NOT THE TYPE, AND SUCH A POSITION IS NOT
+    AN L2 STATING POSITION.**  L2 keys on a node's OWN ``properties``, and at a position
+    L2A collects the document applies a type that bag is only part of
+    (:func:`applied_conjunction`) -- so what L2 would read there is the narrowing ALONE,
+    which is the type declared at that position by nothing.  Left in, the two layers state
+    two answers about one pointer and the later one wins silently: measured, the
+    ``{"properties": {"location": {...}}}`` narrowing of ``core/macro-declaration.json`` is
+    restated at 7 positions in 7 asset documents, L2 collected them as an entry homed at
+    ``core/assets/daast-asset.json#/oneOf/0/properties/macro_declarations/items``, L2A then
+    bound that very position to *URL Macro Declaration*, and the entry was left with a home
+    declaring no class -- which is
+    ``tests/test_catalogue.py::test_no_object_structure_emits_more_than_one_definition``'s
+    own red.  Screened, the five positions left are every one of them a CONJ and the entry
+    falls to :attr:`Shapes.declaring_nothing`, where a structure no position of which
+    declares a class belongs.
+
+    It is handed IN for :func:`shape_declared_at`'s reason -- a derived reading of the
+    bundle is an argument and not something a callee recomputes -- and the empty default is
+    the honest one: a caller censusing L2 alone is reading the layer's own predicate, which
+    is what every figure above is taken over.
     """
+    screened = frozenset(applied)
     names = bundle.named_nodes(admitted.dir)
     for document in stating(admitted.dir, documents):
         doc = admitted.document(document)
@@ -1721,9 +1869,18 @@ def shape_states(
                 continue
             if any(pointer.startswith(entry) for entry in unreferenced):
                 continue
+            #: The node every field below is read off.  It is the position's OWN text at
+            #: every layer but L2A, where it is the node the DOCUMENT APPLIES there -- which
+            #: is the whole of that layer: one position, two readings, and the one that
+            #: decides whether another position declares this type already is the
+            #: document's.  Bound here rather than assigned in the arm so the two readings
+            #: are visibly two things and the walk's own node is never overwritten.
+            stated = node
             if layer == "L2":
                 held = node.get("properties")
                 if not isinstance(held, dict) or not held:
+                    continue
+                if (document, pointer) in screened:
                     continue
             elif layer == "L2C":
                 held = node.get("properties")
@@ -1732,25 +1889,30 @@ def shape_states(
                 conjuncts = node.get("allOf")
                 if not isinstance(conjuncts, list) or not conjuncts:
                     continue
+            elif layer == "L2A":
+                composed = applied_conjunction(doc, pointer, node)
+                if composed is None:
+                    continue
+                stated = composed
             elif not isinstance(node.get("items"), dict):
                 continue
-            title = node.get("title")
+            title = stated.get("title")
             yield Shaped(
                 document=document,
                 pointer=pointer,
                 position=position,
-                key=admitted.key(document, node),
+                key=admitted.key(document, stated),
                 title=title if isinstance(title, str) and title.strip() else None,
                 keeps_a_named_node=any(
                     bundle.split_ref(spelled) == ("", named)
-                    for _, sub in bundle.nodes(node)
+                    for _, sub in bundle.nodes(stated)
                     if isinstance(spelled := sub.get("$ref"), str)
                     for named in names.get(document, frozenset())
                 ),
                 of_a_root_union=(
                     position is keywords.Position.BRANCH and pointer.count("/") == 2
                 ),
-                fields=tuple(node.get("properties", {}) or ()),
+                fields=tuple(stated.get("properties", {}) or ()),
                 beneath_a_rule=(beneath := any(
                     pointer.startswith(f"{at}/") for at in of_a_rule
                 )),
@@ -1984,10 +2146,32 @@ def collect_shapes(
     not a name for either.
 
     ``standing`` is §3a's home rule's own input and :func:`shape_declared_at` is the rule.
+    **AT L2 THE SCREEN IS DERIVED HERE AND IS NOT A PARAMETER**, which is §3a's "a caller
+    cannot forget it and read a different collection than the run does" read at a screen
+    rather than at an order: L2 must not read a node's own ``properties`` as the type where
+    the DOCUMENT applies a named type that bag is only part of (:func:`shape_states`'
+    ``applied``, which carries the measurement), and a screen a caller supplies is a screen
+    a caller can supply differently.  Measured before it moved here: this module's own L2
+    fixture and ``tests/test_catalogue_homes.py``'s both read L2 unscreened while the run
+    read it screened, so the gate on a homeless entry ranged over a layer no run collects.
+    :attr:`Admitted.screens` is where the answer is held, so the emitter's two passes
+    collect L2A once between them.
     """
+    if layer == "L2":
+        held = None if documents is None else frozenset(documents)
+        if held not in admitted.screens:
+            admitted.screens[held] = collect_applied(
+                admitted,
+                collect_shapes(admitted, "L2C", standing, documents),
+                standing,
+                documents,
+            ).collected
+        applied: Collection[tuple[str, str]] = admitted.screens[held]
+    else:
+        applied = ()
     grouped: dict[str, list[Shaped]] = {}
     every: list[Shaped] = []
-    for position in shape_states(admitted, layer, documents):
+    for position in shape_states(admitted, layer, documents, applied):
         every.append(position)
         grouped.setdefault(position.key, []).append(position)
 
@@ -2094,6 +2278,167 @@ def collect_shapes(
             for position in entry.undeclared
         ),
         positions=tuple(every),
+    )
+
+
+@dataclass(frozen=True)
+class Applied:
+    """Layer L2A: the positions a DOCUMENT applies an already-collected entry's type at.
+
+    A PARTITION of the L2A census, so every position is in exactly one part and nothing is
+    dropped quietly: it reaches a collected entry (:attr:`entries`), or it declares no
+    class (:attr:`undeclared`), or the type it applies is one no other position of the
+    bundle states under a name (:attr:`unmatched`).
+    """
+
+    #: key -> the collected entry EXTENDED with the applied positions: ``positions`` is the
+    #: union and ``at`` is the home re-decided over it.  A :class:`ShapeEntry` and not a
+    #: kind of its own, so :attr:`ShapeEntry.restating`'s five screens and
+    #: :func:`shape_declared_at`'s one home rule are the same code here as at L2C.
+    entries: dict[str, ShapeEntry]
+    #: The censused positions at which no class is declared at all
+    #: (:attr:`Shaped.declares_no_class`) -- at this layer every one of them is a CONJ,
+    #: which is §5's ``allOf`` row: a conjunct's properties are declared on the node
+    #: holding the ``allOf``, so the conjunct's own pointer carries no class and there is
+    #: nothing at it either to collapse or to home.  Reported, never counted out.
+    undeclared: tuple[Shaped, ...]
+    #: The censused positions whose applied type matches no collected entry.  Reported
+    #: rather than screened, because a position here is the honest statement of the layer's
+    #: boundary: the document applies a composed type the bundle names nowhere, and §3a's
+    #: third local state is where that belongs and not this one.
+    unmatched: tuple[Shaped, ...]
+    #: Every L2A position censused, which is the set the three parts above partition.
+    positions: tuple[Shaped, ...]
+    #: The ``(document, pointer)`` of every position this layer COLLECTED -- the ones whose
+    #: own text does not state the entry's type, so the entry gained them here.  It is
+    #: ``collect_shapes``' ``applied`` screen (:func:`shape_states` carries why): L2 reads a
+    #: node's own ``properties``, and at one of these that bag is part of the type and not
+    #: the type, so L2 must not collect the position as a statement of anything.
+    collected: frozenset[tuple[str, str]]
+
+    def restating(self) -> dict[str, dict[str, Reference]]:
+        """document -> pointer -> the entry's home, for every position that RESTATES one.
+
+        :meth:`Shapes.restating`'s own table, read off the EXTENDED entries -- so a
+        position of the entry gets the same row it already had and the applied positions
+        get theirs, under one home.  Merged into ``compiler.Module.objects`` after L2C's,
+        which is what makes the collapse the BUILD's: the walk's question at a position is
+        the one it already asks of every pointer, "is this position a REFERENCE to a
+        catalogue entry", and this layer is a fourth answer to it and not a new question.
+        """
+        out: dict[str, dict[str, Reference]] = {}
+        for entry in self.entries.values():
+            home = Reference(
+                document=entry.at.document, pointer=entry.at.pointer, title=entry.spelled
+            )
+            for position in entry.restating:
+                out.setdefault(position.document, {})[position.pointer] = home
+        return out
+
+
+def collect_applied(
+    admitted: Admitted,
+    composed: Shapes,
+    standing: Mapping[str, int],
+    documents: Collection[str] | None = None,
+) -> Applied:
+    """§3a's layer L2A: **a position is read as the type the DOCUMENT APPLIES there.**
+
+    :func:`applied_conjunction` is the reading and carries the defect. What is decided here
+    is the two things a reading cannot decide on its own -- WHICH entry such a position may
+    join, and WHERE the one class is declared.
+
+    **IT JOINS ONLY AN ENTRY ``composed`` ALREADY COLLECTED, WHICH IS WHY NO TITLE IS OWED
+    AT THE POSITION ITSELF.**  L2C collects a group only where the bundle TITLES every
+    position whose own text states the type, and that rule stands untouched -- it is the
+    layer's evidence rule and the measurement behind it is
+    :func:`shape_states`'s: at a composed position, identity is evidence of a shared BASE
+    and never of a shared subject, so a word written once must not decide for positions
+    that say nothing.  **A position here says nothing BECAUSE ITS OWN TEXT CANNOT**: the
+    subject exists only once the document applies the reference from above, so demanding
+    the title at it demands a sentence the bundle is structurally unable to state, and
+    writing one would be the very claim-a-node-does-not-support that the override table is
+    not allowed to be.  What licenses the collapse is that the SUBJECT is named -- reading
+    4, verbatim: *"a name is minted per ENTRY and never per position"* -- and the entry is
+    named because every position that CAN carry the title does.
+
+    **AND THE HOME IS ``shape_declared_at``'S, RE-DECIDED OVER THE UNION, so there is one
+    home rule and not two and the acyclicity is still by construction.**  §3a: *"the home
+    is the group's earliest document in the dependency order that already exists"*, so
+    every edge this layer adds runs BACKWARDS along a topological order of all the other
+    edges -- and that argument covers an applied position exactly as it covers a stating
+    one, because it is an argument about the standing order and not about the group.  A
+    screen that only ADMITTED positions later in the order would be the measured-for-cycles
+    rule §3a forbids; re-ranking cannot produce a cycle at all, and where an applied
+    position is the earliest document the home MOVES TO IT and the entry's former home
+    takes a row like any other restating position.
+
+    Measured on ``schemas/cache/3.2``: **942 positions censused, 931 unmatched, 9
+    declaring no class, 2 COLLECTED.**  The 931 apply a composed type the bundle titles at
+    no position at all, which is :attr:`Shapes.untitled` -- L2C's own third state and
+    ``adcontextprotocol/adcp#8735``'s ask -- and not this layer's to answer; they are
+    listed and nothing is done to them.  The 2 are
+    ``core/assets/daast-asset.json#/oneOf/0/properties/macro_declarations/items`` and
+    ``core/assets/vast-asset.json#/oneOf/0/properties/macro_declarations/items``, both
+    joining *URL Macro Declaration*, whose home STAYS
+    ``core/assets/url-asset.json#/properties/macro_declarations/items`` because url-asset
+    stands at 389 in the standing order against daast-asset's 490 and vast-asset's 496.
+
+    **IT IS A LAYER AND NOT A TABLE, which is the architecture clause this closes.**  The
+    group it decides was a COLLAPSE row of ``tests/duplicates.py`` -- a judgment a reader
+    had to go and look up -- and *"an override the build does not apply is a lie"*.  A
+    lookup into that table at emit time was the other candidate and is refused by §3a
+    twice over: rewriting emitted output to deduplicate it afterwards is the
+    post-processing this project exists to refuse, and a home not derived from the bundle
+    makes which module declares a class a function of the dependency order.  Both terms
+    here are derived from the bundle alone -- the type by draft-07's own semantics, the
+    home by the standing order -- so the row this deletes is deleted by the tree no longer
+    forming the group.
+    """
+    collected = dict(composed.entries)
+    every: list[Shaped] = []
+    undeclared: list[Shaped] = []
+    unmatched: list[Shaped] = []
+    joining: dict[str, list[Shaped]] = {}
+    for position in shape_states(admitted, "L2A", documents):
+        every.append(position)
+        entry = collected.get(position.key)
+        if entry is None:
+            unmatched.append(position)
+            continue
+        if (position.document, position.pointer) in {
+            (p.document, p.pointer) for p in entry.positions
+        }:
+            # The position states the type in its own text too and is already a position of
+            # the entry -- one node read twice is one position, not two.
+            continue
+        if position.declares_no_class:
+            undeclared.append(position)
+            continue
+        joining.setdefault(position.key, []).append(position)
+
+    entries: dict[str, ShapeEntry] = {}
+    for key, found in joining.items():
+        entry = collected[key]
+        union = (*entry.positions, *found)
+        entries[key] = ShapeEntry(
+            key=entry.key,
+            title=entry.title,
+            positions=union,
+            at=shape_declared_at(union, entry.title, standing),
+            name=entry.name,
+            step=entry.step,
+        )
+    return Applied(
+        entries=entries,
+        undeclared=tuple(undeclared),
+        unmatched=tuple(unmatched),
+        positions=tuple(every),
+        collected=frozenset(
+            (position.document, position.pointer)
+            for found in joining.values()
+            for position in found
+        ),
     )
 
 
