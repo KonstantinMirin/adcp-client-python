@@ -598,35 +598,38 @@ record permits now that it is keyed on the module. The module sits in the namesp
 scope rule names — the domain's where every reference is within one domain, the shared one
 otherwise — and is re-exported from the matching consumer namespace like any other.
 
-**ITS HOME IS THE CATALOGUE'S OWN LAYER AND NEVER A STATING POSITION INSIDE A DOCUMENT.** A home
-chosen among the stating positions is a home inside a document module, and a shared type inside a
-document module is the one arrangement that makes a reference cycle possible at all — which the
-catalogue's layering exists to forbid. **No order over the stating positions is sound, including the
-one that closes no cycle on the bundle in front of it**: it is cycle-free by inspection of this
-input and not by derivation, so it cannot be proved for the next one, and the escape clause such a
-rule needs — refuse and report rather than answer wrongly — is a schema improvement costing a
-hundred-odd refusals. §3a asks that a cycle be **unrepresentable rather than avoided by care**, and
-only a home outside every document module is that.
+**ITS HOME IS THE GROUP'S EARLIEST STATING DOCUMENT IN THE REFERENCE ORDER, AND THAT IS WHAT MAKES
+THE EMISSION ORDER ACYCLIC.** With `idx` that order's index and `φ(D) = idx(D)` for a document
+module, every edge strictly decreases `φ`: a `$ref` decreases it by the definition of a topological
+index, and a document importing an entry decreases it because the entry's home is **earliest** among
+the documents that state it. **A cycle is therefore not avoided by care — it is unrepresentable, for
+any bundle and not merely for the one in front of us.** The word carrying the proof is *earliest*;
+an order over the stating positions is sound precisely when it is that one.
 
-**AND THE ORDER THE ENTRY'S NAME LENGTHENS BY IS STILL DERIVED, because the home no longer supplies
-one.** Where the home was a stating position it ranked them; now the rank is the dependency order
-the layers already state, which is a function of the bundle and not of a walk.
+**THE DERIVATION HAS ONE CONDITION, AND THE CONDITION IS CHECKED RATHER THAN ASSUMED.** The step out
+of an entry requires that the reference's head is not the entry's own home — a LOCAL `$ref` inside a
+home node would close the step back on itself, and nothing in the layering forbids one. So the
+condition is a **gate on the emitted graph**, not a property of the design. **A derivation whose
+condition goes unchecked is an inspection wearing a proof's clothes**, and the distance between the
+two is the whole subject of this subsection.
 
-**AND THE LAYER IS ONE MODULE PER ENTRY, BECAUSE A GROUPING BY LAYER OR BY NAMESPACE IS ACYCLIC ONLY
-BY MEASUREMENT.** The layering above reads as though L2 depends on L0 and L1 alone. It does not: a
-moving entry's node may itself contain a `$ref`, which is an import of a DOCUMENT class, so a
-catalogue module grouped with others can import a document module and be imported back by any
-document stating one of its entries. **The dependence is not incidental and it grows as the bundle
-improves** — extracting a repeated inline constraint replaces it with a reference, so the better
-schema raises it.
+**AND THE ORDER THE ENTRY'S NAME LENGTHENS BY IS THE SAME INDEX**, which is a function of the bundle
+rather than of a walk.
 
-**ONE MODULE PER ENTRY IS ACYCLIC BY DERIVATION, and the derivation is the reason to prefer it.**
-Render each at its group's earliest stating document in the reference order. With `idx` that order's
-index, `φ(D) = idx(D)` for a document module and `φ(C) = idx(home) − ½` for an entry's module, every
-edge strictly decreases `φ`: a reference out of the entry decreases because the bundle already
-states it; a document importing the entry decreases because its home is earliest; and two entries
-cannot nest mutually. **A cycle is then not avoided, it is unrepresentable** — which is the standard
-§3a set and the one a grouping cannot meet.
+**ONE MODULE PER ENTRY RETIRES THE ROOT EXEMPTION, AND THAT — NOT ACYCLICITY — IS WHAT IT BUYS.** A
+root sorts ahead of `idx`, so its edge is not graded by `φ` at all, but by the weaker rule that a
+home must not reach a document restating it: a condition **enumerated per entry** instead of
+derived. An entry living outside every document module has no such edge to grade, so the enumeration
+goes away. The gain is real and it is narrower than *acyclic by construction* — that belongs to
+`earliest`, and a separate module neither adds to it nor is needed for it.
+
+**A GROUPING BY LAYER OR BY NAMESPACE IS STILL REFUSED, for a reason of its own.** The layering above
+reads as though L2 depends on L0 and L1 alone. It does not: a moving entry's node may itself contain
+a `$ref`, which is an import of a DOCUMENT class, so a catalogue module grouped with others can
+import a document module and be imported back by any document stating one of its entries. **The
+dependence is not incidental and it grows as the bundle improves** — extracting a repeated inline
+constraint replaces it with a reference, so the better schema raises it. One module per entry is the
+granularity at which that cannot happen.
 
 **L1 IS THE PRECEDENT AND NOT THE PROBLEM.** A type derived from a CONSTRAINT belongs to no document
 and already lives outside every document module. What this rule extends to L0 and L2 is what L1
