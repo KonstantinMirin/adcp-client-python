@@ -61,9 +61,18 @@ from tests.nodeset import claimed
 #: comparison between two compilers.  ``tests/fresh.py`` owns it.
 PACKAGED = fresh.TREE
 
-#: The bundle source, for the pattern census.  Every measurement in this build is
-#: taken over ``schemas/cache/<version>/`` (section 6).
-SOURCE = pathlib.Path("schemas/cache/3.2")
+#: The bundle source, for the pattern census (section 6).
+#:
+#: **The bundle a run reads, taken from the ONE declaration of it**
+#: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while
+#: every class it grades was emitted from the PATCHED bundle, so its two halves ranged over
+#: two different document sets.  Measured against ``fresh.PUBLISHED``: the published
+#: directory is portable over 1,054 documents and the run's over 1,059, the five only the
+#: patched one holds are documents ``patches/8525`` ADDS, and of the 1,054 they share 211
+#: differ -- 200 of those beyond ``$schema``/``title``/``description``.  So the published
+#: path is ``adcp-client-python-fr4r``'s lookup error waiting at whichever clause names a
+#: document first, and a quietly different answer at each of the others.
+SOURCE = fresh.BUNDLE
 
 #: The pairs the dump half refuses on the committed tree, named rather than discovered, so
 #: this file does not grade a population another lane is moving.  Each is ``(document,
@@ -303,10 +312,16 @@ def _graded_documents() -> frozenset[str]:
     """The documents the tree grades a pair for, which is what "reaches a pair" ranges over.
 
     Read off ``test_emit.graded()`` -- the suite's one reading of the emitted tree -- and
-    not off the packaged directory: ``fresh.TREE`` carries the resolved JSON for 1,054
-    documents and the tree emits a class for 1,015 of them, so "is in the package" and
+    not off the packaged directory: ``fresh.TREE`` carries the resolved JSON for 1,059
+    documents and the tree grades a pair for 1,020 of them, so "is in the package" and
     "reaches a pair" are different populations and the difference is where an inert entry
     would hide.
+
+    **The two figures were 1,054 and 1,015 and were read off the PUBLISHED bundle**, which
+    is the defect ``adcp-client-python-lzzj.11.1`` moved this module off: ``fresh.TREE`` has
+    always come from the patched bundle, so the smaller number never described the directory
+    the sentence names.  Re-measured here -- ``len(list(fresh.TREE.rglob("*.json")))`` and
+    ``len({ref.document for ref, *_ in test_emit.graded()})`` over 2,589 graded pairs.
     """
     import test_emit  # the tree reader, one reading for the whole suite
 
