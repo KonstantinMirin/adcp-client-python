@@ -1151,18 +1151,25 @@ def lower_composition(
     conjoined: list[tuple[str, compiler.Target, nodes.Reference]] = []
     inherited: dict[str, dict] = {}
     inherited_required: set[str] = set()
-    #: The ``extra`` policy this node's views COMPOSE TO (:func:`compiler.stated_extra`,
-    #: which is the one reading of it): the FIRST view that OPENS, in the order the
-    #: document composes them -- the caller's own base first and the ``$ref`` conjuncts
-    #: after -- and CLOSED wherever any view closes.  The order is
-    #: :attr:`Shape.description`'s and for that attribute's reason, ``harness._composed``
-    #: reads the composed document that way and the two halves have to read it the same;
-    #: the closure is draft-07's conjunction, because a ``false`` on one view and a
-    #: ``true`` on another are not alternatives -- both apply to the same instance, so the
-    #: key the closed view does not declare is refused (``adcp-client-python-szfx``).  So
-    #: the value :func:`declare_object` writes where this node states no
-    #: ``additionalProperties`` is the composed document's, not whichever base pydantic's
-    #: ``model_config`` merge happens to reach last.
+    #: The ``extra`` policy the FIRST of this node's bases that resolved one resolved, in
+    #: the order the document composes them -- the caller's own base first and the ``$ref``
+    #: conjuncts after, which is the order :attr:`Shape.description` is gap-filled in and
+    #: for that attribute's reason: ``harness._composed`` reads the composed document that
+    #: way and the two halves have to read it the same.  So the value
+    #: :func:`declare_object` writes where this node states no ``additionalProperties`` is
+    #: the composed document's, not whichever base pydantic's ``model_config`` merge
+    #: happens to reach last.
+    #:
+    #: **FIRST-WINS HERE AND CLOSED-WINS AT A BRANCH, and the asymmetry is the scope of
+    #: what was measured** (:func:`compiler.stated_extra`, ``adcp-client-python-szfx``).  A
+    #: BRANCH's two views are the enclosing ROOT and the branch's own ``$ref`` target, and
+    #: draft-07 applies both to the same instance -- so ``false`` on either closes, which
+    #: 6 pairs put to ``jsonschema`` at their own pointers.  A COMPOSING node is a
+    #: different question and no pair has asked it: among this node's views is a ``$ref``
+    #: target that may itself be a union whose BRANCHES close while the target's own root
+    #: states nothing, and closing this node on a branch's word would be a class refusing
+    #: what the composed document admits.  So the gap-fill stands here until something
+    #: measures it, which is the direction §2 forbids guessing in.
     inherited_extra: str | None = None
     #: The FIELD each inherited key came out as on the base that declares it, and the
     #: base it came from.  Read only by the annotation-only arm below, which re-uses
@@ -1179,7 +1186,8 @@ def lower_composition(
         inherited.update(inherits.properties)
         inherited_fields.update(inherits.decided)
         inherited_required |= inherits.required
-        inherited_extra = compiler.stated_extra(inherited_extra, inherits.extra)
+        if inherited_extra is None:
+            inherited_extra = inherits.extra
     #: Every LOCAL declaration that won its key, and where it was declared.  The
     #: root's own properties and an inline conjunct's land in the SAME map,
     #: because draft-07 applies both to the same instance.
@@ -1451,7 +1459,8 @@ def lower_composition(
             inherited_fields.update(target.declares.decided)
             inherited_from.update(dict.fromkeys(target.declares.properties, target))
             inherited_required |= target.declares.required
-            inherited_extra = compiler.stated_extra(inherited_extra, target.declares.extra)
+            if inherited_extra is None:
+                inherited_extra = target.declares.extra
             if inherited_description is None:
                 inherited_description = target.declares.description
             continue
@@ -1534,7 +1543,7 @@ def lower_composition(
                     "keyword over this bundle state true",
                     kind=Kind.DEFERRED,
                 )
-            if "additionalProperties" in keys:
+            if "additionalProperties" in keys and inherited_extra is None:
                 # **``true`` IS the identity for the composed value schema and it is NOT
                 # the identity for the class's ``extra``, which is the asymmetry
                 # ``adcp-client-python-6oe`` measured.**  §5's ``additionalProperties``
@@ -1553,14 +1562,12 @@ def lower_composition(
                 # ``PropertyCount(minimum=…)`` refusing what the document admits, which is
                 # the one direction §2 forbids outright.
                 #
-                # Folded by :func:`compiler.stated_extra`, which is the ONE reading of
-                # what a composition's ``extra`` is: first-wins among the views that
-                # OPEN, and closed wherever any view closes.  So a conjunct's ``true``
-                # fills a gap and never reopens a base that states ``false`` -- draft-07
-                # applies both to the same instance, and the conjunction is closed
-                # (``adcp-client-python-szfx``).  ``true`` is the only value reachable
-                # here: anything else refused two lines above.
-                inherited_extra = compiler.stated_extra(inherited_extra, "allow")
+                # First-wins over the conjunct list and after the caller's own bases, which
+                # is exactly the order ``inherited_extra`` is already filled in and the
+                # order ``harness._composed`` gap-fills in -- so the two readings of "what
+                # does the document state here" cannot come apart.  ``true`` is the only
+                # value reachable: anything else refused two lines above.
+                inherited_extra = "allow"
             if "allOf" in keys:
                 # Section 5's ``allOf`` row, CONJ: the same rule applied to the
                 # conjunct's own conjuncts.  Pushed onto the worklist at their own

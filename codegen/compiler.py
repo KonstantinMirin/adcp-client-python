@@ -330,8 +330,19 @@ class Shape:
 
 
 def stated_extra(first: str | None, *rest: str | None) -> str | None:
-    """The ``extra`` policy of a class composing views that each resolved one: CLOSED
-    where any view closed, and otherwise the FIRST that states one.
+    """A BRANCH's ``extra`` policy, composed from the views that are both in force:
+    CLOSED where either closed, and otherwise the FIRST that states one.
+
+    **The three callers are the three BRANCH sites and that scope is load-bearing**
+    (``lower.union`` twice and ``lower.composition``'s distributed branch).  A branch's two
+    views are the enclosing ROOT -- whose keywords draft-07 applies to the same instance as
+    the branch's own, combinator or no combinator -- and the branch's own ``$ref`` target.
+    A COMPOSING node reads its views' ``extra`` with a gap-fill of its own
+    (``lower_composition``'s ``inherited_extra``, which carries the reason the two readings
+    are kept apart): among its views is a ``$ref`` target that may be a union whose
+    BRANCHES close while the target's own root states nothing, and a node closed on a
+    branch's word would refuse what the composed document admits.  No pair has measured
+    that direction, so it is left as it was rather than changed on an argument.
 
     **``forbid`` wins, and that is draft-07's conjunction read on the one keyword whose
     two views are not alternatives but both in force** (``adcp-client-python-szfx``).
