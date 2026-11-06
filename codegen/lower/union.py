@@ -507,9 +507,97 @@ def _const_pins(props: Any) -> tuple[Any, ...]:
     return tuple(pins(props).values())
 
 
+def _requires_one_of(branch: Any) -> tuple[str, ...]:
+    """The keys a branch requires ONE LEVEL DOWN: a nested ``anyOf``/``oneOf`` whose members
+    state requiredness and nothing else.
+
+    **The fact is WHICH KEYS the branch's requiredness ranges over**, and §4 rung 3 reads
+    the top-level ``required`` set alone -- correctly, because that is the branch's own
+    declaration.  A branch stating
+
+    ::
+
+        {"properties": {...}, "anyOf": [{"required": ["timezone_modes"]},
+                                        {"required": ["time_granularity"]}]}
+
+    requires one of two keys and says so as plainly, one level down.  **MEASURED, and it is
+    the whole reason this function exists**: ``core/targeting-overlay-requirements.json#
+    /definitions/daypartRequirement/anyOf/1`` is that node on bundle 3.3.  On 3.2 it stated
+    ``required: ["timezone_modes"]`` at its top level and rung 3 named it
+    ``DaypartRequirementTimezoneModes``; 3.3 added ``time_granularity`` and moved the
+    requiredness into the nested ``anyOf``, so every rung answered nothing, the branch fell
+    back to the union's own derived name, both positions of the union derived
+    ``TargetingOverlayRequirementsDaypartRequirement``, and the document refused on
+    ``title`` with five more chained behind it.
+
+    **IT IS A FALL AND NOT A FIFTH IDENTITY RULE**, which is ``lower.names``'s decision and
+    carries the measurement for it (``names._requirement_rung``,
+    ``names.REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT``): read as an identity rule this renames
+    two classes bundle 3.2 ships and that collide with nothing.  So this hands over a FACT
+    and the pass decides where in the ladder it sits, which is §6's seam exactly as
+    :func:`_const_pins` draws it.
+
+    **WHAT IS READ, and every clause of the narrowing is load-bearing.**  A nested
+    ``anyOf``/``oneOf`` contributes its members' ``required`` keys exactly when EVERY member
+    is a mapping stating ``required`` ALONE, over keys the branch itself DECLARES:
+
+    * **every member, or none of them.**  A member stating nothing requires nothing, so the
+      combinator as a whole then requires nothing and a union over the rest would name the
+      branch after keys it does not require;
+    * **``required`` alone.**  A member stating anything beside it -- a ``properties``, a
+      ``const``, a second combinator -- is a subschema in its own right and its ``required``
+      is a fact about that subschema, not about this branch;
+    * **a CONDITIONAL is never read.**  The same 3.3 node states
+      ``allOf: [{if: {required: ["iana_timezones"]}, then: {...}}]``, and ``iana_timezones``
+      is not required -- it is the antecedent of an implication.  ``if``/``then`` members
+      fail the "``required`` alone" clause, which is how one condition covers both;
+    * **over keys the branch DECLARES.**  A ``required`` naming a key the branch states no
+      ``properties`` entry for says nothing about the branch's own fields, and a node with
+      no property map at all is not the shape this reads -- which is also what keeps the
+      reading off the 274 ``not`` and ``if``/``then`` nodes of bundle 3.2 that state a
+      bare ``required`` list (measured: 295 nodes without this clause, 21 with it);
+    * **where the branch states ``required`` ITSELF, nothing is read.**  Rung 3 answers
+      there and this is the reading for requiredness stated ELSEWHERE, so a branch that
+      declares its own set has one answer about it and not two.
+
+    ``anyOf`` and ``oneOf`` both, because "at least one of these keys" and "exactly one of
+    these keys" are the same fact about WHICH keys the node's requiredness ranges over, and
+    rung 3 reads the key set.  ``allOf`` is not read: a conjunct's ``required`` holds
+    unconditionally and ``lower/composition.py`` is what resolves a conjunct, so reading it
+    here would be a second reading of a composition.
+
+    **It reads the declaration and hands a FACT to ``lower/names.py``**, which is §6's seam
+    and :func:`_const_pins`' own arrangement: which fact wins and how it is spelled stay in
+    the naming pass.
+    """
+    if not isinstance(branch, Mapping):
+        return ()
+    if isinstance(branch.get("required"), list):
+        return ()
+    declared = branch.get("properties")
+    if not isinstance(declared, Mapping):
+        return ()
+    out: list[str] = []
+    for keyword in ("anyOf", "oneOf"):
+        members = branch.get(keyword)
+        if not isinstance(members, list) or not members:
+            continue
+        if not all(
+            isinstance(m, Mapping)
+            and set(m) == {"required"}
+            and isinstance(m["required"], list)
+            and all(isinstance(k, str) and k in declared for k in m["required"])
+            for m in members
+        ):
+            continue
+        for member in members:
+            out.extend(member["required"])
+    return tuple(dict.fromkeys(out))
+
+
 def _naming_facts(branch: Any, props: Any, inherits: Inherited | None = None) -> Any:
-    """The four DECLARED facts §4 "Names"'s branch rules read, off one branch's
-    declaration.
+    """The DECLARED facts §4 "Names"'s branch rules read, off one branch's declaration: the
+    four identity rules' and the LAST rung's (:func:`_requires_one_of`).
 
     One reading for the two positions a branch is named at, so a root branch and a nested
     one cannot come to read one declaration differently.
@@ -534,6 +622,11 @@ def _naming_facts(branch: Any, props: Any, inherits: Inherited | None = None) ->
         title=title if isinstance(title, str) and title else None,
         pins=_const_pins(props),
         required=tuple(required) if isinstance(required, list) else (),
+        # **The fifth DECLARED fact: requiredness the branch states ONE LEVEL DOWN**
+        # (:func:`_requires_one_of`).  Read off the top level alone the reading went silent
+        # for a branch whose requiredness the document states in a nested ``anyOf``, which
+        # is what refused ``core/targeting-overlay-requirements.json`` on bundle 3.3.
+        requires_one_of=_requires_one_of(branch),
         target=symbol if symbol and symbol.isidentifier() else None,
     )
 

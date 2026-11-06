@@ -275,6 +275,22 @@ def main(argv: list[str] | None = None) -> int:
     # never saw it.  The GRADE reads the same directory: a harness validating an instance
     # against the published document while the model was compiled from the patched one would
     # be §8's comparison asked of two different schemas.
+    # **A REFERENCE THAT DISOWNS ITS OWN BUNDLE'S BASE URI IS REPORTED AND NOT FATAL**
+    # (``patch.bases``, ``patch.BASE_URI_AGREEMENT``), and this line is the report.  It is
+    # section 5's ``default`` arrangement one layer out -- "dropped and REPORTED" -- because
+    # a reader who sees only the refusals would never learn that one of bundle 3.3's 4,164
+    # resolving references spells another protocol version, and a silent majority vote is
+    # how a second bundle's references would come to drift unnoticed.
+    #
+    # **Read off the bundle NAMED and before the patch is applied**, which is two decisions
+    # and both are the same reason: a dissenting reference is UPSTREAM's defect in the
+    # PUBLISHED documents, not a property of the patched copy, and a report printed after
+    # ``for_build`` would be lost on exactly the bundle that has one -- ``for_build`` raises
+    # on bundle 3.3 today for an entry whose defect upstream has already fixed
+    # (``adcp-client-python-82m.60``).  The report is a fact about the input, so it arrives
+    # whether or not the run that reads it gets any further.
+    for dissent in patch.bases(ns.bundle).dissenting:
+        print(f"dissenting base URI in {dissent}")
     bundle_dir = patch.for_build(ns.bundle)
     out = emit(bundle_dir, ns.document)
     write(out, ns.tree, ns.package)

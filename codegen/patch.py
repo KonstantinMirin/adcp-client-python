@@ -217,8 +217,83 @@ class Extraction(NamedTuple):
     ask: str = ""
 
 
-def base_uri(bundle_dir: Path) -> str:
-    """The prefix the bundle's own absolute ``$ref``\\ s put before a document path.
+class Dissent(NamedTuple):
+    """One absolute reference whose base URI is not the one its bundle publishes under.
+
+    Named rather than counted, because a count is a majority vote and a majority vote is
+    exactly how the SECOND such reference would arrive unseen.  Each of these is an
+    upstream defect with a document, a pointer and a one-line change: a cross-version
+    absolute ``$ref`` either names a frozen schema the bundle does not carry -- in which
+    case the bundle is incomplete -- or it names the bundle's OWN document and should be
+    spelled as such, which is what ``bundle.document_for`` resolves it to today.
+    """
+
+    #: Bundle-relative path of the referring document.
+    document: str
+    #: JSON Pointer of the referring node.
+    pointer: str
+    #: The reference, as the document spells it.
+    uri: str
+    #: The base URI it states, which is not :attr:`Base.prefix`.
+    prefix: str
+
+    def __str__(self) -> str:
+        return (
+            f"{self.document}#{self.pointer or '/'} states base {self.prefix!r} and its "
+            f"bundle publishes under another: {self.uri}"
+        )
+
+
+#: **THE SHARE OF A BUNDLE'S RESOLVING ABSOLUTE REFERENCES THAT HAVE TO AGREE** for a
+#: prefix to be the bundle's own (:func:`bases`).
+#:
+#: **Why a threshold at all, and why this one.**  The prefix exists to spell a NEW
+#: reference the bundle would recognise as its own, and a bundle publishes under ONE base.
+#: So the question a share answers is not "which prefix wins" -- ``max()`` answers that and
+#: answers it for a bundle assembled out of two publications, where the new reference would
+#: be right for one half and wrong for the other.  It is "does this bundle have ONE
+#: publication base, with the disagreements being defects in individual references".
+#:
+#: At ``0.99`` a prefix is the bundle's own when all but a hundredth of its references
+#: spell it, and the rest are named (:class:`Dissent`).  Not ``1.0``, which is what this
+#: refused at before and is **measured wrong on bundle 3.3**: 4,163 of its 4,164 resolving
+#: absolute references spell ``.../schemas/3.3.0-beta.0/`` (99.976%) and ONE spells
+#: ``.../schemas/3.2.1/``, so the whole bundle was unpatchable over a single stale literal
+#: in upstream's own source.  And not a bare majority, because a 51/49 split is precisely
+#: the two-publication bundle this refusal exists for -- a line drawn at "more than half"
+#: would admit it and hand a new reference a prefix two-fifths of the bundle disowns.
+#:
+#: **The share is over EDGES and not documents**, because an edge is what a new reference
+#: is one more of.  Bundle 3.2 states 3,795 resolving references over 677 documents and
+#: dissents nowhere; bundle 3.3 states 4,164 over 732 and dissents once.  On a bundle of
+#: 3.3's size the line admits up to 41 dissenting references -- a list a reviewer reads one
+#: by one, which is the condition under which calling them defects is honest -- and refuses
+#: any split a reviewer would have to call a second base.
+BASE_URI_AGREEMENT = 0.99
+
+
+class Base(NamedTuple):
+    """The prefix a bundle's absolute references AGREE on, and every reference that does not.
+
+    Two fields and not one, because the disagreement is a FINDING and the prefix is an
+    answer: :func:`load` needs the string, and the run needs the names
+    (``codegen.__main__``, which prints one line per dissent exactly as section 5's
+    ``default`` row is "dropped and REPORTED").
+    """
+
+    #: The bundle's own base URI.
+    prefix: str
+    #: Every resolving absolute reference stating a different one, in document order.
+    dissenting: tuple[Dissent, ...]
+
+    def report(self) -> str:
+        """One line per dissenting reference, or ``""`` where the bundle agrees with itself."""
+        return "\n".join(str(d) for d in self.dissenting)
+
+
+def bases(bundle_dir: Path) -> Base:
+    """The prefix the bundle's own absolute ``$ref``\\ s put before a document path, and
+    every reference of it that states a different one.
 
     DERIVED from the published bundle rather than written down, for ``bundle.document_for``'s
     reason: every reference in 3.2 is spelled ``.../schemas/3.2.4/<path>``, and a literal
@@ -226,25 +301,65 @@ def base_uri(bundle_dir: Path) -> str:
     under a different base.  Read off the references that already resolve: the prefix a URI
     has left once the document path it names is taken off its end.
 
-    Raises ``ValueError`` where the bundle's absolute references disagree about the prefix
-    or state none, because then there is no spelling a new reference could take that the
-    bundle would recognise as its own.
+    **A DISAGREEMENT IS REPORTED AND NOT FATAL**, which is the whole of this function's
+    revision, and :data:`BASE_URI_AGREEMENT` carries the reason and the measurement.  It
+    refused a bundle whose references stated more than one prefix, full stop; that refusal
+    ranges over the bundle rather than over a patch entry, so **one stale literal made
+    bundle 3.3 unpatchable in full** -- ``apply`` calls :func:`load`, :func:`load` asked for
+    the prefix, and ``python -m codegen --bundle schemas/cache/3.3`` raised with it.
+
+    Raises ``ValueError`` still, and for the two cases that leave a new reference with no
+    spelling to take:
+
+    * the bundle states NO resolving absolute reference, so there is no prefix to read;
+    * no prefix reaches :data:`BASE_URI_AGREEMENT`, so the bundle does not have one
+      publication base -- the refusal names every prefix with its share, because "which two
+      are they" is the first thing a reader of that refusal needs.
     """
     documents = set(bundle.portable(bundle_dir))
-    found = set()
+    found: dict[str, list[Dissent]] = {}
     for edge in bundle.edges(bundle_dir):
         head, _ = bundle.split_ref(edge.uri)
         if not head:
             continue
         named = bundle.document_for(head, documents)
         if named is not None and head.endswith(named):
-            found.add(head[: len(head) - len(named)])
-    if len(found) != 1:
+            prefix = head[: len(head) - len(named)]
+            found.setdefault(prefix, []).append(
+                Dissent(edge.document, edge.pointer, edge.uri, prefix)
+            )
+    if not found:
         raise ValueError(
-            f"{bundle_dir}: its absolute references state {len(found)} distinct base URIs "
-            f"({sorted(found)}), so a new reference has no spelling to take"
+            f"{bundle_dir}: it states no absolute reference that resolves to a document of "
+            "its own, so a new reference has no spelling to take"
         )
-    return found.pop()
+    total = sum(len(one) for one in found.values())
+    prefix, agreeing = max(found.items(), key=lambda kv: (len(kv[1]), kv[0]))
+    if len(agreeing) < BASE_URI_AGREEMENT * total:
+        shares = ", ".join(
+            f"{one} ({len(found[one])}/{total})" for one in sorted(found, key=lambda p: -len(found[p]))
+        )
+        raise ValueError(
+            f"{bundle_dir}: no base URI is stated by {BASE_URI_AGREEMENT:.0%} of its "
+            f"{total} resolving absolute references, so it does not publish under one base "
+            f"and a new reference has no spelling to take -- {shares}"
+        )
+    dissenting = sorted(
+        (d for one in found.values() for d in one if d.prefix != prefix),
+        key=lambda d: (d.document, d.pointer),
+    )
+    return Base(prefix, tuple(dissenting))
+
+
+def base_uri(bundle_dir: Path) -> str:
+    """The prefix alone: :attr:`Base.prefix` of :func:`bases`.
+
+    Kept as its own name because a caller spelling a URI wants the string and has nothing
+    to do with the dissent -- :func:`load` is that caller.  The reporting side takes
+    :func:`bases` and reads both fields, so neither reader has to know the other's business
+    and there is one derivation of the prefix.
+    """
+    return bases(bundle_dir).prefix
 
 
 def _judged(entry: Mapping, at: str) -> tuple[str, str]:
@@ -272,12 +387,21 @@ def load(patch_set: Path, published: Path) -> tuple[Extraction, ...]:
     holds -- a patch REPLACING a published document is a different operation from this one
     and the record check could not tell the two apart -- or an entry naming no upstream
     defect and no ask (:func:`_judged`).
+
+    **THE BASE URI IS READ ONLY WHERE AN EXTRACTION NEEDS ONE**, and that is a property of
+    the mechanism rather than a saved call.  An extraction's :attr:`Extraction.uri` is the
+    one thing here that has to be spelled in the BUNDLE's own idiom, so a manifest holding
+    extractions is gated on the bundle having a base and a manifest holding none is gated on
+    nothing.  Read eagerly, ``patches/8735`` -- thirteen additions and **zero** extractions,
+    which add a keyword at a published pointer and reference nothing -- was refused on
+    bundle 3.3 for a spelling it never asks the bundle for.
     """
     manifest = json.loads((patch_set / MANIFEST).read_text())
-    prefix = base_uri(published)
+    entries = tuple(manifest.get("extractions", ()))
+    prefix = bases(published).prefix if entries else ""
     held = set(bundle.portable(published))
     out = []
-    for entry in manifest.get("extractions", ()):
+    for entry in entries:
         document, pointer = entry["document"], entry["pointer"]
         defect, ask = _judged(entry, f"{document}#{pointer}")
         if document in held:
