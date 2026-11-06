@@ -11,8 +11,11 @@ module makes is asserted here over a whole population rather than on an example:
 * every entry's pointer resolves in its packaged document AND the keyword still holds
   the value the entry states -- which is how the set shrinks on its own when upstream
   repairs a position, with no one watching;
-* **exactly one** of the eight ``uri`` patterns the bundle states is refused by its own
-  type's output, re-measured over all eight rather than read off the module;
+* the ``uri`` patterns refused by their own type's output are exactly the ones the module
+  DECLARES, re-measured over all eight rather than read off the module;
+* every position those patterns reach is exempt, and every exempt position is one of
+  theirs -- including the ones the record HOISTED, which is the direction that could not
+  fail before ``dump_exemptions._occurrences`` existed;
 * the strike explains every dump the document refuses today, and touches nothing else.
 
 D14: a check is exhaustive over a population or it does not exist.  Every denominator
@@ -21,6 +24,7 @@ below is asserted non-empty.
 
 from __future__ import annotations
 
+import functools
 import json
 import pathlib
 import re
@@ -35,7 +39,15 @@ from pydantic import TypeAdapter
 import adcp.types.constraints as public_constraints
 from adcp.types._base import SchemaRef, schema_at
 from codegen import bundle, constraints, dump_exemptions, harness
-from codegen.dump_exemptions import EXEMPT, ORIGIN_ONLY, PIN, UPSTREAM, Exemption
+from codegen.dump_exemptions import (
+    EXEMPT,
+    ORIGIN_ONLY,
+    PERCENT_FREE,
+    PIN,
+    UPSTREAM,
+    VIOLATING,
+    Exemption,
+)
 from tests.nodeset import claimed
 
 #: The packaged tree, which is the pointer space an entry names: section 6 measures
@@ -74,9 +86,24 @@ REFUSED_TODAY = (
 
 
 def _walk(node: Any, ptr: str = "") -> Any:
-    """Every node of a document, by JSON pointer, ``$defs`` and all (section 6)."""
+    """Every VALUE of a document, by JSON pointer, ``$defs`` and all (section 6).
+
+    **It yielded the MAPPINGS only, and that is what made
+    :func:`test_the_strike_removes_only_the_named_keywords` vacuous.**  A ``pattern`` holds
+    a string, so the pointer that names it was yielded by nothing: the ``before - after``
+    difference over a strike that removes one was the EMPTY SET, the loop that checked
+    every removed pointer against the exempt keywords ran zero times, and the value
+    comparison at the end of that test -- keyed on ``not isinstance(node, (dict, list))``
+    -- compared ``{}`` against ``{}``.  Three assertions, all three true of a strike that
+    removed nothing and of a strike that removed the wrong thing.
+
+    Every reader of this function that wanted mappings alone already guards with
+    ``isinstance(node, dict)``, so widening it costs them nothing and gives that test the
+    difference it was written to enumerate.  A gate that passes when nothing happens is not
+    a gate, and this one had the defect in its own walk.
+    """
+    yield ptr, node
     if isinstance(node, dict):
-        yield ptr, node
         for key, value in node.items():
             yield from _walk(value, f"{ptr}/{key}")
     elif isinstance(node, list):
@@ -196,9 +223,17 @@ def test_the_exempt_set_only_shrinks() -> None:
     which is false the moment an entry is added at either end and carries its own
     content at zero: *this SDK exempts no dump for a reason of its own.*  The
     non-emptiness guard moves onto ``EXEMPT`` itself, so an empty registry still cannot
-    make the rest of this file pass by having nothing to grade."""
+    **THE PARTITION IS "IS THE VALUE A VIOLATING PATTERN", NOT "IS IT ``ORIGIN_ONLY``".**
+    It was the second, and that reading would have obliged this pin to rise from 0 to 4 on
+    the day ``PERCENT_FREE`` reached an emitted document -- for four positions that are a
+    function of EMISSION in exactly the way the split exists to take out of the pin.
+    ``ORIGIN_ONLY``'s own declaration had already decided the case ("a second violating
+    pattern in a later bundle is a second entry here"), so the predicate names the KIND the
+    derived half covers and the pin keeps counting the part that is this SDK's own
+    decision.  It is still an EQUALITY at zero and still false the moment an entry is added
+    for a reason of this SDK's own."""
     assert EXEMPT, "the registry is empty: every assertion over it would hold vacuously"
-    pinned = [e for e in EXEMPT if e.value != ORIGIN_ONLY]
+    pinned = [e for e in EXEMPT if e.value not in VIOLATING]
     assert len(pinned) == PIN, {
         "the pinned part of the exempt set": [f"{e.document}{e.pointer}" for e in pinned],
         "PIN": PIN,
@@ -228,17 +263,30 @@ def test_the_origin_only_part_is_the_packaged_positions() -> None:
 
     It compares one exact string against the packaged tree, so it is still the literal
     set of positions this module's first rule requires and not a predicate over regexes.
-    """
-    import test_emit  # the tree reader, one reading for the whole suite
 
+    **THE LEFT SIDE IS THE PACKAGED DOCUMENT'S OWN TEXT, WHICH IS THE SPACE AN ENTRY
+    NAMES, AND IT USED TO BE THE APPLIED ONE.**  That mismatch is what made this equality
+    unsatisfiable rather than merely red: it walked ``schema_at``'s expansion, where the
+    record's storage is put back, so a node the record hoisted was counted once per
+    OCCURRENCE -- 146 positions against 74 of the text, three of them for one authored node
+    at three places in one document.  An entry per occurrence is not a position of any
+    shipped file, and 97 of those entries could never have been the one that acted: the
+    expansion shares one object per stored subtree, so the first strike removes the keyword
+    at all of them.  So the derivation reads the document the way the entry does, and
+    ``dump_exemptions._occurrences`` is where the two spaces meet -- asserted separately,
+    through the production entry point, by
+    :func:`test_an_entry_at_a_hoisted_position_lands_where_the_pair_reads_it`.
+
+    **AND BOTH SIDES RANGE OVER WHAT REACHES A PAIR**, which is the population the strike
+    can act in: a document the tree grades no pair for produces no dump, so a position in
+    it refuses nothing and an entry at it could never act.  One position is outside the set
+    for exactly that reason and it is named in :data:`EXEMPT`'s own comment.  Derived off
+    the graded tree rather than off ``dump_exemptions``' own crossing, so this equality and
+    the mechanism it grades do not agree with each other by construction.
+    """
     positions = claimed(
-        "packaged positions whose pattern is ORIGIN_ONLY",
-        {
-            f"{document}#{pointer}"
-            for document in sorted({g.ref.document for g in test_emit.graded()})
-            for pointer, node in bundle.nodes(schema_at(SchemaRef(document, "#")))
-            if isinstance(node, dict) and node.get("pattern") == ORIGIN_ONLY
-        },
+        "packaged positions whose pattern is ORIGIN_ONLY and that reach a pair",
+        _packaged_text_positions(lambda node: node.get("pattern") == ORIGIN_ONLY),
     )
     exempted = claimed(
         "ORIGIN_ONLY entries of EXEMPT",
@@ -247,6 +295,38 @@ def test_the_origin_only_part_is_the_packaged_positions() -> None:
     assert exempted == positions, {
         "reaches a pair and is not exempt": sorted(positions - exempted),
         "exempt and reaches no pair": sorted(exempted - positions),
+    }
+
+
+@functools.cache
+def _graded_documents() -> frozenset[str]:
+    """The documents the tree grades a pair for, which is what "reaches a pair" ranges over.
+
+    Read off ``test_emit.graded()`` -- the suite's one reading of the emitted tree -- and
+    not off the packaged directory: ``fresh.TREE`` carries the resolved JSON for 1,054
+    documents and the tree emits a class for 1,015 of them, so "is in the package" and
+    "reaches a pair" are different populations and the difference is where an inert entry
+    would hide.
+    """
+    import test_emit  # the tree reader, one reading for the whole suite
+
+    return frozenset(g.ref.document for g in test_emit.graded())
+
+
+def _packaged_text_positions(wanted: Any) -> set[str]:
+    """``"<document>#<pointer>"`` for every node of a GRADED document that ``wanted`` picks.
+
+    The document's own TEXT, which is the space :class:`Exemption` names: read with
+    :func:`json.loads` off the packaged file and walked by :func:`_walk`, so a subtree the
+    record STORED is at its ``definitions/Shared<N>`` pointer here and not at the positions
+    the document applies it.  ``bundle.nodes(schema_at(...))`` is the other space and is
+    what this replaced; see :func:`test_the_origin_only_part_is_the_packaged_positions`.
+    """
+    return {
+        f"{document}#{pointer}"
+        for document in sorted(_graded_documents())
+        for pointer, node in _walk(_packaged(document))
+        if isinstance(node, dict) and wanted(node)
     }
 
 
@@ -360,7 +440,11 @@ def test_the_bundles_uri_pattern_population_is_the_one_d5_states() -> None:
     """
     patterns = claimed("distinct format:uri patterns in the bundle", _uri_patterns())
     assert constraints.HTTPS_ONLY in patterns, sorted(patterns)
-    assert ORIGIN_ONLY in patterns, sorted(patterns)
+    for declared in VIOLATING:
+        # Each pattern the exemption is keyed on, by name: a bundle that stops stating one
+        # leaves its entries covering positions no document holds, and the census below
+        # would then be measuring a pattern nothing uses.
+        assert declared in patterns, (declared, sorted(patterns))
 
 
 #: Draws per pattern.  **40 is not enough and the number was measured, not guessed.**
@@ -434,15 +518,25 @@ def _roundtrip(pattern: str, examples: int = DRAWS) -> Roundtrip:
 
 
 def _packaged_positions(pattern: str) -> list[str]:
-    """Every packaged position stating ``pattern`` at a ``format: uri`` node.
+    """Every position of a GRADED document stating ``pattern`` at a ``format: uri`` node.
 
-    The packaged tree is the only space that reaches a pair, which is what makes a
-    violating pattern with no position here upstream's problem and not an exemption.
+    A position that reaches a pair is the only one the strike can act in, which is what
+    makes a violating pattern with no position here upstream's problem and not an
+    exemption.
+
+    **IT RANGED OVER EVERY FILE IN THE PACKAGE AND NOW RANGES OVER THE GRADED DOCUMENTS**,
+    which is this function's own name followed: the test it feeds is
+    ``..._that_reaches_a_pair_is_exempt``, and ``PACKAGED.rglob`` answers "is in the
+    package" -- 1,054 documents against the 1,015 the tree emits a class for.  The
+    difference is not hypothetical: ``core/async-response-refs/media-buy/
+    get-products-async-response-input-required.json`` states :data:`ORIGIN_ONLY` and the
+    tree grades no pair for it, so an entry there could never act and the equality would
+    have demanded one.
     """
     return sorted(
-        f"{f.relative_to(PACKAGED)}#{ptr}"
-        for f in PACKAGED.rglob("*.json")
-        for ptr, node in _walk(json.loads(f.read_text()))
+        f"{document}#{ptr}"
+        for document in sorted(_graded_documents())
+        for ptr, node in _walk(_packaged(document))
         if isinstance(node, dict) and node.get("format") == "uri" and node.get("pattern") == pattern
     )
 
@@ -468,22 +562,39 @@ def test_every_violating_uri_pattern_that_reaches_a_pair_is_exempt() -> None:
       ``test_every_entry_resolves_and_still_states_its_value`` reddens on the entry
       until it is removed.
 
-    ``^https://[!$&-;=@-~]+$`` is the second violator and it is deliberately NOT
-    exempt.  The class forbids ``%``, so percent-encoding a ``{`` or an ``@`` breaks
-    it -- measured at 4 of 380 round-tripped draws of this function's own stream, a
-    RATE where the first is a certainty.  **The reason it is not exempt is reach, not
-    rate**: its one site is ``core/agent-reporting-destination-state.json#/properties/
-    setup/properties/setup_url``, that document is not emitted, so it reaches no pair
-    and no class emits a value against it.  That is what the last assertion states,
-    and it is read off the packaged tree rather than off a draw.  If the emitter
-    starts emitting the document, the first assertion reddens and a human decides
-    whether the set grows.
+    **:data:`PERCENT_FREE` IS THE SECOND VIOLATOR AND IT IS EXEMPT NOW, WHICH IS THIS
+    TEST'S OWN SENTENCE BEING KEPT.**  What stood here read: "it is deliberately NOT
+    exempt.  The class forbids ``%``, so percent-encoding a ``{`` or an ``@`` breaks it --
+    measured at 4 of 380 round-tripped draws ... **the reason it is not exempt is reach,
+    not rate**: its one site is ``core/agent-reporting-destination-state.json#/properties/
+    setup/properties/setup_url``, that document is not emitted, so it reaches no pair ...
+    If the emitter starts emitting the document, the first assertion reddens and a human
+    decides whether the set grows."  The emitter emits it, and ``core/principal-state.json``
+    and the two principal responses besides -- four positions, all four in documents the
+    tree grades -- so the condition that paragraph named has arrived and the last assertion
+    it describes is FALSE as a fact about the tree.
+
+    The decision is that the set grows, and the ground is that the defect is the SAME ONE:
+    the pattern forbids a character URL normalisation PRODUCES, so the document refuses the
+    canonical spelling of a value it accepts.  ``dump_exemptions._PCT`` names the character
+    and the RFC, and the entry names the same upstream issue every other entry names --
+    which is the only ground this set may grow on.  It does not raise the shrink-only pin,
+    because the pin is keyed on the KIND and ``ORIGIN_ONLY``'s own declaration had already
+    decided this case: "a second violating pattern in a later bundle is a second entry
+    here, taken the same way over the whole pattern population."
+
+    **What replaces the last assertion is the stronger thing it was standing in for**: the
+    patterns MEASURED to violate are exactly the ones :data:`VIOLATING` declares.  Both
+    directions redden -- a third violator in a later bundle is unexempted and named here
+    rather than waiting for a draw to find it in the dump half, and a pattern upstream
+    repairs leaves a declared key with nothing violating under it and its entries stale.
 
     **No drawn RATE is asserted here, deliberately.**  A derandomized stream is a
     function of this function's identity and of the pinned ``hypothesis`` version, so
     a rate assertion would redden on a rename -- a defect in the instrument wearing
     the clothes of a defect in the SDK.  What is asserted is a certainty (every
-    round-tripped value refused) and two facts read off documents.
+    round-tripped value refused, for ``ORIGIN_ONLY``), one set equality against the
+    module's declaration, and one fact read off documents.
     """
     patterns = _uri_patterns()
     assert patterns, "the denominator is empty: no uri pattern would be graded"
@@ -498,14 +609,21 @@ def test_every_violating_uri_pattern_that_reaches_a_pair_is_exempt() -> None:
         "positions they reach": reaching,
         "exempt": exempt,
     }
+    # The measured violating set IS the declared one, in both directions: the module's
+    # literal patterns are what the entries are keyed on, and a draw deciding membership
+    # without the declaration agreeing is an exemption resting on a stream.
+    assert set(violating) == set(VIOLATING), {
+        "measured to violate": {p: (g.violated, g.round_tripped) for p, g in violating.items()},
+        "declared in VIOLATING": sorted(VIOLATING),
+    }
     # ORIGIN_ONLY is not violated at a RATE: it is unsatisfiable, and that is the
     # ground D5 keeps the URL type on.  Every value the type accepts and re-emits is
     # refused by it, so no conforming URL library could satisfy it.
     origin = measured[ORIGIN_ONLY]
     assert origin.violated == origin.round_tripped, origin
-    # The second violator reaches no packaged document, which is why it is upstream's
-    # and not exempted here.  Read off the tree, so no draw decides it.
-    assert _packaged_positions("^https://[!$&-;=@-~]+$") == []
+    # PERCENT_FREE is violated at a rate and REACHES pairs, which is the pair of facts
+    # that moved it into the set.  The reach is read off the tree, so no draw decides it.
+    assert _packaged_positions(PERCENT_FREE), PERCENT_FREE
 
 
 # --------------------------------------------------------------------------- #
@@ -557,6 +675,13 @@ def test_the_strike_removes_only_the_named_keywords(
     the check in a way the pass/fail of the pair cannot show -- the pair would go green
     either way.  So the difference is enumerated: every pointer present in one and not
     the other has to be an entry's own keyword.
+
+    **IT IS AN EQUALITY AGAINST THE POSITIONS THE STRIKE SAID IT WOULD TOUCH**, where it
+    used to be "the last segment of each removed pointer is a keyword some entry names".
+    That form was true of a strike at the wrong DEPTH -- any ``pattern`` anywhere scored --
+    and the set it computed was used for nothing but a non-emptiness guard.  The positions
+    come from ``dump_exemptions._strikes``, which answers in the APPLIED space, so the
+    comparison is between where the module says it struck and where the document changed.
     """
     pair = _pair(document, pointer)
     relaxed = dump_exemptions.struck(pair.schema, document, pointer)
@@ -564,11 +689,12 @@ def test_the_strike_removes_only_the_named_keywords(
     after = {ptr for ptr, _ in _walk(relaxed)}
     assert not after - before, after - before
     expected = {
-        f"{dump_exemptions._path(e.pointer)[len(dump_exemptions._path(pointer)) :]}"
-        for e in dump_exemptions.applying_to(document, pointer)
+        "/".join(("", *where, entry.keyword))
+        for entry, where in dump_exemptions._strikes(document, pointer)
     }
     assert expected, (document, pointer, "no entry applies, so nothing is being graded")
     removed = before - after
+    assert removed == expected, {"removed": sorted(removed), "the strike named": sorted(expected)}
     for gone in removed:
         assert gone.rsplit("/", 1)[-1] in {e.keyword for e in EXEMPT}, (gone, removed)
     # Values, not only shapes: every node that survives in both holds what it held.
@@ -661,6 +787,95 @@ def test_an_ancestor_of_an_exempt_position_reports_nothing_it_did_not_need(
     report = harness.check_pair(_pair(document, pointer))
     assert report.outcome == "pass", (report.outcome, report.accepts.detail)
     assert report.accepts.dump_exempt == [], report.accepts.dump_exempt
+
+
+#: The one hoisted position this file grades by name, and the pair that reads it.  Chosen
+#: because it is the position ``adcp-client-python-lzzj.2`` was diagnosed on: the record
+#: stores ``core/attestation-issuer.json``'s origin branch under ``definitions/Shared11``
+#: and the pair at ``#/properties/attestation_evaluations/items`` applies it under
+#: ``/properties/reference``, so the two pointers below are one node with two spellings and
+#: nothing but ``_occurrences`` relates them.
+HOISTED = (
+    "core/audience-evidence-selection.json",
+    "#/properties/attestation_evaluations/items",
+    "/definitions/Shared11/properties/issuer/oneOf/2/properties/origin",
+    "/properties/reference/properties/issuer/oneOf/2/properties/origin",
+)
+
+
+def test_an_entry_at_a_hoisted_position_lands_where_the_pair_reads_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """**An entry at a position the record HOISTED reaches the pair, and strikes it.**
+
+    This is the direction that was structurally unfailable, so it is asserted in both:
+    the premise that the two spellings really are different, and the effect that the
+    strike lands anyway.
+
+    The premise first, because without it this passes over a position that was never
+    hoisted and says nothing: the entry's pointer is in the packaged document's own TEXT,
+    the pair's is in the applied space, and a PREFIX comparison between them -- which is
+    what :func:`dump_exemptions.applying_to` did -- answers that the entry is not inside
+    the pair.  That assertion is the old mechanism, written out, and it holds: the strike
+    reaching the pair anyway is the whole repair.
+
+    Then the effect, twice.  Once on the entry the registry carries, through
+    :func:`dump_exemptions.applying_to`, :func:`dump_exemptions.labels` and
+    :func:`dump_exemptions.struck` -- the three production entry points -- which measures
+    that an exemption at a hoisted position is in force today.  And once by INJECTING an
+    entry for a keyword no entry names, which is the half that cannot be satisfied by the
+    population happening to be right: the probe strikes ``format`` at the same hoisted
+    node, the keyword disappears at the position the pair reads, and the pair's own schema
+    is left holding it.  Before ``_occurrences``, both calls answered ``()`` and ``struck``
+    returned the schema by identity with the keyword exactly where it was.
+    """
+    document, pointer, stored, applied = HOISTED
+    at = dump_exemptions._path(pointer)
+
+    # THE PREMISE.  The text's pointer is not under the pair's -- this is the old
+    # mechanism's own comparison -- and the document nevertheless applies the node inside
+    # the pair, which is what makes the two spellings one node.
+    assert dump_exemptions._path(stored)[: len(at)] != at, (stored, pointer)
+    schema = _pair(document, pointer).schema
+    node = dump_exemptions._at(schema, dump_exemptions._path(applied))
+    assert isinstance(node, dict), (applied, "the pair does not apply the node here")
+    assert node["pattern"] == ORIGIN_ONLY, node
+    assert node["format"] == "uri", node
+
+    # THE EFFECT, on the registry's own entry and through the production entry points.
+    entries = [e for e in EXEMPT if e.document == document and e.pointer == stored]
+    assert len(entries) == 1, entries
+    assert dump_exemptions.applying_to(document, pointer) == (entries[0],)
+    assert dump_exemptions.labels(document, pointer) == [f"{document}#{stored}/pattern"]
+    relaxed = dump_exemptions.struck(schema, document, pointer)
+    assert relaxed is not schema, document
+    struck_node = dump_exemptions._at(relaxed, dump_exemptions._path(applied))
+    assert "pattern" not in struck_node, struck_node
+    assert struck_node["format"] == "uri", struck_node  # and nothing beside it moved
+
+    # THE EFFECT, on an entry this test puts there.  A keyword no entry names, so the
+    # assertion cannot be carried by the population: it is the MECHANISM being graded.
+    probe = Exemption(
+        document=document,
+        pointer=stored,
+        keyword="format",
+        value="uri",
+        reason=f"this test's own probe, struck to grade the mechanism; {UPSTREAM}",
+        latent=True,
+    )
+    monkeypatch.setattr(dump_exemptions, "EXEMPT", (*EXEMPT, probe))
+    dump_exemptions._occurrences.cache_clear()  # the map is keyed on the document alone
+    try:
+        assert probe in dump_exemptions.applying_to(document, pointer)
+        probed = dump_exemptions.struck(schema, document, pointer)
+        at_node = dump_exemptions._at(probed, dump_exemptions._path(applied))
+        assert "format" not in at_node, at_node
+        assert "pattern" not in at_node, at_node  # the registry's entry still landed
+    finally:
+        monkeypatch.undo()
+        dump_exemptions._occurrences.cache_clear()
+    # The strike copies: the pair's own schema never lost the keyword.
+    assert dump_exemptions._at(schema, dump_exemptions._path(applied))["format"] == "uri"
 
 
 def test_a_pair_with_no_entry_is_returned_by_identity() -> None:
