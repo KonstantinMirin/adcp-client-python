@@ -45,9 +45,9 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 import adcp.types._schemas as schemas_pkg
-from adcp.types._base import BranchDispatchMixin, through_the_store
-from codegen import bundle
-from tests.nodeset import claimed
+from adcp.types._base import BranchDispatchMixin, applied_schema, through_the_store
+from codegen import bundle, catalogue, harness, held
+from tests.nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
 #: **The bundle a run reads, taken from the ONE declaration of it**
@@ -257,6 +257,232 @@ def test_every_union_bases_dispatch_constructs() -> None:
     population = claimed("classes carrying BranchDispatchMixin", classes)
     raised = _dispatch_failures({name: classes[name] for name in population})
     assert raised == {}, raised
+
+
+def _declaring_bases() -> dict[str, type[BaseModel]]:
+    """Every emitted class that DECLARES a branch list, which is what a union base is.
+
+    ``_branch_models`` is inherited, so ``__dict__`` and not ``getattr``: a branch of a
+    base carries the attribute and is not a base, and the distinction is the one
+    ``test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema`` is about.
+    """
+    classes = _emitted_mixin_classes()
+    return {n: c for n, c in classes.items() if c.__dict__.get("_branch_models")}
+
+
+def _dispatched_to(branch: type, got: type) -> bool:
+    """Is ``got`` the class dispatch reaches from ``branch``?
+
+    ``branch`` itself, or a class one of the union bases beneath it names in its OWN
+    ``_branch_models`` -- transitively, because §5's nested row makes a branch that
+    composes a union a BASE of its own and the hook fires again inside it.  That second
+    hop is ``adcp-client-python-1bj``: ``adagents.json``'s
+    ``AdCPAgentsAuthorizationCommunityFormatRegistry`` is the root's ``#/oneOf/1`` and the
+    class a payload drawn from it comes back as is ``…CommunityFormatRegistryBranch0``,
+    declared at ``#/oneOf/1/allOf/0/anyOf/0`` -- a branch OF that branch, reached by
+    dispatch, which is this reading holding at a nested root and not failing at the outer
+    one.  The other root branch, ``…AuthoritativeLocation``, REFUSES that payload and the
+    document refuses it at ``#/oneOf/0`` on ``'authoritative_location' is a required
+    property``, so the two branches do not overlap and the hop is the only admissible
+    answer -- which is the measurement that closed that row.
+
+    The walk is over the DECLARED lists and never ``issubclass``, which would admit a
+    consumer's unrelated refinement and so would stop the check grading the dispatch at
+    all.
+
+    **This is a SECOND SPELLING of ``tests/test_emit.py``'s ``_dispatched_to`` and that is
+    ``adcp-client-python-mz8l``'s row**, not a decision taken here: the relation belongs
+    beside ``_branch_models``, which ``adcp/types/_base.py`` declares, and moving it is a
+    change to a file two other lanes are live in.
+    """
+    seen: set[type] = set()
+    frontier = [branch]
+    while frontier:
+        at = frontier.pop()
+        if at is got:
+            return True
+        if at in seen:
+            continue
+        seen.add(at)
+        frontier += list(at.__dict__.get("_branch_models", ()))
+    return False
+
+
+def _admits(root: dict, pointer: str, payload: Any) -> str:
+    """``""`` where the document admits ``payload`` at ``pointer``, else its first reason.
+
+    **The document side is ``_base.applied_schema``**, which is §8's pairing rule -- "a
+    branch class of a root union is paired with its branch node read UNDER THE ROOT'S
+    SIBLINGS" -- and not a reading written here.  Asked at ``"#"`` it is the whole
+    document, which is the screen reading 3's own sentence names: *for every payload the
+    document admits*.
+
+    **The RESOLUTION SCOPE is the document and the SCHEMA is the node, spelled the way
+    ``_base._refuse_at`` spells it** -- ``validator(scope).evolve(schema=node)`` -- so a
+    local ``$ref`` the record leaves alone resolves against the document and this file
+    states no second reading of what a refusal is.  The format checker comes with it for
+    the same reason: it is the set the production path asserts under.
+    """
+    node = applied_schema(root, pointer)
+    validator = jsonschema.validators.validator_for(root, jsonschema.Draft7Validator)
+    at_the_node = validator(root, format_checker=validator.FORMAT_CHECKER).evolve(schema=node)
+    errors = sorted(
+        at_the_node.iter_errors(payload), key=lambda e: [str(p) for p in e.absolute_path]
+    )
+    return "" if not errors else errors[0].message[:160]
+
+
+def _underdetermined(base: type) -> bool:
+    """Does this base DECLARE that which branch an overlapping payload becomes is dropped?
+
+    §4's own answer for a union matching none of the three dispatch sources: "a union
+    matching none of the three emits a plain ``A | B`` over its branches and declares an
+    UNDERDETERMINED approximation at the union's pointer".  Read off the CLASS's own
+    ``__adcp_approximations__`` -- the declaration a consumer of the wheel can see --
+    rather than off a compile, so the exemption below is one the TREE states and not one
+    this file grants.
+    """
+    return any(
+        a.kind == "UNDERDETERMINED" for a in getattr(base, "__adcp_approximations__", ())
+    )
+
+
+def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_from() -> None:
+    """Reading 3's SENTENCE, graded on behaviour: offer a payload, read the class back.
+
+    "A payload offered to a union base resolves to its branch, for every payload the
+    document admits."  :func:`test_every_union_bases_dispatch_constructs` grades the
+    decider's first conjunct -- the dispatch CONSTRUCTS -- and that is not this: a base
+    whose adapter builds can still hand a caller an object that is not what it was given,
+    silently, which is worse than a refusal.  So this one offers a VALUE and asserts the
+    TYPE that comes back.
+
+    **THE PAYLOAD IS DRAWN AND COMMITTED, AND NEITHER HALF IS A CONVENIENCE.**  It is the
+    instance the accepts corpus holds at the BRANCH's own pointer -- ``tests/accepts-corpus``,
+    the floor, read through ``harness.corpus_key`` over the branch's static identity.
+    DRAWN, so this cannot pass by hand-picking an instance that happens to resolve;
+    COMMITTED, so every lane and CI grade the same witness and the clause costs file reads
+    rather than the 677 s a redraw of the same 584 instances costs
+    (``adcp-client-python-1bj``'s second fact).  The CACHE is deliberately not read:
+    ``codegen.held``'s own rule is that a warm lane must not grade a witness the tree does
+    not carry.
+
+    **THE VERDICT IS COMPARED BY REASON AND NOT ONLY BY OUTCOME**, which is the whole of
+    why the exemption below is small enough to state.  A payload landing on another branch
+    is not automatically a defect: where the DOCUMENT admits that other branch too, the
+    branches overlap and §4's own answer is already written down -- "a union matching none
+    of the three emits a plain ``A | B`` over its branches and declares an UNDERDETERMINED
+    approximation at the union's pointer", and "WHICH branch an overlapping payload becomes
+    is the fact dropped".  So the exemption is the base's OWN DECLARATION
+    (:func:`_underdetermined`), read off the class a consumer holds; a base that declares
+    nothing gets no exemption, and a base that declares one must still land INSIDE its own
+    branch list.
+
+    **Measured on trunk at 8dc73a217**: 141 bases naming 586 branch positions, 584 of which
+    the committed floor answers for (the two it does not are
+    ``adcp-client-python-rgoo``, and ``unheld`` below is what reports them); 497 of those
+    584 the document admits at its ROOT, and the 87 it refuses are not what this reading is
+    about -- ``trusted-match/provider-registration.json`` is the instructive one, where the
+    root's ``if``/``then`` requires ``countries``, the instance drawn at ``#/anyOf/1`` is
+    admitted by that branch node and refused by the document, and the base refuses it
+    correctly.  Of the 497: 447 reach the branch they were drawn
+    from or a branch of it, 50 land elsewhere and every one of the 50 is under a base
+    declaring UNDERDETERMINED -- 46 of them on a branch the document ALSO admits, and 4 on
+    ``core/async-response-data.json#/anyOf/0``, which the document REFUSES on ``errors`` or
+    ``products``.  Those 4 are the declared ``('#', 'WIDENED', 'if')`` of
+    ``media-buy/get-products-response.json`` arriving at a dispatch: branch 0 is a bare
+    ``$ref`` to that document, its class is declaredly wider than its node, so structural
+    first-match selection reaches it for payloads the document gives to another branch.
+    The consequence is accounted at the union's own pointer and nowhere else, which is
+    ``adcp-client-python-84a9``.
+
+    **AND NONE OF THOSE NUMBERS IS ASSERTED, which is deliberate and is this suite's own
+    rule** (``tests/test_every_check_names_its_set.py``: a check may not pin a census as an
+    equality).  The non-vacuity defence this clause needs is real all the same, because the
+    payloads come from a committed store and a key derivation that stopped matching would
+    make every assertion here hold over an empty loop.  So it is :func:`claimed` and
+    :func:`partitions` instead: the bases are named, the branch positions the floor answers
+    for are named, and both the screen and the outcome are PARTITIONS -- every branch
+    position is offered-or-unheld, every offered payload is admitted-or-refused by the
+    document, and every graded payload reached its branch or landed elsewhere under a
+    declaration.  Measured: pointing :data:`codegen.held.COMMITTED` at a directory that is
+    not there takes this clause from green to ``empty set of nodes -- every assertion over
+    it holds vacuously``.
+    """
+    bases = _declaring_bases()
+    graded_bases = claimed("emitted union bases declaring a branch list", bases)
+    records = _records()
+    identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
+    floor = held.Store(held.COMMITTED)
+
+    positions: set[tuple[str, str]] = set()
+    offered: set[tuple[str, str]] = set()
+    unheld: set[tuple[str, str]] = set()
+    admitted: set[tuple[str, str]] = set()
+    refused_by_the_document: set[tuple[str, str]] = set()
+    reached_its_branch: set[tuple[str, str]] = set()
+    elsewhere_under_a_declaration: set[tuple[str, str]] = set()
+    wrong: dict[str, tuple[str, str, str, str]] = {}
+    for name in sorted(graded_bases):
+        base = bases[name]
+        for branch in base.__dict__["_branch_models"]:
+            ref = branch.__dict__["__adcp_schema__"]
+            site = (ref.document, ref.pointer)
+            positions.add(site)
+            key = harness.corpus_key(
+                {
+                    "document": ref.document,
+                    "pointer": ref.pointer,
+                    "admits": identities.get(ref.document),
+                },
+                custom_formats=harness.FORMAT_STRATEGIES,
+            )
+            payload = (floor.get(key) or [None])[0]
+            if payload is None:
+                unheld.add(site)
+                continue
+            offered.add(site)
+            root = records[ref.document]
+            if _admits(root, "#", payload):
+                # Not a payload the DOCUMENT admits, so not what this reading is about.
+                refused_by_the_document.add(site)
+                continue
+            admitted.add(site)
+            got = type(base.model_validate(payload))
+            if _dispatched_to(branch, got):
+                reached_its_branch.add(site)
+                continue
+            where = f"{name} <- {branch.__name__} -> {got.__name__}"
+            if not _underdetermined(base):
+                wrong[where] = (
+                    ref.document,
+                    ref.pointer,
+                    "no UNDERDETERMINED declared",
+                    repr(payload)[:200],
+                )
+            elif not any(
+                _dispatched_to(other, got) for other in base.__dict__["_branch_models"]
+            ):
+                wrong[where] = (
+                    ref.document,
+                    ref.pointer,
+                    "outside the base's own branch list",
+                    repr(payload)[:200],
+                )
+            else:
+                elsewhere_under_a_declaration.add(site)
+    assert wrong == {}, wrong
+    claimed("branch positions a union base names", positions)
+    claimed("branch positions the committed accepts floor answers for", offered)
+    partitions(positions, offered=offered, unheld=unheld)
+    partitions(offered, admitted=admitted, refused_by_the_document=refused_by_the_document)
+    claimed("branch payloads the document admits at its root", admitted)
+    partitions(
+        admitted,
+        reached_its_branch=reached_its_branch,
+        elsewhere_under_a_declaration=elsewhere_under_a_declaration,
+    )
+    claimed("branch payloads that reached their own branch", reached_its_branch)
 
 
 #: A union root with a dispatch key, as a module declares one: a base naming the key, two

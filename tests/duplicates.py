@@ -48,18 +48,30 @@ different evidence form and the gate grades it:
   every derived payload, which is exactly why ``adcp-client-python-y4j`` first read them as
   collapses, and they disagree with their own documents at once.
 
-**THE TABLE'S SIZE IS A DEBT FIGURE AND IT RATCHETS DOWN.**  9 rows over 21 declarations,
-and every one of them names the ask that deletes it.  For a bundle that titles what it
-restates and a compiler that declares a type once, this tuple is EMPTY.
+**THE TABLE'S SIZE IS A DEBT FIGURE AND IT RATCHETS DOWN.**  8 rows, and every one of them
+names the ask that deletes it.  For a bundle that titles what it restates and a compiler
+that declares a type once, this tuple is EMPTY.
 
-**TWO ROWS HAVE BEEN DELETED BY THEIR ASK LANDING, which is the mechanism working.**
-``adcp-client-python-nlkz`` and ``adcp-client-python-8212`` were the two COLLAPSE rows
-whose defect was OURS and whose home the bundle's own references fixed, so the build
-applies the override now and the groups do not form: a non-root node that declares nothing
-its base does not already declare identically declares no class, and a nested key a
-narrowing never mentions takes the base's own field instead of a second decision of the
-base's node.  The gate reddened on both with "a row whose group the tree no longer forms --
-DELETE it", which is what retiring a row looks like.
+**AND THERE IS NO :data:`COLLAPSE` ROW LEFT, which is the clause closed rather than the
+debt merely shrunk.**  A ``COLLAPSE`` is the one outcome whose defect is OURS -- one
+subject declared twice, and the bundle names it -- so a ``COLLAPSE`` row is precisely *an
+override the build does not apply*.  All three are gone, each because the BUILD applies the
+judgment now and the tree stops forming the group:
+
+* ``adcp-client-python-8212`` -- a nested key a narrowing never mentions takes the base's
+  own field instead of a second decision of the base's node;
+* ``adcp-client-python-nlkz`` -- a non-root node that declares nothing its base does not
+  already declare identically declares no class;
+* ``adcp-client-python-e4z`` -- **a stating position is read as the type the DOCUMENT
+  APPLIES there** (§3a's layer L2A, ``catalogue.collect_applied``), so a ``oneOf`` branch
+  that narrows a property its root states is one type with the position that spells the
+  composition inline, and it is declared at the entry's own derived home.
+
+The gate reddened on all three with "a row whose group the tree no longer forms -- DELETE
+it", which is what retiring a row looks like.  **What is left is eight rows none of which
+is ours to collapse**: three ``NOT ONE TYPE`` rows awaiting a dropped conjunct, three
+``SPLIT`` rows the bundle's own words decide, and two ``PENDING A NAME`` rows whose ask is
+upstream's.
 """
 
 from __future__ import annotations
@@ -303,49 +315,6 @@ DECIDED: tuple[Decided, ...] = (
         ask="none owed: nothing is missing from the bundle here",
         note="`result` is the FIELD's role at both positions and was argued about as a role "
         "word; it never had to be.  The bundle states the two names one segment in",
-    ),
-    # --------------------------------------------------------------------------- COLLAPSE
-    Decided(
-        at=frozenset(
-            {
-                (
-                    "core/assets/daast-asset.json",
-                    "#/oneOf/0/properties/macro_declarations/items",
-                ),
-                (
-                    "core/assets/url-asset.json",
-                    "#/properties/macro_declarations/items",
-                ),
-            }
-        ),
-        outcome=COLLAPSE,
-        defect="the bundle states the URL narrowing of core/macro-declaration.json as a "
-        "oneOf BRANCH at core/assets/daast-asset.json -- the second conjunct alone, over a "
-        "root that states `items: {$ref: core/macro-declaration.json}` -- so the branch is "
-        "one type with the composed positions only after §2's intersection merges it, and no "
-        "catalogue key over raw nodes groups them",
-        ask="adcp-client-python-e4z (ours: a stating position read as the node the DOCUMENT "
-        "APPLIES there rather than as the node's own text)",
-        names_the_subject=(
-            "core/assets/url-asset.json",
-            "#/properties/macro_declarations/items",
-            "URL Macro Declaration",
-        ),
-        note="the title is patches/8735's own, at the five composed positions, and it is "
-        "deliberately NOT extended to this branch: the node's own text says nothing about a "
-        "macro declaration, so titling it would be a claim the node does not support.  "
-        "**THE SECOND POSITION IS THE L2C ENTRY'S HOME AND THE HOME MOVED, which is why "
-        "this key is RE-KEYED and not a new decision.**  It read "
-        "`core/assets/daast-tracker-asset.json` until `adcp-client-python-82m`'s merge: the "
-        "row was written on a lane (1885929fe) that is NEITHER an ancestor NOR a descendant "
-        "of the lane that made a catalogue entry's home the earliest document in a "
-        "reference-only order (abc48492a), the two merged independently, and a textual "
-        "merge cannot see that the home of the five composed `macro_declarations` positions "
-        "moved to `core/assets/url-asset.json`.  The GROUP is the same group -- one "
-        "branch-narrowing position against the composed entry's home -- the defect is the "
-        "same defect and the ask is the same ask; what moved is which position is the home.  "
-        "A row keyed on schema nodes is therefore re-keyed by a home move, and that is the "
-        "cost of the key being the group rather than a count",
     ),
 )
 

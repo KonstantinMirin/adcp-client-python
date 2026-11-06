@@ -13,7 +13,8 @@ from ...enums.vast_version import VASTVersion
 from ..macro_bearing_url import MacroBearingURL
 from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
-from .daast_asset import DAASTAssetInlineMacroDeclarationsItem, DAASTAssetUrlMacroDeclarationsItem
+from .daast_asset import ObjLocation
+from .url_asset import MacroDeclarationsItem
 
 
 class VASTAsset(BranchDispatchMixin, AdCPBaseModel):
@@ -48,7 +49,7 @@ class VASTAssetUrl(VASTAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/0')
     delivery_type: Annotated[Literal['url'], Field(description='Discriminator indicating VAST is delivered via URL endpoint')]
     url: Annotated[MacroBearingURL, Field(description='URL endpoint returning VAST XML. Macro delimiters remain byte-preserved; declarations distinguish occurrences in this locator URL from occurrences in inline or fetched VAST content.')]
-    macro_declarations: Annotated[list[DAASTAssetUrlMacroDeclarationsItem] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1)] = None
+    macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1)] = None
 
 
 class VASTAssetInline(VASTAsset):
@@ -58,7 +59,7 @@ class VASTAssetInline(VASTAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/1')
     delivery_type: Annotated[Literal['inline'], Field(description='Discriminator indicating VAST is delivered as inline XML content')]
     content: Annotated[str, Field(description='Inline VAST XML content')]
-    macro_declarations: Annotated[list[DAASTAssetInlineMacroDeclarationsItem] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1)] = None
+    macro_declarations: Annotated[list[ObjLocation] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1)] = None
 
 
 VASTAsset._branch_models = (VASTAssetUrl, VASTAssetInline,)
