@@ -16,13 +16,8 @@ from .domain_name import DomainName
 from .https_url import HTTPSURL
 from .macro_resolution_capability import MacroProcessingCapability
 from .platform_extension_ref import PlatformExtensionReference
+from .product_format_declaration import SellerPreference
 from .tracker_execution_contract import TrackerExecutionContract
-
-
-class SellerPreference(StrEnum):
-    PREFERRED = 'preferred'
-    ACCEPTED = 'accepted'
-    DISCOURAGED = 'discouraged'
 
 
 class FormatKind(StrEnum):

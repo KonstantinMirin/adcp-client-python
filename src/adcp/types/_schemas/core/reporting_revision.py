@@ -19,21 +19,9 @@ from adcp.types.constraints import (
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonical_content_digest import ReportingCanonicalContentDigest
+from .reporting_consumer_status import ObjStartEndSourceTimezone
 from .reporting_control_total import ReportingControlTotal
 from .reporting_coverage import ReportingCoverage, ReportingMediaBuyId
-
-
-class ObjStartEndSourceTimezone(AdCPBaseModel):
-    """
-    Half-open reporting interval with its source calendar boundary.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-revision.json', pointer='#/properties/period')
-    start: AwareDatetime
-    end: AwareDatetime
-    source_timezone: StrMinLen1
 
 
 class FinalityBasis(StrEnum):

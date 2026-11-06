@@ -18,7 +18,7 @@ from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.creative_quality import CreativeQuality
 from ..enums.preview_output_format import PreviewOutputFormat
-from ..media_buy.build_creative_request import PreviewInputsItem
+from ..media_buy.build_creative_response import BuildCreativeSuccessPreviewPreviewsItemInput
 
 
 class RequestType(StrEnum):
@@ -44,7 +44,7 @@ class RequestsItem(AdCPBaseModel):
     format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format preview route. Use target_capability_id plus the canonical identity in creative_manifest.')] = None
     creative_manifest: Annotated[CreativeManifest | None, Field(description='Complete creative manifest with all required assets.')] = None
     creative_id: Annotated[str | None, Field(description='Creative-library identifier. Use instead of creative_manifest to preview a stored canonical creative.')] = None
-    inputs: Annotated[list[PreviewInputsItem] | None, Field(description='Array of input sets for generating multiple preview variants', min_length=1)] = None
+    inputs: Annotated[list[BuildCreativeSuccessPreviewPreviewsItemInput] | None, Field(description='Array of input sets for generating multiple preview variants', min_length=1)] = None
     template_id: Annotated[str | None, Field(description='Specific template ID for custom format rendering')] = None
     quality: Annotated[CreativeQuality | None, Field(description='Render quality for this preview. Overrides batch-level default.')] = None
     output_format: Annotated[PreviewOutputFormat | None, Field(default_factory=lambda: TypeAdapter(PreviewOutputFormat).validate_python('url'), description='Output format for this preview. Overrides batch-level default.', json_schema_extra={'default': 'url'})]
@@ -69,7 +69,7 @@ class PreviewCreativeRequest(AdCPVersionEnvelope):
     creative_manifest: Annotated[CreativeManifest | None, Field(description='Complete creative manifest with all required assets for the format. In single mode, provide exactly one of creative_manifest or creative_id. Also accepted per item in batch mode.')] = None
     target_capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description="Canonical preview-operation selector. Identifies one get_adcp_capabilities creative.supported_formats[].capability_id entry whose operations contains preview. In single mode it selects the renderer for this request; in batch mode it is the default for items that omit their own target_capability_id. When omitted, the agent MAY resolve the renderer only if exactly one advertised preview capability satisfies the manifest's canonical declaration; zero matches or multiple matches MUST be rejected with FORMAT_NOT_SUPPORTED rather than choosing nondeterministically. Mutually exclusive with deprecated format_id.")] = None
     format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format preview route. New requests select an advertised preview renderer with target_capability_id and carry portable format identity in creative_manifest.format_kind plus optional creative_manifest.format_option_ref.')] = None
-    inputs: Annotated[list[PreviewInputsItem] | None, Field(description='Array of input sets for generating multiple preview variants. Each input set defines macros and context values for one preview rendering. Used in single mode.', min_length=1)] = None
+    inputs: Annotated[list[BuildCreativeSuccessPreviewPreviewsItemInput] | None, Field(description='Array of input sets for generating multiple preview variants. Each input set defines macros and context values for one preview rendering. Used in single mode.', min_length=1)] = None
     template_id: Annotated[str | None, Field(description='Specific template ID for custom format rendering. Used in single mode.')] = None
     quality: Annotated[CreativeQuality | None, Field(description="Render quality. 'draft' produces fast, lower-fidelity renderings. 'production' produces full-quality renderings. In batch mode, sets the default for all requests (individual items can override).")] = None
     output_format: Annotated[PreviewOutputFormat | None, Field(default_factory=lambda: TypeAdapter(PreviewOutputFormat).validate_python('url'), description="Output format. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML). In batch mode, sets the default for all requests (individual items can override). Default: 'url'.", json_schema_extra={'default': 'url'})]

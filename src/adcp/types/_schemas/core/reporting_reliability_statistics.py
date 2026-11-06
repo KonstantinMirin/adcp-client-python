@@ -19,7 +19,7 @@ from adcp.types.constraints import (
 )
 
 
-class ObjStartEnd(AdCPBaseModel):
+class ReportingReliabilityMeasurementPeriod(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -84,7 +84,7 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
         Approximation(document='core/reporting-reliability-statistics.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'official_revisions_adjusted': {'minimum': 1}}, 'required': ['official_revisions_adjusted']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     offering_id: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
-    measurement_period: ObjStartEnd
+    measurement_period: ReportingReliabilityMeasurementPeriod
     obligations_due: Annotated[IntMin1, Field(description='Denominator for on-time performance.')]
     obligations_on_time: Annotated[NonNegativeInt, Field(description='Obligations whose required revision was published by expected_at. Divide by obligations_due for the on-time rate.')]
     official_revisions_published: Annotated[NonNegativeInt, Field(description='Denominator for the official-adjustment rate.')]
@@ -95,4 +95,4 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
     evidence: Evidence
 
 
-__all__ = ["LatencyPercentiles", "ObjStartEnd", "ReportingReliabilityStatistics"]
+__all__ = ["LatencyPercentiles", "ReportingReliabilityMeasurementPeriod", "ReportingReliabilityStatistics"]

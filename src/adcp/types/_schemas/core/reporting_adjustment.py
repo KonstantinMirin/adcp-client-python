@@ -15,7 +15,6 @@ from adcp.types.constraints import (
 )
 
 from .reporting_control_total import ReportingControlTotal
-from .reporting_reliability_statistics import ObjStartEnd
 
 
 class ReasonCode(StrEnum):
@@ -28,6 +27,18 @@ class ReasonCode(StrEnum):
     MAPPING_CORRECTION = 'mapping_correction'
     COMMERCIAL_ADJUSTMENT = 'commercial_adjustment'
     OTHER = 'other'
+
+
+class ObjStartEnd(AdCPBaseModel):
+    """
+    Period derived from the pinned billing calendar and correction policy. It is evidence metadata only: it does not authorize reopening books or altering invoices.
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-adjustment.json', pointer='#/properties/accounting_period')
+    start: AwareDatetime
+    end: AwareDatetime
 
 
 class ReportingAdjustment(AdCPBaseModel):

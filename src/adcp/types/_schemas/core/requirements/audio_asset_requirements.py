@@ -9,6 +9,8 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
 
+from ...formats.canonical.audio_hosted import AudioChannels
+
 
 class FormatsItem(StrEnum):
     MP3 = 'mp3'
@@ -16,11 +18,6 @@ class FormatsItem(StrEnum):
     WAV = 'wav'
     OGG = 'ogg'
     FLAC = 'flac'
-
-
-class AudioChannels(StrEnum):
-    MONO = 'mono'
-    STEREO = 'stereo'
 
 
 class AudioAssetRequirements(AdCPBaseModel):

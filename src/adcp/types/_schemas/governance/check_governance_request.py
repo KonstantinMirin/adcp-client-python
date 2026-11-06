@@ -28,7 +28,7 @@ from ..core.context import ContextObject
 from ..core.currency_code import CurrencyCode
 from ..core.ext import ExtensionObject
 from ..core.planned_delivery import PlannedDelivery
-from ..core.reporting_reliability_statistics import ObjStartEnd
+from ..core.reporting_adjustment import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.governance_phase import GovernancePhase
 from ..enums.purchase_type import PurchaseType

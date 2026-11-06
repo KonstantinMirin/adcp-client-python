@@ -15,7 +15,6 @@ from ..enums.audience_subject_type import AudienceSubjectType
 from .attestation_reference import AttestationReference
 from .attestation_subject import AttestationResourceSubject
 from .audience_characteristic import AudienceCharacteristic
-from .audience_evidence_requirements import EvidenceType
 from .brand_ref import BrandReference
 from .date_range import DateRange
 from .ext import ExtensionObject
@@ -52,6 +51,15 @@ class Baseline(AdCPBaseModel):
     population_id: StrMinLen1
     version: StrMinLen1
     description: str | None = None
+
+
+class EvidenceType(StrEnum):
+    """
+    Nature of the evidence. Independent verification is represented separately by attestation_refs and never inferred from this value.
+    """
+    MEASURED = 'measured'
+    FORECAST = 'forecast'
+    SELLER_DECLARED = 'seller_declared'
 
 
 class Subject(AttestationResourceSubject):

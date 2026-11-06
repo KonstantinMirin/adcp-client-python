@@ -48,7 +48,6 @@ from ..common._vocabularies import (
 from ..core.account_timezone_capability import AccountTimezoneCapability
 from ..core.attestation_capabilities import AttestationCapabilities
 from ..core.audience_activation_method import AudienceActivationMethod
-from ..core.audience_evidence_requirements import EvidencePresence, RequirementMode
 from ..core.context import ContextObject
 from ..core.country_code import CountryCode
 from ..core.creative_operation_format_declaration import CreativeOperationFormatDeclaration
@@ -70,6 +69,7 @@ from ..core.postal_area_support import PostalAreaSupport
 from ..core.preview_renderer_metadata import RenderingOrigin
 from ..core.principal_declarations import WebhookSigningAlgorithm
 from ..core.product import ConversionTrackingSupportedTargetsItem
+from ..core.product_audience_evidence_requirements import EvidencePresence, RequirementMode
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.reporting_delivery_capabilities import ReportingDeliveryCapabilities
 from ..core.reporting_delivery_method import FileFormat

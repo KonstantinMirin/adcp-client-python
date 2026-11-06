@@ -406,9 +406,6 @@ from ._schemas.core.creative_variant import CreativeVariant as CreativeVariant
 from ._schemas.core.currency_code import CurrencyCode as CurrencyCode
 from ._schemas.core.daast_tracker_constraints import DaastOffset as DaastOffset
 from ._schemas.core.daast_tracker_constraints import DAASTTrackerConstraints as DAASTTrackerConstraints
-from ._schemas.core.daast_tracker_constraints import (
-    DAASTTrackerConstraintsDaastTarget as DAASTTrackerConstraintsDaastTarget,
-)
 from ._schemas.core.daast_tracker_constraints import DaastVersions as DaastVersions
 from ._schemas.core.data_provider_signal_selector import DataProviderSignalSelector as DataProviderSignalSelector
 from ._schemas.core.data_provider_signal_selector import DataProviderSignalSelectorAll as DataProviderSignalSelectorAll
@@ -733,7 +730,6 @@ from ._schemas.core.placement_property_delivery_metrics import (
 from ._schemas.core.placement_ref import PlacementReference as PlacementReference
 from ._schemas.core.placement_selection import PlacementSelection as PlacementSelection
 from ._schemas.core.placement_selection import ProductDefaultPlacements as ProductDefaultPlacements
-from ._schemas.core.placement_selection import PublisherPlacementReference as PublisherPlacementReference
 from ._schemas.core.placement_selection import SelectedPlacements as SelectedPlacements
 from ._schemas.core.planned_delivery import PlannedDelivery as PlannedDelivery
 from ._schemas.core.platform_extension_ref import PlatformExtensionReference as PlatformExtensionReference
@@ -1563,7 +1559,6 @@ __all__ = [
     'DAASTAudioFormatDeclaration',
     'DAASTTrackerAsset',
     'DAASTTrackerConstraints',
-    'DAASTTrackerConstraintsDaastTarget',
     'DaastOffset',
     'DaastVersions',
     'DataProviderSignalSelector',
@@ -1959,7 +1954,6 @@ __all__ = [
     'PublisherCatalogFormatOptionReference',
     'PublisherCatalogPlacementIdentity',
     'PublisherDesignatedPreviewProvider',
-    'PublisherPlacementReference',
     'PublisherPropertySelector',
     'PublisherPropertySelectorAll',
     'PublisherPropertySelectorById',

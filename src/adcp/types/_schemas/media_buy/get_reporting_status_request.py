@@ -18,9 +18,9 @@ from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.pagination_request import PaginationRequest
+from ..core.reporting_adjustment import ObjStartEnd
 from ..core.reporting_coverage import ReportingMediaBuyId
 from ..core.reporting_delivery_offering import ReportingFeedPurpose
-from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.reporting_finality import ReportingFinality
 from ..enums.reporting_health import ReportingHealth

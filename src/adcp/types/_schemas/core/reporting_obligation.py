@@ -20,10 +20,10 @@ from adcp.types.constraints import (
 
 from ..enums.reporting_finality import ReportingFinality
 from ..enums.reporting_health import ReportingHealth
+from .reporting_consumer_status import ObjStartEndSourceTimezone
 from .reporting_coverage import ReportingCoverage, ReportingMediaBuyId
 from .reporting_delivery_offering import ReportingFeedPurpose
 from .reporting_reconciliation_mode import ReportingReconciliationMode
-from .reporting_revision import ObjStartEndSourceTimezone
 from .reporting_schedule import ReportingSchedule
 from .reporting_status_issue import ReportingStatusIssue
 
