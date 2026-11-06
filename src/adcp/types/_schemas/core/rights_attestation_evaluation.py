@@ -10,9 +10,10 @@ from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
 from .attestation_evaluation import AttestationEvaluation
+from .attestation_issuer import AttestationBrandIssuer
 from .attestation_reference import AttestationReference
 from .ext import ExtensionObject
-from .rights_constraint import ObjTypeBrand, ObjTypeResourceType
+from .rights_constraint import ObjTypeResourceType
 
 
 class Reference(AttestationReference):
@@ -23,7 +24,7 @@ class Reference(AttestationReference):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-attestation-evaluation.json', pointer='#/properties/reference')
-    issuer: ObjTypeBrand
+    issuer: AttestationBrandIssuer
     claim_type: Annotated[Literal['https://adcontextprotocol.org/claims/rights/grant'], Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.')]
     subject: ObjTypeResourceType
 

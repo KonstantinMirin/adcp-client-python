@@ -48,16 +48,18 @@ different evidence form and the gate grades it:
   every derived payload, which is exactly why ``adcp-client-python-y4j`` first read them as
   collapses, and they disagree with their own documents at once.
 
-**THE TABLE'S SIZE IS A DEBT FIGURE AND IT RATCHETS DOWN.**  10 rows over 23 declarations,
+**THE TABLE'S SIZE IS A DEBT FIGURE AND IT RATCHETS DOWN.**  9 rows over 21 declarations,
 and every one of them names the ask that deletes it.  For a bundle that titles what it
 restates and a compiler that declares a type once, this tuple is EMPTY.
 
-**A ROW HAS BEEN DELETED BY ITS ASK LANDING, which is the mechanism working.**
-``adcp-client-python-8212`` was a COLLAPSE row whose defect was OURS and whose home the
-bundle's own references fixed, so the build applies the override now and the group does not
-form: a nested key a narrowing never mentions takes the base's own field instead of a second
-decision of the base's node.  The gate reddened with "a row whose group the tree no longer
-forms -- DELETE it", which is what retiring a row looks like.
+**TWO ROWS HAVE BEEN DELETED BY THEIR ASK LANDING, which is the mechanism working.**
+``adcp-client-python-nlkz`` and ``adcp-client-python-8212`` were the two COLLAPSE rows
+whose defect was OURS and whose home the bundle's own references fixed, so the build
+applies the override now and the groups do not form: a non-root node that declares nothing
+its base does not already declare identically declares no class, and a nested key a
+narrowing never mentions takes the base's own field instead of a second decision of the
+base's node.  The gate reddened on both with "a row whose group the tree no longer forms --
+DELETE it", which is what retiring a row looks like.
 """
 
 from __future__ import annotations
@@ -303,34 +305,6 @@ DECIDED: tuple[Decided, ...] = (
         "word; it never had to be.  The bundle states the two names one segment in",
     ),
     # --------------------------------------------------------------------------- COLLAPSE
-    Decided(
-        at=frozenset(
-            {
-                ("core/attestation-issuer.json", "#/oneOf/0"),
-                (
-                    "core/rights-constraint.json",
-                    "#/properties/attestation_refs/items/allOf/1/properties/issuer",
-                ),
-            }
-        ),
-        outcome=COLLAPSE,
-        defect="the bundle restates the brand branch of core/attestation-issuer.json inline "
-        "at core/rights-constraint.json's `issuer` instead of referencing the node it "
-        "titles, and the walk then declares an EMPTY SUBCLASS of that branch's class in the "
-        "referring document's module -- a second declaration of one type, under a second "
-        "name, for a node whose lowered content is a class another document already states",
-        ask="adcp-client-python-nlkz (ours: a non-root node whose lowered content IS another "
-        "document's class declares no class of its own, which is the cross-document half of "
-        "the rule adcp-client-python-y4j landed for a bare $ref)",
-        names_the_subject=("core/attestation-issuer.json", "#/oneOf/0", "AttestationBrandIssuer"),
-        note="s44.1 read this group as a correct SPLIT on the ground that nothing says the "
-        "two are one subject.  Corrected here by measurement: ObjTypeBrand is a subclass of "
-        "AttestationBrandIssuer that adds nothing, so NO payload can discriminate them, and "
-        "the bundle titles the node the other member sits at.  The reason strings differ -- "
-        "`additionalProperties` against `oneOf` -- because the restating position's applied "
-        "node is the whole attestation-issuer `oneOf`, which is the enclosing composition "
-        "and not a difference in what either admits",
-    ),
     Decided(
         at=frozenset(
             {

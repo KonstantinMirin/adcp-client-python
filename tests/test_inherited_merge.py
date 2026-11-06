@@ -73,6 +73,7 @@ def merge(local, inherited, **kw):
         inherited_fields=kw.pop("inherited_fields", {}),
         inherited_nested=kw.pop("inherited_nested", {}),
         inherited_from=kw.pop("inherited_from", {}),
+        bases=kw.pop("bases", 1),
         mod=kw.pop("mod", MOD),
         **kw,
     )

@@ -171,7 +171,6 @@ class ExplicitPackagesWithFixedAllocationBudgetAllocation(BudgetAllocationFixed)
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/anyOf/0/properties/budget_allocation')
-    mode: Annotated[Literal['fixed'], Field(description='Packages have independent budgets. The seller does not automatically move budget between packages.')]
 
 
 class PackagesItem(PackageRequest):
@@ -212,7 +211,6 @@ class ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation(BudgetAlloca
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/anyOf/1/properties/budget_allocation')
-    mode: Annotated[Literal['seller_optimized'], Field(description='Packages draw from a shared media-buy budget. The seller continuously allocates spend across packages to optimize the declared goals.')]
 
 
 class ExplicitPackagesWithSellerOptimizedAllocation(CreateMediaBuyRequest):
