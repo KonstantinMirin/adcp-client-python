@@ -355,6 +355,45 @@ BRIDGE.** Their `TaskStatus` is a transport's five states; the schema's is its o
 there hands a caller something that silently is not what it asked for, which is worse than an
 import error. That name takes a migration note naming both sets.
 
+**BUT A DIFFERING IDENTITY IS NOT YET A DIFFERENT SUBJECT, AND THE DOCUMENT SAYS WHICH.** The
+identity key — the field set read by wire alias, or the enum's value list — answers *equal* or
+*not equal*, and the sentence above spends that single bit as though it were the whole verdict. It
+is not. Two identities disagree in two ways that have opposite consequences, and **the instrument
+that cannot tell them apart is the instrument at fault, not the names it is pointed at.**
+
+- **THE DOCUMENT ACCOUNTS FOR THE DIFFERENCE.** Upstream states the same subject and deviates from
+  it: a required conjunct dropped, a field the document forbids emitted, one class minted per
+  call site where the document states one node. Here **the alias is OWED, and it is owed precisely
+  BECAUSE the identities differ** — the caller wrote that name meaning that subject, and what the
+  alias hands back is what the document says the subject is. **Aliasing onto our class is not
+  conforming to their defect, it is refusing to.** The alternative on offer is never "the caller
+  gets upstream's meaning"; it is an import error, or our class widened to readmit the defect,
+  and reading 1 forbids the second outright.
+- **THE DOCUMENT ACCOUNTS FOR NOTHING.** Upstream's name denotes a referent the bundle does not
+  state — a transport's own state machine, a hand-written ergonomic layer's record — which shares
+  a word with a schema subject and nothing else. Here the sentence above stands unchanged: no
+  alias, a migration note naming both sets.
+
+**AND THE SPLIT IS PROVED PER ELEMENT, NEVER BY A RATIO.** For each element of upstream's identity,
+name where the document states it or state that it does not. A count of agreements over a
+denominator would let a majority decide a split, and **§4's rule that a collapse must not decide a
+split is the same rule at this layer** — a two-thirds overlap is a hypothesis about one subject,
+not a finding of one. Zero shared elements is disjoint on its face and needs no further argument;
+every other case is argued element by element or not at all.
+
+**AND THE NOTE IS WHAT MAKES THE ALIAS ADMISSIBLE, NOT WHAT ACCOMPANIES IT.** The objection the
+sentence above raises against a differing alias — that it hands a caller something which silently
+is not what was asked for — is answered by the word *silently* and by nothing else. So a shared-
+subject alias is graded as a PAIR: the alias, and a migration-guide entry naming both sets, which
+one the document states with its pointer, and what a caller must change. **An alias whose entry is
+missing is a reading 10 FAILURE and not partial credit**, because an undisclosed substitution is
+the exact defect this reading refused, arriving with our name on it instead of theirs.
+
+**AND THIS PUTS THOSE NAMES IN THE ALIAS LAYER AND THE MIGRATION GUIDE AT ONCE, BY CONSTRUCTION.**
+Where an instrument excludes aliased names from the guide on the ground that they are the alias
+layer's business, that exclusion now holds only for names whose identity AGREES — those carry
+nothing to disclose. A shared-subject alias is in both places because the pair is the unit.
+
 **An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
 export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
 that is a second class is the duplication this whole project exists to remove, arriving as
@@ -393,6 +432,15 @@ reported with the error, and it belongs in no bucket that implies work for us.
 resolving every name in the cross-check's present, renamed and relocated sets — plus every absent
 name carrying a verdict that names a schema node or says there is none. A count of unmatched names
 with no verdicts attached is not a result.
+
+**And decided, for every name whose identity differs, by the per-element split and by the pair.**
+Each such name is assigned to the shared-subject bucket or the disjoint-subject bucket **with its
+element-by-element reading recorded**, since a differing identity assigned to neither is this
+reading's work left undone wearing a measurement's clothes. Every shared-subject name resolves to
+our class AND has its migration-guide entry; every disjoint-subject name resolves to nothing and
+has its entry. **The grade is over pairs, and an alias counted without its entry is a failure** —
+so the two buckets' sizes must sum to the differing-identity count, and neither bucket may be
+empty by assumption rather than by measurement.
 
 ---
 
