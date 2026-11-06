@@ -826,24 +826,32 @@ def test_the_underdetermined_equality_holds_in_both_directions() -> None:
     of one node disagreeing is this equality's own point; which of them is wrong is
     unmeasured and is not this row's.
 
-    An equality is an OBLIGATION and not a ratchet, so this stays red and names the 7.
+    An equality is an OBLIGATION and not a ratchet, so while that held this stayed red and
+    named the 7 rather than pinning them.
 
-    **RE-MEASURED AT ``781f873d1`` AND THE STALE DIRECTION IS AT ONE, NOT SEVEN**
-    (2026-11-05, ``sdk/cellred``; ``adcp-client-python-tsg`` carries the figure):
+    **THE STALE DIRECTION IS AT ZERO AND THE EQUALITY HOLDS**
+    (``adcp-client-python-tsg``).  It was 16, then 7, then 1, and the figures are four
+    deliveries of one obligation rather than a pin, which is why the sentences above are
+    kept beside this one.  §3a's catalogue pass took it from 7 to 1 -- the four
+    ``calibration_exemplars`` sites, ``available_actions/items`` and
+    ``core/async-response-data.json#/anyOf`` left with it -- and the LAST entry was
+    ``media-buy/proposal-refinement.json#/oneOf/1/anyOf``.
 
-        PYTHONPATH=.:src ./.venv/bin/python -m pytest tests/test_the_declared_backlog.py
-        -p no:randomly -n 2 -q   ->  1 failed, 2 passed
-
-    ``stale`` is ``['media-buy/proposal-refinement.json#/oneOf/1/anyOf']`` and nothing
-    else, and the SILENT direction now equals :data:`UNDERDETERMINED_UNIONS` exactly -- so
-    the first branch of the report below contributes no disagreement at all.  §3a's
-    catalogue pass is what moved it: the four ``calibration_exemplars`` sites,
-    ``available_actions/items`` and ``core/async-response-data.json#/anyOf`` are gone from
-    this direction, which is the paragraph above being discharged rather than restated.
-    The one that remains is the site that paragraph measured at 6 of 7 bare-reference
-    branches, so it is the same cause with the largest branch list and it is the LAST of
-    it.  The figures 16, 7 and 1 are three deliveries of one obligation and the sentences
-    above are kept beside this one for that reason; this row's own history is not a pin.
+    **AND THE DERIVATION WAS THE SIDE THAT WAS WRONG, not the declaration.**  Measured
+    rather than argued: 6 of that union's 7 branches expand through the store to
+    ``{"required": [one name]}`` and the seventh pins ``change_kind`` to ``cancellation``,
+    so the derivation's shape test rejected 6 of 7 and skipped the union whole -- on the
+    premise, stated in its own docstring, that a union whose branches are not all shapes
+    lowers to an alias with "no branch classes to order".  §4 lowers this one to
+    ``ProposalRefinementRevise`` plus SEVEN branch subclasses in the document's own order,
+    dispatching on no key; the payload ``{"proposal_id": "p-1", "action": "revise",
+    "constraints": {"impressions": {"min": 1000}}, "ask": "cheaper please"}`` is admitted
+    by branches 0 AND 3 and becomes ``ProposalRefinementReviseConstraints``, and the same
+    payload without ``constraints`` becomes ``ProposalRefinementReviseAsk``.  Declaration
+    order is what decides, so the declaration is earned.
+    ``harness._branch_is_a_shape`` carries the correction and admits exactly this one
+    union: the stale direction goes 1 to 0 and the silent direction is unchanged at the
+    same 5 sites.
 
     ``silent`` arrives as ``harness``'s own SENTENCE and :data:`UNDERDETERMINED_UNIONS`
     holds the SITE, so the site is taken off the front: the suffix is constant text and
