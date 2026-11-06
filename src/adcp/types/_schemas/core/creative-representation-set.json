@@ -4520,7 +4520,8 @@
         {
           "$ref": "#/definitions/Shared81"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared7": {
       "description": "When this content was created or generated (ISO 8601)",

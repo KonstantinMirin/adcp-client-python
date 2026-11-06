@@ -14,7 +14,7 @@ from ...enums.macro_value_context import MacroValueContext
 from ..macro_bearing_url import MacroBearingURL
 from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
-from .daast_tracker_asset import Location
+from .daast_tracker_asset import MacroDeclarationsItem
 
 
 class DisplayTagAsset(BranchDispatchMixin, AdCPBaseModel):
@@ -36,15 +36,7 @@ class DisplayTagAsset(BranchDispatchMixin, AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overriding manifest-level provenance.')] = None
 
 
-class TagURLMacroDeclarationsItem(MacroDeclaration):
-    """
-    The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/0/properties/macro_declarations/items')
-    location: Location
+TagURLMacroDeclarationsItem = Annotated[MacroDeclarationsItem, Field(description='The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.')]
 
 
 class TagURL(DisplayTagAsset):

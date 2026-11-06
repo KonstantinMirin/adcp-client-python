@@ -1,7 +1,7 @@
 {
   "issue": "https://github.com/adcontextprotocol/adcp/issues/8735",
   "against": "adcontextprotocol/adcp schemas bundle 3.2",
-  "summary": "The ADDITIVE half of #8735's ask, applied only where the bundle already states the name at every position. #8735 asks for a `title` at each of 95 object structures the bundle restates and never titles; 50 of the 95 are UNDECIDABLE on the bundle's own evidence (survey/judgment.py) and titling them here would decide, for the protocol, a question only the protocol's authors can answer. This patch set holds the entries where there is nothing to decide: the bundle names every stating position with one and the same word, no other entry of the layer derives it, and its own $refs reach one of those positions -- so the title is a transcription and not a judgment. Annotation-only: no keyword a draft-07 validator acts on moves at any pointer of any document, which tests/test_patch_additive.py checks over all 1,054 portable documents.",
+  "summary": "The ADDITIVE half of #8735's ask, applied only where the bundle already states the name at every position. #8735 asks for a `title` at each of 95 object structures the bundle restates and never titles; 50 of the 95 are UNDECIDABLE on the bundle's own evidence (survey/judgment.py) and titling them here would decide, for the protocol, a question only the protocol's authors can answer. This patch set holds the entries where there is nothing to decide: the bundle names every stating position with one and the same word, and no other entry of the layer derives it -- so the title is a transcription and not a judgment. TWO KINDS OF ENTRY, and the difference is whether the bundle has a path to the node already. For the first, its own $refs reach one of the stating positions, so a second document would give one subject a second name and the keyword is the whole of what is missing. For the four titles added 2026-11-05 -- URL Macro Declaration, Explicit Collection Selector, Publisher Placement Reference, Unlocalized Creative Asset -- no $ref reaches any position: each is a NARROWING of a document the bundle does name, restated at two to five positions and titled at none, and the bundle's own precedent for that shape is core/forecast-rate-range.json, a titled document holding `allOf: [{$ref: core/forecast-range.json}, {low/mid/high maximum: 1}]`. So an extraction is the stronger ask for those four and is filed beside this one; what the title claims, and the whole of what it claims, is that the restating positions are ONE subject, which nothing in the bundle says today. Annotation-only on both kinds: no keyword a draft-07 validator acts on moves at any pointer of any document, which codegen.patch.seen_by_a_validator checks over all 1,054 portable documents. THE BUNDLE THIS SET IS APPLIED TO IS THE PUBLISHED (BUILT) ONE, AND FOR ONE POSITION THAT MATTERS. core/assets/display-tag-asset.json#/oneOf/0/properties/macro_declarations/items is a composed `allOf` in the published bundle and a bare `{properties: {location: ...}}` overlay in upstream's own source, where the build merges it with the root's `items: {$ref: core/macro-declaration.json}`. So the upstream ask for URL Macro Declaration ranges over the FOUR source positions that state the composed node (daast-tracker, pixel-tracker, url and vast tracker assets) and this set titles five, the fifth being that merge's output. The same overlay form at core/assets/daast-asset.json#/oneOf/0 and core/assets/vast-asset.json#/oneOf/0 is titled by NEITHER: the node's own text says nothing about a macro declaration, so a title there would be a claim it does not support (adcp-client-python-e4z).",
   "extractions": [],
   "additions": [
     {
@@ -14,6 +14,138 @@
       "ask": "adcontextprotocol/adcp#8735",
       "why_not_an_extraction": "the bundle already names this node: a $ref inside brand.json reaches #/definitions/data_subject_contestation. Extracting it would give one subject a SECOND name, which is the one thing naming it was for. The keyword is the whole of what is missing.",
       "why_this_string": "`data_subject_contestation` is the word the bundle itself writes at both positions, spelled by the project's own naming rule. docs/plan/architecture.md, 'WHEN A NAME IS THE BUNDLE'S': 'the property name the positions share | stated | take it'. Nothing here is lifted from a description."
+    },
+    {
+      "document": "core/assets/daast-tracker-asset.json",
+      "pointer": "/properties/macro_declarations/items",
+      "keyword": "title",
+      "value": "URL Macro Declaration",
+      "names": "one macro-token occurrence whose location is the asset's own locator `url` field",
+      "defect": "the bundle states `{allOf: [{$ref: core/macro-declaration.json}, {properties: {location: {properties: {field: {const: \"url\"}}}}}]}` at five positions in five core/assets documents, names every one of them `macro_declarations`, joins the five by no $ref and titles none of them. It NAMES the base -- core/macro-declaration.json, titled \"Macro Declaration\" -- and leaves the narrowed subject anonymous, so a reader and a generator meet the same restriction five times with nothing to tell them it is one restriction. core/assets/display-tag-asset.json is the proof that the narrowing is a subject and not an accident: its three oneOf branches narrow the SAME base to `url`, to `markup` and to `{ad_request_url, clickthrough_url}`, which is a family of three the bundle titles nowhere.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "core/forecast-rate-range.json is the bundle's own precedent for extracting a narrowing of a named document into a titled document of its own, so an extraction is defensible here and is the stronger ask (filed beside this one). It is not THIS patch set's kind: #8735 asks for a `title` and nothing else, and an addition is the one override that leaves every $ref and every acceptance keyword of all 1,054 documents where they are. The title is what identifies the five positions as one subject; which document the subject should live in is a second question and upstream's to answer.",
+      "why_this_string": "`url` is the word the narrowing itself pins (`location.field: {const: \"url\"}`) and \"Macro Declaration\" is the title the bundle gives the base at core/macro-declaration.json, so the string is the bundle's own two words and a modifier read off the one keyword that distinguishes the subject -- the same form core/forecast-rate-range.json takes over core/forecast-range.json (\"Forecast Range\" -> \"Forecast Rate Range\"). It is what a person says about this node: a URL macro declaration. Nothing is minted from the structure: `ObjLocationFieldUrl` is the compiler's placeholder form and is not a name."
+    },
+    {
+      "document": "core/assets/display-tag-asset.json",
+      "pointer": "/oneOf/0/properties/macro_declarations/items",
+      "keyword": "title",
+      "value": "URL Macro Declaration",
+      "names": "one macro-token occurrence whose location is the asset's own locator `url` field",
+      "defect": "the bundle states `{allOf: [{$ref: core/macro-declaration.json}, {properties: {location: {properties: {field: {const: \"url\"}}}}}]}` at five positions in five core/assets documents, names every one of them `macro_declarations`, joins the five by no $ref and titles none of them. It NAMES the base -- core/macro-declaration.json, titled \"Macro Declaration\" -- and leaves the narrowed subject anonymous, so a reader and a generator meet the same restriction five times with nothing to tell them it is one restriction. core/assets/display-tag-asset.json is the proof that the narrowing is a subject and not an accident: its three oneOf branches narrow the SAME base to `url`, to `markup` and to `{ad_request_url, clickthrough_url}`, which is a family of three the bundle titles nowhere.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "core/forecast-rate-range.json is the bundle's own precedent for extracting a narrowing of a named document into a titled document of its own, so an extraction is defensible here and is the stronger ask (filed beside this one). It is not THIS patch set's kind: #8735 asks for a `title` and nothing else, and an addition is the one override that leaves every $ref and every acceptance keyword of all 1,054 documents where they are. The title is what identifies the five positions as one subject; which document the subject should live in is a second question and upstream's to answer.",
+      "why_this_string": "`url` is the word the narrowing itself pins (`location.field: {const: \"url\"}`) and \"Macro Declaration\" is the title the bundle gives the base at core/macro-declaration.json, so the string is the bundle's own two words and a modifier read off the one keyword that distinguishes the subject -- the same form core/forecast-rate-range.json takes over core/forecast-range.json (\"Forecast Range\" -> \"Forecast Rate Range\"). It is what a person says about this node: a URL macro declaration. Nothing is minted from the structure: `ObjLocationFieldUrl` is the compiler's placeholder form and is not a name."
+    },
+    {
+      "document": "core/assets/pixel-tracker-asset.json",
+      "pointer": "/properties/macro_declarations/items",
+      "keyword": "title",
+      "value": "URL Macro Declaration",
+      "names": "one macro-token occurrence whose location is the asset's own locator `url` field",
+      "defect": "the bundle states `{allOf: [{$ref: core/macro-declaration.json}, {properties: {location: {properties: {field: {const: \"url\"}}}}}]}` at five positions in five core/assets documents, names every one of them `macro_declarations`, joins the five by no $ref and titles none of them. It NAMES the base -- core/macro-declaration.json, titled \"Macro Declaration\" -- and leaves the narrowed subject anonymous, so a reader and a generator meet the same restriction five times with nothing to tell them it is one restriction. core/assets/display-tag-asset.json is the proof that the narrowing is a subject and not an accident: its three oneOf branches narrow the SAME base to `url`, to `markup` and to `{ad_request_url, clickthrough_url}`, which is a family of three the bundle titles nowhere.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "core/forecast-rate-range.json is the bundle's own precedent for extracting a narrowing of a named document into a titled document of its own, so an extraction is defensible here and is the stronger ask (filed beside this one). It is not THIS patch set's kind: #8735 asks for a `title` and nothing else, and an addition is the one override that leaves every $ref and every acceptance keyword of all 1,054 documents where they are. The title is what identifies the five positions as one subject; which document the subject should live in is a second question and upstream's to answer.",
+      "why_this_string": "`url` is the word the narrowing itself pins (`location.field: {const: \"url\"}`) and \"Macro Declaration\" is the title the bundle gives the base at core/macro-declaration.json, so the string is the bundle's own two words and a modifier read off the one keyword that distinguishes the subject -- the same form core/forecast-rate-range.json takes over core/forecast-range.json (\"Forecast Range\" -> \"Forecast Rate Range\"). It is what a person says about this node: a URL macro declaration. Nothing is minted from the structure: `ObjLocationFieldUrl` is the compiler's placeholder form and is not a name."
+    },
+    {
+      "document": "core/assets/url-asset.json",
+      "pointer": "/properties/macro_declarations/items",
+      "keyword": "title",
+      "value": "URL Macro Declaration",
+      "names": "one macro-token occurrence whose location is the asset's own locator `url` field",
+      "defect": "the bundle states `{allOf: [{$ref: core/macro-declaration.json}, {properties: {location: {properties: {field: {const: \"url\"}}}}}]}` at five positions in five core/assets documents, names every one of them `macro_declarations`, joins the five by no $ref and titles none of them. It NAMES the base -- core/macro-declaration.json, titled \"Macro Declaration\" -- and leaves the narrowed subject anonymous, so a reader and a generator meet the same restriction five times with nothing to tell them it is one restriction. core/assets/display-tag-asset.json is the proof that the narrowing is a subject and not an accident: its three oneOf branches narrow the SAME base to `url`, to `markup` and to `{ad_request_url, clickthrough_url}`, which is a family of three the bundle titles nowhere.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "core/forecast-rate-range.json is the bundle's own precedent for extracting a narrowing of a named document into a titled document of its own, so an extraction is defensible here and is the stronger ask (filed beside this one). It is not THIS patch set's kind: #8735 asks for a `title` and nothing else, and an addition is the one override that leaves every $ref and every acceptance keyword of all 1,054 documents where they are. The title is what identifies the five positions as one subject; which document the subject should live in is a second question and upstream's to answer.",
+      "why_this_string": "`url` is the word the narrowing itself pins (`location.field: {const: \"url\"}`) and \"Macro Declaration\" is the title the bundle gives the base at core/macro-declaration.json, so the string is the bundle's own two words and a modifier read off the one keyword that distinguishes the subject -- the same form core/forecast-rate-range.json takes over core/forecast-range.json (\"Forecast Range\" -> \"Forecast Rate Range\"). It is what a person says about this node: a URL macro declaration. Nothing is minted from the structure: `ObjLocationFieldUrl` is the compiler's placeholder form and is not a name."
+    },
+    {
+      "document": "core/assets/vast-tracker-asset.json",
+      "pointer": "/properties/macro_declarations/items",
+      "keyword": "title",
+      "value": "URL Macro Declaration",
+      "names": "one macro-token occurrence whose location is the asset's own locator `url` field",
+      "defect": "the bundle states `{allOf: [{$ref: core/macro-declaration.json}, {properties: {location: {properties: {field: {const: \"url\"}}}}}]}` at five positions in five core/assets documents, names every one of them `macro_declarations`, joins the five by no $ref and titles none of them. It NAMES the base -- core/macro-declaration.json, titled \"Macro Declaration\" -- and leaves the narrowed subject anonymous, so a reader and a generator meet the same restriction five times with nothing to tell them it is one restriction. core/assets/display-tag-asset.json is the proof that the narrowing is a subject and not an accident: its three oneOf branches narrow the SAME base to `url`, to `markup` and to `{ad_request_url, clickthrough_url}`, which is a family of three the bundle titles nowhere.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "core/forecast-rate-range.json is the bundle's own precedent for extracting a narrowing of a named document into a titled document of its own, so an extraction is defensible here and is the stronger ask (filed beside this one). It is not THIS patch set's kind: #8735 asks for a `title` and nothing else, and an addition is the one override that leaves every $ref and every acceptance keyword of all 1,054 documents where they are. The title is what identifies the five positions as one subject; which document the subject should live in is a second question and upstream's to answer.",
+      "why_this_string": "`url` is the word the narrowing itself pins (`location.field: {const: \"url\"}`) and \"Macro Declaration\" is the title the bundle gives the base at core/macro-declaration.json, so the string is the bundle's own two words and a modifier read off the one keyword that distinguishes the subject -- the same form core/forecast-rate-range.json takes over core/forecast-range.json (\"Forecast Range\" -> \"Forecast Rate Range\"). It is what a person says about this node: a URL macro declaration. Nothing is minted from the structure: `ObjLocationFieldUrl` is the compiler's placeholder form and is not a name."
+    },
+    {
+      "document": "core/canonical-product.json",
+      "pointer": "/properties/collections/items",
+      "keyword": "title",
+      "value": "Explicit Collection Selector",
+      "names": "a collection selector obliged to name the collection_ids it selects, rather than the domain-only form that grants all of them",
+      "defect": "the bundle states `{allOf: [{$ref: core/collection-selector.json}, {required: [\"collection_ids\"]}]}` at three positions in three documents -- core/canonical-product.json, core/collection-selection.json and core/product.json -- names every one of them `collections`, joins the three by no $ref and titles none of them. core/collection-selector.json's own description states that omitting `collection_ids` IS a second form (\"the bulk-grant form for authorization scoping\"), and all three positions say in prose that this form is not the one they accept; so the bundle distinguishes two subjects in three descriptions and gives the narrower one no name.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "same answer as the entry above: an extraction is the stronger ask and is filed beside this one. What this entry claims is only that the three positions are ONE subject, which is what a title says and what nothing in the bundle says today.",
+      "why_this_string": "\"Collection Selector\" is the title the bundle gives the base at core/collection-selector.json, and `explicit` is the bundle's own word for the distinction at all three positions: \"explicit collection_ids\" in core/canonical-product.json and core/product.json, \"explicit collection_ids\" again in core/collection-selection.json. A reader meets the base's own contrast -- explicit selection against bulk grant -- in the name. Not lifted from a description as a sentence: one word that the three positions and the base all write."
+    },
+    {
+      "document": "core/collection-selection.json",
+      "pointer": "/oneOf/0/properties/collections/items",
+      "keyword": "title",
+      "value": "Explicit Collection Selector",
+      "names": "a collection selector obliged to name the collection_ids it selects, rather than the domain-only form that grants all of them",
+      "defect": "the bundle states `{allOf: [{$ref: core/collection-selector.json}, {required: [\"collection_ids\"]}]}` at three positions in three documents -- core/canonical-product.json, core/collection-selection.json and core/product.json -- names every one of them `collections`, joins the three by no $ref and titles none of them. core/collection-selector.json's own description states that omitting `collection_ids` IS a second form (\"the bulk-grant form for authorization scoping\"), and all three positions say in prose that this form is not the one they accept; so the bundle distinguishes two subjects in three descriptions and gives the narrower one no name.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "same answer as the entry above: an extraction is the stronger ask and is filed beside this one. What this entry claims is only that the three positions are ONE subject, which is what a title says and what nothing in the bundle says today.",
+      "why_this_string": "\"Collection Selector\" is the title the bundle gives the base at core/collection-selector.json, and `explicit` is the bundle's own word for the distinction at all three positions: \"explicit collection_ids\" in core/canonical-product.json and core/product.json, \"explicit collection_ids\" again in core/collection-selection.json. A reader meets the base's own contrast -- explicit selection against bulk grant -- in the name. Not lifted from a description as a sentence: one word that the three positions and the base all write."
+    },
+    {
+      "document": "core/product.json",
+      "pointer": "/properties/collections/items",
+      "keyword": "title",
+      "value": "Explicit Collection Selector",
+      "names": "a collection selector obliged to name the collection_ids it selects, rather than the domain-only form that grants all of them",
+      "defect": "the bundle states `{allOf: [{$ref: core/collection-selector.json}, {required: [\"collection_ids\"]}]}` at three positions in three documents -- core/canonical-product.json, core/collection-selection.json and core/product.json -- names every one of them `collections`, joins the three by no $ref and titles none of them. core/collection-selector.json's own description states that omitting `collection_ids` IS a second form (\"the bulk-grant form for authorization scoping\"), and all three positions say in prose that this form is not the one they accept; so the bundle distinguishes two subjects in three descriptions and gives the narrower one no name.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "same answer as the entry above: an extraction is the stronger ask and is filed beside this one. What this entry claims is only that the three positions are ONE subject, which is what a title says and what nothing in the bundle says today.",
+      "why_this_string": "\"Collection Selector\" is the title the bundle gives the base at core/collection-selector.json, and `explicit` is the bundle's own word for the distinction at all three positions: \"explicit collection_ids\" in core/canonical-product.json and core/product.json, \"explicit collection_ids\" again in core/collection-selection.json. A reader meets the base's own contrast -- explicit selection against bulk grant -- in the name. Not lifted from a description as a sentence: one word that the three positions and the base all write."
+    },
+    {
+      "document": "core/package-format-snapshot.json",
+      "pointer": "/properties/placement_refs/items",
+      "keyword": "title",
+      "value": "Publisher Placement Reference",
+      "names": "a placement reference whose publisher_domain is present, so the publisher's own adagents.json is the authority that owns the placement_id",
+      "defect": "the bundle states `{allOf: [{$ref: core/placement-ref.json}, {required: [\"publisher_domain\"]}]}` at two positions in two documents, names both of them `placement_refs`, joins the two by no $ref and titles neither. The narrowing is the authority question the bundle itself raises: core/placement-ref.json admits a reference with no publisher_domain (\"receivers MAY interpret the ID relative to the enclosing single-publisher product\") and core/placement-identity.json, titled \"Placement Identity\", exists because \"the discriminator names which authority owns placement_id\". core/placement-selection.json's own description puts this subject beside that one, in an anyOf, and calls it \"Legacy publisher refs\" -- so the bundle names one arm of a two-arm choice and leaves the other anonymous.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "same answer as the entries above. Note that this position is a BRANCH, where the project's own keyword table makes a `title` the branch class's NAME -- so for this one entry the title is rendered and not only recorded, which is the clearest case that nothing here needs a second document to be a name.",
+      "why_this_string": "\"Placement Reference\" is the title the bundle gives the base at core/placement-ref.json, and `publisher` is what the required key names: publisher_domain, whose presence is exactly the fact that the publisher is the authority. The bundle writes \"publisher-catalog placements\" at the base and \"Legacy publisher refs\" at the selection position. `Legacy` is deliberately NOT in the string: it dates the subject rather than naming it, and the same structure is the only accepted form at core/package-format-snapshot.json, where nothing is legacy."
+    },
+    {
+      "document": "core/placement-selection.json",
+      "pointer": "/oneOf/0/properties/placement_refs/items/anyOf/0",
+      "keyword": "title",
+      "value": "Publisher Placement Reference",
+      "names": "a placement reference whose publisher_domain is present, so the publisher's own adagents.json is the authority that owns the placement_id",
+      "defect": "the bundle states `{allOf: [{$ref: core/placement-ref.json}, {required: [\"publisher_domain\"]}]}` at two positions in two documents, names both of them `placement_refs`, joins the two by no $ref and titles neither. The narrowing is the authority question the bundle itself raises: core/placement-ref.json admits a reference with no publisher_domain (\"receivers MAY interpret the ID relative to the enclosing single-publisher product\") and core/placement-identity.json, titled \"Placement Identity\", exists because \"the discriminator names which authority owns placement_id\". core/placement-selection.json's own description puts this subject beside that one, in an anyOf, and calls it \"Legacy publisher refs\" -- so the bundle names one arm of a two-arm choice and leaves the other anonymous.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "same answer as the entries above. Note that this position is a BRANCH, where the project's own keyword table makes a `title` the branch class's NAME -- so for this one entry the title is rendered and not only recorded, which is the clearest case that nothing here needs a second document to be a name.",
+      "why_this_string": "\"Placement Reference\" is the title the bundle gives the base at core/placement-ref.json, and `publisher` is what the required key names: publisher_domain, whose presence is exactly the fact that the publisher is the authority. The bundle writes \"publisher-catalog placements\" at the base and \"Legacy publisher refs\" at the selection position. `Legacy` is deliberately NOT in the string: it dates the subject rather than naming it, and the same structure is the only accepted form at core/package-format-snapshot.json, where nothing is legacy."
+    },
+    {
+      "document": "media-buy/package-request.json",
+      "pointer": "/properties/creatives/items",
+      "keyword": "title",
+      "value": "Unlocalized Creative Asset",
+      "names": "a creative asset offered on the inline-upload path, which may not carry a localization block",
+      "defect": "the bundle states `{allOf: [{$ref: core/creative-asset.json}, {not: {required: [\"localization\"]}}]}` at two positions in two documents -- media-buy/package-request.json and media-buy/package-update.json -- names both of them `creatives`, joins the two by no $ref and titles neither. Both positions state the reason in prose and state it the same way (\"Native localization is not accepted on this path; use sync_creatives before assigning the library creative\"), so the bundle asserts one restriction twice in English and zero times as a name.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "same answer as the entries above.",
+      "why_this_string": "\"Creative Asset\" is the title the bundle gives the base at core/creative-asset.json, and the whole of the narrowing is that `localization` is forbidden -- so `unlocalized` names the one fact that distinguishes this subject from the base, in a word a person uses. \"Inline Creative Asset\" was the alternative and is rejected: `creatives` on a package request is the FIELD's role, inline-upload is the path the field belongs to, and neither is a property of the type -- the same reason the `result` entry of adcp-client-python-s44.1 is held rather than titled."
+    },
+    {
+      "document": "media-buy/package-update.json",
+      "pointer": "/properties/creatives/items",
+      "keyword": "title",
+      "value": "Unlocalized Creative Asset",
+      "names": "a creative asset offered on the inline-upload path, which may not carry a localization block",
+      "defect": "the bundle states `{allOf: [{$ref: core/creative-asset.json}, {not: {required: [\"localization\"]}}]}` at two positions in two documents -- media-buy/package-request.json and media-buy/package-update.json -- names both of them `creatives`, joins the two by no $ref and titles neither. Both positions state the reason in prose and state it the same way (\"Native localization is not accepted on this path; use sync_creatives before assigning the library creative\"), so the bundle asserts one restriction twice in English and zero times as a name.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "same answer as the entries above.",
+      "why_this_string": "\"Creative Asset\" is the title the bundle gives the base at core/creative-asset.json, and the whole of the narrowing is that `localization` is forbidden -- so `unlocalized` names the one fact that distinguishes this subject from the base, in a word a person uses. \"Inline Creative Asset\" was the alternative and is rejected: `creatives` on a package request is the FIELD's role, inline-upload is the path the field belongs to, and neither is a property of the type -- the same reason the `result` entry of adcp-client-python-s44.1 is held rather than titled."
     }
   ]
 }

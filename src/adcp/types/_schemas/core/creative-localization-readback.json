@@ -4073,7 +4073,8 @@
         {
           "$ref": "#/definitions/Shared57"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared45": {
       "type": "string"

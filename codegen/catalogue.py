@@ -1344,9 +1344,12 @@ class Shapes:
     #: document, and named either by the one title the bundle gives it or -- where the
     #: bundle titles it at no position -- by §4's steps 2 and 3 from the structure itself.
     entries: Mapping[str, ShapeEntry]
-    #: The structures stated in more than one document with NO title anywhere, at a layer
-    #: that COLLECTS NOTHING, which is L3's by the derivation in the class docstring.
-    #: Empty at L2, where the same structures are :attr:`entries` named from themselves.
+    #: The structures stated in more than one document that this layer declines to collect
+    #: FOR WANT OF A TITLE.  Empty at L2, where the same structures are :attr:`entries`
+    #: named from themselves; at L3 it is every untitled group, by the derivation in the
+    #: class docstring; at L2C it is every group the bundle does not title at EVERY stating
+    #: position, which is that layer's evidence rule (:func:`shape_states`) and is why the
+    #: part is not "no title anywhere" any more.
     untitled: tuple[tuple[Shaped, ...], ...]
     #: §3a's conflict case, for the owner.
     conflicting: tuple[ShapeConflict, ...]
@@ -1404,6 +1407,39 @@ def shape_states(
     and is the population the 42 row's split was asked of.  **L3 is a node whose ``items``
     is a schema**, which is what an array type is.
 
+    **AND L2C IS THE OBJECT TYPE A NODE STATES THROUGH ITS CONJUNCTS AND NOT THROUGH ITS
+    OWN ``properties``** -- a node holding a non-empty ``allOf`` and no ``properties`` of
+    its own, which over this bundle is 256 positions, 114 of them in 32 groups that state
+    one structure in more than one document.  ``{"allOf": [{"$ref": X}, {<a narrowing>}]}``
+    is an object type exactly as much as an inline ``properties`` bag is -- the compiler
+    declares a class at it, and reading 4 ranges over every class the tree declares -- but
+    L2's predicate reads the node's OWN ``properties`` and a composed object states none,
+    so the whole population was invisible to the one layer whose job is to stop a second
+    declaration.  **Measured over the tree: 22 of its 40 duplicate declarations sit at such
+    a position, in 10 of its 15 duplicate groups** -- which is the larger half of reading
+    4's remaining object-layer question, and the half no layer was reading.
+
+    **IT IS A LAYER OF ITS OWN AND NOT A WIDENING OF L2, because the evidence for a shared
+    subject is not the same at the two.**  §3a's own argument for the array layer transfers
+    verbatim: *"what tells a shared subject from a coincidental overlap is that an object's
+    key holds the property NAMES, while an array's key over a scalar element holds no name
+    at all -- which is why the object layer can collapse on identity and the array layer
+    must not."*  A composed node's key holds the key of its ``$ref``'s TARGET, which every
+    member of a group shares by construction, plus a narrowing conjunct that is typically a
+    bare ``required`` or a ``not`` and carries no name of anything.  So identity here is
+    evidence of a shared BASE, never of a shared subject -- measured, and the measurement
+    is the reason this layer collects nothing untitled: collapsing the 32 groups on identity
+    alone would make one type of ``core/rights-attestation-evaluation.json``'s ``reference``
+    and ``core/rights-constraint.json``'s ``attestation_refs`` items, of
+    ``core/format.json``'s ``canonical_parameters`` and ``core/transformer.json``'s
+    ``input_formats`` items, and of ``media-buy/request-proposals-response.json``'s
+    ``losses`` and ``legacy-purchase-continuation-input.json``'s ``accepted_losses`` --
+    pairs whose two positions name two subjects and which the owner's reading of
+    ``adcp-client-python-s44.1`` records as correct splits.  **What tells them apart is a
+    ``title``, and the bundle states one at no position of any of the 32** -- which is the
+    whole of ``adcontextprotocol/adcp#8735``'s ask read at this layer, and
+    :func:`collect_shapes` is where the rule is.
+
     **A RULE POSITION MINTS NO TYPE and is not a stating position.**  §3's RULE position is
     where ``if``, ``then``, ``else`` and ``not`` hold their subschemas, and a conditional's
     subschema compiles to a RULE rather than to a type -- so a node holding ``properties``
@@ -1445,6 +1481,13 @@ def shape_states(
             if layer == "L2":
                 held = node.get("properties")
                 if not isinstance(held, dict) or not held:
+                    continue
+            elif layer == "L2C":
+                held = node.get("properties")
+                if isinstance(held, dict) and held:
+                    continue
+                conjuncts = node.get("allOf")
+                if not isinstance(conjuncts, list) or not conjuncts:
                     continue
             elif not isinstance(node.get("items"), dict):
                 continue
@@ -1725,6 +1768,19 @@ def collect_shapes(
             continue
         stated = frozenset(p.title for p in group if p.title is not None)
         title: str | None = None
+        if layer == "L2C" and any(p.title is None for p in group):
+            # **AT L2C THE TITLE MUST BE AT EVERY STATING POSITION, which is stricter than
+            # the clause below and is the layer's own evidence rule** (:func:`shape_states`:
+            # identity at a composed position is evidence of a shared BASE and never of a
+            # shared subject).  One title among several untitled positions is enough at L2,
+            # where the key carries the property names and the positions are known to be
+            # one subject before any title is read; here it would let a word written once
+            # decide for positions that say nothing, and the measurement in
+            # :func:`shape_states` is what two of those positions turn out to be.  The
+            # judgment table states the same test as its own evidence: "the bundle names
+            # EVERY one of the N positions".
+            untitled.append(tuple(group))
+            continue
         if len(stated) == 1:
             title = next(iter(stated))
         elif len(stated) > 1:

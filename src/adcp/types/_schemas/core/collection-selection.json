@@ -54,7 +54,8 @@
                   "collection_ids"
                 ]
               }
-            ]
+            ],
+            "title": "Explicit Collection Selector"
           },
           "minItems": 1,
           "type": "array",

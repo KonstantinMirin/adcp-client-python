@@ -4738,7 +4738,8 @@
                               "collection_ids"
                             ]
                           }
-                        ]
+                        ],
+                        "title": "Explicit Collection Selector"
                       },
                       "minItems": 1,
                       "type": "array",
@@ -5304,7 +5305,8 @@
                                   "publisher_domain"
                                 ]
                               }
-                            ]
+                            ],
+                            "title": "Publisher Placement Reference"
                           },
                           {
                             "$schema": "http://json-schema.org/draft-07/schema#",

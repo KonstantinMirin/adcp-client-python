@@ -6487,7 +6487,8 @@
             "collection_ids"
           ]
         }
-      ]
+      ],
+      "title": "Explicit Collection Selector"
     },
     "Shared19": {
       "additionalProperties": true,
@@ -15210,7 +15211,8 @@
         {
           "$ref": "#/definitions/Shared235"
         }
-      ]
+      ],
+      "title": "Publisher Placement Reference"
     },
     "Shared409": {
       "description": "Relative priority among sibling goals. Lower numbers rank first. Goals without priority follow explicitly prioritized goals. Ties use array order, so the earliest goal at the lowest explicit priority is primary; when all priorities are omitted, the first goal is primary.",
@@ -26043,7 +26045,8 @@
                                                   }
                                                 }
                                               }
-                                            ]
+                                            ],
+                                            "title": "URL Macro Declaration"
                                           },
                                           "minItems": 1,
                                           "type": "array"

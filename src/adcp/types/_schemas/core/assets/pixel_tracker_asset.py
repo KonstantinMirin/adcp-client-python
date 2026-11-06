@@ -11,9 +11,8 @@ from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, 
 
 from ...enums.pixel_tracking_event import PixelTrackingEvent
 from ..macro_bearing_url import MacroBearingURL
-from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
-from .daast_tracker_asset import Location
+from .daast_tracker_asset import MacroDeclarationsItem
 
 
 class Method(StrEnum):
@@ -26,17 +25,6 @@ class Method(StrEnum):
     """
     IMG = 'img'
     JS = 'js'
-
-
-class MacroDeclarationsItem(MacroDeclaration):
-    """
-    The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/pixel-tracker-asset.json', pointer='#/properties/macro_declarations/items')
-    location: Location
 
 
 class PixelTrackerAsset(AdCPBaseModel):

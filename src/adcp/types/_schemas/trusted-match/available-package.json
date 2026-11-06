@@ -7712,7 +7712,8 @@
                 {
                   "$ref": "#/definitions/Shared4"
                 }
-              ]
+              ],
+              "title": "Publisher Placement Reference"
             },
             "minItems": 1,
             "type": "array",

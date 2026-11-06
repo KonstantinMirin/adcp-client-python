@@ -5829,7 +5829,8 @@
         {
           "$ref": "#/definitions/Shared81"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared7": {
       "additionalProperties": true,

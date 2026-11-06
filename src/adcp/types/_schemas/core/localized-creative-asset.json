@@ -4277,7 +4277,8 @@
         {
           "$ref": "#/definitions/Shared53"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared41": {
       "type": "string"

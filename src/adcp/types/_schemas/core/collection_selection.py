@@ -8,8 +8,8 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
-from .collection_selector import CollectionSelector
 from .ext import ExtensionObject
+from .product import CollectionsItem
 
 
 class CollectionSelection(BranchDispatchMixin, AdCPBaseModel):
@@ -23,17 +23,6 @@ class CollectionSelection(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-
-
-class CollectionsItem(CollectionSelector):
-    """
-    References collections declared in an adagents.json. Buyers resolve full collection objects by fetching the adagents.json at the given domain and matching collection_ids against its collections array. When collection_ids is omitted, the selector references every collection declared in that adagents.json — the bulk-grant form for authorization scoping (e.g., a host authorizing a channel owner's sales agent for all of the owner's collections without tracking owner-assigned IDs).
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection-selection.json', pointer='#/oneOf/0/properties/collections/items')
-    collection_ids: Annotated[list[str], Field(description='Collection IDs from the adagents.json collections array. Each ID must match a collection_id declared in that file. Omit to reference all collections declared in that file.', min_length=1)]
 
 
 class SelectedCollections(CollectionSelection):

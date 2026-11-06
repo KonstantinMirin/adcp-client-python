@@ -28,6 +28,7 @@ is a new local answer to a question the protocol should have answered.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
@@ -52,10 +53,19 @@ def rows() -> list:
 
 @pytest.fixture(scope="session")
 def patched() -> Path:
-    """The published bundle with the ADDITIVE patch set applied, built once."""
-    out = Path("/tmp") / "adcp-patched-8735"
-    patch.apply(PUBLISHED, Path("patches/8735"), out)
-    return out
+    """The published bundle with the ADDITIVE patch set applied, built once.
+
+    **Through :func:`codegen.patch.for_build`, which keys the directory on the bundle and
+    on a digest of the patch set's files, and NOT on a fixed path.**  It was
+    ``/tmp/adcp-patched-8735``, and ``patch.apply`` begins by deleting its output -- so two
+    worktrees of this repository running this file at once deleted each other's bundle
+    mid-read, which is the ``FileNotFoundError`` at a document name this fixture reports
+    and which is reachable on any commit.  Three worktrees are the normal state of this
+    repository.  ``for_build``'s own staging-and-rename is what makes the materialisation
+    safe for concurrent readers, and keying on the patch set's bytes is what makes it the
+    right bundle rather than merely a private one.
+    """
+    return patch.for_build(PUBLISHED, ("patches/8735",))
 
 
 def test_the_judgment_pass_partitions_every_pending_entry(rows: list) -> None:
@@ -201,12 +211,21 @@ def test_every_table_entry_names_its_defect_and_its_ask() -> None:
         assert entry.ask.strip(), entry
         assert "the bundle" in entry.defect, entry.defect
     ratchet(
-        "entries of the override table",
-        len(entries),
-        at_most=6,
+        "subjects the override table answers locally",
+        len(subjects_of(entries)),
+        at_most=10,
         because="the table's size IS the debt figure: an entry whose ask upstream accepts "
         "is DELETED, so this falls to zero for a well-defined bundle and a rise is a new "
-        "local answer to a question the protocol should have answered",
+        "local answer to a question the protocol should have answered.  10 because the "
+        "ceiling rose by 4 on 2026-11-05 (adcp-client-python-6h1): URL Macro Declaration, "
+        "Explicit Collection Selector, Publisher Placement Reference and Unlocalized "
+        "Creative Asset, each filed on adcontextprotocol/adcp#8735 with the branch "
+        "prepared.  It is the SUBJECT count and not the row count, and that is the figure "
+        "the direction is about: a title has to be at EVERY stating position of its "
+        "structure or the layer declines to collect it (codegen.catalogue.shape_states, "
+        "L2C), so the rows per subject are a function of the BUNDLE and counting them "
+        "would read one subject stated at twelve positions as twelve debts and one stated "
+        "once as one",
     )
 
 
@@ -379,17 +398,92 @@ def test_no_addition_is_seen_by_a_validator(patched: Path) -> None:
         assert set(difference.keys) <= {entry.keyword for entry in grown}, str(difference)
 
 
+def subjects_of(entries: Iterable) -> set:
+    """The SUBJECTS a set of override entries answers for, which is the debt figure.
+
+    An extraction's subject is the document it gives the structure; an addition's is the
+    (keyword, value) pair it adds, because one title is one name for one subject however
+    many positions the bundle states that subject at.  See the ratchet in
+    :func:`test_every_table_entry_names_its_defect_and_its_ask` for why the rows are not
+    the figure.
+    """
+    return {
+        (entry.keyword, entry.value) if hasattr(entry, "keyword") else ("document", entry.document)
+        for entry in entries
+    }
+
+
+def composed_base(bundle_dir: Path, document: str, pointer: str) -> str | None:
+    """The TITLE of the document a composed node narrows, or ``None`` where it narrows none.
+
+    A node whose ``allOf`` holds exactly one ``$ref`` to another document's ROOT and at
+    least one other conjunct is a NARROWING of that document: the bundle names the base and
+    the narrowing is anonymous.  This is the reading
+    ``codegen.catalogue.shape_states``' L2C layer collects over, asked of one node, and it
+    answers the one thing a name for such a subject can be graded against -- the base's own
+    title, which is a string the BUNDLE states.
+
+    ``None`` where the node states no ``allOf``, where its conjuncts hold no reference or
+    more than one, where the reference names a fragment rather than a document root, or
+    where the base states no title.  Each of those is a node this reading cannot speak for,
+    and :func:`test_every_addition_is_backed_by_a_collapse_the_bundle_evidences` partitions
+    on the answer rather than branching inside it.
+    """
+    node = bundle.node_at(bundle.read(bundle_dir, document), pointer)
+    conjuncts = node.get("allOf") if isinstance(node, dict) else None
+    if not isinstance(conjuncts, list) or len(conjuncts) < 2:
+        return None
+    documents = set(bundle.portable(bundle_dir))
+    named = [
+        bundle.document_for(head, documents)
+        for conjunct in conjuncts
+        if isinstance(conjunct, dict)
+        and isinstance(uri := conjunct.get("$ref"), str)
+        and not (head := bundle.split_ref(uri)[0]) == ""
+        and bundle.split_ref(uri)[1] == ""
+    ]
+    reached = [name for name in named if name is not None]
+    if len(reached) != 1 or len(reached) == len(conjuncts):
+        return None
+    title = bundle.read(bundle_dir, reached[0]).get("title")
+    return title if isinstance(title, str) and title.strip() else None
+
+
 def test_every_addition_is_backed_by_a_collapse_the_bundle_evidences(rows: list) -> None:
     """THE ENTRY IS NOT A PREFERENCE, and the bundle is what says so.
 
     An addition states a name for a structure.  §4 "refuses to mint a public name no
-    document states", and the one reading that can tell a transcription from a mint is the
-    judgment pass: the entry's positions must be an entry the pass reaches COLLAPSE on, and
-    the name the manifest writes must be the word the bundle itself states at every one of
-    those positions.
+    document states", so every entry owes a reading of the bundle that its string answers
+    TO -- and there are two such readings, because there are two shapes of anonymous
+    structure and the evidence available at them is not the same.  **The two are a
+    PARTITION of the table and the assertion below includes that**, so an entry that
+    answers to neither reading cannot sit in a gap between them.
 
-    So an entry titling a structure the bundle names two things, or names nothing, fails
-    here -- which is exactly the 50 L2 entries this patch set deliberately does not touch.
+    **A TRANSCRIPTION: the bundle writes the word and the entry copies it.**  The judgment
+    pass reaches COLLAPSE at the entry's position, which means the bundle names every
+    stating position of the structure with one and the same word, and the string must be
+    that word -- *"the property name the positions share | stated | take it"*, which is
+    what §3a licenses and all it licenses.
+
+    **A NARROWING: the bundle names the BASE and the entry names the restriction.**  The
+    node composes one ``$ref`` to a titled document plus at least one narrowing conjunct
+    (:func:`composed_base`), so the subject is "that document, restricted" -- and a
+    property name cannot be its name, because the property names the FIELD's role.  Two
+    things are therefore asserted and they are the two halves a name of this kind has:
+
+    * **the HEAD is the bundle's own**: the string ENDS WITH the base document's own
+      ``title``, so the noun a reader meets is the noun the bundle already uses for the
+      thing being narrowed, and no subject is renamed;
+    * **the string is not that title ALONE**, because a narrowing that took the base's name
+      unchanged would give one subject two names -- which is the hazard every entry's
+      ``why_not_an_extraction`` is about -- and because the modifier is the whole of what
+      distinguishes the narrowing from the base.
+
+    What the modifier should BE is a judgment and is not assertable here; what IS assertable
+    is that it is a word and not a transcription of the structure, so the string is required
+    to carry none of ``codegen.catalogue``'s placeholder form.  The argument for the word
+    itself is the entry's ``why_this_string``, which is required to be present and is for a
+    reviewer rather than for this test.
     """
     collapsed = {
         row.one_name: row
@@ -400,23 +494,106 @@ def test_every_addition_is_backed_by_a_collapse_the_bundle_evidences(rows: list)
     claimed(
         "the additive entries", [(entry.document, entry.pointer) for entry in grown]
     )
+    transcriptions, narrowings = {}, {}
     for entry in grown:
         at = (entry.document, entry.pointer)
+        assert entry.keyword == "title", entry
         mine = [
             row
             for row in collapsed.values()
             if any((p.document, p.pointer) == at for p in row.positions)
         ]
-        assert len(mine) == 1, f"{at}: the judgment pass reaches no COLLAPSE here"
+        base = composed_base(PUBLISHED, entry.document, entry.pointer)
+        if mine:
+            transcriptions[at] = (entry, mine)
+        elif base is not None:
+            narrowings[at] = (entry, base)
+    partitions(
+        {(entry.document, entry.pointer) for entry in grown},
+        **{
+            "a word the bundle writes at every position": set(transcriptions),
+            "a narrowing of a document the bundle titles": set(narrowings),
+        },
+    )
+    for at, (entry, mine) in transcriptions.items():
+        assert len(mine) == 1, f"{at}: the judgment pass reaches two COLLAPSE rows here"
         row = mine[0]
-        assert entry.keyword == "title", entry
         # And the backing row must record a DEFECT, not merely a verdict: an array entry
         # whose element the bundle names reaches COLLAPSE and owes nothing, so an override
         # standing on one would be a preference wearing a verdict's clothes.
         assert not row.defect.startswith("NONE"), row.defect
-        # The STRING is the bundle's own word at every position, spelled by §4's rule --
-        # which is what "the property name the positions share | stated | take it" licenses
-        # and all it licenses.
         assert entry.value == " ".join(
             part.capitalize() for part in row.one_name.split("_")
         ), f"{entry.value!r} is not {row.one_name!r} as the bundle writes it"
+    for at, (entry, base) in narrowings.items():
+        assert complaints_about_a_narrowing(entry.value, base) == [], (
+            at,
+            complaints_about_a_narrowing(entry.value, base),
+        )
+
+
+def complaints_about_a_narrowing(value: str, base: str) -> list[str]:
+    """What is wrong with ``value`` as a name for ``base`` narrowed, or an empty list.
+
+    A function and not three inline asserts, so
+    :func:`test_a_narrowing_named_anything_but_the_base_qualified_reddens` can call the
+    SAME reading rather than a copy of it.  See
+    :func:`test_every_addition_is_backed_by_a_collapse_the_bundle_evidences` for why these
+    three and no others.
+    """
+    found = []
+    if not value.endswith(base):
+        found.append(
+            f"{value!r} does not end with {base!r}, which is the title the bundle gives "
+            f"the document this node narrows -- so the string renames the subject instead "
+            f"of qualifying it"
+        )
+    if value == base:
+        found.append(
+            f"{value!r} IS the base's own title, so the entry gives one subject a second "
+            f"name rather than naming the narrowing"
+        )
+    if catalogue.OBJECT_WORD in value:
+        found.append(
+            f"{value!r} carries the compiler's own placeholder form "
+            f"{catalogue.OBJECT_WORD!r}, which is a transcription of the structure and "
+            f"not a name"
+        )
+    return found
+
+
+def test_a_narrowing_named_anything_but_the_base_qualified_reddens() -> None:
+    """The red direction of the narrowing rule, over the strings the table actually ships.
+
+    ``test_every_addition_is_backed_by_a_collapse_the_bundle_evidences`` is the green
+    direction and an empty list passes it.  This perturbs each shipped narrowing title in
+    the three ways the rule is about -- the base's own title alone, the property name the
+    positions share, and the compiler's placeholder form -- and requires the same function
+    to object to every one of them, while the shipped string itself draws no objection.
+
+    **The population is the table's, not a fixture's**: a red direction over an invented
+    pair would prove that a rule reddens on invented input, which is not the claim.
+    """
+    grown = patch.additions(Path("patches/8735"), PUBLISHED)
+    pairs = claimed(
+        "the narrowing entries of the override table",
+        {
+            (entry.value, base)
+            for entry in grown
+            if (base := composed_base(PUBLISHED, entry.document, entry.pointer)) is not None
+        },
+    )
+    for value, base in sorted(pairs):
+        assert complaints_about_a_narrowing(value, base) == []
+        # The base's own title alone: one subject, two names.
+        assert complaints_about_a_narrowing(base, base)
+        # The property name the positions share, which is the FIELD's role and is what the
+        # tree calls these classes today -- MacroDeclarations, Collections, PlacementRefs,
+        # Creatives.  Spelled from the pointer the entry names rather than written down, so
+        # this cannot drift from the table: the segment after the last ``properties``.
+        for entry in (e for e in grown if e.value == value):
+            word = entry.pointer.split("/properties/")[-1].split("/")[0]
+            role = "".join(part.capitalize() for part in word.split("_"))
+            assert complaints_about_a_narrowing(role, base), (role, base)
+        # The compiler's placeholder form, which §4 rules a defect.
+        assert complaints_about_a_narrowing(f"{catalogue.OBJECT_WORD}{base}", base)

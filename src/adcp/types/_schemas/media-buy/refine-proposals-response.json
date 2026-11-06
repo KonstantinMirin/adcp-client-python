@@ -6644,7 +6644,8 @@
             "collection_ids"
           ]
         }
-      ]
+      ],
+      "title": "Explicit Collection Selector"
     },
     "Shared4": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -10484,7 +10485,8 @@
                       {
                         "$ref": "#/definitions/Shared171"
                       }
-                    ]
+                    ],
+                    "title": "Publisher Placement Reference"
                   },
                   {
                     "$schema": "http://json-schema.org/draft-07/schema#",
