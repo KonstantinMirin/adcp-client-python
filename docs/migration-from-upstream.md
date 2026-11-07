@@ -30,6 +30,52 @@ follows from that choice.
 
 ---
 
+## Validate with `strict_validate`, not `model_validate`
+
+**Every class in this package carries `strict_validate`, and it is the call to make.** It
+validates the payload against the schema node the class was compiled from, then hands the
+same payload to `model_validate` — so you get exactly the instance `model_validate` would
+have given you, after the document has had its say:
+
+```python
+Root.strict_validate(payload)      # schema first, then the model
+Root.model_validate(payload)       # the model alone
+```
+
+It is not a different constructor and it is not a stricter mode of the class. It is the
+same construction with the document's own verdict in front of it, and it calls
+`model_validate` underneath.
+
+**Why it exists: a Python type annotation cannot say everything a JSON Schema node says.**
+The gaps are not exotic and you will meet them on ordinary fields:
+
+| the document says | the annotation says | what differs |
+|---|---|---|
+| `type: integer` | `int` | pydantic coerces `"1"` and `True` to `1`; the document refuses both |
+| an optional property | `X \| None = None` | `None` means *absent* to the document and *an explicit null* to the annotation — two different payloads |
+| `oneOf` branches split by which key is present | one class, both fields optional | the exclusivity has nowhere to live in the signature |
+| a `pattern`, a `maxLength`, a conditional | an `Annotated` constraint, or a rule | expressible, but only some of them, and only one at a time |
+
+Some of these we close at the type — an optional non-nullable property now refuses an
+explicit null. Others cannot be closed without making the class *wrong in the other
+direction*: forcing `int` to strict would reject `1.0`, which the document **accepts**,
+because JSON Schema treats a number with zero fractional part as an integer. **Trading a
+permissive reading for a wrong one is not a fix.**
+
+So the schema half is where those facts live, and `strict_validate` is how you consult it.
+
+**The cost is a `jsonschema` validation per call** — negligible beside a network round trip,
+and far cheaper than the alternatives: carrying the schema's rules a second time in
+hand-written checks, or shipping types so contorted that the annotation stops telling a
+reader what the field is. **The runtime penalty is small; the complexity and the degraded
+developer experience of the alternative are not.**
+
+Use `model_validate` where the payload has already been checked, or where you are
+constructing an instance yourself rather than parsing one. Use `strict_validate` at every
+boundary where a payload arrives from somewhere else.
+
+---
+
 ## The set, the instrument, and what an entry owes
 
 **The set every figure here is over: the 503 distinct names, from 82 distinct modules, that
