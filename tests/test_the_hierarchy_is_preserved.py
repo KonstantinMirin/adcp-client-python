@@ -201,6 +201,119 @@ def test_every_branch_of_a_union_inherits_that_unions_base(
     }
 
 
+def _union_nodes() -> dict[tuple[str, str, str], int]:
+    """Every ``oneOf``/``anyOf`` of the BUNDLE whose branches are all object-ish.
+
+    Keyed ``(document, the union's own pointer, keyword)`` and valued by the branch
+    count.  Read off the bundle's own records and off nothing of ours, because the set
+    the clause below ranges over is the thing that must not be a restatement of the
+    walk: derived from the emitted tree, "every union that got a base has a base" is
+    true by construction.
+
+    "Object-ish" is the branch shape a CLASS is possible for, and it is read the way
+    ``codegen.lower.union`` reads it -- a branch stating a non-object ``type`` is a
+    scalar and the union is an alias, so it is not this clause's node.  A branch is
+    kept where it is a mapping, states no scalar ``type`` of its own under a root that
+    states none either, and declares something a class can be made of: a property map,
+    a conjunct list, or a ``$ref``.
+    """
+    out: dict[tuple[str, str, str], int] = {}
+    for document in bundle.portable(BUNDLE):
+        stack: list[tuple[str, object]] = [("#", bundle.read(BUNDLE, document))]
+        while stack:
+            pointer, node = stack.pop()
+            if isinstance(node, dict):
+                word = node.get("type")
+                for keyword in ("oneOf", "anyOf"):
+                    members = node.get(keyword)
+                    if not isinstance(members, list) or len(members) < 2:
+                        continue
+                    if not all(
+                        isinstance(one, dict)
+                        and one.get("type", word) in (None, "object")
+                        and ({"properties", "allOf", "$ref"} & set(one))
+                        for one in members
+                    ):
+                        continue
+                    out[(document, pointer, keyword)] = len(members)
+                for key, value in node.items():
+                    stack.append((f"{pointer}/{key}", value))
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    stack.append((f"{pointer}/{index}", value))
+    return out
+
+
+def test_every_union_of_object_branches_that_emits_branches_emits_their_base(
+    classes: dict[str, type],
+) -> None:
+    """THE CLAUSE THAT MAKES THE ONE ABOVE NON-VACUOUS, and the defect it was blind to.
+
+    ``test_every_branch_of_a_union_inherits_that_unions_base`` grades the classes that
+    CARRY the dispatch base, so a union that emitted its branch classes and no base at
+    all satisfies it by having nothing to grade -- the branches are plain
+    ``AdCPBaseModel`` subclasses, they carry no mixin, and the orphan set they would
+    have joined never sees them.  Measured on this tree before the repair: **48 union
+    pointers had two or more emitted branch classes and nothing of ours at the union's
+    own pointer**, among them
+    ``content-standards/artifact.json#/$defs/asset_access`` -- three classes each
+    deriving ``AdCPBaseModel`` directly, bound as
+    ``AssetAccess = Annotated[A | B | C, Field(...)]`` at module scope.  So the branches
+    existed and nothing of ours said they were alternatives: no class for §4's third
+    source to range over and no base for the hierarchy claim.  The clause above read
+    GREEN through all 48.
+
+    **The node set is the BUNDLE'S** (:func:`_union_nodes`) and the premise is the
+    emitted BRANCHES: where the tree declares a class at two or more of a union's branch
+    pointers it has decided those branches are classes, and alternatives need something
+    to be alternatives OF.  A union whose document the run refuses emits no branch
+    either, so it is not claimed here -- that is the refusal's report and not this
+    clause's.
+
+    Both directions, as every clause in this file is: the class at the union's pointer
+    must DISPATCH (it declares ``_branch_models``, which is
+    ``BranchDispatchMixin._dispatching``'s own reading of what a base is), and every one
+    of the emitted branches must be a subclass of it.  A base that exists and that the
+    branches do not inherit is the same defect read from the other side.
+    """
+    nodes = _union_nodes()
+    claimed("the bundle's unions of object-ish branches", nodes)
+
+    def key_of(document: str, pointer: str) -> str:
+        """``classes``' own key for a node, which is that fixture's spelling read back."""
+        return f"{document}#{pointer.lstrip('#')}"
+
+    branches_of = {
+        node: [
+            cls
+            for index in range(count)
+            if (cls := classes.get(key_of(node[0], f"{node[1]}/{node[2]}/{index}"))) is not None
+        ]
+        for node, count in nodes.items()
+    }
+    with_branches = claimed(
+        "the bundle's unions of object-ish branches the tree emits branch classes for",
+        {node for node, found in branches_of.items() if len(found) >= 2},
+        inside=set(nodes),
+    )
+    missing: dict[str, list[str]] = {}
+    unparented: dict[str, list[str]] = {}
+    for node in sorted(with_branches):
+        branches = branches_of[node]
+        base = classes.get(key_of(node[0], node[1]))
+        where = key_of(node[0], node[1])
+        if base is None or not base.__dict__.get("_branch_models"):
+            missing[where] = sorted(cls.__name__ for cls in branches)
+            continue
+        loose = sorted(cls.__name__ for cls in branches if not issubclass(cls, base))
+        if loose:
+            unparented[where] = loose
+    assert not missing and not unparented, {
+        "emits branch classes and no dispatching base at the union's own pointer": missing,
+        "emits a base its own branches do not inherit": unparented,
+    }
+
+
 def test_a_document_that_composes_an_envelope_carries_that_envelopes_class(
     classes: dict[str, type],
 ) -> None:
