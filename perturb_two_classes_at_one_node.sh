@@ -32,15 +32,22 @@
 # is run against all three readings and every verdict is printed:
 #
 #   case A -- the wrong reference handed to a declaration, i.e. two classes at ONE node:
-#             node gate REDDENS, name reading green, key gate GREEN.
+#             node gate REDDENS, key gate STAYS GREEN.
 #   case B -- §4's content dedup off, i.e. a second class at a SECOND node and no aliases at
-#             all: node gate GREEN, name reading REDDENS (its live population is gone), key
-#             gate REDDENS.
+#             all: node gate STAYS GREEN, key gate REDDENS.
 #
-# The swap in the first and third columns is what says the node gate is new coverage, and the
-# second column is why the name reading is a test of its own: it fails when the emitter stops
-# aliasing, which is the opposite defect from the one the node gate watches, and one test
-# holding both would redden on either without saying which.
+# **THE SWAP IN THE FIRST AND LAST COLUMNS IS THE WHOLE MEASUREMENT.**  Case A is the defect
+# reading 4 names and the key gate does not see it; case B is the defect the key gate exists
+# for and the node gate does not see it.  Neither is a spelling of the other, and that is what
+# could not be established by running one of them.
+#
+# The MIDDLE column reddens on both and is not a discriminator, by construction: the name
+# reading hands the same function a SUPERSET of the gate's population, so anything that
+# reddens the gate reddens it too.  What it adds is the other direction -- case B emits no
+# aliases at all, so its 17-node population is gone and `claimed` fires rather than passing
+# vacuously.  That is why it is a test of its own and not a clause inside the gate: its red
+# direction is the emitter STOPPING, which is the opposite defect, and one test holding both
+# reddens on either without saying which.
 #
 # **PYTHONPATH=.:src IS NOT COSMETIC.**  PYTHONPATH=. alone resolves `adcp` through the shared
 # .venv's editable .pth into whatever worktree installed it, which grades a mix of two trees.

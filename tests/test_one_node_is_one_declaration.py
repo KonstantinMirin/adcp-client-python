@@ -679,11 +679,11 @@ def test_one_schema_node_is_declared_by_at_most_one_class() -> None:
 
     **The NAME population is :func:`test_a_second_name_at_a_node_is_not_a_second_declaration`
     and is deliberately not here**, because it is a different obligation with a different red
-    direction: this one fails when the EMITTER declares twice, that one fails when the
+    direction: this one fails when the EMITTER declares twice, that one also fails when the
     emitter stops aliasing at all, and a single test holding both reddens on either without
-    saying which.  Measured: §4's content dedup switched off reddens the name reading and
-    leaves this gate GREEN, because a second class at a second node is not a second class at
-    one node.
+    saying which.  Measured: §4's content dedup switched off reddens the name reading on an
+    empty population and leaves this gate GREEN, because a second class at a second node is
+    not a second class at one node.
 
     Its red direction is :func:`test_two_classes_at_one_schema_node_redden_the_gate`, and the
     EMITTER's is ``./perturb_two_classes_at_one_node.sh``, which runs every gate under every
