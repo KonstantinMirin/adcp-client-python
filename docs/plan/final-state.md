@@ -494,14 +494,16 @@ nothing about Python attributes. `pass` and `global` are live values too, and th
 spellings are KEYWORDS: four modules that do not parse. The three above are collisions with
 something a *document* put in the class; this one is a collision with the *language*, and it is
 counted on its own terms rather than folded into one of them
-(`codegen.lower.enum.ALIAS_REFUSALS`, `adcp.types._base.MEMBER_NAMES_TAKEN`). **Measured over the
-3.2 bundle: 4,031 member spellings over 751 emitted enumerations — 3,514 aliased, 241 not an
-identifier (4 of them keywords), 259 already the canonical name and so owing nothing, 17 taken by
-the base, and 0 re-casing inside a class.** The re-casing case is empty by construction and not by
-luck: §5's `enum` row already sends a node whose two values spell one member name to a `Literal`
-with no class and no member names at all, so the bundle's one collision
-(`formats/canonical/html5.json#/properties/clicktag_macro`, `clickTag`/`clickTAG`) is a
-migration-guide entry at the NODE, where both spellings are gone.
+(`codegen.lower.enum.ALIAS_REFUSALS`, `adcp.types._base.MEMBER_NAMES_TAKEN`).
+
+**AND THE FOUR REASONS PARTITION THE MEMBER SPELLINGS, WHICH IS THE CLAUSE THAT MAKES THEM
+CHECKABLE.** Aliased plus the four refusals equals every spelling the bundle states, asserted as a
+partition — so **a fifth reason BREAKS the gate instead of hiding inside it**, which is the only
+form in which "we counted the exceptions" is a statement about the artifact rather than about who
+was looking. The re-casing reason is expected empty **by construction and not by luck**: §5's
+`enum` row already sends a node whose two values spell one member name to a `Literal` with no class
+and no member names at all, so such a collision is a migration-guide entry at the NODE, where both
+spellings are gone — and if that reason is ever non-empty, §5's row is what moved.
 
 **An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
 export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
