@@ -1,6 +1,12 @@
 # The judgment table: upstream adcp 9.6.1 declarations that structure could not decide against adcp_emit 0.0.0.
 # kind=N:1 a many-to-one -- decided by reading the bundle for REFERENCE vs RESTATEMENT
-# kind=1:N OUR duplication, a reading 4 red; the repair is in the walk
+# kind=1:N THE KEY COULD NOT DECIDE THE TARGET, which is NOT our duplication.  Measured
+#   (adcp-client-python-shh0, re-graded; 0kfk): the bucket's dominant case is the
+#   constrained scalar, whose signature is nearly vacuous -- every bounded string matches
+#   every other with the same bounds, so upstream's CanonicalFormatKindStr reaches seven
+#   UNRELATED subjects of ours differing only in the prose their documents state.  The
+#   secondary key is the DOCUMENT NODE (--provenance), and the model-class count is the
+#   figure that is a reading 4 question at all (--by-kind).
 # kind=none/same-document the judgment: we compile the document and differ at depth
 # kind=none/no-document NOT a judgment -- reading 10's migration note, never a class
 # kind=none/document-not-ours NOT a judgment -- a question for the walk
