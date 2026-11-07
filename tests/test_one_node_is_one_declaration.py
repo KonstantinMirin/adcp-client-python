@@ -672,25 +672,27 @@ def test_one_schema_node_is_declared_by_at_most_one_class() -> None:
     pair asserts from the other side.  This is the clause that has no key but the node, so
     nothing a declaration says about itself can hide a second declaration of it.
 
-    **Three readings, and the second is the one that makes the first mean anything.**  The
-    OBJECT population is the gate: ``{}``, over the 2,340 declarations the run emitted.  The
-    BINDING population is handed to the same function: 2,358 names over those 2,340 objects,
-    17 nodes carrying two or three names each, still ``{}`` -- which is the sentence
-    ``adcp-client-python-qpzf`` needed and could not get from a count, stated as an assertion
-    over the live population rather than as prose.  And the node set is a BIJECTION with the
-    declarations, so there is no node left over in either direction.
+    **TWO readings, and they are a BIJECTION rather than a one-way count.**  No node carries
+    two class objects, and no declaration is without a node -- so ``declarations``, ``nodes``
+    and ``distinct nodes`` are one number, and a class that lost its reference cannot pay for
+    a node that gained one.
+
+    **The NAME population is :func:`test_a_second_name_at_a_node_is_not_a_second_declaration`
+    and is deliberately not here**, because it is a different obligation with a different red
+    direction: this one fails when the EMITTER declares twice, that one fails when the
+    emitter stops aliasing at all, and a single test holding both reddens on either without
+    saying which.  Measured: §4's content dedup switched off reddens the name reading and
+    leaves this gate GREEN, because a second class at a second node is not a second class at
+    one node.
 
     Its red direction is :func:`test_two_classes_at_one_schema_node_redden_the_gate`, and the
-    EMITTER's is ``./perturb_two_classes_at_one_node.sh``, which runs both gates under both
-    perturbations because a clause that reddens where an existing one also reddens is a
-    second spelling of it: ``declare_object`` made to hand the adagents ``oneOf/1`` branch
-    its ``oneOf/0`` sibling's reference reddens THIS and leaves
-    ``test_no_two_declarations_of_one_document_are_one_type`` green, and §4's content dedup
-    switched off does the exact opposite.  That swap is the measurement that says the clause
-    was missing rather than unexercised.
+    EMITTER's is ``./perturb_two_classes_at_one_node.sh``, which runs every gate under every
+    case because a clause that reddens where an existing one also reddens is a second
+    spelling of it: ``declare_object`` made to hand the adagents ``oneOf/1`` branch its
+    ``oneOf/0`` sibling's reference reddens THIS and leaves
+    ``test_no_two_declarations_of_one_document_are_one_type`` green, which is the measurement
+    that says the clause was missing rather than unexercised.
     """
-    import adcp.types._schemas as pkg
-
     tree = the_tree()
     declarations = [cls for members in tree.values() for cls in members]
     claimed("declarations of the emitted tree", declarations)
@@ -710,25 +712,48 @@ def test_one_schema_node_is_declared_by_at_most_one_class() -> None:
         "distinct nodes": len(set(nodes)),
     }
 
-    # AND THE NAMES, through the SAME function: one class under two names is one
-    # declaration, so the 17 nodes the tree binds several names at are not this defect.
+
+def test_a_second_name_at_a_node_is_not_a_second_declaration() -> None:
+    """The 35 names at 17 nodes, through the SAME function, and still ``{}``.
+
+    **This is the sentence ``adcp-client-python-qpzf`` needed and could not get from a
+    count.**  That report walked ``__adcp_schema__`` and found *"17 ``(document, pointer)``
+    pairs carrying MORE THAN ONE class, involving 35 classes"*; the pairs are real and the
+    classes are not -- ``SignalTagsValue = TagsValue`` is one object at one node under two
+    names, and a Python assignment carries the aliased class's ``__adcp_schema__`` because it
+    carries the aliased class.  So the measurement cannot tell §4's dedup WORKING from
+    reading 4 broken, and the answer is to hand the name population to the gate and assert
+    the verdict rather than to argue it.
+
+    ``claimed`` is what makes it an assertion: the 17 nodes are a LIVE population read off
+    this run's tree, so if the emitter ever stops aliasing, this reddens on an empty
+    population instead of passing vacuously -- which is exactly what §4's content dedup
+    switched off does, and it leaves
+    :func:`test_one_schema_node_is_declared_by_at_most_one_class` green while doing it.
+
+    The BINDING and never ``cls.__name__``: an alias's ``__name__`` is the DECLARING name at
+    both of its bindings, which is the same reason ``ref_of`` reads the same pair twice and is
+    the whole reason this population exists.
+    """
+    import adcp.types._schemas as pkg
+
     every_binding = [
         (binding, cls) for name in modules_of(pkg) for binding, cls in bindings_in(importlib.import_module(name))
     ]
     bound = [cls for _, cls in every_binding]
-    # The BINDING and never ``cls.__name__``: an alias is an assignment, so the aliased
-    # class's ``__name__`` is the DECLARING name at both of its bindings -- which is the
-    # same reading ``ref_of`` takes and the reason this population exists.
     several: dict[tuple[str, str], set[str]] = collections.defaultdict(set)
     for binding, cls in every_binding:
         if (at := ref_of(cls)) is not None:
             several[at].add(binding)
-    claimed(
-        "schema nodes the tree binds more than one NAME at",
-        {at for at, names in several.items() if len(names) > 1},
-    )
+    at_several_names = {at for at, names in several.items() if len(names) > 1}
+    claimed("schema nodes the tree binds more than one NAME at", at_several_names)
+
+    declarations = [cls for members in the_tree().values() for cls in members]
     assert len(bound) > len(declarations), (len(bound), len(declarations))
     assert two_classes_at_one_node(bound) == {}, two_classes_at_one_node(bound)
+    # And the names beyond the declarations are exactly the second and later names at those
+    # nodes, so the surplus is accounted for by this population and not by something else.
+    assert len(bound) - len(declarations) == sum(len(several[at]) - 1 for at in at_several_names)
 
 
 def test_two_classes_at_one_schema_node_redden_the_gate() -> None:

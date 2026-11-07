@@ -27,12 +27,20 @@
 # It edits files in place and restores them with `git checkout --`, so it REQUIRES A CLEAN
 # TREE: uncommitted work in those files is destroyed.  It refuses to run otherwise.
 #
-# **EVERY CASE IS A PAIR OF VERDICTS AND THAT IS THE POINT.**  A clause that reddens where an
-# existing one also reddens is a second spelling of it and buys nothing.  So each
-# perturbation is run against BOTH gates and both verdicts are printed: case A must redden
-# the node clause and leave the key gate green, and case B -- §4's content dedup switched off,
-# which puts a second class at a second node -- must do the exact opposite.  The two together
-# are what say the clause is new coverage rather than a copy.
+# **EVERY CASE IS THREE VERDICTS AND THAT IS THE POINT.**  A clause that reddens where an
+# existing one also reddens is a second spelling of it and buys nothing.  So each perturbation
+# is run against all three readings and every verdict is printed:
+#
+#   case A -- the wrong reference handed to a declaration, i.e. two classes at ONE node:
+#             node gate REDDENS, name reading green, key gate GREEN.
+#   case B -- §4's content dedup off, i.e. a second class at a SECOND node and no aliases at
+#             all: node gate GREEN, name reading REDDENS (its live population is gone), key
+#             gate REDDENS.
+#
+# The swap in the first and third columns is what says the node gate is new coverage, and the
+# second column is why the name reading is a test of its own: it fails when the emitter stops
+# aliasing, which is the opposite defect from the one the node gate watches, and one test
+# holding both would redden on either without saying which.
 #
 # **PYTHONPATH=.:src IS NOT COSMETIC.**  PYTHONPATH=. alone resolves `adcp` through the shared
 # .venv's editable .pth into whatever worktree installed it, which grades a mix of two trees.
@@ -48,7 +56,8 @@ T=tests/test_one_node_is_one_declaration.py
 O=codegen/lower/objects.py
 N=codegen/lower/names.py
 
-NODE_CLAUSE="one_schema_node_is_declared_by_at_most_one_class"
+NODE_GATE="one_schema_node_is_declared_by_at_most_one_class"
+NAME_READING="a_second_name_at_a_node_is_not_a_second_declaration"
 KEY_GATE="no_two_declarations_of_one_document_are_one_type"
 
 if [ -n "$(git status --porcelain -- "$T" "$O" "$N")" ]; then
@@ -58,24 +67,28 @@ fi
 
 py() { env PYTHONPATH=.:src ./.venv/bin/python "$@"; }
 
-one() {  # one <-k expression> -> prints "REDDENS" or "STAYED GREEN" and the count
-  out=$(py -m pytest "$T" -q -p no:randomly -k "$1" 2>&1 | tail -3)
+one() {  # one <label> <-k expression> -> prints "REDDENS" or "STAYED GREEN" and the count
+  out=$(py -m pytest "$T" -q -p no:randomly -k "$2" 2>&1 | tail -3)
   if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then v=REDDENS; else v="STAYED GREEN"; fi
-  printf '%-14s %-12s %s' "$1" "$v" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+  printf '    %-14s %-12s %s\n' "$1" "$v" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
 }
 
-both() {  # both <label>
+all_three() {
+  one "node gate" "$NODE_GATE"
+  one "name reading" "$NAME_READING"
+  one "key gate" "$KEY_GATE"
+}
+
+under() {  # under <label>
   printf '%s\n' "$1"
-  printf '    node clause   '; one "$NODE_CLAUSE"; printf '\n'
-  printf '    key gate      '; one "$KEY_GATE"; printf '\n'
+  all_three
   git checkout -- "$T" "$O" "$N"
 }
 
 edit() { py -c "$1" || { echo "perturbation did not apply: $1" >&2; exit 1; }; }
 
-echo "unperturbed, both gates:"
-printf '    '; one "$NODE_CLAUSE"; printf '\n'
-printf '    '; one "$KEY_GATE"; printf '\n'
+echo "unperturbed, all three:"
+all_three
 echo
 
 # --------------------------------------------------------------------------- #
@@ -97,7 +110,7 @@ edit "import pathlib;p=pathlib.Path('$O');s=p.read_text();a='        ref=compile
             and pointer.endswith(\"/properties/authorized_agents/items/oneOf/1\")
             else pointer,
         ),'''))"
-both "A. the adagents oneOf/1 branch carries its oneOf/0 sibling's reference"
+under "A. the adagents oneOf/1 branch carries its oneOf/0 sibling's reference"
 
 # --------------------------------------------------------------------------- #
 # CASE B: THE CONTROL, and it is the other direction of the same 2x2.  §4's content dedup
@@ -108,4 +121,4 @@ both "A. the adagents oneOf/1 branch carries its oneOf/0 sibling's reference"
 # `WholesaleFeedEvent1` through `WholesaleFeedEvent9` in the upstream v9 SDK.
 # --------------------------------------------------------------------------- #
 edit "import pathlib;p=pathlib.Path('$N');s=p.read_text();a='    return next((at for other, at in mod.collapsed if other == node), None)';assert s.count(a)==1;p.write_text(s.replace(a,'    return None  # PERTURBED: section 4 content dedup off'))"
-both "B. section 4's content dedup switched off (a second class at a second node)"
+under "B. section 4's content dedup switched off (a second class at a second node)"
