@@ -1,0 +1,557 @@
+# The DIFFERENCE CLASSES of the judgment table, upstream adcp 9.6.1 against adcp_emit 0.0.0.
+# 554 classes accounting for 3640 declarations.  **ONE ROW IS ONE RULING**, and it is a per-element ruling: does the DOCUMENT account for this element differing.  Never a ratio (reading 10 as amended).
+kind	elements	declarations	example	verdict
+none/no-document	no declaration of ours from this document	1168	A2UiBoundValue@adcp.types.domains.a2ui.A2UiBoundValue	
+N:1	2 of theirs share this target	206	AcceptancePolicyProfileIds@adcp.types.domains.core.acceptance_policy_profile_ids.AcceptancePolicyProfileIds	
+1:N	2 declarations of OURS -- reading 4	102	Account@adcp.types.domains.sponsored_intelligence.si_sponsored_context.Account	
+none/document-not-ours	no declaration of ours from this document	75	AcceptProposalInputRequired@adcp.types.domains.core.async_response_refs.media_buy.accept_proposal_async_response_input_required.AcceptProposalInputRequired	
+none/same-document	required differs	72	AccountIdentityChange1@adcp.types.domains.core.account_identity_change.AccountIdentityChange1	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-ours / anyOf only-ours	62	AcceptProposalSubmitted@adcp.types.domains.media_buy.accept_proposal_async_response_submitted.AcceptProposalSubmitted	
+N:1	3 of theirs share this target	54	AdcpProtocol@adcp.types.domains.enums.adcp_protocol.AdcpProtocol	
+none/same-document	maxLength only-ours	52	AaoDirectoryAgentPublishersInverseLookupResponse@adcp.types.domains.aao.agent_publishers.AaoDirectoryAgentPublishersInverseLookupResponse	
+none/same-document	uniqueItems only-ours	38	AcceptancePolicyDiscovery@adcp.types.domains.protocol.get_adcp_capabilities_response.AcceptancePolicyDiscovery	
+none/same-document	uniqueItems only-ours / anyOf only-ours / type only-theirs / anyOf only-ours	36	CanonicalFormatOption@adcp.types.domains.core.canonical_format_option.CanonicalFormatOption	
+none/same-document	properties only-theirs / properties only-theirs	35	AcceptProposalInputRequired@adcp.types.domains.media_buy.accept_proposal_async_response_input_required.AcceptProposalInputRequired	
+none/same-document	discriminator only-theirs / oneOf only-theirs / properties only-ours / type only-ours	33	AgentDeployment Deployment2@adcp.types.domains.core.deployment.Deployment2	
+none/same-document	additionalProperties only-ours / applies_to_channels only-theirs / canonical_formats_only only-theirs / display_name only-theirs	32	InputFormat10@adcp.types.domains.core.transformer.InputFormat10	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / properties only-theirs	32	AcceptProposalRequest@adcp.types.domains.media_buy.accept_proposal_request.AcceptProposalRequest	
+none/same-document	applies_to_channels only-theirs / canonical_formats_only only-theirs / display_name only-theirs / experimental only-theirs	32	CanonicalParameters10@adcp.types.domains.core.format.CanonicalParameters10	
+1:N	3 declarations of OURS -- reading 4	30	Action CreativeAction@adcp.types.domains.enums.creative_action.CreativeAction	
+1:N	6 declarations of OURS -- reading 4	30	AcceptancePolicyProfileId@adcp.types.domains.core.acceptance_policy_profile_ids.AcceptancePolicyProfileId	
+none/same-document	const only-theirs / enum only-ours / const only-theirs / enum only-ours	29	RegistryEvent10@adcp.types.domains.core.registry_event.RegistryEvent10	
+none/same-document	additionalProperties only-ours / anyOf only-theirs / properties only-ours / required only-ours	24	AcquireRightsResponse@adcp.types.domains.brand.acquire_rights_response.AcquireRightsResponse	
+none/same-document	const value-differs / maxLength only-ours / maxLength only-ours / maxLength only-ours	24	Assets ImageFormatAsset@adcp.types.domains.core.format.Assets	
+N:1	4 of theirs share this target	20	AgentProtocol@adcp.types.registry.AgentProtocol	
+N:1	5 of theirs share this target	20	CanonicalBoundaryModel@adcp.types.canonical_creative.CanonicalBoundaryModel	
+none/same-document	properties only-theirs	20	AudienceEvidencePin@adcp.types.domains.core.audience_evidence_pin.AudienceEvidencePin	
+none/same-document	uniqueItems only-ours / required differs	19	AcceptancePolicyRequirement3@adcp.types.domains.media_buy.acceptance_policy_requirement.AcceptancePolicyRequirement3	
+none/same-document	required only-ours	18	AcceptancePolicyRequirement10@adcp.types.domains.media_buy.acceptance_policy_requirement.AcceptancePolicyRequirement10	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours	18	BiddingPolicyCapability@adcp.types.domains.core.bidding_policy_capability.BiddingPolicyCapability	
+none/same-document	properties only-theirs / required differs	17	AcceptancePolicyRequirement17@adcp.types.domains.media_buy.acceptance_policy_requirement.AcceptancePolicyRequirement17	
+none/same-document	additionalProperties only-ours / uniqueItems only-ours / anyOf only-ours / type only-theirs	16	PackageFormatSnapshot10@adcp.types.domains.core.package_format_snapshot.PackageFormatSnapshot10	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs / const only-theirs	16	Budget2@adcp.types.domains.governance.sync_plans_request.Budget2	
+none/same-document	const only-theirs / type only-theirs / maxLength only-ours / maxLength only-ours	16	Assets16@adcp.types.domains.core.format.Assets16	
+1:N	71 declarations of OURS -- reading 4	15	AcceptProposalResponse4@adcp.types.domains.media_buy.accept_proposal_response.AcceptProposalResponse4	
+none/same-document	anyOf only-ours / type only-theirs	15	A2UiSurface@adcp.types.domains.a2ui.surface.A2UiSurface	
+none/same-document	minimum only-ours / type only-ours / anyOf only-ours / enum only-theirs	15	ByAudienceItem@adcp.types.domains.media_buy.get_media_buy_delivery_response.ByAudienceItem	
+N:1	14 of theirs share this target	14	AdvertiserJurisdiction@adcp.types.domains.media_buy.acceptance_context.AdvertiserJurisdiction	
+none/same-document	additionalProperties only-ours / discriminator only-theirs / oneOf only-theirs / properties only-ours	14	AnyOf@adcp.types.domains.governance.accepted_governance_agents.AnyOf	
+none/same-document	required differs / maxLength only-ours / required differs	14	AuthorizedAgents12@adcp.types.domains.adagents.AuthorizedAgents12	
+none/same-document	uniqueItems only-ours / discriminator only-theirs / oneOf only-theirs / properties only-ours	14	CanonicalProductAction@adcp.types.domains.core.canonical_product_action.CanonicalProductAction	
+none/same-document	uniqueItems only-ours / required differs / uniqueItems only-ours / maxLength only-ours	14	AuthorizedAgents AuthorizedAgents1 AuthorizedAgentsByPropertyId@adcp.types.domains.adagents.AuthorizedAgents1	
+none/same-document	enum only-ours / properties only-theirs / required only-theirs / type only-theirs	13	Action23@adcp.types.domains.a2ui.si_catalog.Action23	
+none/same-document	adcp_major_version only-theirs / adcp_version only-theirs	12	Colors@adcp.types.domains.brand.get_brand_identity_response.Colors	
+none/same-document	anyOf only-theirs / properties only-ours / required only-ours / type only-ours	12	AcquireRightsResponse@adcp.types.domains.brand.AcquireRightsResponse	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours	12	Account SyncGovernanceAccount@adcp.types.domains.account.sync_governance_request.Account	
+none/same-document	properties only-theirs / properties only-theirs / required differs	12	BuildCreativeSubmitted@adcp.types.domains.media_buy.build_creative_async_response_submitted.BuildCreativeSubmitted	
+none/same-document	additionalProperties only-theirs / declaration_id only-theirs / dialect only-theirs / dialect_namespace only-theirs	11	MacroDeclaration10@adcp.types.domains.core.assets.asset_union.MacroDeclaration10	
+none/same-document	anyOf only-ours / type only-theirs / anyOf only-ours / type only-theirs	11	CanonicalProjectionSlotOverride CanonicalSlotOverride@adcp.types.domains.core.canonical_projection_slot_override.CanonicalProjectionSlotOverride	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours	11	ActionNotAllowedDetails@adcp.types.domains.error_details.action_not_allowed.ActionNotAllowedDetails	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / maxLength only-ours	10	Artifact@adcp.types.domains.content_standards.artifact.Artifact	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / discriminator only-theirs	10	CollectionList@adcp.types.domains.collection.collection_list.CollectionList	
+none/same-document	maxLength only-ours / required differs	10	AgentDestination Destination2@adcp.types.domains.core.destination.Destination2	
+none/same-document	properties only-theirs / anyOf only-ours / discriminator only-theirs / oneOf only-theirs	10	AppItem@adcp.types.domains.core.app_item.AppItem	
+none/same-document	properties only-theirs / properties only-theirs / anyOf only-theirs / properties only-ours	10	Audience SyncAudiencesAudience@adcp.types.domains.media_buy.sync_audiences_request.Audience	
+1:N	7 declarations of OURS -- reading 4	9	BrandId@adcp.types.domains.brand_discovery.BrandId	
+N:1	9 of theirs share this target	9	PostalCodeSystem@adcp.types.domains.enums.postal_system.PostalCodeSystem	
+none/same-document	additionalProperties only-ours / pattern only-theirs / properties only-ours / required only-ours	9	AttestationDigest@adcp.types.domains.core.canonical_audience_evidence.AttestationDigest	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs	9	CanvasConstraint@adcp.types.domains.core.canvas_constraint.CanvasConstraint	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / uniqueItems only-ours	9	AgentReportingDestinationState@adcp.types.domains.core.agent_reporting_destination_state.AgentReportingDestinationState	
+none/same-document	maxLength only-ours / maxLength only-ours / properties only-theirs / maxLength only-ours	9	AudioAsset AudioContent@adcp.types.domains.core.assets.audio_asset.AudioAsset	
+none/same-document	maxLength only-ours / required differs / uniqueItems only-ours / required differs	9	AudienceActivationMethod4@adcp.types.domains.core.audience_activation_method.AudienceActivationMethod4	
+N:1	8 of theirs share this target	8	Constraints1@adcp.types.domains.media_buy.proposal_refinement.Constraints1	
+none/same-document	adcp_major_version only-theirs / adcp_version only-theirs / adcp_major_version only-theirs / adcp_version only-theirs	8	Audience@adcp.types.domains.media_buy.sync_audiences_response.Audience	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs / anyOf only-ours	8	CanonicalFormatHostedAudio@adcp.types.domains.formats.canonical.audio_hosted.CanonicalFormatHostedAudio	
+none/same-document	enum differs	8	Align@adcp.types.domains.a2ui.si_catalog.Align	
+none/same-document	properties only-theirs / properties only-theirs / anyOf only-ours / type only-theirs	8	GetPlanAuditLogsRequest@adcp.types.domains.governance.get_plan_audit_logs_request.GetPlanAuditLogsRequest	
+none/same-document	properties only-theirs / uniqueItems only-ours	8	BrowserSupport1@adcp.types.domains.core.targeting_overlay_support.BrowserSupport1	
+none/same-document	anyOf only-ours / type only-theirs / maxLength only-ours / uniqueItems only-ours	7	Account CapabilitiesAccount@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.Account	
+none/same-document	brand only-theirs / content_digest only-ours / properties only-theirs / id only-ours	7	Issuer9@adcp.types.domains.core.rights_constraint.Issuer9	
+none/same-document	maxLength only-ours / required differs / uniqueItems only-ours	7	ForecastVendorMetricValue@adcp.types.domains.core.forecast_vendor_metric_value.ForecastVendorMetricValue	
+none/same-document	properties only-theirs / maxLength only-ours / anyOf only-ours / type only-theirs	7	ComplyTestControllerResponse@adcp.types.domains.compliance.comply_test_controller_response.ComplyTestControllerResponse	
+none/same-document	properties only-theirs / maxLength only-ours / required differs	7	AccountChangeRecordedWebhook@adcp.types.domains.core.account_change_recorded_webhook.AccountChangeRecordedWebhook	
+none/same-document	uniqueItems only-ours / required differs / uniqueItems only-ours / discriminator only-theirs	7	AuthorizedAgents11@adcp.types.domains.adagents.AuthorizedAgents11	
+none/same-document	uniqueItems only-ours / required differs / uniqueItems only-ours / uniqueItems only-ours	7	AuthorizedAgents10@adcp.types.domains.adagents.AuthorizedAgents10	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / required differs	7	AgentReportingDestination1@adcp.types.domains.core.agent_reporting_destination.AgentReportingDestination1	
+none/same-document	$ref only-theirs / additionalProperties only-ours / properties only-ours / required only-ours	6	AvailablePackage@adcp.types.domains.trusted_match.available_package.AvailablePackage	
+none/same-document	additionalProperties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs	6	CollectionInfo@adcp.types.domains.content_standards.get_media_buy_artifacts_response.CollectionInfo	
+none/same-document	additionalProperties only-theirs / enum only-ours / properties only-theirs / required only-theirs	6	Extensions@adcp.types.domains.media_buy.get_products_response.Extensions	
+none/same-document	agent_url only-theirs / content_digest only-ours / properties only-theirs / id only-ours	6	Subject12@adcp.types.domains.core.audience_evidence.Subject12	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs	6	AcceptedGovernanceAgents@adcp.types.domains.governance.accepted_governance_agents.AcceptedGovernanceAgents	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / anyOf only-ours	6	AdcpAgentsAuthorization210@adcp.types.domains.adagents.AdcpAgentsAuthorization210	
+none/same-document	const only-theirs / default only-ours / enum only-ours / anyOf only-ours	6	ProposalRefinement2@adcp.types.domains.media_buy.proposal_refinement.ProposalRefinement2	
+none/same-document	properties only-theirs / default only-theirs / minItems only-ours / properties only-theirs	6	BuildCreativeResponse6 LegacyBuildCreativeResponse6 LegacyBuildCreativeSubmittedResponse@adcp.types.domains.media_buy.build_creative_response.BuildCreativeResponse6	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours	6	AgentDeclarations@adcp.types.domains.core.principal_declarations.AgentDeclarations	
+none/same-document	additionalProperties only-ours / $schema only-ours / authorized_agents only-ours / catalog_etag only-ours	5	AdcpAgentsAuthorization22@adcp.types.domains.adagents.AdcpAgentsAuthorization22	
+none/same-document	additionalProperties only-ours / anyOf only-theirs / properties only-ours / type only-ours	5	CreateMediaBuyResponse@adcp.types.domains.media_buy.create_media_buy_response.CreateMediaBuyResponse	
+none/same-document	additionalProperties only-ours / uniqueItems only-ours / maxLength only-ours / minLength only-ours	5	VendorPricingOption10@adcp.types.domains.core.vendor_pricing_option.VendorPricingOption10	
+none/same-document	additionalProperties only-theirs / kind only-theirs / value only-theirs / required only-theirs	5	Target3@adcp.types.domains.core.budget_allocation.Target3	
+none/same-document	applies_to_output_capability_ids only-ours / applies_to_output_format_ids only-ours / properties only-theirs / pricing_option_id only-ours	5	CpmVendorPricingOption VendorPricingOption1@adcp.types.domains.core.vendor_pricing_option.VendorPricingOption1	
+none/same-document	const only-theirs / pattern only-ours / const only-theirs / enum only-ours	5	PostalCountrySystem5@adcp.types.domains.core.postal_country_system.PostalCountrySystem5	
+none/same-document	maxLength only-ours / maxLength only-ours	5	Details@adcp.types.domains.creative.audit_observation.Details	
+none/same-document	maxLength only-ours / properties only-theirs / required differs	5	AcceptedAttestationIssuers2@adcp.types.domains.core.product_audience_evidence_requirements.AcceptedAttestationIssuers2	
+none/same-document	maxLength only-ours / required differs / anyOf only-theirs / properties only-ours	5	ReportingReceipt@adcp.types.domains.core.reporting_receipt.ReportingReceipt	
+none/same-document	maxLength only-ours / uniqueItems only-ours / maxLength only-ours / maxLength only-ours	5	Connection@adcp.types.domains.core.product_execution_requirement.Connection	
+none/same-document	pattern only-theirs / properties only-ours / type value-differs	5	Criterion@adcp.types.domains.media_buy.acceptance_policy_requirement.Criterion	
+none/same-document	uniqueItems only-ours / anyOf only-ours / type only-theirs / required differs	5	CpcPricingOption@adcp.types.domains.pricing_options.cpc_option.CpcPricingOption	
+none/same-document	uniqueItems only-ours / const value-differs / required differs	5	AcceptancePolicyRequirement4@adcp.types.domains.media_buy.acceptance_policy_requirement.AcceptancePolicyRequirement4	
+none/same-document	uniqueItems only-ours / properties only-theirs / anyOf only-ours / type only-theirs	5	AccountChange@adcp.types.domains.core.account_change.AccountChange	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / anyOf only-ours / type only-theirs	5	AccountAuthorization@adcp.types.domains.core.account_authorization.AccountAuthorization	
+none/same-document	adcp_error only-ours / context only-ours / context_id only-ours / errors only-ours	4	File@adcp.types.domains.brand.get_brand_identity_response.File	
+none/same-document	adcp_major_version only-ours / adcp_version only-ours / claim only-theirs / claim_type only-theirs	4	ClaimEntry1@adcp.types.domains.brand.verify_brand_claims_request.ClaimEntry1	
+none/same-document	additionalProperties only-ours / const value-differs / const value-differs / values only-ours	4	PostalArea15@adcp.types.domains.core.postal_area.PostalArea15	
+none/same-document	additionalProperties only-ours / maxLength only-theirs / minLength only-theirs / pattern only-theirs	4	AccessMode@adcp.types.domains.protocol.get_adcp_capabilities_response.AccessMode	
+none/same-document	additionalProperties only-ours / maxLength only-theirs / pattern only-theirs / properties only-ours	4	FailureKind1@adcp.types.domains.error_details.accessibility_violation.FailureKind1	
+none/same-document	additionalProperties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs / additionalProperties only-theirs	4	Balance@adcp.types.domains.account.get_account_financials_response.Balance	
+none/same-document	additionalProperties only-theirs / context only-theirs / field only-theirs / occurrence only-theirs	4	Location1@adcp.types.domains.core.assets.asset_union.Location1	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs / maxLength only-ours	4	Assets1@adcp.types.domains.content_standards.artifact.Assets1	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs / uniqueItems only-ours	4	BySpotItem@adcp.types.domains.media_buy.get_media_buy_delivery_response.BySpotItem	
+none/same-document	anyOf only-ours / minimum only-theirs / type only-theirs / anyOf only-ours	4	DeliveryBreakdownControls@adcp.types.domains.core.delivery_breakdown_controls.DeliveryBreakdownControls	
+none/same-document	anyOf only-ours / type only-theirs / uniqueItems only-ours / properties only-theirs	4	AgentNotificationConfig@adcp.types.domains.core.agent_notification_config.AgentNotificationConfig	
+none/same-document	anyOf only-ours / type only-theirs / uniqueItems only-ours / uniqueItems only-ours	4	CanonicalFormatVastAudio@adcp.types.domains.formats.canonical.audio_vast.CanonicalFormatVastAudio	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / maxLength only-ours	4	AcquireRightsRequest@adcp.types.domains.brand.acquire_rights_request.AcquireRightsRequest	
+none/same-document	const only-theirs / enum only-ours / maxItems only-theirs / uniqueItems only-ours	4	Tasks6@adcp.types.domains.protocol.get_adcp_capabilities_response.Tasks6	
+none/same-document	const value-differs / const value-differs / required differs	4	PostalArea116@adcp.types.domains.core.postal_area.PostalArea116	
+none/same-document	const value-differs / required differs	4	Target14@adcp.types.domains.core.optimization_goal.Target14	
+none/same-document	const value-differs / required only-ours	4	AcceptancePolicyRequirement16@adcp.types.domains.media_buy.acceptance_policy_requirement.AcceptancePolicyRequirement16	
+none/same-document	const value-differs / uniqueItems only-ours / discriminator only-theirs / oneOf only-theirs	4	Results10@adcp.types.domains.media_buy.refine_proposals_response.Results10	
+none/same-document	maxLength only-ours / default only-theirs / const only-ours / enum only-theirs	4	DisplayTagAsset4@adcp.types.domains.core.assets.display_tag_asset.DisplayTagAsset4	
+none/same-document	maxLength only-ours / default only-theirs / required differs / maxLength only-ours	4	DaastTrackerAsset@adcp.types.domains.core.assets.daast_tracker_asset.DaastTrackerAsset	
+none/same-document	maxLength only-ours / maxLength only-ours / maxLength only-ours / maxLength only-ours	4	KeyOrigins@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.KeyOrigins	
+none/same-document	maxLength only-ours / maxLength only-ours / maxLength only-ours / required differs	4	Assets10 AudioFormatAsset@adcp.types.domains.core.format.Assets10	
+none/same-document	maxLength only-ours / uniqueItems only-ours / maxLength only-ours / uniqueItems only-ours	4	AcceptedIssuer@adcp.types.domains.core.attestation_capabilities.AcceptedIssuer	
+none/same-document	maxLength only-ours / uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours	4	AuthorizationPayload@adcp.types.domains.core.registry_event.AuthorizationPayload	
+none/same-document	properties only-theirs / $ref only-theirs / additionalProperties only-ours / properties only-ours	4	BuildCreativeResponse1 LegacyBuildCreativeResponse1 LegacyBuildCreativeSuccessResponse@adcp.types.domains.media_buy.build_creative_response.BuildCreativeResponse1	
+none/same-document	properties only-theirs / maxLength only-ours	4	DeliveryRecord@adcp.types.domains.property.delivery_record.DeliveryRecord	
+none/same-document	properties only-theirs / uniqueItems only-ours / enum differs	4	Indicator1@adcp.types.domains.media_buy.get_media_buys_response.Indicator1	
+none/same-document	required differs / required differs / required differs / required differs	4	CanonicalForecastPoint@adcp.types.domains.core.canonical_forecast_point.CanonicalForecastPoint	
+none/same-document	uniqueItems only-ours / maxLength only-ours / required differs / uniqueItems only-ours	4	Attestation@adcp.types.domains.trusted_match.identity_match_request.Attestation	
+1:N	4 declarations of OURS -- reading 4	3	ChangedFields@adcp.types.domains.core.registry_event.ChangedFields	
+1:N	8 declarations of OURS -- reading 4	3	CanonicalDoohScreenResolution@adcp.types.domains.core.canonical_placement.CanonicalDoohScreenResolution	
+none/same-document	activation_key only-ours / pricing_option_id only-ours / signal_agent_segment_id only-ours / discriminator only-theirs	3	PackageSignalTargeting1@adcp.types.domains.core.package_signal_targeting.PackageSignalTargeting1	
+none/same-document	adcp_error only-ours / context only-ours / context_id only-ours / ext only-ours	3	Feature@adcp.types.domains.content_standards.calibrate_content_response.Feature	
+none/same-document	additionalProperties only-ours / acceptance_policy_profile_ids only-ours / allowed_actions only-ours / audience_evidence only-ours	3	PublisherProperty5@adcp.types.domains.core.canonical_product.PublisherProperty5	
+none/same-document	additionalProperties only-ours / const value-differs / const only-ours / enum only-theirs	3	PostalArea11@adcp.types.domains.core.postal_area.PostalArea11	
+none/same-document	additionalProperties only-ours / items only-theirs / minItems only-theirs / properties only-ours	3	Assets@adcp.types.domains.creative.list_creatives_response.Assets	
+none/same-document	additionalProperties only-ours / methods only-ours / notes only-ours / preferred_method only-ours	3	PublisherProperty85@adcp.types.domains.core.product.PublisherProperty85	
+none/same-document	additionalProperties only-ours / minimum only-theirs / properties only-ours / required only-ours	3	AllowedInterval@adcp.types.domains.core.frequency_cap_interval_constraints.AllowedInterval	
+none/same-document	additionalProperties only-theirs / items only-ours / minItems only-ours / properties only-theirs	3	ProductRefinementRequests2@adcp.types.domains.media_buy.product_refinement.ProductRefinementRequests2	
+none/same-document	additionalProperties value-differs / acceptance_policy_profile_ids only-ours / allowed_actions only-ours / audience_evidence only-ours	3	PublisherProperty1@adcp.types.domains.core.canonical_product.PublisherProperty1	
+none/same-document	additionalProperties value-differs / methods only-ours / notes only-ours / preferred_method only-ours	3	PublisherProperty81@adcp.types.domains.core.product.PublisherProperty81	
+none/same-document	agent_url only-theirs / brand only-theirs / content_digest only-ours / properties only-theirs	3	Issuer8@adcp.types.domains.core.rights_constraint.Issuer8	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / enum only-ours	3	ArtifactWebhookPayload@adcp.types.domains.content_standards.artifact_webhook_payload.ArtifactWebhookPayload	
+none/same-document	anyOf only-ours / maximum only-theirs / minimum only-theirs / type only-theirs	3	GetGeographicPlaceResolutionRequest@adcp.types.domains.core.get_geo_place_resolution_request.GetGeographicPlaceResolutionRequest	
+none/same-document	anyOf only-theirs / enum only-ours / value_types only-ours	3	BuildCreativeResponse@adcp.types.domains.media_buy.build_creative_response.BuildCreativeResponse	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / anyOf only-ours	3	ActivateSignalRequest@adcp.types.domains.signals.activate_signal_request.ActivateSignalRequest	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / required differs	3	BudgetAllocation2@adcp.types.domains.core.budget_allocation.BudgetAllocation2	
+none/same-document	const only-theirs / enum only-ours / maxLength only-ours / maxLength only-ours	3	ComplyTestControllerResponse6@adcp.types.domains.compliance.comply_test_controller_response.ComplyTestControllerResponse6	
+none/same-document	const only-theirs / pattern only-ours / enum differs / required differs	3	PostalCountrySystem1@adcp.types.domains.core.postal_country_system.PostalCountrySystem1	
+none/same-document	const value-differs / const only-ours / enum only-theirs / required differs	3	PostalArea112@adcp.types.domains.core.postal_area.PostalArea112	
+none/same-document	cursor only-ours / anyOf only-ours / default kind-differs / minimum only-theirs	3	CatalogItem@adcp.types.domains.media_buy.get_media_buy_delivery_request.CatalogItem	
+none/same-document	default only-ours	3	Embedding@adcp.types.domains.creative.preview_render.Embedding	
+none/same-document	default only-theirs / properties only-theirs / maxLength only-ours / const only-ours	3	Subject13@adcp.types.domains.core.audience_evidence.Subject13	
+none/same-document	enum only-ours / items only-theirs / maxItems only-theirs / type only-theirs	3	BoundedValue1@adcp.types.domains.governance.reported_outcome_error.BoundedValue1	
+none/same-document	maxLength only-ours / maxLength only-ours / uniqueItems only-ours	3	Payload10@adcp.types.domains.core.registry_event.Payload10	
+none/same-document	maxLength only-ours / maxLength only-ours / uniqueItems only-ours / uniqueItems only-ours	3	AgenticadvertisingOrgVerificationTokenClaims@adcp.types.domains.core.verification_token_claims.AgenticadvertisingOrgVerificationTokenClaims	
+none/same-document	maxLength only-ours / minLength only-ours	3	FormatCard@adcp.types.domains.core.format.FormatCard	
+none/same-document	maxLength only-ours / properties only-theirs / minimum only-ours / minimum only-ours	3	CheckGovernanceRequest2@adcp.types.domains.governance.check_governance_request.CheckGovernanceRequest2	
+none/same-document	maxLength only-ours / properties only-theirs / properties only-theirs	3	VerifyBrandClaimPayload@adcp.types.domains.brand.verify_brand_claim_response.VerifyBrandClaimPayload	
+none/same-document	maxLength only-ours / required differs / maxLength only-ours / required differs	3	DaastAsset3@adcp.types.domains.core.assets.daast_asset.DaastAsset3	
+none/same-document	maxLength only-ours / required differs / uniqueItems only-ours / properties only-theirs	3	AttestationIssuer1@adcp.types.domains.core.attestation_issuer.AttestationIssuer1	
+none/same-document	maxLength only-ours / uniqueItems only-ours / uniqueItems only-ours / maxLength only-ours	3	CreativeSpecs@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.CreativeSpecs	
+none/same-document	minItems only-ours / uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours	3	GeographicBreakdownSupport@adcp.types.domains.core.geo_breakdown_support.GeographicBreakdownSupport	
+none/same-document	properties only-theirs / discriminator only-theirs / oneOf only-theirs / properties only-ours	3	ActivateSignalResponse1 ActivateSignalSuccessResponse@adcp.types.domains.signals.activate_signal_response.ActivateSignalResponse1	
+none/same-document	properties only-theirs / maxLength only-ours / properties only-theirs / maxLength only-ours	3	CreativeApprovalResponse1@adcp.types.domains.brand.creative_approval_response.CreativeApprovalResponse1	
+none/same-document	properties only-theirs / properties only-theirs / const only-theirs / default only-ours	3	RequestProposalsResponse1@adcp.types.domains.media_buy.request_proposals_response.RequestProposalsResponse1	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-ours / properties only-theirs	3	LogEventRequest@adcp.types.domains.media_buy.log_event_request.LogEventRequest	
+none/same-document	properties only-theirs / required only-ours	3	CollectionSelection2@adcp.types.domains.core.collection_selection.CollectionSelection2	
+none/same-document	properties only-theirs / uniqueItems only-ours / destination_billing_entity only-theirs / properties only-theirs	3	CoreMediaBuy MediaBuy@adcp.types.domains.core.media_buy.MediaBuy	
+none/same-document	properties only-theirs / uniqueItems only-ours / properties only-theirs / uniqueItems only-ours	3	FrequencyCapConstraints@adcp.types.domains.core.frequency_cap_constraints.FrequencyCapConstraints	
+none/same-document	properties only-theirs / uniqueItems only-ours / required differs	3	Execution1@adcp.types.domains.core.demographic_targeting_resolution.Execution1	
+none/same-document	properties only-theirs / uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours	3	GetSignalsSignal Signal@adcp.types.domains.signals.get_signals_response.Signal	
+none/same-document	required differs / maxLength only-ours / properties only-theirs / maxLength only-ours	3	AudienceEvidenceSelection@adcp.types.domains.core.audience_evidence_selection.AudienceEvidenceSelection	
+none/same-document	required differs / uniqueItems only-ours / minItems only-ours / uniqueItems only-ours	3	GeographicPlaceSystemSupport@adcp.types.domains.core.geo_place_support.GeographicPlaceSystemSupport	
+none/same-document	signal_agent_segment_id only-ours / discriminator only-theirs / oneOf only-theirs / properties only-ours	3	SignalCondition1@adcp.types.domains.media_buy.build_creative_request.SignalCondition1	
+none/same-document	uniqueItems only-ours / anyOf only-ours / enum only-theirs / type only-theirs	3	CanonicalFormatImage@adcp.types.domains.formats.canonical.image.CanonicalFormatImage	
+none/same-document	uniqueItems only-ours / anyOf only-ours / type only-theirs / uniqueItems only-ours	3	CanonicalFormatVastVideo@adcp.types.domains.formats.canonical.video_vast.CanonicalFormatVastVideo	
+none/same-document	uniqueItems only-ours / properties only-theirs	3	FrequencyCapImpressionConstraints@adcp.types.domains.core.frequency_cap_impression_constraints.FrequencyCapImpressionConstraints	
+none/same-document	uniqueItems only-ours / properties only-theirs / required differs	3	AcceptedAttestationIssuers1@adcp.types.domains.core.product_audience_evidence_requirements.AcceptedAttestationIssuers1	
+none/same-document	uniqueItems only-ours / required only-ours	3	AcceptancePolicyRequirement11@adcp.types.domains.media_buy.acceptance_policy_requirement.AcceptancePolicyRequirement11	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours / anyOf only-ours	3	Configuration PrincipalConfiguration@adcp.types.domains.protocol.sync_principal_request.Configuration	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours / properties only-theirs	3	AcceptanceContext@adcp.types.domains.media_buy.acceptance_context.AcceptanceContext	
+1:N	5 declarations of OURS -- reading 4	2	GopType@adcp.types.domains.core.assets.asset_union.GopType	
+none/same-document	$ref only-ours / additionalProperties only-theirs / properties only-theirs / required only-theirs	2	ByPackageItem1@adcp.types.domains.media_buy.get_media_buy_delivery_response.ByPackageItem1	
+none/same-document	$ref only-theirs / additionalProperties only-ours / type only-ours / $ref only-theirs	2	RefineProposalsRequest@adcp.types.domains.media_buy.refine_proposals_request.RefineProposalsRequest	
+none/same-document	$ref only-theirs / enum only-ours / type only-ours / uniqueItems only-ours	2	LegacyPlacement Placement@adcp.types.domains.core.placement.Placement	
+none/same-document	$ref only-theirs / minProperties only-ours / patternProperties only-ours / type only-ours	2	Variants1@adcp.types.domains.core.creative_localization_readback.Variants1	
+none/same-document	action_binding only-ours / brand only-theirs / confidence only-ours / credential_digest only-ours	2	Issuer6@adcp.types.domains.core.rights_attestation_evaluation.Issuer6	
+none/same-document	adcp_error only-ours / amount only-theirs / context only-ours / context_id only-ours	2	CreditLimit SyncAccountsCreditLimit@adcp.types.domains.account.sync_accounts_response.CreditLimit	
+none/same-document	adcp_error only-ours / context only-ours / context_id only-ours / estimate only-ours	2	Preview3@adcp.types.domains.media_buy.build_creative_response.Preview3	
+none/same-document	adcp_major_version only-theirs / adcp_version only-theirs / maxLength only-ours	2	Asset@adcp.types.domains.brand.get_brand_identity_response.Asset	
+none/same-document	additionalProperties only-ours / exclusiveMinimum only-theirs / properties only-ours / required only-ours	2	PixelRatio@adcp.types.domains.core.requirements.image_asset_requirements.PixelRatio	
+none/same-document	additionalProperties only-ours / minimum only-theirs / properties only-ours / type value-differs	2	AllowedValue@adcp.types.domains.core.frequency_cap_impression_constraints.AllowedValue	
+none/same-document	additionalProperties only-ours / pattern only-theirs / properties only-ours / type value-differs	2	AsyncAdcpVersion@adcp.types.domains.core.principal_declarations.AsyncAdcpVersion	
+none/same-document	additionalProperties only-ours / patternProperties only-theirs / $ref only-theirs / additionalProperties only-ours	2	CreativeAsset LegacyCreativeAsset@adcp.types.domains.core.creative_asset.CreativeAsset	
+none/same-document	additionalProperties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs / anyOf only-ours	2	Artifact@adcp.types.domains.content_standards.get_media_buy_artifacts_response.Artifact	
+none/same-document	additionalProperties only-theirs / type only-theirs / maxLength only-ours / maxLength only-ours	2	UnknownFormatAsset@adcp.types.domains.core.format.UnknownFormatAsset	
+none/same-document	additionalProperties value-differs / asset_type only-ours / audio_description_url only-ours / captions_url only-ours	2	Location26@adcp.types.domains.core.assets.vast_asset.Location26	
+none/same-document	agent_url only-theirs / properties only-theirs / id only-ours / namespace only-ours	2	Subject24@adcp.types.domains.core.audience_evidence.Subject24	
+none/same-document	anyOf only-ours / default kind-differs / minimum only-theirs / type only-theirs	2	DevicePlatform@adcp.types.domains.media_buy.get_media_buy_delivery_request.DevicePlatform	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / $ref only-ours	2	Payload17@adcp.types.domains.core.wholesale_feed_event.Payload17	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / properties only-theirs	2	Payload21@adcp.types.domains.core.wholesale_feed_event.Payload21	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs / anyOf only-theirs	2	ReportingDeliveryConfiguration@adcp.types.domains.core.reporting_delivery_config.ReportingDeliveryConfiguration	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs / default only-ours	2	Transitions10@adcp.types.domains.formats.canonical.seller_rendered_stateful_display.Transitions10	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs / required differs	2	Refine2@adcp.types.domains.media_buy.get_products_request.Refine2	
+none/same-document	anyOf only-ours / items only-theirs / minItems only-theirs / type only-theirs	2	Signals@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.Signals	
+none/same-document	anyOf only-ours / items only-theirs / type only-theirs / anyOf only-ours	2	RequestSigning@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.RequestSigning	
+none/same-document	anyOf only-ours / pattern only-theirs / type only-theirs	2	Canvas@adcp.types.domains.core.placement_presentation.Canvas	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / adcp_major_version only-theirs	2	Account SyncAccountsAccount@adcp.types.domains.account.sync_accounts_response.Account	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / anyOf only-theirs	2	AudienceActivation@adcp.types.domains.core.product.AudienceActivation	
+none/same-document	asset_type only-ours / maxLength only-ours / maxLength only-ours / maxLength only-ours	2	BaseGroupAsset@adcp.types.domains.core.format.BaseGroupAsset	
+none/same-document	attribution_window only-ours / event_sources only-ours / const value-differs / priority only-ours	2	Target10@adcp.types.domains.core.canonical_optimization_goal.Target10	
+none/same-document	blockers only-ours / default only-theirs / enum differs / required differs	2	AccountIdentityChangePreview1@adcp.types.domains.core.account_identity_change_preview.AccountIdentityChangePreview1	
+none/same-document	brand only-theirs / properties only-theirs / id only-ours / namespace only-ours	2	Subject14@adcp.types.domains.core.audience_evidence.Subject14	
+none/same-document	components only-ours / anyOf only-ours / default kind-differs / enum only-theirs	2	Params12@adcp.types.domains.formats.canonical.coordinated_placements.Params12	
+none/same-document	const only-theirs / default only-ours / enum only-ours / default only-ours	2	ProposalRefinement5@adcp.types.domains.media_buy.proposal_refinement.ProposalRefinement5	
+none/same-document	const only-theirs / enum only-ours / type only-theirs / value_types only-ours	2	FrequencyCapScope@adcp.types.domains.enums.frequency_cap_scope.FrequencyCapScope	
+none/same-document	const only-theirs / enum only-ours / uniqueItems only-ours	2	CapabilityChanges@adcp.types.domains.protocol.get_adcp_capabilities_response.CapabilityChanges	
+none/same-document	const value-differs / default only-ours / uniqueItems only-ours / discriminator only-theirs	2	Results11@adcp.types.domains.media_buy.refine_proposals_response.Results11	
+none/same-document	const value-differs / default only-theirs / required differs	2	Results1@adcp.types.domains.media_buy.decline_proposals_response.Results1	
+none/same-document	const value-differs / maxLength only-ours / required differs / uniqueItems only-ours	2	AudienceActivationMethods3@adcp.types.domains.core.product_filters.AudienceActivationMethods3	
+none/same-document	const value-differs / required value-differs	2	AcceptancePolicyRequirement12@adcp.types.domains.media_buy.acceptance_policy_requirement.AcceptancePolicyRequirement12	
+none/same-document	default only-ours / properties only-theirs / properties only-theirs / default only-ours	2	ListProductsResponse1@adcp.types.domains.media_buy.list_products_response.ListProductsResponse1	
+none/same-document	discriminator only-theirs / oneOf only-theirs / properties only-ours / required only-ours	2	ClaimEntry@adcp.types.domains.brand.ClaimEntry	
+none/same-document	enum differs / uniqueItems only-ours / enum differs / uniqueItems only-ours	2	AssignedPackage@adcp.types.domains.creative.list_creatives_response.AssignedPackage	
+none/same-document	enum only-ours / anyOf only-ours / enum only-theirs / type only-theirs	2	Mapping V1CanonicalMapping@adcp.types.domains.registries.v1_canonical_mapping.Mapping	
+none/same-document	enum only-ours / maxLength only-theirs / minLength only-theirs / pattern only-theirs	2	ProviderRegistrationTmpxMacro TmpxMacro@adcp.types.domains.trusted_match.provider_registration.TmpxMacro	
+none/same-document	enum only-ours / minimum only-theirs / type only-theirs / value_types only-ours	2	AudioSampleRate@adcp.types.domains.core.requirements.video_asset_requirements.AudioSampleRate	
+none/same-document	enum only-ours / pattern only-theirs / type only-theirs / value_types only-ours	2	Condition@adcp.types.domains.media_buy.change_term.Condition	
+none/same-document	enum only-ours / properties only-theirs / type only-theirs / value_types only-ours	2	Apps@adcp.types.domains.a2ui.si_catalog.Apps	
+none/same-document	format only-ours	2	JavascriptAssetRequirements@adcp.types.domains.core.requirements.javascript_asset_requirements.JavascriptAssetRequirements	
+none/same-document	format only-ours / type only-ours / additionalProperties only-ours / properties only-ours	2	GetMediaBuysMediaBuy MediaBuy@adcp.types.domains.media_buy.get_media_buys_response.MediaBuy	
+none/same-document	items only-theirs / minItems only-theirs / properties only-ours / type value-differs	2	DaastVersions@adcp.types.domains.core.daast_tracker_constraints.DaastVersions	
+none/same-document	maxLength only-ours / anyOf only-ours / type only-theirs / anyOf only-ours	2	SponsoredIntelligence@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.SponsoredIntelligence	
+none/same-document	maxLength only-ours / default only-ours / maxLength only-ours / maxLength only-ours	2	PublishedPostAsset1@adcp.types.domains.core.assets.asset_union.PublishedPostAsset1	
+none/same-document	maxLength only-ours / discriminator only-theirs / oneOf only-theirs / properties only-ours	2	PerformanceFeedbackAssertion@adcp.types.domains.core.performance_feedback_assertion.PerformanceFeedbackAssertion	
+none/same-document	maxLength only-ours / maxLength only-ours / maxLength only-ours	2	Overlay@adcp.types.domains.core.overlay.Overlay	
+none/same-document	maxLength only-ours / maxLength only-ours / maxLength only-ours / uniqueItems only-ours	2	Governance@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.Governance	
+none/same-document	maxLength only-ours / properties only-theirs	2	GenerationCredential@adcp.types.domains.core.generation_credential.GenerationCredential	
+none/same-document	maxLength only-ours / properties only-theirs / maxLength only-ours / minLength only-ours	2	AttestationReference@adcp.types.domains.core.attestation_reference.AttestationReference	
+none/same-document	maxLength only-ours / properties only-theirs / properties only-theirs / maxLength only-ours	2	SiTerminateSessionResponse@adcp.types.domains.sponsored_intelligence.si_terminate_session_response.SiTerminateSessionResponse	
+none/same-document	maxLength only-ours / uniqueItems only-ours	2	RuntimeAttestations@adcp.types.domains.protocol.get_adcp_capabilities_response.RuntimeAttestations	
+none/same-document	maxLength only-ours / uniqueItems only-ours / anyOf only-ours / discriminator only-theirs	2	ProductAudienceEvidenceRequirements@adcp.types.domains.core.product_audience_evidence_requirements.ProductAudienceEvidenceRequirements	
+none/same-document	maxLength only-ours / uniqueItems only-ours / format only-ours / pattern only-theirs	2	SignalDefinition@adcp.types.domains.core.signal_definition.SignalDefinition	
+none/same-document	maxLength only-ours / uniqueItems only-ours / properties only-theirs / maxLength only-ours	2	Measurement@adcp.types.domains.protocol.get_adcp_capabilities_response.Measurement	
+none/same-document	minItems only-ours / uniqueItems only-ours / uniqueItems only-ours	2	CatalogRequirement@adcp.types.domains.core.geo_place_requirement.CatalogRequirement	
+none/same-document	minimum only-ours / minimum only-ours	2	AudienceDistribution1@adcp.types.domains.governance.check_governance_request.AudienceDistribution1	
+none/same-document	minimum only-ours / minimum only-ours / maximum only-ours / minimum only-ours	2	DeliveryMetrics2@adcp.types.domains.governance.check_governance_request.DeliveryMetrics2	
+none/same-document	properties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs / properties only-theirs	2	GetRightsResponse1 GetRightsSuccessResponse@adcp.types.domains.brand.get_rights_response.GetRightsResponse1	
+none/same-document	properties only-theirs / anyOf only-ours / enum only-theirs / type only-theirs	2	EvaluatorSpec2@adcp.types.domains.core.evaluator_spec.EvaluatorSpec2	
+none/same-document	properties only-theirs / maxLength only-ours / minLength only-ours / minLength only-theirs	2	EmbeddedCredential@adcp.types.domains.core.attestation_reference.EmbeddedCredential	
+none/same-document	properties only-theirs / maxLength only-ours / properties only-theirs / uniqueItems only-ours	2	LegacyListCreativeFormatsResponse ListCreativeFormatsResponse@adcp.types.domains.media_buy.list_creative_formats_response.ListCreativeFormatsResponse	
+none/same-document	properties only-theirs / maxLength only-ours / required differs / uniqueItems only-ours	2	Account CoreAccount@adcp.types.domains.core.account.Account	
+none/same-document	properties only-theirs / maxLength only-ours / uniqueItems only-ours / anyOf only-ours	2	ProductPurchase@adcp.types.domains.media_buy.product_purchase.ProductPurchase	
+none/same-document	properties only-theirs / minItems only-ours / uniqueItems only-ours / uniqueItems only-ours	2	AcceptancePolicyProfile@adcp.types.domains.media_buy.acceptance_policy_profile.AcceptancePolicyProfile	
+none/same-document	properties only-theirs / properties only-theirs / $ref only-theirs / additionalProperties only-ours	2	GetProductsInputRequired@adcp.types.domains.media_buy.get_products_async_response_input_required.GetProductsInputRequired	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-ours / additionalProperties only-ours	2	ComplyTestControllerResponse7@adcp.types.domains.compliance.comply_test_controller_response.ComplyTestControllerResponse7	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-ours / maxLength only-ours	2	GetPlanAuditLogsResponse@adcp.types.domains.governance.get_plan_audit_logs_response.GetPlanAuditLogsResponse	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-ours / minimum only-ours	2	ListTasksResponse@adcp.types.domains.protocol.list_tasks_response.ListTasksResponse	
+none/same-document	properties only-theirs / uniqueItems only-ours / $ref only-theirs / additionalProperties only-ours	2	ContextMatchResponse ContextMatchResponseRouterPublisher@adcp.types.domains.trusted_match.context_match_response.ContextMatchResponseRouterPublisher	
+none/same-document	required differs / required differs / properties only-theirs / properties only-theirs	2	CreateContentStandardsRequest@adcp.types.domains.content_standards.create_content_standards_request.CreateContentStandardsRequest	
+none/same-document	required differs / uniqueItems only-ours	2	DeliveryMeasurement@adcp.types.domains.core.product.DeliveryMeasurement	
+none/same-document	required differs / uniqueItems only-ours / required differs	2	CanonicalOptimizationGoal1@adcp.types.domains.core.canonical_optimization_goal.CanonicalOptimizationGoal1	
+none/same-document	type value-differs / type only-ours / maxLength only-ours / uniqueItems only-ours	2	CanonicalFormatAgentPlacement CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement@adcp.types.domains.formats.canonical.agent_placement.CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement	
+none/same-document	uniqueItems only-ours / anyOf only-ours / type only-theirs	2	CanonicalAccountReference2@adcp.types.domains.core.canonical_account_ref.CanonicalAccountReference2	
+none/same-document	uniqueItems only-ours / anyOf only-ours / type only-theirs / const only-theirs	2	WebhookSigning@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.WebhookSigning	
+none/same-document	uniqueItems only-ours / const only-ours / format only-theirs / minLength only-theirs	2	CanonicalAudienceEvidence@adcp.types.domains.core.canonical_audience_evidence.CanonicalAudienceEvidence	
+none/same-document	uniqueItems only-ours / const only-theirs / enum only-ours / uniqueItems only-ours	2	MediaBuyFrequencyCapRequirement@adcp.types.domains.core.media_buy_frequency_cap_requirement.MediaBuyFrequencyCapRequirement	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / discriminator only-theirs / oneOf only-theirs	2	CanonicalProduct@adcp.types.domains.core.canonical_product.CanonicalProduct	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / properties only-theirs / required only-ours	2	DemographicTargetingResolution@adcp.types.domains.core.demographic_targeting_resolution.DemographicTargetingResolution	
+1:N	10 declarations of OURS -- reading 4	1	BiddingPolicy@adcp.types.domains.core.bidding_policy.BiddingPolicy	
+1:N	11 declarations of OURS -- reading 4	1	Duration@adcp.types.domains.core.duration.Duration	
+none/same-document	$id only-ours / maxLength only-ours / required differs	1	AdcpExtensionFileSchema@adcp.types.domains.extensions.extension_meta.AdcpExtensionFileSchema	
+none/same-document	$ref only-theirs / additionalProperties only-ours / properties only-ours / type only-ours	1	MediaBuyPackage Package@adcp.types.domains.media_buy.get_media_buys_response.Package	
+none/same-document	$ref only-theirs / anyOf only-ours / $ref only-theirs / enum only-ours	1	Params@adcp.types.domains.compliance.comply_test_controller_request.Params	
+none/same-document	$ref only-theirs / enum only-ours / type only-ours / $ref only-theirs	1	RepresentationDestination@adcp.types.domains.core.representation_destination.RepresentationDestination	
+none/same-document	$ref only-theirs / enum only-ours / type only-ours / anyOf only-theirs	1	McpWebhookPayload@adcp.types.domains.core.mcp_webhook_payload.McpWebhookPayload	
+none/same-document	$ref only-theirs / enum only-ours / type only-ours / discriminator only-theirs	1	WholesaleFeedWebhook@adcp.types.domains.core.wholesale_feed_webhook.WholesaleFeedWebhook	
+none/same-document	$ref only-theirs / items only-ours / minItems only-ours / type only-ours	1	LegacyProduct Product@adcp.types.domains.core.product.Product	
+none/same-document	$ref value-differs / $ref value-differs / $ref value-differs / $ref value-differs	1	ByPackageItem@adcp.types.domains.media_buy.get_media_buy_delivery_response.ByPackageItem	
+none/same-document	$ref value-differs / uniqueItems only-ours	1	MediaBuyDelivery@adcp.types.domains.media_buy.get_media_buy_delivery_response.MediaBuyDelivery	
+none/same-document	accent only-ours / adcp_major_version only-theirs / adcp_version only-theirs / background only-ours	1	Fonts@adcp.types.domains.brand.get_brand_identity_response.Fonts	
+none/same-document	accepted_formats only-ours / uniqueItems only-ours / const value-differs / required differs	1	AgentReportingDestination2@adcp.types.domains.core.agent_reporting_destination.AgentReportingDestination2	
+none/same-document	account only-ours / adcp_major_version only-ours / adcp_version only-ours / context only-ours	1	ListTasksSort Sort@adcp.types.domains.protocol.list_tasks_request.Sort	
+none/same-document	account_ids only-ours / const value-differs / required only-ours	1	AppliesTo1@adcp.types.domains.core.wholesale_feed_event.AppliesTo1	
+none/same-document	action_binding only-ours / agent_url only-theirs / brand only-theirs / confidence only-ours	1	Issuer5@adcp.types.domains.core.rights_attestation_evaluation.Issuer5	
+none/same-document	activation_methods only-theirs / aspect_ratio only-theirs / asset_source only-theirs / body_text_max_chars only-theirs	1	Params@adcp.types.domains.formats.canonical.coordinated_placements.Params	
+none/same-document	activation_methods only-theirs / aspect_ratio only-theirs / components only-ours / anyOf only-ours	1	Params6@adcp.types.domains.formats.canonical.coordinated_placements.Params6	
+none/same-document	activation_methods only-theirs / asset_source only-theirs / body_text_max_chars only-theirs / buyer_asset_acceptance only-theirs	1	Params10@adcp.types.domains.formats.canonical.coordinated_placements.Params10	
+none/same-document	ad_request_url only-theirs / const value-differs / clickthrough_url only-theirs / companion_ads only-ours	1	DisplayTagAsset3@adcp.types.domains.core.assets.asset_union.DisplayTagAsset3	
+none/same-document	adcp_error only-ours / adcp_major_version only-ours / adcp_version only-ours / context only-ours	1	QuerySummary@adcp.types.domains.protocol.list_tasks_response.QuerySummary	
+none/same-document	adcp_error only-ours / approval_webhook only-ours / brand_id only-ours / context only-ours	1	Disclosure@adcp.types.domains.brand.acquire_rights_response.Disclosure	
+none/same-document	adcp_error only-ours / brand_id only-theirs / context only-ours / context_id only-ours	1	BrandContext@adcp.types.domains.content_standards.get_media_buy_artifacts_response.BrandContext	
+none/same-document	adcp_error only-ours / catalog_type only-theirs / context only-ours / context_id only-ours	1	CatalogItemRef@adcp.types.domains.media_buy.build_creative_response.CatalogItemRef	
+none/same-document	adcp_error only-ours / code only-theirs / context only-ours / context_id only-ours	1	PartialFailure@adcp.types.domains.media_buy.log_event_response.PartialFailure	
+none/same-document	adcp_error only-ours / confidence only-theirs / context only-ours / context_id only-ours	1	Feature@adcp.types.domains.content_standards.validate_content_delivery_response.Feature	
+none/same-document	adcp_error only-ours / context only-ours / context_id only-ours / domain only-theirs	1	House@adcp.types.domains.brand.get_brand_identity_response.House	
+none/same-document	adcp_major_version only-ours / adcp_version only-ours / allow_async only-ours / context only-ours	1	Request@adcp.types.domains.creative.preview_creative_request.Request	
+none/same-document	adcp_major_version only-ours / adcp_version only-ours / claimant_says only-theirs / claims only-ours	1	Claim1@adcp.types.domains.brand.verify_brand_claims_request.Claim1	
+none/same-document	adcp_major_version only-ours / adcp_version only-ours / claims only-ours / observed_at only-theirs	1	Claim@adcp.types.domains.brand.verify_brand_claims_request.Claim	
+none/same-document	adcp_major_version only-theirs / adcp_version only-theirs / $ref only-theirs / additionalProperties only-ours	1	Variant@adcp.types.domains.media_buy.build_creative_response.Variant	
+none/same-document	adcp_major_version only-theirs / adcp_version only-theirs / maxLength only-ours / adcp_major_version only-theirs	1	GetBrandIdentityResponse1 GetBrandIdentitySuccessResponse@adcp.types.domains.brand.get_brand_identity_response.GetBrandIdentityResponse1	
+none/same-document	adcp_major_version only-theirs / adcp_version only-theirs / properties only-theirs / adcp_major_version only-theirs	1	EventSource@adcp.types.domains.media_buy.sync_event_sources_response.EventSource	
+none/same-document	adcp_major_version only-theirs / adcp_version only-theirs / properties only-theirs / properties only-theirs	1	Eval@adcp.types.domains.media_buy.build_creative_response.Eval	
+none/same-document	adcp_version only-theirs / maxLength only-ours / required differs / uniqueItems only-ours	1	SearchBrandsRequest@adcp.types.domains.brand.search_brands_request.SearchBrandsRequest	
+none/same-document	additionalProperties kind-differs / AT only-theirs / AU only-theirs / BR only-theirs	1	GeoPostalAreas@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.GeoPostalAreas	
+none/same-document	additionalProperties only-ours / $schema only-ours / default only-theirs / items only-ours	1	AdcpAgentsAuthorization21@adcp.types.domains.adagents.AdcpAgentsAuthorization21	
+none/same-document	additionalProperties only-ours / adcp_error only-ours / adcp_major_version only-ours / adcp_version only-ours	1	CreativeAgent@adcp.types.domains.media_buy.list_creative_formats_response.CreativeAgent	
+none/same-document	additionalProperties only-ours / const only-ours / enum only-theirs / const value-differs	1	PostalArea14@adcp.types.domains.core.postal_area.PostalArea14	
+none/same-document	additionalProperties only-ours / const only-ours / pattern only-theirs / const only-ours	1	PostalArea110@adcp.types.domains.core.postal_area.PostalArea110	
+none/same-document	additionalProperties only-ours / items only-theirs / maxItems only-theirs / minItems only-theirs	1	NonblockingImpacts@adcp.types.domains.core.account_identity_change_preview.NonblockingImpacts	
+none/same-document	additionalProperties only-ours / maxLength only-theirs / minLength only-theirs / properties only-ours	1	Blocker@adcp.types.domains.core.account_identity_change_preview.Blocker	
+none/same-document	additionalProperties only-ours / maximum only-theirs / minimum only-theirs / properties only-ours	1	ViewThreshold@adcp.types.domains.pricing_options.cpv_option.ViewThreshold	
+none/same-document	additionalProperties only-ours / patternProperties only-theirs / properties only-ours / required only-ours	1	ResolvedAssets@adcp.types.domains.core.creative_localization_readback.ResolvedAssets	
+none/same-document	additionalProperties only-ours / properties only-ours / required only-ours / const only-ours	1	VerifyBrandClaimRequest@adcp.types.domains.brand.verify_brand_claim_request.VerifyBrandClaimRequest	
+none/same-document	additionalProperties only-ours / uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours	1	Features Features1@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.Features1	
+none/same-document	additionalProperties only-ours / values only-ours / required only-ours	1	PostalArea16@adcp.types.domains.core.postal_area.PostalArea16	
+none/same-document	additionalProperties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs / capability_id only-ours	1	Preview2@adcp.types.domains.media_buy.build_creative_response.Preview2	
+none/same-document	additionalProperties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs / default only-theirs	1	Result@adcp.types.domains.creative.preview_creative_response.Result	
+none/same-document	additionalProperties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs / maxLength only-ours	1	Preview4@adcp.types.domains.media_buy.build_creative_response.Preview4	
+none/same-document	additionalProperties only-theirs / attribution_window only-theirs / event_sources only-theirs / kind only-theirs	1	OptimizationGoal2@adcp.types.domains.core.budget_allocation.OptimizationGoal2	
+none/same-document	additionalProperties only-theirs / authorization_instructions only-theirs / authorization_url only-theirs / checked_at only-theirs	1	ReferenceAuthorization1@adcp.types.domains.core.assets.asset_union.ReferenceAuthorization1	
+none/same-document	additionalProperties only-theirs / enum only-ours / maxProperties only-theirs / propertyNames only-theirs	1	BoundedObject@adcp.types.domains.governance.reported_outcome_error.BoundedObject	
+none/same-document	additionalProperties only-theirs / enum only-ours / properties only-theirs / type only-theirs	1	Modalities@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.Modalities	
+none/same-document	additionalProperties only-theirs / kind only-theirs	1	Target6@adcp.types.domains.core.budget_allocation.Target6	
+none/same-document	additionalProperties only-theirs / kind only-theirs / metric only-theirs / priority only-theirs	1	OptimizationGoal1@adcp.types.domains.core.budget_allocation.OptimizationGoal1	
+none/same-document	additionalProperties only-theirs / kind only-theirs / metric_id only-theirs / priority only-theirs	1	OptimizationGoal3@adcp.types.domains.core.budget_allocation.OptimizationGoal3	
+none/same-document	additionalProperties value-differs / a2ui only-theirs / catalog_digest only-ours / catalog_url only-ours	1	Capabilities SiCapabilities@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.Capabilities	
+none/same-document	additionalProperties value-differs / account only-ours / adcp_major_version only-ours / adcp_version only-ours	1	Pagination@adcp.types.domains.property.get_property_list_request.Pagination	
+none/same-document	additionalProperties value-differs / adcp_error only-ours / adcp_major_version only-ours / adcp_version only-ours	1	IdentityMatchTmpxMacro TmpxMacro@adcp.types.domains.trusted_match.identity_match_response.TmpxMacro	
+none/same-document	additionalProperties value-differs / adcp_major_version only-theirs / adcp_version only-theirs / maxLength only-ours	1	Source@adcp.types.domains.media_buy.sync_audiences_response.Source	
+none/same-document	additionalProperties value-differs / applied_at only-ours / creative_id only-ours / feedback_id only-ours	1	Metric7@adcp.types.domains.core.performance_feedback.Metric7	
+none/same-document	additionalProperties value-differs / art9_basis only-ours / audience_expansion only-ours / categories only-ours	1	Channel@adcp.types.domains.signals.get_signals_response.Channel	
+none/same-document	agent_url only-ours / properties only-theirs / origin only-theirs / const value-differs	1	AcceptedAttestationIssuers3@adcp.types.domains.core.product_audience_evidence_requirements.AcceptedAttestationIssuers3	
+none/same-document	agent_url only-theirs / default only-theirs / properties only-theirs / maxLength only-ours	1	Subject36@adcp.types.domains.core.audience_evidence.Subject36	
+none/same-document	ai_act_risk_class only-theirs / disclosure only-theirs / interval only-ours / method only-theirs	1	Modeling@adcp.types.domains.signals.get_signals_response.Modeling	
+none/same-document	allOf only-theirs / anyOf only-theirs / properties only-ours / type only-ours	1	CompatibilityPurchaseCoordinatorInput@adcp.types.domains.media_buy.legacy_purchase_continuation_input.CompatibilityPurchaseCoordinatorInput	
+none/same-document	allowed_card_asset_types only-theirs / allowed_card_media_asset_types only-theirs / card_aspect_ratio only-theirs / card_description_max_chars only-theirs	1	Params4@adcp.types.domains.formats.canonical.coordinated_placements.Params4	
+none/same-document	anyOf differs	1	DaypartTarget@adcp.types.domains.core.daypart_target.DaypartTarget	
+none/same-document	anyOf differs / anyOf differs / anyOf differs	1	ReportedOutcomeError@adcp.types.domains.governance.reported_outcome_error.ReportedOutcomeError	
+none/same-document	anyOf differs / properties only-theirs / properties only-theirs / uniqueItems only-ours	1	ProductAllocation@adcp.types.domains.core.product_allocation.ProductAllocation	
+none/same-document	anyOf only-ours / default kind-differs / enum only-theirs / type only-theirs	1	BuildCreativeResponse4 LegacyBuildCreativeResponse4@adcp.types.domains.media_buy.build_creative_response.BuildCreativeResponse4	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / anyOf only-theirs	1	Payload23@adcp.types.domains.core.wholesale_feed_event.Payload23	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / const only-theirs	1	Payload25@adcp.types.domains.core.wholesale_feed_event.Payload25	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / default only-ours	1	AdcpAgentsAuthorization212@adcp.types.domains.adagents.AdcpAgentsAuthorization212	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / discriminator only-theirs	1	Payload24@adcp.types.domains.core.wholesale_feed_event.Payload24	
+none/same-document	anyOf only-ours / discriminator only-theirs / oneOf only-theirs / minItems only-theirs	1	AdcpAgentsAuthorization28@adcp.types.domains.adagents.AdcpAgentsAuthorization28	
+none/same-document	anyOf only-ours / enum only-theirs / type only-theirs / additionalProperties only-ours	1	Components@adcp.types.domains.formats.canonical.coordinated_placements.Components	
+none/same-document	anyOf only-ours / oneOf only-theirs / anyOf only-ours / enum only-theirs	1	Assets29 Assets94 RepeatableAssetGroup@adcp.types.domains.core.format.Assets29	
+none/same-document	anyOf only-ours / pattern only-theirs / type only-theirs / required differs	1	PlacementPresentationDocument@adcp.types.domains.core.placement_presentation.PlacementPresentationDocument	
+none/same-document	anyOf only-ours / type only-theirs / anyOf only-ours / discriminator only-theirs	1	OptimizationGoal9@adcp.types.domains.core.optimization_goal.OptimizationGoal9	
+none/same-document	anyOf only-ours / type only-theirs / anyOf only-ours / enum only-theirs	1	MarkdownAsset@adcp.types.domains.core.assets.markdown_asset.MarkdownAsset	
+none/same-document	anyOf only-ours / type only-theirs / maxLength only-ours / maxLength only-ours	1	TargetingOverlayInput@adcp.types.domains.core.targeting_input.TargetingOverlayInput	
+none/same-document	anyOf only-ours / type only-theirs / properties only-theirs / $ref only-theirs	1	LegacyPreviewCreativeRequest PreviewCreativeRequest@adcp.types.domains.creative.preview_creative_request.PreviewCreativeRequest	
+none/same-document	anyOf only-ours / type only-theirs / required differs	1	PublisherDesignatedPreviewProvider@adcp.types.domains.core.preview_provider.PublisherDesignatedPreviewProvider	
+none/same-document	anyOf only-ours / type only-theirs / required only-ours / required differs	1	CanonicalOptimizationGoal2@adcp.types.domains.core.canonical_optimization_goal.CanonicalOptimizationGoal2	
+none/same-document	anyOf only-theirs / default only-ours / properties only-ours / type only-ours	1	Accounts1@adcp.types.domains.account.sync_accounts_request.Accounts1	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / additionalProperties only-theirs	1	GetAccountFinancialsResponse1 GetAccountFinancialsSuccessResponse@adcp.types.domains.account.get_account_financials_response.GetAccountFinancialsResponse1	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / const value-differs	1	ReportingDeliveryMethod3@adcp.types.domains.core.reporting_delivery_method.ReportingDeliveryMethod3	
+none/same-document	anyOf only-theirs / properties only-ours / type only-ours / default only-ours	1	Accounts@adcp.types.domains.account.sync_accounts_request.Accounts	
+none/same-document	applies_to_channels only-ours / canonical_formats_only only-ours / display_name only-ours / experimental only-ours	1	PackageFormatSnapshot17@adcp.types.domains.core.package_format_snapshot.PackageFormatSnapshot17	
+none/same-document	aspect_ratio only-theirs / asset_source only-theirs / audio_codecs only-theirs / brand_name_max_chars only-theirs	1	Params5@adcp.types.domains.formats.canonical.coordinated_placements.Params5	
+none/same-document	aspect_ratio only-theirs / canvas_constraints only-theirs / clickthrough only-theirs / components only-ours	1	Params13@adcp.types.domains.formats.canonical.coordinated_placements.Params13	
+none/same-document	asset_image_max_file_size_kb only-theirs / business_name_max_chars only-theirs / components only-ours / anyOf only-ours	1	Params11@adcp.types.domains.formats.canonical.coordinated_placements.Params11	
+none/same-document	asset_source only-theirs / audio_channels only-theirs / audio_codecs only-theirs / audio_sample_rates only-theirs	1	Params7@adcp.types.domains.formats.canonical.coordinated_placements.Params7	
+none/same-document	attribution_window only-theirs / event_sources only-theirs / kind only-theirs / priority only-theirs	1	OptimizationGoal6@adcp.types.domains.core.budget_allocation.OptimizationGoal6	
+none/same-document	attribution_windows only-ours / multi_source_event_dedup only-ours / per_creative_attribution only-ours / supported_action_sources only-ours	1	VendorMetricOptimization@adcp.types.domains.protocol.get_adcp_capabilities_response.VendorMetricOptimization	
+none/same-document	backup_image_max_size_kb only-theirs / backup_image_required only-theirs / clicktag_macro only-theirs / components only-ours	1	Params2@adcp.types.domains.formats.canonical.coordinated_placements.Params2	
+none/same-document	backup_image_max_size_kb only-theirs / backup_image_required only-theirs / components only-ours / anyOf only-ours	1	Params3@adcp.types.domains.formats.canonical.coordinated_placements.Params3	
+none/same-document	bottom only-ours / left only-ours / right only-ours / top only-ours	1	ImageAssetRequirements@adcp.types.domains.core.requirements.image_asset_requirements.ImageAssetRequirements	
+none/same-document	brand only-theirs / default only-theirs / properties only-theirs / maxLength only-ours	1	Subject35@adcp.types.domains.core.audience_evidence.Subject35	
+none/same-document	calibration_exemplars only-ours / channels_any only-ours / properties only-theirs / countries_all only-ours	1	GetContentStandardsResponse1 GetContentStandardsSuccessResponse@adcp.types.domains.content_standards.get_content_standards_response.GetContentStandardsResponse1	
+none/same-document	catalogs only-theirs / event_type only-ours / read_task only-ours / registration_task only-ours	1	A2ui@adcp.types.domains.bundled.protocol.get_adcp_capabilities_response.A2ui	
+none/same-document	ccpa_opt_out_url only-theirs / channels only-theirs / interval only-ours / response_sla_days only-theirs	1	DataSubjectRights@adcp.types.domains.signals.get_signals_response.DataSubjectRights	
+none/same-document	claim_type only-ours / default only-ours / credential_version only-ours / embedded_credential only-ours	1	Subject19@adcp.types.domains.core.rights_attestation_evaluation.Subject19	
+none/same-document	companion_image_required only-theirs / components only-ours / anyOf only-ours / default kind-differs	1	Params8@adcp.types.domains.formats.canonical.coordinated_placements.Params8	
+none/same-document	configuration only-ours / configuration_version only-ours / const value-differs / principal_id only-ours	1	PrincipalUnconfiguredResult Result@adcp.types.domains.protocol.get_principal_response.Result	
+none/same-document	configuration only-ours / configuration_version only-ours / const value-differs / required differs	1	PrincipalRecognizedResult Result3@adcp.types.domains.protocol.get_principal_response.Result3	
+none/same-document	conflicting_standards_id only-ours / properties only-theirs / errors only-ours / ext only-ours	1	UpdateContentStandardsResponse@adcp.types.domains.content_standards.update_content_standards_response.UpdateContentStandardsResponse	
+none/same-document	const only-ours / enum only-theirs / const value-differs / required differs	1	PostalArea115@adcp.types.domains.core.postal_area.PostalArea115	
+none/same-document	const only-ours / format only-theirs / minLength only-theirs / const only-theirs	1	AudienceCharacteristic@adcp.types.domains.core.audience_characteristic.AudienceCharacteristic	
+none/same-document	const only-ours / pattern only-theirs / const only-ours / enum only-theirs	1	PostalArea121@adcp.types.domains.core.postal_area.PostalArea121	
+none/same-document	const only-theirs / default only-ours / maxLength only-ours / anyOf only-ours	1	TmpProviderRegistration1@adcp.types.domains.trusted_match.provider_registration.TmpProviderRegistration1	
+none/same-document	const only-theirs / enum only-ours / required differs	1	Purge@adcp.types.domains.creative.list_creatives_response.Purge	
+none/same-document	const only-theirs / enum only-ours / required only-ours	1	AgentPermissionDeniedDetails@adcp.types.domains.error_details.agent_permission_denied.AgentPermissionDeniedDetails	
+none/same-document	const only-theirs / enum only-ours / uniqueItems only-ours / anyOf only-ours	1	Notifications2@adcp.types.domains.protocol.get_adcp_capabilities_response.Notifications2	
+none/same-document	const only-theirs / enum only-ours / uniqueItems only-ours / maxLength only-ours	1	AgentWebhookChallenge@adcp.types.domains.core.agent_webhook_challenge.AgentWebhookChallenge	
+none/same-document	const only-theirs / enum only-ours / uniqueItems only-ours / uniqueItems only-ours	1	BudgetCapping@adcp.types.domains.protocol.get_adcp_capabilities_response.BudgetCapping	
+none/same-document	const only-theirs / minLength only-ours / additionalProperties only-ours / type only-ours	1	EmptyReport@adcp.types.domains.core.reporting_canonicalization_contract.EmptyReport	
+none/same-document	const value-differs / companion_ads only-ours / daast_version only-ours / delivery_type only-theirs	1	DisplayTagAsset2@adcp.types.domains.core.assets.asset_union.DisplayTagAsset2	
+none/same-document	const value-differs / daast_event only-ours / delivery_type only-theirs / maxLength only-ours	1	DisplayTagAsset1@adcp.types.domains.core.assets.asset_union.DisplayTagAsset1	
+none/same-document	const value-differs / default only-ours / maxLength only-theirs / default only-theirs	1	RecordedCalls1@adcp.types.domains.compliance.comply_test_controller_response.RecordedCalls1	
+none/same-document	const value-differs / pattern value-differs / required differs	1	PhysicalChecksums1@adcp.types.domains.core.reporting_verification.PhysicalChecksums1	
+none/same-document	const value-differs / placement_ids only-ours / weight only-ours / required differs	1	AssignmentOperations2@adcp.types.domains.creative.sync_creatives_request.AssignmentOperations2	
+none/same-document	const value-differs / token only-ours / required only-ours	1	AssetAccess3@adcp.types.domains.content_standards.artifact.AssetAccess3	
+none/same-document	const value-differs / vendor only-ours / required only-ours	1	AudienceActivationMethods@adcp.types.domains.core.product_filters.AudienceActivationMethods	
+none/same-document	content only-theirs / delivery_type only-theirs / maxLength only-ours / const only-theirs	1	DaastAsset2 InlineDaastAsset@adcp.types.domains.core.assets.asset_union.DaastAsset2	
+none/same-document	countries only-ours / values only-theirs / required value-differs	1	Countries1@adcp.types.domains.core.geo_region_requirement.Countries1	
+none/same-document	country only-theirs / label_text only-theirs / region only-theirs / regulation only-theirs	1	Jurisdiction2@adcp.types.domains.core.assets.asset_union.Jurisdiction2	
+none/same-document	data_provider_domain only-ours / const value-differs / required differs	1	SignalRef1@adcp.types.domains.core.signal_ref.SignalRef1	
+none/same-document	default kind-differs / properties only-theirs / properties only-theirs / maxLength only-ours	1	GetSignalsResponse GetSignalsSuccessResponse@adcp.types.domains.signals.get_signals_response.GetSignalsResponse	
+none/same-document	default only-ours / additionalProperties only-ours / discriminator only-theirs / oneOf only-theirs	1	VastVersionMismatchDetails2@adcp.types.domains.error_details.vast_version_mismatch.VastVersionMismatchDetails2	
+none/same-document	default only-ours / anyOf only-ours / enum only-theirs / type only-theirs	1	Transitions7@adcp.types.domains.formats.canonical.seller_rendered_stateful_display.Transitions7	
+none/same-document	default only-ours / const only-theirs / enum only-ours / required value-differs	1	BrandResponseAuthorizationResult2@adcp.types.domains.core.brand_response_authorization_result.BrandResponseAuthorizationResult2	
+none/same-document	default only-ours / const value-differs / preview_html only-ours / maxLength only-ours	1	PreviewRender1 UrlPreviewRender@adcp.types.domains.creative.preview_render.PreviewRender1	
+none/same-document	default only-ours / const value-differs / preview_url only-ours / required differs	1	HtmlPreviewRender PreviewRender2@adcp.types.domains.creative.preview_render.PreviewRender2	
+none/same-document	default only-ours / default only-ours / const only-theirs / enum only-ours	1	BrandResponseAuthorizationResult1@adcp.types.domains.core.brand_response_authorization_result.BrandResponseAuthorizationResult1	
+none/same-document	default only-ours / default only-ours / maxLength only-ours / uniqueItems only-ours	1	ReportingProfile@adcp.types.domains.core.reporting_delivery_offering.ReportingProfile	
+none/same-document	default only-ours / maxLength only-ours / required differs	1	BothPreviewRender PreviewRender3@adcp.types.domains.creative.preview_render.PreviewRender3	
+none/same-document	default only-ours / uniqueItems only-ours	1	ReportingResource@adcp.types.domains.core.reporting_resource.ReportingResource	
+none/same-document	default only-ours / uniqueItems only-ours / maxLength only-ours / required differs	1	ReportingMaterialization@adcp.types.domains.core.reporting_materialization.ReportingMaterialization	
+none/same-document	default only-theirs / additionalProperties only-ours / discriminator only-theirs / oneOf only-theirs	1	VastVersionMismatchDetails3@adcp.types.domains.error_details.vast_version_mismatch.VastVersionMismatchDetails3	
+none/same-document	default only-theirs / anyOf only-ours / default kind-differs / type only-theirs	1	ReportingDeliveryCapabilities@adcp.types.domains.core.reporting_delivery_capabilities.ReportingDeliveryCapabilities	
+none/same-document	default only-theirs / enum differs / required differs	1	NonblockingImpact@adcp.types.domains.core.account_identity_change_preview.NonblockingImpact	
+none/same-document	default only-theirs / enum differs / uniqueItems only-ours / const value-differs	1	CanonicalMediaBuyAction3@adcp.types.domains.core.canonical_media_buy_action.CanonicalMediaBuyAction3	
+none/same-document	default only-theirs / enum differs / uniqueItems only-ours / read_task only-ours	1	WholesaleFeedWebhooks@adcp.types.domains.protocol.get_adcp_capabilities_response.WholesaleFeedWebhooks	
+none/same-document	default only-theirs / maxLength only-ours / minProperties only-ours / properties only-theirs	1	SearchBrandsResponse@adcp.types.domains.brand.search_brands_response.SearchBrandsResponse	
+none/same-document	default only-theirs / pattern only-ours / type only-ours / const value-differs	1	FormatOptionReference2@adcp.types.domains.core.format_option_ref.FormatOptionReference2	
+none/same-document	default only-theirs / properties only-theirs / properties only-theirs / $ref only-theirs	1	ComplyTestControllerRequest@adcp.types.domains.compliance.comply_test_controller_request.ComplyTestControllerRequest	
+none/same-document	default only-theirs / required differs / const value-differs / required differs	1	Results26@adcp.types.domains.media_buy.sync_reporting_status_response.Results26	
+none/same-document	default only-theirs / required differs / uniqueItems only-ours / properties only-theirs	1	CollectionSelection1@adcp.types.domains.core.collection_selection.CollectionSelection1	
+none/same-document	default only-theirs / uniqueItems only-ours / required differs / const value-differs	1	Results23@adcp.types.domains.media_buy.sync_reporting_receipts_response.Results23	
+none/same-document	default only-theirs / uniqueItems only-ours / required differs / required differs	1	Results22@adcp.types.domains.media_buy.sync_reporting_receipts_response.Results22	
+none/same-document	delivery_type only-theirs / maxLength only-ours / const only-theirs / enum only-ours	1	DaastAsset1 UrlDaastAsset@adcp.types.domains.core.assets.asset_union.DaastAsset1	
+none/same-document	directions only-ours / const value-differs / transport only-ours / maxLength only-ours	1	AudienceActivationMethod5@adcp.types.domains.core.audience_activation_method.AudienceActivationMethod5	
+none/same-document	enum differs / type only-theirs / value_types only-ours	1	BadgeRole@adcp.types.domains.core.registry_event.BadgeRole	
+none/same-document	enum differs / uniqueItems only-ours / const value-differs / required differs	1	CanonicalMediaBuyAction2@adcp.types.domains.core.canonical_media_buy_action.CanonicalMediaBuyAction2	
+none/same-document	enum only-ours	1	V1V2CanonicalFormatMappingRegistry@adcp.types.domains.registries.v1_canonical_mapping.V1V2CanonicalFormatMappingRegistry	
+none/same-document	enum only-ours / anyOf only-ours / type only-theirs / anyOf only-ours	1	CanonicalProjectionReference@adcp.types.domains.core.canonical_projection_ref.CanonicalProjectionReference	
+none/same-document	enum only-ours / exclusiveMinimum only-theirs / type only-theirs / value_types only-ours	1	RequiredPixelRatio@adcp.types.domains.formats.canonical._base.RequiredPixelRatio	
+none/same-document	enum only-ours / maxLength only-theirs / type only-theirs / value_types only-ours	1	BoundedScalar1@adcp.types.domains.governance.reported_outcome_error.BoundedScalar1	
+none/same-document	enum only-ours / minimum only-ours / type only-ours / anyOf only-ours	1	ByFormatItem@adcp.types.domains.media_buy.get_media_buy_delivery_response.ByFormatItem	
+none/same-document	enum only-theirs / maxLength only-ours / minLength only-ours / pattern only-ours	1	MissingMetric1@adcp.types.domains.core.missing_metric.MissingMetric1	
+none/same-document	enum only-theirs / pattern only-ours / const only-theirs / enum only-ours	1	PostalCountrySystem4@adcp.types.domains.core.postal_country_system.PostalCountrySystem4	
+none/same-document	enum value-differs / enum value-differs	1	Status22@adcp.types.domains.account.list_account_changes_response.Status22	
+none/same-document	enum value-differs / enum value-differs / enum value-differs / configuration only-ours	1	PrincipalValidatedResult Result@adcp.types.domains.protocol.sync_principal_response.Result	
+none/same-document	etag only-theirs / interval only-ours / parent_match_behavior only-theirs / ref only-theirs	1	Taxonomy@adcp.types.domains.signals.get_signals_response.Taxonomy	
+none/same-document	field only-ours / retry_with only-ours / required differs	1	Warning@adcp.types.domains.creative.validate_input_result.Warning	
+none/same-document	format only-ours / anyOf only-ours / enum only-theirs / type only-theirs	1	HtmlAssetRequirements@adcp.types.domains.core.requirements.html_asset_requirements.HtmlAssetRequirements	
+none/same-document	format only-ours / maxLength only-ours / minLength only-ours / type only-ours	1	Payload6@adcp.types.domains.core.registry_event.Payload6	
+none/same-document	format only-theirs / minLength only-theirs / const value-differs / required differs	1	Targets3@adcp.types.domains.creative.validate_input_request.Targets3	
+none/same-document	kind only-theirs / metric only-theirs / priority only-theirs / reach_unit only-theirs	1	OptimizationGoal5@adcp.types.domains.core.budget_allocation.OptimizationGoal5	
+none/same-document	kind only-theirs / metric_id only-theirs / priority only-theirs / target only-theirs	1	OptimizationGoal7@adcp.types.domains.core.budget_allocation.OptimizationGoal7	
+none/same-document	maxLength only-ours / anyOf only-ours / discriminator only-theirs / oneOf only-theirs	1	ContextMatchRequest@adcp.types.domains.trusted_match.context_match_request.ContextMatchRequest	
+none/same-document	maxLength only-ours / anyOf only-ours / type only-theirs / anyOf differs	1	Entry@adcp.types.domains.governance.get_plan_audit_logs_response.Entry	
+none/same-document	maxLength only-ours / const only-theirs / default only-ours / anyOf only-ours	1	TmpProviderRegistration2@adcp.types.domains.trusted_match.provider_registration.TmpProviderRegistration2	
+none/same-document	maxLength only-ours / const value-differs / required differs	1	InventoryListApplication1@adcp.types.domains.core.inventory_list_application.InventoryListApplication1	
+none/same-document	maxLength only-ours / default only-theirs / required differs / required differs	1	CardAsset@adcp.types.domains.core.assets.card_asset.CardAsset	
+none/same-document	maxLength only-ours / field only-ours / required differs	1	ValidateInputResult@adcp.types.domains.creative.validate_input_result.ValidateInputResult	
+none/same-document	maxLength only-ours / format only-ours / pattern only-theirs / pattern only-ours	1	DisplayTagAsset6@adcp.types.domains.core.assets.display_tag_asset.DisplayTagAsset6	
+none/same-document	maxLength only-ours / maxLength only-ours / additionalProperties only-ours / properties only-theirs	1	Provenance@adcp.types.domains.core.provenance.Provenance	
+none/same-document	maxLength only-ours / maxLength only-ours / content only-theirs / delivery_type only-theirs	1	InlineVastAsset VastAsset2@adcp.types.domains.core.assets.asset_union.VastAsset2	
+none/same-document	maxLength only-ours / maxLength only-ours / delivery_type only-theirs / maxLength only-ours	1	UrlVastAsset VastAsset1@adcp.types.domains.core.assets.asset_union.VastAsset1	
+none/same-document	maxLength only-ours / maxLength only-ours / maxLength only-ours / properties only-theirs	1	ZipAsset@adcp.types.domains.core.assets.zip_asset.ZipAsset	
+none/same-document	maxLength only-ours / maxLength only-ours / minLength only-ours / enum only-ours	1	AgentProfilePayload@adcp.types.domains.core.registry_event.AgentProfilePayload	
+none/same-document	maxLength only-ours / maxLength only-ours / uniqueItems only-ours / maxLength only-ours	1	AuthorizationRequiredDetails@adcp.types.domains.error_details.authorization_required.AuthorizationRequiredDetails	
+none/same-document	maxLength only-ours / minLength only-ours / enum only-ours / additionalProperties only-ours	1	Creative DeliveryCreative@adcp.types.domains.creative.get_creative_delivery_response.Creative	
+none/same-document	maxLength only-ours / minLength only-ours / enum only-ours / uniqueItems only-ours	1	Campaign@adcp.types.domains.brand.acquire_rights_request.Campaign	
+none/same-document	maxLength only-ours / minLength only-ours / minProperties only-ours	1	PublisherTargetingKvMapping@adcp.types.domains.trusted_match.publisher_targeting_kv_config.PublisherTargetingKvMapping	
+none/same-document	maxLength only-ours / minLength only-theirs / pattern only-ours	1	OperationsContact ReportingOperationsContact@adcp.types.domains.core.reporting_delivery_capabilities.OperationsContact	
+none/same-document	maxLength only-ours / minLength only-theirs / pattern only-ours / required differs	1	AnyOf1@adcp.types.domains.governance.accepted_governance_agents.AnyOf1	
+none/same-document	maxLength only-ours / minLength only-theirs / pattern only-ours / uniqueItems only-ours	1	AnyOf2@adcp.types.domains.governance.accepted_governance_agents.AnyOf2	
+none/same-document	maxLength only-ours / minProperties only-ours	1	SearchBrandResult@adcp.types.domains.brand.search_brands_response.SearchBrandResult	
+none/same-document	maxLength only-ours / properties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs	1	AcquireRightsAcquiredResponse AcquireRightsResponse1@adcp.types.domains.brand.acquire_rights_response.AcquireRightsResponse1	
+none/same-document	maxLength only-ours / properties only-theirs / anyOf only-ours / discriminator only-theirs	1	JobItem@adcp.types.domains.core.job_item.JobItem	
+none/same-document	maxLength only-ours / properties only-theirs / maxLength only-ours / minLength only-theirs	1	AudienceEvidence@adcp.types.domains.core.audience_evidence.AudienceEvidence	
+none/same-document	maxLength only-ours / properties only-theirs / properties only-theirs / claim_type only-theirs	1	VerifyBrandClaimsPayload@adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsPayload	
+none/same-document	maxLength only-ours / required differs / uniqueItems only-ours / $ref only-theirs	1	Offer TmpOffer@adcp.types.domains.trusted_match.offer.Offer	
+none/same-document	maxLength only-ours / required differs / uniqueItems only-ours / anyOf only-ours	1	AccountReference2 AccountReferenceByNaturalKey InlineAccountReference@adcp.types.domains.core.account_ref.AccountReference2	
+none/same-document	maxLength only-ours / required differs / uniqueItems only-ours / required only-ours	1	AudienceActivationMethods4@adcp.types.domains.core.product_filters.AudienceActivationMethods4	
+none/same-document	maxLength only-ours / required only-ours	1	AudienceActivationMethods1@adcp.types.domains.core.product_filters.AudienceActivationMethods1	
+none/same-document	maxLength only-ours / uniqueItems only-ours / anyOf only-ours / type only-theirs	1	IdentityMatchRequest@adcp.types.domains.trusted_match.identity_match_request.IdentityMatchRequest	
+none/same-document	maxLength only-ours / uniqueItems only-ours / discriminator only-theirs / oneOf only-theirs	1	AudienceEvidenceRequirements@adcp.types.domains.core.audience_evidence_requirements.AudienceEvidenceRequirements	
+none/same-document	maxLength only-ours / uniqueItems only-ours / properties only-theirs / required differs	1	CapabilitiesChangedWebhook@adcp.types.domains.core.capabilities_changed_webhook.CapabilitiesChangedWebhook	
+none/same-document	maxLength only-theirs / maxLength only-ours / required differs	1	RecordedCalls2@adcp.types.domains.compliance.comply_test_controller_response.RecordedCalls2	
+none/same-document	maxLength only-theirs / minLength only-theirs / pattern only-theirs / properties only-ours	1	DeliveryConfigId@adcp.types.domains.media_buy.get_reporting_status_request.DeliveryConfigId	
+none/same-document	maxProperties only-ours / minProperties only-ours / maxLength only-ours / minLength only-ours	1	PublisherTmpxMacroMapping@adcp.types.domains.trusted_match.publisher_tmpx_config.PublisherTmpxMacroMapping	
+none/same-document	methodology_version only-ours / enum only-theirs / maxLength only-ours / minLength only-ours	1	CommittedMetrics1@adcp.types.domains.media_buy.package_request.CommittedMetrics1	
+none/same-document	minItems only-ours	1	SignalsByProvider@adcp.types.domains.trusted_match.context_match_response.SignalsByProvider	
+none/same-document	minItems only-ours / uniqueItems only-ours / properties only-theirs / uniqueItems only-ours	1	PlaceCatalogSupport@adcp.types.domains.core.targeting_overlay_support.PlaceCatalogSupport	
+none/same-document	minItems only-theirs / const value-differs / required differs	1	OrderingEncoding@adcp.types.domains.core.reporting_canonicalization_contract.OrderingEncoding	
+none/same-document	minProperties only-ours / $ref only-theirs / items only-ours / minItems only-ours	1	TargetVariant@adcp.types.domains.core.creative_localization.TargetVariant	
+none/same-document	minimum only-ours	1	QuerySummary@adcp.types.domains.core.tasks_list_response.QuerySummary	
+none/same-document	not only-theirs / additionalProperties only-ours / patternProperties only-theirs / $ref only-theirs	1	CreativeRepresentation@adcp.types.domains.core.creative_representation.CreativeRepresentation	
+none/same-document	operation_id only-theirs / uniqueItems only-ours / maxLength only-ours	1	ReportingWebhook@adcp.types.domains.core.reporting_webhook.ReportingWebhook	
+none/same-document	pattern only-theirs / const value-differs / required differs	1	Targets4@adcp.types.domains.creative.validate_input_request.Targets4	
+none/same-document	pattern only-theirs / properties only-ours / required only-ours / type value-differs	1	AppliesToOutputCapabilityId@adcp.types.domains.core.vendor_pricing_option.AppliesToOutputCapabilityId	
+none/same-document	pattern value-differs / const value-differs / required differs	1	ReportingControlTotal1@adcp.types.domains.core.reporting_control_total.ReportingControlTotal1	
+none/same-document	product_id only-ours / const value-differs / required differs	1	RefinementApplied1@adcp.types.domains.media_buy.get_products_response.RefinementApplied1	
+none/same-document	properties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs / adcp_major_version only-theirs	1	BuildCreativeResponse5 LegacyBuildCreativeResponse5@adcp.types.domains.media_buy.build_creative_response.BuildCreativeResponse5	
+none/same-document	properties only-theirs / additionalProperties only-ours / anyOf only-theirs / properties only-ours	1	PlacementSelection1@adcp.types.domains.core.placement_selection.PlacementSelection1	
+none/same-document	properties only-theirs / additionalProperties only-ours / properties only-ours / required only-ours	1	SyncCatalogsErrorResponse SyncCatalogsResponse2@adcp.types.domains.media_buy.sync_catalogs_response.SyncCatalogsResponse2	
+none/same-document	properties only-theirs / additionalProperties only-ours / properties only-ours / type only-ours	1	MediaBuyFrequencyCapCapability@adcp.types.domains.core.media_buy_frequency_cap_capability.MediaBuyFrequencyCapCapability	
+none/same-document	properties only-theirs / additionalProperties only-theirs / items only-ours / minItems only-ours	1	PlaceSupport@adcp.types.domains.core.targeting_overlay_support.PlaceSupport	
+none/same-document	properties only-theirs / anyOf only-ours / type only-theirs	1	CatalogFieldMapping@adcp.types.domains.core.catalog_field_mapping.CatalogFieldMapping	
+none/same-document	properties only-theirs / anyOf only-ours / type only-theirs / anyOf differs	1	ReportPlanOutcomeRequest@adcp.types.domains.governance.report_plan_outcome_request.ReportPlanOutcomeRequest	
+none/same-document	properties only-theirs / anyOf only-ours / type only-theirs / properties only-theirs	1	SyncAgentNotificationConfigsRequest@adcp.types.domains.protocol.sync_agent_notification_configs_request.SyncAgentNotificationConfigsRequest	
+none/same-document	properties only-theirs / const only-ours / items only-theirs / minItems only-theirs	1	DaypartSupport1@adcp.types.domains.core.targeting_overlay_support.DaypartSupport1	
+none/same-document	properties only-theirs / current_state only-ours / error only-ours / error_detail only-ours	1	ComplyTestControllerResponse5@adcp.types.domains.compliance.comply_test_controller_response.ComplyTestControllerResponse5	
+none/same-document	properties only-theirs / default only-ours	1	GetCreativeFeaturesComplianceCompletion@adcp.types.domains.compliance.get_creative_features_completion.GetCreativeFeaturesComplianceCompletion	
+none/same-document	properties only-theirs / destination_billing_entity only-theirs / properties only-theirs / anyOf only-theirs	1	SyncCreativesResponse1 SyncCreativesSuccessResponse@adcp.types.domains.creative.sync_creatives_response.SyncCreativesResponse1	
+none/same-document	properties only-theirs / errors only-ours / evaluation_id only-ours / ext only-ours	1	GetCreativeFeaturesResponse1 GetCreativeFeaturesSuccessResponse@adcp.types.domains.creative.get_creative_features_response.GetCreativeFeaturesResponse1	
+none/same-document	properties only-theirs / errors only-ours / ext only-ours / maxLength only-ours	1	SyncGovernanceResponse@adcp.types.domains.account.sync_governance_response.SyncGovernanceResponse	
+none/same-document	properties only-theirs / errors only-ours / properties only-theirs / maxLength only-theirs	1	GetCreativeFeaturesResponse3@adcp.types.domains.creative.get_creative_features_response.GetCreativeFeaturesResponse3	
+none/same-document	properties only-theirs / maxLength only-ours / maxLength only-ours / required differs	1	AttestationSubject3@adcp.types.domains.core.attestation_subject.AttestationSubject3	
+none/same-document	properties only-theirs / maxLength only-ours / minLength only-ours / enum only-ours	1	GetCreativeDeliveryResponse LegacyGetCreativeDeliveryResponse@adcp.types.domains.creative.get_creative_delivery_response.GetCreativeDeliveryResponse	
+none/same-document	properties only-theirs / maxLength only-ours / minLength only-ours / maxLength only-ours	1	CreativeApprovalRequest@adcp.types.domains.brand.creative_approval_request.CreativeApprovalRequest	
+none/same-document	properties only-theirs / maxLength only-ours / minLength only-theirs / properties only-theirs	1	RightsConstraint@adcp.types.domains.core.rights_constraint.RightsConstraint	
+none/same-document	properties only-theirs / maxLength only-ours / properties only-theirs / discriminator only-theirs	1	ProvidePerformanceFeedbackByBuyerRefRequest ProvidePerformanceFeedbackByMediaBuyRequest ProvidePerformanceFeedbackRequest@adcp.types.domains.media_buy.provide_performance_feedback_request.ProvidePerformanceFeedbackRequest	
+none/same-document	properties only-theirs / maxLength only-ours / properties only-theirs / properties only-theirs	1	Event@adcp.types.domains.core.event.Event	
+none/same-document	properties only-theirs / maxLength only-ours / required differs / anyOf only-ours	1	ProductCardReferenceAsset@adcp.types.domains.core.product_card_reference_asset.ProductCardReferenceAsset	
+none/same-document	properties only-theirs / maxLength only-ours / required differs / maxLength only-ours	1	ProductCardDetailed@adcp.types.domains.core.product.ProductCardDetailed	
+none/same-document	properties only-theirs / maxLength only-ours / uniqueItems only-ours / discriminator only-theirs	1	LegacyPackageRequest PackageRequest@adcp.types.domains.media_buy.package_request.PackageRequest	
+none/same-document	properties only-theirs / minLength only-ours / uniqueItems only-ours	1	GeographicPlaceArea@adcp.types.domains.core.geo_place_area.GeographicPlaceArea	
+none/same-document	properties only-theirs / properties only-theirs / adcp_major_version only-theirs / adcp_version only-theirs	1	LogEventResponse1 LogEventSuccessResponse@adcp.types.domains.media_buy.log_event_response.LogEventResponse1	
+none/same-document	properties only-theirs / properties only-theirs / additionalProperties only-theirs / adcp_major_version only-theirs	1	CalibrateContentResponse1 CalibrateContentSuccessResponse@adcp.types.domains.content_standards.calibrate_content_response.CalibrateContentResponse1	
+none/same-document	properties only-theirs / properties only-theirs / anyOf only-ours / maximum only-theirs	1	ListContentStandardsRequest@adcp.types.domains.content_standards.list_content_standards_request.ListContentStandardsRequest	
+none/same-document	properties only-theirs / properties only-theirs / claim_type only-theirs / context_note only-theirs	1	VerifyBrandClaimsSignedSuccessPayload@adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsSignedSuccessPayload	
+none/same-document	properties only-theirs / properties only-theirs / default only-ours / additionalProperties only-ours	1	DeclineProposalsResponse1@adcp.types.domains.media_buy.decline_proposals_response.DeclineProposalsResponse1	
+none/same-document	properties only-theirs / properties only-theirs / discriminator only-theirs / oneOf only-theirs	1	Proposal@adcp.types.domains.core.proposal.Proposal	
+none/same-document	properties only-theirs / properties only-theirs / format only-ours / type only-ours	1	GetMediaBuysResponse LegacyGetMediaBuysResponse@adcp.types.domains.media_buy.get_media_buys_response.GetMediaBuysResponse	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-ours	1	StoreItem@adcp.types.domains.core.store_item.StoreItem	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-ours / additionalProperties only-theirs	1	LegacyPreviewCreativeResponse1 LegacyPreviewCreativeSingleResponse PreviewCreativeResponse1@adcp.types.domains.creative.preview_creative_response.PreviewCreativeResponse1	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-ours / anyOf only-theirs	1	SyncPlansRequest@adcp.types.domains.governance.sync_plans_request.SyncPlansRequest	
+none/same-document	properties only-theirs / properties only-theirs / maxLength only-theirs / maxLength only-ours	1	LegacyPreviewCreativeResponse4 LegacyPreviewCreativeSubmittedResponse PreviewCreativeResponse4@adcp.types.domains.creative.preview_creative_response.PreviewCreativeResponse4	
+none/same-document	properties only-theirs / properties only-theirs / minItems only-ours / uniqueItems only-ours	1	AcceptancePolicyCatalog@adcp.types.domains.media_buy.acceptance_policy_catalog.AcceptancePolicyCatalog	
+none/same-document	properties only-theirs / properties only-theirs / minimum only-ours / type only-ours	1	MediaBuyDeliveryWebhookResult@adcp.types.domains.media_buy.media_buy_delivery_webhook_result.MediaBuyDeliveryWebhookResult	
+none/same-document	properties only-theirs / properties only-theirs / properties only-theirs / properties only-theirs	1	SiSendActionResponseRequest SiSendMessageRequest SiSendTextMessageRequest@adcp.types.domains.sponsored_intelligence.si_send_message_request.SiSendMessageRequest	
+none/same-document	properties only-theirs / properties only-theirs / required differs / maxLength only-ours	1	CheckGovernanceResponse@adcp.types.domains.governance.check_governance_response.CheckGovernanceResponse	
+none/same-document	properties only-theirs / properties only-theirs / uniqueItems only-ours	1	SiSponsoredContextReceipt@adcp.types.domains.sponsored_intelligence.si_sponsored_context_receipt.SiSponsoredContextReceipt	
+none/same-document	properties only-theirs / properties only-theirs / uniqueItems only-ours / properties only-theirs	1	ProductMediaBuySupport@adcp.types.domains.core.media_buy_support.ProductMediaBuySupport	
+none/same-document	properties only-theirs / properties only-theirs / uniqueItems only-ours / uniqueItems only-ours	1	RequestProposalsResponse4@adcp.types.domains.media_buy.request_proposals_response.RequestProposalsResponse4	
+none/same-document	properties only-theirs / uniqueItems only-ours / anyOf only-ours / maximum only-theirs	1	GetGeographicPlaceResolutionResponse@adcp.types.domains.core.get_geo_place_resolution_response.GetGeographicPlaceResolutionResponse	
+none/same-document	properties only-theirs / uniqueItems only-ours / maxLength only-ours	1	DeclineProposalsRequest@adcp.types.domains.media_buy.decline_proposals_request.DeclineProposalsRequest	
+none/same-document	required differs / maxLength only-ours	1	AuthorizedAgentBaseFields@adcp.types.domains.core.authorized_agent_base.AuthorizedAgentBaseFields	
+none/same-document	required differs / required differs / required differs	1	GoldenVectors@adcp.types.domains.core.reporting_canonicalization_contract.GoldenVectors	
+none/same-document	required differs / required differs / required differs / uniqueItems only-ours	1	ReportingCanonicalizationContract@adcp.types.domains.core.reporting_canonicalization_contract.ReportingCanonicalizationContract	
+none/same-document	required only-ours / buyer_agent only-theirs / const value-differs / vendor only-ours	1	LegacyProductFilters ProductFilters@adcp.types.domains.core.product_filters.ProductFilters	
+none/same-document	type value-differs / type only-ours / anyOf only-ours / enum only-theirs	1	CanonicalFormatSponsoredPlacement CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven@adcp.types.domains.formats.canonical.sponsored_placement.CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven	
+none/same-document	uniqueItems only-ours / $ref only-theirs / additionalProperties only-ours / properties only-ours	1	CreativeLocalization@adcp.types.domains.core.creative_localization.CreativeLocalization	
+none/same-document	uniqueItems only-ours / anyOf only-ours / discriminator only-theirs / oneOf only-theirs	1	CreativeLocalizationReadback@adcp.types.domains.core.creative_localization_readback.CreativeLocalizationReadback	
+none/same-document	uniqueItems only-ours / anyOf only-ours / minimum only-theirs / type only-theirs	1	Demographic@adcp.types.domains.media_buy.get_media_buy_delivery_request.Demographic	
+none/same-document	uniqueItems only-ours / anyOf only-ours / oneOf only-theirs / enum only-ours	1	Format LegacyFormat@adcp.types.domains.core.format.Format	
+none/same-document	uniqueItems only-ours / anyOf only-ours / type only-theirs / maxLength only-ours	1	CanonicalFormatDaastAudio@adcp.types.domains.formats.canonical.audio_daast.CanonicalFormatDaastAudio	
+none/same-document	uniqueItems only-ours / anyOf only-theirs / properties only-ours / type only-ours	1	GetReportingStatusResponse@adcp.types.domains.media_buy.get_reporting_status_response.GetReportingStatusResponse	
+none/same-document	uniqueItems only-ours / const value-differs / duration_after_period_end only-ours / source_signal only-theirs	1	ReportingReportDefinition@adcp.types.domains.core.reporting_report_definition.ReportingReportDefinition	
+none/same-document	uniqueItems only-ours / enum differs / uniqueItems only-ours / properties only-theirs	1	Assignments@adcp.types.domains.creative.list_creatives_response.Assignments	
+none/same-document	uniqueItems only-ours / maxLength only-ours	1	ReportingReliabilityStatistics@adcp.types.domains.core.reporting_reliability_statistics.ReportingReliabilityStatistics	
+none/same-document	uniqueItems only-ours / maxLength only-ours / minLength only-ours	1	VendorPricingOption6@adcp.types.domains.core.vendor_pricing_option.VendorPricingOption6	
+none/same-document	uniqueItems only-ours / maxLength only-ours / required differs	1	WebhookChallenge@adcp.types.domains.core.webhook_challenge.WebhookChallenge	
+none/same-document	uniqueItems only-ours / properties only-theirs / additionalProperties only-ours / properties only-ours	1	CapabilitiesMediaBuy MediaBuy@adcp.types.domains.protocol.get_adcp_capabilities_response.MediaBuy	
+none/same-document	uniqueItems only-ours / properties only-theirs / required only-ours	1	ProductExecutionRequirement1@adcp.types.domains.core.product_execution_requirement.ProductExecutionRequirement1	
+none/same-document	uniqueItems only-ours / properties only-theirs / uniqueItems only-ours / uniqueItems only-ours	1	IndicatorBearingResourceState@adcp.types.domains.core.indicator_bearing.IndicatorBearingResourceState	
+none/same-document	uniqueItems only-ours / required only-ours / required differs	1	FlatRatePricingOption@adcp.types.domains.pricing_options.flat_rate_option.FlatRatePricingOption	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / maxLength only-ours / default only-ours	1	ReportingDeliveryOffering@adcp.types.domains.core.reporting_delivery_offering.ReportingDeliveryOffering	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / properties only-theirs / uniqueItems only-ours	1	AcceptancePolicyRule@adcp.types.domains.media_buy.acceptance_policy_rule.AcceptancePolicyRule	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours / format only-ours	1	Payload2@adcp.types.domains.core.registry_event.Payload2	
+none/same-document	uniqueItems only-ours / uniqueItems only-ours / uniqueItems only-ours / required differs	1	ScopeCapability@adcp.types.domains.core.bidding_policy_capability.ScopeCapability	
