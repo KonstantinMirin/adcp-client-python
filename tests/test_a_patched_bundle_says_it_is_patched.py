@@ -31,8 +31,17 @@ in one day: ``./check <document>`` (``adcp-client-python-ywff``), the determinis
 what was wrong was never that either one fired -- it is that one sentence served both, and a
 test that only showed the new one firing would leave exactly the ambiguity in place.  The
 expiry refusal is required to still fire, against ``schemas/cache/3.3``'s
-``brand.json#/definitions/data_subject_contestation``, which upstream's own ``9c32fa997``
-titled.
+``brand.json#/definitions/data_subject_contestation``.
+
+**AND THE TITLE IT FIRES ON IS OURS, NOT UPSTREAM'S.**  ``schemas/cache/3.3`` was built at
+``9c32fa997``, a commit on the FORK's branch
+``schemas/title-data-subject-contestation-8735`` -- OUR ask #8735, on no upstream branch and
+under no tag -- and **upstream has not landed it.**  Measured over the three bundles that
+are upstream's: 18 of 18 entries APPLY on 3.2.4, on 3.2.8 and on
+``schemas/cache/3.3.0-beta.4`` (upstream's newest 3.3), with **0 already-landed**, so five
+3.3 releases (beta.0 through beta.4) and four 3.2.x releases fixed NONE of the 18.  So this
+file reads the expiry clause against bytes WE wrote -- which is enough to prove the two
+refusals are distinguishable, and is not an instance of a defect going away upstream.
 
 **AND THE RECORD IS NOT A 1,626TH DOCUMENT**, which is why it stands BESIDE the directory:
 ``codegen.bundle.portable`` enumerates ``rglob("*.json")`` under the bundle root, so a record
@@ -141,7 +150,12 @@ def test_a_double_application_and_an_expiry_are_two_refusals_with_two_messages()
     And the expiry refusal is required to still FIRE, which is the half a test of the new
     refusal alone would quietly drop: ``patches/8735``'s entry for
     ``brand.json#/definitions/data_subject_contestation`` is already titled in
-    ``schemas/cache/3.3`` by upstream's own commit, so that is where the mechanism is read.
+    ``schemas/cache/3.3``, so that is where the mechanism is read.  **By OUR commit and not
+    upstream's** -- that bundle was built at ``9c32fa997`` on the fork's branch
+    ``schemas/title-data-subject-contestation-8735`` for our ask #8735, and upstream has not
+    landed it: 18 of 18 entries APPLY on 3.2.4, 3.2.8 and 3.3.0-beta.4 with 0
+    already-landed.  The clause is exercised against our own bytes; what is graded here is
+    that the two messages differ, not that a defect went away.
     """
     with pytest.raises(ValueError) as double:
         patch.apply(BUNDLE, Path(patch.BUILD[0]), Path("/tmp/never-written-by-this-clause"))

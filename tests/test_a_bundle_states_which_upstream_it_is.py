@@ -21,11 +21,24 @@ bytes happen to be in ``schemas/cache/``.  With no record, "the fix landed" and 
 old" are the same reading, and they carry opposite instructions.
 
 **AND THE READING IS NOT HYPOTHETICAL.**  ``patches/8735`` carries 13 additions.  Counted
-against three upstream states: 0 of 13 are already stated by ``schemas/cache/3.2``; 1 of 13
-by ``schemas/cache/3.3`` (``brand.json#/definitions/data_subject_contestation``); 11 of 13
-by a build at ``1b84881e3``, which is a SIBLING of the 3.3 bundle's commit rather than a
+against three states of the fork: 0 of 13 are already stated by ``schemas/cache/3.2``; 1 of
+13 by ``schemas/cache/3.3`` (``brand.json#/definitions/data_subject_contestation``); 11 of
+13 by a build at ``1b84881e3``, which is a SIBLING of the 3.3 bundle's commit rather than a
 descendant, so it lands the other eleven and not that one.  One patch set, three answers to
-"is the defect gone", chosen entirely by which upstream the bundle is.
+"is the defect gone", chosen entirely by which commit the bundle is built from.
+
+**AND NONE OF THOSE THREE IS AN UPSTREAM STATE, which is the correction this paragraph
+needed** (``adcp-client-python-82m.66``).  ``schemas/cache/3.3`` was built at ``9c32fa997``
+and ``1b84881e3`` is its sibling: both sit on FORK branches carrying OUR asks -- ``9c32fa997``
+on ``schemas/title-data-subject-contestation-8735``, i.e. #8735 itself -- so the titles they
+state are ones **upstream has never published.**  Against the bundles that ARE upstream's
+committed artifacts, the count is flat: 18 of 18 entries of ``codegen.patch.BUILD`` APPLY on
+``schemas/cache/3.2`` (3.2.4), on ``schemas/cache/3.2.8`` and on
+``schemas/cache/3.3.0-beta.4`` -- upstream's newest 3.3 -- with **0 already-landed**.  Five
+3.3 releases (beta.0 through beta.4) and four 3.2.x releases fixed none of the 18.  **That
+is what makes the record necessary rather than decorative**: without it, a bundle we built
+from our own ask is indistinguishable from a bundle upstream published, and the expiry
+refusal reports a fix that never happened.
 
 **WHY THE DIGEST AND NOT THE COMMIT ALONE, which is the half that is easy to drop.**  A
 record naming a sha and nothing checkable is worse than no record: it reads as a fact and is
