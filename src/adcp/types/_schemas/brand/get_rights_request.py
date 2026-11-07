@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMaxLen2000
 from adcp.types.envelopes import AdcpRequest
 
@@ -29,14 +29,14 @@ class GetRightsRequest(AdCPVersionEnvelope, AdcpRequest):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-request.json', pointer='#')
     query: Annotated[StrMaxLen2000, Field(description='Natural language description of desired rights. The agent interprets intent, budget signals, and compatibility from this text.')]
     uses: Annotated[list[RightUse], Field(description='Rights uses being requested. The agent returns options covering these uses, potentially bundled into composite pricing.', min_length=1)]
-    buyer_brand: Annotated[BrandReference | None, Field(description="The buyer's brand. The agent fetches the buyer's brand.json for compatibility filtering (e.g., dietary conflicts, competitor exclusions).")] = None
-    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are needed (ISO 3166-1 alpha-2). Filters to rights available in these markets.')] = None
-    brand_id: Annotated[str | None, Field(description="Search within a specific brand's rights. If omitted, searches across the agent's full roster.")] = None
-    right_type: Annotated[RightType | None, Field(description='Filter by type of rights (talent, music, stock_media, etc.)')] = None
-    include_excluded: Annotated[bool | None, Field(description='Include filtered-out results in the excluded array with reasons. Defaults to false.')] = False
-    pagination: Annotated[PaginationRequest | None, Field(description='Pagination parameters for large result sets')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    buyer_brand: Annotated[BrandReference | None, Field(description="The buyer's brand. The agent fetches the buyer's brand.json for compatibility filtering (e.g., dietary conflicts, competitor exclusions)."), OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are needed (ISO 3166-1 alpha-2). Filters to rights available in these markets.'), OmittedNotNull] = None
+    brand_id: Annotated[str | None, Field(description="Search within a specific brand's rights. If omitted, searches across the agent's full roster."), OmittedNotNull] = None
+    right_type: Annotated[RightType | None, Field(description='Filter by type of rights (talent, music, stock_media, etc.)'), OmittedNotNull] = None
+    include_excluded: Annotated[bool | None, Field(description='Include filtered-out results in the excluded array with reasons. Defaults to false.'), OmittedNotNull] = False
+    pagination: Annotated[PaginationRequest | None, Field(description='Pagination parameters for large result sets'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetRightsRequest"]

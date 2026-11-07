@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import AssetsItemContent, AssetsItemHeadingLevel, AssetsItemTranscript, HttpUrl
 
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -49,12 +49,12 @@ class AssetsItemText(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/0')
     type: Literal['text']
-    role: Annotated[Role | None, Field(description="Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries.")] = None
+    role: Annotated[Role | None, Field(description="Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries."), OmittedNotNull] = None
     content: Annotated[AssetsItemContent, Field(description='Text content. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')]
-    content_format: Annotated[ContentFormat | None, Field(description='MIME type indicating how to parse the content field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})] = Field(default_factory=lambda: TypeAdapter(ContentFormat).validate_python('text/plain'))
-    language: Annotated[str | None, Field(description="BCP 47 language tag for this text (e.g., 'en', 'es-MX'). Useful when artifact contains mixed-language content.")] = None
-    heading_level: Annotated[AssetsItemHeadingLevel | None, Field(description='Heading level (1-6), only for role=heading')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance for this text block, overrides artifact-level provenance')] = None
+    content_format: Annotated[ContentFormat | None, Field(description='MIME type indicating how to parse the content field. Default: text/plain.', json_schema_extra={'default': 'text/plain'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(ContentFormat).validate_python('text/plain'))
+    language: Annotated[str | None, Field(description="BCP 47 language tag for this text (e.g., 'en', 'es-MX'). Useful when artifact contains mixed-language content."), OmittedNotNull] = None
+    heading_level: Annotated[AssetsItemHeadingLevel | None, Field(description='Heading level (1-6), only for role=heading'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance for this text block, overrides artifact-level provenance'), OmittedNotNull] = None
 
 
 class AssetAccessBearerToken(AdCPBaseModel):
@@ -83,7 +83,7 @@ class AssetAccessServiceAccount(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/$defs/asset_access/oneOf/1')
     method: Literal['service_account']
     provider: Annotated[Provider, Field(description='Cloud provider')]
-    credentials: Annotated[dict[str, Any] | None, Field(description="Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead.")] = None
+    credentials: Annotated[dict[str, Any] | None, Field(description="Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead."), OmittedNotNull] = None
 
 
 class AssetAccessSignedUrl(AdCPBaseModel):
@@ -104,12 +104,12 @@ class AssetsItemImage(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1')
     type: Literal['image']
     url: Annotated[HttpUrl, Field(description='Image URL')]
-    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
-    alt_text: Annotated[str | None, Field(description='Alt text or image description')] = None
-    caption: Annotated[str | None, Field(description='Image caption')] = None
-    width: Annotated[int | None, Field(description='Image width in pixels')] = None
-    height: Annotated[int | None, Field(description='Image height in pixels')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance for this image, overrides artifact-level provenance')] = None
+    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
+    alt_text: Annotated[str | None, Field(description='Alt text or image description'), OmittedNotNull] = None
+    caption: Annotated[str | None, Field(description='Image caption'), OmittedNotNull] = None
+    width: Annotated[int | None, Field(description='Image width in pixels'), OmittedNotNull] = None
+    height: Annotated[int | None, Field(description='Image height in pixels'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance for this image, overrides artifact-level provenance'), OmittedNotNull] = None
 
 
 class AssetsItemVideoTranscriptFormat(StrEnum):
@@ -144,13 +144,13 @@ class AssetsItemVideo(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2')
     type: Literal['video']
     url: Annotated[HttpUrl, Field(description='Video URL')]
-    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
-    duration_ms: Annotated[int | None, Field(description='Video duration in milliseconds')] = None
-    transcript: Annotated[AssetsItemTranscript | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
-    transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})] = Field(default_factory=lambda: TypeAdapter(AssetsItemVideoTranscriptFormat).validate_python('text/plain'))
-    transcript_source: Annotated[AssetsItemVideoTranscriptSource | None, Field(description='How the transcript was generated')] = None
-    thumbnail_url: Annotated[HttpUrl | None, Field(description='Video thumbnail URL')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance for this video, overrides artifact-level provenance')] = None
+    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
+    duration_ms: Annotated[int | None, Field(description='Video duration in milliseconds'), OmittedNotNull] = None
+    transcript: Annotated[AssetsItemTranscript | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.'), OmittedNotNull] = None
+    transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AssetsItemVideoTranscriptFormat).validate_python('text/plain'))
+    transcript_source: Annotated[AssetsItemVideoTranscriptSource | None, Field(description='How the transcript was generated'), OmittedNotNull] = None
+    thumbnail_url: Annotated[HttpUrl | None, Field(description='Video thumbnail URL'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance for this video, overrides artifact-level provenance'), OmittedNotNull] = None
 
 
 AssetsItemAudioTranscriptFormat = AssetsItemVideoTranscriptFormat
@@ -175,12 +175,12 @@ class AssetsItemAudio(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3')
     type: Literal['audio']
     url: Annotated[HttpUrl, Field(description='Audio URL')]
-    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
-    duration_ms: Annotated[int | None, Field(description='Audio duration in milliseconds')] = None
-    transcript: Annotated[AssetsItemTranscript | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
-    transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})] = Field(default_factory=lambda: TypeAdapter(AssetsItemAudioTranscriptFormat).validate_python('text/plain'))
-    transcript_source: Annotated[AssetsItemAudioTranscriptSource | None, Field(description='How the transcript was generated')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance for this audio, overrides artifact-level provenance')] = None
+    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
+    duration_ms: Annotated[int | None, Field(description='Audio duration in milliseconds'), OmittedNotNull] = None
+    transcript: Annotated[AssetsItemTranscript | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.'), OmittedNotNull] = None
+    transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AssetsItemAudioTranscriptFormat).validate_python('text/plain'))
+    transcript_source: Annotated[AssetsItemAudioTranscriptSource | None, Field(description='How the transcript was generated'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance for this audio, overrides artifact-level provenance'), OmittedNotNull] = None
 
 
 class Metadata(AdCPBaseModel):
@@ -191,12 +191,12 @@ class Metadata(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/metadata')
-    canonical: Annotated[HttpUrl | None, Field(description='Canonical URL')] = None
-    author: Annotated[str | None, Field(description='Artifact author name')] = None
-    keywords: Annotated[str | None, Field(description='Artifact keywords')] = None
-    open_graph: Annotated[dict[str, Any] | None, Field(description='Open Graph protocol metadata')] = None
-    twitter_card: Annotated[dict[str, Any] | None, Field(description='Twitter Card metadata')] = None
-    json_ld: Annotated[list[dict[str, Any]] | None, Field(description='JSON-LD structured data (schema.org)')] = None
+    canonical: Annotated[HttpUrl | None, Field(description='Canonical URL'), OmittedNotNull] = None
+    author: Annotated[str | None, Field(description='Artifact author name'), OmittedNotNull] = None
+    keywords: Annotated[str | None, Field(description='Artifact keywords'), OmittedNotNull] = None
+    open_graph: Annotated[dict[str, Any] | None, Field(description='Open Graph protocol metadata'), OmittedNotNull] = None
+    twitter_card: Annotated[dict[str, Any] | None, Field(description='Twitter Card metadata'), OmittedNotNull] = None
+    json_ld: Annotated[list[dict[str, Any]] | None, Field(description='JSON-LD structured data (schema.org)'), OmittedNotNull] = None
 
 
 class Identifiers(AdCPBaseModel):
@@ -207,11 +207,11 @@ class Identifiers(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/identifiers')
-    apple_podcast_id: Annotated[str | None, Field(description='Apple Podcasts ID')] = None
-    spotify_collection_id: Annotated[str | None, Field(description='Spotify collection ID')] = None
-    podcast_guid: Annotated[str | None, Field(description='Podcast GUID (from RSS feed)')] = None
-    youtube_video_id: Annotated[str | None, Field(description='YouTube video ID')] = None
-    rss_url: Annotated[HttpUrl | None, Field(description='RSS feed URL')] = None
+    apple_podcast_id: Annotated[str | None, Field(description='Apple Podcasts ID'), OmittedNotNull] = None
+    spotify_collection_id: Annotated[str | None, Field(description='Spotify collection ID'), OmittedNotNull] = None
+    podcast_guid: Annotated[str | None, Field(description='Podcast GUID (from RSS feed)'), OmittedNotNull] = None
+    youtube_video_id: Annotated[str | None, Field(description='YouTube video ID'), OmittedNotNull] = None
+    rss_url: Annotated[HttpUrl | None, Field(description='RSS feed URL'), OmittedNotNull] = None
 
 
 class Artifact(AdCPBaseModel):
@@ -224,16 +224,16 @@ class Artifact(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#')
     property_rid: Annotated[str, Field(description='Stable property identifier from the property catalog. Globally unique across the ecosystem.')]
     artifact_id: Annotated[str, Field(description="Identifier for this artifact within the property. The property owner defines the scheme (e.g., 'article_12345', 'episode_42_segment_3', 'post_abc123').")]
-    variant_id: Annotated[str | None, Field(description="Identifies a specific variant of this artifact. Use for A/B tests, translations, or temporal versions. Examples: 'en', 'es-MX', 'v2', 'headline_test_b'. The combination of artifact_id + variant_id must be unique.")] = None
-    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format reference. Use `format_kind` for canonical artifact media classification.')] = None
-    format_kind: Annotated[CanonicalFormatKind | None, Field(description='Optional canonical media/creative kind associated with this artifact.')] = None
-    url: Annotated[HttpUrl | None, Field(description='Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).')] = None
-    published_time: Annotated[AwareDatetime | None, Field(description='When the artifact was published (ISO 8601 format)')] = None
-    last_update_time: Annotated[AwareDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)')] = None
+    variant_id: Annotated[str | None, Field(description="Identifies a specific variant of this artifact. Use for A/B tests, translations, or temporal versions. Examples: 'en', 'es-MX', 'v2', 'headline_test_b'. The combination of artifact_id + variant_id must be unique."), OmittedNotNull] = None
+    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format reference. Use `format_kind` for canonical artifact media classification.'), OmittedNotNull] = None
+    format_kind: Annotated[CanonicalFormatKind | None, Field(description='Optional canonical media/creative kind associated with this artifact.'), OmittedNotNull] = None
+    url: Annotated[HttpUrl | None, Field(description='Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).'), OmittedNotNull] = None
+    published_time: Annotated[AwareDatetime | None, Field(description='When the artifact was published (ISO 8601 format)'), OmittedNotNull] = None
+    last_update_time: Annotated[AwareDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)'), OmittedNotNull] = None
     assets: Annotated[list[AssetsItemText | AssetsItemImage | AssetsItemVideo | AssetsItemAudio], Field(description='Artifact assets in document flow order - text blocks, images, video, audio', max_length=200)]
-    metadata: Annotated[Metadata | None, Field(description='Rich metadata extracted from the artifact')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.')] = None
-    identifiers: Annotated[Identifiers | None, Field(description='Platform-specific identifiers for this artifact')] = None
+    metadata: Annotated[Metadata | None, Field(description='Rich metadata extracted from the artifact'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.'), OmittedNotNull] = None
+    identifiers: Annotated[Identifiers | None, Field(description='Platform-specific identifiers for this artifact'), OmittedNotNull] = None
 
 
 __all__ = ["Artifact", "AssetAccess"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 from adcp.types.envelopes import AdcpResponse
 
@@ -28,8 +28,8 @@ class Response(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-initiate-session-response.json', pointer='#/properties/response')
-    message: Annotated[str | None, Field(description='Conversational message from brand agent')] = None
-    ui_elements: Annotated[list[SIUIElement] | None, Field(description='Visual components to render')] = None
+    message: Annotated[str | None, Field(description='Conversational message from brand agent'), OmittedNotNull] = None
+    ui_elements: Annotated[list[SIUIElement] | None, Field(description='Visual components to render'), OmittedNotNull] = None
 
 
 class SIInitiateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -41,14 +41,14 @@ class SIInitiateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRespo
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-initiate-session-response.json', pointer='#')
     session_id: Annotated[str, Field(description='Unique session identifier for subsequent messages')]
-    response: Annotated[Response | None, Field(description="Brand agent's initial response")] = None
-    negotiated_capabilities: Annotated[SICapabilities | None, Field(description='Intersection of brand and host capabilities for this session')] = None
-    sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for sponsored context carried by the initial brand-agent response. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before presenting, comparing, or otherwise using it.')] = None
+    response: Annotated[Response | None, Field(description="Brand agent's initial response"), OmittedNotNull] = None
+    negotiated_capabilities: Annotated[SICapabilities | None, Field(description='Intersection of brand and host capabilities for this session'), OmittedNotNull] = None
+    sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for sponsored context carried by the initial brand-agent response. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before presenting, comparing, or otherwise using it.'), OmittedNotNull] = None
     session_status: Annotated[SISessionStatus, Field(description='Current session lifecycle state. Returned in initiation, message, and termination responses.')]
-    session_ttl_seconds: Annotated[IntMin1 | None, Field(description='Session inactivity timeout in seconds. After this duration without a message, the brand agent may terminate the session. Hosts SHOULD warn users before timeout when possible.')] = None
-    errors: Annotated[list[Error] | None, Field(description='Errors during session initiation')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    session_ttl_seconds: Annotated[IntMin1 | None, Field(description='Session inactivity timeout in seconds. After this duration without a message, the brand agent may terminate the session. Hosts SHOULD warn users before timeout when possible.'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Errors during session initiation'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SIInitiateSessionResponse"]

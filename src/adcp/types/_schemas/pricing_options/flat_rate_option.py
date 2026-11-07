@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMinLen1
 
@@ -24,15 +24,15 @@ class Parameters(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='pricing-options/flat-rate-option.json', pointer='#/properties/parameters')
     type: Annotated[Literal['dooh'], Field(description='Discriminator identifying this as DOOH parameters')]
-    sov_percentage: Annotated[FloatMin0Max100 | None, Field(description='Guaranteed share of voice on a 0-100 percentage scale. To compare this contracted value with delivery dooh_metrics.sov_achieved, divide sov_percentage by 100. Share is time-weighted: the sum of the reserved segment durations divided by the full loop duration. On equal-duration loops this equals the slot-count ratio.')] = None
-    slot_span: Annotated[IntMin1 | None, Field(description='Number of consecutive loop slots reserved by this seller-declared pre-packaged offer. Contiguity is guaranteed; position is not guaranteed unless loop_position is also present. This field does not carry a buyer-requested custom span for an offer the seller has not pre-packaged.')] = None
-    loop_position: Annotated[StrMinLen1 | None, Field(description='Seller-defined position label for the reserved span within the loop, such as any, first, last, or adjacent_to_content_break. This is deliberately an open string because network vocabularies differ. Consumers MUST accept unrecognized values as opaque and treat them as conveying no position guarantee the consumer understands; an unrecognized value is not a protocol error.')] = None
-    loop_duration_seconds: Annotated[IntMin1 | None, Field(description='Deprecated compatibility copy of the placement-level dooh_placement_attributes.loop_duration_seconds, which is the canonical source. Retained for backward compatibility; new integrations read the placement-level field. When both are present they MUST agree. A product that offers different loop durations under different prices MUST expose distinct placements or products rather than vary this compatibility copy by pricing option.')] = None
-    min_plays_per_hour: Annotated[IntMin1 | None, Field(description='Minimum number of plays per hour guaranteed')] = None
-    venue_package: Annotated[str | None, Field(description='Named collection of DOOH venues or installed surfaces included in this buy')] = None
-    duration_hours: Annotated[NonNegativeFloat | None, Field(description='Duration of the DOOH slot in hours (e.g., 24 for a full-day takeover)')] = None
-    daypart: Annotated[str | None, Field(description='Named daypart for this slot (e.g., morning_commute, evening_rush)')] = None
-    estimated_impressions: Annotated[NonNegativeInt | None, Field(description='Estimated audience impressions for this slot (informational, not a delivery guarantee)')] = None
+    sov_percentage: Annotated[FloatMin0Max100 | None, Field(description='Guaranteed share of voice on a 0-100 percentage scale. To compare this contracted value with delivery dooh_metrics.sov_achieved, divide sov_percentage by 100. Share is time-weighted: the sum of the reserved segment durations divided by the full loop duration. On equal-duration loops this equals the slot-count ratio.'), OmittedNotNull] = None
+    slot_span: Annotated[IntMin1 | None, Field(description='Number of consecutive loop slots reserved by this seller-declared pre-packaged offer. Contiguity is guaranteed; position is not guaranteed unless loop_position is also present. This field does not carry a buyer-requested custom span for an offer the seller has not pre-packaged.'), OmittedNotNull] = None
+    loop_position: Annotated[StrMinLen1 | None, Field(description='Seller-defined position label for the reserved span within the loop, such as any, first, last, or adjacent_to_content_break. This is deliberately an open string because network vocabularies differ. Consumers MUST accept unrecognized values as opaque and treat them as conveying no position guarantee the consumer understands; an unrecognized value is not a protocol error.'), OmittedNotNull] = None
+    loop_duration_seconds: Annotated[IntMin1 | None, Field(description='Deprecated compatibility copy of the placement-level dooh_placement_attributes.loop_duration_seconds, which is the canonical source. Retained for backward compatibility; new integrations read the placement-level field. When both are present they MUST agree. A product that offers different loop durations under different prices MUST expose distinct placements or products rather than vary this compatibility copy by pricing option.'), OmittedNotNull] = None
+    min_plays_per_hour: Annotated[IntMin1 | None, Field(description='Minimum number of plays per hour guaranteed'), OmittedNotNull] = None
+    venue_package: Annotated[str | None, Field(description='Named collection of DOOH venues or installed surfaces included in this buy'), OmittedNotNull] = None
+    duration_hours: Annotated[NonNegativeFloat | None, Field(description='Duration of the DOOH slot in hours (e.g., 24 for a full-day takeover)'), OmittedNotNull] = None
+    daypart: Annotated[str | None, Field(description='Named daypart for this slot (e.g., morning_commute, evening_rush)'), OmittedNotNull] = None
+    estimated_impressions: Annotated[NonNegativeInt | None, Field(description='Estimated audience impressions for this slot (informational, not a delivery guarantee)'), OmittedNotNull] = None
 
 
 class FlatRatePricingOption(AdCPBaseModel):
@@ -49,13 +49,13 @@ class FlatRatePricingOption(AdCPBaseModel):
     pricing_option_id: Annotated[str, Field(description='Unique identifier for this pricing option within the product')]
     pricing_model: Annotated[Literal['flat_rate'], Field(description='Fixed cost regardless of delivery volume')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
-    fixed_price: Annotated[NonNegativeFloat | None, Field(description='Flat rate cost. If present, this is fixed pricing. If absent, auction-based.')] = None
-    floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.')] = None
-    price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding')] = None
-    parameters: Annotated[Parameters | None, Field(description='DOOH inventory allocation parameters. Sponsorship and takeover flat_rate options omit this field entirely — only include for digital out-of-home inventory.')] = None
-    min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency')] = None
-    price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.')] = None
-    eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True})] = None
+    fixed_price: Annotated[NonNegativeFloat | None, Field(description='Flat rate cost. If present, this is fixed pricing. If absent, auction-based.'), OmittedNotNull] = None
+    floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.'), OmittedNotNull] = None
+    price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding'), OmittedNotNull] = None
+    parameters: Annotated[Parameters | None, Field(description='DOOH inventory allocation parameters. Sponsorship and takeover flat_rate options omit this field entirely — only include for digital out-of-home inventory.'), OmittedNotNull] = None
+    min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency'), OmittedNotNull] = None
+    price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.'), OmittedNotNull] = None
+    eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
 __all__ = ["FlatRatePricingOption"]

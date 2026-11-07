@@ -84,6 +84,7 @@ from typing import Any
 
 import pydantic
 from datamodel_code_generator import PythonVersion
+from datamodel_code_generator.imports import Import
 from datamodel_code_generator.model import DataModelFieldBase
 from datamodel_code_generator.model.enum import Enum as DmcgEnum
 from datamodel_code_generator.model.enum import EnumMemberValue, IntEnum, StrEnum
@@ -481,6 +482,109 @@ def _constructed_default(decided: ir.Field) -> PythonCode | None:
     )
 
 
+#: ``adcp.types._base.OmittedNotNull``, as the ``(module, name)`` pair this module holds
+#: an import as -- :data:`FIELD`'s and :data:`MEMBER_ALIAS`'s own form, and for their
+#: reason: the NAME is written into the annotation and the IMPORT into the module header,
+#: and two spellings of one symbol is how those come apart.
+#:
+#: The name is read off the runtime declaration rather than typed, so renaming the marker
+#: there renames nothing here.
+OMITTED_NOT_NULL = (ir.BASE_MODULE, adcp_base.OMITTED_NOT_NULL)
+
+
+class _OptionalMember(DataModelField):
+    """A field whose ``Annotated`` carries one more item than the model layer puts there.
+
+    **The marker belongs OUTSIDE the ``| None``, which is why it cannot ride the type.**
+    :data:`adcp.types._base.OmittedNotNull` strikes the null arm an OPTIONAL rendering
+    added, and that arm is the model layer's: the ``| None`` is derived from
+    ``required=False`` here and nowhere else (see :func:`_field`'s own note on the
+    arrangement that took it away).  §2's value rules compose inside the type
+    (:func:`_bound_to_the_type`) and so are inside the union; this has to be the last item
+    of the field's own ``Annotated``, where ``handler(source)`` hands it the nullable
+    schema to strike.
+
+    So the one property that composes that list is extended, rather than a template being
+    vendored: the pinned generator renders ``Annotated[<hint>, <Field(...)>]`` and has no
+    slot for a third item.  Everything else -- the hint, the ``Field(...)`` call, the
+    assignment, the imports the hint needs -- is the layer's, unchanged.
+    """
+
+    #: Whether this field takes the marker: ``codegen.ir.admits_null`` read at
+    #: :func:`_field`, which is the one place the decision is made.
+    omits_null: bool = False
+
+    def _marked(self, field_call: str) -> str:
+        """``Annotated[<hint>, <Field(...)>, OmittedNotNull]``, with the middle optional.
+
+        ``Field(...)`` is absent for a field that states no description, no alias and no
+        constraint, and the marker then stands alone beside the hint -- which is what makes
+        the ``Annotated`` appear on a field the layer would have rendered bare.
+        """
+        parts = [part for part in (field_call, OMITTED_NOT_NULL[1]) if part]
+        return f"Annotated[{self.type_hint}, {', '.join(parts)}]"
+
+    #: **Whether this field renders the marker at all**, which is the one predicate both
+    #: writers below ask: a ``ClassVar`` has no presence question (the layer renders no
+    #: ``| None`` for one either), and a field the layer renders un-annotated still takes
+    #: the marker, which is why this does not read ``use_annotated`` alone.
+    @property
+    def _marks(self) -> bool:
+        return self.omits_null and not self.is_class_var and self.use_annotated
+
+    @property
+    def annotated(self) -> str | None:
+        """The layer's ``Annotated`` with the marker appended.
+
+        **Not the only writer, which is why :meth:`_marked` is shared.**  The pinned
+        generator has a second, faster path to the same text --
+        ``_rendered_field_values_from_plan``, which the built-in templates reach through
+        ``_RenderedDataModelField`` and which composes the subscript from its own render
+        plan rather than reading this property.  Measured: with this override alone the
+        rendered class body carried no marker at all.  Both are overridden, and both
+        compose through one function, so the two paths cannot render two annotations.
+        """
+        if not self._marks:
+            return super().annotated
+        return self._marked(str(self))
+
+    def _rendered_field_values_from_plan(self, plan: Any) -> tuple[str | None, str | None]:
+        """The built-in template's path to the same two strings: the assignment and the
+        ``Annotated``.  See :attr:`annotated` for why both exist."""
+        assignment, annotated = super()._rendered_field_values_from_plan(plan)
+        if not self._marks:
+            return assignment, annotated
+        return assignment, self._marked(plan.rendered or "")
+
+    @property
+    def imports(self) -> tuple[Any, ...]:
+        """The layer's imports, plus the marker's own and ``Annotated``.
+
+        **REPORTED BY THE FIELD AND NOT BY THE RENDERER, which is the latency this closes.**
+        The import began life in :func:`klass`, gated on ``any(member.omits_null)`` -- and
+        that is complete only while no OTHER caller of :func:`_field` can mark: both of
+        them pass ``required=True`` today and say so in their docstrings, so nothing
+        marked and nothing was missing.  Measured by perturbing the decision to mark a
+        REQUIRED field: the alias and the root model emitted ``OmittedNotNull`` into an
+        annotation their modules do not import, and every such module raised ``NameError:
+        name 'OmittedNotNull' is not defined`` at import -- a crash rather than a verdict,
+        which is what the structural guard calls a defect the comment hides.  A field that
+        writes a symbol reports the symbol, so the gate is the one thing that decides it.
+
+        ``Annotated`` is here for the same reason one level down: the layer reports it off
+        ``_has_field_statement()`` -- whether there is a ``Field(...)`` to wrap -- so a
+        field carrying the marker and nothing else names a symbol the module would not
+        import.
+        """
+        reported = super().imports
+        if not self._marks:
+            return reported
+        annotated = _TYPES.get_data_type_from_full_path("typing.Annotated", is_custom_type=False)
+        wanted = (Import(from_=OMITTED_NOT_NULL[0], import_=OMITTED_NOT_NULL[1]),
+                  *annotated.all_imports)
+        return (*reported, *(imp for imp in wanted if imp not in reported))
+
+
 def _field(decided: ir.Field) -> DataModelField:
     extras: dict[str, Any] = {}
     if decided.description:
@@ -567,7 +671,7 @@ def _field(decided: ir.Field) -> DataModelField:
     # does for the 6,900 fields whose default is a literal.  One derivation, so a
     # constructed default and a literal one cannot come to render two shapes of optional.
     annotation = _data_type(decided.type)
-    return DataModelField(
+    return _OptionalMember(
         name=decided.name,
         data_type=annotation,
         required=decided.required,
@@ -575,6 +679,20 @@ def _field(decided: ir.Field) -> DataModelField:
         extras=extras,
         use_annotated=True,
         target_python_version=TARGET,
+        # **Reading 1 at an OPTIONAL property: absence is spelled by OMISSION, and an
+        # explicit ``null`` is refused where the document refuses one.**  The ``| None``
+        # the layer derives from ``required=False`` below carries ABSENCE; pydantic reads
+        # it as a type that also admits an explicit ``null``, so without this the model
+        # half admitted a value the document refuses at 13,790 of the tree's 13,961
+        # graded optional fields, in 1,819 classes, declared nowhere
+        # (``adcp-client-python-4yhb``).
+        #
+        # **The BOUNDARY is the document's and it is asked of the decided TYPE**
+        # (``ir.admits_null``): a property whose document DOES admit ``null`` --
+        # ``type: [..., "null"]``, 171 fields of this tree -- keeps the plain ``| None``
+        # and every ``null`` it ever took.  The reading is wrong only in the direction
+        # that loses a refusal, which is that function's own argument.
+        omits_null=not decided.required and not ir.admits_null(decided.type),
         **kwargs,
     )
 

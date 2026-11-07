@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -24,10 +24,10 @@ class FrequencyCapImpressionConstraints(AdCPBaseModel):
         PresenceGroups((Presence(require=(('allowed_values',),), forbid=(('minimum',), ('maximum',))), Presence(require=(('minimum', 'maximum'),), forbid=(('allowed_values',),))), 'oneOf'),
         UniqueItems('allowed_values'),
     )
-    minimum: IntMin1 | None = None
-    maximum: IntMin1 | None = None
-    allowed_values: Annotated[list[IntMin1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    minimum: Annotated[IntMin1 | None, OmittedNotNull] = None
+    maximum: Annotated[IntMin1 | None, OmittedNotNull] = None
+    allowed_values: Annotated[list[IntMin1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["FrequencyCapImpressionConstraints"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen1024, ZipAssetDigest
 
 from .brand_ref import BrandReference
@@ -32,7 +32,7 @@ class AttestationBrandSubject(AttestationSubject):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-subject.json', pointer='#/oneOf/0')
     type: Literal['brand']
     brand: BrandReference
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AttestationAgentSubject(AttestationSubject):
@@ -42,7 +42,7 @@ class AttestationAgentSubject(AttestationSubject):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-subject.json', pointer='#/oneOf/1')
     type: Literal['agent']
     agent_url: Annotated[HttpUrl, Field(description='Canonical HTTPS endpoint of the agent the claim concerns.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AttestationResourceSubject(AttestationSubject):
@@ -54,8 +54,8 @@ class AttestationResourceSubject(AttestationSubject):
     resource_type: Annotated[HttpUrl, Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
     namespace: Annotated[HttpUrl, Field(description='Absolute URI identifying the namespace in which id is unique. This may be an AdCP agent endpoint, a catalog origin, or a domain-specific namespace URI.')]
     id: Annotated[StrMinLen1MaxLen1024, Field(description='Stable identifier for the subject within namespace. It MUST NOT be compared without resource_type and namespace.')]
-    content_digest: Annotated[ZipAssetDigest | None, Field(description='Optional SHA-256 pin for the exact content or immutable snapshot identified by this resource subject. This is part of the complete typed subject identity and is distinct from AttestationReference.content_digest, which pins credential bytes.')] = None
-    ext: ExtensionObject | None = None
+    content_digest: Annotated[ZipAssetDigest | None, Field(description='Optional SHA-256 pin for the exact content or immutable snapshot identified by this resource subject. This is part of the complete typed subject identity and is distinct from AttestationReference.content_digest, which pins credential bytes.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 AttestationSubject._branch_models = (AttestationBrandSubject, AttestationAgentSubject, AttestationResourceSubject,)

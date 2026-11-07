@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -62,9 +62,9 @@ class Setup(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-event-sources-response.json', pointer='#/oneOf/0/properties/event_sources/items/properties/setup')
-    snippet: Annotated[str | None, Field(description='Code snippet to place on the site (JavaScript, HTML pixel, etc.)')] = None
-    snippet_type: Annotated[SnippetType | None, Field(description="Type of implementation. 'server_only' means no client-side tag is needed.")] = None
-    instructions: Annotated[str | None, Field(description='Human/agent-readable setup instructions')] = None
+    snippet: Annotated[str | None, Field(description='Code snippet to place on the site (JavaScript, HTML pixel, etc.)'), OmittedNotNull] = None
+    snippet_type: Annotated[SnippetType | None, Field(description="Type of implementation. 'server_only' means no client-side tag is needed."), OmittedNotNull] = None
+    instructions: Annotated[str | None, Field(description='Human/agent-readable setup instructions'), OmittedNotNull] = None
 
 
 class EventSourcesItem(AdCPBaseModel):
@@ -76,18 +76,18 @@ class EventSourcesItem(AdCPBaseModel):
         UniqueItems('value_currencies'),
     )
     event_source_id: Annotated[str, Field(description='Event source ID from the request')]
-    name: Annotated[str | None, Field(description='Name of the event source')] = None
-    seller_id: Annotated[str | None, Field(description="Seller-assigned identifier for this event source (the ID in the seller's ad platform)")] = None
-    event_types: Annotated[list[EventType] | None, Field(description='Event types this source handles')] = None
-    value_currencies: Annotated[list[CurrencyCode] | None, Field(description='ISO 4217 currencies accepted for monetary event values from this source. Canonical ROAS buys require their media-buy currency in this list.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    action_source: Annotated[ActionSource | None, Field(description='Type of event source (website pixel, app SDK, in-store, etc.)')] = None
-    surface: Annotated[EventSurface | None, Field(description='Optional structured surface this source represents, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant source meaning would otherwise live only in platform-specific `ext` metadata.')] = None
-    managed_by: Annotated[CanceledBy | None, Field(description="Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers).")] = None
-    setup: Annotated[Setup | None, Field(description='Implementation details for activating this event source (e.g. JavaScript tag, pixel URL)')] = None
+    name: Annotated[str | None, Field(description='Name of the event source'), OmittedNotNull] = None
+    seller_id: Annotated[str | None, Field(description="Seller-assigned identifier for this event source (the ID in the seller's ad platform)"), OmittedNotNull] = None
+    event_types: Annotated[list[EventType] | None, Field(description='Event types this source handles'), OmittedNotNull] = None
+    value_currencies: Annotated[list[CurrencyCode] | None, Field(description='ISO 4217 currencies accepted for monetary event values from this source. Canonical ROAS buys require their media-buy currency in this list.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    action_source: Annotated[ActionSource | None, Field(description='Type of event source (website pixel, app SDK, in-store, etc.)'), OmittedNotNull] = None
+    surface: Annotated[EventSurface | None, Field(description='Optional structured surface this source represents, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant source meaning would otherwise live only in platform-specific `ext` metadata.'), OmittedNotNull] = None
+    managed_by: Annotated[CanceledBy | None, Field(description="Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers)."), OmittedNotNull] = None
+    setup: Annotated[Setup | None, Field(description='Implementation details for activating this event source (e.g. JavaScript tag, pixel URL)'), OmittedNotNull] = None
     action: Annotated[Action, Field(description='Action taken for this event source')]
-    health: Annotated[EventSourceHealth | None, Field(description='Health assessment for this event source. Reflects event volume, data quality, and parameter completeness. Sellers that support health scoring include this on every source (buyer-managed and seller-managed). Absent when the seller does not evaluate event source health.')] = None
-    errors: Annotated[list[Error] | None, Field(description="Errors for this event source (only present when action='failed')")] = None
-    ext: Annotated[ExtensionObject | None, Field(description='Per-source extension metadata that travels with this event source result, such as platform-native conversion IDs, attribution-window handles, raw origin strings, or implementation details not yet standardized. Semantic fields such as `event_types`, `action_source`, and `surface` remain authoritative; `ext` complements them and is not a substitute.')] = None
+    health: Annotated[EventSourceHealth | None, Field(description='Health assessment for this event source. Reflects event volume, data quality, and parameter completeness. Sellers that support health scoring include this on every source (buyer-managed and seller-managed). Absent when the seller does not evaluate event source health.'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description="Errors for this event source (only present when action='failed')"), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, Field(description='Per-source extension metadata that travels with this event source result, such as platform-native conversion IDs, attribution-window handles, raw origin strings, or implementation details not yet standardized. Semantic fields such as `event_types`, `action_source`, and `surface` remain authoritative; `ext` complements them and is not a substitute.'), OmittedNotNull] = None
 
 
 class SyncEventSourcesSuccess(SyncEventSourcesResponse):
@@ -102,9 +102,9 @@ class SyncEventSourcesSuccess(SyncEventSourcesResponse):
         ForbiddenGroups((('errors',),)),
     )
     event_sources: Annotated[list[EventSourcesItem], Field(description='Results for each event source, including both synced and seller-managed sources on the account')]
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SyncEventSourcesError(SyncEventSourcesResponse, FailedResponse):
@@ -119,8 +119,8 @@ class SyncEventSourcesError(SyncEventSourcesResponse, FailedResponse):
         ForbiddenGroups((('event_sources',), ('sandbox',))),
     )
     errors: Annotated[list[Error], Field(description='Operation-level errors that prevented processing', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 SyncEventSourcesResponse._branch_models = (SyncEventSourcesSuccess, SyncEventSourcesError,)

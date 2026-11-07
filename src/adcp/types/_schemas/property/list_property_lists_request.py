@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -23,11 +23,11 @@ class ListPropertyListsRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/list-property-lists-request.json', pointer='#')
-    account: Annotated[AccountReference | None, Field(description='Filter to lists owned by this account. When omitted, returns lists across all accounts accessible to the authenticated agent.')] = None
-    name_contains: Annotated[str | None, Field(description='Filter to lists whose name contains this string')] = None
-    pagination: PaginationRequest | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description='Filter to lists owned by this account. When omitted, returns lists across all accounts accessible to the authenticated agent.'), OmittedNotNull] = None
+    name_contains: Annotated[str | None, Field(description='Filter to lists whose name contains this string'), OmittedNotNull] = None
+    pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListPropertyListsRequest"]

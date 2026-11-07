@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..enums.billing_party import BillingParty
 
@@ -19,7 +19,7 @@ class BillingNotPermittedForAgentDetails(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/billing-not-permitted-for-agent.json', pointer='#')
     rejected_billing: Annotated[BillingParty, Field(description='The `billing` value the seller rejected — echoed verbatim from the request for caller-side reconciliation.')]
-    suggested_billing: Annotated[BillingParty | None, Field(description="A single billing value the calling buyer agent MAY retry with autonomously. Typically `operator` for passthrough-only agents. Sellers MAY omit this field when no retryable value exists for this agent's commercial relationship — in that case the rejection is terminal-pending-onboarding and the buyer MUST complete offline payments-relationship onboarding before any value other than the original request will succeed. Sellers MUST NOT populate this field with the full subset of values the agent may use; the field surfaces at most one canonical retry.")] = None
+    suggested_billing: Annotated[BillingParty | None, Field(description="A single billing value the calling buyer agent MAY retry with autonomously. Typically `operator` for passthrough-only agents. Sellers MAY omit this field when no retryable value exists for this agent's commercial relationship — in that case the rejection is terminal-pending-onboarding and the buyer MUST complete offline payments-relationship onboarding before any value other than the original request will succeed. Sellers MUST NOT populate this field with the full subset of values the agent may use; the field surfaces at most one canonical retry."), OmittedNotNull] = None
 
 
 __all__ = ["BillingNotPermittedForAgentDetails"]

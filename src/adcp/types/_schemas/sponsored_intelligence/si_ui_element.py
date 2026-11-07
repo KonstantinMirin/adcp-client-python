@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 
 
 class SIUIElementType(StrEnum):
@@ -50,7 +50,7 @@ class SIUIElement(AdCPBaseModel):
         Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'integration_actions'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     type: Annotated[SIUIElementType, Field(description='Component type')]
-    data: Annotated[dict[str, Any] | None, Field(description='Component-specific data')] = None
+    data: Annotated[dict[str, Any] | None, Field(description='Component-specific data'), OmittedNotNull] = None
 
 
 __all__ = ["SIUIElement"]

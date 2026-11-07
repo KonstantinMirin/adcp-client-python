@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AcceptancePolicyProfileRegionAliases,
@@ -59,9 +59,9 @@ class Scope(AdCPBaseModel):
     )
     subject_categories: Annotated[list[AccountAuthorizationAllowedTasksItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     applies_to: Annotated[list[AppliesToItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    jurisdictions: Annotated[list[CountryCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    jurisdiction_groups: Annotated[list[AcceptancePolicyProfileRegionAliases] | None, Field(description="Named groups declared in this profile's region_aliases.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    all_jurisdictions: Annotated[Literal[True] | None, Field(description='Explicitly states that the scope is not limited by delivery jurisdiction.')] = None
+    jurisdictions: Annotated[list[CountryCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    jurisdiction_groups: Annotated[list[AcceptancePolicyProfileRegionAliases] | None, Field(description="Named groups declared in this profile's region_aliases.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    all_jurisdictions: Annotated[Literal[True] | None, Field(description='Explicitly states that the scope is not limited by delivery jurisdiction.'), OmittedNotNull] = None
 
 
 class AcceptancePolicyProfile(AdCPBaseModel):
@@ -80,11 +80,11 @@ class AcceptancePolicyProfile(AdCPBaseModel):
     content_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the RFC 8785 JCS serialization of this profile with content_digest omitted. A profile_id/version pair is immutable; consumers reject a resolved profile whose digest differs.')]
     policy_refs: Annotated[list[PolicyRefsItem], Field(description='Exact registry policy versions from which this profile was derived. Consumers MUST NOT silently substitute a different version.', min_length=1)]
     coverage: Annotated[Coverage, Field(description='partial means additional unpublished rules may apply and omission is unknown. complete means this profile is exhaustive only for its declared scope and version.')]
-    scope: Annotated[Scope | None, Field(description='The boundary within which a complete profile claims exhaustiveness. It is informative for partial profiles and mandatory for complete profiles.')] = None
-    region_aliases: Annotated[dict[AcceptancePolicyProfileRegionAliases, Annotated[NonEmptyList[CountryCode], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]] | None, Field(description='Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.')] = None
-    description: StrMinLen1 | None = None
+    scope: Annotated[Scope | None, Field(description='The boundary within which a complete profile claims exhaustiveness. It is informative for partial profiles and mandatory for complete profiles.'), OmittedNotNull] = None
+    region_aliases: Annotated[dict[AcceptancePolicyProfileRegionAliases, Annotated[NonEmptyList[CountryCode], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]] | None, Field(description='Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.'), OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
     rules: Annotated[list[AcceptancePolicyRule], Field(min_length=1)]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AcceptancePolicyProfile"]

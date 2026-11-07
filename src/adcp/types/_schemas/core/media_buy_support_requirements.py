@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, PropertyCount, Rule
 
 from .media_buy_frequency_cap_requirement import MediaBuyFrequencyCapRequirement
@@ -23,8 +23,8 @@ class ProductMediaBuySupportRequirements(AdCPBaseModel):
         Dependencies('frequency_cap_constraints', ('frequency_cap',)),
         PropertyCount(minimum=1, maximum=None),
     )
-    frequency_cap: Annotated[Literal[True] | None, Field(description='Require product participation in one shared MediaBuy frequency-cap counter.')] = None
-    frequency_cap_constraints: MediaBuyFrequencyCapRequirement | None = None
+    frequency_cap: Annotated[Literal[True] | None, Field(description='Require product participation in one shared MediaBuy frequency-cap counter.'), OmittedNotNull] = None
+    frequency_cap_constraints: Annotated[MediaBuyFrequencyCapRequirement | None, OmittedNotNull] = None
 
 
 __all__ = ["ProductMediaBuySupportRequirements"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
@@ -29,15 +29,15 @@ class DeclineProposalsRequest(AdCPVersionEnvelope, AdcpRequest):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('declines'),
     )
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
-    context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.')] = None
-    context: ContextObject | None = None
-    governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: PushNotificationConfig | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
+    context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    governance_context: Annotated[StrMinLen1MaxLen4096 | None, OmittedNotNull] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key required for retry-safe proposal decline.')]
     declines: Annotated[list[ProposalDecline], Field(description='Proposal declines to apply. proposal_id is the semantic uniqueness key and values MUST be unique even when two entries otherwise differ; implementations enforce this rule because JSON Schema uniqueItems only compares whole objects. Results preserve request order.', json_schema_extra={'uniqueItems': True}, max_length=25, min_length=1)]
-    opportunity: Annotated[OpportunityContext | None, Field(description='Optional planning-cycle update. Every named proposal MUST belong to this opportunity_id. Sellers apply the update only when every result is declined; if any result is unable, the opportunity remains unchanged. Use status closed when these declines end the broader opportunity.')] = None
+    opportunity: Annotated[OpportunityContext | None, Field(description='Optional planning-cycle update. Every named proposal MUST belong to this opportunity_id. Sellers apply the update only when every result is declined; if any result is unable, the opportunity remains unchanged. Use status closed when these declines end the broader opportunity.'), OmittedNotNull] = None
 
 
 __all__ = ["DeclineProposalsRequest"]

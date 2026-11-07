@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMaxLen255, StrMaxLen500, StrMaxLen2000
 
 from ..enums.pacing import Pacing
@@ -26,10 +26,10 @@ class TotalBudgetGuidance(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/proposal.json', pointer='#/properties/total_budget_guidance')
-    min: Annotated[NonNegativeFloat | None, Field(description='Minimum recommended budget')] = None
-    recommended: Annotated[NonNegativeFloat | None, Field(description='Recommended budget for optimal performance')] = None
-    max: Annotated[NonNegativeFloat | None, Field(description='Maximum budget before diminishing returns')] = None
-    currency: Annotated[str | None, Field(description='ISO 4217 currency code')] = None
+    min: Annotated[NonNegativeFloat | None, Field(description='Minimum recommended budget'), OmittedNotNull] = None
+    recommended: Annotated[NonNegativeFloat | None, Field(description='Recommended budget for optimal performance'), OmittedNotNull] = None
+    max: Annotated[NonNegativeFloat | None, Field(description='Maximum budget before diminishing returns'), OmittedNotNull] = None
+    currency: Annotated[str | None, Field(description='ISO 4217 currency code'), OmittedNotNull] = None
 
 
 class Proposal(AdCPBaseModel):
@@ -46,18 +46,18 @@ class Proposal(AdCPBaseModel):
     )
     proposal_id: Annotated[StrMaxLen255, Field(description='Unique identifier for this proposal. Used to finalize a draft proposal and to execute a committed proposal via create_media_buy.')]
     name: Annotated[StrMaxLen500, Field(description='Human-readable name for this media plan proposal')]
-    description: Annotated[StrMaxLen2000 | None, Field(description='Explanation of the proposal strategy and what it achieves')] = None
+    description: Annotated[StrMaxLen2000 | None, Field(description='Explanation of the proposal strategy and what it achieves'), OmittedNotNull] = None
     allocations: Annotated[list[ProductAllocation], Field(description='Products and budget constraints in this plan. Fixed proposals require allocation_percentage on every entry and percentages MUST sum to 100. Seller-optimized proposals forbid exact allocation_percentage and may instead supply min_spend_target_percentage and max_spend_percentage, each only when the seller advertises the matching package-control capability (seller_optimized_min_spend_targets, seller_optimized_package_budgets). Publishers are responsible for validating cross-entry sums; buyers SHOULD validate them before execution.', min_length=1)]
-    budget_allocation: Annotated[BudgetAllocation | None, Field(description='How the executed total budget is allocated across proposal products. Omit for legacy fixed proposals.')] = None
-    pacing: Annotated[Pacing | None, Field(description='Recommended aggregate pacing for the executed media-buy budget. On a committed proposal this is part of the firm delivery terms.')] = None
-    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Aggregate cap bound into this legacy proposal. It is authoritative when the proposal is executed and uses one counter across its packages.')] = None
-    proposal_status: Annotated[ProposalStatus | None, Field(description="Lifecycle status of this proposal and the per-proposal source of truth for whether finalization is required before create_media_buy. When absent, the proposal is ready to buy (backward compatible). 'draft' means indicative pricing — finalize via refine before purchasing. 'committed' means firm pricing with inventory reserved until expires_at and executable via create_media_buy.")] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this proposal expires and can no longer be executed. For draft proposals, indicates when indicative pricing becomes stale. For committed proposals, indicates when the inventory hold lapses — the buyer must call create_media_buy before this time.')] = None
-    insertion_order: Annotated[InsertionOrder | None, Field(description='Formal insertion order attached to a committed proposal. Present when the seller requires a signed agreement before the media buy can proceed. The buyer references the io_id in io_acceptance on create_media_buy.')] = None
-    total_budget_guidance: Annotated[TotalBudgetGuidance | None, Field(description='Optional budget guidance for this proposal')] = None
-    brief_alignment: Annotated[StrMaxLen2000 | None, Field(description='Explanation of how this proposal aligns with the campaign brief')] = None
-    forecast: Annotated[DeliveryForecast | None, Field(description='Aggregate forecasted delivery metrics for the entire proposal. When both proposal-level and allocation-level forecasts are present, the proposal-level forecast is authoritative for total delivery estimation.')] = None
-    ext: ExtensionObject | None = None
+    budget_allocation: Annotated[BudgetAllocation | None, Field(description='How the executed total budget is allocated across proposal products. Omit for legacy fixed proposals.'), OmittedNotNull] = None
+    pacing: Annotated[Pacing | None, Field(description='Recommended aggregate pacing for the executed media-buy budget. On a committed proposal this is part of the firm delivery terms.'), OmittedNotNull] = None
+    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Aggregate cap bound into this legacy proposal. It is authoritative when the proposal is executed and uses one counter across its packages.'), OmittedNotNull] = None
+    proposal_status: Annotated[ProposalStatus | None, Field(description="Lifecycle status of this proposal and the per-proposal source of truth for whether finalization is required before create_media_buy. When absent, the proposal is ready to buy (backward compatible). 'draft' means indicative pricing — finalize via refine before purchasing. 'committed' means firm pricing with inventory reserved until expires_at and executable via create_media_buy."), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='When this proposal expires and can no longer be executed. For draft proposals, indicates when indicative pricing becomes stale. For committed proposals, indicates when the inventory hold lapses — the buyer must call create_media_buy before this time.'), OmittedNotNull] = None
+    insertion_order: Annotated[InsertionOrder | None, Field(description='Formal insertion order attached to a committed proposal. Present when the seller requires a signed agreement before the media buy can proceed. The buyer references the io_id in io_acceptance on create_media_buy.'), OmittedNotNull] = None
+    total_budget_guidance: Annotated[TotalBudgetGuidance | None, Field(description='Optional budget guidance for this proposal'), OmittedNotNull] = None
+    brief_alignment: Annotated[StrMaxLen2000 | None, Field(description='Explanation of how this proposal aligns with the campaign brief'), OmittedNotNull] = None
+    forecast: Annotated[DeliveryForecast | None, Field(description='Aggregate forecasted delivery metrics for the entire proposal. When both proposal-level and allocation-level forecasts are present, the proposal-level forecast is authoritative for total delivery estimation.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["Proposal"]

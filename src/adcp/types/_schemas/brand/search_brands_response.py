@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import DictMinProperties1, HttpUrl
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -64,9 +64,9 @@ class LogosItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items')
     url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
-    orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation')] = None
-    background: Annotated[Background | None, Field(description='Background compatibility')] = None
-    variant: Annotated[LogoVariant | None, Field(description='Logo variant type')] = None
+    orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation'), OmittedNotNull] = None
+    background: Annotated[Background | None, Field(description='Background compatibility'), OmittedNotNull] = None
+    variant: Annotated[LogoVariant | None, Field(description='Logo variant type'), OmittedNotNull] = None
 
 
 class Rights(AdCPBaseModel):
@@ -77,9 +77,9 @@ class Rights(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/rights')
-    available_uses: list[RightUse] | None = None
-    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). If omitted, rights are available worldwide.')] = None
-    excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)')] = None
+    available_uses: Annotated[list[RightUse] | None, OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). If omitted, rights are available worldwide.'), OmittedNotNull] = None
+    excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)'), OmittedNotNull] = None
 
 
 class SearchBrandResult(AdCPBaseModel):
@@ -91,16 +91,16 @@ class SearchBrandResult(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult')
     brand_id: Annotated[str, Field(description='Brand identifier. Pass to get_brand_identity or get_rights for the next step.')]
-    house: Annotated[ObjDomainName | None, Field(description='The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.')] = None
-    relationship_trust: Annotated[RelationshipTrust | None, Field(description="Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution.")] = None
-    relationship_verified_at: Annotated[AwareDatetime | None, Field(description='When the mutual-assertion edge was last confirmed by both sides. Present only when relationship_trust is mutual.')] = None
-    claimed_house_domain: Annotated[str | None, Field(description='Canonical domain of the house this brand self-declares as its parent. Not trust-extending on its own. Present for leaf_only and unverifiable trust states where the brand has made a claim that could not be or has not been reciprocated.')] = None
+    house: Annotated[ObjDomainName | None, Field(description='The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.'), OmittedNotNull] = None
+    relationship_trust: Annotated[RelationshipTrust | None, Field(description="Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution."), OmittedNotNull] = None
+    relationship_verified_at: Annotated[AwareDatetime | None, Field(description='When the mutual-assertion edge was last confirmed by both sides. Present only when relationship_trust is mutual.'), OmittedNotNull] = None
+    claimed_house_domain: Annotated[str | None, Field(description='Canonical domain of the house this brand self-declares as its parent. Not trust-extending on its own. Present for leaf_only and unverifiable trust states where the brand has made a claim that could not be or has not been reciprocated.'), OmittedNotNull] = None
     names: Annotated[list[DictMinProperties1[str, str]], Field(description="Localized brand names with BCP 47 locale code keys (e.g., 'en_US', 'fr_CA').")]
-    description: Annotated[str | None, Field(description='Brand description')] = None
-    industries: Annotated[list[AdvertiserIndustry] | None, Field(description='Brand industries, following the advertiser-industry taxonomy', min_length=1)] = None
-    keller_type: Annotated[KellerType | None, Field(description='Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)')] = None
-    logos: Annotated[list[LogosItem] | None, Field(description='Standard-resolution logos for display during discovery. High-res variants are gated behind get_brand_identity with account authorization.')] = None
-    rights: Annotated[Rights | None, Field(description='Rights availability summary. Signals whether this brand has licensable rights and in which markets. For detailed pricing and rights records, use get_rights.')] = None
+    description: Annotated[str | None, Field(description='Brand description'), OmittedNotNull] = None
+    industries: Annotated[list[AdvertiserIndustry] | None, Field(description='Brand industries, following the advertiser-industry taxonomy', min_length=1), OmittedNotNull] = None
+    keller_type: Annotated[KellerType | None, Field(description='Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)'), OmittedNotNull] = None
+    logos: Annotated[list[LogosItem] | None, Field(description='Standard-resolution logos for display during discovery. High-res variants are gated behind get_brand_identity with account authorization.'), OmittedNotNull] = None
+    rights: Annotated[Rights | None, Field(description='Rights availability summary. Signals whether this brand has licensable rights and in which markets. For detailed pricing and rights records, use get_rights.'), OmittedNotNull] = None
 
 
 class SearchBrandsSuccess(SearchBrandsResponse):
@@ -112,9 +112,9 @@ class SearchBrandsSuccess(SearchBrandsResponse):
         ForbiddenGroups((('errors',),)),
     )
     brands: Annotated[list[SearchBrandResult], Field(description='Brand stubs matching the query, ranked by relevance')]
-    pagination: Annotated[PaginationResponse | None, Field(description='Pagination metadata. Present when has_more is true or total_count is known.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    pagination: Annotated[PaginationResponse | None, Field(description='Pagination metadata. Present when has_more is true or total_count is known.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SearchBrandsError(SearchBrandsResponse, FailedResponse):
@@ -126,8 +126,8 @@ class SearchBrandsError(SearchBrandsResponse, FailedResponse):
         ForbiddenGroups((('brands',),)),
     )
     errors: Annotated[list[Error], Field(min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 SearchBrandsResponse._branch_models = (SearchBrandsSuccess, SearchBrandsError,)

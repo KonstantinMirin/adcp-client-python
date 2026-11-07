@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..a2ui.surface import A2UISurface
@@ -28,9 +28,9 @@ class Response(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/response')
-    message: Annotated[str | None, Field(description='Conversational message from brand agent')] = None
-    surface: Annotated[A2UISurface | None, Field(description='A2UI surface with interactive components')] = None
-    ui_elements: Annotated[list[SIUIElement] | None, Field(description='Visual components to render (DEPRECATED: use surface instead)')] = None
+    message: Annotated[str | None, Field(description='Conversational message from brand agent'), OmittedNotNull] = None
+    surface: Annotated[A2UISurface | None, Field(description='A2UI surface with interactive components'), OmittedNotNull] = None
+    ui_elements: Annotated[list[SIUIElement] | None, Field(description='Visual components to render (DEPRECATED: use surface instead)'), OmittedNotNull] = None
 
 
 class HandoffType(StrEnum):
@@ -48,8 +48,8 @@ class IntentPrice(AdCPBaseModel):
     Price information
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/handoff/properties/intent/properties/price')
-    amount: float | None = None
-    currency: str | None = None
+    amount: Annotated[float | None, OmittedNotNull] = None
+    currency: Annotated[str | None, OmittedNotNull] = None
 
 
 class Intent(AdCPBaseModel):
@@ -60,9 +60,9 @@ class Intent(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/handoff/properties/intent')
-    action: Annotated[str | None, Field(description="The commerce action (e.g., 'purchase')")] = None
-    product: Annotated[dict[str, Any] | None, Field(description='Product details for checkout')] = None
-    price: Annotated[IntentPrice | None, Field(description='Price information')] = None
+    action: Annotated[str | None, Field(description="The commerce action (e.g., 'purchase')"), OmittedNotNull] = None
+    product: Annotated[dict[str, Any] | None, Field(description='Product details for checkout'), OmittedNotNull] = None
+    price: Annotated[IntentPrice | None, Field(description='Price information'), OmittedNotNull] = None
 
 
 class ContextForCheckout(AdCPBaseModel):
@@ -73,8 +73,8 @@ class ContextForCheckout(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/handoff/properties/context_for_checkout')
-    conversation_summary: Annotated[str | None, Field(description='Summary of the conversation leading to purchase')] = None
-    applied_offers: Annotated[list[str] | None, Field(description='Offer IDs that were applied during the conversation')] = None
+    conversation_summary: Annotated[str | None, Field(description='Summary of the conversation leading to purchase'), OmittedNotNull] = None
+    applied_offers: Annotated[list[str] | None, Field(description='Offer IDs that were applied during the conversation'), OmittedNotNull] = None
 
 
 class Handoff(AdCPBaseModel):
@@ -85,9 +85,9 @@ class Handoff(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/handoff')
-    type: Annotated[HandoffType | None, Field(description='Type of handoff: transaction (ready for ACP checkout) or complete (conversation done)')] = None
-    intent: Annotated[Intent | None, Field(description='For transaction handoffs: what the user wants to purchase')] = None
-    context_for_checkout: Annotated[ContextForCheckout | None, Field(description='Context to pass to ACP for seamless checkout')] = None
+    type: Annotated[HandoffType | None, Field(description='Type of handoff: transaction (ready for ACP checkout) or complete (conversation done)'), OmittedNotNull] = None
+    intent: Annotated[Intent | None, Field(description='For transaction handoffs: what the user wants to purchase'), OmittedNotNull] = None
+    context_for_checkout: Annotated[ContextForCheckout | None, Field(description='Context to pass to ACP for seamless checkout'), OmittedNotNull] = None
 
 
 class SISendMessageResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -99,14 +99,14 @@ class SISendMessageResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#')
     session_id: Annotated[str, Field(description='Session identifier')]
-    response: Annotated[Response | None, Field(description="Brand agent's response")] = None
-    mcp_resource_uri: Annotated[str | None, Field(description='MCP resource URI for hosts with MCP Apps support (e.g., ui://si/session-abc123)')] = None
-    sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for sponsored context carried by this brand-agent response. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before presenting, comparing, or otherwise using it.')] = None
+    response: Annotated[Response | None, Field(description="Brand agent's response"), OmittedNotNull] = None
+    mcp_resource_uri: Annotated[str | None, Field(description='MCP resource URI for hosts with MCP Apps support (e.g., ui://si/session-abc123)'), OmittedNotNull] = None
+    sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for sponsored context carried by this brand-agent response. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before presenting, comparing, or otherwise using it.'), OmittedNotNull] = None
     session_status: Annotated[SISessionStatus, Field(description='Current session status. On a successful response, one of: active, pending_handoff, or complete. Terminated sessions return error codes (SESSION_NOT_FOUND or SESSION_TERMINATED) instead of a success response.')]
-    handoff: Annotated[Handoff | None, Field(description='Handoff request when session_status is pending_handoff')] = None
-    errors: list[Error] | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    handoff: Annotated[Handoff | None, Field(description='Handoff request when session_status is pending_handoff'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SISendMessageResponse"]

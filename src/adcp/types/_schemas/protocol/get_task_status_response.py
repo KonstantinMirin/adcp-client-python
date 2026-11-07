@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import Approximation, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -35,14 +35,14 @@ class GetTaskStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     status: Annotated[TaskStatus, Field(description='Current task status')]
     created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
     updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
-    completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)')] = None
-    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration')] = None
-    progress: Annotated[Progress | None, Field(description='Progress information for long-running tasks')] = None
-    error: Annotated[ObjCodeMessageDetails | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.')] = None
-    history: Annotated[list[ObjTimestampTypeData] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)')] = None
-    result: Annotated[dict[str, Any] | None, Field(description='Canonical task-specific terminal payload. Present when include_result was true and a completed, failed, or rejected task produced a terminal artifact; canceled tasks may omit it. For failed tasks, the singular error field is a convenience summary and MUST agree with the canonical fatal error represented here. Consumers and sellers MUST resolve and validate the exact schema through manifest.task_result_resolution: use terminal_schema_overrides[task_type] when present, otherwise tools[task_type].response_schema. The polling envelope keeps this field generic so get_task_status does not embed every task response schema.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)'), OmittedNotNull] = None
+    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration'), OmittedNotNull] = None
+    progress: Annotated[Progress | None, Field(description='Progress information for long-running tasks'), OmittedNotNull] = None
+    error: Annotated[ObjCodeMessageDetails | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.'), OmittedNotNull] = None
+    history: Annotated[list[ObjTimestampTypeData] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)'), OmittedNotNull] = None
+    result: Annotated[dict[str, Any] | None, Field(description='Canonical task-specific terminal payload. Present when include_result was true and a completed, failed, or rejected task produced a terminal artifact; canceled tasks may omit it. For failed tasks, the singular error field is a convenience summary and MUST agree with the canonical fatal error represented here. Consumers and sellers MUST resolve and validate the exact schema through manifest.task_result_resolution: use terminal_schema_overrides[task_type] when present, otherwise tools[task_type].response_schema. The polling envelope keeps this field generic so get_task_status does not embed every task response schema.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetTaskStatusResponse"]

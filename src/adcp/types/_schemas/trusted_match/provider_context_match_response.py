@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import IntMin0Max86400
 
@@ -25,8 +25,8 @@ class Signals(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/provider-context-match-response.json', pointer='#/properties/signals')
-    segments: Annotated[list[str] | None, Field(description='Contextual segment identifiers.')] = None
-    targeting_kvs: ContextMatchResponseProviderRouterTargetingKvs | None = None
+    segments: Annotated[list[str] | None, Field(description='Contextual segment identifiers.'), OmittedNotNull] = None
+    targeting_kvs: Annotated[ContextMatchResponseProviderRouterTargetingKvs | None, OmittedNotNull] = None
 
 
 class ContextMatchResponseProviderRouter(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -43,8 +43,8 @@ class ContextMatchResponseProviderRouter(AdCPVersionEnvelope, ProtocolEnvelope):
     type: Annotated[Literal['context_match_response'], Field(description='Message type discriminator for deserialization. Same const as the router→publisher variant so decoders can key off type before dispatching on hop shape.')]
     request_id: Annotated[str, Field(description='Echoed request identifier from the context match request.')]
     offers: Annotated[list[Offer], Field(description='Offers from this provider, one per activated package. An empty array means no packages matched. For simple activation, each offer has just package_id. For richer responses, offers include brand, price, summary, and creative manifest.')]
-    cache_ttl: Annotated[IntMin0Max86400 | None, Field(description="Optional override for the router's default 5-minute response cache TTL, in seconds. When present, the router MUST use this value instead of its default. Set to 0 to disable caching.")] = None
-    signals: Annotated[Signals | None, Field(description="Provider-origin response-level signals. Targeting pairs use the provider's local key vocabulary; the router preserves and attributes them rather than passing them through as flattened publisher targeting.")] = None
+    cache_ttl: Annotated[IntMin0Max86400 | None, Field(description="Optional override for the router's default 5-minute response cache TTL, in seconds. When present, the router MUST use this value instead of its default. Set to 0 to disable caching."), OmittedNotNull] = None
+    signals: Annotated[Signals | None, Field(description="Provider-origin response-level signals. Targeting pairs use the provider's local key vocabulary; the router preserves and attributes them rather than passing them through as flattened publisher targeting."), OmittedNotNull] = None
 
 
 __all__ = ["ContextMatchResponseProviderRouter", "ContextMatchResponseProviderRouterTargetingKvs"]

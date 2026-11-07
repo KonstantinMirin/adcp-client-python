@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import (
     AgentReportingDestinationFileTransferDestinationTransport,
@@ -67,8 +67,8 @@ class Recipient(AdCPBaseModel):
         Dependencies('region', ('cloud',)),
     )
     identity: StrMinLen1MaxLen512
-    cloud: ReportingCloud | None = None
-    region: StrMinLen1MaxLen128 | None = None
+    cloud: Annotated[ReportingCloud | None, OmittedNotNull] = None
+    region: Annotated[StrMinLen1MaxLen128 | None, OmittedNotNull] = None
 
 
 class ProvisionRecipient(ReportingDatasetShareDestination):

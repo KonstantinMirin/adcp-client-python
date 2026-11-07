@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -40,8 +40,8 @@ class EventSourceExecutionRequirement(ProductExecutionRequirement):
         UniqueItems('event_types'),
     )
     kind: Literal['event_source']
-    event_types: Annotated[list[EventType] | None, Field(description='Event types that satisfy the requirement (any-of): the satisfying `event_sources[]` entry MUST use one of these `event_type` values. Omit when any event type satisfies it.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    event_types: Annotated[list[EventType] | None, Field(description='Event types that satisfy the requirement (any-of): the satisfying `event_sources[]` entry MUST use one of these `event_type` values. Omit when any event type satisfies it.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class CatalogExecutionRequirement(ProductExecutionRequirement):
@@ -57,7 +57,7 @@ class CatalogExecutionRequirement(ProductExecutionRequirement):
     )
     kind: Literal['catalog']
     catalog_types: Annotated[list[CatalogType], Field(description='Catalog types that satisfy the requirement (any-of). One catalog of any listed type satisfies it.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class Connection(DownstreamConnectionRequirement):
@@ -71,8 +71,8 @@ class Connection(DownstreamConnectionRequirement):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('resource_ref',), ('connection_id',), ('expires_at',))),
     )
-    status: Annotated[Literal['unknown'] | None, Field(description='Current seller-observed state for this downstream connection when known. Product declarations MAY omit status or use `unknown`; AUTHORIZATION_REQUIRED details SHOULD use `missing`, `expired`, or `revoked` for the connection that blocked the call.')] = None
-    required_for: Annotated[Annotated[list[StrMinLen1], AfterValidator(AtLeastOne(values=('create_media_buy',), pinned=()))] | None, Field(description='Concrete AdCP protocol operation names that require this downstream connection. Sellers SHOULD include this in product declarations when the requirement is known ahead of time, and in AUTHORIZATION_REQUIRED details when it explains the failed operation. Prefer specific operation names such as `list_creatives`, `sync_creatives`, `create_media_buy`, `get_media_buy_delivery`, or `get_creative_delivery` over broad category labels such as `reporting`.', json_schema_extra={'uniqueItems': True})] = None
+    status: Annotated[Literal['unknown'] | None, Field(description='Current seller-observed state for this downstream connection when known. Product declarations MAY omit status or use `unknown`; AUTHORIZATION_REQUIRED details SHOULD use `missing`, `expired`, or `revoked` for the connection that blocked the call.'), OmittedNotNull] = None
+    required_for: Annotated[Annotated[list[StrMinLen1], AfterValidator(AtLeastOne(values=('create_media_buy',), pinned=()))] | None, Field(description='Concrete AdCP protocol operation names that require this downstream connection. Sellers SHOULD include this in product declarations when the requirement is known ahead of time, and in AUTHORIZATION_REQUIRED details when it explains the failed operation. Prefer specific operation names such as `list_creatives`, `sync_creatives`, `create_media_buy`, `get_media_buy_delivery`, or `get_creative_delivery` over broad category labels such as `reporting`.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
 class DownstreamConnectionExecutionRequirement(ProductExecutionRequirement):
@@ -85,7 +85,7 @@ class DownstreamConnectionExecutionRequirement(ProductExecutionRequirement):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-execution-requirement.json', pointer='#/oneOf/2')
     kind: Literal['downstream_connection']
     connection: Annotated[Connection, Field(description='The required connection. Account-independent: `status` is omitted or `unknown`; `resource_ref`, `connection_id`, and `expires_at` MUST be omitted; `required_for`, when present, includes `create_media_buy`.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 ProductExecutionRequirement._branch_models = (EventSourceExecutionRequirement, CatalogExecutionRequirement, DownstreamConnectionExecutionRequirement,)

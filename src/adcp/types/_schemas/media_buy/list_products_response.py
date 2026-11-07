@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMinLen1
 from adcp.types.envelopes import AdcpResponse
@@ -46,7 +46,7 @@ class IncompleteItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-products-response.json', pointer='#/properties/incomplete/items')
     scope: Scope
     description: StrMinLen1
-    estimated_wait: Duration | None = None
+    estimated_wait: Annotated[Duration | None, OmittedNotNull] = None
 
 
 class ListProductsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
@@ -66,16 +66,16 @@ class ListProductsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposals',), ('refinement_applied',), ('pagination',), ('unchanged',))),
     )
-    outcome: Annotated[Outcome | None, Field(description='Whether this response carries a product page or confirms that the selected feed has not changed.')] = None
-    products: list[CanonicalProduct] | None = None
-    next_cursor: Annotated[StrMinLen1 | None, Field(description='Cursor for the next page. Omitted when this is the last page.')] = None
-    feed_version: Annotated[str | None, Field(description='Opaque version of the selected offer feed. For wholesale webhook consumers this is the same scope-keyed token carried as wholesale_feed_version on product.* and wholesale_feed.bulk_change notifications.')] = None
-    pricing_version: Annotated[str | None, Field(description='Opaque version of the selected pricing layer.')] = None
-    cache_scope: CacheScope | None = None
-    incomplete: Annotated[list[IncompleteItem] | None, Field(description='Usable partial response with explicitly missing product-list scopes.', min_length=1)] = None
-    replayed: Literal[True] | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    outcome: Annotated[Outcome | None, Field(description='Whether this response carries a product page or confirms that the selected feed has not changed.'), OmittedNotNull] = None
+    products: Annotated[list[CanonicalProduct] | None, OmittedNotNull] = None
+    next_cursor: Annotated[StrMinLen1 | None, Field(description='Cursor for the next page. Omitted when this is the last page.'), OmittedNotNull] = None
+    feed_version: Annotated[str | None, Field(description='Opaque version of the selected offer feed. For wholesale webhook consumers this is the same scope-keyed token carried as wholesale_feed_version on product.* and wholesale_feed.bulk_change notifications.'), OmittedNotNull] = None
+    pricing_version: Annotated[str | None, Field(description='Opaque version of the selected pricing layer.'), OmittedNotNull] = None
+    cache_scope: Annotated[CacheScope | None, OmittedNotNull] = None
+    incomplete: Annotated[list[IncompleteItem] | None, Field(description='Usable partial response with explicitly missing product-list scopes.', min_length=1), OmittedNotNull] = None
+    replayed: Annotated[Literal[True] | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ListProductsResponseListed(ListProductsResponse):

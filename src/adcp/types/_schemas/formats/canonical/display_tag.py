@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -51,22 +51,22 @@ class CanonicalFormatDisplayTag(CanonicalFormatBase):
         UniqueItems('supported_delivery_types'),
         PresenceGroups((Presence(require=(('width', 'height'),), forbid=(('sizes',), ('min_width',), ('max_width',), ('min_height',), ('max_height',))), Presence(require=(('sizes',),), forbid=(('width',), ('height',), ('min_width',), ('max_width',), ('min_height',), ('max_height',))), Presence(require=(('min_width',), ('max_width',), ('min_height',), ('max_height',)), forbid=(('width',), ('height',), ('sizes',))), Presence(require=(), forbid=(('width',), ('height',), ('sizes',), ('min_width',), ('max_width',), ('min_height',), ('max_height',)))), 'oneOf'),
     )
-    slots: Annotated[list[SlotsItem] | None, Field(description='Backward-compatible URL-delivery slots. `tag_url` MUST use `url_type: ad_request`. A format option accepting `inline_markup` or `paired_redirect` overrides this list with a required slot whose `asset_type` is `display_tag`; the display-tag asset keeps paired redirect URLs atomic.', json_schema_extra={'default': [{'asset_group_id': 'tag_url', 'asset_type': 'url', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}]})] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'tag_url', 'asset_type': 'url', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}]))
-    width: Annotated[IntMin1 | None, Field(description='Required tag rendering width in pixels — use for fixed-size slots. For multi-size flexible slots use `sizes[]`; for responsive use `min_width`/`max_width`/`min_height`/`max_height`. Exactly one of `(width, height)`, `sizes[]`, or `min/max_width` + `min/max_height` ranges MUST be set.')] = None
-    height: Annotated[IntMin1 | None, Field(description='Required tag rendering height in pixels. See `width` for size-mode mutual exclusion.')] = None
-    sizes: Annotated[list[SizesItem] | None, Field(description="List of accepted (width, height) pairs for a multi-size flexible slot. The buyer's third-party tag must render at one of the listed sizes; the seller picks which size to request at impression time. Mutually exclusive with `(width, height)` and with responsive ranges.", min_length=1)] = None
-    min_width: Annotated[IntMin1 | None, Field(description='Minimum accepted width for responsive third-party tags. Pair with `max_width`. Mutually exclusive with `(width, height)` and `sizes[]`.')] = None
-    max_width: Annotated[IntMin1 | None, Field(description='Maximum accepted width for responsive third-party tags. Pair with `min_width`.')] = None
-    min_height: Annotated[IntMin1 | None, Field(description='Minimum accepted height for responsive third-party tags. Pair with `max_height`.')] = None
-    max_height: Annotated[IntMin1 | None, Field(description='Maximum accepted height for responsive third-party tags. Pair with `min_height`.')] = None
-    supported_tag_types: Annotated[list[SupportedTagTypesItem] | None, Field(description='Deprecated ambiguous mechanism list. Use `supported_delivery_types`; markup subtype lives on the `display_tag` asset.')] = None
-    supported_delivery_types: Annotated[list[SupportedDeliveryTypesItem] | None, Field(description='Closed set of delivery types this format option can traffic. `paired_redirect` means one atomic ad-request/click-through pair (Internal Redirect semantics), never independently matchable URL slots.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ssl_required: Annotated[bool | None, Field(description='Whether the tag URL must be HTTPS.')] = None
-    max_redirect_depth: Annotated[NonNegativeInt | None, Field(description='Maximum redirect chain depth permitted.')] = None
-    max_response_time_ms: Annotated[IntMin1 | None, Field(description='Maximum tag-server response time in milliseconds.')] = None
-    backup_image_required: Annotated[bool | None, Field(description='Whether a backup image must accompany the tag for environments that cannot render the third-party tag.')] = None
-    backup_image_max_size_kb: IntMin1 | None = None
-    om_sdk_required: Annotated[bool | None, Field(description="Whether the buyer's tag must integrate IAB Open Measurement SDK for viewability.")] = None
+    slots: Annotated[list[SlotsItem] | None, Field(description='Backward-compatible URL-delivery slots. `tag_url` MUST use `url_type: ad_request`. A format option accepting `inline_markup` or `paired_redirect` overrides this list with a required slot whose `asset_type` is `display_tag`; the display-tag asset keeps paired redirect URLs atomic.', json_schema_extra={'default': [{'asset_group_id': 'tag_url', 'asset_type': 'url', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}]}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'tag_url', 'asset_type': 'url', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}]))
+    width: Annotated[IntMin1 | None, Field(description='Required tag rendering width in pixels — use for fixed-size slots. For multi-size flexible slots use `sizes[]`; for responsive use `min_width`/`max_width`/`min_height`/`max_height`. Exactly one of `(width, height)`, `sizes[]`, or `min/max_width` + `min/max_height` ranges MUST be set.'), OmittedNotNull] = None
+    height: Annotated[IntMin1 | None, Field(description='Required tag rendering height in pixels. See `width` for size-mode mutual exclusion.'), OmittedNotNull] = None
+    sizes: Annotated[list[SizesItem] | None, Field(description="List of accepted (width, height) pairs for a multi-size flexible slot. The buyer's third-party tag must render at one of the listed sizes; the seller picks which size to request at impression time. Mutually exclusive with `(width, height)` and with responsive ranges.", min_length=1), OmittedNotNull] = None
+    min_width: Annotated[IntMin1 | None, Field(description='Minimum accepted width for responsive third-party tags. Pair with `max_width`. Mutually exclusive with `(width, height)` and `sizes[]`.'), OmittedNotNull] = None
+    max_width: Annotated[IntMin1 | None, Field(description='Maximum accepted width for responsive third-party tags. Pair with `min_width`.'), OmittedNotNull] = None
+    min_height: Annotated[IntMin1 | None, Field(description='Minimum accepted height for responsive third-party tags. Pair with `max_height`.'), OmittedNotNull] = None
+    max_height: Annotated[IntMin1 | None, Field(description='Maximum accepted height for responsive third-party tags. Pair with `min_height`.'), OmittedNotNull] = None
+    supported_tag_types: Annotated[list[SupportedTagTypesItem] | None, Field(description='Deprecated ambiguous mechanism list. Use `supported_delivery_types`; markup subtype lives on the `display_tag` asset.'), OmittedNotNull] = None
+    supported_delivery_types: Annotated[list[SupportedDeliveryTypesItem] | None, Field(description='Closed set of delivery types this format option can traffic. `paired_redirect` means one atomic ad-request/click-through pair (Internal Redirect semantics), never independently matchable URL slots.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ssl_required: Annotated[bool | None, Field(description='Whether the tag URL must be HTTPS.'), OmittedNotNull] = None
+    max_redirect_depth: Annotated[NonNegativeInt | None, Field(description='Maximum redirect chain depth permitted.'), OmittedNotNull] = None
+    max_response_time_ms: Annotated[IntMin1 | None, Field(description='Maximum tag-server response time in milliseconds.'), OmittedNotNull] = None
+    backup_image_required: Annotated[bool | None, Field(description='Whether a backup image must accompany the tag for environments that cannot render the third-party tag.'), OmittedNotNull] = None
+    backup_image_max_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
+    om_sdk_required: Annotated[bool | None, Field(description="Whether the buyer's tag must integrate IAB Open Measurement SDK for viewability."), OmittedNotNull] = None
 
 
 __all__ = ["CanonicalFormatDisplayTag"]

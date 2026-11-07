@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import ComplyTestControllerRequestParamsIdentifierValueDigestsItem
 
@@ -34,10 +34,10 @@ class AudienceMember(AdCPBaseModel):
         RequiredGroups((('hashed_email',), ('hashed_phone',), ('uids',)), 'anyOf'),
     )
     external_id: Annotated[str, Field(description="Buyer-assigned stable identifier for this audience member (e.g. CRM record ID, loyalty ID). Used for deduplication, removal, and cross-referencing with buyer systems. Adapters for CDPs that don't natively assign IDs can derive one (e.g. hash of the member's identifiers).")]
-    hashed_email: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hash of lowercase, trimmed email address. Pseudonymous PII, not anonymous — the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.')] = None
-    hashed_phone: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Pseudonymous PII, not anonymous — the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.')] = None
-    uids: Annotated[list[UidsItem] | None, Field(description='Universal ID values (MAIDs, RampID, UID2, etc.) for user matching.', min_length=1)] = None
-    ext: ExtensionObject | None = None
+    hashed_email: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hash of lowercase, trimmed email address. Pseudonymous PII, not anonymous — the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.'), OmittedNotNull] = None
+    hashed_phone: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Pseudonymous PII, not anonymous — the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.'), OmittedNotNull] = None
+    uids: Annotated[list[UidsItem] | None, Field(description='Universal ID values (MAIDs, RampID, UID2, etc.) for user matching.', min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AudienceMember"]

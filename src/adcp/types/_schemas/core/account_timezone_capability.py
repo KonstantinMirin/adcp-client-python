@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -47,9 +47,9 @@ class AccountTimezoneCapability(AdCPBaseModel):
         ConditionalRequired((Match('account_selection', True, ('seller_assigned',)),), require=(), forbid=('supported_timezones',)),
     )
     mode: Annotated[Mode, Field(description='seller_fixed means every account uses fixed_timezone. account_fixed means each account has an immutable timezone returned on Account and selected or assigned during account establishment.')]
-    fixed_timezone: Annotated[StrMinLen1 | None, Field(description='Seller-wide timezone used by every account. Required only for seller_fixed. Use UTC or an IANA timezone identifier.')] = None
-    account_selection: Annotated[AccountSelection | None, Field(description='How an account_fixed timezone is established. seller_assigned covers an existing upstream account or seller onboarding choice; buyer_selected requires timezone in buyer-declared sync_accounts provisioning.')] = None
-    supported_timezones: Annotated[list[StrMinLen1] | None, Field(description='Exact timezone values accepted during buyer-selected account provisioning. Required when account_selection is buyer_selected so buyers can validate the choice before sync_accounts.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    fixed_timezone: Annotated[StrMinLen1 | None, Field(description='Seller-wide timezone used by every account. Required only for seller_fixed. Use UTC or an IANA timezone identifier.'), OmittedNotNull] = None
+    account_selection: Annotated[AccountSelection | None, Field(description='How an account_fixed timezone is established. seller_assigned covers an existing upstream account or seller onboarding choice; buyer_selected requires timezone in buyer-declared sync_accounts provisioning.'), OmittedNotNull] = None
+    supported_timezones: Annotated[list[StrMinLen1] | None, Field(description='Exact timezone values accepted during buyer-selected account provisioning. Required when account_selection is buyer_selected so buyers can validate the choice before sync_accounts.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["AccountTimezoneCapability"]

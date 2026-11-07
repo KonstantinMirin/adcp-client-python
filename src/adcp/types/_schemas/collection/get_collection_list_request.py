@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import PaginationMaxResults
 from adcp.types.envelopes import AdcpRequest
 
@@ -23,8 +23,8 @@ class ObjMaxResultsCursor(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/get-collection-list-request.json', pointer='#/properties/pagination')
-    max_results: Annotated[PaginationMaxResults | None, Field(description='Maximum number of collections to return per page')] = 1000
-    cursor: Annotated[str | None, Field(description='Opaque cursor from a previous response to fetch the next page')] = None
+    max_results: Annotated[PaginationMaxResults | None, Field(description='Maximum number of collections to return per page'), OmittedNotNull] = 1000
+    cursor: Annotated[str | None, Field(description='Opaque cursor from a previous response to fetch the next page'), OmittedNotNull] = None
 
 
 class GetCollectionListRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -36,11 +36,11 @@ class GetCollectionListRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/get-collection-list-request.json', pointer='#')
     list_id: Annotated[str, Field(description='ID of the collection list to retrieve')]
-    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise.')] = None
-    resolve: Annotated[bool | None, Field(description='Whether to apply filters and return resolved collections (default: true)')] = True
-    pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because collection lists can contain thousands of entries.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise.'), OmittedNotNull] = None
+    resolve: Annotated[bool | None, Field(description='Whether to apply filters and return resolved collections (default: true)'), OmittedNotNull] = True
+    pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because collection lists can contain thousands of entries.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetCollectionListRequest"]

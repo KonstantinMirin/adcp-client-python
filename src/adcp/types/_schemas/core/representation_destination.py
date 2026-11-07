@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -28,9 +28,9 @@ class RepresentationDestination(AdCPBaseModel):
     )
     product_id: Annotated[StrMinLen1, Field(description='Product owned by the destination seller.')]
     format_option: Annotated[ProductFormatDeclaration, Field(description='Exact effective destination declaration. The full declaration is carried so an option without format_option_id remains addressable. The destination seller verifies it against the current product and applicable placement/publisher narrowings.')]
-    placement_refs: Annotated[list[PlacementReference] | None, Field(description='Optional placements the derived manifest must satisfy. Omission means every placement in the intended product route, not an unconstrained destination.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST execution version selected for seller-assembled first-class VAST trackers when no sibling exact-version VAST document supplies it. Must be accepted by format_option and is preserved in selection lineage.')] = None
-    execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST execution version selected for seller-assembled first-class DAAST trackers when no sibling exact-version DAAST document supplies it. Must be accepted by format_option and is preserved in selection lineage.')] = None
+    placement_refs: Annotated[list[PlacementReference] | None, Field(description='Optional placements the derived manifest must satisfy. Omission means every placement in the intended product route, not an unconstrained destination.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST execution version selected for seller-assembled first-class VAST trackers when no sibling exact-version VAST document supplies it. Must be accepted by format_option and is preserved in selection lineage.'), OmittedNotNull] = None
+    execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST execution version selected for seller-assembled first-class DAAST trackers when no sibling exact-version DAAST document supplies it. Must be accepted by format_option and is preserved in selection lineage.'), OmittedNotNull] = None
 
 
 __all__ = ["RepresentationDestination"]

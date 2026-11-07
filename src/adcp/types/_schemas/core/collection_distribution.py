@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule, UniqueItems
 
 from ..enums.distribution_identifier_type import DistributionIdentifierType
@@ -34,8 +34,8 @@ class CollectionDistribution(AdCPBaseModel):
         UniqueItems('property_ids'),
     )
     publisher_domain: Annotated[str, Field(description="Domain of the publisher platform where the collection is distributed (e.g., 'youtube.com', 'spotify.com'). Property IDs and publisher-scoped identifiers in this object resolve in this publisher's namespace.")]
-    property_ids: Annotated[list[PropertyID] | None, Field(description="Publisher-scoped property IDs from publisher_domain's adagents.json that carry this collection. For owner-sold channel inventory, these identify the host apps without requiring the host to publish channel-owner placement definitions.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    identifiers: Annotated[list[IdentifiersItem] | None, Field(description='Identifiers for the collection on this publisher, including publisher-scoped channel/EPG identifiers and platform-independent metadata identifiers', min_length=1)] = None
+    property_ids: Annotated[list[PropertyID] | None, Field(description="Publisher-scoped property IDs from publisher_domain's adagents.json that carry this collection. For owner-sold channel inventory, these identify the host apps without requiring the host to publish channel-owner placement definitions.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    identifiers: Annotated[list[IdentifiersItem] | None, Field(description='Identifiers for the collection on this publisher, including publisher-scoped channel/EPG identifiers and platform-independent metadata identifiers', min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["CollectionDistribution"]

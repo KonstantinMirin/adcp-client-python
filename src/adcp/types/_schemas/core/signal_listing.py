@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import HttpUrl
 
@@ -44,17 +44,17 @@ class SignalListing(AdCPBaseModel):
         Approximation(document='core/signal-listing.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'signal_ref': {'type': 'object', 'properties': {'scope': {'const': 'product'}}, 'required': ['scope']}}, 'required': ['signal_ref']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/signal-listing.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['demographic_predicate']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    signal_ref: Annotated[SignalRef | None, Field(description="Canonical signal reference. Use scope 'product' for a product-local signal defined by this listing; use scope 'data_provider' with data_provider_domain for a signal defined in a data provider's published adagents.json signals[]; use scope 'signal_source' with signal_source_url for a source-native signal.")] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older Signals Protocol clients.')] = None
-    name: Annotated[str | None, Field(description="Human-readable signal name. Required when signal_ref.scope is 'product'. For data_provider and signal_source refs, this is optional contextual display text; the referenced definition or source remains authoritative.")] = None
-    description: Annotated[str | None, Field(description='Detailed signal description. For data_provider and signal_source refs, this is optional contextual display text and MUST NOT replace the referenced definition.')] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description='Optional link to published methodology, media-kit, or data documentation. For data_provider and signal_source refs, this SHOULD match or supplement the referenced definition.')] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='When this listing record was last updated. This indicates freshness of the listing record, not an attestation that the underlying data or model was refreshed at that time.')] = None
-    value_type: Annotated[SignalValueType | None, Field(description="The data type of this signal's values. Required when signal_ref.scope is 'product'.")] = None
-    categories: Annotated[list[str] | None, Field(description="Valid values for categorical signals. Present when value_type is 'categorical'.", min_length=1)] = None
-    range: Annotated[ObjMinMax | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'.")] = None
-    restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Restricted attribute categories this listing touches. Required with demographic_predicate and must include age. For referenced provider/source signals, any projected values must match the authoritative definition.', min_length=1)] = None
-    demographic_predicate: Annotated[DemographicPredicate | None, Field(description='Machine-readable demographic meaning. For product-local signals this listing is authoritative; for data-provider and signal-source refs, any projected value MUST match the referenced authoritative definition. Signal names alone never establish demographic semantics.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description="Canonical signal reference. Use scope 'product' for a product-local signal defined by this listing; use scope 'data_provider' with data_provider_domain for a signal defined in a data provider's published adagents.json signals[]; use scope 'signal_source' with signal_source_url for a source-native signal."), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older Signals Protocol clients.'), OmittedNotNull] = None
+    name: Annotated[str | None, Field(description="Human-readable signal name. Required when signal_ref.scope is 'product'. For data_provider and signal_source refs, this is optional contextual display text; the referenced definition or source remains authoritative."), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Detailed signal description. For data_provider and signal_source refs, this is optional contextual display text and MUST NOT replace the referenced definition.'), OmittedNotNull] = None
+    methodology_url: Annotated[HttpUrl | None, Field(description='Optional link to published methodology, media-kit, or data documentation. For data_provider and signal_source refs, this SHOULD match or supplement the referenced definition.'), OmittedNotNull] = None
+    last_updated: Annotated[AwareDatetime | None, Field(description='When this listing record was last updated. This indicates freshness of the listing record, not an attestation that the underlying data or model was refreshed at that time.'), OmittedNotNull] = None
+    value_type: Annotated[SignalValueType | None, Field(description="The data type of this signal's values. Required when signal_ref.scope is 'product'."), OmittedNotNull] = None
+    categories: Annotated[list[str] | None, Field(description="Valid values for categorical signals. Present when value_type is 'categorical'.", min_length=1), OmittedNotNull] = None
+    range: Annotated[ObjMinMax | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'."), OmittedNotNull] = None
+    restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Restricted attribute categories this listing touches. Required with demographic_predicate and must include age. For referenced provider/source signals, any projected values must match the authoritative definition.', min_length=1), OmittedNotNull] = None
+    demographic_predicate: Annotated[DemographicPredicate | None, Field(description='Machine-readable demographic meaning. For product-local signals this listing is authoritative; for data-provider and signal-source refs, any projected value MUST match the referenced authoritative definition. Signal names alone never establish demographic semantics.'), OmittedNotNull] = None
 
 
 __all__ = ["ObjMinMax", "SignalListing"]

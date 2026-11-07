@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
 
 from ..core.ext import ExtensionObject
@@ -20,13 +20,13 @@ class PropertyFeatureValue(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-feature-value.json', pointer='#')
     value: Annotated[bool | float | str, Field(description='The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.')]
-    unit: Annotated[str | None, Field(description="Unit of measurement for quantitative values (e.g., 'gCO2e/1000_impressions', 'percentage')")] = None
-    confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for this value (0-1)')] = None
-    measured_at: Annotated[AwareDatetime | None, Field(description='When this specific value was measured')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this certification/value expires (for time-limited certifications)')] = None
-    methodology_version: Annotated[str | None, Field(description='Version of the methodology used to calculate this value')] = None
-    details: Annotated[dict[str, Any] | None, Field(description='Additional vendor-specific details about this measurement')] = None
-    ext: ExtensionObject | None = None
+    unit: Annotated[str | None, Field(description="Unit of measurement for quantitative values (e.g., 'gCO2e/1000_impressions', 'percentage')"), OmittedNotNull] = None
+    confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for this value (0-1)'), OmittedNotNull] = None
+    measured_at: Annotated[AwareDatetime | None, Field(description='When this specific value was measured'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='When this certification/value expires (for time-limited certifications)'), OmittedNotNull] = None
+    methodology_version: Annotated[str | None, Field(description='Version of the methodology used to calculate this value'), OmittedNotNull] = None
+    details: Annotated[dict[str, Any] | None, Field(description='Additional vendor-specific details about this measurement'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["PropertyFeatureValue"]

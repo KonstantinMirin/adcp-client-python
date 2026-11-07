@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, HttpUrl, IntMin1
 
@@ -51,15 +51,15 @@ class Dimensions(AdCPBaseModel):
     Dimensions for this rendered piece. Defaults to pixels when unit is absent.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/renders/items/properties/dimensions')
-    width: Annotated[FloatGt0 | None, Field(description='Fixed width. Interpretation depends on unit (default: pixels).')] = None
-    height: Annotated[FloatGt0 | None, Field(description='Fixed height. Interpretation depends on unit (default: pixels).')] = None
-    min_width: Annotated[FloatGt0 | None, Field(description='Minimum width for responsive renders')] = None
-    min_height: Annotated[FloatGt0 | None, Field(description='Minimum height for responsive renders')] = None
-    max_width: Annotated[FloatGt0 | None, Field(description='Maximum width for responsive renders')] = None
-    max_height: Annotated[FloatGt0 | None, Field(description='Maximum height for responsive renders')] = None
-    unit: Annotated[DimensionUnit | None, Field(description="Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'.")] = None
-    responsive: Annotated[Responsive | None, Field(description='Indicates which dimensions are responsive/fluid')] = None
-    aspect_ratio: Annotated[FormatRendersItemDimensionsAspectRatio | None, Field(description="Fixed aspect ratio constraint (e.g., '16:9', '4:3', '1:1', '1.91:1')")] = None
+    width: Annotated[FloatGt0 | None, Field(description='Fixed width. Interpretation depends on unit (default: pixels).'), OmittedNotNull] = None
+    height: Annotated[FloatGt0 | None, Field(description='Fixed height. Interpretation depends on unit (default: pixels).'), OmittedNotNull] = None
+    min_width: Annotated[FloatGt0 | None, Field(description='Minimum width for responsive renders'), OmittedNotNull] = None
+    min_height: Annotated[FloatGt0 | None, Field(description='Minimum height for responsive renders'), OmittedNotNull] = None
+    max_width: Annotated[FloatGt0 | None, Field(description='Maximum width for responsive renders'), OmittedNotNull] = None
+    max_height: Annotated[FloatGt0 | None, Field(description='Maximum height for responsive renders'), OmittedNotNull] = None
+    unit: Annotated[DimensionUnit | None, Field(description="Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'."), OmittedNotNull] = None
+    responsive: Annotated[Responsive | None, Field(description='Indicates which dimensions are responsive/fluid'), OmittedNotNull] = None
+    aspect_ratio: Annotated[FormatRendersItemDimensionsAspectRatio | None, Field(description="Fixed aspect ratio constraint (e.g., '16:9', '4:3', '1:1', '1.91:1')"), OmittedNotNull] = None
 
 
 class RendersItem(BranchDispatchMixin, AdCPBaseModel):
@@ -71,8 +71,8 @@ class RendersItem(BranchDispatchMixin, AdCPBaseModel):
     def _branch_combinator(cls) -> str:
         return "oneOf"
     role: Annotated[str, Field(description="Semantic role of this rendered piece (e.g., 'primary', 'companion', 'mobile_variant')")]
-    parameters_from_format_id: Annotated[bool | None, Field(description='When true, parameters for this render (dimensions and/or duration) are specified in the format_id. Used for template formats that accept parameters. Mutually exclusive with specifying dimensions object explicitly.')] = None
-    dimensions: Annotated[Dimensions | None, Field(description='Dimensions for this rendered piece. Defaults to pixels when unit is absent.')] = None
+    parameters_from_format_id: Annotated[bool | None, Field(description='When true, parameters for this render (dimensions and/or duration) are specified in the format_id. Used for template formats that accept parameters. Mutually exclusive with specifying dimensions object explicitly.'), OmittedNotNull] = None
+    dimensions: Annotated[Dimensions | None, Field(description='Dimensions for this rendered piece. Defaults to pixels when unit is absent.'), OmittedNotNull] = None
 
 
 class RendersItemDimensions(RendersItem):
@@ -113,10 +113,10 @@ class BaseIndividualAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/$defs/baseIndividualAsset')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_id: Annotated[str, Field(description='Unique identifier for this asset. Creative manifests MUST use this exact value as the key in the assets object.')]
-    asset_role: Annotated[str | None, Field(description="Descriptive label for this asset's purpose (e.g., 'hero_image', 'logo', 'third_party_tracking'). For documentation and UI display only — manifests key assets by asset_id, not asset_role.")] = None
+    asset_role: Annotated[str | None, Field(description="Descriptive label for this asset's purpose (e.g., 'hero_image', 'logo', 'third_party_tracking'). For documentation and UI display only — manifests key assets by asset_id, not asset_role."), OmittedNotNull] = None
     required: Annotated[bool, Field(description='Whether this asset is required (true) or optional (false). Required assets must be provided for a valid creative. Optional assets enhance the creative but are not mandatory.')]
-    overlays: Annotated[list[Overlay] | None, Field(description="Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., video player controls, publisher logos). Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.")] = None
-    asset_group_id: Annotated[str | None, Field(description="Optional canonical asset_group_id this slot fills, drawn from /schemas/core/asset-group-vocabulary.json. Lets buyers and migration tools resolve v1 author-invented slot names (e.g., `click_url`) to canonical names (e.g., `landing_page_url`). Validators MAY soft-warn when a v1 slot's asset_id is a known alias but no asset_group_id is declared.")] = None
+    overlays: Annotated[list[Overlay] | None, Field(description="Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., video player controls, publisher logos). Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds."), OmittedNotNull] = None
+    asset_group_id: Annotated[str | None, Field(description="Optional canonical asset_group_id this slot fills, drawn from /schemas/core/asset-group-vocabulary.json. Lets buyers and migration tools resolve v1 author-invented slot names (e.g., `click_url`) to canonical names (e.g., `landing_page_url`). Validators MAY soft-warn when a v1 slot's asset_id is a known alias but no asset_group_id is declared."), OmittedNotNull] = None
     asset_type: Any
 
 
@@ -127,7 +127,7 @@ class IndividualImageAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/0')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['image']
-    requirements: ImageAssetRequirements | None = None
+    requirements: Annotated[ImageAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualVideoAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -137,7 +137,7 @@ class IndividualVideoAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/1')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['video']
-    requirements: VideoAssetRequirements | None = None
+    requirements: Annotated[VideoAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualAudioAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -147,7 +147,7 @@ class IndividualAudioAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/2')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['audio']
-    requirements: AudioAssetRequirements | None = None
+    requirements: Annotated[AudioAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualTextAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -157,7 +157,7 @@ class IndividualTextAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/3')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['text']
-    requirements: TextAssetRequirements | None = None
+    requirements: Annotated[TextAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualMarkdownAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -167,7 +167,7 @@ class IndividualMarkdownAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/4')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['markdown']
-    requirements: MarkdownAssetRequirements | None = None
+    requirements: Annotated[MarkdownAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualHtmlAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -177,7 +177,7 @@ class IndividualHtmlAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/5')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['html']
-    requirements: HTMLAssetRequirements | None = None
+    requirements: Annotated[HTMLAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualCssAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -187,7 +187,7 @@ class IndividualCssAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/6')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['css']
-    requirements: CSSAssetRequirements | None = None
+    requirements: Annotated[CSSAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualJavaScriptAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -197,7 +197,7 @@ class IndividualJavaScriptAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/7')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['javascript']
-    requirements: JavaScriptAssetRequirements | None = None
+    requirements: Annotated[JavaScriptAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualZipAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -216,7 +216,7 @@ class IndividualVastAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/9')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['vast']
-    requirements: VASTAssetRequirements | None = None
+    requirements: Annotated[VASTAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualDaastAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -226,7 +226,7 @@ class IndividualDaastAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/10')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['daast']
-    requirements: DAASTAssetRequirements | None = None
+    requirements: Annotated[DAASTAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualUrlAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -236,7 +236,7 @@ class IndividualUrlAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/11')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['url']
-    requirements: URLAssetRequirements | None = None
+    requirements: Annotated[URLAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualWebhookAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -246,7 +246,7 @@ class IndividualWebhookAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/12')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['webhook']
-    requirements: WebhookAssetRequirements | None = None
+    requirements: Annotated[WebhookAssetRequirements | None, OmittedNotNull] = None
 
 
 class IndividualBriefAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -265,7 +265,7 @@ class IndividualCatalogAsset(AssetsItemIndividual, BaseIndividualAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/14')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_type: Literal['catalog']
-    requirements: CatalogRequirements | None = None
+    requirements: Annotated[CatalogRequirements | None, OmittedNotNull] = None
 
 
 class IndividualDisplayTagAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -339,10 +339,10 @@ class SelectionMode(StrEnum):
 class BaseGroupAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/$defs/baseGroupAsset')
     asset_id: Annotated[str, Field(description='Identifier for this asset within the group')]
-    asset_role: Annotated[str | None, Field(description="Descriptive label for this asset's purpose. For documentation and UI display only — manifests key assets by asset_id, not asset_role.")] = None
-    asset_group_id: Annotated[str | None, Field(description='Optional canonical asset_group_id this slot fills, drawn from /schemas/core/asset-group-vocabulary.json. Same semantics as on baseIndividualAsset — lets buyers and migration tools resolve v1 author-invented slot names to canonical names.')] = None
+    asset_role: Annotated[str | None, Field(description="Descriptive label for this asset's purpose. For documentation and UI display only — manifests key assets by asset_id, not asset_role."), OmittedNotNull] = None
+    asset_group_id: Annotated[str | None, Field(description='Optional canonical asset_group_id this slot fills, drawn from /schemas/core/asset-group-vocabulary.json. Same semantics as on baseIndividualAsset — lets buyers and migration tools resolve v1 author-invented slot names to canonical names.'), OmittedNotNull] = None
     required: Annotated[bool, Field(description='Whether this asset is required within each repetition of the group')]
-    overlays: Annotated[list[Overlay] | None, Field(description="Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., carousel navigation arrows, slide indicators). Creative agents should avoid placing critical content within overlay bounds.")] = None
+    overlays: Annotated[list[Overlay] | None, Field(description="Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., carousel navigation arrows, slide indicators). Creative agents should avoid placing critical content within overlay bounds."), OmittedNotNull] = None
     asset_type: Any
 
 
@@ -352,7 +352,7 @@ class GroupImageAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/0')
     asset_type: Literal['image']
-    requirements: ImageAssetRequirements | None = None
+    requirements: Annotated[ImageAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupVideoAsset(BaseGroupAsset):
@@ -361,7 +361,7 @@ class GroupVideoAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/1')
     asset_type: Literal['video']
-    requirements: VideoAssetRequirements | None = None
+    requirements: Annotated[VideoAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupAudioAsset(BaseGroupAsset):
@@ -370,7 +370,7 @@ class GroupAudioAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/2')
     asset_type: Literal['audio']
-    requirements: AudioAssetRequirements | None = None
+    requirements: Annotated[AudioAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupTextAsset(BaseGroupAsset):
@@ -379,7 +379,7 @@ class GroupTextAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/3')
     asset_type: Literal['text']
-    requirements: TextAssetRequirements | None = None
+    requirements: Annotated[TextAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupMarkdownAsset(BaseGroupAsset):
@@ -388,7 +388,7 @@ class GroupMarkdownAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/4')
     asset_type: Literal['markdown']
-    requirements: MarkdownAssetRequirements | None = None
+    requirements: Annotated[MarkdownAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupHtmlAsset(BaseGroupAsset):
@@ -397,7 +397,7 @@ class GroupHtmlAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/5')
     asset_type: Literal['html']
-    requirements: HTMLAssetRequirements | None = None
+    requirements: Annotated[HTMLAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupCssAsset(BaseGroupAsset):
@@ -406,7 +406,7 @@ class GroupCssAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/6')
     asset_type: Literal['css']
-    requirements: CSSAssetRequirements | None = None
+    requirements: Annotated[CSSAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupJavaScriptAsset(BaseGroupAsset):
@@ -415,7 +415,7 @@ class GroupJavaScriptAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/7')
     asset_type: Literal['javascript']
-    requirements: JavaScriptAssetRequirements | None = None
+    requirements: Annotated[JavaScriptAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupZipAsset(BaseGroupAsset):
@@ -432,7 +432,7 @@ class GroupVastAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/9')
     asset_type: Literal['vast']
-    requirements: VASTAssetRequirements | None = None
+    requirements: Annotated[VASTAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupDaastAsset(BaseGroupAsset):
@@ -441,7 +441,7 @@ class GroupDaastAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/10')
     asset_type: Literal['daast']
-    requirements: DAASTAssetRequirements | None = None
+    requirements: Annotated[DAASTAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupUrlAsset(BaseGroupAsset):
@@ -450,7 +450,7 @@ class GroupUrlAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/11')
     asset_type: Literal['url']
-    requirements: URLAssetRequirements | None = None
+    requirements: Annotated[URLAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupWebhookAsset(BaseGroupAsset):
@@ -459,7 +459,7 @@ class GroupWebhookAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/12')
     asset_type: Literal['webhook']
-    requirements: WebhookAssetRequirements | None = None
+    requirements: Annotated[WebhookAssetRequirements | None, OmittedNotNull] = None
 
 
 class GroupBriefAsset(BaseGroupAsset):
@@ -476,7 +476,7 @@ class GroupCatalogAsset(BaseGroupAsset):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/14')
     asset_type: Literal['catalog']
-    requirements: CatalogRequirements | None = None
+    requirements: Annotated[CatalogRequirements | None, OmittedNotNull] = None
 
 
 class GroupDisplayTagAsset(BaseGroupAsset):
@@ -537,7 +537,7 @@ class RepeatableGroupAsset(AdCPBaseModel):
     required: Annotated[bool, Field(description='Whether this asset group is required. If true, at least min_count repetitions must be provided.')]
     min_count: Annotated[NonNegativeInt, Field(description='Minimum number of repetitions required (if group is required) or allowed (if optional)')]
     max_count: Annotated[IntMin1, Field(description='Maximum number of repetitions allowed')]
-    selection_mode: Annotated[SelectionMode | None, Field(description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).", json_schema_extra={'default': 'sequential'})] = Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('sequential'))
+    selection_mode: Annotated[SelectionMode | None, Field(description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).", json_schema_extra={'default': 'sequential'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('sequential'))
     assets: Annotated[list[GroupImageAsset | GroupVideoAsset | GroupAudioAsset | GroupTextAsset | GroupMarkdownAsset | GroupHtmlAsset | GroupCssAsset | GroupJavaScriptAsset | GroupZipAsset | GroupVastAsset | GroupDaastAsset | GroupUrlAsset | GroupWebhookAsset | GroupBriefAsset | GroupCatalogAsset | GroupDisplayTagAsset | GroupPublishedPostAsset | GroupCardAsset | GroupPixelTrackerAsset | GroupVastTrackerAsset | GroupDaastTrackerAsset], Field(description='Assets within each repetition of this group')]
 
 
@@ -559,7 +559,7 @@ class Accessibility(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/accessibility')
     wcag_level: Annotated[WCAGLevel, Field(description='WCAG conformance level that this format achieves. For format-rendered creatives, the format guarantees this level. For opaque creatives, the format requires assets that self-certify to this level.')]
-    requires_accessible_assets: Annotated[bool | None, Field(description='When true, all assets with x-accessibility fields must include those fields. For inspectable assets (image, video, audio), this means providing accessibility metadata like alt_text or captions. For opaque assets (HTML, JavaScript), this means providing self-declared accessibility properties.')] = None
+    requires_accessible_assets: Annotated[bool | None, Field(description='When true, all assets with x-accessibility fields must include those fields. For inspectable assets (image, video, audio), this means providing accessibility metadata like alt_text or captions. For opaque assets (HTML, JavaScript), this means providing self-declared accessibility properties.'), OmittedNotNull] = None
 
 
 class DisclosureCapabilitiesItem(AdCPBaseModel):
@@ -605,24 +605,24 @@ class Format(AdCPBaseModel):
     )
     format_id: Annotated[FormatReferenceStructuredObject, Field(description="This format's own identifier — a structured object {agent_url, id}, not a string. See /schemas/core/format-id.json for the full shape.")]
     name: Annotated[str, Field(description='Human-readable format name')]
-    description: Annotated[str | None, Field(description='Plain text explanation of what this format does and what assets it requires')] = None
-    example_url: Annotated[HttpUrl | None, Field(description='Optional URL to showcase page with examples and interactive demos of this format')] = None
-    accepts_parameters: Annotated[list[FormatIDParameter] | None, Field(description='List of parameters this format accepts in format_id. Template formats define which parameters (dimensions, duration, etc.) can be specified when instantiating the format. Empty or omitted means this is a concrete format with fixed parameters.', json_schema_extra={'uniqueItems': True})] = None
-    renders: Annotated[list[RendersItem] | None, Field(description='Specification of rendered pieces for this format. Most formats produce a single render. Companion ad formats (video + banner), adaptive formats, and multi-placement formats produce multiple renders. Each render specifies its role and dimensions.', min_length=1)] = None
-    assets: Annotated[list[AssetsItemIndividual | RepeatableGroupAsset] | None, Field(description="Array of all assets supported for this format. Each asset is identified by its asset_id, which must be used as the key in creative manifests. Use the 'required' boolean on each asset to indicate whether it's mandatory.")] = None
-    delivery: Annotated[dict[str, Any] | None, Field(description='Delivery method specifications (e.g., hosted, VAST, third-party tags)')] = None
-    supported_macros: Annotated[list[UniversalMacro | str] | None, Field(description='List of universal macros supported by this format (e.g., MEDIA_BUY_ID, CACHEBUSTER, DEVICE_ID). Used for validation and developer tooling. See docs/creative/universal-macros.mdx for full documentation.')] = None
-    input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `list_transformers` instead — a transformer declares its own `input_format_ids`/`output_format_ids`, so build capability is a property of the transformer (the unit you select and that carries pricing), not a relationship hung on a format. Discover build capability via `list_transformers` (optionally filtered by `input_format_ids`/`output_format_ids`).\n\nMigration: sellers that expressed transform capability by hanging `input_format_ids` on a format SHOULD declare a transformer via `list_transformers` instead. Buyers SHOULD discover build capability via `list_transformers` rather than filtering formats.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* array of format IDs this format accepts as input creative manifests; when present, indicates this format can take existing creatives in these formats as input. SDKs reading 3.1 catalogs MUST continue to honor this field when present; 4.0+ SDKs MAY reject it. New code SHOULD NOT emit this field.')] = None
-    output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `list_transformers` instead — a transformer declares its own `output_format_ids`, so what a builder can produce is a property of the transformer, not a relationship hung on a format. Discover via `list_transformers`.\n\nMigration: sellers that expressed multi-output build capability (e.g. a multi-publisher template) by hanging `output_format_ids` on a format SHOULD declare a transformer via `list_transformers` instead.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* array of format IDs this format can produce as output; when present, indicates this format can build creatives in these output formats. SDKs reading 3.1 catalogs MUST continue to honor this field when present; 4.0+ SDKs MAY reject it. New code SHOULD NOT emit this field.')] = None
-    format_card: Annotated[FormatCard | None, Field(description='Optional standard visual card (300x400px) for displaying this format in user interfaces. Can be rendered via preview_creative or pre-generated.')] = None
-    accessibility: Annotated[Accessibility | None, Field(description='Accessibility posture of this format. Declares the WCAG conformance level that creatives produced by this format will meet.')] = None
-    supported_disclosure_positions: Annotated[list[DisclosurePosition] | None, Field(description='Disclosure positions this format can render. Buyers use this to determine whether a format can satisfy their compliance requirements before submitting a creative. When omitted, the format makes no disclosure rendering guarantees — creative agents SHOULD treat this as incompatible with briefs that require specific disclosure positions. Values correspond to positions on creative-brief.json required_disclosures.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    disclosure_capabilities: Annotated[list[DisclosureCapabilitiesItem] | None, Field(description='Structured disclosure capabilities per position with persistence modes. Declares which persistence behaviors each disclosure position supports, enabling persistence-aware matching against provenance render guidance and brief requirements. When present, supersedes supported_disclosure_positions for persistence-aware queries. The flat supported_disclosure_positions field is retained for backward compatibility. Each position MUST appear at most once; validators and agents SHOULD reject duplicates.', min_length=1)] = None
-    format_card_detailed: Annotated[FormatCardDetailed | None, Field(description='Optional detailed card with carousel and full specifications. Provides rich format documentation similar to ad spec pages.')] = None
-    reported_metrics: Annotated[list[AvailableMetric] | None, Field(description='Metrics this format can produce in delivery reporting. Buyers receive the intersection of format reported_metrics and product available_metrics. Under `enums/available-metric.json`, a container such as `viewability` subsumes numeric leaves such as `viewable_rate`; structured distributions match only their explicit `viewed_seconds_percentiles` or `viewed_seconds_histogram` identities. If omitted, the format defers entirely to product-level metric declarations.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    pricing_options: Annotated[list[VendorPricingOption] | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `transformer.pricing_options` (via `list_transformers`) instead — pricing belongs on the transformer (the unit selected and billed), exactly as it belongs on a media-buy product. Once formats only describe output shape, format-level pricing is vestigial.\n\nMigration: transformation/generation agents that charged via `format.pricing_options` SHOULD move the same `vendor-pricing-option` entries onto the corresponding transformer. The applied option is echoed per-leaf on the build_creative response and reconciled via report_usage, unchanged.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* pricing options for this format, used by transformation/generation agents that charge per format adapted, per image generated, or per unit of work; present when the request included include_pricing=true and account. SDKs reading 3.1 catalogs MUST continue to honor this field when present; 4.0+ SDKs MAY reject it. New code SHOULD NOT emit this field.', min_length=1)] = None
-    canonical: Annotated[CanonicalProjectionReference | None, Field(description='Optional v2 canonical-projection annotation. Always an object — bare-string shorthand (`canonical: "image"`) is not supported; the minimal form is `canonical: { "kind": "image" }`. Carries `kind` (which canonical the v1 format projects to) plus optional `asset_source` and `slots_override` for cases where the v1 format\'s shape doesn\'t follow the canonical\'s defaults (e.g., generative entries whose input is `generation_prompt: text` instead of `image_main: image`).\n\nWhen set, SDKs use this annotation as the authoritative v1 → v2 mapping for this format, bypassing the [v1 canonical mapping registry](/schemas/registries/v1-canonical-mapping.json) lookup. Combined with the slot-level `asset_group_id` declarations on each `assets[i]` entry, a v1 format declaration with `canonical` set is fully self-describing for v1↔v2 translation.\n\nResolution order for SDK projection from v1 wire shape to v2 (per RFC #3305 amendment #3767):\n1. If this `canonical` field is set, use it (seller-declared, highest priority). Apply `asset_source` and `slots_override` from the projection ref when present; otherwise inherit the canonical\'s defaults.\n2. Else, look up `format_id` in the canonical mapping registry\'s `format_id_glob` entries.\n3. Else, attempt structural match against the registry\'s `structural` entries (asset types, slot shape, vast_versions, etc.).\n4. Else, fail closed: SDK MUST NOT emit `format_options` for products carrying this format. Surface `FORMAT_PROJECTION_FAILED` on the response `errors[]` suggesting the seller add an explicit `canonical` annotation or file a registry entry.\n\nWhen `canonical.kind` is `custom`, the seller MUST also declare `canonical_format_shape` and `canonical_format_schema` (parallel to ProductFormatDeclaration\'s `format_shape` and `format_schema`) so buyer SDKs can fetch the seller\'s custom format schema.\n\nSee `canonical-projection-ref.json` for full projection semantics and examples (default-slot case, generative case, brief-driven case).')] = None
-    canonical_parameters: Annotated[Annotated[ProductFormatDeclaration, AfterValidator(ForbiddenGroups((('tracker_execution_contract',), ('tracker_execution_contract_digest',))))] | None, Field(description="**DEPRECATED in 3.1. Removed at 4.0.** Use `v1_format_ref` on the v2 `ProductFormatDeclaration` instead — the seller authors a v2 declaration (in `Product.format_options` or `creative.supported_formats`) and links it back to this v1 format via `v1_format_ref: { agent_url, id }`. The directional link from v2 → v1 is the same fact as `canonical_parameters` without the parallel-shape drift surface (v1 file and `canonical_parameters` were two declarations of the same thing; hand-authored, drifting silently).\n\nMigration: every seller currently authoring `canonical_parameters` SHOULD migrate to authoring a v2 declaration on the corresponding product (or capability) with `v1_format_ref` pointing back at this v1 format. v1 files become pure v1 again — no v2-shape mirroring.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* When `canonical` is set, this field carries the full ProductFormatDeclaration that the SDK projects this v1 format into. The `format_kind` MUST equal the `canonical` field value (validators enforce). When set, this is the authoritative source for SDK v1→v2 projection — the registry's structural-match parameter inference is bypassed. SDKs reading 3.1 catalogs MUST continue to honor `canonical_parameters` when present; 4.0+ SDKs MAY reject the field. New code SHOULD NOT emit this field. Seller execution authority is never projected through this deprecated field, so tracker_execution_contract and tracker_execution_contract_digest are forbidden.\n\n**Drift contract (still normative while supported).** Hand-authored `canonical_parameters` MUST satisfy the *narrows* relation against this v1 format's `requirements` and `assets[*]` shape (see canonical-formats.mdx 'Narrows — formal definition'). SDKs that read this v1 file SHOULD lint-time check the equivalence at build/load and emit `FORMAT_PROJECTION_FAILED` if the two disagree.")] = None
+    description: Annotated[str | None, Field(description='Plain text explanation of what this format does and what assets it requires'), OmittedNotNull] = None
+    example_url: Annotated[HttpUrl | None, Field(description='Optional URL to showcase page with examples and interactive demos of this format'), OmittedNotNull] = None
+    accepts_parameters: Annotated[list[FormatIDParameter] | None, Field(description='List of parameters this format accepts in format_id. Template formats define which parameters (dimensions, duration, etc.) can be specified when instantiating the format. Empty or omitted means this is a concrete format with fixed parameters.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    renders: Annotated[list[RendersItem] | None, Field(description='Specification of rendered pieces for this format. Most formats produce a single render. Companion ad formats (video + banner), adaptive formats, and multi-placement formats produce multiple renders. Each render specifies its role and dimensions.', min_length=1), OmittedNotNull] = None
+    assets: Annotated[list[AssetsItemIndividual | RepeatableGroupAsset] | None, Field(description="Array of all assets supported for this format. Each asset is identified by its asset_id, which must be used as the key in creative manifests. Use the 'required' boolean on each asset to indicate whether it's mandatory."), OmittedNotNull] = None
+    delivery: Annotated[dict[str, Any] | None, Field(description='Delivery method specifications (e.g., hosted, VAST, third-party tags)'), OmittedNotNull] = None
+    supported_macros: Annotated[list[UniversalMacro | str] | None, Field(description='List of universal macros supported by this format (e.g., MEDIA_BUY_ID, CACHEBUSTER, DEVICE_ID). Used for validation and developer tooling. See docs/creative/universal-macros.mdx for full documentation.'), OmittedNotNull] = None
+    input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `list_transformers` instead — a transformer declares its own `input_format_ids`/`output_format_ids`, so build capability is a property of the transformer (the unit you select and that carries pricing), not a relationship hung on a format. Discover build capability via `list_transformers` (optionally filtered by `input_format_ids`/`output_format_ids`).\n\nMigration: sellers that expressed transform capability by hanging `input_format_ids` on a format SHOULD declare a transformer via `list_transformers` instead. Buyers SHOULD discover build capability via `list_transformers` rather than filtering formats.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* array of format IDs this format accepts as input creative manifests; when present, indicates this format can take existing creatives in these formats as input. SDKs reading 3.1 catalogs MUST continue to honor this field when present; 4.0+ SDKs MAY reject it. New code SHOULD NOT emit this field.'), OmittedNotNull] = None
+    output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `list_transformers` instead — a transformer declares its own `output_format_ids`, so what a builder can produce is a property of the transformer, not a relationship hung on a format. Discover via `list_transformers`.\n\nMigration: sellers that expressed multi-output build capability (e.g. a multi-publisher template) by hanging `output_format_ids` on a format SHOULD declare a transformer via `list_transformers` instead.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* array of format IDs this format can produce as output; when present, indicates this format can build creatives in these output formats. SDKs reading 3.1 catalogs MUST continue to honor this field when present; 4.0+ SDKs MAY reject it. New code SHOULD NOT emit this field.'), OmittedNotNull] = None
+    format_card: Annotated[FormatCard | None, Field(description='Optional standard visual card (300x400px) for displaying this format in user interfaces. Can be rendered via preview_creative or pre-generated.'), OmittedNotNull] = None
+    accessibility: Annotated[Accessibility | None, Field(description='Accessibility posture of this format. Declares the WCAG conformance level that creatives produced by this format will meet.'), OmittedNotNull] = None
+    supported_disclosure_positions: Annotated[list[DisclosurePosition] | None, Field(description='Disclosure positions this format can render. Buyers use this to determine whether a format can satisfy their compliance requirements before submitting a creative. When omitted, the format makes no disclosure rendering guarantees — creative agents SHOULD treat this as incompatible with briefs that require specific disclosure positions. Values correspond to positions on creative-brief.json required_disclosures.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    disclosure_capabilities: Annotated[list[DisclosureCapabilitiesItem] | None, Field(description='Structured disclosure capabilities per position with persistence modes. Declares which persistence behaviors each disclosure position supports, enabling persistence-aware matching against provenance render guidance and brief requirements. When present, supersedes supported_disclosure_positions for persistence-aware queries. The flat supported_disclosure_positions field is retained for backward compatibility. Each position MUST appear at most once; validators and agents SHOULD reject duplicates.', min_length=1), OmittedNotNull] = None
+    format_card_detailed: Annotated[FormatCardDetailed | None, Field(description='Optional detailed card with carousel and full specifications. Provides rich format documentation similar to ad spec pages.'), OmittedNotNull] = None
+    reported_metrics: Annotated[list[AvailableMetric] | None, Field(description='Metrics this format can produce in delivery reporting. Buyers receive the intersection of format reported_metrics and product available_metrics. Under `enums/available-metric.json`, a container such as `viewability` subsumes numeric leaves such as `viewable_rate`; structured distributions match only their explicit `viewed_seconds_percentiles` or `viewed_seconds_histogram` identities. If omitted, the format defers entirely to product-level metric declarations.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    pricing_options: Annotated[list[VendorPricingOption] | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `transformer.pricing_options` (via `list_transformers`) instead — pricing belongs on the transformer (the unit selected and billed), exactly as it belongs on a media-buy product. Once formats only describe output shape, format-level pricing is vestigial.\n\nMigration: transformation/generation agents that charged via `format.pricing_options` SHOULD move the same `vendor-pricing-option` entries onto the corresponding transformer. The applied option is echoed per-leaf on the build_creative response and reconciled via report_usage, unchanged.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* pricing options for this format, used by transformation/generation agents that charge per format adapted, per image generated, or per unit of work; present when the request included include_pricing=true and account. SDKs reading 3.1 catalogs MUST continue to honor this field when present; 4.0+ SDKs MAY reject it. New code SHOULD NOT emit this field.', min_length=1), OmittedNotNull] = None
+    canonical: Annotated[CanonicalProjectionReference | None, Field(description='Optional v2 canonical-projection annotation. Always an object — bare-string shorthand (`canonical: "image"`) is not supported; the minimal form is `canonical: { "kind": "image" }`. Carries `kind` (which canonical the v1 format projects to) plus optional `asset_source` and `slots_override` for cases where the v1 format\'s shape doesn\'t follow the canonical\'s defaults (e.g., generative entries whose input is `generation_prompt: text` instead of `image_main: image`).\n\nWhen set, SDKs use this annotation as the authoritative v1 → v2 mapping for this format, bypassing the [v1 canonical mapping registry](/schemas/registries/v1-canonical-mapping.json) lookup. Combined with the slot-level `asset_group_id` declarations on each `assets[i]` entry, a v1 format declaration with `canonical` set is fully self-describing for v1↔v2 translation.\n\nResolution order for SDK projection from v1 wire shape to v2 (per RFC #3305 amendment #3767):\n1. If this `canonical` field is set, use it (seller-declared, highest priority). Apply `asset_source` and `slots_override` from the projection ref when present; otherwise inherit the canonical\'s defaults.\n2. Else, look up `format_id` in the canonical mapping registry\'s `format_id_glob` entries.\n3. Else, attempt structural match against the registry\'s `structural` entries (asset types, slot shape, vast_versions, etc.).\n4. Else, fail closed: SDK MUST NOT emit `format_options` for products carrying this format. Surface `FORMAT_PROJECTION_FAILED` on the response `errors[]` suggesting the seller add an explicit `canonical` annotation or file a registry entry.\n\nWhen `canonical.kind` is `custom`, the seller MUST also declare `canonical_format_shape` and `canonical_format_schema` (parallel to ProductFormatDeclaration\'s `format_shape` and `format_schema`) so buyer SDKs can fetch the seller\'s custom format schema.\n\nSee `canonical-projection-ref.json` for full projection semantics and examples (default-slot case, generative case, brief-driven case).'), OmittedNotNull] = None
+    canonical_parameters: Annotated[Annotated[ProductFormatDeclaration, AfterValidator(ForbiddenGroups((('tracker_execution_contract',), ('tracker_execution_contract_digest',))))] | None, Field(description="**DEPRECATED in 3.1. Removed at 4.0.** Use `v1_format_ref` on the v2 `ProductFormatDeclaration` instead — the seller authors a v2 declaration (in `Product.format_options` or `creative.supported_formats`) and links it back to this v1 format via `v1_format_ref: { agent_url, id }`. The directional link from v2 → v1 is the same fact as `canonical_parameters` without the parallel-shape drift surface (v1 file and `canonical_parameters` were two declarations of the same thing; hand-authored, drifting silently).\n\nMigration: every seller currently authoring `canonical_parameters` SHOULD migrate to authoring a v2 declaration on the corresponding product (or capability) with `v1_format_ref` pointing back at this v1 format. v1 files become pure v1 again — no v2-shape mirroring.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* When `canonical` is set, this field carries the full ProductFormatDeclaration that the SDK projects this v1 format into. The `format_kind` MUST equal the `canonical` field value (validators enforce). When set, this is the authoritative source for SDK v1→v2 projection — the registry's structural-match parameter inference is bypassed. SDKs reading 3.1 catalogs MUST continue to honor `canonical_parameters` when present; 4.0+ SDKs MAY reject the field. New code SHOULD NOT emit this field. Seller execution authority is never projected through this deprecated field, so tracker_execution_contract and tracker_execution_contract_digest are forbidden.\n\n**Drift contract (still normative while supported).** Hand-authored `canonical_parameters` MUST satisfy the *narrows* relation against this v1 format's `requirements` and `assets[*]` shape (see canonical-formats.mdx 'Narrows — formal definition'). SDKs that read this v1 file SHOULD lint-time check the equivalence at build/load and emit `FORMAT_PROJECTION_FAILED` if the two disagree."), OmittedNotNull] = None
 
 
 __all__ = ["BaseGroupAsset", "BaseIndividualAsset", "Format"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.channels import MediaChannel
@@ -27,13 +27,13 @@ class Property(AdCPBaseModel):
         UniqueItems('tags'),
         UniqueItems('supported_channels'),
     )
-    property_id: Annotated[PropertyID | None, Field(description='Unique identifier for this property (optional). Enables referencing properties by ID instead of repeating full objects.')] = None
+    property_id: Annotated[PropertyID | None, Field(description='Unique identifier for this property (optional). Enables referencing properties by ID instead of repeating full objects.'), OmittedNotNull] = None
     property_type: Annotated[PropertyType, Field(description='Type of advertising property')]
     name: Annotated[str, Field(description='Human-readable property name')]
     identifiers: Annotated[list[IdentifiersItem], Field(description='Array of identifiers for this property', min_length=1)]
-    tags: Annotated[list[PropertyTag] | None, Field(description='Tags for categorization and grouping (e.g., network membership, content categories)', json_schema_extra={'uniqueItems': True})] = None
-    supported_channels: Annotated[list[MediaChannel] | None, Field(description="Advertising channels this property supports (e.g., ['display', 'olv', 'social']). Publishers declare which channels their inventory aligns with. Properties may support multiple channels. See the Media Channel Taxonomy for definitions.", json_schema_extra={'uniqueItems': True})] = None
-    publisher_domain: Annotated[str | None, Field(description='Domain where adagents.json should be checked for authorization validation. Optional in adagents.json (file location implies domain).')] = None
+    tags: Annotated[list[PropertyTag] | None, Field(description='Tags for categorization and grouping (e.g., network membership, content categories)', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    supported_channels: Annotated[list[MediaChannel] | None, Field(description="Advertising channels this property supports (e.g., ['display', 'olv', 'social']). Publishers declare which channels their inventory aligns with. Properties may support multiple channels. See the Media Channel Taxonomy for definitions.", json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    publisher_domain: Annotated[str | None, Field(description='Domain where adagents.json should be checked for authorization validation. Optional in adagents.json (file location implies domain).'), OmittedNotNull] = None
 
 
 __all__ = ["Property"]

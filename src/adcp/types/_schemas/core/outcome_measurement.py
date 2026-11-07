@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from .duration import Duration
 
@@ -40,7 +40,7 @@ class OutcomeMeasurement(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/outcome-measurement.json', pointer='#')
     type: Annotated[str, Field(description='Type of measurement')]
     attribution: Annotated[str, Field(description='Attribution methodology')]
-    window: Annotated[Window | None, Field(description='Attribution window as a structured duration (e.g., {"interval": 30, "unit": "days"}).')] = None
+    window: Annotated[Window | None, Field(description='Attribution window as a structured duration (e.g., {"interval": 30, "unit": "days"}).'), OmittedNotNull] = None
     reporting: Annotated[str, Field(description='Reporting frequency and format')]
 
 

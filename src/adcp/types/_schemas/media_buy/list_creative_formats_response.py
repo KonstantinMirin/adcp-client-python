@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import MemberAlias, SchemaRef
+from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -40,13 +40,13 @@ class ListCreativeFormatsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-creative-formats-response.json', pointer='#')
     formats: Annotated[list[Format], Field(description="Deprecated named-format definitions projected for older 3.x callers. This list is neither the publisher acceptance catalog nor the seller's canonical product deliverability contract.")]
-    source: Annotated[Source | None, Field(description='Deprecated compatibility provenance. `publisher` means publisher-origin catalog; `aao_mirror` means community catalog; `agent_derived` is retained only to parse historical 3.x responses and MUST NOT be produced by a new 3.2 implementation because seller products are not publisher authority.')] = None
-    creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(description="Deprecated recursive discovery projection retained for historical 3.x responses. New buyers query the registry's canonical creative capability index and confirm candidates with get_adcp_capabilities; they do not recursively walk agent-provided lists.")] = None
-    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings (e.g., format availability issues)')] = None
-    pagination: PaginationResponse | None = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    source: Annotated[Source | None, Field(description='Deprecated compatibility provenance. `publisher` means publisher-origin catalog; `aao_mirror` means community catalog; `agent_derived` is retained only to parse historical 3.x responses and MUST NOT be produced by a new 3.2 implementation because seller products are not publisher authority.'), OmittedNotNull] = None
+    creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(description="Deprecated recursive discovery projection retained for historical 3.x responses. New buyers query the registry's canonical creative capability index and confirm candidates with get_adcp_capabilities; they do not recursively walk agent-provided lists."), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings (e.g., format availability issues)'), OmittedNotNull] = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListCreativeFormatsResponse"]

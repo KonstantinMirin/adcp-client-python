@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..enums.assessment_status import AssessmentStatus
 from ..enums.event_type import EventType
@@ -21,10 +21,10 @@ class MeasurementReadiness(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/measurement-readiness.json', pointer='#')
     status: Annotated[AssessmentStatus, Field(description="Overall measurement readiness level for this product given the buyer's event setup. 'insufficient' means the product cannot optimize effectively with the current setup.")]
-    required_event_types: Annotated[list[EventType] | None, Field(description='Event types this product needs for effective optimization. Buyers should ensure their event sources cover these types.', min_length=1)] = None
-    missing_event_types: Annotated[list[EventType] | None, Field(description='Event types this product requires that the buyer has not configured. Empty or absent when all required types are covered.')] = None
-    issues: Annotated[list[DiagnosticIssue] | None, Field(description='Actionable issues preventing full measurement readiness. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.')] = None
-    notes: Annotated[str | None, Field(description='Seller explanation of the readiness assessment, recommendations for improvement, or context about what the buyer needs to change.')] = None
+    required_event_types: Annotated[list[EventType] | None, Field(description='Event types this product needs for effective optimization. Buyers should ensure their event sources cover these types.', min_length=1), OmittedNotNull] = None
+    missing_event_types: Annotated[list[EventType] | None, Field(description='Event types this product requires that the buyer has not configured. Empty or absent when all required types are covered.'), OmittedNotNull] = None
+    issues: Annotated[list[DiagnosticIssue] | None, Field(description='Actionable issues preventing full measurement readiness. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.'), OmittedNotNull] = None
+    notes: Annotated[str | None, Field(description='Seller explanation of the readiness assessment, recommendations for improvement, or context about what the buyer needs to change.'), OmittedNotNull] = None
 
 
 __all__ = ["MeasurementReadiness"]

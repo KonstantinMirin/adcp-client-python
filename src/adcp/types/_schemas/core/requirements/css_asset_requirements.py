@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 
@@ -17,7 +17,7 @@ class CSSAssetRequirements(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/css-asset-requirements.json', pointer='#')
-    max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes')] = None
+    max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes'), OmittedNotNull] = None
 
 
 __all__ = ["CSSAssetRequirements"]

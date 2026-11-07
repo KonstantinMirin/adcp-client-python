@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -63,7 +63,7 @@ class ResolvedPoliciesItem(AdCPBaseModel):
     policy_id: Annotated[str, Field(description='Registry policy ID.')]
     source: Annotated[Source, Field(description="How this policy was included. 'explicit': referenced in the brand compliance configuration. 'auto_applied': matched automatically by jurisdiction or policy category.")]
     enforcement: Annotated[PolicyEnforcementLevel, Field(description='Enforcement level for this policy.')]
-    reason: Annotated[str | None, Field(description="Why this policy was included (e.g., 'Matched jurisdiction US and policy category pharmaceutical_advertising').")] = None
+    reason: Annotated[str | None, Field(description="Why this policy was included (e.g., 'Matched jurisdiction US and policy category pharmaceutical_advertising')."), OmittedNotNull] = None
 
 
 class PlansItem(AdCPBaseModel):
@@ -74,8 +74,8 @@ class PlansItem(AdCPBaseModel):
     plan_id: Annotated[str, Field(description='Plan identifier.')]
     status: Annotated[PlansItemStatus, Field(description="Sync result status. 'active' means sync succeeded; 'error' means sync failed.")]
     version: Annotated[int, Field(description='Plan version (increments on each sync).')]
-    categories: Annotated[list[CategoriesItem] | None, Field(description='Validation categories active for this plan.')] = None
-    resolved_policies: Annotated[list[ResolvedPoliciesItem] | None, Field(description='Policies the governance agent will enforce for this plan. Includes explicitly referenced policies from the brand compliance configuration and auto-applied policies matched by jurisdiction or policy category. Present when the governance agent supports policy resolution.')] = None
+    categories: Annotated[list[CategoriesItem] | None, Field(description='Validation categories active for this plan.'), OmittedNotNull] = None
+    resolved_policies: Annotated[list[ResolvedPoliciesItem] | None, Field(description='Policies the governance agent will enforce for this plan. Includes explicitly referenced policies from the brand compliance configuration and auto-applied policies matched by jurisdiction or policy category. Present when the governance agent supports policy resolution.'), OmittedNotNull] = None
 
 
 class SyncPlansResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -87,8 +87,8 @@ class SyncPlansResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-response.json', pointer='#')
     plans: Annotated[list[PlansItem], Field(description='Status for each synced plan.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SyncPlansResponse"]

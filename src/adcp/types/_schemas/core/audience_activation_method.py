@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen256
 
@@ -79,7 +79,7 @@ class AudienceActivationMethodFileTransfer(AudienceActivationMethod):
     )
     pattern: Literal['file_transfer']
     transport: Annotated[CloudStorageProtocol, Field(description='Storage protocol for the exchange.')]
-    directions: Annotated[list[DirectionsItem] | None, Field(description='Supported transfer directions. buyer_to_seller: buyer writes to a seller-hosted bucket. seller_to_buyer: seller reads from a buyer-hosted bucket. Absent means unspecified (resolve during account setup), not neither.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    directions: Annotated[list[DirectionsItem] | None, Field(description='Supported transfer directions. buyer_to_seller: buyer writes to a seller-hosted bucket. seller_to_buyer: seller reads from a buyer-hosted bucket. Absent means unspecified (resolve during account setup), not neither.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     vendor: Annotated[BrandReference, Field(description="Platform providing the storage primitive (e.g., the cloud provider's domain).")]
 
 
@@ -92,8 +92,8 @@ class ConsumerIdentitiesItem(AdCPBaseModel):
         Dependencies('cloud', ('region',)),
         Dependencies('region', ('cloud',)),
     )
-    cloud: Annotated[DeliveryRecipientCloud | None, Field(description="Cloud family hosting this identity's account.")] = None
-    region: Annotated[str | None, Field(description="Vendor/cloud region identifier. Format follows the cloud family's region naming; not constrained by this schema.")] = None
+    cloud: Annotated[DeliveryRecipientCloud | None, Field(description="Cloud family hosting this identity's account."), OmittedNotNull] = None
+    region: Annotated[str | None, Field(description="Vendor/cloud region identifier. Format follows the cloud family's region naming; not constrained by this schema."), OmittedNotNull] = None
     identity: Annotated[StrMinLen1, Field(description="Principal to grant, interpreted relative to the enclosing entry's vendor.domain. Format is vendor-specific and opaque — Snowflake: orgname.accountname; Databricks: sharing recipient identifier; BigQuery: IAM principal.")]
 
 
@@ -107,7 +107,7 @@ class DatasetQuery(AudienceActivationMethod):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/3')
     pattern: Literal['dataset_query']
     vendor: Annotated[BrandReference, Field(description='Data-sharing platform the seller can consume from.')]
-    consumer_identities: Annotated[list[ConsumerIdentitiesItem] | None, Field(description="Principals the buyer grants access to in the vendor's system. identity is always required. cloud and region are optional, paired deployment metadata: omit both for global principals (for example, an IAM principal or federated identity). Their operational meaning is vendor-specific — they may constrain direct-share reachability or select a fulfillment route, or may be routing and cost hints only. They are not compliance boundaries; data-transfer assessments key on the recipient entity's jurisdiction, not the grantee account's region. Optional: sellers MAY instead communicate identities during account setup.", min_length=1)] = None
+    consumer_identities: Annotated[list[ConsumerIdentitiesItem] | None, Field(description="Principals the buyer grants access to in the vendor's system. identity is always required. cloud and region are optional, paired deployment metadata: omit both for global principals (for example, an IAM principal or federated identity). Their operational meaning is vendor-specific — they may constrain direct-share reachability or select a fulfillment route, or may be routing and cost hints only. They are not compliance boundaries; data-transfer assessments key on the recipient entity's jurisdiction, not the grantee account's region. Optional: sellers MAY instead communicate identities during account setup.", min_length=1), OmittedNotNull] = None
 
 
 class CleanRoom(AudienceActivationMethod):
@@ -132,8 +132,8 @@ class PlatformDistribution(AudienceActivationMethod):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/5')
     pattern: Literal['platform_distribution']
     vendor: Annotated[BrandReference, Field(description="Distribution platform's operating domain.")]
-    destination_ref: Annotated[StrMinLen1MaxLen256 | None, Field(description="Opaque, account-scoped destination or seat reference in the vendor's system, as the buyer needs it to initiate distribution. A seller-declared configuration reference, not a buyer-invoked key or secret. Sellers MUST NOT publish one global reference when the vendor configuration is buyer- or account-specific. Omit until account setup has established the destination.")] = None
-    bind_expiry_days: Annotated[IntMin1 | None, Field(description="Window after which the seller MAY expire an unfulfilled platform_segment bind (per-audience action: failed on sync_audiences). Initial vendor distribution is days-scale; windows shorter than the vendor's documented distribution latency are non-conformant.")] = None
+    destination_ref: Annotated[StrMinLen1MaxLen256 | None, Field(description="Opaque, account-scoped destination or seat reference in the vendor's system, as the buyer needs it to initiate distribution. A seller-declared configuration reference, not a buyer-invoked key or secret. Sellers MUST NOT publish one global reference when the vendor configuration is buyer- or account-specific. Omit until account setup has established the destination."), OmittedNotNull] = None
+    bind_expiry_days: Annotated[IntMin1 | None, Field(description="Window after which the seller MAY expire an unfulfilled platform_segment bind (per-audience action: failed on sync_audiences). Initial vendor distribution is days-scale; windows shorter than the vendor's documented distribution latency are non-conformant."), OmittedNotNull] = None
 
 
 AudienceActivationMethod._branch_models = (AdCPAudienceSync, TMPIdentityMatch, AudienceActivationMethodFileTransfer, DatasetQuery, CleanRoom, PlatformDistribution,)

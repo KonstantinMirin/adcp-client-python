@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
@@ -53,14 +53,14 @@ class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
     )
     source_proposal_id: StrMinLen1
     outcome: Outcome
-    proposal: CanonicalProposal | None = None
-    proposals: Annotated[list[CanonicalProposal] | None, Field(description='Draft successors produced for a revision. Without alternatives this contains one proposal. With alternatives.count, revised contains exactly that many proposals with unique terms_digest values; fewer or commercially duplicate proposals require partial.', min_length=1)] = None
-    reason_code: Annotated[ProposalRefinementReason | None, Field(description='Single most-significant code for this result. constraint_unsatisfiable takes precedence over every other code; an alternatives shortfall alongside an unsatisfied constraint remains visible through proposals.length.')] = None
-    reason: StrMinLen1 | None = None
-    unsatisfied_constraints: Annotated[list[StrMinLen1] | None, Field(description='Stable keys from the request constraints object that were not satisfied by every returned draft. A result carrying any key here MUST use outcome partial or unable, never revised.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    unsatisfied_product_changes: Annotated[ProductChangeMap | None, Field(description='Requested product actions not satisfied by every returned draft. This is a subset of the request product_changes map and is valid only on partial or unable results.')] = None
-    suggestions: Annotated[list[StrMinLen1] | None, Field(min_length=1)] = None
-    targeting_resolution: Annotated[ProductDiscoveryTargetingResolution | None, Field(description="Confirmation of structured targeting interpreted from this refinement's explicit hard prose instructions. Required when that interpretation materially affects the revised proposal's eligibility, pricing, or forecast; otherwise a best practice.")] = None
+    proposal: Annotated[CanonicalProposal | None, OmittedNotNull] = None
+    proposals: Annotated[list[CanonicalProposal] | None, Field(description='Draft successors produced for a revision. Without alternatives this contains one proposal. With alternatives.count, revised contains exactly that many proposals with unique terms_digest values; fewer or commercially duplicate proposals require partial.', min_length=1), OmittedNotNull] = None
+    reason_code: Annotated[ProposalRefinementReason | None, Field(description='Single most-significant code for this result. constraint_unsatisfiable takes precedence over every other code; an alternatives shortfall alongside an unsatisfied constraint remains visible through proposals.length.'), OmittedNotNull] = None
+    reason: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    unsatisfied_constraints: Annotated[list[StrMinLen1] | None, Field(description='Stable keys from the request constraints object that were not satisfied by every returned draft. A result carrying any key here MUST use outcome partial or unable, never revised.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    unsatisfied_product_changes: Annotated[ProductChangeMap | None, Field(description='Requested product actions not satisfied by every returned draft. This is a subset of the request product_changes map and is valid only on partial or unable results.'), OmittedNotNull] = None
+    suggestions: Annotated[list[StrMinLen1] | None, Field(min_length=1), OmittedNotNull] = None
+    targeting_resolution: Annotated[ProductDiscoveryTargetingResolution | None, Field(description="Confirmation of structured targeting interpreted from this refinement's explicit hard prose instructions. Required when that interpretation materially affects the revised proposal's eligibility, pricing, or forecast; otherwise a best practice."), OmittedNotNull] = None
 
 
 class ResultsItemRevisedProposalsItem(CanonicalProposal):
@@ -173,16 +173,16 @@ class RefineProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/refine-proposals-response.json', pointer='#/properties/results/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'reason_code': {'const': 'constraint_unsatisfiable'}}, 'required': ['reason_code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    adcp_version: AdcpVersion | None = None
-    results: Annotated[list[ResultsItem] | None, Field(description="Ordered results. If any result is finalized, every result MUST be finalized; a finalize batch either creates every requested hold or none. Every returned proposal carries parent_proposal_id equal to the result's source_proposal_id, making negotiation lineage reconstructible from the proposals alone.", min_length=1)] = None
-    products: Annotated[list[CanonicalProduct] | None, Field(description="Canonical products needed to evaluate the resulting terms. For revised or partial results whose effective criteria contain property or collection lists, each affected product MUST carry fresh list_applications receipts from the revision's product reevaluation. Finalization changes no terms and MAY repeat the receipts already bound to the source proposal rather than reevaluating them.")] = None
-    status: Status | None = None
-    task_id: StrMinLen1 | None = None
-    message: StrMaxLen2000 | None = None
-    errors: list[Error] | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
-    replayed: Literal[True] | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    results: Annotated[list[ResultsItem] | None, Field(description="Ordered results. If any result is finalized, every result MUST be finalized; a finalize batch either creates every requested hold or none. Every returned proposal carries parent_proposal_id equal to the result's source_proposal_id, making negotiation lineage reconstructible from the proposals alone.", min_length=1), OmittedNotNull] = None
+    products: Annotated[list[CanonicalProduct] | None, Field(description="Canonical products needed to evaluate the resulting terms. For revised or partial results whose effective criteria contain property or collection lists, each affected product MUST carry fresh list_applications receipts from the revision's product reevaluation. Finalization changes no terms and MAY repeat the receipts already bound to the source proposal rather than reevaluating them."), OmittedNotNull] = None
+    status: Annotated[Status | None, OmittedNotNull] = None
+    task_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    message: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+    replayed: Annotated[Literal[True] | None, OmittedNotNull] = None
 
 
 class RefineProposalsResponseCompleted(RefineProposalsResponse):
@@ -193,7 +193,7 @@ class RefineProposalsResponseCompleted(RefineProposalsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('task_id',),)),
     )
-    status: Literal[Status.COMPLETED] | None = None
+    status: Annotated[Literal[Status.COMPLETED] | None, OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct], Field(description="Canonical products needed to evaluate the resulting terms. For revised or partial results whose effective criteria contain property or collection lists, each affected product MUST carry fresh list_applications receipts from the revision's product reevaluation. Finalization changes no terms and MAY repeat the receipts already bound to the source proposal rather than reevaluating them.")]
     results: Annotated[list[ResultsItem], Field(description="Ordered results. If any result is finalized, every result MUST be finalized; a finalize batch either creates every requested hold or none. Every returned proposal carries parent_proposal_id equal to the result's source_proposal_id, making negotiation lineage reconstructible from the proposals alone.", min_length=1)]
 

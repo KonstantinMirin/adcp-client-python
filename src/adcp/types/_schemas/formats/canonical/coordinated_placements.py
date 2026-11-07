@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
@@ -58,12 +58,12 @@ class ComponentsItem(BranchDispatchMixin, AdCPBaseModel):
     component_id: Annotated[AccountAuthorizationAllowedTasksItem, Field(description='Stable coordination-local component identifier. Values MUST be unique within `components[]`.')]
     placement_ref: Annotated[PlacementReference, Field(description="Public product placement this component supplies. MUST resolve against the containing product's `placements[]`.")]
     required: bool
-    sequence: Annotated[IntMin1 | None, Field(description='Declared presentation order for sequential-messaging coordinated buys. Components sharing a sequence value present simultaneously; absent means unordered/simultaneous (default). Sequence declares seller-rendered ordering, not buyer-controlled timing.')] = None
-    serving_policy: Annotated[ServingPolicy | None, Field(description='Per-component serving/tracking policy. Some sellers restrict specific components (e.g., page skins) to first-party serving while allowing third-party tags on sibling components. Defaults to the product-level policy when absent.')] = None
-    canvas_constraints: Annotated[list[CanvasConstraint] | None, Field(description='Artwork constraints applied to this component, including safe areas and seller-reserved regions.')] = None
-    format_option_ref: Annotated[FormatOptionReference | None, Field(description='Reference to a sibling `format_options[]` entry on the same product. It MUST NOT resolve to `custom` or `coordinated_placements`.')] = None
-    format_kind: str | None = None
-    params: dict[str, Any] | None = None
+    sequence: Annotated[IntMin1 | None, Field(description='Declared presentation order for sequential-messaging coordinated buys. Components sharing a sequence value present simultaneously; absent means unordered/simultaneous (default). Sequence declares seller-rendered ordering, not buyer-controlled timing.'), OmittedNotNull] = None
+    serving_policy: Annotated[ServingPolicy | None, Field(description='Per-component serving/tracking policy. Some sellers restrict specific components (e.g., page skins) to first-party serving while allowing third-party tags on sibling components. Defaults to the product-level policy when absent.'), OmittedNotNull] = None
+    canvas_constraints: Annotated[list[CanvasConstraint] | None, Field(description='Artwork constraints applied to this component, including safe areas and seller-reserved regions.'), OmittedNotNull] = None
+    format_option_ref: Annotated[FormatOptionReference | None, Field(description='Reference to a sibling `format_options[]` entry on the same product. It MUST NOT resolve to `custom` or `coordinated_placements`.'), OmittedNotNull] = None
+    format_kind: Annotated[str | None, OmittedNotNull] = None
+    params: Annotated[dict[str, Any] | None, OmittedNotNull] = None
 
 
 class ComponentsItemFormatOptionRef(ComponentsItem):
@@ -275,9 +275,9 @@ class SharedSlotsItem(AdCPBaseModel):
     )
     asset_group_id: BrandDiscoveryAgentId
     asset_type: AssetType
-    required: bool | None = False
-    min: NonNegativeInt | None = None
-    max: IntMin1 | None = None
+    required: Annotated[bool | None, OmittedNotNull] = False
+    min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    max: Annotated[IntMin1 | None, OmittedNotNull] = None
     consumed_by: Annotated[list[str], Field(description='Component IDs that consume this shared asset. Every value MUST resolve to `components[].component_id`.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -289,12 +289,12 @@ class CanonicalFormatCoordinatedPlacements(CanonicalFormatBase):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#')
-    experimental: Annotated[bool | None, Field(description='Experimental in AdCP 3.2 while the creative working group gathers implementation evidence for atomic cross-placement composition.')] = True
-    v1_translatable: Annotated[bool | None, Field(description='No v1 named-format equivalent can express a coordinated multi-placement buy.')] = False
-    since_version: Annotated[CanonicalFormatBaseMigrationTargetVersion | None, Field(description="AdCP MAJOR.MINOR version that introduced this canonical (e.g., '3.1', '3.2'). Lets adopters reason about minimum protocol version requirements when consuming a format declaration. Patch precision is intentionally rejected — canonicals are introduced at minor-version boundaries.")] = '3.2'
-    composition_model: Annotated[CompositionModel | None, Field(description='Whether the surface composes deterministically (buyer can predict per-slot rendering — sponsored_placement, image, video) or algorithmically (surface chooses combinations or phrasing — responsive_creative, agent_placement).', json_schema_extra={'default': 'deterministic'})] = Field(default_factory=lambda: TypeAdapter(CompositionModel).validate_python('deterministic'))
+    experimental: Annotated[bool | None, Field(description='Experimental in AdCP 3.2 while the creative working group gathers implementation evidence for atomic cross-placement composition.'), OmittedNotNull] = True
+    v1_translatable: Annotated[bool | None, Field(description='No v1 named-format equivalent can express a coordinated multi-placement buy.'), OmittedNotNull] = False
+    since_version: Annotated[CanonicalFormatBaseMigrationTargetVersion | None, Field(description="AdCP MAJOR.MINOR version that introduced this canonical (e.g., '3.1', '3.2'). Lets adopters reason about minimum protocol version requirements when consuming a format declaration. Patch precision is intentionally rejected — canonicals are introduced at minor-version boundaries."), OmittedNotNull] = '3.2'
+    composition_model: Annotated[CompositionModel | None, Field(description='Whether the surface composes deterministically (buyer can predict per-slot rendering — sponsored_placement, image, video) or algorithmically (surface chooses combinations or phrasing — responsive_creative, agent_placement).', json_schema_extra={'default': 'deterministic'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(CompositionModel).validate_python('deterministic'))
     components: Annotated[Annotated[list[ComponentsItem], AfterValidator(AtLeastOne(values=(), pinned=(('required', True),)))], Field(min_length=2)]
-    shared_slots: Annotated[list[SharedSlotsItem] | None, Field(description='Manifest slots supplied once and consumed by one or more coordinated components.')] = None
+    shared_slots: Annotated[list[SharedSlotsItem] | None, Field(description='Manifest slots supplied once and consumed by one or more coordinated components.'), OmittedNotNull] = None
 
 
 __all__ = ["CanonicalFormatCoordinatedPlacements"]

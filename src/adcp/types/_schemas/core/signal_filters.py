@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max100
 
 from ..enums.signal_catalog_type import SignalAvailabilityType
@@ -20,12 +20,12 @@ class SignalFilters(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-filters.json', pointer='#')
-    catalog_types: Annotated[list[SignalAvailabilityType] | None, Field(description='Filter by catalog type', min_length=1)] = None
-    data_providers: Annotated[list[str] | None, Field(description='Filter by specific data providers', min_length=1)] = None
-    max_cpm: Annotated[NonNegativeFloat | None, Field(description="Maximum CPM filter. Applies only to signals with model='cpm'.")] = None
-    max_percent: Annotated[FloatMin0Max100 | None, Field(description='Maximum percent-of-media rate filter. Signals where all percent_of_media pricing options exceed this value are excluded. Does not account for max_cpm caps.')] = None
-    min_coverage_percentage: Annotated[FloatMin0Max100 | None, Field(description='Minimum coverage requirement')] = None
-    ext: Annotated[ExtensionObject | None, Field(description='Vendor-namespaced extension parameters for seller- or platform-specific signal filter criteria not covered by standard fields. Keys MUST be namespaced under a vendor or platform key (e.g., ext.gam, ext.platform_x). Sellers MUST treat all values as untrusted buyer input; avoid unbounded logging or labels, and do not interpolate values into caller-visible error strings, LLM prompts, SQL queries, or system commands without sanitization. Persistent use of an extension key across multiple buyers is a signal to propose standardization.')] = None
+    catalog_types: Annotated[list[SignalAvailabilityType] | None, Field(description='Filter by catalog type', min_length=1), OmittedNotNull] = None
+    data_providers: Annotated[list[str] | None, Field(description='Filter by specific data providers', min_length=1), OmittedNotNull] = None
+    max_cpm: Annotated[NonNegativeFloat | None, Field(description="Maximum CPM filter. Applies only to signals with model='cpm'."), OmittedNotNull] = None
+    max_percent: Annotated[FloatMin0Max100 | None, Field(description='Maximum percent-of-media rate filter. Signals where all percent_of_media pricing options exceed this value are excluded. Does not account for max_cpm caps.'), OmittedNotNull] = None
+    min_coverage_percentage: Annotated[FloatMin0Max100 | None, Field(description='Minimum coverage requirement'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, Field(description='Vendor-namespaced extension parameters for seller- or platform-specific signal filter criteria not covered by standard fields. Keys MUST be namespaced under a vendor or platform key (e.g., ext.gam, ext.platform_x). Sellers MUST treat all values as untrusted buyer input; avoid unbounded logging or labels, and do not interpolate values into caller-visible error strings, LLM prompts, SQL queries, or system commands without sanitization. Persistent use of an extension key across multiple buyers is a signal to propose standardization.'), OmittedNotNull] = None
 
 
 __all__ = ["SignalFilters"]

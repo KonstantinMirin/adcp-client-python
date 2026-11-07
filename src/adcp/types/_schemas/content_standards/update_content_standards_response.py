@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -38,8 +38,8 @@ class UpdateContentStandardsSuccess(UpdateContentStandardsResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/update-content-standards-response.json', pointer='#/oneOf/0')
     success: Annotated[Literal[True], Field(description='Indicates the update was applied successfully')]
     standards_id: Annotated[str, Field(description='ID of the updated standards configuration')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class UpdateContentStandardsError(UpdateContentStandardsResponse):
@@ -49,9 +49,9 @@ class UpdateContentStandardsError(UpdateContentStandardsResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/update-content-standards-response.json', pointer='#/oneOf/1')
     success: Annotated[Literal[False], Field(description='Indicates the update failed')]
     errors: Annotated[list[Error], Field(description='Errors that occurred during the update', min_length=1)]
-    conflicting_standards_id: Annotated[str | None, Field(description='If scope change conflicts with another configuration, the ID of the conflicting standards')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    conflicting_standards_id: Annotated[str | None, Field(description='If scope change conflicts with another configuration, the ID of the conflicting standards'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 UpdateContentStandardsResponse._branch_models = (UpdateContentStandardsSuccess, UpdateContentStandardsError,)

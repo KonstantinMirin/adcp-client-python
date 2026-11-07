@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from ..core.context import ContextObject
@@ -21,8 +21,8 @@ from ..enums.creative_agent_capability import CreativeAgentCapability
 class CreativeAgentsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creative-formats-response.json', pointer='#/properties/creative_agents/items')
     agent_url: Annotated[HttpUrl, Field(description="Base URL for the creative agent (e.g., 'https://reference.example.com', 'https://dco.example.com').")]
-    agent_name: Annotated[str | None, Field(description='Human-readable name for the creative agent')] = None
-    capabilities: Annotated[list[CreativeAgentCapability] | None, Field(description='Capabilities this creative agent provides')] = None
+    agent_name: Annotated[str | None, Field(description='Human-readable name for the creative agent'), OmittedNotNull] = None
+    capabilities: Annotated[list[CreativeAgentCapability] | None, Field(description='Capabilities this creative agent provides'), OmittedNotNull] = None
 
 
 class ListCreativeFormatsResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -34,11 +34,11 @@ class ListCreativeFormatsResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnve
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creative-formats-response.json', pointer='#')
     formats: Annotated[list[Format], Field(description='Deprecated named-format definitions projected for older 3.x callers. Canonical creative capabilities are declared by get_adcp_capabilities creative.supported_formats[].')]
-    creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(description='Deprecated recursive discovery projection retained only for historical 3.x responses. New buyers use registry reverse lookup and direct get_adcp_capabilities confirmation.')] = None
-    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings')] = None
-    pagination: PaginationResponse | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(description='Deprecated recursive discovery projection retained only for historical 3.x responses. New buyers use registry reverse lookup and direct get_adcp_capabilities confirmation.'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings'), OmittedNotNull] = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListCreativeFormatsResponseCreativeAgent"]

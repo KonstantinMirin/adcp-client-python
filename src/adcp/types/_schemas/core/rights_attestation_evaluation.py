@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
@@ -71,7 +71,7 @@ class RightsAttestationEvaluation(AdCPBaseModel):
     content_digest: Annotated[ZipAssetDigest, Field(description='Digest of the exact rights constraint evaluated. MUST equal reference.subject.content_digest and evaluation.action_binding.action_digest.')]
     reference: Reference
     evaluation: Evaluation
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["RightsAttestationEvaluation"]

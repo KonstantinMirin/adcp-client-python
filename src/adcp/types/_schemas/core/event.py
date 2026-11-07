@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen256
 
@@ -34,13 +34,13 @@ class Event(AdCPBaseModel):
     event_id: Annotated[StrMinLen1MaxLen256, Field(description='Unique identifier for deduplication (scoped to event_type + event_source_id)')]
     event_type: Annotated[EventType, Field(description='Standard event type')]
     event_time: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the event occurred')]
-    user_match: Annotated[UserMatch | None, Field(description='User identifiers for attribution matching')] = None
-    custom_data: Annotated[EventCustomData | None, Field(description='Event-specific data (value, currency, items, etc.)')] = None
-    action_source: Annotated[ActionSource | None, Field(description='Where the event originated')] = None
-    surface: Annotated[EventSurface | None, Field(description='Optional structured surface context for the event, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant meaning would otherwise live only in platform-specific `ext` metadata.')] = None
-    event_source_url: Annotated[HttpUrl | None, Field(description="URL where the event occurred (required when action_source is 'website')")] = None
-    custom_event_name: Annotated[str | None, Field(description="Name for custom events (used when event_type is 'custom')")] = None
-    ext: ExtensionObject | None = None
+    user_match: Annotated[UserMatch | None, Field(description='User identifiers for attribution matching'), OmittedNotNull] = None
+    custom_data: Annotated[EventCustomData | None, Field(description='Event-specific data (value, currency, items, etc.)'), OmittedNotNull] = None
+    action_source: Annotated[ActionSource | None, Field(description='Where the event originated'), OmittedNotNull] = None
+    surface: Annotated[EventSurface | None, Field(description='Optional structured surface context for the event, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant meaning would otherwise live only in platform-specific `ext` metadata.'), OmittedNotNull] = None
+    event_source_url: Annotated[HttpUrl | None, Field(description="URL where the event occurred (required when action_source is 'website')"), OmittedNotNull] = None
+    custom_event_name: Annotated[str | None, Field(description="Name for custom events (used when event_type is 'custom')"), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["Event"]

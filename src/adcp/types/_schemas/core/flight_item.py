@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, StrCurrencyCode
 
 from .ext import ExtensionObject
@@ -22,7 +22,7 @@ class Origin(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/flight-item.json', pointer='#/properties/origin')
     airport_code: Annotated[StrCurrencyCode, Field(description="IATA airport code (e.g., 'AMS', 'JFK', 'LHR').")]
-    city: Annotated[str | None, Field(description="City name (e.g., 'Amsterdam', 'New York').")] = None
+    city: Annotated[str | None, Field(description="City name (e.g., 'Amsterdam', 'New York')."), OmittedNotNull] = None
 
 
 class FlightItemDestination(AdCPBaseModel):
@@ -34,7 +34,7 @@ class FlightItemDestination(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/flight-item.json', pointer='#/properties/destination')
     airport_code: Annotated[StrCurrencyCode, Field(description='IATA airport code.')]
-    city: Annotated[str | None, Field(description='City name.')] = None
+    city: Annotated[str | None, Field(description='City name.'), OmittedNotNull] = None
 
 
 class FlightItem(AdCPBaseModel):
@@ -48,16 +48,16 @@ class FlightItem(AdCPBaseModel):
     flight_id: Annotated[str, Field(description='Unique identifier for this flight route or offer.')]
     origin: Annotated[Origin, Field(description='Departure airport or city.')]
     destination: Annotated[FlightItemDestination, Field(description='Arrival airport or city.')]
-    airline: Annotated[str | None, Field(description='Airline name or IATA airline code.')] = None
-    price: Annotated[Price | None, Field(description='Ticket price or starting fare.')] = None
-    description: Annotated[str | None, Field(description='Route description or promotional text.')] = None
-    departure_time: Annotated[AwareDatetime | None, Field(description='Departure date and time (ISO 8601).')] = None
-    arrival_time: Annotated[AwareDatetime | None, Field(description='Arrival date and time (ISO 8601).')] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Promotional image URL (typically a destination photo).')] = None
-    url: Annotated[HttpUrl | None, Field(description='Booking page URL for this route.')] = None
-    tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'direct', 'red-eye', 'business-class').", min_length=1)] = None
-    assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this flight. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (destination hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1)] = None
-    ext: ExtensionObject | None = None
+    airline: Annotated[str | None, Field(description='Airline name or IATA airline code.'), OmittedNotNull] = None
+    price: Annotated[Price | None, Field(description='Ticket price or starting fare.'), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Route description or promotional text.'), OmittedNotNull] = None
+    departure_time: Annotated[AwareDatetime | None, Field(description='Departure date and time (ISO 8601).'), OmittedNotNull] = None
+    arrival_time: Annotated[AwareDatetime | None, Field(description='Arrival date and time (ISO 8601).'), OmittedNotNull] = None
+    image_url: Annotated[HttpUrl | None, Field(description='Promotional image URL (typically a destination photo).'), OmittedNotNull] = None
+    url: Annotated[HttpUrl | None, Field(description='Booking page URL for this route.'), OmittedNotNull] = None
+    tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'direct', 'red-eye', 'business-class').", min_length=1), OmittedNotNull] = None
+    assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this flight. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (destination hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["FlightItem"]

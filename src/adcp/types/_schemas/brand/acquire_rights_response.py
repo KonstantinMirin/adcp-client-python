@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import HttpUrl, ZipAssetDigest
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -47,7 +47,7 @@ class Disclosure(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/acquire-rights-response.json', pointer='#/oneOf/0/properties/disclosure')
     required: Annotated[bool, Field(description='Whether disclosure is required')]
-    text: Annotated[str | None, Field(description='Disclosure text to include with the creative')] = None
+    text: Annotated[str | None, Field(description='Disclosure text to include with the creative'), OmittedNotNull] = None
 
 
 class AcquireRightsAcquiredRightsConstraint(RightsConstraint):
@@ -77,13 +77,13 @@ class AcquireRightsAcquired(AcquireRightsResponse):
     brand_id: Annotated[str, Field(description='Brand identifier of the rights subject')]
     terms: Annotated[RightsTerms, Field(description='Agreed contractual terms')]
     generation_credentials: Annotated[list[GenerationCredential], Field(description='Scoped credentials for generating rights-cleared content')]
-    restrictions: Annotated[list[str] | None, Field(description='Usage restrictions and requirements')] = None
-    disclosure: Annotated[Disclosure | None, Field(description='Required disclosure for creatives using these rights')] = None
-    approval_webhook: Annotated[PushNotificationConfig | None, Field(description='Authenticated webhook for submitting creatives for approval. POST a creative-approval-request to the URL using the provided authentication. The response is a creative-approval-response.')] = None
-    usage_reporting_url: Annotated[HttpUrl | None, Field(description='Endpoint for reporting usage against these rights')] = None
+    restrictions: Annotated[list[str] | None, Field(description='Usage restrictions and requirements'), OmittedNotNull] = None
+    disclosure: Annotated[Disclosure | None, Field(description='Required disclosure for creatives using these rights'), OmittedNotNull] = None
+    approval_webhook: Annotated[PushNotificationConfig | None, Field(description='Authenticated webhook for submitting creatives for approval. POST a creative-approval-request to the URL using the provided authentication. The response is a creative-approval-response.'), OmittedNotNull] = None
+    usage_reporting_url: Annotated[HttpUrl | None, Field(description='Endpoint for reporting usage against these rights'), OmittedNotNull] = None
     rights_constraint: Annotated[AcquireRightsAcquiredRightsConstraint, Field(description='Pre-built rights constraint for embedding in creative manifests. Populated from the agreed terms — the buyer does not need to construct it manually.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AcquireRightsPendingApproval(AcquireRightsResponse):
@@ -97,10 +97,10 @@ class AcquireRightsPendingApproval(AcquireRightsResponse):
     rights_id: str
     rights_status: Annotated[Literal['pending_approval'], Field(description='Rights require approval from the rights holder')]
     brand_id: str
-    detail: Annotated[str | None, Field(description='Explanation of what requires approval')] = None
-    estimated_response_time: Annotated[str | None, Field(description="Expected time for approval decision (e.g., '48h', '3 business days')")] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    detail: Annotated[str | None, Field(description='Explanation of what requires approval'), OmittedNotNull] = None
+    estimated_response_time: Annotated[str | None, Field(description="Expected time for approval decision (e.g., '48h', '3 business days')"), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AcquireRightsRejected(AcquireRightsResponse):
@@ -115,9 +115,9 @@ class AcquireRightsRejected(AcquireRightsResponse):
     rights_status: Annotated[Literal['rejected'], Field(description='Rights request was rejected')]
     brand_id: str
     reason: Annotated[str, Field(description="Why the rights request was rejected. May be sanitized to protect confidential brand rules — e.g., 'This violates our public figures brand guidelines' rather than naming the specific rule.")]
-    suggestions: Annotated[list[str] | None, Field(description='Actionable alternatives the buyer can try. If present, the rejection is fixable — the buyer can adjust their request. If absent, the rejection is final for this talent/rights combination.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    suggestions: Annotated[list[str] | None, Field(description='Actionable alternatives the buyer can try. If present, the rejection is fixable — the buyer can adjust their request. If absent, the rejection is final for this talent/rights combination.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AcquireRightsError(AcquireRightsResponse, FailedResponse):
@@ -129,8 +129,8 @@ class AcquireRightsError(AcquireRightsResponse, FailedResponse):
         ForbiddenGroups((('rights_status',),)),
     )
     errors: Annotated[list[Error], Field(min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 AcquireRightsResponse._branch_models = (AcquireRightsAcquired, AcquireRightsPendingApproval, AcquireRightsRejected, AcquireRightsError,)

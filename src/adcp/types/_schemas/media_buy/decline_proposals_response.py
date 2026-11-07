@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import AdcpResponse
@@ -37,7 +37,7 @@ class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
     proposal_id: StrMinLen1
     outcome: Outcome
-    reason: Annotated[StrMinLen1 | None, Field(description='Why the seller could not apply a decline. Present only for outcome unable.')] = None
+    reason: Annotated[StrMinLen1 | None, Field(description='Why the seller could not apply a decline. Present only for outcome unable.'), OmittedNotNull] = None
 
 
 class ResultsItemDeclined(ResultsItem):
@@ -78,14 +78,14 @@ class DeclineProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse)
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
-    results: Annotated[list[ResultsItem] | None, Field(min_length=1)] = None
-    status: Literal['submitted'] | None = None
-    task_id: StrMinLen1 | None = None
-    message: StrMaxLen2000 | None = None
-    errors: list[Error] | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
-    replayed: Literal[True] | None = None
+    results: Annotated[list[ResultsItem] | None, Field(min_length=1), OmittedNotNull] = None
+    status: Annotated[Literal['submitted'] | None, OmittedNotNull] = None
+    task_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    message: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+    replayed: Annotated[Literal[True] | None, OmittedNotNull] = None
 
 
 class DeclineProposalsResponseResults(DeclineProposalsResponse):

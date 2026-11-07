@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 
 from ..enums.indicator_type import IndicatorType
@@ -40,10 +40,10 @@ class IndicatorBearingResourceState(AdCPBaseModel):
         Approximation(document='core/indicator-bearing.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'pacing_risk'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/indicator-bearing.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'budget_constrained'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    indicators: Annotated[list[Indicator] | None, Field(description='Current seller assertions for the indicator types and publisher/placement coverage named by the sibling evaluation fields. Omitted means unknown or not evaluated. A present empty array means evaluated with no current assertion for indicator_types_evaluated in the evaluated scope.', json_schema_extra={'uniqueItems': True})] = None
-    indicator_types_evaluated: Annotated[list[IndicatorType] | None, Field(description='Indicator types covered by this snapshot. Required whenever indicators is present. Types omitted from this list remain unknown even when indicators is empty. Every returned indicator.type MUST appear in this list.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    indicators_as_of: Annotated[AwareDatetime | None, Field(description='When the seller completed this evaluation. Required whenever indicators is present, including an empty array. State changes require a strictly newer timestamp; equal-timestamp conflicts are invalid and buyers retain stored state.')] = None
-    indicators_evaluated_scope: Annotated[list[IndicatorScope] | None, Field(description='Optional publisher or placement coverage for this evaluation. Omit when the named indicator types were evaluated across the whole enclosing resource or relationship. Unlisted scopes remain unknown. When present, every returned indicator MUST include scope and every scope entry MUST be contained by this coverage.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    indicators: Annotated[list[Indicator] | None, Field(description='Current seller assertions for the indicator types and publisher/placement coverage named by the sibling evaluation fields. Omitted means unknown or not evaluated. A present empty array means evaluated with no current assertion for indicator_types_evaluated in the evaluated scope.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    indicator_types_evaluated: Annotated[list[IndicatorType] | None, Field(description='Indicator types covered by this snapshot. Required whenever indicators is present. Types omitted from this list remain unknown even when indicators is empty. Every returned indicator.type MUST appear in this list.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    indicators_as_of: Annotated[AwareDatetime | None, Field(description='When the seller completed this evaluation. Required whenever indicators is present, including an empty array. State changes require a strictly newer timestamp; equal-timestamp conflicts are invalid and buyers retain stored state.'), OmittedNotNull] = None
+    indicators_evaluated_scope: Annotated[list[IndicatorScope] | None, Field(description='Optional publisher or placement coverage for this evaluation. Omit when the named indicator types were evaluated across the whole enclosing resource or relationship. Unlisted scopes remain unknown. When present, every returned indicator MUST include scope and every scope entry MUST be contained by this coverage.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["IndicatorBearingResourceState"]

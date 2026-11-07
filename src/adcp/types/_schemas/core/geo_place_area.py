@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -31,11 +31,11 @@ class GeographicPlaceArea(AdCPBaseModel):
     )
     country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code containing the place.')]
     system: GeographicPlaceIdentifierSystem
-    system_version: Annotated[StrMinLen1 | None, Field(description="Optional exact catalog version from the seller's declared supported_versions. When omitted, the seller applies catalog.current_version and MUST echo that version on persisted package state.")] = None
+    system_version: Annotated[StrMinLen1 | None, Field(description="Optional exact catalog version from the seller's declared supported_versions. When omitted, the seller applies catalog.current_version and MUST echo that version on persisted package state."), OmittedNotNull] = None
     place_type: GeographicPlaceType
     values: Annotated[list[StrMinLen1], Field(description='Stable place identifiers in the declared system. Display names are not valid targeting values.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    value_labels: Annotated[dict[str, StrMinLen1] | None, Field(description='Optional human-readable diagnostic labels keyed by identifiers present in values. Extra keys are a conformance error. Labels are non-authoritative and MUST NOT be used to resolve or apply targeting.')] = None
-    ext: ExtensionObject | None = None
+    value_labels: Annotated[dict[str, StrMinLen1] | None, Field(description='Optional human-readable diagnostic labels keyed by identifiers present in values. Extra keys are a conformance error. Labels are non-authoritative and MUST NOT be used to resolve or apply targeting.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GeographicPlaceArea"]

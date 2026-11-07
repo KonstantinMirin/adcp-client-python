@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.catalog import Catalog
 from ..core.format_id import FormatReferenceStructuredObject
@@ -24,9 +24,9 @@ class AvailablePackage(AdCPBaseModel):
     package_id: Annotated[str, Field(description='Unique identifier for the package')]
     media_buy_id: Annotated[str, Field(description='Media buy that this package belongs to')]
     seller_agent: Annotated[SellerAgentReference, Field(description="The seller agent that owns this package. `agent_url` MUST match one of `authorized_agents[].url` in the publisher's adagents.json authoritative for every property this package may serve. Providers SHOULD validate at sync time and reject mismatches with `seller_not_authorized`. Cached alongside the package and used for offer attribution, per-seller observability, and dispute resolution — not for request-time filtering.")]
-    format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Legacy named-format identifiers eligible for this package. Use canonical `format_options`.')] = None
-    format_options: Annotated[list[PackageFormatSnapshot] | None, Field(description='Immutable seller-resolved PackageFormatSnapshots eligible for this package. A sender projects this field only when the Trusted Match transport profile supports the highest AdCP release version of every field in every snapshot. It MUST NOT strip an unsupported selector or digest field from a snapshot; for an older or version-unknown provider, omit the entire contract-bearing snapshot and do not claim production-path evidence from a legacy projection.', min_length=1)] = None
-    catalogs: Annotated[list[Catalog] | None, Field(description="The buyer's catalogs attached to this package, with selectors (ids, gtins, tags, category, query) scoping which items are in play. References synced catalogs by catalog_id. The provider resolves items from its cached copy.")] = None
+    format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Legacy named-format identifiers eligible for this package. Use canonical `format_options`.'), OmittedNotNull] = None
+    format_options: Annotated[list[PackageFormatSnapshot] | None, Field(description='Immutable seller-resolved PackageFormatSnapshots eligible for this package. A sender projects this field only when the Trusted Match transport profile supports the highest AdCP release version of every field in every snapshot. It MUST NOT strip an unsupported selector or digest field from a snapshot; for an older or version-unknown provider, omit the entire contract-bearing snapshot and do not claim production-path evidence from a legacy projection.', min_length=1), OmittedNotNull] = None
+    catalogs: Annotated[list[Catalog] | None, Field(description="The buyer's catalogs attached to this package, with selectors (ids, gtins, tags, category, query) scoping which items are in play. References synced catalogs by catalog_id. The provider resolves items from its cached copy."), OmittedNotNull] = None
 
 
 __all__ = ["AvailablePackage"]

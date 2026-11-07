@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, Year
 
 from .destination_item import ObjLatLng
@@ -112,22 +112,22 @@ class VehicleItem(AdCPBaseModel):
     make: Annotated[str, Field(description="Vehicle manufacturer (e.g., 'Honda', 'Ford', 'BMW').")]
     model: Annotated[str, Field(description="Vehicle model (e.g., 'Civic', 'F-150', 'X5').")]
     year: Annotated[Year, Field(description='Model year.')]
-    price: Annotated[Price | None, Field(description='Vehicle price.')] = None
-    condition: Annotated[Condition | None, Field(description='Vehicle condition.')] = None
-    vin: Annotated[str | None, Field(description='Vehicle Identification Number (17-character VIN).')] = None
-    trim: Annotated[str | None, Field(description="Trim level (e.g., 'EX', 'Limited', 'Sport').")] = None
-    mileage: Annotated[Mileage | None, Field(description='Odometer reading.')] = None
-    body_style: Annotated[BodyStyle | None, Field(description='Vehicle body style.')] = None
-    transmission: Annotated[Transmission | None, Field(description='Transmission type.')] = None
-    fuel_type: Annotated[FuelType | None, Field(description='Fuel or powertrain type.')] = None
-    exterior_color: Annotated[str | None, Field(description='Exterior color.')] = None
-    interior_color: Annotated[str | None, Field(description='Interior color.')] = None
-    location: Annotated[ObjLatLng | None, Field(description='Dealer or vehicle location.')] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Primary vehicle image URL.')] = None
-    url: Annotated[HttpUrl | None, Field(description='Vehicle listing page URL.')] = None
-    tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'low-mileage', 'one-owner', 'dealer-certified').", min_length=1)] = None
-    assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this vehicle. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (exterior hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1)] = None
-    ext: ExtensionObject | None = None
+    price: Annotated[Price | None, Field(description='Vehicle price.'), OmittedNotNull] = None
+    condition: Annotated[Condition | None, Field(description='Vehicle condition.'), OmittedNotNull] = None
+    vin: Annotated[str | None, Field(description='Vehicle Identification Number (17-character VIN).'), OmittedNotNull] = None
+    trim: Annotated[str | None, Field(description="Trim level (e.g., 'EX', 'Limited', 'Sport')."), OmittedNotNull] = None
+    mileage: Annotated[Mileage | None, Field(description='Odometer reading.'), OmittedNotNull] = None
+    body_style: Annotated[BodyStyle | None, Field(description='Vehicle body style.'), OmittedNotNull] = None
+    transmission: Annotated[Transmission | None, Field(description='Transmission type.'), OmittedNotNull] = None
+    fuel_type: Annotated[FuelType | None, Field(description='Fuel or powertrain type.'), OmittedNotNull] = None
+    exterior_color: Annotated[str | None, Field(description='Exterior color.'), OmittedNotNull] = None
+    interior_color: Annotated[str | None, Field(description='Interior color.'), OmittedNotNull] = None
+    location: Annotated[ObjLatLng | None, Field(description='Dealer or vehicle location.'), OmittedNotNull] = None
+    image_url: Annotated[HttpUrl | None, Field(description='Primary vehicle image URL.'), OmittedNotNull] = None
+    url: Annotated[HttpUrl | None, Field(description='Vehicle listing page URL.'), OmittedNotNull] = None
+    tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'low-mileage', 'one-owner', 'dealer-certified').", min_length=1), OmittedNotNull] = None
+    assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this vehicle. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (exterior hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["VehicleItem"]

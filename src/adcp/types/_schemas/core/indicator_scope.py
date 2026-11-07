@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from .domain_name import DomainName
 
@@ -19,7 +19,7 @@ class IndicatorScope(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/indicator-scope.json', pointer='#')
     publisher_domain: Annotated[DomainName, Field(description="Domain where the publisher's adagents.json is hosted.")]
-    placement_id: Annotated[str | None, Field(description='Optional placement ID within publisher_domain. Omit to scope the assertion or evaluation to all delivery for the publisher in the enclosing object.')] = None
+    placement_id: Annotated[str | None, Field(description='Optional placement ID within publisher_domain. Omit to scope the assertion or evaluation to all delivery for the publisher in the enclosing object.'), OmittedNotNull] = None
 
 
 __all__ = ["IndicatorScope"]

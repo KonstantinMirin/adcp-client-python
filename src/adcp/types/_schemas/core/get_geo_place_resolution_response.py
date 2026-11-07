@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 from .geo_place_catalog_entry import GeographicPlaceCatalogEntry
@@ -28,7 +28,7 @@ class GetGeographicPlaceResolutionResponse(AdCPBaseModel):
     system: GeographicPlaceIdentifierSystem
     system_version: StrMinLen1
     matches: list[GeographicPlaceCatalogEntry]
-    next_cursor: StrMinLen1 | None = None
+    next_cursor: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 __all__ = ["GetGeographicPlaceResolutionResponse"]

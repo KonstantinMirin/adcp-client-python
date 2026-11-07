@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 
 class PolicyReference(AdCPBaseModel):
@@ -17,8 +17,8 @@ class PolicyReference(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-ref.json', pointer='#')
     policy_id: Annotated[str, Field(description='The unique identifier of the policy in the registry (e.g., "uk_hfss", "us_coppa").')]
-    version: Annotated[str | None, Field(description='Pin a specific policy version (semver). If omitted, the current version is used.')] = None
-    config: Annotated[dict[str, Any] | None, Field(description="Brand-specific parameter overrides for configurable policies. The accepted shape depends on the policy's config_schema.")] = None
+    version: Annotated[str | None, Field(description='Pin a specific policy version (semver). If omitted, the current version is used.'), OmittedNotNull] = None
+    config: Annotated[dict[str, Any] | None, Field(description="Brand-specific parameter overrides for configurable policies. The accepted shape depends on the policy's config_schema."), OmittedNotNull] = None
 
 
 __all__ = ["PolicyReference"]

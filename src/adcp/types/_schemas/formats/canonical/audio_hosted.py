@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import MemberAlias, SchemaRef
+from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatGt0, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -69,24 +69,24 @@ class CanonicalFormatHostedAudio(CanonicalFormatBase):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/audio_hosted.json', pointer='#')
-    slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for buyer-uploaded audio. Host-read products override with a `script` (asset_type: text) or `creative_brief` (asset_type: brief) slot in place of `audio_main`, plus `asset_source: 'publisher_host_recorded'` and `buyer_asset_acceptance: 'rejected'`. TTS-from-script products override similarly with `asset_source: 'seller_pre_rendered_from_brief'`.", json_schema_extra={'default': [{'asset_group_id': 'audio_main', 'asset_type': 'audio', 'required': True}, {'asset_group_id': 'companion_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'audio_main', 'asset_type': 'audio', 'required': True}, {'asset_group_id': 'companion_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
-    duration_ms_range: Annotated[list[NonNegativeInt | None] | None, Field(description='[min, max] duration in milliseconds. Either endpoint MAY be null to express an unbounded side: [null, 60000] means up to 60s; [15000, null] means at least 15s. [null, null] is invalid because at least one endpoint must be bounded. **Precedence**: when both `duration_ms_exact` and `duration_ms_range` ship on the same product, `duration_ms_exact` takes precedence — buyers MUST validate against the exact value and ignore the range. SDKs SHOULD lint a warning when both fields ship; producers SHOULD pick one.', max_length=2, min_length=2)] = None
-    duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship.')] = None
-    audio_codecs: list[AudioCodecsItem] | None = None
-    audio_sample_rates: list[IntMin1] | None = None
-    audio_channels: list[AudioChannels] | None = None
-    min_bitrate_kbps: IntMin1 | None = None
-    max_bitrate_kbps: IntMin1 | None = None
-    max_file_size_mb: Annotated[FloatGt0 | None, Field(description='Maximum hosted audio file size in decimal megabytes. Agents that proxy or cache media SHOULD advertise their effective transport ceiling here.')] = None
-    loudness_lufs: Annotated[float | None, Field(description='Required integrated loudness in LUFS (typical: -16 for streaming/podcast, -23 for broadcast). Negative values.')] = None
-    loudness_tolerance_db: Annotated[NonNegativeFloat | None, Field(description='Permitted deviation from loudness_lufs in dB.')] = None
-    true_peak_dbfs: Annotated[float | None, Field(description='Maximum true-peak level in dBFS (typical: -2).')] = None
-    asset_source: Annotated[AssetSource | None, Field(description="Where the rendered audio bytes come from. Single shared enum across canonicals (see `image.json#asset_source` for the full semantics). `publisher_host_recorded`: the publisher's host records the audio (podcast host-read pattern); buyer must use the publisher's build_creative capability. `publisher_owned_reference` is valid only when the product accepts a reference asset whose publisher-owned source resolves to playable audio. `publisher_host_recorded` remains the normal audio-specific host-read value.", json_schema_extra={'default': 'buyer_uploaded'})] = Field(default_factory=lambda: TypeAdapter(AssetSource).validate_python('buyer_uploaded'))
-    buyer_asset_acceptance: Annotated[BuyerAssetAcceptance | None, Field(description="Whether the product accepts buyer-uploaded audio. When `rejected`, the buyer cannot ship an audio asset directly — they must use build_creative (or sync_creatives with brief inputs) so the seller produces the audio. Combined with `asset_source`, lets a product declare 'I produce audio from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`).", json_schema_extra={'default': 'accepted'})] = Field(default_factory=lambda: TypeAdapter(BuyerAssetAcceptance).validate_python('accepted'))
-    companion_image_required: bool | None = None
-    companion_image_aspect_ratio: str | None = None
-    companion_image_max_file_size_kb: IntMin1 | None = None
-    brand_name_max_chars: IntMin1 | None = None
+    slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for buyer-uploaded audio. Host-read products override with a `script` (asset_type: text) or `creative_brief` (asset_type: brief) slot in place of `audio_main`, plus `asset_source: 'publisher_host_recorded'` and `buyer_asset_acceptance: 'rejected'`. TTS-from-script products override similarly with `asset_source: 'seller_pre_rendered_from_brief'`.", json_schema_extra={'default': [{'asset_group_id': 'audio_main', 'asset_type': 'audio', 'required': True}, {'asset_group_id': 'companion_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'audio_main', 'asset_type': 'audio', 'required': True}, {'asset_group_id': 'companion_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
+    duration_ms_range: Annotated[list[NonNegativeInt | None] | None, Field(description='[min, max] duration in milliseconds. Either endpoint MAY be null to express an unbounded side: [null, 60000] means up to 60s; [15000, null] means at least 15s. [null, null] is invalid because at least one endpoint must be bounded. **Precedence**: when both `duration_ms_exact` and `duration_ms_range` ship on the same product, `duration_ms_exact` takes precedence — buyers MUST validate against the exact value and ignore the range. SDKs SHOULD lint a warning when both fields ship; producers SHOULD pick one.', max_length=2, min_length=2), OmittedNotNull] = None
+    duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship.'), OmittedNotNull] = None
+    audio_codecs: Annotated[list[AudioCodecsItem] | None, OmittedNotNull] = None
+    audio_sample_rates: Annotated[list[IntMin1] | None, OmittedNotNull] = None
+    audio_channels: Annotated[list[AudioChannels] | None, OmittedNotNull] = None
+    min_bitrate_kbps: Annotated[IntMin1 | None, OmittedNotNull] = None
+    max_bitrate_kbps: Annotated[IntMin1 | None, OmittedNotNull] = None
+    max_file_size_mb: Annotated[FloatGt0 | None, Field(description='Maximum hosted audio file size in decimal megabytes. Agents that proxy or cache media SHOULD advertise their effective transport ceiling here.'), OmittedNotNull] = None
+    loudness_lufs: Annotated[float | None, Field(description='Required integrated loudness in LUFS (typical: -16 for streaming/podcast, -23 for broadcast). Negative values.'), OmittedNotNull] = None
+    loudness_tolerance_db: Annotated[NonNegativeFloat | None, Field(description='Permitted deviation from loudness_lufs in dB.'), OmittedNotNull] = None
+    true_peak_dbfs: Annotated[float | None, Field(description='Maximum true-peak level in dBFS (typical: -2).'), OmittedNotNull] = None
+    asset_source: Annotated[AssetSource | None, Field(description="Where the rendered audio bytes come from. Single shared enum across canonicals (see `image.json#asset_source` for the full semantics). `publisher_host_recorded`: the publisher's host records the audio (podcast host-read pattern); buyer must use the publisher's build_creative capability. `publisher_owned_reference` is valid only when the product accepts a reference asset whose publisher-owned source resolves to playable audio. `publisher_host_recorded` remains the normal audio-specific host-read value.", json_schema_extra={'default': 'buyer_uploaded'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AssetSource).validate_python('buyer_uploaded'))
+    buyer_asset_acceptance: Annotated[BuyerAssetAcceptance | None, Field(description="Whether the product accepts buyer-uploaded audio. When `rejected`, the buyer cannot ship an audio asset directly — they must use build_creative (or sync_creatives with brief inputs) so the seller produces the audio. Combined with `asset_source`, lets a product declare 'I produce audio from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`).", json_schema_extra={'default': 'accepted'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(BuyerAssetAcceptance).validate_python('accepted'))
+    companion_image_required: Annotated[bool | None, OmittedNotNull] = None
+    companion_image_aspect_ratio: Annotated[str | None, OmittedNotNull] = None
+    companion_image_max_file_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
+    brand_name_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
 
 
 __all__ = ["CanonicalFormatHostedAudio"]

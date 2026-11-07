@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -44,11 +44,11 @@ class ReportingStatusChangedWebhook(AdCPBaseModel):
     delivery_config_id: AccountChangeRecordedWebhookSubscriberId
     delivery_config_version: IntMin1
     feed_purpose: ReportingFeedPurpose
-    reporting_obligation_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Present when the transition is obligation-scoped; absent for configuration-level transitions.')] = None
+    reporting_obligation_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Present when the transition is obligation-scoped; absent for configuration-level transitions.'), OmittedNotNull] = None
     health: Annotated[ReportingHealth, Field(description='The health state after this transition.')]
-    previous_health: ReportingHealth | None = None
-    issue_ids: Annotated[list[ComplyTestControllerRequestParamsReceivedReportingRevisionId] | None, Field(description='Stable identifiers of the open issues that caused or survived this transition, matching issues[].issue_id on get_reporting_status, so consumers can project AdCP reporting issues into durable work items. Empty or absent on recovery transitions.', json_schema_extra={'uniqueItems': True}, max_length=16)] = None
-    ext: ExtensionObject | None = None
+    previous_health: Annotated[ReportingHealth | None, OmittedNotNull] = None
+    issue_ids: Annotated[list[ComplyTestControllerRequestParamsReceivedReportingRevisionId] | None, Field(description='Stable identifiers of the open issues that caused or survived this transition, matching issues[].issue_id on get_reporting_status, so consumers can project AdCP reporting issues into durable work items. Empty or absent on recovery transitions.', json_schema_extra={'uniqueItems': True}, max_length=16), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ReportingStatusChangedWebhook"]

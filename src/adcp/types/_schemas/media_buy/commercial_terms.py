@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen500
 
 from ..core.bidding_policy import BiddingPolicy
@@ -51,8 +51,8 @@ class CancellationTerms(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/commercial-terms.json', pointer='#/properties/cancellation_terms')
     effective_at: AwareDatetime
-    fee: Money | None = None
-    reason: StrMinLen1MaxLen500 | None = None
+    fee: Annotated[Money | None, OmittedNotNull] = None
+    reason: Annotated[StrMinLen1MaxLen500 | None, OmittedNotNull] = None
 
 
 class CommercialTerms(AdCPBaseModel):
@@ -63,26 +63,26 @@ class CommercialTerms(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/commercial-terms.json', pointer='#')
-    source_feed_version: Annotated[StrMinLen1 | None, Field(description='Wholesale product feed version against which direct published offers were accepted. Omitted when the seller authored terms outside a wholesale snapshot.')] = None
-    source_pricing_version: Annotated[StrMinLen1 | None, Field(description='Pricing-layer version against which published rates were accepted.')] = None
+    source_feed_version: Annotated[StrMinLen1 | None, Field(description='Wholesale product feed version against which direct published offers were accepted. Omitted when the seller authored terms outside a wholesale snapshot.'), OmittedNotNull] = None
+    source_pricing_version: Annotated[StrMinLen1 | None, Field(description='Pricing-layer version against which published rates were accepted.'), OmittedNotNull] = None
     brand: BrandKey
-    advertiser_industry: AdvertiserIndustry | None = None
+    advertiser_industry: Annotated[AdvertiserIndustry | None, OmittedNotNull] = None
     purchases: Annotated[list[PurchasesItem], Field(description='Exact canonical product, pricing, format, catalog, budget, targeting, bidding, optimization, resolved flight, measurement, and performance terms in the commercial envelope.', min_length=1)]
     start_time: StartTiming
     end_time: AwareDatetime
-    total_budget: Money | None = None
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate daily spend ceiling accepted as part of these terms. It bounds total spend without creating purchase allocations.')] = None
-    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Hard MediaBuy-level cap accepted as part of these terms. One counter aggregates exposures across every purchase; purchase targeting caps remain independently binding.')] = None
-    budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Shared IANA calendar-day boundary for aggregate and purchase daily caps in these terms.')] = None
-    budget_allocation: CanonicalBudgetAllocation | None = None
-    pacing: Pacing | None = None
-    bidding: Annotated[BiddingPolicy | None, Field(description="Media-buy bidding policy. A proposal answering criteria.outcome_target.cost_per states here the cost the seller can plan to, which the buyer adopts on acceptance: the requested strength, and an amount greater than or equal to the ask (the ask when the seller can forecast goal volume under it within the buyer's budget, otherwise the lowest such amount), denominated in the purchases' pricing currency, which equals cost_per.currency. It is an execution control, not an expected price; when the planned spend at that amount is below total_budget, forecast points carry metrics.spend. See outcome-target.json for goal binding.")] = None
-    invoice_recipient: BusinessEntity | None = None
-    purchase_order_ref: StrMinLen1MaxLen255 | None = None
-    agency_estimate_number: StrMaxLen100 | None = None
-    reporting_commitments: Annotated[list[ReportingCommitmentsItem] | None, Field(description='Binding reporting contract keyed by position in purchases. Amendments preserve prior entries and add metrics with effective_at; seller-assigned package IDs live in the execution binding, outside this digest.', min_length=1)] = None
-    cancellation_terms: CancellationTerms | None = None
-    change_terms: Annotated[list[MediaBuyChangeTerm] | None, Field(description='Binding buyer change rights included in the commercial envelope and therefore covered by terms_digest. Entries are uniquely keyed by action. When this field is present, an omitted action is not a negotiated change right. Omission of the entire field means legacy-unspecified rights, not a prohibition.', min_length=1)] = None
+    total_budget: Annotated[Money | None, OmittedNotNull] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate daily spend ceiling accepted as part of these terms. It bounds total spend without creating purchase allocations.'), OmittedNotNull] = None
+    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Hard MediaBuy-level cap accepted as part of these terms. One counter aggregates exposures across every purchase; purchase targeting caps remain independently binding.'), OmittedNotNull] = None
+    budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Shared IANA calendar-day boundary for aggregate and purchase daily caps in these terms.'), OmittedNotNull] = None
+    budget_allocation: Annotated[CanonicalBudgetAllocation | None, OmittedNotNull] = None
+    pacing: Annotated[Pacing | None, OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description="Media-buy bidding policy. A proposal answering criteria.outcome_target.cost_per states here the cost the seller can plan to, which the buyer adopts on acceptance: the requested strength, and an amount greater than or equal to the ask (the ask when the seller can forecast goal volume under it within the buyer's budget, otherwise the lowest such amount), denominated in the purchases' pricing currency, which equals cost_per.currency. It is an execution control, not an expected price; when the planned spend at that amount is below total_budget, forecast points carry metrics.spend. See outcome-target.json for goal binding."), OmittedNotNull] = None
+    invoice_recipient: Annotated[BusinessEntity | None, OmittedNotNull] = None
+    purchase_order_ref: Annotated[StrMinLen1MaxLen255 | None, OmittedNotNull] = None
+    agency_estimate_number: Annotated[StrMaxLen100 | None, OmittedNotNull] = None
+    reporting_commitments: Annotated[list[ReportingCommitmentsItem] | None, Field(description='Binding reporting contract keyed by position in purchases. Amendments preserve prior entries and add metrics with effective_at; seller-assigned package IDs live in the execution binding, outside this digest.', min_length=1), OmittedNotNull] = None
+    cancellation_terms: Annotated[CancellationTerms | None, OmittedNotNull] = None
+    change_terms: Annotated[list[MediaBuyChangeTerm] | None, Field(description='Binding buyer change rights included in the commercial envelope and therefore covered by terms_digest. Entries are uniquely keyed by action. When this field is present, an omitted action is not a negotiated change right. Omission of the entire field means legacy-unspecified rights, not a prohibition.', min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["CommercialTerms"]

@@ -20,8 +20,11 @@ payload is valid. A base here is what those classes have in common and nothing m
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from pydantic import BaseModel
 
+from adcp.types._base import OmittedNotNull
 from adcp.types._schemas.core.context import ContextObject
 from adcp.types._schemas.core.error import Error
 from adcp.types._schemas.core.ext import ExtensionObject
@@ -32,8 +35,8 @@ class FailedResponse(BaseModel):
     The envelope a failed response carries, as one type to program against. A CONSUMER CONVENIENCE and not a conformance claim: it carries no __adcp_schema__, so nothing grades it and strict_validate does not resolve on it. The concrete class for a document decides what that document accepts, and the documents do not agree -- 21 of them require at least one error and 5 accept none, so a base claiming to be the authority for all of them would be wrong about one group or the other. What this states is what every document of the family states alike: an errors list of Error, an optional context and an optional ext. What it does not state is any document's own bound on errors, which lives on the concrete class -- the same class strict_validate runs. Upstream: adcontextprotocol/adcp#8516.
     """
     errors: list[Error]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AdcpRequest(BaseModel):

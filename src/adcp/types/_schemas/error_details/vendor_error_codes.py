@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from ..core.error import Recovery
@@ -20,7 +20,7 @@ class CodesValue(AdCPBaseModel):
 class VendorsValue(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vendor-error-codes.json', pointer='#/properties/vendors/additionalProperties')
     name: Annotated[str, Field(description='Full vendor name')]
-    url: Annotated[HttpUrl | None, Field(description='Vendor website or documentation URL')] = None
+    url: Annotated[HttpUrl | None, Field(description='Vendor website or documentation URL'), OmittedNotNull] = None
     codes: Annotated[dict[str, CodesValue], Field(description='Map of code suffix to description and recovery classification')]
 
 
@@ -29,7 +29,7 @@ class VendorErrorCodeRegistry(AdCPBaseModel):
     Registry of vendor-prefixed error codes (X_{VENDOR}_{CODE}). Sellers register their vendor prefix and codes here to prevent collisions. Standard error codes are in error-code.json. To register a new vendor prefix, submit a PR adding your entry to the vendors object.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vendor-error-codes.json', pointer='#')
-    vendors: Annotated[dict[str, VendorsValue] | None, Field(description='Map of vendor prefix to vendor metadata and codes')] = None
+    vendors: Annotated[dict[str, VendorsValue] | None, Field(description='Map of vendor prefix to vendor metadata and codes'), OmittedNotNull] = None
 
 
 __all__ = ["VendorErrorCodeRegistry"]

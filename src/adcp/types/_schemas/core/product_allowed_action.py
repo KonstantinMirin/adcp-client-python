@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.media_buy_action_mode import MediaBuyActionMode
@@ -29,10 +29,10 @@ class ProductAllowedAction(AdCPBaseModel):
     )
     action: Annotated[MediaBuyAvailableActionID, Field(description='The action identifier. Accepts every legacy valid_actions value plus structured-only actions such as update_media_buy_frequency_cap.')]
     modes: Annotated[list[MediaBuyActionMode], Field(description='Modes available for this action on this product. A product may declare multiple modes (for example `self_serve` within tolerances, escalating to `requires_approval` outside) — the buy-side `available_actions[<action>].mode` resolves to the singular mode in effect at mutation time. SDKs that see multiple modes MUST NOT assume which one will fire; they must read the resolved `mode` on the buy.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    allowed_statuses: Annotated[list[MediaBuyStatus] | None, Field(description='Media buy statuses in which this action is permitted. When absent, the action is permitted in all non-terminal statuses (`pending_creatives`, `pending_start`, `active`, `paused`).', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    sla: Annotated[SLAWindow | None, Field(description='Optional SLA commitment for this action on this product. Absence means no commitment.')] = None
-    constraints: Annotated[MediaBuyChangeTermConstraints | None, Field(description='Optional advisory machine-readable bounds buyers can use during product selection. The proposal must restate any binding bounds in commercial_terms.change_terms[].constraints.')] = None
-    terms_ref: Annotated[str | None, Field(description='Optional advisory pointer to published commercial terms governing this product action. It is not a proposal change-term identity and never grants a binding change right; a proposal materializes binding rights under commercial_terms.change_terms[].term_id.')] = None
+    allowed_statuses: Annotated[list[MediaBuyStatus] | None, Field(description='Media buy statuses in which this action is permitted. When absent, the action is permitted in all non-terminal statuses (`pending_creatives`, `pending_start`, `active`, `paused`).', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    sla: Annotated[SLAWindow | None, Field(description='Optional SLA commitment for this action on this product. Absence means no commitment.'), OmittedNotNull] = None
+    constraints: Annotated[MediaBuyChangeTermConstraints | None, Field(description='Optional advisory machine-readable bounds buyers can use during product selection. The proposal must restate any binding bounds in commercial_terms.change_terms[].constraints.'), OmittedNotNull] = None
+    terms_ref: Annotated[str | None, Field(description='Optional advisory pointer to published commercial terms governing this product action. It is not a proposal change-term identity and never grants a binding change right; a proposal materializes binding rights under commercial_terms.change_terms[].term_id.'), OmittedNotNull] = None
 
 
 __all__ = ["ProductAllowedAction"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 
 from ..enums.media_buy_frequency_cap_control_mode import MediaBuyFrequencyCapControlMode
@@ -24,7 +24,7 @@ class MediaBuyFrequencyCapSupport(FrequencyCapConstraints):
         ForbiddenGroups((('suppression_constraints',),)),
         UniqueItems('supported_control_modes'),
     )
-    supported_control_modes: Annotated[list[MediaBuyFrequencyCapControlMode] | None, Field(description='FrequencyCap shapes accepted by the product. max_impressions_and_suppress means both controls may appear together and are enforced with AND semantics.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    supported_control_modes: Annotated[list[MediaBuyFrequencyCapControlMode] | None, Field(description='FrequencyCap shapes accepted by the product. max_impressions_and_suppress means both controls may appear together and are enforced with AND semantics.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["MediaBuyFrequencyCapSupport"]

@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 from adcp.types.envelopes import AdcpResponse
 
@@ -26,10 +26,10 @@ class AcpHandoff(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/acp_handoff')
-    checkout_url: Annotated[HttpUrl | None, Field(description="Brand's ACP checkout endpoint. Hosts MUST validate this is HTTPS before opening.")] = None
-    checkout_token: Annotated[str | None, Field(description='Opaque token for the checkout flow. The host passes this to the checkout endpoint to correlate the SI session with the transaction.')] = None
-    payload: Annotated[dict[str, Any] | None, Field(description='Rich checkout context to pass to the ACP endpoint (product details, applied offers, pricing). Alternative to checkout_token for integrations that need structured data.')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this handoff data expires. Hosts should initiate checkout before this time.')] = None
+    checkout_url: Annotated[HttpUrl | None, Field(description="Brand's ACP checkout endpoint. Hosts MUST validate this is HTTPS before opening."), OmittedNotNull] = None
+    checkout_token: Annotated[str | None, Field(description='Opaque token for the checkout flow. The host passes this to the checkout endpoint to correlate the SI session with the transaction.'), OmittedNotNull] = None
+    payload: Annotated[dict[str, Any] | None, Field(description='Rich checkout context to pass to the ACP endpoint (product details, applied offers, pricing). Alternative to checkout_token for integrations that need structured data.'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='When this handoff data expires. Hosts should initiate checkout before this time.'), OmittedNotNull] = None
 
 
 class Action(StrEnum):
@@ -51,8 +51,8 @@ class FollowUp(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/follow_up')
-    action: Action | None = None
-    data: Annotated[dict[str, Any] | None, Field(description='Data for follow-up action')] = None
+    action: Annotated[Action | None, OmittedNotNull] = None
+    data: Annotated[dict[str, Any] | None, Field(description='Data for follow-up action'), OmittedNotNull] = None
 
 
 class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -65,12 +65,12 @@ class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResp
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#')
     session_id: Annotated[str, Field(description='Terminated session identifier')]
     terminated: Annotated[bool, Field(description='Whether session was successfully terminated')]
-    session_status: Annotated[SISessionStatus | None, Field(description="Resulting session state. 'complete' for handoff_transaction/handoff_complete, 'terminated' for user_exit/session_timeout/host_terminated.")] = None
-    acp_handoff: Annotated[AcpHandoff | None, Field(description='ACP checkout handoff data. Present when reason is handoff_transaction.')] = None
-    follow_up: Annotated[FollowUp | None, Field(description='Suggested follow-up actions')] = None
-    errors: list[Error] | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    session_status: Annotated[SISessionStatus | None, Field(description="Resulting session state. 'complete' for handoff_transaction/handoff_complete, 'terminated' for user_exit/session_timeout/host_terminated."), OmittedNotNull] = None
+    acp_handoff: Annotated[AcpHandoff | None, Field(description='ACP checkout handoff data. Present when reason is handoff_transaction.'), OmittedNotNull] = None
+    follow_up: Annotated[FollowUp | None, Field(description='Suggested follow-up actions'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SITerminateSessionResponse"]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import MemberAlias, SchemaRef
+from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -50,10 +50,10 @@ class GetBrandIdentityRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-request.json', pointer='#')
     brand_id: Annotated[str, Field(description='Brand identifier from brand.json brands array')]
-    fields: Annotated[list[BrandIdentityField] | None, Field(description='Optional identity sections to include in the response. When omitted, all sections the caller is authorized to see are returned. Core fields (brand_id, house, names) are always returned and do not need to be requested.', min_length=1)] = None
-    use_case: Annotated[str | None, Field(description="Intended use case, so the agent can tailor the response. A 'voice_synthesis' use case returns voice configs; a 'likeness' use case returns high-res photos and appearance guidelines.")] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    fields: Annotated[list[BrandIdentityField] | None, Field(description='Optional identity sections to include in the response. When omitted, all sections the caller is authorized to see are returned. Core fields (brand_id, house, names) are always returned and do not need to be requested.', min_length=1), OmittedNotNull] = None
+    use_case: Annotated[str | None, Field(description="Intended use case, so the agent can tailor the response. A 'voice_synthesis' use case returns voice configs; a 'likeness' use case returns high-res photos and appearance guidelines."), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetBrandIdentityRequest"]

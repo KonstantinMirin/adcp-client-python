@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 
 class PaginationResponse(AdCPBaseModel):
@@ -17,8 +17,8 @@ class PaginationResponse(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pagination-response.json', pointer='#')
     has_more: Annotated[bool, Field(description='Whether more results are available beyond this page')]
-    cursor: Annotated[str | None, Field(description='Opaque cursor to pass in the next request to fetch the next page. Only present when has_more is true.')] = None
-    total_count: Annotated[NonNegativeInt | None, Field(description='Total number of items matching the query across all pages. Optional because not all backends can efficiently compute this.')] = None
+    cursor: Annotated[str | None, Field(description='Opaque cursor to pass in the next request to fetch the next page. Only present when has_more is true.'), OmittedNotNull] = None
+    total_count: Annotated[NonNegativeInt | None, Field(description='Total number of items matching the query across all pages. Optional because not all backends can efficiently compute this.'), OmittedNotNull] = None
 
 
 __all__ = ["PaginationResponse"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId
 
@@ -48,11 +48,11 @@ class WholesaleFeedWebhook(AdCPBaseModel):
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Identifies which notification_configs[] entry is receiving this fire. Echoed from the registered subscriber_id.')]
     account_id: Annotated[str, Field(description='Seller account identifier for the account scope that registered this webhook through sync_accounts.accounts[].notification_configs[]. Required because wholesale feed webhooks are account-anchored notifications.')]
     wholesale_feed_version: Annotated[str, Field(description='Opaque post-change version token for the affected wholesale feed. Store it only after applying the event. A stale mirror repairs with its last applied version; uncertain or bulk repair omits the conditional token.')]
-    product_payload_view: Annotated[ProductPayloadView | None, Field(description='Product representation selected by the receiving notification config. Present on product.* fires; canonical uses canonical_product/canonical_pricing_options and legacy uses product/pricing_options.')] = None
-    previous_wholesale_feed_version: Annotated[str | None, Field(description='Opaque version token for the affected wholesale feed before this change, when the seller can cheaply provide it. Receivers MAY use this to detect obvious gaps, but MUST NOT require it.')] = None
+    product_payload_view: Annotated[ProductPayloadView | None, Field(description='Product representation selected by the receiving notification config. Present on product.* fires; canonical uses canonical_product/canonical_pricing_options and legacy uses product/pricing_options.'), OmittedNotNull] = None
+    previous_wholesale_feed_version: Annotated[str | None, Field(description='Opaque version token for the affected wholesale feed before this change, when the seller can cheaply provide it. Receivers MAY use this to detect obvious gaps, but MUST NOT require it.'), OmittedNotNull] = None
     cache_scope: Annotated[CacheScope, Field(description='Cache layer affected by this change. MUST equal event.payload.applies_to.scope. Mirrors the cache_scope returned by list_products / get_signals for the affected wholesale feed.')]
     event: Annotated[WholesaleFeedEvent, Field(description='The actual product, signal, or bulk-change event. Consumers MAY apply this payload to their local mirror. Before any binding action, or when ordering/gap checks fail, consumers MUST reconcile through list_products / get_signals.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["WholesaleFeedWebhook"]

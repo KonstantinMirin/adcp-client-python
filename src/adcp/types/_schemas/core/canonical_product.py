@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import CanonicalProductCatalogMatchMatchedGtinsItem, StrMinLen1
 
@@ -46,9 +46,9 @@ class CatalogMatch(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-product.json', pointer='#/properties/catalog_match')
-    matched_gtins: list[CanonicalProductCatalogMatchMatchedGtinsItem] | None = None
-    matched_ids: list[str] | None = None
-    matched_count: NonNegativeInt | None = None
+    matched_gtins: Annotated[list[CanonicalProductCatalogMatchMatchedGtinsItem] | None, OmittedNotNull] = None
+    matched_ids: Annotated[list[str] | None, OmittedNotNull] = None
+    matched_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     submitted_count: NonNegativeInt
 
 
@@ -77,43 +77,43 @@ class CanonicalProduct(AdCPBaseModel):
     )
     product_id: StrMinLen1
     name: StrMinLen1
-    description: str | None = None
-    publisher_properties: Annotated[list[Annotated[PublisherPropertySelector, AfterValidator(ForbiddenGroups((('publisher_domains',),)))]] | None, Field(min_length=1)] = None
-    channels: Annotated[list[MediaChannel] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    video_placement_types: Annotated[list[VideoPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    format_options: Annotated[list[CanonicalFormatOption] | None, Field(min_length=1)] = None
-    placements: list[CanonicalProductPlacement] | None = None
-    collections: Annotated[list[CollectionsItem] | None, Field(description='Collections available in this product, each referencing collections declared in an adagents.json by domain and explicit collection_ids. The domain-only bulk-grant selector form is for authorization scoping, not product composition. A selected-mode collection_selection names collections from this set.', min_length=1)] = None
-    collection_targeting_allowed: Annotated[bool | None, Field(description="Whether buyers can select a subset of this product's collections through targeting_overlay.collection_list or targeting_overlay.collection_selection. When false, the product is a fixed bundle (a collection_selection that exactly restates the complete bundle remains an inherent match).")] = False
-    delivery_type: DeliveryType | None = None
-    exclusivity: Exclusivity | None = None
-    pricing_options: Annotated[list[CanonicalPricingOption] | None, Field(min_length=1)] = None
-    forecast: CanonicalDeliveryForecast | None = None
-    reporting_capabilities: CanonicalReportingCapabilities | None = None
-    measurement_terms: Annotated[CanonicalMeasurementTerms | None, Field(description='Default billing measurement and makegood terms inherited by a direct purchase unless a negotiated proposal replaces them.')] = None
-    performance_standards: Annotated[list[CanonicalPerformanceStandard] | None, Field(description='Default performance thresholds and measurement vendors inherited by a direct purchase.', min_length=1)] = None
-    catalog_types: Annotated[list[CatalogType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    signal_targeting_allowed: bool | None = None
-    signal_targeting_rules: SignalTargetingRules | None = None
-    demographic_targeting: DemographicTargetingCapability | None = None
-    overlay_support: Annotated[TargetingOverlaySupport | None, Field(description='Binding product-scoped targeting dimensions the buyer may set independently on a package after discovery.')] = None
-    media_buy_support: Annotated[ProductMediaBuySupport | None, Field(description='Binding product participation in shared MediaBuy-level controls.')] = None
-    identity: Annotated[ProductIdentity | None, Field(description='Experimental product-scoped identity and reach-measurement facts. See Product.identity for the cross-object delivery and frequency-cap rules.')] = None
-    execution_requirements: Annotated[list[ProductExecutionRequirement] | None, Field(description='Experimental account resources a package on this product needs before it can be created. See Product.execution_requirements for completeness, binding, and rejection rules.', min_length=1)] = None
-    audience_evidence: Annotated[list[CanonicalAudienceEvidence] | None, Field(min_length=1)] = None
-    audience_evidence_selections: Annotated[list[CanonicalAudienceEvidenceSelection] | None, Field(description='Exact evidence snapshots that affected eligibility or ranking. Returned whenever evidence requirements affected the result, even if not requested explicitly.', min_length=1)] = None
-    max_optimization_goals: NonNegativeInt | None = None
-    catalog_match: CatalogMatch | None = None
-    list_applications: Annotated[list[InventoryListApplication] | None, Field(description='Product-scoped receipts for every effective property- or collection-list targeting reference. Sellers MUST return one receipt per application regardless of response field projection; exclusion applications receive a receipt even when summary.matched is zero, while zero matches for any inclusion application make the product ineligible and it is not returned. Each receipt uses the same pre-list product inventory baseline; pricing and forecast reflect inventory remaining after all effective lists are composed.', min_length=1)] = None
-    brief_relevance: str | None = None
-    targeting_resolution: Annotated[ProductTargetingResolution | None, Field(description='Discovery-time targeting resolution bound to this configured product. modifications sparsely disclose product-specific differences from criteria.targeting_overlay; absence means exact acceptance of the structured overlay. Request-level brief interpretation is returned once on the response-root targeting_resolution. Selecting product_id accepts the disclosed modifications; pricing and forecast MUST reflect them. Requires expires_at.')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='Expiration of a request-specific configured offer. Canonical products have no is_custom flag; expires_at is what marks an offer as request-specific. After it, the buyer rediscovers.')] = None
-    allowed_actions: Annotated[list[CanonicalProductAction] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    acceptance_policy_profile_ids: AcceptancePolicyProfileIDs | None = None
-    ext: ExtensionObject | None = None
+    description: Annotated[str | None, OmittedNotNull] = None
+    publisher_properties: Annotated[list[Annotated[PublisherPropertySelector, AfterValidator(ForbiddenGroups((('publisher_domains',),)))]] | None, Field(min_length=1), OmittedNotNull] = None
+    channels: Annotated[list[MediaChannel] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    video_placement_types: Annotated[list[VideoPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    format_options: Annotated[list[CanonicalFormatOption] | None, Field(min_length=1), OmittedNotNull] = None
+    placements: Annotated[list[CanonicalProductPlacement] | None, OmittedNotNull] = None
+    collections: Annotated[list[CollectionsItem] | None, Field(description='Collections available in this product, each referencing collections declared in an adagents.json by domain and explicit collection_ids. The domain-only bulk-grant selector form is for authorization scoping, not product composition. A selected-mode collection_selection names collections from this set.', min_length=1), OmittedNotNull] = None
+    collection_targeting_allowed: Annotated[bool | None, Field(description="Whether buyers can select a subset of this product's collections through targeting_overlay.collection_list or targeting_overlay.collection_selection. When false, the product is a fixed bundle (a collection_selection that exactly restates the complete bundle remains an inherent match)."), OmittedNotNull] = False
+    delivery_type: Annotated[DeliveryType | None, OmittedNotNull] = None
+    exclusivity: Annotated[Exclusivity | None, OmittedNotNull] = None
+    pricing_options: Annotated[list[CanonicalPricingOption] | None, Field(min_length=1), OmittedNotNull] = None
+    forecast: Annotated[CanonicalDeliveryForecast | None, OmittedNotNull] = None
+    reporting_capabilities: Annotated[CanonicalReportingCapabilities | None, OmittedNotNull] = None
+    measurement_terms: Annotated[CanonicalMeasurementTerms | None, Field(description='Default billing measurement and makegood terms inherited by a direct purchase unless a negotiated proposal replaces them.'), OmittedNotNull] = None
+    performance_standards: Annotated[list[CanonicalPerformanceStandard] | None, Field(description='Default performance thresholds and measurement vendors inherited by a direct purchase.', min_length=1), OmittedNotNull] = None
+    catalog_types: Annotated[list[CatalogType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    signal_targeting_allowed: Annotated[bool | None, OmittedNotNull] = None
+    signal_targeting_rules: Annotated[SignalTargetingRules | None, OmittedNotNull] = None
+    demographic_targeting: Annotated[DemographicTargetingCapability | None, OmittedNotNull] = None
+    overlay_support: Annotated[TargetingOverlaySupport | None, Field(description='Binding product-scoped targeting dimensions the buyer may set independently on a package after discovery.'), OmittedNotNull] = None
+    media_buy_support: Annotated[ProductMediaBuySupport | None, Field(description='Binding product participation in shared MediaBuy-level controls.'), OmittedNotNull] = None
+    identity: Annotated[ProductIdentity | None, Field(description='Experimental product-scoped identity and reach-measurement facts. See Product.identity for the cross-object delivery and frequency-cap rules.'), OmittedNotNull] = None
+    execution_requirements: Annotated[list[ProductExecutionRequirement] | None, Field(description='Experimental account resources a package on this product needs before it can be created. See Product.execution_requirements for completeness, binding, and rejection rules.', min_length=1), OmittedNotNull] = None
+    audience_evidence: Annotated[list[CanonicalAudienceEvidence] | None, Field(min_length=1), OmittedNotNull] = None
+    audience_evidence_selections: Annotated[list[CanonicalAudienceEvidenceSelection] | None, Field(description='Exact evidence snapshots that affected eligibility or ranking. Returned whenever evidence requirements affected the result, even if not requested explicitly.', min_length=1), OmittedNotNull] = None
+    max_optimization_goals: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    catalog_match: Annotated[CatalogMatch | None, OmittedNotNull] = None
+    list_applications: Annotated[list[InventoryListApplication] | None, Field(description='Product-scoped receipts for every effective property- or collection-list targeting reference. Sellers MUST return one receipt per application regardless of response field projection; exclusion applications receive a receipt even when summary.matched is zero, while zero matches for any inclusion application make the product ineligible and it is not returned. Each receipt uses the same pre-list product inventory baseline; pricing and forecast reflect inventory remaining after all effective lists are composed.', min_length=1), OmittedNotNull] = None
+    brief_relevance: Annotated[str | None, OmittedNotNull] = None
+    targeting_resolution: Annotated[ProductTargetingResolution | None, Field(description='Discovery-time targeting resolution bound to this configured product. modifications sparsely disclose product-specific differences from criteria.targeting_overlay; absence means exact acceptance of the structured overlay. Request-level brief interpretation is returned once on the response-root targeting_resolution. Selecting product_id accepts the disclosed modifications; pricing and forecast MUST reflect them. Requires expires_at.'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='Expiration of a request-specific configured offer. Canonical products have no is_custom flag; expires_at is what marks an offer as request-specific. After it, the buyer rediscovers.'), OmittedNotNull] = None
+    allowed_actions: Annotated[list[CanonicalProductAction] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    acceptance_policy_profile_ids: Annotated[AcceptancePolicyProfileIDs | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CanonicalProduct"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -23,12 +23,12 @@ class ListContentStandardsRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/list-content-standards-request.json', pointer='#')
-    channels: Annotated[list[MediaChannel] | None, Field(description='Filter by channel', min_length=1)] = None
-    languages: Annotated[list[str] | None, Field(description='Filter by BCP 47 language tags', min_length=1)] = None
-    countries: Annotated[list[str] | None, Field(description='Filter by ISO 3166-1 alpha-2 country codes', min_length=1)] = None
-    pagination: PaginationRequest | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    channels: Annotated[list[MediaChannel] | None, Field(description='Filter by channel', min_length=1), OmittedNotNull] = None
+    languages: Annotated[list[str] | None, Field(description='Filter by BCP 47 language tags', min_length=1), OmittedNotNull] = None
+    countries: Annotated[list[str] | None, Field(description='Filter by ISO 3166-1 alpha-2 country codes', min_length=1), OmittedNotNull] = None
+    pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListContentStandardsRequest"]

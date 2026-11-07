@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
 from adcp.types.envelopes import AdcpRequest
 
@@ -62,10 +62,10 @@ class ValidateInputRequest(AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-request.json', pointer='#')
-    account: Annotated[AccountReference | None, Field(description='Optional account scope for seller-specific product validation. Required by sellers that route product declarations by buyer account.')] = None
-    brand: Annotated[BrandReference | None, Field(description='Optional brand scope when account is omitted or the seller keys sandbox validation by brand identity.')] = None
+    account: Annotated[AccountReference | None, Field(description='Optional account scope for seller-specific product validation. Required by sellers that route product declarations by buyer account.'), OmittedNotNull] = None
+    brand: Annotated[BrandReference | None, Field(description='Optional brand scope when account is omitted or the seller keys sandbox validation by brand identity.'), OmittedNotNull] = None
     manifest: Annotated[CreativeManifest, Field(description='Creative manifest to validate.')]
-    targets: Annotated[list[TargetsItem] | None, Field(description="Discriminated list of validation targets. Each entry mirrors the `target` shape on `validate-input-result.json` so the request/response wire shapes match exactly. Multi-target requests enable universal-creative scenarios where one manifest targets multiple sellers' format declarations in a single round-trip; the response carries one result per target in the same order.", max_length=50, min_length=1)] = None
+    targets: Annotated[list[TargetsItem] | None, Field(description="Discriminated list of validation targets. Each entry mirrors the `target` shape on `validate-input-result.json` so the request/response wire shapes match exactly. Multi-target requests enable universal-creative scenarios where one manifest targets multiple sellers' format declarations in a single round-trip; the response carries one result per target in the same order.", max_length=50, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["ValidateInputRequest"]

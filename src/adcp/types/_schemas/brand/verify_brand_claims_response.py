@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen500
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -46,8 +46,8 @@ class VerifyBrandClaimsResultSuccess(AdCPBaseModel):
     )
     claim_type: Annotated[ClaimType, Field(description="Echoes the request item's claim_type for caller-side routing.")]
     status: Annotated[VerificationStatus, Field(description='Verification status for this claim. Not every status applies to every claim_type — see the single-target task page for the applicable subset.')]
-    details: Annotated[dict[str, Any] | None, Field(description="Per-claim-type response fields. Shape varies — see the single-target task page for each claim_type's expected fields.")] = None
-    context_note: Annotated[StrMaxLen500 | None, Field(description='Public — free-text context the brand chooses to surface.')] = None
+    details: Annotated[dict[str, Any] | None, Field(description="Per-claim-type response fields. Shape varies — see the single-target task page for each claim_type's expected fields."), OmittedNotNull] = None
+    context_note: Annotated[StrMaxLen500 | None, Field(description='Public — free-text context the brand chooses to surface.'), OmittedNotNull] = None
 
 
 class VerifyBrandClaimsResultError(AdCPBaseModel):
@@ -79,8 +79,8 @@ class SignedSuccessPayload(AdCPBaseModel):
         ForbiddenGroups((('errors',), ('signed_response',))),
     )
     results: Annotated[list[ResultEntry], Field(min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class Payload(ResponsePayload):
@@ -115,9 +115,9 @@ class VerifyBrandClaimsSuccess(VerifyBrandClaimsResponseBulk):
         ForbiddenGroups((('errors',),)),
     )
     results: Annotated[list[ResultEntry], Field(description="Per-claim results, positionally aligned with the request's `claims[]`. Each entry is either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only).", min_length=1)]
-    context: ContextObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
     signed_response: Annotated[SignedResponse, Field(description='Payload-envelope JWS attesting the canonical bulk success response for verify_brand_claims. The signed payload response MUST match the unsigned task-body fields on this response, excluding signed_response and protocol/version envelope fields.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class VerifyBrandClaimsError(VerifyBrandClaimsResponseBulk, FailedResponse):
@@ -132,8 +132,8 @@ class VerifyBrandClaimsError(VerifyBrandClaimsResponseBulk, FailedResponse):
         ForbiddenGroups((('results',),)),
     )
     errors: Annotated[list[Error], Field(min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 VerifyBrandClaimsResponseBulk._branch_models = (VerifyBrandClaimsSuccess, VerifyBrandClaimsError,)

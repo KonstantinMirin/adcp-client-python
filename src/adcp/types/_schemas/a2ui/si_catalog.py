@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
 
 class ComponentsItem(StrEnum):
@@ -39,8 +39,8 @@ class SIComponentCatalog(AdCPBaseModel):
     A2UI component catalog for Sponsored Intelligence
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/si-catalog.json', pointer='#')
-    catalogId: Annotated[Literal['si-standard'] | None, Field(description='SI standard component catalog')] = None
-    components: Annotated[list[ComponentsItem] | None, Field(description='Available component types')] = None
+    catalogId: Annotated[Literal['si-standard'] | None, Field(description='SI standard component catalog'), OmittedNotNull] = None
+    components: Annotated[list[ComponentsItem] | None, Field(description='Available component types'), OmittedNotNull] = None
 
 
 __all__ = ["SIComponentCatalog"]

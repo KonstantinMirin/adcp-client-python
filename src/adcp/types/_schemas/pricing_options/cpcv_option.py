@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..core.currency_code import CurrencyCode
@@ -28,13 +28,13 @@ class CPCVPricingOption(AdCPBaseModel):
     pricing_option_id: Annotated[str, Field(description='Unique identifier for this pricing option within the product')]
     pricing_model: Annotated[Literal['cpcv'], Field(description='Cost per completed view (100% completion)')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
-    fixed_price: Annotated[NonNegativeFloat | None, Field(description='Fixed price per completed view. If present, this is fixed pricing. If absent, auction-based.')] = None
-    floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.')] = None
-    max_bid: Annotated[bool | None, Field(description='DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.')] = False
-    price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding')] = None
-    min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency')] = None
-    price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.')] = None
-    eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True})] = None
+    fixed_price: Annotated[NonNegativeFloat | None, Field(description='Fixed price per completed view. If present, this is fixed pricing. If absent, auction-based.'), OmittedNotNull] = None
+    floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.'), OmittedNotNull] = None
+    max_bid: Annotated[bool | None, Field(description='DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.'), OmittedNotNull] = False
+    price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding'), OmittedNotNull] = None
+    min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency'), OmittedNotNull] = None
+    price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.'), OmittedNotNull] = None
+    eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
 __all__ = ["CPCVPricingOption"]

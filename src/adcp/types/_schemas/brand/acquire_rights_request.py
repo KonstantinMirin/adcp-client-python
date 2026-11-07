@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import GovernanceContext
 from adcp.types.envelopes import AdcpRequest
@@ -39,13 +39,13 @@ class Campaign(AdCPBaseModel):
     )
     description: Annotated[str, Field(description='Description of how the rights will be used')]
     uses: Annotated[list[RightUse], Field(description='Specific rights uses for this campaign', min_length=1)]
-    countries: Annotated[list[CountryCode] | None, Field(description='Countries where the campaign will run (ISO 3166-1 alpha-2)')] = None
-    format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Legacy named formats that will be produced. Use `format_kinds` and optional `format_option_refs`.')] = None
-    format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(description='Canonical creative format kinds that will be produced under the rights grant.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    format_option_refs: Annotated[list[FormatOptionReference] | None, Field(description='Exact canonical publisher or product format options covered by the planned rights use, when kind alone is insufficient.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    estimated_impressions: Annotated[NonNegativeInt | None, Field(description="Estimated total impressions for the campaign. Required when the brand agent will project commitment against a governance plan AND the selected pricing_option has model: 'cpm' — projection equals (pricing_option.price / 1000) × estimated_impressions evaluated in pricing_option.currency. The brand agent will project commitment whenever the request is governance-aware via either (a) an intent-phase governance_context token on the protocol envelope, or (b) `account` resolving to an account that has a governance agent previously bound via sync_governance. Brand agents MUST reject with INVALID_REQUEST (field: campaign.estimated_impressions) in either path when CPM-priced rights are requested and this field is omitted or zero; implementer-chosen defaults are non-conformant. See the acquire_rights task reference for the full validation contract including currency-mismatch handling.")] = None
-    start_date: Annotated[date | None, Field(description='Campaign start date (ISO 8601)')] = None
-    end_date: Annotated[date | None, Field(description='Campaign end date (ISO 8601). Brand agents MUST reject with INVALID_REQUEST (field: campaign.end_date) when end_date is in the past at the time of the request — acquiring rights for an elapsed window produces a zero-duration grant and is almost always a buyer-side bug.')] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where the campaign will run (ISO 3166-1 alpha-2)'), OmittedNotNull] = None
+    format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Legacy named formats that will be produced. Use `format_kinds` and optional `format_option_refs`.'), OmittedNotNull] = None
+    format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(description='Canonical creative format kinds that will be produced under the rights grant.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    format_option_refs: Annotated[list[FormatOptionReference] | None, Field(description='Exact canonical publisher or product format options covered by the planned rights use, when kind alone is insufficient.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    estimated_impressions: Annotated[NonNegativeInt | None, Field(description="Estimated total impressions for the campaign. Required when the brand agent will project commitment against a governance plan AND the selected pricing_option has model: 'cpm' — projection equals (pricing_option.price / 1000) × estimated_impressions evaluated in pricing_option.currency. The brand agent will project commitment whenever the request is governance-aware via either (a) an intent-phase governance_context token on the protocol envelope, or (b) `account` resolving to an account that has a governance agent previously bound via sync_governance. Brand agents MUST reject with INVALID_REQUEST (field: campaign.estimated_impressions) in either path when CPM-priced rights are requested and this field is omitted or zero; implementer-chosen defaults are non-conformant. See the acquire_rights task reference for the full validation contract including currency-mismatch handling."), OmittedNotNull] = None
+    start_date: Annotated[date | None, Field(description='Campaign start date (ISO 8601)'), OmittedNotNull] = None
+    end_date: Annotated[date | None, Field(description='Campaign end date (ISO 8601). Brand agents MUST reject with INVALID_REQUEST (field: campaign.end_date) when end_date is in the past at the time of the request — acquiring rights for an elapsed window produces a zero-duration grant and is almost always a buyer-side bug.'), OmittedNotNull] = None
 
 
 class AcquireRightsRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -56,17 +56,17 @@ class AcquireRightsRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/acquire-rights-request.json', pointer='#')
-    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for this rights commitment. Required when governance applies to the resolved account.')] = None
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for this rights commitment. Required when governance applies to the resolved account.'), OmittedNotNull] = None
     rights_id: Annotated[str, Field(description='Rights offering identifier from get_rights response')]
     pricing_option_id: Annotated[str, Field(description='Selected pricing option from the rights offering')]
     buyer: Annotated[BrandReference, Field(description="The buyer's brand identity")]
-    account: Annotated[AccountReference | None, Field(description='Account context for this acquisition. Used by the brand agent to resolve any governance agent previously bound for this brand+operator pair via sync_governance. When both an inline governance_context token and a bound governance agent are present, the token is verified against that resolved relationship. An agent advertising adcp.governance_enforcement for acquire_rights MUST resolve an account and returns ACCOUNT_REQUIRED when neither the request nor an existing resource supplies one; it MUST NOT infer that a missing token means ungoverned. Legacy non-claiming agents may continue to treat omission of both fields as ungoverned during 3.x. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts.')] = None
+    account: Annotated[AccountReference | None, Field(description='Account context for this acquisition. Used by the brand agent to resolve any governance agent previously bound for this brand+operator pair via sync_governance. When both an inline governance_context token and a bound governance agent are present, the token is verified against that resolved relationship. An agent advertising adcp.governance_enforcement for acquire_rights MUST resolve an account and returns ACCOUNT_REQUIRED when neither the request nor an existing resource supplies one; it MUST NOT infer that a missing token means ungoverned. Legacy non-claiming agents may continue to treat omission of both fields as ungoverned during 3.x. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts.'), OmittedNotNull] = None
     campaign: Annotated[Campaign, Field(description='Campaign details for rights clearance')]
     revocation_webhook: Annotated[PushNotificationConfig, Field(description='Webhook for rights revocation notifications. If the rights holder needs to revoke rights (talent scandal, contract violation, etc.), they POST a revocation-notification to this URL. The buyer is responsible for stopping creative delivery upon receipt.')]
-    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Webhook for async status updates if the acquisition requires approval. The rights agent sends a webhook notification when the status transitions to acquired or rejected.')] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Webhook for async status updates if the acquisition requires approval. The rights agent sends a webhook notification when the status transitions to acquired or rejected.'), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response rather than creating a duplicate acquisition. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AcquireRightsRequest"]

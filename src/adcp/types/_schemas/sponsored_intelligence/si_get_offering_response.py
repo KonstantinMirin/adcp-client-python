@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 from adcp.types.envelopes import AdcpResponse
 
@@ -26,15 +26,15 @@ class SIGetOfferingResponseOffering(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering')
-    offering_id: Annotated[str | None, Field(description='Offering identifier')] = None
-    title: Annotated[str | None, Field(description='Offering title')] = None
-    summary: Annotated[str | None, Field(description='Brief summary of the offering')] = None
-    tagline: Annotated[str | None, Field(description='Short promotional tagline')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this offering expires')] = None
-    availability_status: Annotated[OfferingAvailabilityStatus | None, Field(description="Machine-readable availability state for the offering. Optional; when omitted, derive availability from the top-level 'available' boolean and 'unavailable_reason'.")] = None
-    price_hint: Annotated[str | None, Field(description="Price indication (e.g., 'from $199', '50% off')")] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Hero image for the offering')] = None
-    landing_url: Annotated[HttpUrl | None, Field(description='Landing page URL')] = None
+    offering_id: Annotated[str | None, Field(description='Offering identifier'), OmittedNotNull] = None
+    title: Annotated[str | None, Field(description='Offering title'), OmittedNotNull] = None
+    summary: Annotated[str | None, Field(description='Brief summary of the offering'), OmittedNotNull] = None
+    tagline: Annotated[str | None, Field(description='Short promotional tagline'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='When this offering expires'), OmittedNotNull] = None
+    availability_status: Annotated[OfferingAvailabilityStatus | None, Field(description="Machine-readable availability state for the offering. Optional; when omitted, derive availability from the top-level 'available' boolean and 'unavailable_reason'."), OmittedNotNull] = None
+    price_hint: Annotated[str | None, Field(description="Price indication (e.g., 'from $199', '50% off')"), OmittedNotNull] = None
+    image_url: Annotated[HttpUrl | None, Field(description='Hero image for the offering'), OmittedNotNull] = None
+    landing_url: Annotated[HttpUrl | None, Field(description='Landing page URL'), OmittedNotNull] = None
 
 
 class MatchingProductsItem(AdCPBaseModel):
@@ -44,12 +44,12 @@ class MatchingProductsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items')
     product_id: Annotated[str, Field(description='Product identifier')]
     name: Annotated[str, Field(description='Product name')]
-    price: Annotated[str | None, Field(description="Display price (e.g., '$129', '$89.99')")] = None
-    original_price: Annotated[str | None, Field(description='Original price if on sale')] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Product image')] = None
-    availability_summary: Annotated[str | None, Field(description="Brief availability info (e.g., 'In stock', 'Size 14 available', '3 left')")] = None
-    availability_status: Annotated[OfferingAvailabilityStatus | None, Field(description='Machine-readable availability state for this product. Structured counterpart to availability_summary.')] = None
-    url: Annotated[HttpUrl | None, Field(description='Product detail page URL')] = None
+    price: Annotated[str | None, Field(description="Display price (e.g., '$129', '$89.99')"), OmittedNotNull] = None
+    original_price: Annotated[str | None, Field(description='Original price if on sale'), OmittedNotNull] = None
+    image_url: Annotated[HttpUrl | None, Field(description='Product image'), OmittedNotNull] = None
+    availability_summary: Annotated[str | None, Field(description="Brief availability info (e.g., 'In stock', 'Size 14 available', '3 left')"), OmittedNotNull] = None
+    availability_status: Annotated[OfferingAvailabilityStatus | None, Field(description='Machine-readable availability state for this product. Structured counterpart to availability_summary.'), OmittedNotNull] = None
+    url: Annotated[HttpUrl | None, Field(description='Product detail page URL'), OmittedNotNull] = None
 
 
 class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -61,18 +61,18 @@ class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-get-offering-response.json', pointer='#')
     available: Annotated[bool, Field(description='Whether the offering is currently available')]
-    offering_token: Annotated[str | None, Field(description="Token to pass to si_initiate_session for session continuity. Brand stores the full query context server-side (products shown, order, context) so they can resolve references like 'the second one' when the session starts.")] = None
-    ttl_seconds: Annotated[NonNegativeInt | None, Field(description='How long this offering information is valid (seconds). Host should re-fetch after TTL expires.')] = None
-    checked_at: Annotated[AwareDatetime | None, Field(description='When this offering information was retrieved')] = None
-    offering: Annotated[SIGetOfferingResponseOffering | None, Field(description='Offering details')] = None
-    matching_products: Annotated[list[MatchingProductsItem] | None, Field(description='Products matching the request context. Only included if include_products was true.')] = None
-    sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for the sponsored context carried by this offering response. When present, it applies to the returned offering and matching_products package as a whole unless a future extension narrows the declaration to individual items. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before using it.')] = None
-    total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of products matching the context (may be more than returned in matching_products)')] = None
-    unavailable_reason: Annotated[str | None, Field(description="If not available, why (e.g., 'expired', 'sold_out', 'region_restricted')")] = None
-    alternative_offering_ids: Annotated[list[str] | None, Field(description='Alternative offerings to consider if this one is unavailable')] = None
-    errors: Annotated[list[Error] | None, Field(description='Errors during offering lookup')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    offering_token: Annotated[str | None, Field(description="Token to pass to si_initiate_session for session continuity. Brand stores the full query context server-side (products shown, order, context) so they can resolve references like 'the second one' when the session starts."), OmittedNotNull] = None
+    ttl_seconds: Annotated[NonNegativeInt | None, Field(description='How long this offering information is valid (seconds). Host should re-fetch after TTL expires.'), OmittedNotNull] = None
+    checked_at: Annotated[AwareDatetime | None, Field(description='When this offering information was retrieved'), OmittedNotNull] = None
+    offering: Annotated[SIGetOfferingResponseOffering | None, Field(description='Offering details'), OmittedNotNull] = None
+    matching_products: Annotated[list[MatchingProductsItem] | None, Field(description='Products matching the request context. Only included if include_products was true.'), OmittedNotNull] = None
+    sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for the sponsored context carried by this offering response. When present, it applies to the returned offering and matching_products package as a whole unless a future extension narrows the declaration to individual items. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before using it.'), OmittedNotNull] = None
+    total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of products matching the context (may be more than returned in matching_products)'), OmittedNotNull] = None
+    unavailable_reason: Annotated[str | None, Field(description="If not available, why (e.g., 'expired', 'sold_out', 'region_restricted')"), OmittedNotNull] = None
+    alternative_offering_ids: Annotated[list[str] | None, Field(description='Alternative offerings to consider if this one is unavailable'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Errors during offering lookup'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SIGetOfferingResponse"]

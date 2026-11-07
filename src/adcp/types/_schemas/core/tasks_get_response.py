@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max100, IntMin1
 
 from ..enums.adcp_protocol import AdCPProtocol
@@ -26,10 +26,10 @@ class Progress(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-get-response.json', pointer='#/properties/progress')
-    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)')] = None
-    current_step: Annotated[str | None, Field(description='Current step or phase of the operation')] = None
-    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation')] = None
-    step_number: Annotated[IntMin1 | None, Field(description='Current step number')] = None
+    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)'), OmittedNotNull] = None
+    current_step: Annotated[str | None, Field(description='Current step or phase of the operation'), OmittedNotNull] = None
+    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation'), OmittedNotNull] = None
+    step_number: Annotated[IntMin1 | None, Field(description='Current step number'), OmittedNotNull] = None
 
 
 class Details(AdCPBaseModel):
@@ -40,9 +40,9 @@ class Details(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-get-response.json', pointer='#/properties/error/properties/details')
-    protocol: Annotated[AdCPProtocol | None, Field(description='AdCP protocol where error occurred')] = None
-    operation: Annotated[str | None, Field(description='Specific operation that failed')] = None
-    specific_context: Annotated[dict[str, Any] | None, Field(description='Domain-specific error context')] = None
+    protocol: Annotated[AdCPProtocol | None, Field(description='AdCP protocol where error occurred'), OmittedNotNull] = None
+    operation: Annotated[str | None, Field(description='Specific operation that failed'), OmittedNotNull] = None
+    specific_context: Annotated[dict[str, Any] | None, Field(description='Domain-specific error context'), OmittedNotNull] = None
 
 
 class ObjCodeMessageDetails(AdCPBaseModel):
@@ -55,7 +55,7 @@ class ObjCodeMessageDetails(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-get-response.json', pointer='#/properties/error')
     code: Annotated[str, Field(description='Error code for programmatic handling')]
     message: Annotated[str, Field(description='Detailed error message')]
-    details: Annotated[Details | None, Field(description='Additional error context')] = None
+    details: Annotated[Details | None, Field(description='Additional error context'), OmittedNotNull] = None
 
 
 class ObjTimestampTypeData(AdCPBaseModel):
@@ -85,14 +85,14 @@ class TasksGetResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     status: Annotated[TaskStatus, Field(description='Current task status')]
     created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
     updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
-    completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)')] = None
-    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration')] = None
-    progress: Annotated[Progress | None, Field(description='Progress information for long-running tasks')] = None
-    error: Annotated[ObjCodeMessageDetails | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.')] = None
-    history: Annotated[list[ObjTimestampTypeData] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)')] = None
-    result: Annotated[dict[str, Any] | None, Field(description='Canonical task-specific terminal payload. Present when include_result was true and a completed, failed, or rejected task produced a terminal artifact; canceled tasks may omit it. For failed tasks, the singular error field is a convenience summary and MUST agree with the canonical fatal error represented here. Consumers and sellers MUST resolve and validate the exact schema through manifest.task_result_resolution: use terminal_schema_overrides[task_type] when present, otherwise tools[task_type].response_schema. The polling envelope keeps this field generic so tasks/get does not embed every task response schema.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)'), OmittedNotNull] = None
+    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration'), OmittedNotNull] = None
+    progress: Annotated[Progress | None, Field(description='Progress information for long-running tasks'), OmittedNotNull] = None
+    error: Annotated[ObjCodeMessageDetails | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.'), OmittedNotNull] = None
+    history: Annotated[list[ObjTimestampTypeData] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)'), OmittedNotNull] = None
+    result: Annotated[dict[str, Any] | None, Field(description='Canonical task-specific terminal payload. Present when include_result was true and a completed, failed, or rejected task produced a terminal artifact; canceled tasks may omit it. For failed tasks, the singular error field is a convenience summary and MUST agree with the canonical fatal error represented here. Consumers and sellers MUST resolve and validate the exact schema through manifest.task_result_resolution: use terminal_schema_overrides[task_type] when present, otherwise tools[task_type].response_schema. The polling envelope keeps this field generic so tasks/get does not embed every task response schema.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["TasksGetResponse"]

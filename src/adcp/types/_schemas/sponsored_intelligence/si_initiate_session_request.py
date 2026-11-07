@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -26,16 +26,16 @@ class SIInitiateSessionRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-initiate-session-request.json', pointer='#')
     intent: Annotated[str, Field(description='Natural language description of user intent — the conversation handoff from the host describing what the user needs from the brand agent')]
-    context: ContextObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
     identity: SIIdentity
-    media_buy_id: Annotated[str | None, Field(description='AdCP media buy ID if session was triggered by advertising')] = None
-    placement: Annotated[str | None, Field(description="Where this session was triggered (e.g., 'chatgpt_search', 'claude_chat')")] = None
-    offering_id: Annotated[str | None, Field(description='Brand-specific offering identifier to apply')] = None
-    supported_capabilities: Annotated[SICapabilities | None, Field(description='What capabilities the host supports')] = None
-    offering_token: Annotated[str | None, Field(description="Token from si_get_offering response for session continuity. Brand uses this to recall what products were shown to the user, enabling natural references like 'the second one' or 'that blue shoe'.")] = None
-    sponsored_context_receipt: Annotated[SISponsoredContextReceipt | None, Field(description='Host receipt for sponsored context accepted from a prior si_get_offering response or other pre-session context package. This records the accepted context_use, disclosure commitment, paying_principal, and host receipt for audit.')] = None
+    media_buy_id: Annotated[str | None, Field(description='AdCP media buy ID if session was triggered by advertising'), OmittedNotNull] = None
+    placement: Annotated[str | None, Field(description="Where this session was triggered (e.g., 'chatgpt_search', 'claude_chat')"), OmittedNotNull] = None
+    offering_id: Annotated[str | None, Field(description='Brand-specific offering identifier to apply'), OmittedNotNull] = None
+    supported_capabilities: Annotated[SICapabilities | None, Field(description='What capabilities the host supports'), OmittedNotNull] = None
+    offering_token: Annotated[str | None, Field(description="Token from si_get_offering response for session continuity. Brand uses this to recall what products were shown to the user, enabling natural references like 'the second one' or 'that blue shoe'."), OmittedNotNull] = None
+    sponsored_context_receipt: Annotated[SISponsoredContextReceipt | None, Field(description='Host receipt for sponsored context accepted from a prior si_get_offering response or other pre-session context package. This records the accepted context_use, disclosure commitment, paying_principal, and host receipt for audit.'), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate session creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SIInitiateSessionRequest"]

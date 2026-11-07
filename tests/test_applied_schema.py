@@ -835,6 +835,102 @@ def test_a_conditional_or_negated_position_carries_nothing(keyword: str) -> None
     assert at == [], at
 
 
+def test_a_branch_pointer_is_the_base_and_the_branch_and_never_the_base_s_union_keyword() -> None:
+    """**Reading 1 at a BRANCH pointer is measured against the conjunction the class
+    ENFORCES, never the bare fragment** (``adcp-client-python-0ejo``).
+
+    The hierarchy claim holds on the class side: a union branch class SUBCLASSES the union
+    base, so it inherits the base's fields AND the base's ``_adcp_rules`` by plain Python
+    inheritance and refuses every payload the base's conditional refuses.  Its
+    ``__adcp_schema__`` named the bare branch FRAGMENT, which says nothing about those
+    keys -- so what the class enforced was base ∧ branch, what it declared was branch, and
+    no pointer in the document named what the class actually meant.
+
+    THE VALUE, at ``trusted-match/provider-registration.json#/anyOf/1``:
+    ``{"endpoint": "https://a.com", "identity_match": true, "provider_id": "0"}``.  The
+    fragment is ``{"$ref": "#/definitions/Shared0"}``, which requires ``identity_match``
+    and says nothing about ``countries`` or ``uid_types``, so it ADMITS; the class REFUSES
+    on the root's ``if``/``then``, and the project's own grader recorded the one
+    ``accepts=fail:model_refused_valid`` of its whole table there.  Anyone who had
+    "repaired" the class by dropping the inherited rule would have made it admit a value
+    the ROOT refuses -- a real reading 1 failure manufactured out of a measurement
+    artefact.
+
+    **AND THE BASE'S UNION KEYWORD IS NEVER IN THE CONJUNCT, which is the subtle half.**
+    :func:`adcp.types._base._conjunction` ASSEMBLES the conjunct from
+    :data:`~adcp.types._base.SAME_INSTANCE_FACTS` and
+    :data:`~adcp.types._base.SAME_INSTANCE_RULES` rather than copying the node and deleting
+    a key, so neither ``oneOf`` nor ``anyOf`` can enter it.  That is load-bearing and not
+    tidiness: a conjunct still carrying the base's ``oneOf`` would demand the payload
+    satisfy a branch TWICE, and ``oneOf`` is EXACTLY ONE -- so a payload matching the
+    branch under test and also matching a sibling branch would be refused by the
+    conjunction although the branch admits it.  The second document below is that case,
+    and it is asserted rather than argued.
+    """
+    conditional = {
+        "type": "object",
+        "if": {"properties": {"flag": {"const": True}}, "required": ["flag"]},
+        "then": {"required": ["needed"]},
+        "oneOf": [
+            {"properties": {"flag": {"const": False}}, "required": ["flag"]},
+            {"properties": {"flag": {"const": True}}, "required": ["flag"]},
+        ],
+    }
+    branch = applied_schema(conditional, "/oneOf/1")
+    #: The base's ``if``/``then`` reach the branch, and the base's own ``oneOf`` does not.
+    carried = [c for c in branch["allOf"] if set(c) & {"if", "then"}]
+    assert carried, branch
+    assert carried[0]["if"] == conditional["if"] and carried[0]["then"] == conditional["then"]
+    assert not any("oneOf" in c or "anyOf" in c for c in branch["allOf"]), branch["allOf"]
+
+    #: And the conjunction REFUSES what the class refuses: the branch's own text admits a
+    #: payload with ``flag: true`` and no ``needed``, and the conjunction does not.
+    taken = {"flag": True}
+    assert _conforms(conditional["oneOf"][1], taken) is True
+    assert _conforms(branch, taken) is False
+    assert _conforms(branch, {"flag": True, "needed": 1}) is True
+
+    #: **AND AT NO OTHER SAME-INSTANCE HOP**, which is the other half of the clause and
+    #: the half a perturbation found ungated: ``then``, ``else``, ``not`` and ``allOf``
+    #: take the three facts alone, because inheritance is what makes the conjunction true
+    #: and nothing there inherits -- a ``then`` node is not a class that subclasses the
+    #: node stating it, and an ``allOf`` conjunct is composed INTO the enclosing class, so
+    #: conjoining the enclosing node's own ``if`` into one of its conjuncts would state it
+    #: twice.
+    conjunctive = {
+        "type": "object",
+        "if": {"properties": {"flag": {"const": True}}, "required": ["flag"]},
+        "then": {"required": ["needed"]},
+        "allOf": [{"properties": {"a": {"type": "string"}}}],
+        "not": {"required": ["forbidden"]},
+    }
+    for keyword, at in (("allOf", "/allOf/0"), ("then", "/then"), ("not", "/not")):
+        reached = applied_schema(conjunctive, at)
+        carried = [c for c in reached.get("allOf", []) if isinstance(c, dict)]
+        assert not any(set(c) & {"if", "then", "else", "not", "dependencies"} for c in carried), (
+            keyword,
+            carried,
+        )
+
+    #: **The ``oneOf`` re-asked would refuse a payload the branch admits.**  Both branches
+    #: of this document admit ``{}``, so ``oneOf`` -- exactly one -- refuses it, while the
+    #: branch under test admits it.  A conjunct carrying the base's ``oneOf`` would
+    #: therefore read a conforming payload as refused.
+    overlapping = {
+        "type": "object",
+        "oneOf": [{"properties": {"a": {"type": "string"}}}, {"properties": {"b": {"type": "string"}}}],
+    }
+    assert _conforms(overlapping["oneOf"][0], {}) is True
+    assert _conforms(overlapping, {}) is False
+    assert _conforms(applied_schema(overlapping, "/oneOf/0"), {}) is True
+
+
+def _conforms(schema: dict, instance: object) -> bool:
+    """``jsonschema``'s verdict for one node, for the two assertions above."""
+    cls = jsonschema.validators.validator_for(schema)
+    return not list(cls(schema, format_checker=cls.FORMAT_CHECKER).iter_errors(instance))
+
+
 def test_the_assertion_is_inherited_down_a_chain_of_combinator_hops() -> None:
     """Two hops, because the rule is stated as inheritance and one hop does not grade
     it.

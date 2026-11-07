@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.content_rating import ContentRating
@@ -25,15 +25,15 @@ class CollectionsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/get-collection-list-response.json', pointer='#/properties/collections/items')
-    collection_rid: Annotated[str | None, Field(description='Registry-assigned stable identifier for this collection. Present when the collection has been registered in the collection registry.')] = None
-    publisher_domain: Annotated[str | None, Field(description='Domain of the adagents.json that declares this collection — the canonical namespace for collection_id. SHOULD be returned whenever known: together with collection_id it is the domain-qualified identity that makes a resolved row matchable when no platform-independent distribution identifier exists (e.g. a channel known only by a platform_channel_id).')] = None
-    collection_id: Annotated[str | None, Field(description="Publisher-assigned collection ID within publisher_domain's adagents.json. SHOULD be returned whenever known; identity is the tuple (publisher_domain, collection_id).")] = None
+    collection_rid: Annotated[str | None, Field(description='Registry-assigned stable identifier for this collection. Present when the collection has been registered in the collection registry.'), OmittedNotNull] = None
+    publisher_domain: Annotated[str | None, Field(description='Domain of the adagents.json that declares this collection — the canonical namespace for collection_id. SHOULD be returned whenever known: together with collection_id it is the domain-qualified identity that makes a resolved row matchable when no platform-independent distribution identifier exists (e.g. a channel known only by a platform_channel_id).'), OmittedNotNull] = None
+    collection_id: Annotated[str | None, Field(description="Publisher-assigned collection ID within publisher_domain's adagents.json. SHOULD be returned whenever known; identity is the tuple (publisher_domain, collection_id)."), OmittedNotNull] = None
     name: Annotated[str, Field(description='Human-readable collection name')]
-    distribution_ids: Annotated[list[IdentifiersItem] | None, Field(description='Platform-independent identifiers for cross-publisher matching')] = None
-    content_rating: Annotated[ContentRating | None, Field(description='Baseline content rating for this collection')] = None
-    genre: Annotated[list[str] | None, Field(description='Genre tags for this collection')] = None
-    genre_taxonomy: Annotated[GenreTaxonomy | None, Field(description='Taxonomy system for genre values')] = None
-    kind: CollectionKind | None = None
+    distribution_ids: Annotated[list[IdentifiersItem] | None, Field(description='Platform-independent identifiers for cross-publisher matching'), OmittedNotNull] = None
+    content_rating: Annotated[ContentRating | None, Field(description='Baseline content rating for this collection'), OmittedNotNull] = None
+    genre: Annotated[list[str] | None, Field(description='Genre tags for this collection'), OmittedNotNull] = None
+    genre_taxonomy: Annotated[GenreTaxonomy | None, Field(description='Taxonomy system for genre values'), OmittedNotNull] = None
+    kind: Annotated[CollectionKind | None, OmittedNotNull] = None
 
 
 class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -45,13 +45,13 @@ class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRespo
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/get-collection-list-response.json', pointer='#')
     list: Annotated[CollectionList, Field(description='The collection list metadata (always returned)')]
-    collections: Annotated[list[CollectionsItem] | None, Field(description='Resolved collections that passed filters (if resolve=true). Each entry contains identification and key metadata for seller matching.')] = None
-    pagination: PaginationResponse | None = None
-    resolved_at: Annotated[AwareDatetime | None, Field(description='When the list was resolved')] = None
-    cache_valid_until: Annotated[AwareDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated collections.')] = None
-    coverage_gaps: Annotated[dict[str, list[IdentifiersItem]] | None, Field(description="Collections included in the list despite missing metadata for a filtered dimension. Maps dimension name (e.g., 'genre', 'content_rating') to arrays of distribution identifiers for collections not covered. Only present when filters are applied and some collections lack the filtered metadata.")] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    collections: Annotated[list[CollectionsItem] | None, Field(description='Resolved collections that passed filters (if resolve=true). Each entry contains identification and key metadata for seller matching.'), OmittedNotNull] = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    resolved_at: Annotated[AwareDatetime | None, Field(description='When the list was resolved'), OmittedNotNull] = None
+    cache_valid_until: Annotated[AwareDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated collections.'), OmittedNotNull] = None
+    coverage_gaps: Annotated[dict[str, list[IdentifiersItem]] | None, Field(description="Collections included in the list despite missing metadata for a filtered dimension. Maps dimension name (e.g., 'genre', 'content_rating') to arrays of distribution identifiers for collections not covered. Only present when filters are applied and some collections lack the filtered metadata."), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetCollectionListResponse"]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
@@ -43,9 +43,9 @@ class AuthorizationResult(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/authorization-result.json', pointer='#')
     status: Annotated[Status, Field(description='Authorization status: authorized (agent in adagents.json), unauthorized (agent not in adagents.json), unknown (could not fetch or parse adagents.json)')]
-    publisher_domain: Annotated[str | None, Field(description='The publisher domain where adagents.json was checked')] = None
-    sales_agent_url: Annotated[HttpUrl | None, Field(description='The sales agent URL that was validated')] = None
-    violation: Annotated[Violation | None, Field(description='Details about the authorization failure (only present for unauthorized status)')] = None
+    publisher_domain: Annotated[str | None, Field(description='The publisher domain where adagents.json was checked'), OmittedNotNull] = None
+    sales_agent_url: Annotated[HttpUrl | None, Field(description='The sales agent URL that was validated'), OmittedNotNull] = None
+    violation: Annotated[Violation | None, Field(description='Details about the authorization failure (only present for unauthorized status)'), OmittedNotNull] = None
 
 
 __all__ = ["AuthorizationResult"]

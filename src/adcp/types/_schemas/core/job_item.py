@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from .currency_code import CurrencyCode
@@ -69,8 +69,8 @@ class Salary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/job-item.json', pointer='#/properties/salary')
-    min: Annotated[NonNegativeFloat | None, Field(description='Minimum salary.')] = None
-    max: Annotated[NonNegativeFloat | None, Field(description='Maximum salary.')] = None
+    min: Annotated[NonNegativeFloat | None, Field(description='Minimum salary.'), OmittedNotNull] = None
+    max: Annotated[NonNegativeFloat | None, Field(description='Maximum salary.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code.')]
     period: Annotated[Period, Field(description='Pay period.')]
 
@@ -87,18 +87,18 @@ class JobItem(AdCPBaseModel):
     title: Annotated[str, Field(description="Job title (e.g., 'Senior Software Engineer', 'Marketing Manager').")]
     company_name: Annotated[str, Field(description='Hiring company or organization name.')]
     description: Annotated[str, Field(description='Full job description including responsibilities and qualifications.')]
-    location: Annotated[str | None, Field(description="Job location as a display string (e.g., 'Amsterdam, NL', 'Remote', 'New York, NY'). Use 'Remote' for fully remote positions.")] = None
-    employment_type: Annotated[EmploymentType | None, Field(description='Type of employment.')] = None
-    experience_level: Annotated[ExperienceLevel | None, Field(description='Required experience level.')] = None
-    salary: Annotated[Salary | None, Field(description='Salary range. Specify min and/or max with currency and period.')] = None
-    date_posted: Annotated[date | None, Field(description='Date the job was posted (ISO 8601 date).')] = None
-    valid_through: Annotated[date | None, Field(description='Application deadline (ISO 8601 date).')] = None
-    apply_url: Annotated[HttpUrl | None, Field(description='Direct application URL.')] = None
-    job_functions: Annotated[list[str] | None, Field(description="Job function categories (e.g., 'engineering', 'marketing', 'sales', 'finance').", min_length=1)] = None
-    industries: Annotated[list[str] | None, Field(description="Industry classifications (e.g., 'technology', 'healthcare', 'retail').", min_length=1)] = None
-    tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'remote', 'visa-sponsorship', 'equity').", min_length=1)] = None
-    assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this job. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (company/role hero), 'images_vertical' (9:16 for Stories), 'logo' (company logo). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1)] = None
-    ext: ExtensionObject | None = None
+    location: Annotated[str | None, Field(description="Job location as a display string (e.g., 'Amsterdam, NL', 'Remote', 'New York, NY'). Use 'Remote' for fully remote positions."), OmittedNotNull] = None
+    employment_type: Annotated[EmploymentType | None, Field(description='Type of employment.'), OmittedNotNull] = None
+    experience_level: Annotated[ExperienceLevel | None, Field(description='Required experience level.'), OmittedNotNull] = None
+    salary: Annotated[Salary | None, Field(description='Salary range. Specify min and/or max with currency and period.'), OmittedNotNull] = None
+    date_posted: Annotated[date | None, Field(description='Date the job was posted (ISO 8601 date).'), OmittedNotNull] = None
+    valid_through: Annotated[date | None, Field(description='Application deadline (ISO 8601 date).'), OmittedNotNull] = None
+    apply_url: Annotated[HttpUrl | None, Field(description='Direct application URL.'), OmittedNotNull] = None
+    job_functions: Annotated[list[str] | None, Field(description="Job function categories (e.g., 'engineering', 'marketing', 'sales', 'finance').", min_length=1), OmittedNotNull] = None
+    industries: Annotated[list[str] | None, Field(description="Industry classifications (e.g., 'technology', 'healthcare', 'retail').", min_length=1), OmittedNotNull] = None
+    tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'remote', 'visa-sponsorship', 'equity').", min_length=1), OmittedNotNull] = None
+    assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this job. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (company/role hero), 'images_vertical' (9:16 for Stories), 'logo' (company logo). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["JobItem"]

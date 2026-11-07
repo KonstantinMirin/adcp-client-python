@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, Rule, UniqueItems
 
 from ..enums.forecast_method import ForecastMethod
@@ -27,22 +27,22 @@ class Metrics(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-coverage-forecast.json', pointer='#/properties/points/items/allOf/1/properties/metrics')
     __pydantic_extra__: dict[str, ForecastRange] = Field(init=False)
-    audience_size: ForecastRange | None = None
-    reach: ForecastRange | None = None
-    frequency: ForecastRange | None = None
-    impressions: ForecastRange | None = None
-    clicks: ForecastRange | None = None
-    spend: ForecastRange | None = None
-    views: ForecastRange | None = None
-    completed_views: ForecastRange | None = None
-    grps: ForecastRange | None = None
-    engagements: ForecastRange | None = None
-    follows: ForecastRange | None = None
-    saves: ForecastRange | None = None
-    profile_visits: ForecastRange | None = None
-    measured_impressions: ForecastRange | None = None
-    downloads: ForecastRange | None = None
-    plays: ForecastRange | None = None
+    audience_size: Annotated[ForecastRange | None, OmittedNotNull] = None
+    reach: Annotated[ForecastRange | None, OmittedNotNull] = None
+    frequency: Annotated[ForecastRange | None, OmittedNotNull] = None
+    impressions: Annotated[ForecastRange | None, OmittedNotNull] = None
+    clicks: Annotated[ForecastRange | None, OmittedNotNull] = None
+    spend: Annotated[ForecastRange | None, OmittedNotNull] = None
+    views: Annotated[ForecastRange | None, OmittedNotNull] = None
+    completed_views: Annotated[ForecastRange | None, OmittedNotNull] = None
+    grps: Annotated[ForecastRange | None, OmittedNotNull] = None
+    engagements: Annotated[ForecastRange | None, OmittedNotNull] = None
+    follows: Annotated[ForecastRange | None, OmittedNotNull] = None
+    saves: Annotated[ForecastRange | None, OmittedNotNull] = None
+    profile_visits: Annotated[ForecastRange | None, OmittedNotNull] = None
+    measured_impressions: Annotated[ForecastRange | None, OmittedNotNull] = None
+    downloads: Annotated[ForecastRange | None, OmittedNotNull] = None
+    plays: Annotated[ForecastRange | None, OmittedNotNull] = None
     coverage_rate: Annotated[CoverageRate, Field(description="Share of the declared forecast scope represented by this point. For signal coverage forecasts, this is the point's count divided by the coverage_forecast.scope denominator. Range 0.0 to 1.0.")]
 
 
@@ -86,10 +86,10 @@ class Scope(AdCPBaseModel):
     )
     kind: Annotated[Kind, Field(description='Denominator family for the coverage forecast.')]
     label: Annotated[str, Field(description="Human-readable denominator label, such as 'network price-priority inventory'.")]
-    product_id: Annotated[str | None, Field(description="Product denominator when kind is 'product'.")] = None
-    countries: Annotated[list[CountryCode] | None, Field(description='Countries included in the denominator, as ISO 3166-1 alpha-2 codes.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    line_item_types: Annotated[list[str] | None, Field(description='Seller or ad-server line item types included in the denominator.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    date_range: Annotated[DateRange | None, Field(description='Historical or planned date window used to compute the denominator.')] = None
+    product_id: Annotated[str | None, Field(description="Product denominator when kind is 'product'."), OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries included in the denominator, as ISO 3166-1 alpha-2 codes.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    line_item_types: Annotated[list[str] | None, Field(description='Seller or ad-server line item types included in the denominator.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    date_range: Annotated[DateRange | None, Field(description='Historical or planned date window used to compute the denominator.'), OmittedNotNull] = None
 
 
 class BucketSemantics(StrEnum):
@@ -129,9 +129,9 @@ class SignalCoverageForecast(AdCPBaseModel):
     scope: Annotated[Scope, Field(description='Explicit denominator for the coverage forecast. This identifies the inventory, product, account, or custom universe that coverage_rate values are relative to. Additional seller-specific qualifiers are allowed for scopes such as line item type, ad server, inventory class, country, or flight window.')]
     bucket_semantics: Annotated[BucketSemantics, Field(description="'exclusive' means the returned signal-value buckets do not overlap with each other. 'overlapping' means one impression or user can appear in multiple returned buckets, so coverage_rate values may sum above 1.0. This field describes overlap among returned buckets; bucket_completeness declares whether the returned buckets cover the full denominator.")]
     bucket_completeness: Annotated[BucketCompleteness, Field(description="'complete' means the returned buckets cover the declared denominator. For complete + exclusive forecasts, count metrics and coverage_rate values can be treated as a full partition, subject to metric additivity rules. 'partial' means omitted denominator share represents undisclosed, other, or unsupported buckets; buyers MUST NOT infer totals by summing returned points.")]
-    generated_at: Annotated[AwareDatetime | None, Field(description='When this coverage forecast was computed.')] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='When this coverage forecast expires.')] = None
-    ext: ExtensionObject | None = None
+    generated_at: Annotated[AwareDatetime | None, Field(description='When this coverage forecast was computed.'), OmittedNotNull] = None
+    valid_until: Annotated[AwareDatetime | None, Field(description='When this coverage forecast expires.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SignalCoverageForecast"]

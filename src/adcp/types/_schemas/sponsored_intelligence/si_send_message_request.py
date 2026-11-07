@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.envelopes import AdcpRequest
 
@@ -24,8 +24,8 @@ class ActionResponse(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-request.json', pointer='#/properties/action_response')
-    action: Annotated[str | None, Field(description='The action that was triggered')] = None
-    payload: Annotated[dict[str, Any] | None, Field(description='Action-specific response data')] = None
+    action: Annotated[str | None, Field(description='The action that was triggered'), OmittedNotNull] = None
+    payload: Annotated[dict[str, Any] | None, Field(description='Action-specific response data'), OmittedNotNull] = None
 
 
 class SISendMessageRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -41,11 +41,11 @@ class SISendMessageRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. Each conversational turn is a distinct mutation of session transcript — without this key, a timeout-and-retry produces a duplicate turn and a duplicate model response. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each user turn.')]
     session_id: Annotated[str, Field(description='Active session identifier')]
-    message: Annotated[str | None, Field(description="User's message to the brand agent")] = None
-    action_response: Annotated[ActionResponse | None, Field(description='Response to a previous action_button (e.g., user clicked checkout)')] = None
-    sponsored_context_receipt: Annotated[SISponsoredContextReceipt | None, Field(description="Host receipt for sponsored context accepted from a prior SI response in this session. This gives the brand/seller an audit-visible record of the host's accepted use mode and disclosure commitment for that context.")] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[str | None, Field(description="User's message to the brand agent"), OmittedNotNull] = None
+    action_response: Annotated[ActionResponse | None, Field(description='Response to a previous action_button (e.g., user clicked checkout)'), OmittedNotNull] = None
+    sponsored_context_receipt: Annotated[SISponsoredContextReceipt | None, Field(description="Host receipt for sponsored context accepted from a prior SI response in this session. This gives the brand/seller an audit-visible record of the host's accepted use mode and disclosure commitment for that context."), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SISendMessageRequest"]

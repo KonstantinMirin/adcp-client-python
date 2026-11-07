@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrIdempotencyKey
 from adcp.types.envelopes import AdcpResponse
 
@@ -69,8 +69,8 @@ class SyncReportingStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#')
     status: Annotated[Literal['completed'], Field(description='Status batches complete synchronously with one result per submitted statement.')]
     results: Annotated[list[RecordedReportingConsumerStatus | UnchangedReportingConsumerStatus | FailedReportingConsumerStatus], Field(max_length=100, min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SyncReportingStatusResponse"]

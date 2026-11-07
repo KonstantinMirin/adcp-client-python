@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -68,26 +68,26 @@ class UpdateMediaBuySuccess(UpdateMediaBuyResponse):
         UniqueItems('warnings'),
     )
     media_buy_id: Annotated[str, Field(description="Seller's identifier for the media buy")]
-    name: Annotated[MediaBuyName | None, Field(description='Persisted human-readable name after the update. When update_media_buy supplied name, the seller MUST return the stored value here; a seller that could not apply the replacement SHOULD return the prior unchanged value rather than silently dropping the field. This display label is not an identifier or financial reference.')] = None
-    media_buy_status: Annotated[MediaBuyStatus | None, Field(description="Media buy status after the update. Present when the update changes the media buy's status (e.g., cancellation transitions to 'canceled', pause transitions to 'paused'). This field carries the media buy lifecycle state; top-level `status` is reserved for the protocol-envelope TaskStatus.")] = None
+    name: Annotated[MediaBuyName | None, Field(description='Persisted human-readable name after the update. When update_media_buy supplied name, the seller MUST return the stored value here; a seller that could not apply the replacement SHOULD return the prior unchanged value rather than silently dropping the field. This display label is not an identifier or financial reference.'), OmittedNotNull] = None
+    media_buy_status: Annotated[MediaBuyStatus | None, Field(description="Media buy status after the update. Present when the update changes the media buy's status (e.g., cancellation transitions to 'canceled', pause transitions to 'paused'). This field carries the media buy lifecycle state; top-level `status` is reserved for the protocol-envelope TaskStatus."), OmittedNotNull] = None
     revision: Annotated[IntMin1, Field(description='Revision number after this update. Use this value in subsequent update_media_buy requests intended to change state for optimistic concurrency. Exact idempotency replays return the prior revision and do not increment revision.')]
-    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for monetary values at this media buy level. Echoed when the update affects budget or currency. Matches the currency field in subsequent get_media_buys responses.')] = None
-    total_budget: Annotated[NonNegativeFloat | None, Field(description='Updated hard aggregate lifetime budget, denominated in currency. Echoed when the update affects the shared total or package budgets so buyers can verify the new aggregate without a round-trip to get_media_buys.')] = None
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Post-update hard aggregate daily spend ceiling. Echoed when the update sets or changes the aggregate daily cap; omitted after the cap is removed.')] = None
-    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Post-update shared MediaBuy frequency cap. Echoed when the update sets or changes it; omitted after removal.')] = None
-    budget_cap_timezone: Annotated[str | None, Field(description='Post-update IANA timezone shared by every aggregate and package daily cap. Echoed whenever the update affects daily caps or their timezone.')] = None
-    budget_allocation: Annotated[BudgetAllocation | None, Field(description='Post-update cross-package allocation configuration when affected by the update.')] = None
-    pacing: Annotated[Pacing | None, Field(description='Post-update aggregate pacing when affected by the update.')] = None
-    bidding: Annotated[Bidding | None, Field(description='Post-update media-buy-authored bidding policy when affected by the update, preserving explicit automatic mode, scope-specific goal binding, and media-buy-currency denomination. Omitted when the authored media-buy block was cleared.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for monetary values at this media buy level. Echoed when the update affects budget or currency. Matches the currency field in subsequent get_media_buys responses.'), OmittedNotNull] = None
+    total_budget: Annotated[NonNegativeFloat | None, Field(description='Updated hard aggregate lifetime budget, denominated in currency. Echoed when the update affects the shared total or package budgets so buyers can verify the new aggregate without a round-trip to get_media_buys.'), OmittedNotNull] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Post-update hard aggregate daily spend ceiling. Echoed when the update sets or changes the aggregate daily cap; omitted after the cap is removed.'), OmittedNotNull] = None
+    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Post-update shared MediaBuy frequency cap. Echoed when the update sets or changes it; omitted after removal.'), OmittedNotNull] = None
+    budget_cap_timezone: Annotated[str | None, Field(description='Post-update IANA timezone shared by every aggregate and package daily cap. Echoed whenever the update affects daily caps or their timezone.'), OmittedNotNull] = None
+    budget_allocation: Annotated[BudgetAllocation | None, Field(description='Post-update cross-package allocation configuration when affected by the update.'), OmittedNotNull] = None
+    pacing: Annotated[Pacing | None, Field(description='Post-update aggregate pacing when affected by the update.'), OmittedNotNull] = None
+    bidding: Annotated[Bidding | None, Field(description='Post-update media-buy-authored bidding policy when affected by the update, preserving explicit automatic mode, scope-specific goal binding, and media-buy-currency denomination. Omitted when the authored media-buy block was cleared.'), OmittedNotNull] = None
     implementation_date: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when changes take effect (null if pending approval)')] = None
-    invoice_recipient: Annotated[BusinessEntity | None, Field(description='Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only).')] = None
-    affected_packages: Annotated[list[Package] | None, Field(description='Array of full Package objects showing complete post-update state for each modified package. This includes every active package whose budget was proportionally changed by a fixed-mode total_budget update. This is a state snapshot, not a sparse delta: sellers MUST NOT return package_id-only stubs. Campaign-level updates that do not modify packages may return an empty array.')] = None
-    valid_actions: Annotated[list[MediaBuyValidAction] | None, Field(description='Flat-vocabulary actions the buyer can perform after this update. Saves a round-trip to get_media_buys. Deprecated in favor of `available_actions[]`, which carries mode, optional SLA, and in 3.2 an optional change_term_id. Sellers SHOULD populate both during the 3.x deprecation window; consumers MUST prefer `available_actions[]` when both are present. Removed in 4.0.')] = None
-    available_actions: Annotated[list[MediaBuyAvailableAction] | None, Field(description='Structured per-buy resolution of actions available after this update. Authoritative — see `get-media-buys-response.json` for full semantics.', json_schema_extra={'uniqueItems': True})] = None
-    warnings: Annotated[list[Warning] | None, Field(description='Optional non-blocking observations accompanying this successful update. The requested update was still applied. Continuing conditions also appear on get_media_buys as current resource state.', json_schema_extra={'uniqueItems': True})] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    context: Annotated[ContextObject | None, Field(description='Opaque operation-level correlation data echoed unchanged from the update_media_buy request. Sellers MUST echo this object verbatim when the originating request carried context, including synchronous success, error, submitted, and webhook task-status payloads. Sellers MUST NOT parse this object for business logic.')] = None
-    ext: ExtensionObject | None = None
+    invoice_recipient: Annotated[BusinessEntity | None, Field(description='Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only).'), OmittedNotNull] = None
+    affected_packages: Annotated[list[Package] | None, Field(description='Array of full Package objects showing complete post-update state for each modified package. This includes every active package whose budget was proportionally changed by a fixed-mode total_budget update. This is a state snapshot, not a sparse delta: sellers MUST NOT return package_id-only stubs. Campaign-level updates that do not modify packages may return an empty array.'), OmittedNotNull] = None
+    valid_actions: Annotated[list[MediaBuyValidAction] | None, Field(description='Flat-vocabulary actions the buyer can perform after this update. Saves a round-trip to get_media_buys. Deprecated in favor of `available_actions[]`, which carries mode, optional SLA, and in 3.2 an optional change_term_id. Sellers SHOULD populate both during the 3.x deprecation window; consumers MUST prefer `available_actions[]` when both are present. Removed in 4.0.'), OmittedNotNull] = None
+    available_actions: Annotated[list[MediaBuyAvailableAction] | None, Field(description='Structured per-buy resolution of actions available after this update. Authoritative — see `get-media-buys-response.json` for full semantics.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    warnings: Annotated[list[Warning] | None, Field(description='Optional non-blocking observations accompanying this successful update. The requested update was still applied. Continuing conditions also appear on get_media_buys as current resource state.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, Field(description='Opaque operation-level correlation data echoed unchanged from the update_media_buy request. Sellers MUST echo this object verbatim when the originating request carried context, including synchronous success, error, submitted, and webhook task-status payloads. Sellers MUST NOT parse this object for business logic.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class UpdateMediaBuyError(UpdateMediaBuyResponse, FailedResponse):
@@ -102,8 +102,8 @@ class UpdateMediaBuyError(UpdateMediaBuyResponse, FailedResponse):
         ForbiddenGroups((('media_buy_id',), ('affected_packages',), ('sandbox',), ('warnings',))),
     )
     errors: Annotated[list[Error], Field(description='Array of errors explaining why the operation failed', min_length=1)]
-    context: Annotated[ContextObject | None, Field(description='Opaque operation-level correlation data echoed unchanged from the update_media_buy request. Sellers MUST echo this object verbatim when the originating request carried context, including synchronous success, error, submitted, and webhook task-status payloads. Sellers MUST NOT parse this object for business logic.')] = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, Field(description='Opaque operation-level correlation data echoed unchanged from the update_media_buy request. Sellers MUST echo this object verbatim when the originating request carried context, including synchronous success, error, submitted, and webhook task-status payloads. Sellers MUST NOT parse this object for business logic.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class UpdateMediaBuyResponseSubmitted(UpdateMediaBuyResponse):
@@ -119,10 +119,10 @@ class UpdateMediaBuyResponseSubmitted(UpdateMediaBuyResponse):
     )
     status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose media_buy_id is issued in-line. See task-status.json for the full task-status enum.')]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
-    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Awaiting operator re-approval; typical turnaround 2–4 hours.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent.")] = None
-    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.')] = None
-    context: Annotated[ContextObject | None, Field(description='Opaque operation-level correlation data echoed unchanged from the update_media_buy request. Sellers MUST echo this object verbatim when the originating request carried context, including synchronous success, error, submitted, and webhook task-status payloads. Sellers MUST NOT parse this object for business logic.')] = None
-    ext: ExtensionObject | None = None
+    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Awaiting operator re-approval; typical turnaround 2–4 hours.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent."), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, Field(description='Opaque operation-level correlation data echoed unchanged from the update_media_buy request. Sellers MUST echo this object verbatim when the originating request carried context, including synchronous success, error, submitted, and webhook task-status payloads. Sellers MUST NOT parse this object for business logic.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 UpdateMediaBuyResponse._branch_models = (UpdateMediaBuySuccess, UpdateMediaBuyError, UpdateMediaBuyResponseSubmitted,)

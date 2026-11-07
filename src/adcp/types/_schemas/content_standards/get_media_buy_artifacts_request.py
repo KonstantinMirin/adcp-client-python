@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..collection.get_collection_list_request import ObjMaxResultsCursor
@@ -20,8 +20,8 @@ class TimeRange(AdCPBaseModel):
     Filter to specific time period
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-request.json', pointer='#/properties/time_range')
-    start: Annotated[AwareDatetime | None, Field(description='Start of time range (inclusive)')] = None
-    end: Annotated[AwareDatetime | None, Field(description='End of time range (exclusive)')] = None
+    start: Annotated[AwareDatetime | None, Field(description='Start of time range (inclusive)'), OmittedNotNull] = None
+    end: Annotated[AwareDatetime | None, Field(description='End of time range (exclusive)'), OmittedNotNull] = None
 
 
 class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -29,14 +29,14 @@ class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope, AdcpRequest):
     Request parameters for retrieving content artifacts from a media buy for validation
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-request.json', pointer='#')
-    account: Annotated[AccountReference | None, Field(description='Filter artifacts to a specific account. When omitted, returns artifacts across all accessible accounts.')] = None
+    account: Annotated[AccountReference | None, Field(description='Filter artifacts to a specific account. When omitted, returns artifacts across all accessible accounts.'), OmittedNotNull] = None
     media_buy_id: Annotated[str, Field(description='Media buy to get artifacts from')]
-    package_ids: Annotated[list[str] | None, Field(description='Filter to specific packages within the media buy', min_length=1)] = None
-    failures_only: Annotated[bool | None, Field(description="When true, only return artifacts where the seller's local model returned local_verdict: 'fail'. Useful for auditing false positives. Not useful when the seller does not run a local evaluation model (all verdicts are 'unevaluated').")] = False
-    time_range: Annotated[TimeRange | None, Field(description='Filter to specific time period')] = None
-    pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    package_ids: Annotated[list[str] | None, Field(description='Filter to specific packages within the media buy', min_length=1), OmittedNotNull] = None
+    failures_only: Annotated[bool | None, Field(description="When true, only return artifacts where the seller's local model returned local_verdict: 'fail'. Useful for auditing false positives. Not useful when the seller does not run a local evaluation model (all verdicts are 'unevaluated')."), OmittedNotNull] = False
+    time_range: Annotated[TimeRange | None, Field(description='Filter to specific time period'), OmittedNotNull] = None
+    pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetMediaBuyArtifactsRequest"]

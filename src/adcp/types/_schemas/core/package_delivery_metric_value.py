@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 
 from ..enums.attribution_methodology import AttributionMethodology
@@ -27,11 +27,11 @@ class Qualifier(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    viewability_standard: Annotated[ViewabilityStandard | None, Field(description='Viewability standard under which this row was measured. MRC and GroupM define materially different thresholds; never sum across standards.')] = None
-    completion_source: Annotated[CompletionSource | None, Field(description='Source of `completion_rate` attestation for this row — `seller_attested` from player/ad server, `vendor_attested` from a third-party measurement vendor. The two paths can yield different rates; never sum across sources.')] = None
-    attribution_methodology: Annotated[AttributionMethodology | None, Field(description='Attribution methodology under which this outcome row was computed (`deterministic_purchase`, `probabilistic`, `panel_based`, `modeled`). Outcome metrics measured under different methodologies represent materially different numbers; never sum across methodologies.')] = None
-    attribution_window: Annotated[Duration | None, Field(description="Attribution window for this outcome row. Object-valued duration (`{interval, unit}`), not a shorthand string. Outcome metrics measured over different windows represent the same metric over different time periods; the partition keeps them as separate rows so buyers don't accidentally aggregate.")] = None
-    lift_dimension: Annotated[LiftDimension | None, Field(description='Brand-lift dimension this row represents (awareness, consideration, favorability, purchase intent, or ad recall). Required when `metric_id` is `brand_lift`. Each dimension is a separate surveyed outcome with its own sample size and confidence interval; never sum across dimensions.')] = None
+    viewability_standard: Annotated[ViewabilityStandard | None, Field(description='Viewability standard under which this row was measured. MRC and GroupM define materially different thresholds; never sum across standards.'), OmittedNotNull] = None
+    completion_source: Annotated[CompletionSource | None, Field(description='Source of `completion_rate` attestation for this row — `seller_attested` from player/ad server, `vendor_attested` from a third-party measurement vendor. The two paths can yield different rates; never sum across sources.'), OmittedNotNull] = None
+    attribution_methodology: Annotated[AttributionMethodology | None, Field(description='Attribution methodology under which this outcome row was computed (`deterministic_purchase`, `probabilistic`, `panel_based`, `modeled`). Outcome metrics measured under different methodologies represent materially different numbers; never sum across methodologies.'), OmittedNotNull] = None
+    attribution_window: Annotated[Duration | None, Field(description="Attribution window for this outcome row. Object-valued duration (`{interval, unit}`), not a shorthand string. Outcome metrics measured over different windows represent the same metric over different time periods; the partition keeps them as separate rows so buyers don't accidentally aggregate."), OmittedNotNull] = None
+    lift_dimension: Annotated[LiftDimension | None, Field(description='Brand-lift dimension this row represents (awareness, consideration, favorability, purchase intent, or ad recall). Required when `metric_id` is `brand_lift`. Each dimension is a separate surveyed outcome with its own sample size and confidence interval; never sum across dimensions.'), OmittedNotNull] = None
 
 
 class PackageDeliveryMetricValue(DeliveryMetricAggregateStandard):

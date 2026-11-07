@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..core.media_buy_available_action import MediaBuyAvailableAction
@@ -27,8 +27,8 @@ class ActionNotAllowedDetails(AdCPBaseModel):
     )
     attempted_action: Annotated[MediaBuyAvailableActionID, Field(description='The action the request mapped to, per the normative action-to-field mapping in update_media_buy task-reference.')]
     reason: Annotated[ActionNotAllowedReason, Field(description='Why the action was rejected. Buyer SDKs branch on this to choose a recovery path.')]
-    currently_available_actions: Annotated[list[MediaBuyAvailableAction] | None, Field(description="Echo of the buy's resolved `available_actions[]` at rejection time. Buyer SDKs render this to the caller as the recovery option set.", json_schema_extra={'uniqueItems': True})] = None
-    decline_reason: Annotated[SellerPolicyDeclineReason | None, Field(description='Coarse seller-policy dimension behind a buy-specific denial. Sellers SHOULD populate this for `reason: not_supported_on_buy` when they have a structured reason and disclosure does not expose private thresholds or enforcement controls. It SHOULD be omitted for structural reasons such as `wrong_status`, `not_supported_on_product`, `mode_mismatch`, and `condition_unresolved`. When present, it MUST be consistent with the enclosing error.recovery classification.')] = None
+    currently_available_actions: Annotated[list[MediaBuyAvailableAction] | None, Field(description="Echo of the buy's resolved `available_actions[]` at rejection time. Buyer SDKs render this to the caller as the recovery option set.", json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    decline_reason: Annotated[SellerPolicyDeclineReason | None, Field(description='Coarse seller-policy dimension behind a buy-specific denial. Sellers SHOULD populate this for `reason: not_supported_on_buy` when they have a structured reason and disclosure does not expose private thresholds or enforcement controls. It SHOULD be omitted for structural reasons such as `wrong_status`, `not_supported_on_product`, `mode_mismatch`, and `condition_unresolved`. When present, it MUST be consistent with the enclosing error.recovery classification.'), OmittedNotNull] = None
 
 
 __all__ = ["ActionNotAllowedDetails"]

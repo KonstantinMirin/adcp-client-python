@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -30,7 +30,7 @@ class Resource(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-change-recorded-webhook.json', pointer='#/properties/resource')
     type: ListAccountChangesRequestResourceTypesItem
     resource_id: StrMinLen1MaxLen255
-    parent_ids: Annotated[dict[str, StrMaxLen255] | None, Field(max_length=12)] = None
+    parent_ids: Annotated[dict[str, StrMaxLen255] | None, Field(max_length=12), OmittedNotNull] = None
 
 
 class AccountChangeRecordedWebhook(AdCPBaseModel):
@@ -54,8 +54,8 @@ class AccountChangeRecordedWebhook(AdCPBaseModel):
     recorded_at: AwareDatetime
     resource: Annotated[Resource, Field(description='Resource identity copied from the corresponding account change record.')]
     action: StrMinLen1MaxLen100
-    through_cursor: Annotated[StrMinLen1MaxLen4096 | None, Field(description='Optional advisory checkpoint at or after this change. It is a drain target, not a cursor the receiver may install without reading every intervening page.')] = None
-    ext: Annotated[ExtensionObject | None, Field(description='Bounded vendor extensions subject to the same secret/PII prohibitions as the base payload.')] = None
+    through_cursor: Annotated[StrMinLen1MaxLen4096 | None, Field(description='Optional advisory checkpoint at or after this change. It is a drain target, not a cursor the receiver may install without reading every intervening page.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, Field(description='Bounded vendor extensions subject to the same secret/PII prohibitions as the base payload.'), OmittedNotNull] = None
 
 
 __all__ = ["AccountChangeRecordedWebhook"]

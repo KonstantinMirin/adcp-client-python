@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 from adcp.types.constraints import HttpUrl
 
@@ -22,9 +22,9 @@ class Visual(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    url: Annotated[HttpUrl | None, Field(description='URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor.')] = None
-    light: Annotated[HttpUrl | None, Field(description='URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)')] = None
-    dark: Annotated[HttpUrl | None, Field(description='URL to the overlay graphic for use on dark backgrounds (SVG or PNG)')] = None
+    url: Annotated[HttpUrl | None, Field(description='URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor.'), OmittedNotNull] = None
+    light: Annotated[HttpUrl | None, Field(description='URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)'), OmittedNotNull] = None
+    dark: Annotated[HttpUrl | None, Field(description='URL to the overlay graphic for use on dark backgrounds (SVG or PNG)'), OmittedNotNull] = None
 
 
 class Unit(StrEnum):
@@ -69,8 +69,8 @@ class Overlay(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/overlay.json', pointer='#')
     id: Annotated[str, Field(description="Identifier for this overlay (e.g., 'play_pause', 'volume', 'publisher_logo', 'carousel_prev', 'carousel_next')")]
-    description: Annotated[str | None, Field(description='Human-readable explanation of what this overlay is and how buyers should account for it')] = None
-    visual: Annotated[Visual | None, Field(description='Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.')] = None
+    description: Annotated[str | None, Field(description='Human-readable explanation of what this overlay is and how buyers should account for it'), OmittedNotNull] = None
+    visual: Annotated[Visual | None, Field(description='Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.'), OmittedNotNull] = None
     bounds: Annotated[Bounds, Field(description="Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.")]
 
 

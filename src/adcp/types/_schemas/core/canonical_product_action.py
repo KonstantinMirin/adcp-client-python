@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.canonical_media_buy_action import CanonicalMediaBuyActionName
@@ -29,10 +29,10 @@ class CanonicalProductAction(AdCPBaseModel):
     )
     action: CanonicalMediaBuyActionName
     modes: Annotated[list[CanonicalMediaBuyActionMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    allowed_statuses: Annotated[list[MediaBuyStatus] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    sla: SLAWindow | None = None
-    constraints: Annotated[MediaBuyChangeTermConstraints | None, Field(description='Advisory machine-readable bounds for product selection; proposal change terms restate binding bounds.')] = None
-    terms_ref: Annotated[str | None, Field(description='Optional advisory pointer to published commercial terms. It is not a proposal change-term identity.')] = None
+    allowed_statuses: Annotated[list[MediaBuyStatus] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    sla: Annotated[SLAWindow | None, OmittedNotNull] = None
+    constraints: Annotated[MediaBuyChangeTermConstraints | None, Field(description='Advisory machine-readable bounds for product selection; proposal change terms restate binding bounds.'), OmittedNotNull] = None
+    terms_ref: Annotated[str | None, Field(description='Optional advisory pointer to published commercial terms. It is not a proposal change-term identity.'), OmittedNotNull] = None
 
 
 __all__ = ["CanonicalProductAction"]

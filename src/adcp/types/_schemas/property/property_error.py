@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.property import Property
 
@@ -32,7 +32,7 @@ class PropertyError(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-error.json', pointer='#')
     code: Annotated[Code, Field(description='Error code')]
-    property: Annotated[Property | None, Field(description='The property that caused the error')] = None
+    property: Annotated[Property | None, Field(description='The property that caused the error'), OmittedNotNull] = None
     message: Annotated[str, Field(description='Human-readable error message')]
 
 

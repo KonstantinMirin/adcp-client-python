@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Distinct, Rule, UniqueItems
 from adcp.types.constraints import NonEmptyList, StrCountryCode
 
@@ -44,28 +44,28 @@ class PostalAreaSupport(AdCPBaseModel):
         UniqueItems('IN'),
         UniqueItems('ZA'),
     )
-    US: Annotated[list[USPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    GB: Annotated[list[GBPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    CA: Annotated[list[CaPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    DE: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    CH: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    AT: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    FR: Annotated[list[Literal['code_postal']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    AU: Annotated[list[Literal['postcode']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    BR: Annotated[list[Literal['cep']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    IN: Annotated[list[Literal['pin']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ZA: Annotated[list[Literal['postal_code']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    us_zip: bool | None = None
-    us_zip_plus_four: bool | None = None
-    gb_outward: bool | None = None
-    gb_full: bool | None = None
-    ca_fsa: bool | None = None
-    ca_full: bool | None = None
-    de_plz: bool | None = None
-    fr_code_postal: bool | None = None
-    au_postcode: bool | None = None
-    ch_plz: bool | None = None
-    at_plz: bool | None = None
+    US: Annotated[list[USPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    GB: Annotated[list[GBPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    CA: Annotated[list[CaPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    DE: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    CH: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    AT: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    FR: Annotated[list[Literal['code_postal']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    AU: Annotated[list[Literal['postcode']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    BR: Annotated[list[Literal['cep']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    IN: Annotated[list[Literal['pin']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ZA: Annotated[list[Literal['postal_code']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    us_zip: Annotated[bool | None, OmittedNotNull] = None
+    us_zip_plus_four: Annotated[bool | None, OmittedNotNull] = None
+    gb_outward: Annotated[bool | None, OmittedNotNull] = None
+    gb_full: Annotated[bool | None, OmittedNotNull] = None
+    ca_fsa: Annotated[bool | None, OmittedNotNull] = None
+    ca_full: Annotated[bool | None, OmittedNotNull] = None
+    de_plz: Annotated[bool | None, OmittedNotNull] = None
+    fr_code_postal: Annotated[bool | None, OmittedNotNull] = None
+    au_postcode: Annotated[bool | None, OmittedNotNull] = None
+    ch_plz: Annotated[bool | None, OmittedNotNull] = None
+    at_plz: Annotated[bool | None, OmittedNotNull] = None
 
 
 __all__ = ["PostalAreaSupport"]

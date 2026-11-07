@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 
 from .activation_key import ActivationKey
 from .signal_targeting_expression import (
@@ -29,9 +29,9 @@ class PackageSignalTargeting(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    pricing_option_id: Annotated[str | None, Field(description="Pricing option selected for this signal. Use the pricing_option_id from the product's signal_targeting_options entry when product-scoped pricing is present; otherwise use the seller get_signals pricing only when the product option does not override it. Required when the selected signal has pricing_options; omit only when the signal is bundled into the product price or has no incremental cost.")] = None
-    signal_agent_segment_id: Annotated[str | None, Field(description='Optional opaque resolved-segment or seller execution handle for this signal. Omit when signal_ref plus the value expression is sufficient for the seller to resolve the signal. Include when the product option exposes a separate runtime or activation handle, and pass it verbatim. Buyers SHOULD prefer an exposed segment handle over reconstructing condition identity from categorical values because the handle can carry provider namespace and methodology distinctions.')] = None
-    activation_key: Annotated[ActivationKey | None, Field(description='Destination-specific activation key returned by get_signals or activate_signal. Usually omitted for seller-offered signals selected directly through the same seller; include only when the selected signal was separately activated and the seller requires the activation key to correlate the package selection.')] = None
+    pricing_option_id: Annotated[str | None, Field(description="Pricing option selected for this signal. Use the pricing_option_id from the product's signal_targeting_options entry when product-scoped pricing is present; otherwise use the seller get_signals pricing only when the product option does not override it. Required when the selected signal has pricing_options; omit only when the signal is bundled into the product price or has no incremental cost."), OmittedNotNull] = None
+    signal_agent_segment_id: Annotated[str | None, Field(description='Optional opaque resolved-segment or seller execution handle for this signal. Omit when signal_ref plus the value expression is sufficient for the seller to resolve the signal. Include when the product option exposes a separate runtime or activation handle, and pass it verbatim. Buyers SHOULD prefer an exposed segment handle over reconstructing condition identity from categorical values because the handle can carry provider namespace and methodology distinctions.'), OmittedNotNull] = None
+    activation_key: Annotated[ActivationKey | None, Field(description='Destination-specific activation key returned by get_signals or activate_signal. Usually omitted for seller-offered signals selected directly through the same seller; include only when the selected signal was separately activated and the seller requires the activation key to correlate the package selection.'), OmittedNotNull] = None
 
 
 class PackageSignalTargetingBinary(PackageSignalTargeting, SignalTargetingExpressionBinary):

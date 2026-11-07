@@ -86,6 +86,7 @@ from compiled import compiled
 from nodeset import claimed
 from pydantic import BaseModel, StringConstraints, TypeAdapter
 
+from adcp.types._base import OmittedNotNull
 from codegen import bundle, harness
 from codegen.harness import check_refuses, own_facts, refused_witnesses
 
@@ -171,7 +172,16 @@ def test_the_same_document_passes_for_a_class_that_carries_the_facts() -> None:
         model_config = {"extra": "forbid"}
 
         limit: Annotated[int, None] | int
-        cursor: Bounded3 | None = None
+        #: **``OmittedNotNull`` is part of "carries the facts" at an OPTIONAL property**,
+        #: and it is not this fixture being bent to the instrument: the document states
+        #: ``cursor: {"type": "string", "maxLength": 3}`` and nothing about ``null``, so a
+        #: ``Bounded3 | None`` that TOOK a ``null`` here would be wider than this document
+        #: in exactly the direction reading 1 forbids -- which is the defect
+        #: ``adcp-client-python-4yhb`` measured at 13,790 fields and which the
+        #: ``properties`` witness is here to find.  The emitter writes this marker at every
+        #: such property now (``codegen.render._OptionalMember``), so this is the shape a
+        #: faithful class HAS.
+        cursor: Annotated[Bounded3 | None, OmittedNotNull] = None
 
     schema = {
         "type": "object",
@@ -209,6 +219,84 @@ def test_a_class_wider_than_its_document_fails_and_names_the_value() -> None:
     assert "maxLength" in row[2]
     # The same document and a class that carries the bound: every witness is refused.
     assert check_refuses(schema, TypeAdapter(Bounded3).validate_python, "abc").outcome == "pass"
+
+
+def test_the_explicit_null_witness_is_derived_and_it_discriminates() -> None:
+    """**The witness ``adcp-client-python-4yhb`` cost the whole model half of the tree.**
+
+    Reading 1 at an optional property: a JSON Schema property outside ``required`` whose
+    type does not admit ``null`` permits exactly one way of not supplying it -- leaving it
+    out -- and the generator renders every such property ``T | None = None``, which
+    pydantic reads as a type that ALSO admits an explicit ``null``.
+
+    **No derivation of this module ever offered one.**  ``_far_side``'s ``type`` arm
+    replaces the WHOLE instance with an alien value and never a property's value;
+    :func:`refusing_payload`'s three perturbations are a dropped required key, an alien
+    whole instance and an alien key.  So the two columns reading :func:`check_refuses` were
+    green over 13,790 fields in 1,819 classes at which the class admitted a value its
+    document refuses, undeclared -- and a column that cannot fail is not a column.
+    Measured with the witness wired, over the same 2,584 pairs: ``undeclared`` goes from
+    759 pass / 1,749 fail to 2,225 pass / 10 fail.
+
+    **BOTH DIRECTIONS, because a check that failed every class would fail this one too.**
+    The faithful class refuses the null and passes; the one that takes it is
+    ``widened_undeclared`` with the value named.
+
+    **AND THE SCREEN IS WHAT MAKES IT EXACT**: the third document below declares the same
+    property ``type: ["integer", "null"]``, so the candidate is one the DOCUMENT ADMITS, no
+    witness is yielded at all, and a class that takes the null is not charged for it.
+    That is the clause that keeps the repair from manufacturing a narrowing at the 171
+    fields of the tree whose document does admit a ``null``.
+    """
+    schema = {
+        "type": "object",
+        "properties": {"limit": {"type": "integer"}, "cursor": {"type": "string"}},
+        "required": ["cursor"],
+    }
+    instance = {"cursor": "a"}
+    #: The witness is DERIVED and it is the instance with the key set to an explicit null
+    #: -- added where the instance does not carry the key, which is the commonest shape of
+    #: an optional property and the one no reduction of a drawn instance can reach.
+    witnesses = refused_witnesses(schema, instance)
+    nulls = [(c, k, how) for c, k, how in witnesses if k == "properties"]
+    assert {json.dumps(c, sort_keys=True) for c, _, _ in nulls} == {
+        '{"cursor": "a", "limit": null}',
+        '{"cursor": null}',
+    }, nulls
+    assert all("explicit null" in how for _, _, how in nulls), nulls
+
+    class TakesTheNull(BaseModel):
+        cursor: str
+        limit: int | None = None
+
+    taken = check_refuses(schema, TakesTheNull.model_validate, instance)
+    assert taken.outcome == "widened_undeclared", taken
+    assert any(
+        json.loads(row[0]) == {"cursor": "a", "limit": None} for row in taken.undeclared
+    ), taken.undeclared
+
+    class RefusesTheNull(BaseModel):
+        cursor: str
+        limit: Annotated[int | None, OmittedNotNull] = None
+
+    #: The faithful class, which is what the emitter writes now
+    #: (``codegen.render._OptionalMember``): the same annotation, the same default, and an
+    #: explicit ``null`` refused with the type's own error.
+    assert RefusesTheNull.model_validate({"cursor": "a"}).limit is None
+    assert check_refuses(schema, RefusesTheNull.model_validate, instance).outcome == "pass"
+
+    #: And the SCREEN: a document that admits the null yields no witness for it, so the
+    #: class that takes one is never asked and never charged.
+    nullable = {
+        "type": "object",
+        "properties": {"limit": {"type": ["integer", "null"]}, "cursor": {"type": "string"}},
+        "required": ["cursor"],
+    }
+    assert not [
+        c for c, k, _ in refused_witnesses(nullable, instance)
+        if k == "properties" and isinstance(c, dict) and c.get("limit", 0) is None
+    ]
+    assert check_refuses(nullable, TakesTheNull.model_validate, instance).outcome == "pass"
 
 
 def test_a_widening_passes_exactly_where_the_run_declares_one() -> None:
@@ -395,7 +483,11 @@ def test_the_conditional_arm_fails_a_model_that_drops_the_conditional() -> None:
 
         subscriber_id: str
         event_types: list[str]
-        authentication: dict[str, Any] | None = None
+        #: The conditional is what this class DROPS; the explicit ``null`` at an optional
+        #: property is a second, unrelated widening, and leaving it here would make the
+        #: declared direction below assert that a module declaring ``if`` passes a class
+        #: that is also wider at ``properties``.  One fixture, one dropped fact.
+        authentication: Annotated[dict[str, Any] | None, OmittedNotNull] = None
 
     result = check_refuses(WVOD_SHAPE, DropsTheConditional.model_validate, WVOD_ADMITTED)
     assert result.outcome == "widened_undeclared", result
@@ -456,6 +548,14 @@ def test_a_conditional_no_value_was_offered_for_is_not_a_pass() -> None:
 
         subscriber_id: Annotated[str, StringConstraints(min_length=1)]
         event_types: list[str]
+        #: DECLARED, where this fixture used to leave the key to ``extra="allow"``.  An
+        #: undeclared key under that policy admits EVERY value, so the ``properties``
+        #: witness -- an explicit ``null`` at ``authentication``, which the document
+        #: refuses on ``type`` -- was admitted, and the pass this test is about would have
+        #: been a ``widened_undeclared`` about a different fact.  The node declares the
+        #: property, so a faithful class declares it; what this class still does not carry
+        #: is the second conjunct's ``if``, which is the fact the test is about.
+        authentication: Annotated[dict[str, Any] | None, OmittedNotNull] = None
 
     result = check_refuses(WVOD_SHAPE, CarriesWhatWasOffered.model_validate, outside)
     assert result.outcome == "pass", result

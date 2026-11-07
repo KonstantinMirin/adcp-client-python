@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 
 from .material_deadline import MaterialDeadline
@@ -22,9 +22,9 @@ class InstallmentDeadlines(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    booking_deadline: Annotated[AwareDatetime | None, Field(description='Last date/time to book a placement in this installment (ISO 8601). After this point, the seller will not accept new bookings.')] = None
-    cancellation_deadline: Annotated[AwareDatetime | None, Field(description="Last date/time to cancel without penalty (ISO 8601). Cancellations after this point may incur fees per the seller's terms.")] = None
-    material_deadlines: Annotated[list[MaterialDeadline] | None, Field(description="Stages for creative material submission. Items MUST be in chronological order by due_at (earliest first). Typical pattern: 'draft' for raw materials the seller will process, 'final' for production-ready assets. Print example: draft artwork then press-ready PDF. Influencer example: talking points then approved script.", min_length=1)] = None
+    booking_deadline: Annotated[AwareDatetime | None, Field(description='Last date/time to book a placement in this installment (ISO 8601). After this point, the seller will not accept new bookings.'), OmittedNotNull] = None
+    cancellation_deadline: Annotated[AwareDatetime | None, Field(description="Last date/time to cancel without penalty (ISO 8601). Cancellations after this point may incur fees per the seller's terms."), OmittedNotNull] = None
+    material_deadlines: Annotated[list[MaterialDeadline] | None, Field(description="Stages for creative material submission. Items MUST be in chronological order by due_at (earliest first). Typical pattern: 'draft' for raw materials the seller will process, 'final' for production-ready assets. Print example: draft artwork then press-ready PDF. Influencer example: talking points then approved script.", min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["InstallmentDeadlines"]

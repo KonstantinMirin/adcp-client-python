@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -75,12 +75,12 @@ class CreativeStatusChangedWebhook(AdCPBaseModel):
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description="Identifies which `notification_configs[]` entry on the recipient account is receiving this fire. Echoed verbatim from the entry's `subscriber_id`. Required so multi-subscriber accounts can route by endpoint.")]
     account_id: Annotated[str, Field(description="Seller's identifier for the account this creative belongs to. Echoed so multi-account buyers can route without re-resolving via `list_accounts`.")]
     creative_id: Annotated[str, Field(description="Seller's identifier for the creative whose status changed. References the same id space as `list_creatives` / `sync_creatives` responses.")]
-    revision_id: Annotated[CreativeRevisionID | None, Field(description='Buyer-authored input revision to which this transition applies. Required when the reviewed state has revision identity and the seller advertises creative.supports_revisions; it need not be the current list revision when the fire is received. Omitted for unversioned current content. A stale review outcome MUST NOT emit a fire as though it applied to a newer current revision.')] = None
+    revision_id: Annotated[CreativeRevisionID | None, Field(description='Buyer-authored input revision to which this transition applies. Required when the reviewed state has revision identity and the seller advertises creative.supports_revisions; it need not be the current list revision when the fire is received. Omitted for unversioned current content. A stale review outcome MUST NOT emit a fire as though it applied to a newer current revision.'), OmittedNotNull] = None
     transition: Annotated[Transition, Field(description='The status transition that triggered this fire. Valid `from` values are restricted to the prior states from which a seller/system-initiated transition can fire (`processing` for processing outcomes, `pending_review` for initial review outcomes, `approved` for re-review/revocation/seller-archive/recoverable suspension, `suspended` for seller-observed recovery or terminal escalation). The post-terminal states `rejected` and `archived` MUST NOT appear as `from` — those would require a buyer-initiated unblock (`sync_creatives` resubmit / unarchive), which does not fire this event.')]
     reason_code: Annotated[CreativeEventReasonCode, Field(description='Categorical reason for the transition. Per-transition valid subsets are constrained by impairment.coherence-style narrative rules — see docs/creative/creative-lifecycle-webhooks.mdx. Receivers MUST treat unknown reason codes as forward-compatible additions and not reject the fire.')]
-    reason_detail: Annotated[StrMaxLen500 | None, Field(description='Human-readable supplement to `reason_code`. Free text from the seller. Sellers MUST NOT include third-party PII in this field.')] = None
+    reason_detail: Annotated[StrMaxLen500 | None, Field(description='Human-readable supplement to `reason_code`. Free text from the seller. Sellers MUST NOT include third-party PII in this field.'), OmittedNotNull] = None
     initiator: Annotated[Initiator, Field(description='Who initiated the transition. `seller` — explicit decision by the seller (human reviewer, policy operator, takedown handler). `system` — automated seller-side process (processing pipeline, retention sweep, inactivity scan). `buyer` never appears on this event — buyer-initiated transitions are acknowledged on the `sync_creatives` response path and MUST NOT fire `creative.status_changed`.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CreativeStatusChangedWebhook"]

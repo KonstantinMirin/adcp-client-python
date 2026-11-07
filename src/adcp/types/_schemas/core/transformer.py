@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl, IntMin1
 
@@ -36,7 +36,7 @@ class VoiceSynthesisRefItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items')
     brand_agent: Annotated[BrandAgent, Field(description='Brand agent that exposed the referenced voice_synthesis entry.')]
     voice_id: Annotated[str, Field(description='voice_synthesis.voice_id from the brand agent.')]
-    rights_id: Annotated[str | None, Field(description='Optional rights offering or buyer-specific grant identifier associated with this provisioned voice. Brand-side voice_synthesis uses rights_offering_id for the configuration-time offering anchor. This transformer field may carry that offering ID or a grant ID after provisioning; it remains provenance metadata only, not a build_creative rights token.')] = None
+    rights_id: Annotated[str | None, Field(description='Optional rights offering or buyer-specific grant identifier associated with this provisioned voice. Brand-side voice_synthesis uses rights_offering_id for the configuration-time offering anchor. This transformer field may carry that offering ID or a grant ID after provisioning; it remains provenance metadata only, not a build_creative rights token.'), OmittedNotNull] = None
 
 
 class VariantDimensionsItem(StrEnum):
@@ -63,11 +63,11 @@ class Multiplicity(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('variant_dimensions'),
     )
-    supports_catalog_fanout: Annotated[bool | None, Field(description='Whether this transformer accepts max_creatives.')] = False
-    max_creatives_limit: Annotated[IntMin1 | None, Field(description='Per-transformer ceiling on max_creatives (≤ the agent ceiling).')] = None
-    supports_variants: Annotated[bool | None, Field(description='Whether this transformer accepts max_variants > 1 / variant_axis.')] = False
-    max_variants_limit: Annotated[IntMin1 | None, Field(description='Per-transformer ceiling on max_variants (≤ the agent ceiling).')] = None
-    variant_dimensions: Annotated[list[VariantDimensionsItem] | None, Field(description="Variant axis dimensions this transformer supports (⊆ the agent's).", json_schema_extra={'uniqueItems': True})] = None
+    supports_catalog_fanout: Annotated[bool | None, Field(description='Whether this transformer accepts max_creatives.'), OmittedNotNull] = False
+    max_creatives_limit: Annotated[IntMin1 | None, Field(description='Per-transformer ceiling on max_creatives (≤ the agent ceiling).'), OmittedNotNull] = None
+    supports_variants: Annotated[bool | None, Field(description='Whether this transformer accepts max_variants > 1 / variant_axis.'), OmittedNotNull] = False
+    max_variants_limit: Annotated[IntMin1 | None, Field(description='Per-transformer ceiling on max_variants (≤ the agent ceiling).'), OmittedNotNull] = None
+    variant_dimensions: Annotated[list[VariantDimensionsItem] | None, Field(description="Variant axis dimensions this transformer supports (⊆ the agent's).", json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
 class Transformer(AdCPBaseModel):
@@ -84,16 +84,16 @@ class Transformer(AdCPBaseModel):
     )
     transformer_id: Annotated[str, Field(description='Stable identifier for this transformer within the agent. Pass to build_creative `transformer_id` to select it.')]
     name: Annotated[str, Field(description="Human-readable transformer name (e.g. 'Voiceover — Isaac', 'Veo 3 text-to-video').")]
-    description: Annotated[str | None, Field(description='Plain-text explanation of what this transformer produces and how.')] = None
-    metadata: Annotated[dict[str, Any] | None, Field(description='Transformer-specific attributes a buyer can filter or display (e.g. provider, modality, language).')] = None
-    voice_synthesis_ref: Annotated[list[VoiceSynthesisRefItem] | None, Field(description='Optional discovery/audit anchors for voice transformers provisioned from brand-agent voice_synthesis entries. Informational only: these references help buyers match a discovered transformer to brand/rights-agent provenance, but they do not assert build-time authorization or require the creative agent to perform rights-token validation.', min_length=1)] = None
-    input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Legacy named formats this transformer accepts as input. Use input_formats with canonical declarations.')] = None
-    output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Legacy named formats this transformer can produce. Use output_capability_ids.', min_length=1)] = None
-    input_formats: Annotated[list[Annotated[ProductFormatDeclaration, AfterValidator(ForbiddenGroups((('tracker_execution_contract',), ('tracker_execution_contract_digest',))))]] | None, Field(description='Canonical format declarations this transformer accepts as input. Omitted means it builds from a brief or raw assets rather than transforming an existing creative. Compatibility uses canonical constraint satisfaction, not identifier equality. Transformer self-description has no seller production authority, so tracker_execution_contract and tracker_execution_contract_digest are forbidden.', min_length=1)] = None
-    output_capability_ids: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem] | None, Field(description="Canonical output capabilities this transformer can produce. Every value MUST match this agent's get_adcp_capabilities `creative.supported_formats[].capability_id`. A build_creative request's target_capability_id(s) MUST be a subset of this array.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    params: Annotated[list[TransformerParam] | None, Field(description="Configuration knobs this transformer exposes. The buyer supplies values in build_creative `config`, keyed by each param's `field`. Enumerable param values (e.g. account-specific voices) are returned only when requested via list_transformers `expand_params`.")] = None
-    pricing_options: Annotated[list[VendorPricingOption] | None, Field(description='Per-account rate-card options for using this transformer. Present when the list_transformers request set include_pricing=true with an account. The applied option is echoed back per-leaf on the build_creative response and reconciled via report_usage.', min_length=1)] = None
-    multiplicity: Annotated[Multiplicity | None, Field(description="Optional per-transformer fan-out limits that NARROW the agent-level get_adcp_capabilities `creative.multiplicity`. Same shape as the agent-level object. When present, this transformer's authoritative; its ceilings (max_creatives_limit / max_variants_limit) MUST NOT exceed the agent ceilings, and its variant_dimensions MUST be a subset of the agent's. Omit to inherit the agent-level capability unchanged.")] = None
+    description: Annotated[str | None, Field(description='Plain-text explanation of what this transformer produces and how.'), OmittedNotNull] = None
+    metadata: Annotated[dict[str, Any] | None, Field(description='Transformer-specific attributes a buyer can filter or display (e.g. provider, modality, language).'), OmittedNotNull] = None
+    voice_synthesis_ref: Annotated[list[VoiceSynthesisRefItem] | None, Field(description='Optional discovery/audit anchors for voice transformers provisioned from brand-agent voice_synthesis entries. Informational only: these references help buyers match a discovered transformer to brand/rights-agent provenance, but they do not assert build-time authorization or require the creative agent to perform rights-token validation.', min_length=1), OmittedNotNull] = None
+    input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Legacy named formats this transformer accepts as input. Use input_formats with canonical declarations.'), OmittedNotNull] = None
+    output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Legacy named formats this transformer can produce. Use output_capability_ids.', min_length=1), OmittedNotNull] = None
+    input_formats: Annotated[list[Annotated[ProductFormatDeclaration, AfterValidator(ForbiddenGroups((('tracker_execution_contract',), ('tracker_execution_contract_digest',))))]] | None, Field(description='Canonical format declarations this transformer accepts as input. Omitted means it builds from a brief or raw assets rather than transforming an existing creative. Compatibility uses canonical constraint satisfaction, not identifier equality. Transformer self-description has no seller production authority, so tracker_execution_contract and tracker_execution_contract_digest are forbidden.', min_length=1), OmittedNotNull] = None
+    output_capability_ids: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem] | None, Field(description="Canonical output capabilities this transformer can produce. Every value MUST match this agent's get_adcp_capabilities `creative.supported_formats[].capability_id`. A build_creative request's target_capability_id(s) MUST be a subset of this array.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    params: Annotated[list[TransformerParam] | None, Field(description="Configuration knobs this transformer exposes. The buyer supplies values in build_creative `config`, keyed by each param's `field`. Enumerable param values (e.g. account-specific voices) are returned only when requested via list_transformers `expand_params`."), OmittedNotNull] = None
+    pricing_options: Annotated[list[VendorPricingOption] | None, Field(description='Per-account rate-card options for using this transformer. Present when the list_transformers request set include_pricing=true with an account. The applied option is echoed back per-leaf on the build_creative response and reconciled via report_usage.', min_length=1), OmittedNotNull] = None
+    multiplicity: Annotated[Multiplicity | None, Field(description="Optional per-transformer fan-out limits that NARROW the agent-level get_adcp_capabilities `creative.multiplicity`. Same shape as the agent-level object. When present, this transformer's authoritative; its ceilings (max_creatives_limit / max_variants_limit) MUST NOT exceed the agent ceilings, and its variant_dimensions MUST be a subset of the agent's. Omit to inherit the agent-level capability unchanged."), OmittedNotNull] = None
 
 
 __all__ = ["Transformer"]

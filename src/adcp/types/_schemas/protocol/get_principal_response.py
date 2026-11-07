@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
 
@@ -69,8 +69,8 @@ class GetPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
         Approximation(document='protocol/get-principal-response.json', pointer='#', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'result': {'properties': {'kind': {'const': 'failed'}}, 'required': ['kind']}}, 'required': ['result']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     result: CurrentPrincipalConfiguration | RecognizedPrincipalWithoutStandingConfiguration | UnconfiguredPrincipal | FailedPrincipalRead
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetPrincipalResponse"]

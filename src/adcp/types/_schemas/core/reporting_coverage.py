@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -51,7 +51,7 @@ class LimitationsItem(AdCPBaseModel):
     )
     reason: Reason
     media_buy_id: ReportingMediaBuyId
-    package_ids: Annotated[list[ReportingPackageId] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    package_ids: Annotated[list[ReportingPackageId] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 class ReportingCoverage(AdCPBaseModel):

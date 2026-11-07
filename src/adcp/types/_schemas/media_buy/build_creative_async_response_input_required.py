@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -30,10 +30,10 @@ class BuildCreativeInputRequired(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-async-response-input-required.json', pointer='#')
-    reason: Annotated[Reason | None, Field(description='Reason code indicating why input is needed')] = None
-    errors: Annotated[list[Error] | None, Field(description='Optional validation errors or warnings explaining why input is required.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    reason: Annotated[Reason | None, Field(description='Reason code indicating why input is needed'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Optional validation errors or warnings explaining why input is required.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["BuildCreativeInputRequired"]

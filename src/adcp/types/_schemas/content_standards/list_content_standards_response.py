@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
@@ -45,9 +45,9 @@ class ListContentStandardsResponseStandards(ListContentStandardsResponse):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/list-content-standards-response.json', pointer='#/oneOf/0')
     standards: Annotated[list[ContentStandards], Field(description='Array of content standards configurations matching the filter criteria')]
-    pagination: PaginationResponse | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ListContentStandardsResponseErrors(ListContentStandardsResponse, FailedResponse):
@@ -59,8 +59,8 @@ class ListContentStandardsResponseErrors(ListContentStandardsResponse, FailedRes
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/list-content-standards-response.json', pointer='#/oneOf/1')
     errors: list[Error]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 ListContentStandardsResponse._branch_models = (ListContentStandardsResponseStandards, ListContentStandardsResponseErrors,)

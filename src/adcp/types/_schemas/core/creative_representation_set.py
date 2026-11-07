@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1, ZipAssetDigest
 
 from .creative_representation import CreativeRepresentation
@@ -26,7 +26,7 @@ class CreativeRepresentationSet(AdCPBaseModel):
     revision_content_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 of the RFC 8785 JCS canonical revision content defined by this schema. The producer computes it over the complete representation set after removing exactly the top-level $schema, creative_id, revision_id, revision_content_digest, and name properties. `$schema` is transport/schema-location metadata and never mints creative content identity. Resolvers MUST recompute and reject a mismatch; selection readback carries the verified digest so downstream sellers bind the revision to the complete source set rather than only the selected manifest.')]
     name: StrMinLen1
     representations: Annotated[list[CreativeRepresentation], Field(description="Complete ordered set of equivalent representations. `representation_id` values MUST be unique within this array. Unsupported entries remain byte-for-byte unchanged; neither filtering nor selection changes this revision's canonical content.", min_length=1)]
-    provenance: Annotated[Provenance | None, Field(description='Default provenance for every retained representation and for the selected seller-bound output unless a representation supplies a narrower provenance object.')] = None
+    provenance: Annotated[Provenance | None, Field(description='Default provenance for every retained representation and for the selected seller-bound output unless a representation supplies a narrower provenance object.'), OmittedNotNull] = None
 
 
 __all__ = ["CreativeRepresentationSet"]

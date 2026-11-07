@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -44,8 +44,8 @@ class DisclosureCommitment(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context-receipt.json', pointer='#/properties/host_receipt/properties/disclosure_commitment')
     status: Annotated[DisclosureCommitmentStatus, Field(description="Host commitment status for the disclosure obligation. Use accepted when the declaration requires disclosure and the host will satisfy it; use not_required only when the declaration's disclosure_obligation.required is false. A host that will not satisfy a required disclosure rejects the sponsored context.")]
-    label_text: Annotated[str | None, Field(description='Disclosure label text the host committed to render, if different from or copied from the declaration.')] = None
-    notes: Annotated[str | None, Field(description='Optional host explanation for the disclosure commitment.')] = None
+    label_text: Annotated[str | None, Field(description='Disclosure label text the host committed to render, if different from or copied from the declaration.'), OmittedNotNull] = None
+    notes: Annotated[str | None, Field(description='Optional host explanation for the disclosure commitment.'), OmittedNotNull] = None
 
 
 class HostReceipt(AdCPBaseModel):
@@ -61,11 +61,11 @@ class HostReceipt(AdCPBaseModel):
         ConditionalRequired((Match('status', True, ('rejected',)),), require=(), forbid=('accepted_context_use', 'disclosure_commitment')),
     )
     status: Annotated[HostReceiptStatus, Field(description='Whether the host accepted the declared sponsored context for use.')]
-    accepted_context_use: Annotated[SIContextUse | None, Field(description="Use mode the host accepted. When host_receipt.status is accepted, this MUST match the declaration's context_use; a host that cannot honor the declared use mode rejects the sponsored context instead of down-scoping it.")] = None
+    accepted_context_use: Annotated[SIContextUse | None, Field(description="Use mode the host accepted. When host_receipt.status is accepted, this MUST match the declaration's context_use; a host that cannot honor the declared use mode rejects the sponsored context instead of down-scoping it."), OmittedNotNull] = None
     received_at: Annotated[AwareDatetime, Field(description='When the host received the sponsored context.')]
-    host_surface: Annotated[str | None, Field(description='Host-defined surface or placement where the context was accepted, such as an assistant session, search result page, or comparison module.')] = None
-    disclosure_commitment: Annotated[DisclosureCommitment | None, Field(description='How the host committed to handle the declared disclosure obligation. Required when host_receipt.status is accepted.')] = None
-    rejection_reason: Annotated[str | None, Field(description='Optional explanation when status is rejected, for example unsupported context_use or inability to satisfy the disclosure obligation.')] = None
+    host_surface: Annotated[str | None, Field(description='Host-defined surface or placement where the context was accepted, such as an assistant session, search result page, or comparison module.'), OmittedNotNull] = None
+    disclosure_commitment: Annotated[DisclosureCommitment | None, Field(description='How the host committed to handle the declared disclosure obligation. Required when host_receipt.status is accepted.'), OmittedNotNull] = None
+    rejection_reason: Annotated[str | None, Field(description='Optional explanation when status is rejected, for example unsupported context_use or inability to satisfy the disclosure obligation.'), OmittedNotNull] = None
 
 
 class SISponsoredContextReceipt(AdCPBaseModel):
@@ -84,7 +84,7 @@ class SISponsoredContextReceipt(AdCPBaseModel):
     )
     sponsored_context: Annotated[SISponsoredContext, Field(description='The sponsored-context declaration the host received and is accepting or rejecting.')]
     host_receipt: Annotated[HostReceipt, Field(description='Receiving-surface accountability fact: the use mode the host accepted and committed to honor for this sponsored context.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SISponsoredContextReceipt"]

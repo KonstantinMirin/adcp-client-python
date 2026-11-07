@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max1
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -56,12 +56,12 @@ class LogEventSuccess(LogEventResponse):
     )
     events_received: Annotated[NonNegativeInt, Field(description='Number of events received')]
     events_processed: Annotated[NonNegativeInt, Field(description='Number of events successfully queued for processing')]
-    partial_failures: Annotated[list[PartialFailuresItem] | None, Field(description='Events that failed validation')] = None
-    warnings: Annotated[list[str] | None, Field(description='Non-fatal issues (low match quality, missing recommended fields, deprecation notices)')] = None
-    match_quality: Annotated[FloatMin0Max1 | None, Field(description='Overall match quality score for the batch (0.0 = no matches, 1.0 = all matched)')] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    partial_failures: Annotated[list[PartialFailuresItem] | None, Field(description='Events that failed validation'), OmittedNotNull] = None
+    warnings: Annotated[list[str] | None, Field(description='Non-fatal issues (low match quality, missing recommended fields, deprecation notices)'), OmittedNotNull] = None
+    match_quality: Annotated[FloatMin0Max1 | None, Field(description='Overall match quality score for the batch (0.0 = no matches, 1.0 = all matched)'), OmittedNotNull] = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class LogEventError(LogEventResponse, FailedResponse):
@@ -76,8 +76,8 @@ class LogEventError(LogEventResponse, FailedResponse):
         ForbiddenGroups((('events_received',), ('events_processed',), ('sandbox',))),
     )
     errors: Annotated[list[Error], Field(description='Operation-level errors', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 LogEventResponse._branch_models = (LogEventSuccess, LogEventError,)

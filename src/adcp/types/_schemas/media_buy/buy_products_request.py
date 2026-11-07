@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import MediaBuyName, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
@@ -45,7 +45,7 @@ class Opportunity(OpportunityContext):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/buy-products-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
+    status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.'), OmittedNotNull] = None
 
 
 class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
@@ -69,35 +69,35 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
         Approximation(document='media-buy/buy-products-request.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['brand']}, {'properties': {'account': {'required': ['brand', 'operator']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
         Approximation(document='media-buy/buy-products-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
     idempotency_key: IdempotencyKey
-    name: Annotated[MediaBuyName | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. When supplied, the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. The name is operational metadata outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. When supplied, the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. The name is operational metadata outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.'), OmittedNotNull] = None
     account: Annotated[CanonicalAccountReference, Field(description='Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.')]
-    brand: Annotated[BrandKey | None, Field(description='Brand source required when account is ID-only. Omit when account already contains brand and operator.')] = None
-    advertiser_industry: Annotated[AdvertiserIndustry | None, Field(description='Industry classification for this campaign. Sellers may infer it from the resolved brand manifest when omitted.')] = None
+    brand: Annotated[BrandKey | None, Field(description='Brand source required when account is ID-only. Omit when account already contains brand and operator.'), OmittedNotNull] = None
+    advertiser_industry: Annotated[AdvertiserIndustry | None, Field(description='Industry classification for this campaign. Sellers may infer it from the resolved brand manifest when omitted.'), OmittedNotNull] = None
     feed_version: Annotated[StrMinLen1, Field(description='list_products feed_version containing the published offers being accepted. Sellers reject stale or mismatched versions rather than silently applying changed terms.')]
-    pricing_version: Annotated[StrMinLen1 | None, Field(description='list_products pricing_version containing the accepted rate. Buyers MUST include this whenever list_products returned one; omission means the seller does not version pricing separately.')] = None
+    pricing_version: Annotated[StrMinLen1 | None, Field(description='list_products pricing_version containing the accepted rate. Buyers MUST include this whenever list_products returned one; omission means the seller does not version pricing separately.'), OmittedNotNull] = None
     purchases: Annotated[list[ProductPurchaseInput], Field(min_length=1)]
-    total_budget: Money | None = None
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling in total_budget.currency or the media buy's derived currency. It bounds the shared daily spend pool without allocating or reserving amounts for purchases.")] = None
-    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Optional max-impression cap using one counter across purchases. Buyers send it only when aggregate_frequency_capping is advertised. Every selected product must declare compatible media_buy_support; otherwise the purchase is rejected atomically with UNSUPPORTED_FEATURE before any mutation, never clamped.')] = None
-    budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional IANA timezone override shared by every aggregate and purchase daily cap. Requires buyer_timezone_override support; otherwise rejected with UNSUPPORTED_FEATURE. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.')] = None
-    budget_allocation: CanonicalBudgetAllocation | None = None
+    total_budget: Annotated[Money | None, OmittedNotNull] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling in total_budget.currency or the media buy's derived currency. It bounds the shared daily spend pool without allocating or reserving amounts for purchases."), OmittedNotNull] = None
+    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Optional max-impression cap using one counter across purchases. Buyers send it only when aggregate_frequency_capping is advertised. Every selected product must declare compatible media_buy_support; otherwise the purchase is rejected atomically with UNSUPPORTED_FEATURE before any mutation, never clamped.'), OmittedNotNull] = None
+    budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional IANA timezone override shared by every aggregate and purchase daily cap. Requires buyer_timezone_override support; otherwise rejected with UNSUPPORTED_FEATURE. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.'), OmittedNotNull] = None
+    budget_allocation: Annotated[CanonicalBudgetAllocation | None, OmittedNotNull] = None
     start_time: StartTiming
     end_time: AwareDatetime
-    pacing: Annotated[Pacing | None, Field(description='Aggregate media-buy pacing. In seller-optimized allocation, a seller declaring media_buy.features.seller_optimized_budget MUST accept omission and `even`; it MAY reject `asap` or `front_loaded` with UNSUPPORTED_FEATURE (error.field `pacing`) before any provider mutation and MUST NOT silently coerce them to `even`. Fixed-allocation semantics are unchanged.')] = None
-    bidding: BiddingPolicy | None = None
-    paused: bool | None = False
-    purchase_order_ref: StrMinLen1MaxLen255 | None = None
-    agency_estimate_number: StrMaxLen100 | None = None
-    invoice_recipient: Annotated[BusinessEntity | None, Field(description='Authorized per-buy billing entity override.')] = None
-    governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: PushNotificationConfig | None = None
-    reporting_webhook: Annotated[ReportingWebhook | None, Field(description='Optional reporting delivery configuration established atomically with the MediaBuy. This is execution metadata and is not part of the immutable product pricing terms.')] = None
-    opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle closure for a direct product purchase. Success infers closed with accepted_with_seller when status is omitted; an explicit status MUST carry that same closure.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    pacing: Annotated[Pacing | None, Field(description='Aggregate media-buy pacing. In seller-optimized allocation, a seller declaring media_buy.features.seller_optimized_budget MUST accept omission and `even`; it MAY reject `asap` or `front_loaded` with UNSUPPORTED_FEATURE (error.field `pacing`) before any provider mutation and MUST NOT silently coerce them to `even`. Fixed-allocation semantics are unchanged.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, OmittedNotNull] = None
+    paused: Annotated[bool | None, OmittedNotNull] = False
+    purchase_order_ref: Annotated[StrMinLen1MaxLen255 | None, OmittedNotNull] = None
+    agency_estimate_number: Annotated[StrMaxLen100 | None, OmittedNotNull] = None
+    invoice_recipient: Annotated[BusinessEntity | None, Field(description='Authorized per-buy billing entity override.'), OmittedNotNull] = None
+    governance_context: Annotated[StrMinLen1MaxLen4096 | None, OmittedNotNull] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, OmittedNotNull] = None
+    reporting_webhook: Annotated[ReportingWebhook | None, Field(description='Optional reporting delivery configuration established atomically with the MediaBuy. This is execution metadata and is not part of the immutable product pricing terms.'), OmittedNotNull] = None
+    opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle closure for a direct product purchase. Success infers closed with accepted_with_seller when status is omitted; an explicit status MUST carry that same closure.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class BuyProductsRequestBrand(BuyProductsRequest):

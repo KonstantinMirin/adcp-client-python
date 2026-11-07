@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import EndHour, StartHour
 
 from ..enums.day_of_week import DayOfWeek
@@ -23,8 +23,8 @@ class DaypartTarget(AdCPBaseModel):
     days: Annotated[list[DayOfWeek], Field(description='Days of week this window applies to. Use multiple days for compact targeting (e.g., monday-friday in one object).', min_length=1)]
     start_hour: Annotated[StartHour, Field(description='Start hour (inclusive), 0-23 in 24-hour format. 0 = midnight, 6 = 6:00am, 18 = 6:00pm.')]
     end_hour: Annotated[EndHour, Field(description='End hour (exclusive), 1-24 in 24-hour format. 10 = 10:00am, 24 = midnight. Must be greater than start_hour.')]
-    timezone: Annotated[Literal['inventory_local'] | IANATimezoneIdentifier | None, Field(description="Civil-time clock used to evaluate this window. 'inventory_local' evaluates the hours in the seller-assigned local timezone of each inventory unit that can deliver the impression, such as a screen, venue, station, or publisher property; it never means the buyer, account, or server timezone. A concrete IANA timezone identifier (for example, 'America/New_York', 'CET', or 'UTC') evaluates one shared civil-time clock across the targeted inventory. Omission defaults to 'inventory_local'. Buyers that begin with a user or account preference MUST resolve it to a concrete IANA identifier before sending the daypart; 'user_timezone' and 'account_timezone' are not wire values. For each candidate delivery instant, convert the instant into this clock and compare its resulting local day and hour with the half-open window: a skipped DST hour has no matching instants, while both occurrences of a repeated hour match. This delivery clock is independent of reporting_capabilities.timezone.")] = 'inventory_local'
-    label: Annotated[str | None, Field(description="Optional human-readable name for this time window (e.g., 'Morning Drive', 'Prime Time')")] = None
+    timezone: Annotated[Literal['inventory_local'] | IANATimezoneIdentifier | None, Field(description="Civil-time clock used to evaluate this window. 'inventory_local' evaluates the hours in the seller-assigned local timezone of each inventory unit that can deliver the impression, such as a screen, venue, station, or publisher property; it never means the buyer, account, or server timezone. A concrete IANA timezone identifier (for example, 'America/New_York', 'CET', or 'UTC') evaluates one shared civil-time clock across the targeted inventory. Omission defaults to 'inventory_local'. Buyers that begin with a user or account preference MUST resolve it to a concrete IANA identifier before sending the daypart; 'user_timezone' and 'account_timezone' are not wire values. For each candidate delivery instant, convert the instant into this clock and compare its resulting local day and hour with the half-open window: a skipped DST hour has no matching instants, while both occurrences of a repeated hour match. This delivery clock is independent of reporting_capabilities.timezone."), OmittedNotNull] = 'inventory_local'
+    label: Annotated[str | None, Field(description="Optional human-readable name for this time window (e.g., 'Morning Drive', 'Prime Time')"), OmittedNotNull] = None
 
 
 __all__ = ["DaypartTarget"]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -56,8 +56,8 @@ class AccountsItem(AdCPBaseModel):
     )
     account: Annotated[AccountReference, Field(description='Account reference, echoed from request')]
     status: Annotated[Status, Field(description='Sync result. synced: governance agents persisted. failed: could not complete (see errors).')]
-    governance_agents: Annotated[list[ObjUrl] | None, Field(description='Governance agent now synced on this account. Reflects the persisted state after sync. Exactly one entry; the array shape mirrors the request schema and the one-agent-per-account invariant. See sync_governance request schema.', max_length=1, min_length=1)] = None
-    errors: Annotated[list[Error] | None, Field(description="Per-account errors (only present when status is 'failed')", min_length=1)] = None
+    governance_agents: Annotated[list[ObjUrl] | None, Field(description='Governance agent now synced on this account. Reflects the persisted state after sync. Exactly one entry; the array shape mirrors the request schema and the one-agent-per-account invariant. See sync_governance request schema.', max_length=1, min_length=1), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description="Per-account errors (only present when status is 'failed')", min_length=1), OmittedNotNull] = None
 
 
 class SyncGovernanceSuccess(SyncGovernanceResponse):
@@ -72,8 +72,8 @@ class SyncGovernanceSuccess(SyncGovernanceResponse):
         ForbiddenGroups((('errors',),)),
     )
     accounts: Annotated[list[AccountsItem], Field(description='Per-account sync results')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SyncGovernanceError(SyncGovernanceResponse, FailedResponse):
@@ -88,8 +88,8 @@ class SyncGovernanceError(SyncGovernanceResponse, FailedResponse):
         ForbiddenGroups((('accounts',),)),
     )
     errors: Annotated[list[Error], Field(description='Operation-level errors (e.g., authentication failure, service unavailable)', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 SyncGovernanceResponse._branch_models = (SyncGovernanceSuccess, SyncGovernanceError,)

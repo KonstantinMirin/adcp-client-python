@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -78,16 +78,16 @@ class ReportingRevision(AdCPBaseModel):
     coverage: Annotated[ReportingCoverage, Field(description='Frozen product/package denominator represented by this logical content. The same coverage follows the revision to every destination.')]
     period: Annotated[ObjStartEndSourceTimezone, Field(description='Half-open reporting interval with its source calendar boundary.')]
     finality: ReportingFinality
-    finality_basis: Annotated[FinalityBasis | None, Field(description='Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.')] = None
-    finality_policy_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Immutable policy/version reference that defines the selected finality basis. It MUST be bound by report_definition_id.')] = None
-    finalized_at: Annotated[AwareDatetime | None, Field(description='When the producer applied the declared finality basis to this official revision.')] = None
+    finality_basis: Annotated[FinalityBasis | None, Field(description='Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.'), OmittedNotNull] = None
+    finality_policy_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Immutable policy/version reference that defines the selected finality basis. It MUST be bound by report_definition_id.'), OmittedNotNull] = None
+    finalized_at: Annotated[AwareDatetime | None, Field(description='When the producer applied the declared finality basis to this official revision.'), OmittedNotNull] = None
     observed_at: Annotated[AwareDatetime, Field(description='When the seller obtained or committed this source observation.')]
     data_through: Annotated[AwareDatetime | None, Field(description='Latest event time conservatively included, or null when precision is unknown.')]
     data_through_precision: DataThroughPrecision
-    supersedes_reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Immediately superseded snapshot revision of the same logical slice. An official revision is terminal and MUST NOT be named here; later corrections use reporting-adjustment records.')] = None
+    supersedes_reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Immediately superseded snapshot revision of the same logical slice. An official revision is terminal and MUST NOT be named here; later corrections use reporting-adjustment records.'), OmittedNotNull] = None
     row_count: Annotated[NonNegativeInt, Field(description='Logical row count, including zero for a successfully evaluated empty report.')]
     control_totals: Annotated[list[ReportingControlTotal], Field(description='Profile-defined totals computed from the canonical logical revision. Names MUST be unique.', json_schema_extra={'uniqueItems': True})]
-    canonical_content_digest: ReportingCanonicalContentDigest | None = None
+    canonical_content_digest: Annotated[ReportingCanonicalContentDigest | None, OmittedNotNull] = None
     created_at: AwareDatetime
 
 

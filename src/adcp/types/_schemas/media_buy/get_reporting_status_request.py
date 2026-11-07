@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import MemberAlias, SchemaRef
+from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -56,17 +56,17 @@ class GetReportingStatusRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     account: Annotated[CanonicalAccountReference, Field(description='Account whose caller-owned reporting status is queried.')]
     view: ReportingStatusView
-    media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(description='Optional summary/periods scope. Omit for every accessible media buy in the account.', json_schema_extra={'uniqueItems': True}, max_length=100, min_length=1)] = None
-    delivery_config_ids: Annotated[list[AccountChangeRecordedWebhookSubscriberId] | None, Field(description='Optional summary/periods scope. Use to reconcile billing, analytics, and pacing independently. Omit for every active caller-owned configuration.', json_schema_extra={'uniqueItems': True}, max_length=16, min_length=1)] = None
-    feed_purposes: Annotated[list[ReportingFeedPurpose] | None, Field(description='Optional summary/periods feed filter. The response echoes exact resolved configuration generations so this never creates an opaque aggregate.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    period: Annotated[ObjStartEnd | None, Field(description="Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.")] = None
-    health: Annotated[list[ReportingHealth] | None, Field(description='Periods-view result filter only; it never changes summary health.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    finality: Annotated[list[ReportingFinality] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Exact retained revision to resolve in revision view.')] = None
-    changes_after: Annotated[StrMinLen1MaxLen2048 | None, Field(description='Periods-view incremental-repair checkpoint previously returned as changes_checkpoint after fully consuming a response. Returns newly committed obligations, revisions, adjustments, materializations, consumer status statements, revision receipts, and adjustment receipts plus the current projection of each affected obligation. Omit for a full ledger read.')] = None
-    pagination: Annotated[PaginationRequest | None, Field(description='Periods or revision-view pagination. Cursors are bound to the authenticated caller, account, filters, and ledger snapshot.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(description='Optional summary/periods scope. Omit for every accessible media buy in the account.', json_schema_extra={'uniqueItems': True}, max_length=100, min_length=1), OmittedNotNull] = None
+    delivery_config_ids: Annotated[list[AccountChangeRecordedWebhookSubscriberId] | None, Field(description='Optional summary/periods scope. Use to reconcile billing, analytics, and pacing independently. Omit for every active caller-owned configuration.', json_schema_extra={'uniqueItems': True}, max_length=16, min_length=1), OmittedNotNull] = None
+    feed_purposes: Annotated[list[ReportingFeedPurpose] | None, Field(description='Optional summary/periods feed filter. The response echoes exact resolved configuration generations so this never creates an opaque aggregate.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    period: Annotated[ObjStartEnd | None, Field(description="Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope."), OmittedNotNull] = None
+    health: Annotated[list[ReportingHealth] | None, Field(description='Periods-view result filter only; it never changes summary health.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    finality: Annotated[list[ReportingFinality] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Exact retained revision to resolve in revision view.'), OmittedNotNull] = None
+    changes_after: Annotated[StrMinLen1MaxLen2048 | None, Field(description='Periods-view incremental-repair checkpoint previously returned as changes_checkpoint after fully consuming a response. Returns newly committed obligations, revisions, adjustments, materializations, consumer status statements, revision receipts, and adjustment receipts plus the current projection of each affected obligation. Omit for a full ledger read.'), OmittedNotNull] = None
+    pagination: Annotated[PaginationRequest | None, Field(description='Periods or revision-view pagination. Cursors are bound to the authenticated caller, account, filters, and ledger snapshot.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetReportingStatusRequest", "ReportingStatusView"]

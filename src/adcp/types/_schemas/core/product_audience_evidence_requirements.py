@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, HttpUrl
 
@@ -66,7 +66,7 @@ class AcceptedAttestationIssuersItemBrand(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/0')
     type: Literal['brand']
     brand: BrandKey
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
@@ -76,7 +76,7 @@ class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/1')
     type: Literal['agent']
     agent_url: HttpUrl
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ProductAudienceEvidenceRequirements(AdCPBaseModel):
@@ -99,20 +99,20 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     )
     requirement_mode: RequirementMode
     evidence_presence: EvidencePresence
-    accepted_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    excluded_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_evidence_types: Annotated[list[EvidenceType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_providers: Annotated[list[BrandKey] | None, Field(min_length=1)] = None
-    excluded_providers: Annotated[list[BrandKey] | None, Field(min_length=1)] = None
-    accepted_subject_types: Annotated[list[AudienceSubjectType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_resolution_methods: Annotated[list[AudienceResolutionMethod] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    minimum_confidence: FloatMin0Max1 | None = None
-    maximum_age: MaximumAge | None = None
-    methodology_documentation_required: bool | None = False
-    independent_attestation_required: bool | None = False
-    accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItemBrand | AcceptedAttestationIssuersItemAgent | AttestationOriginIssuer] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    accepted_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    excluded_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_evidence_types: Annotated[list[EvidenceType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_providers: Annotated[list[BrandKey] | None, Field(min_length=1), OmittedNotNull] = None
+    excluded_providers: Annotated[list[BrandKey] | None, Field(min_length=1), OmittedNotNull] = None
+    accepted_subject_types: Annotated[list[AudienceSubjectType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_resolution_methods: Annotated[list[AudienceResolutionMethod] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    minimum_confidence: Annotated[FloatMin0Max1 | None, OmittedNotNull] = None
+    maximum_age: Annotated[MaximumAge | None, OmittedNotNull] = None
+    methodology_documentation_required: Annotated[bool | None, OmittedNotNull] = False
+    independent_attestation_required: Annotated[bool | None, OmittedNotNull] = False
+    accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItemBrand | AcceptedAttestationIssuersItemAgent | AttestationOriginIssuer] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ProductAudienceEvidenceRequirements"]

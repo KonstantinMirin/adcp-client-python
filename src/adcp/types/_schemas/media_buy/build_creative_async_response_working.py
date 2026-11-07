@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max100, IntMin1
 
 from ..core.context import ContextObject
@@ -20,12 +20,12 @@ class BuildCreativeWorking(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-async-response-working.json', pointer='#')
-    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)')] = None
-    current_step: Annotated[str | None, Field(description="Current step or phase of the operation (e.g., 'generating_assets', 'resolving_macros', 'rendering_preview')")] = None
-    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation')] = None
-    step_number: Annotated[IntMin1 | None, Field(description='Current step number')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)'), OmittedNotNull] = None
+    current_step: Annotated[str | None, Field(description="Current step or phase of the operation (e.g., 'generating_assets', 'resolving_macros', 'rendering_preview')"), OmittedNotNull] = None
+    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation'), OmittedNotNull] = None
+    step_number: Annotated[IntMin1 | None, Field(description='Current step number'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["BuildCreativeWorking"]

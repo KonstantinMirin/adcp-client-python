@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 from adcp.types.envelopes import AdcpRequest
 
@@ -28,15 +28,15 @@ class UpdateCollectionListRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/update-collection-list-request.json', pointer='#')
     list_id: Annotated[str, Field(description='ID of the collection list to update')]
-    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.')] = None
-    name: Annotated[str | None, Field(description='New name for the list')] = None
-    description: Annotated[str | None, Field(description='New description')] = None
-    base_collections: Annotated[list[BaseCollectionSource] | None, Field(description='Complete replacement for the base collections list (not a patch). Each entry is a discriminated union: distribution_ids (platform-independent identifiers), publisher_collections (publisher_domain + collection_ids), or publisher_genres (publisher_domain + genres).')] = None
-    filters: Annotated[CollectionListFilters | None, Field(description='Complete replacement for the filters (not a patch)')] = None
-    brand: Annotated[BrandReference | None, Field(description='Update brand reference. Resolved to full brand identity at execution time.')] = None
-    webhook_url: Annotated[HttpUrl | None, Field(description='Update the webhook URL for list change notifications (set to empty string to remove). Governance agents MUST validate this URL against SSRF per docs/building/by-layer/L1/security#webhook-url-validation-ssrf.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.'), OmittedNotNull] = None
+    name: Annotated[str | None, Field(description='New name for the list'), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='New description'), OmittedNotNull] = None
+    base_collections: Annotated[list[BaseCollectionSource] | None, Field(description='Complete replacement for the base collections list (not a patch). Each entry is a discriminated union: distribution_ids (platform-independent identifiers), publisher_collections (publisher_domain + collection_ids), or publisher_genres (publisher_domain + genres).'), OmittedNotNull] = None
+    filters: Annotated[CollectionListFilters | None, Field(description='Complete replacement for the filters (not a patch)'), OmittedNotNull] = None
+    brand: Annotated[BrandReference | None, Field(description='Update brand reference. Resolved to full brand identity at execution time.'), OmittedNotNull] = None
+    webhook_url: Annotated[HttpUrl | None, Field(description='Update the webhook URL for list change notifications (set to empty string to remove). Governance agents MUST validate this URL against SSRF per docs/building/by-layer/L1/security#webhook-url-validation-ssrf.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
 
 

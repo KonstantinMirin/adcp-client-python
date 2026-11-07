@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -55,14 +55,14 @@ class VASTVersionMismatchDetails(BranchDispatchMixin, AdCPBaseModel):
         UniqueItems('seller_vast_versions'),
         UniqueItems('supported_versions'),
     )
-    mismatch_reason: Annotated[MismatchReason | None, Field(description='Machine-readable modern mismatch branch.')] = None
-    asset_vast_version: VASTVersion | None = None
+    mismatch_reason: Annotated[MismatchReason | None, Field(description='Machine-readable modern mismatch branch.'), OmittedNotNull] = None
+    asset_vast_version: Annotated[VASTVersion | None, OmittedNotNull] = None
     observed_document_vast_version: Annotated[StrMinLen1 | None, Field(description='Raw version observed on the inspected VAST document whose root is being validated. `null` means the required version attribute was missing. This field is intentionally not limited to the governed supported-version enum so diagnostics can report future or invalid document values.')] = None
-    document_role: Annotated[DocumentRole | None, Field(description='Role of the inspected document. Only the submitted document is required to equal the asset declaration; wrapper and terminal documents are checked against the applicable acceptance sets.')] = None
-    product_vast_versions: Annotated[list[VASTVersion] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    seller_vast_versions: Annotated[list[VASTVersion] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    format_option_ref: Annotated[FormatOptionReference | None, Field(description='Selected option reference when the product option is addressable. Omitted for a unique id-less product option.')] = None
-    supported_versions: Annotated[list[VASTVersion] | None, Field(description='Deprecated 3.x compatibility field. For an acceptance mismatch, this is the effective product/seller intersection when known. Modern emitters use the typed sets and mismatch_reason.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    document_role: Annotated[DocumentRole | None, Field(description='Role of the inspected document. Only the submitted document is required to equal the asset declaration; wrapper and terminal documents are checked against the applicable acceptance sets.'), OmittedNotNull] = None
+    product_vast_versions: Annotated[list[VASTVersion] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    seller_vast_versions: Annotated[list[VASTVersion] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    format_option_ref: Annotated[FormatOptionReference | None, Field(description='Selected option reference when the product option is addressable. Omitted for a unique id-less product option.'), OmittedNotNull] = None
+    supported_versions: Annotated[list[VASTVersion] | None, Field(description='Deprecated 3.x compatibility field. For an acceptance mismatch, this is the effective product/seller intersection when known. Modern emitters use the typed sets and mismatch_reason.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 class AssetOutsideAcceptedVersionIntersection(VASTVersionMismatchDetails):

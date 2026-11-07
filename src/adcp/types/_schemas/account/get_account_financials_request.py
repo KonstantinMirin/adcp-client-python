@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -24,9 +24,9 @@ class GetAccountFinancialsRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-request.json', pointer='#')
     account: Annotated[AccountReference, Field(description='Account to query financials for. Must be an operator-billed account.')]
-    period: Annotated[DateRange | None, Field(description='Date range for the spend summary. Defaults to the current billing cycle if omitted.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    period: Annotated[DateRange | None, Field(description='Date range for the spend summary. Defaults to the current billing cycle if omitted.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetAccountFinancialsRequest"]

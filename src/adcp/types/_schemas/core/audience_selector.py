@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1MaxLen2000
 
@@ -38,8 +38,8 @@ class AudienceSelectorSignalBinary(AudienceSelector):
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
     )
     type: Annotated[Literal['signal'], Field(description='Discriminator for signal-based selectors')]
-    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New selectors SHOULD use signal_ref.')] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New selectors SHOULD use signal_ref.'), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
     value_type: Annotated[Literal['binary'], Field(description='Discriminator for binary signals')]
     value: Annotated[bool, Field(description='Whether to include (true) or exclude (false) users matching this signal')]
 
@@ -56,8 +56,8 @@ class AudienceSelectorSignalCategorical(AudienceSelector):
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
     )
     type: Annotated[Literal['signal'], Field(description='Discriminator for signal-based selectors')]
-    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New selectors SHOULD use signal_ref.')] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New selectors SHOULD use signal_ref.'), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
     value_type: Annotated[Literal['categorical'], Field(description='Discriminator for categorical signals')]
     values: Annotated[list[str], Field(description='Values to target. Users with any of these values will be included.', min_length=1)]
 
@@ -74,11 +74,11 @@ class AudienceSelectorSignalNumeric(AudienceSelector):
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
     )
     type: Annotated[Literal['signal'], Field(description='Discriminator for signal-based selectors')]
-    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New selectors SHOULD use signal_ref.')] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New selectors SHOULD use signal_ref.'), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
     value_type: Annotated[Literal['numeric'], Field(description='Discriminator for numeric signals')]
-    min_value: Annotated[float | None, Field(description='Minimum value (inclusive). Omit for no minimum. Must be <= max_value when both are provided.')] = None
-    max_value: Annotated[float | None, Field(description='Maximum value (inclusive). Omit for no maximum. Must be >= min_value when both are provided.')] = None
+    min_value: Annotated[float | None, Field(description='Minimum value (inclusive). Omit for no minimum. Must be <= max_value when both are provided.'), OmittedNotNull] = None
+    max_value: Annotated[float | None, Field(description='Maximum value (inclusive). Omit for no maximum. Must be >= min_value when both are provided.'), OmittedNotNull] = None
 
 
 class AudienceSelectorDescription(AudienceSelector):
@@ -91,7 +91,7 @@ class AudienceSelectorDescription(AudienceSelector):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-selector.json', pointer='#/oneOf/3')
     type: Annotated[Literal['description'], Field(description='Discriminator for description-based selectors')]
     description: Annotated[StrMinLen1MaxLen2000, Field(description="Natural language description of the audience (e.g., 'likely EV buyers', 'high net worth individuals', 'vulnerable communities')")]
-    category: Annotated[str | None, Field(description="Optional grouping hint for the governance agent (e.g., 'demographic', 'behavioral', 'contextual', 'financial')")] = None
+    category: Annotated[str | None, Field(description="Optional grouping hint for the governance agent (e.g., 'demographic', 'behavioral', 'contextual', 'financial')"), OmittedNotNull] = None
 
 
 AudienceSelector._branch_models = (AudienceSelectorSignalBinary, AudienceSelectorSignalCategorical, AudienceSelectorSignalNumeric, AudienceSelectorDescription,)

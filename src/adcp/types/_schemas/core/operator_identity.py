@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from .domain_name import DomainName
 from .operator_unit import OperatorUnit
@@ -20,7 +20,7 @@ class OperatorIdentity(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/operator-identity.json', pointer='#')
     operator: Annotated[DomainName, Field(description="Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.")]
-    operator_unit: Annotated[OperatorUnit | None, Field(description='Optional operator-owned business unit, agency seat, or platform account. Its id participates in account identity; name is mutable display metadata. Omission from a complete desired replacement means the account should have no operator unit.')] = None
+    operator_unit: Annotated[OperatorUnit | None, Field(description='Optional operator-owned business unit, agency seat, or platform account. Its id participates in account identity; name is mutable display metadata. Omission from a complete desired replacement means the account should have no operator unit.'), OmittedNotNull] = None
 
 
 __all__ = ["OperatorIdentity"]

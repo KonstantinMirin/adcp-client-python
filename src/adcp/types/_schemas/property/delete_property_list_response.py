@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -24,8 +24,8 @@ class DeletePropertyListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResp
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/delete-property-list-response.json', pointer='#')
     deleted: Annotated[bool, Field(description='Whether the list was successfully deleted')]
     list_id: Annotated[str, Field(description='ID of the deleted list')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["DeletePropertyListResponse"]

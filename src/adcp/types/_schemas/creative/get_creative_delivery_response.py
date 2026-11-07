@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 from adcp.types.envelopes import AdcpResponse
 
@@ -32,7 +32,7 @@ class ReportingPeriod(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#/properties/reporting_period')
     start: Annotated[AwareDatetime, Field(description='ISO 8601 start timestamp')]
     end: Annotated[AwareDatetime, Field(description='ISO 8601 end timestamp')]
-    timezone: Annotated[str | None, Field(description="IANA timezone identifier for the reporting period (e.g., 'America/New_York', 'UTC'). Platforms report in their native timezone.")] = None
+    timezone: Annotated[str | None, Field(description="IANA timezone identifier for the reporting period (e.g., 'America/New_York', 'UTC'). Platforms report in their native timezone."), OmittedNotNull] = None
 
 
 class CreativesItem(AdCPBaseModel):
@@ -41,12 +41,12 @@ class CreativesItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#/properties/creatives/items')
     creative_id: Annotated[str, Field(description='Creative identifier')]
-    media_buy_id: Annotated[str | None, Field(description="Publisher's media buy identifier for this creative. Present when the request spanned multiple media buys, so the buyer can correlate each creative to its media buy.")] = None
-    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named format of this creative. New responses use `format_kind` and optional `format_option_ref`.')] = None
-    format_kind: Annotated[CanonicalFormatKind | None, Field(description='Canonical format kind delivered for this creative.')] = None
-    format_option_ref: Annotated[FormatOptionReference | None, Field(description='Portable reference to the product or publisher format option used for delivery, when disambiguation is required.')] = None
-    totals: Annotated[DeliveryMetrics | None, Field(description='Aggregate delivery metrics across all variants of this creative')] = None
-    variant_count: Annotated[NonNegativeInt | None, Field(description='Total number of agent-unique variant_id rows for this creative. When max_variants was specified in the request, this may exceed the number of items in the variants array.')] = None
+    media_buy_id: Annotated[str | None, Field(description="Publisher's media buy identifier for this creative. Present when the request spanned multiple media buys, so the buyer can correlate each creative to its media buy."), OmittedNotNull] = None
+    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named format of this creative. New responses use `format_kind` and optional `format_option_ref`.'), OmittedNotNull] = None
+    format_kind: Annotated[CanonicalFormatKind | None, Field(description='Canonical format kind delivered for this creative.'), OmittedNotNull] = None
+    format_option_ref: Annotated[FormatOptionReference | None, Field(description='Portable reference to the product or publisher format option used for delivery, when disambiguation is required.'), OmittedNotNull] = None
+    totals: Annotated[DeliveryMetrics | None, Field(description='Aggregate delivery metrics across all variants of this creative'), OmittedNotNull] = None
+    variant_count: Annotated[NonNegativeInt | None, Field(description='Total number of agent-unique variant_id rows for this creative. When max_variants was specified in the request, this may exceed the number of items in the variants array.'), OmittedNotNull] = None
     variants: Annotated[list[CreativeVariant], Field(description='Variant-level delivery breakdown. Each agent-unique variant_id identifies one immutable served execution and each row includes metrics from exactly one source revision and, for localized delivery, exactly one locale variant. A distinct revision, locale, or rendered manifest receives a distinct variant_id; metrics MUST NOT cross those boundaries. For standard creatives, contains one row per source revision and locale represented in the reporting period. For asset group optimization, one per combination, source revision, and locale. For generative creative, one per generated execution, source revision, and locale. Empty when a creative has no variants yet.')]
 
 
@@ -61,8 +61,8 @@ class Pagination(AdCPBaseModel):
     limit: Annotated[IntMin1, Field(description='Maximum number of creatives requested')]
     offset: Annotated[NonNegativeInt, Field(description='Number of creatives skipped')]
     has_more: Annotated[bool, Field(description='Whether more creatives are available beyond this page')]
-    total_count: Annotated[NonNegativeInt | None, Field(description='Total number of creatives matching the request filters. Canonical field name (matches `PaginationResponse.total_count`). Sellers SHOULD populate this and the deprecated `total` field identically until 4.0; buyers SHOULD prefer this field.')] = None
-    total: Annotated[NonNegativeInt | None, Field(description='**Deprecated** — use `total_count` instead. Retained as a legacy alias for 3.x backward compatibility; removed in AdCP 4.0. Sellers populating this field MUST also populate `total_count` with the same value.')] = None
+    total_count: Annotated[NonNegativeInt | None, Field(description='Total number of creatives matching the request filters. Canonical field name (matches `PaginationResponse.total_count`). Sellers SHOULD populate this and the deprecated `total` field identically until 4.0; buyers SHOULD prefer this field.'), OmittedNotNull] = None
+    total: Annotated[NonNegativeInt | None, Field(description='**Deprecated** — use `total_count` instead. Retained as a legacy alias for 3.x backward compatibility; removed in AdCP 4.0. Sellers populating this field MUST also populate `total_count` with the same value.'), OmittedNotNull] = None
 
 
 class GetCreativeDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -73,15 +73,15 @@ class GetCreativeDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#')
-    account_id: Annotated[str | None, Field(description='Account identifier. Present when the response spans or is scoped to a specific account.')] = None
-    media_buy_id: Annotated[str | None, Field(description="Publisher's media buy identifier. Present when the request was scoped to a single media buy.")] = None
+    account_id: Annotated[str | None, Field(description='Account identifier. Present when the response spans or is scoped to a specific account.'), OmittedNotNull] = None
+    media_buy_id: Annotated[str | None, Field(description="Publisher's media buy identifier. Present when the request was scoped to a single media buy."), OmittedNotNull] = None
     currency: Annotated[CurrencyCode, Field(description="ISO 4217 currency code for monetary values in this response (e.g., 'USD', 'EUR')")]
     reporting_period: Annotated[ReportingPeriod, Field(description='Date range for the report.')]
     creatives: Annotated[list[CreativesItem], Field(description='Creative delivery data with variant breakdowns')]
-    pagination: Annotated[Pagination | None, Field(description='Pagination information. Present when the request included pagination parameters. **Note:** `get_creative_delivery` uses page-based pagination (`limit`/`offset`) for historical reasons, distinct from the cursor-based [`PaginationResponse`](/schemas/v3/core/pagination-response.json) used by `list_*` tools. Field naming aligned with `PaginationResponse.total_count` in 3.1; the legacy `total` field is retained as a deprecated alias until 4.0. Sellers MUST populate both fields identically; buyers SHOULD prefer `total_count` (the canonical name) and ignore `total` if both are present.')] = None
-    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    pagination: Annotated[Pagination | None, Field(description='Pagination information. Present when the request included pagination parameters. **Note:** `get_creative_delivery` uses page-based pagination (`limit`/`offset`) for historical reasons, distinct from the cursor-based [`PaginationResponse`](/schemas/v3/core/pagination-response.json) used by `list_*` tools. Field naming aligned with `PaginationResponse.total_count` in 3.1; the legacy `total` field is retained as a deprecated alias until 4.0. Sellers MUST populate both fields identically; buyers SHOULD prefer `total_count` (the canonical name) and ignore `total` if both are present.'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetCreativeDeliveryResponse"]

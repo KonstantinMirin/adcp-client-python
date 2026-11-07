@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import DeclarationId, HttpUrl, StrMinLen1
 
@@ -96,14 +96,14 @@ class MacroDeclaration(AdCPBaseModel):
     declaration_id: Annotated[DeclarationId, Field(description='Identifier unique within the enclosing asset, used to correlate validation results.')]
     token: Annotated[StrMinLen1, Field(description='Exact byte-preserved token expression at this occurrence, including delimiters.')]
     dialect: MacroDialectFamily
-    dialect_namespace: Annotated[HttpUrl | None, Field(description='Authority-controlled registry or mapping URI. Required for IAB VAST, IAB DAAST, and vendor dialects.')] = None
-    dialect_revision: Annotated[StrMinLen1 | None, Field(description='Immutable registry/mapping revision, release, commit, or digest. Required for IAB VAST, IAB DAAST, and vendor dialects.')] = None
+    dialect_namespace: Annotated[HttpUrl | None, Field(description='Authority-controlled registry or mapping URI. Required for IAB VAST, IAB DAAST, and vendor dialects.'), OmittedNotNull] = None
+    dialect_revision: Annotated[StrMinLen1 | None, Field(description='Immutable registry/mapping revision, release, commit, or digest. Required for IAB VAST, IAB DAAST, and vendor dialects.'), OmittedNotNull] = None
     dialect_semantic: Annotated[StrMinLen1, Field(description='Exact semantic identifier in the cited dialect, such as `CACHEBUSTING`, `PLAYERSTATE`, or a documented vendor name. This is not inferred from token spelling.')]
     mapping_status: MacroMappingStatus
-    universal_semantic: Annotated[UniversalMacro | None, Field(description='Verified AdCP universal meaning. Present only when mapping_status is `verified_universal`.')] = None
+    universal_semantic: Annotated[UniversalMacro | None, Field(description='Verified AdCP universal meaning. Present only when mapping_status is `verified_universal`.'), OmittedNotNull] = None
     operation: MacroProcessingOperation
-    performed_by: Annotated[MacroProcessingActor | None, Field(description='Actor authorized to perform the declared translation or value resolution. Omitted for preservation.')] = None
-    translation_target: Annotated[MacroTranslationTarget | None, Field(description='Required only for `translate_to_native`. The output token contract that replaces this declaration after translation.')] = None
+    performed_by: Annotated[MacroProcessingActor | None, Field(description='Actor authorized to perform the declared translation or value resolution. Omitted for preservation.'), OmittedNotNull] = None
+    translation_target: Annotated[MacroTranslationTarget | None, Field(description='Required only for `translate_to_native`. The output token contract that replaces this declaration after translation.'), OmittedNotNull] = None
     location: Location
     encoding: Annotated[MacroEncoding, Field(description='Encoding for the concrete value. Translation/preservation uses `none` at depth zero.')]
     required: Annotated[bool, Field(description='Whether terminal delivery must fail if the declared operation cannot complete.')]

@@ -87,6 +87,7 @@ from typing import (
     Annotated,
     Any,
     ClassVar,
+    Final,
     Literal,
     NamedTuple,
     TypeVar,
@@ -96,7 +97,8 @@ from typing import (
 )
 
 import jsonschema
-from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, RootModel, TypeAdapter
+from pydantic.fields import FieldInfo
 from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError, core_schema
 
 from adcp.types._runtime import RuleBound, refuse
@@ -350,6 +352,154 @@ KINDS = (WIDENED, UNDERDETERMINED)
 #: be written where nothing looks for it.  ``codegen/render.py`` writes under this name and
 #: ``codegen/harness.py`` reads it, each by importing this.
 APPROXIMATIONS = "__adcp_approximations__"
+
+
+#: The ``nullable`` wrappers a field's core schema can carry the null arm inside, in
+#: pydantic's own spelling, each one holding the schema it wraps under ``"schema"``.
+#:
+#: **A set and not a recursive descent of every key**, because what :func:`_omitting_null`
+#: has to reach is exactly the chain between the field and its type: pydantic builds the
+#: ``T | None`` of an optional field as a ``nullable`` schema, and a wrapper another
+#: annotation already put around it -- an ``AfterValidator`` a value rule hangs off the
+#: type (§2), the ``default`` the ``= None`` adds, the ``definitions`` a self-referencing
+#: model needs -- carries that ``nullable`` one level further in.  Descending anything
+#: else would reach a null arm the field does not own: the ``nullable`` INSIDE a
+#: ``list[str | None]`` belongs to the element and striking it would narrow the array.
+_NULLABLE_WRAPPERS: Final[frozenset[str]] = frozenset(
+    {"default", "definitions", "function-after", "function-before", "function-wrap", "json"}
+)
+
+
+def _omitting_null(schema: Any) -> Any:
+    """``schema`` with the field's own ``nullable`` arm taken off, where it has one.
+
+    The wrapper is usually outermost -- an optional field's annotation is ``T | None``
+    and pydantic renders that as ``nullable`` -- and :data:`_NULLABLE_WRAPPERS` is the
+    chain it can sit inside instead.
+
+    **The schema is returned UNCHANGED where there is no arm to take**, which is the one
+    direction that keeps this safe: a type that admits ``None`` on its own account (the
+    document's ``type: [..., "null"]`` reached through a reference, a typeless node's
+    ``Any``) still admits it after this, because the arm this strikes is the one the
+    OPTIONAL rendering added and nothing else.
+    """
+    kind = schema["type"]
+    if kind == "nullable":
+        return schema["schema"]
+    if kind in _NULLABLE_WRAPPERS and "schema" in schema:
+        return {**schema, "schema": _omitting_null(schema["schema"])}
+    return schema
+
+
+def _is_absent(value: Any) -> bool:
+    """:data:`OmittedNotNull`'s serialisation half: ``None`` is "the property is absent"."""
+    return value is None
+
+
+class _AbsenceIsOmission:
+    """:data:`OmittedNotNull`'s validation half: an explicit JSON ``null`` is REFUSED.
+
+    The field's core schema with its own null arm struck (:func:`_omitting_null`), so a
+    payload carrying ``null`` at this key is refused with the TYPE's own error --
+    ``float_type``, ``list_type``, ``model_type`` -- which is the error the document's own
+    ``type`` keyword refuses it on, and ``model_json_schema()`` publishes the type the
+    document publishes rather than an ``anyOf`` with ``null`` in it.
+
+    **BOTH SIDES, and that is the whole of what this marker is for.**  A JSON ``null`` and
+    a Python ``None`` reach a model by two routes -- ``model_validate_json`` and
+    ``model_validate`` / ``Model(**payload)`` -- and ``docs/plan/final-state.md`` reading
+    1 is about what the CLASS accepts, not about what one of its two entry points accepts:
+    "a consumer calls ``model_validate``".  Striking the arm on the JSON side alone would
+    leave the undeclared widening in place at the entry point consumers use and would
+    make the class's accepted set a function of which of the two was called.
+
+    Absence stays expressible, and by the spelling the document gives it: **leave the key
+    out.**  The ``= None`` default is not validated (pydantic validates a default only
+    under ``validate_default``), so an omitted property still reads back as ``None`` and
+    the annotation a consumer's type checker sees is unchanged.
+    """
+
+    __slots__ = ()
+
+    def __get_pydantic_core_schema__(
+        self, source: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return _omitting_null(handler(source))
+
+    def __repr__(self) -> str:
+        return "OmittedNotNull"
+
+    # ONE marker however a ``FieldInfo`` carrying it is copied: pydantic deep-copies a
+    # field's metadata when a subclass redeclares the field, and identity is what
+    # :func:`omits_null` reads.
+    def __copy__(self) -> "_AbsenceIsOmission":
+        return self
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> "_AbsenceIsOmission":
+        return self
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, _AbsenceIsOmission)
+
+    def __hash__(self) -> int:
+        return hash(_AbsenceIsOmission)
+
+
+#: **An optional property whose document does not admit ``null``: omit it, or supply a
+#: value.**  Written beside the generated ``Field(...)`` in the emitted annotation.
+#:
+#: A JSON Schema property outside ``required`` whose type does not admit ``null`` permits
+#: exactly ONE way of not supplying it -- leaving it out -- and ``T | None = None`` is
+#: still the right Python surface for that: the attribute reads as ``None`` when the
+#: property was omitted.  What the bare annotation got wrong is the INPUT: pydantic reads
+#: ``| None`` as a type that also admits an explicit ``null``, so the model half admitted
+#: a value the document refuses, at every optional non-nullable property in the tree, with
+#: no declaration anywhere (``adcp-client-python-4yhb``).  This marker closes that without
+#: moving the annotation.
+#:
+#: **Two halves, because the two jobs live at different levels of pydantic**, and one
+#: ``FieldInfo`` carries both -- pydantic merges a ``FieldInfo`` found in ``Annotated``
+#: metadata into the field, so its ``exclude_if`` lands on the field and the inner marker
+#: lands in ``field.metadata``:
+#:
+#: * **validation** (:class:`_AbsenceIsOmission`, in ``metadata``): the field's core
+#:   schema has no null arm, so ``model_validate`` and ``model_validate_json`` both refuse
+#:   an explicit ``null`` at this key;
+#: * **serialisation** (the ``FieldInfo`` itself, ``exclude_if=_is_absent``): a ``None`` is
+#:   left off the output BY THE FIELD, in pydantic-core, whoever drives the dump.  That is
+#:   what makes reading 1's second check hold on a PLAIN ``model_dump()``: before this,
+#:   ``AdjustmentsItem().model_dump(mode="json")`` wrote four explicit nulls its own
+#:   document refuses on ``type``, and only a dump narrowed with ``exclude_unset`` or
+#:   ``exclude_none`` round-tripped.  It applies under an explicit ``exclude_none=False``
+#:   too, which is always right here: ``null`` is never a value this property admits, so
+#:   there is nothing for that flag to keep.
+#:
+#: **A property whose document DOES admit ``null`` is emitted without it** and keeps every
+#: ``null`` it ever wrote -- ``codegen.ir.admits_null`` is the one reader that decides
+#: which, off the type the walk decided for the property.
+#:
+#: Not a subclass of ``FieldInfo``: pydantic declares that class final.  Ask
+#: :func:`omits_null` whether a field carries this, never ``in field.metadata`` -- the
+#: marker is merged into the field, so what the field keeps is its ``exclude_if``.
+OmittedNotNull: Final[FieldInfo] = FieldInfo(exclude_if=_is_absent)
+OmittedNotNull.metadata.append(_AbsenceIsOmission())
+
+#: **The marker's own name, for the emitter that writes it into an annotation**, declared
+#: here for the reason :data:`APPROXIMATIONS` is: the artifact carries the word, one writer
+#: spells it and one reader asks for it, and a ``FieldInfo``'s ``repr`` is not a
+#: constructor expression naming it -- so the name cannot be derived from the object the
+#: way a :class:`SchemaRef`'s or an :class:`Approximation`'s can.
+OMITTED_NOT_NULL = "OmittedNotNull"
+
+
+def omits_null(field: FieldInfo) -> bool:
+    """Whether ``field`` carries :data:`OmittedNotNull`.
+
+    Identity and not equality, for the reason :data:`OmittedNotNull` gives: the marker is
+    MERGED into the field, so the field's own ``metadata`` holds the validation half and
+    the ``exclude_if`` is the half that answers for the whole marker.
+    """
+    return field.exclude_if is OmittedNotNull.exclude_if
 
 
 def _record_root(module: str | None) -> str | None:
@@ -623,14 +773,76 @@ def store_expanded(node: Any, root: Any) -> Any:
 #: LIST and is spliced rather than wrapped; the three here are the node's own
 #: assertions and become ONE conjunct.
 #:
-#: A rule keyword (``not``, ``dependencies``, ``minProperties``, ``if``/``then``) is
-#: NOT here, and the reason is the one ``if`` and ``not`` are excluded from
-#: :data:`SAME_INSTANCE_LIST` for: §5 compiles it to a RULE, which renders nothing in a
-#: model's JSON schema, so there is nothing at the branch's pointer for a reader to
-#: find, and conjoining it would state a fact the model cannot carry.  The rule itself
-#: reaches every branch the way the fields do -- it is written on the base and
-#: inherited -- which is class inheritance and needs no reading here.
+#: A rule keyword (``not``, ``dependencies``, ``minProperties``, ``if``/``then``) is not
+#: here, and it is not excluded either: :data:`SAME_INSTANCE_RULES` carries it, and the
+#: sentence that used to end this comment is why.  It read "§5 compiles it to a RULE, which
+#: renders nothing in a model's JSON schema, so there is nothing at the branch's pointer
+#: for a reader to find, and conjoining it would state a fact the model cannot carry.  The
+#: rule itself reaches every branch the way the fields do -- it is written on the base and
+#: inherited -- which is class inheritance and needs no reading here."  **The last clause
+#: is the refutation of the first**: a fact the branch class ENFORCES by inheritance is a
+#: fact the comparand owes, whatever the model's JSON schema renders, and leaving it out
+#: made the class mean base ∧ branch while declaring branch (``adcp-client-python-0ejo``).
+#: So the three below are the facts, that tuple is the rules, and the split is now about
+#: which HOP conjoins which rather than about which keyword is sayable.
 SAME_INSTANCE_FACTS = ("properties", "required", "additionalProperties")
+
+#: **The keywords an enclosing node states about the SAME INSTANCE that §5 compiles to a
+#: RULE on a union BASE, conjoined into a BRANCH node by :func:`_conjunction`.**
+#:
+#: :data:`SAME_INSTANCE_FACTS` said they were excluded, and the sentence it gave was
+#: "there is nothing at the branch's pointer for a reader to find, and conjoining it would
+#: state a fact the model cannot carry".  **That is right about the DUMP and wrong about
+#: what the class ENFORCES**, which is ``adcp-client-python-0ejo``: a branch class
+#: SUBCLASSES the union base, so it inherits the base's ``_adcp_rules`` by plain Python
+#: inheritance and REFUSES every payload the base's conditional refuses -- while its
+#: ``__adcp_schema__`` named the bare branch fragment, which says nothing about those
+#: keys.  What the class enforced was base ∧ branch; what it declared was branch; and no
+#: pointer in the document named what the class actually meant.  Measured, that cost one
+#: false ``accepts=fail:model_refused_valid`` at
+#: ``trusted-match/provider-registration.json#/anyOf/1``, where the document's own
+#: fragment ADMITS ``{"endpoint": …, "identity_match": true, "provider_id": "0"}`` and the
+#: class refuses it on the ROOT's ``if``/``then``.
+#:
+#: Carried by the sentence the rule's own exclusion already rested on, read the other way:
+#: the rule reaches every branch "the way the fields do -- it is written on the base and
+#: inherited", and the fields are conjoined.  So is the rule.
+#:
+#: **AT A BRANCH HOP AND NOWHERE ELSE**, because inheritance is what makes the conjunction
+#: true and only a branch class inherits: a ``then``, an ``else`` or a ``not`` node is not
+#: a class that subclasses the node stating it, and an ``allOf`` conjunct is composed INTO
+#: the enclosing class rather than under it (the enclosing node's own ``if`` is then that
+#: one class's own rule, at its own pointer, and conjoining it into one of its conjuncts
+#: would state it twice).
+#:
+#: **AND THE BASE'S UNION KEYWORD IS NEVER IN THE CONJUNCT, BY CONSTRUCTION.**  The
+#: conjunct :func:`_conjunction` builds is ASSEMBLED from this tuple and
+#: :data:`SAME_INSTANCE_FACTS` -- never ``{**node}`` with a key deleted -- so neither
+#: ``oneOf`` nor ``anyOf`` can enter it, and nor can ``$schema``, ``title``,
+#: ``definitions`` or an ``x-`` key.  That matters and not only for tidiness: a conjunct
+#: still carrying the base's ``oneOf`` would demand the payload satisfy a branch TWICE,
+#: and under ``oneOf`` -- exactly one -- a payload that happens to match a second branch
+#: as well would then be REFUSED by the conjunction although the branch admits it.  The
+#: branch conjunct IS the answer to which arm, so re-asking the question is what the
+#: assembly cannot spell.
+#:
+#: Measured over the 733 branch pairs of this tree, which keys a base states beside its
+#: combinator that nothing already conjoins: ``not`` at 25 pairs, ``dependencies`` at 5,
+#: ``if``/``then`` at 2.  ``type`` is carried by ``enclosing``, ``allOf`` is spliced as a
+#: conjunct list, the three of :data:`SAME_INSTANCE_FACTS` are conjoined already, and
+#: every other key in that census is an annotation, a definitions section or an ``x-``
+#: extension.  ``else`` and the two property counts are declared here because the keyword
+#: table makes them rules at a ROOT and a later bundle may state one; a key the base does
+#: not state contributes nothing.
+SAME_INSTANCE_RULES = (
+    "if",
+    "then",
+    "else",
+    "not",
+    "dependencies",
+    "minProperties",
+    "maxProperties",
+)
 
 #: What a node says to a READER rather than about an instance, dropped from an
 #: enclosing node's conjunct before :func:`_conjunction` splices it into a node below.
@@ -807,7 +1019,19 @@ def _conjunction(node: dict, through: str, root: Any = NO_STORE) -> list:
     returned UNCHANGED at the 7,987 pointers that reach nothing.
     """
     own: dict = {}
-    for keyword in SAME_INSTANCE_FACTS:
+    #: **At a BRANCH hop the rule keywords join the three facts**
+    #: (:data:`SAME_INSTANCE_RULES`), because a branch class SUBCLASSES the base and
+    #: therefore enforces the base's rules as well as its fields -- so the conjunction the
+    #: class means is base ∧ branch and the comparand has to be it
+    #: (``adcp-client-python-0ejo``).  ``then``/``else``/``not``/``allOf`` hops take the
+    #: three alone, for the reason :data:`SAME_INSTANCE_RULES` gives: nothing there
+    #: inherits.
+    assembling = (
+        (*SAME_INSTANCE_FACTS, *SAME_INSTANCE_RULES)
+        if through in ("anyOf", "oneOf")
+        else SAME_INSTANCE_FACTS
+    )
+    for keyword in assembling:
         if keyword not in node:
             continue
         if keyword in ("properties", "required") and not node[keyword]:

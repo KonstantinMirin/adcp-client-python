@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 ComponentValue = Annotated[dict[str, Any], Field(description='Component properties')]
 
@@ -19,7 +19,7 @@ class A2UIComponent(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/component.json', pointer='#')
     id: Annotated[str, Field(description='Unique identifier for this component within the surface')]
-    parentId: Annotated[str | None, Field(description='ID of the parent component (null for root)')] = None
+    parentId: Annotated[str | None, Field(description='ID of the parent component (null for root)'), OmittedNotNull] = None
     component: Annotated[dict[str, ComponentValue], Field(description='Component definition (keyed by component type)', max_length=1, min_length=1)]
 
 

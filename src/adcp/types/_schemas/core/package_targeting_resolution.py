@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from .demographic_targeting_resolution import DemographicTargetingResolution
 from .ext import ExtensionObject
@@ -20,7 +20,7 @@ class PackageTargetingResolution(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-targeting-resolution.json', pointer='#')
     demographics: Annotated[DemographicTargetingResolution, Field(description='Canonical demographic predicate and exact seller execution details. Include whenever demographic targeting was requested or applied.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["PackageTargetingResolution"]

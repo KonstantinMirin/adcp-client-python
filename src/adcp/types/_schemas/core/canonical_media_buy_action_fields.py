@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.canonical_media_buy_action_mode import CanonicalMediaBuyActionMode
@@ -30,10 +30,10 @@ class CanonicalMediaBuyActionFields(AdCPBaseModel):
     task: Task
     action: str
     mode: CanonicalMediaBuyActionMode
-    sla: SLAWindow | None = None
-    change_term_id: MediaBuyChangeTermID | None = None
-    terms_ref: MediaBuyTermsReference | None = None
-    applicable_package_ids: Annotated[list[ApplicablePackageID] | None, Field(description='Exact eligible packages for a package-scoped action; omission means all relevant packages.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    sla: Annotated[SLAWindow | None, OmittedNotNull] = None
+    change_term_id: Annotated[MediaBuyChangeTermID | None, OmittedNotNull] = None
+    terms_ref: Annotated[MediaBuyTermsReference | None, OmittedNotNull] = None
+    applicable_package_ids: Annotated[list[ApplicablePackageID] | None, Field(description='Exact eligible packages for a package-scoped action; omission means all relevant packages.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["CanonicalMediaBuyActionFields"]

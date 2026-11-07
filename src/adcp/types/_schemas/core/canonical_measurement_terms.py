@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import BillingMeasurementMaxVariancePercent, StrMinLen1
 
@@ -19,9 +19,9 @@ class BillingMeasurement(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-measurement-terms.json', pointer='#/properties/billing_measurement')
     vendor: BrandKey
-    max_variance_percent: BillingMeasurementMaxVariancePercent | None = None
-    measurement_window: StrMinLen1 | None = None
-    finalization_deadline_hours: NonNegativeInt | None = None
+    max_variance_percent: Annotated[BillingMeasurementMaxVariancePercent | None, OmittedNotNull] = None
+    measurement_window: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    finalization_deadline_hours: Annotated[NonNegativeInt | None, OmittedNotNull] = None
 
 
 class MakegoodPolicy(AdCPBaseModel):
@@ -43,8 +43,8 @@ class CanonicalMeasurementTerms(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-measurement-terms.json', pointer='#')
-    billing_measurement: BillingMeasurement | None = None
-    makegood_policy: MakegoodPolicy | None = None
+    billing_measurement: Annotated[BillingMeasurement | None, OmittedNotNull] = None
+    makegood_policy: Annotated[MakegoodPolicy | None, OmittedNotNull] = None
 
 
 __all__ = ["CanonicalMeasurementTerms"]

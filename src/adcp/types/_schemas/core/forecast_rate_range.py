@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
 
 from .forecast_range import ForecastRange
@@ -19,9 +19,9 @@ class ForecastRateRange(ForecastRange):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-rate-range.json', pointer='#')
-    low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value')] = None
-    mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value')] = None
-    high: Annotated[FloatMin0Max1 | None, Field(description='Optimistic (high-end) forecast value')] = None
+    low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value'), OmittedNotNull] = None
+    mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value'), OmittedNotNull] = None
+    high: Annotated[FloatMin0Max1 | None, Field(description='Optimistic (high-end) forecast value'), OmittedNotNull] = None
 
 
 __all__ = ["ForecastRateRange"]

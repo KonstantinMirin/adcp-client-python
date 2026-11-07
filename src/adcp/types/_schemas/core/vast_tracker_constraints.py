@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
@@ -107,10 +107,10 @@ class VASTTrackerConstraints(AdCPBaseModel):
         Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/9', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'const': 'interactiveStart'}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/10', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'const': 'closeLinear'}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    vast_event: VastEvent | None = None
-    target: Annotated[VastTarget | None, Field(json_schema_extra={'default': 'linear'})] = Field(default_factory=lambda: TypeAdapter(VastTarget).validate_python('linear'))
-    offset: VastOffset | None = None
-    vast_versions: VastVersions | None = None
+    vast_event: Annotated[VastEvent | None, OmittedNotNull] = None
+    target: Annotated[VastTarget | None, Field(json_schema_extra={'default': 'linear'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(VastTarget).validate_python('linear'))
+    offset: Annotated[VastOffset | None, OmittedNotNull] = None
+    vast_versions: Annotated[VastVersions | None, OmittedNotNull] = None
 
 
 __all__ = ["VASTTrackerConstraints", "VastEvent", "VastOffset", "VastTarget", "VastVersions"]

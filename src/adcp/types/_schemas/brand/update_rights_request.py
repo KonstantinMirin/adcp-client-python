@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import GovernanceContext, IntMin1
 from adcp.types.envelopes import AdcpRequest
 
@@ -26,17 +26,17 @@ class UpdateRightsRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/update-rights-request.json', pointer='#')
-    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for a commitment-increasing rights update.')] = None
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for a commitment-increasing rights update.'), OmittedNotNull] = None
     rights_id: Annotated[str, Field(description='Rights grant identifier from acquire_rights response')]
-    account: Annotated[AccountReference | None, Field(description='Account context for this update. Used by the brand agent to resolve any governance agent previously bound for this brand+operator pair via sync_governance — update_rights is a modification-phase governance trigger (per `/docs/governance/campaign/specification#spend-commit-invocation`) and the brand agent consults the bound agent when computing the incremental commit delta. When both an inline governance_context token (on the protocol envelope) and a bound governance agent are present, the inline token wins. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. The estimated_impressions / commit-delta projection rule for governance-aware updates is tracked separately and not yet normative on this task.')] = None
-    end_date: Annotated[date | None, Field(description='New end date for the rights grant (must be >= current end_date). Extending the grant may re-issue generation credentials with updated expiration.')] = None
-    impression_cap: Annotated[IntMin1 | None, Field(description='New impression cap for the grant. Must be >= impressions already delivered.')] = None
-    pricing_option_id: Annotated[str | None, Field(description="Switch to a different pricing option from the original get_rights offering. The new option must be compatible with the existing grant's uses and countries.")] = None
-    paused: Annotated[bool | None, Field(description='Pause or resume the rights grant. When paused, generation credentials are suspended and creative delivery should stop. When resumed, credentials are re-activated.')] = None
-    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Webhook for async update notifications if the update requires approval')] = None
+    account: Annotated[AccountReference | None, Field(description='Account context for this update. Used by the brand agent to resolve any governance agent previously bound for this brand+operator pair via sync_governance — update_rights is a modification-phase governance trigger (per `/docs/governance/campaign/specification#spend-commit-invocation`) and the brand agent consults the bound agent when computing the incremental commit delta. When both an inline governance_context token (on the protocol envelope) and a bound governance agent are present, the inline token wins. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. The estimated_impressions / commit-delta projection rule for governance-aware updates is tracked separately and not yet normative on this task.'), OmittedNotNull] = None
+    end_date: Annotated[date | None, Field(description='New end date for the rights grant (must be >= current end_date). Extending the grant may re-issue generation credentials with updated expiration.'), OmittedNotNull] = None
+    impression_cap: Annotated[IntMin1 | None, Field(description='New impression cap for the grant. Must be >= impressions already delivered.'), OmittedNotNull] = None
+    pricing_option_id: Annotated[str | None, Field(description="Switch to a different pricing option from the original get_rights offering. The new option must be compatible with the existing grant's uses and countries."), OmittedNotNull] = None
+    paused: Annotated[bool | None, Field(description='Pause or resume the rights grant. When paused, generation credentials are suspended and creative delivery should stop. When resumed, credentials are re-activated.'), OmittedNotNull] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Webhook for async update notifications if the update requires approval'), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated idempotency key for safe retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["UpdateRightsRequest"]

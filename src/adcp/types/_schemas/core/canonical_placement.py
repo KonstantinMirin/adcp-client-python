@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMinLen1
 
@@ -41,10 +41,10 @@ class CanonicalDoohPlacementAttributes(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-placement.json', pointer='#/definitions/CanonicalDoohPlacementAttributes')
-    slot_duration_seconds: Annotated[IntMin1 | None, Field(description='Scheduled duration of one ad slot in seconds; not the creative-duration contract.')] = None
-    loop_duration_seconds: Annotated[IntMin1 | None, Field(description='Duration of the full ad loop rotation in seconds and the canonical source for loop duration.')] = None
-    screen_resolution: CanonicalDoohScreenResolution | None = None
-    motion: Annotated[DOOHMotionType | None, Field(description='Physical motion capability of a visual DOOH screen, not an accepted-format declaration. Omit for audio-only placements.')] = None
+    slot_duration_seconds: Annotated[IntMin1 | None, Field(description='Scheduled duration of one ad slot in seconds; not the creative-duration contract.'), OmittedNotNull] = None
+    loop_duration_seconds: Annotated[IntMin1 | None, Field(description='Duration of the full ad loop rotation in seconds and the canonical source for loop duration.'), OmittedNotNull] = None
+    screen_resolution: Annotated[CanonicalDoohScreenResolution | None, OmittedNotNull] = None
+    motion: Annotated[DOOHMotionType | None, Field(description='Physical motion capability of a visual DOOH screen, not an accepted-format declaration. Omit for audio-only placements.'), OmittedNotNull] = None
 
 
 class CanonicalProductPlacement(BranchDispatchMixin, AdCPBaseModel):
@@ -71,19 +71,19 @@ class CanonicalProductPlacement(BranchDispatchMixin, AdCPBaseModel):
     )
     kind: Kind
     placement_id: StrMinLen1
-    publisher_domain: Annotated[DomainName | None, Field(description='For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.')] = None
-    seller_agent: Annotated[SellerAgentReference | None, Field(description='Defining sales agent for seller_inline identity. Recommended for new declarations; optional only to preserve legacy product-context placements.')] = None
-    name: StrMinLen1 | None = None
-    description: str | None = None
+    publisher_domain: Annotated[DomainName | None, Field(description='For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.'), OmittedNotNull] = None
+    seller_agent: Annotated[SellerAgentReference | None, Field(description='Defining sales agent for seller_inline identity. Recommended for new declarations; optional only to preserve legacy product-context placements.'), OmittedNotNull] = None
+    name: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    description: Annotated[str | None, OmittedNotNull] = None
     mode: Mode
-    tags: Annotated[list[str] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    format_options: Annotated[list[CanonicalFormatOption] | None, Field(min_length=1)] = None
-    video_placement_types: Annotated[list[VideoPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    identifiers: Annotated[list[IdentifiersItem] | None, Field(description='Optional external inventory identifiers for this placement. Externally governed values should be authority-prefixed; seller-local values are scoped by the surrounding publisher namespace. For publisher_ref placements, the effective set is the union of publisher and product declarations, de-duplicated by exact (type, value).', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    dooh_placement_attributes: CanonicalDoohPlacementAttributes | None = None
+    tags: Annotated[list[str] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    format_options: Annotated[list[CanonicalFormatOption] | None, Field(min_length=1), OmittedNotNull] = None
+    video_placement_types: Annotated[list[VideoPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    identifiers: Annotated[list[IdentifiersItem] | None, Field(description='Optional external inventory identifiers for this placement. Externally governed values should be authority-prefixed; seller-local values are scoped by the surrounding publisher namespace. For publisher_ref placements, the effective set is the union of publisher and product declarations, de-duplicated by exact (type, value).', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    dooh_placement_attributes: Annotated[CanonicalDoohPlacementAttributes | None, OmittedNotNull] = None
 
 
 class CanonicalProductPlacementPublisherRef(CanonicalProductPlacement):

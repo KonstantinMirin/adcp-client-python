@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsIdentifierValueDigestsItem,
@@ -59,8 +59,8 @@ class ListScenariosSuccess(ComplyTestControllerResponse):
     )
     success: Literal[True]
     scenarios: Annotated[list[str], Field(description='Scenarios this seller has implemented. Runners and sellers MUST accept unknown scenario strings (open-for-extension) — new scenarios may be added in additive releases. Adopters who advertise `catalog_item_availability_probe` support deterministic cross-principal reference, eligibility-gate, expiry-clock, and catalog-generation tests for the catalog availability storyboard. Adopters who advertise `compact_product_lifecycle_probe` support deterministic synchronous list/request/finalize/decline/accept/control/readback behavior for a prepared product and strict post-deadline expiry of a committed proposal. Adopters who advertise `compact_direct_buy_lifecycle_probe` support deterministic synchronous list/buy/control/readback behavior for a prepared product. Adopters who advertise `reporting_core_lifecycle_probe` support deterministic obligation-before-report, clock-health, zero-row reporting, provisional-restatement, and post-received restatement-grace tests without wall-clock waits. `reliable_reporting_core_integrity_probe`, `reliable_reporting_managed_delivery_probe`, and `reliable_reporting_reconciled_billing_probe` seed the source-calendar/checkpoint, managed-resource, and receipt/adjustment workflows used by the Reliable Reporting tier storyboards. Adopters who advertise `force_creative_purge` opt in to deterministic creative purge coverage for account-level lifecycle webhooks. Adopters who advertise `force_media_buy_purge` opt in to deterministic deletion-independent idempotency replay coverage. Adopters who advertise `seed_measurement_catalog` opt in to deterministic measurement-catalog fixtures used by vendor_metric precondition storyboards. Adopters who advertise `query_upstream_traffic` opt in to the upstream-traffic conformance contract; storyboards that declare `check: upstream_traffic` grade not_applicable against adopters who do not advertise it. Adopters who advertise `query_provenance_audit_observations` opt in to sandbox-only audit-observation assertions for accepted creatives. Adopters who advertise `force_upstream_unavailable` opt in to stale-cache conformance testing via the `stale_response_advisory` storyboard.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class StateTransitionSuccess(ComplyTestControllerResponse):
@@ -77,9 +77,9 @@ class StateTransitionSuccess(ComplyTestControllerResponse):
     success: Literal[True]
     previous_state: Annotated[str, Field(description='State before this transition')]
     current_state: Annotated[str, Field(description='State after this transition')]
-    message: Annotated[str | None, Field(description='Human-readable description of the transition')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[str | None, Field(description='Human-readable description of the transition'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SimulationSuccess(ComplyTestControllerResponse):
@@ -95,9 +95,9 @@ class SimulationSuccess(ComplyTestControllerResponse):
     )
     success: Literal[True]
     simulated: Annotated[dict[str, Any], Field(description='Values injected or applied by this call. Shape depends on scenario.')]
-    cumulative: Annotated[dict[str, Any] | None, Field(description='Running totals across all simulation calls (simulate_delivery only)')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    cumulative: Annotated[dict[str, Any] | None, Field(description='Running totals across all simulation calls (simulate_delivery only)'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class Forced(AdCPBaseModel):
@@ -113,10 +113,10 @@ class Forced(AdCPBaseModel):
         ConditionalRequired((Match('arm', None, ('submitted',)),), require=(), forbid=('reason', 'suggestions')),
     )
     arm: Annotated[Arm, Field(description='Arm the seller will emit on the next forced operation response.')]
-    task_id: Annotated[StrMaxLen128 | None, Field(description="Echo of the registered task_id. Present only when arm is 'submitted' (the arm that emits a task envelope).")] = None
-    evaluation_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Echo of the provider evaluation identity registered by force_get_creative_features_arm.')] = None
-    reason: Annotated[StrMinLen1MaxLen2000 | None, Field(description="Echo of the deterministic buyer-facing rejection reason. Required when arm is 'rejected'.")] = None
-    suggestions: Annotated[list[StrMinLen1MaxLen1000] | None, Field(description='Echo of the optional deterministic alternatives registered for a rejected get_products response.', max_length=20, min_length=1)] = None
+    task_id: Annotated[StrMaxLen128 | None, Field(description="Echo of the registered task_id. Present only when arm is 'submitted' (the arm that emits a task envelope)."), OmittedNotNull] = None
+    evaluation_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Echo of the provider evaluation identity registered by force_get_creative_features_arm.'), OmittedNotNull] = None
+    reason: Annotated[StrMinLen1MaxLen2000 | None, Field(description="Echo of the deterministic buyer-facing rejection reason. Required when arm is 'rejected'."), OmittedNotNull] = None
+    suggestions: Annotated[list[StrMinLen1MaxLen1000] | None, Field(description='Echo of the optional deterministic alternatives registered for a rejected get_products response.', max_length=20, min_length=1), OmittedNotNull] = None
 
 
 class ForcedDirectiveSuccess(ComplyTestControllerResponse):
@@ -132,9 +132,9 @@ class ForcedDirectiveSuccess(ComplyTestControllerResponse):
     )
     success: Literal[True]
     forced: Annotated[Forced, Field(description='Echo of the registered directive. The next matching operation call from this sandbox account will return the named arm.')]
-    message: Annotated[str | None, Field(description='Human-readable acknowledgement.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[str | None, Field(description='Human-readable acknowledgement.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SeedSuccess(ComplyTestControllerResponse):
@@ -149,9 +149,9 @@ class SeedSuccess(ComplyTestControllerResponse):
         ForbiddenGroups((('error',), ('scenarios',), ('previous_state',), ('simulated',), ('forced',), ('recorded_calls',), ('audit_observations',))),
     )
     success: Literal[True]
-    message: Annotated[str | None, Field(description='Human-readable acknowledgement.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[str | None, Field(description='Human-readable acknowledgement.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ProvenanceAuditObservationsSuccess(ComplyTestControllerResponse):
@@ -168,8 +168,8 @@ class ProvenanceAuditObservationsSuccess(ComplyTestControllerResponse):
     success: Literal[True]
     creative_id: Annotated[str, Field(description='Creative ID whose audit observations were queried.')]
     audit_observations: Annotated[list[CreativeAuditObservation], Field(description='Audit observations recorded for the creative in the sandbox session.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class Method(StrEnum):
@@ -239,17 +239,17 @@ class RecordedCallsItem(BranchDispatchMixin, AdCPBaseModel):
     method: Annotated[Method, Field(description='HTTP method of the outbound call.')]
     endpoint: Annotated[str, Field(description="Composed `<METHOD> <URL>` string used for `endpoint_pattern` matching, e.g. 'POST https://api.tiktok.com/v2/audience/upload'. Convenience field — the runner can also reconstruct from `method` + URL components.")]
     url: Annotated[HttpUrl, Field(description='Full URL of the outbound call (scheme + host + path + query). Treated as untrusted agent-controlled input by report renderers — see runner-output-contract.yaml > security.rendered_output_fencing.')]
-    host: Annotated[str | None, Field(description='Host portion of the URL, useful for grouping calls by upstream platform.')] = None
-    path: Annotated[str | None, Field(description='Path portion of the URL (without query string).')] = None
+    host: Annotated[str | None, Field(description='Host portion of the URL, useful for grouping calls by upstream platform.'), OmittedNotNull] = None
+    path: Annotated[str | None, Field(description='Path portion of the URL (without query string).'), OmittedNotNull] = None
     content_type: Annotated[str, Field(description="Media type of the outbound request body, mirroring the agent's outbound `Content-Type` header (e.g., `application/json`, `application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`). In raw mode this describes the returned `payload`; in digest mode it describes the body the digest was computed over. Storyboard `payload_must_contain` JSONPath-lite assertions are valid only when content_type is `application/json` or has a `+json` suffix AND attestation_mode is `raw` — digest mode and non-JSON content types grade `payload_must_contain` as not_applicable. Required so the runner can choose the right matcher deterministically.")]
     attestation_mode: Annotated[AttestationMode, Field(description="Per-call attestation mode echoing the request's `params.attestation_mode`. Required on every recorded_call so the `oneOf` discriminator always has an explicit value to dispatch on — no implicit defaults inside oneOf branches. Adopters MAY unilaterally downgrade a `raw` request to `digest` for a specific call when their policy requires it (e.g., the call carried regulated PII the adopter can't return raw). The runner reads this field to know which assertions to apply.")]
-    purpose: Annotated[Purpose | None, Field(description="Optional adopter-supplied semantic tag for the call's role. Values: `platform_primary` for the primary upstream platform the adapter is integrating with (e.g., a TikTok audience-upload call from a sales-social adapter); `measurement` for ancillary calls to measurement vendors (DV, IAS, Nielsen, MOAT); `attribution` for server-side conversion APIs (TTD Trans-API, Meta CAPI, AppsFlyer/Branch postbacks) that flow alongside primary platform calls in a buy-step; `creative_serving` for ad-server / CDN / tag-build calls (GAM tag generation, VAST/CDN fetches, creative trafficking); `identity` for ID-graph / hashing-service calls (LiveRamp, ID5, UID2); `other` for everything else (config fetches, internal telemetry, consent signal exchange). Lets storyboards scope `upstream_traffic` assertions via `purpose_filter` so a buyer-agent adapter that legitimately calls measurement vendors during a single buy step doesn't muddy the platform-primary assertion. Calls without a `purpose` field are treated as `purpose: other` for `purpose_filter` matching — adopters who haven't classified are matched only by storyboards filtering on `other` (or by storyboards with no `purpose_filter`). Self-reported, not adversarially trustworthy — same trust model as the rest of recorded_calls; misclassification by a façade is bounded by the runner's reporting of unclassified-call counts in `actual` when filters match zero.")] = None
+    purpose: Annotated[Purpose | None, Field(description="Optional adopter-supplied semantic tag for the call's role. Values: `platform_primary` for the primary upstream platform the adapter is integrating with (e.g., a TikTok audience-upload call from a sales-social adapter); `measurement` for ancillary calls to measurement vendors (DV, IAS, Nielsen, MOAT); `attribution` for server-side conversion APIs (TTD Trans-API, Meta CAPI, AppsFlyer/Branch postbacks) that flow alongside primary platform calls in a buy-step; `creative_serving` for ad-server / CDN / tag-build calls (GAM tag generation, VAST/CDN fetches, creative trafficking); `identity` for ID-graph / hashing-service calls (LiveRamp, ID5, UID2); `other` for everything else (config fetches, internal telemetry, consent signal exchange). Lets storyboards scope `upstream_traffic` assertions via `purpose_filter` so a buyer-agent adapter that legitimately calls measurement vendors during a single buy step doesn't muddy the platform-primary assertion. Calls without a `purpose` field are treated as `purpose: other` for `purpose_filter` matching — adopters who haven't classified are matched only by storyboards filtering on `other` (or by storyboards with no `purpose_filter`). Self-reported, not adversarially trustworthy — same trust model as the rest of recorded_calls; misclassification by a façade is bounded by the runner's reporting of unclassified-call counts in `actual` when filters match zero."), OmittedNotNull] = None
     payload: Annotated[Any | None, Field(description="Request body the agent sent. Required when `attestation_mode` is `raw` (or omitted); MUST be absent when `attestation_mode` is `digest`. Object when content_type is JSON-shaped and the controller decoded it; string otherwise. The `x-adcp-open-payload: true` annotation applies to the decoded JSON/object arm of this mixed field; non-JSON string payloads remain scalar values governed by the surrounding schema. Adopters MUST apply the recursive secret-key redaction described in this branch's top-level description before emission — secrets at any depth (Authorization values inlined into JSON bodies, embedded JWTs, presigned-URL tokens, OAuth refresh tokens) MUST be replaced with the literal string `[redacted]`. Storyboards that assert `payload_must_contain` or `identifier_paths` are matching against THIS field — secrets MUST be redacted but storyboard-supplied identifiers (hashed PII, request correlation values) MUST NOT be redacted. Adopters SHOULD cap individual payload size at 64 KiB; payloads exceeding that SHOULD be truncated with a trailing `[…truncated]` marker — large payloads bloat compliance reports and the LLM-rendered context windows that consume them.")] = None
-    payload_digest_sha256: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 digest of the canonicalized outbound request body, lowercase hex (64 chars). Required when `attestation_mode` is `digest`; MUST be absent when `attestation_mode` is `raw`. Canonicalization order is normative: (1) controllers MUST apply the recursive secret-key redaction (same pattern as the raw-mode payload field) BEFORE computing the digest; (2) for `application/json` and `*+json` content types, controllers MUST then serialize the redacted body to RFC 8785 (JCS) canonical form — sorted keys, no extraneous whitespace — and digest the resulting bytes. Storyboard-supplied identifiers (hashed PII, request correlation values) MUST NOT be redacted before digest computation; they are the load-bearing match target for `identifier_match_proofs` and digesting them away makes echo verification impossible. Both `payload_digest_sha256` AND `identifier_match_proofs` MUST be computed against the same post-redaction canonical bytes — diverging the two surfaces breaks coherence between digest replay and identifier echo. JCS edge cases: when a digest-mode `query_upstream_traffic` response cannot be produced because the parsed JSON-like value tree contains a non-finite numeric value (`NaN`, `+Infinity`, or `-Infinity`), controllers MUST NOT coerce that value to `null`, a string, or any other placeholder for digest computation; they MUST return the typed ControllerError code `JCS_NON_FINITE_NUMBER`. Runners MUST grade the affected upstream_traffic digest validation `not_applicable` because RFC 8785 forbids non-finite numbers. Payloads carrying numeric identifiers MUST serialize them as JSON strings before digest computation (adtech bid payloads regularly carry IDs outside ±2^53 where I-JSON / RFC 7493 number round-tripping diverges across implementations). For non-JSON content types the digest is computed over the post-redaction raw body bytes.')] = None
+    payload_digest_sha256: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 digest of the canonicalized outbound request body, lowercase hex (64 chars). Required when `attestation_mode` is `digest`; MUST be absent when `attestation_mode` is `raw`. Canonicalization order is normative: (1) controllers MUST apply the recursive secret-key redaction (same pattern as the raw-mode payload field) BEFORE computing the digest; (2) for `application/json` and `*+json` content types, controllers MUST then serialize the redacted body to RFC 8785 (JCS) canonical form — sorted keys, no extraneous whitespace — and digest the resulting bytes. Storyboard-supplied identifiers (hashed PII, request correlation values) MUST NOT be redacted before digest computation; they are the load-bearing match target for `identifier_match_proofs` and digesting them away makes echo verification impossible. Both `payload_digest_sha256` AND `identifier_match_proofs` MUST be computed against the same post-redaction canonical bytes — diverging the two surfaces breaks coherence between digest replay and identifier echo. JCS edge cases: when a digest-mode `query_upstream_traffic` response cannot be produced because the parsed JSON-like value tree contains a non-finite numeric value (`NaN`, `+Infinity`, or `-Infinity`), controllers MUST NOT coerce that value to `null`, a string, or any other placeholder for digest computation; they MUST return the typed ControllerError code `JCS_NON_FINITE_NUMBER`. Runners MUST grade the affected upstream_traffic digest validation `not_applicable` because RFC 8785 forbids non-finite numbers. Payloads carrying numeric identifiers MUST serialize them as JSON strings before digest computation (adtech bid payloads regularly carry IDs outside ±2^53 where I-JSON / RFC 7493 number round-tripping diverges across implementations). For non-JSON content types the digest is computed over the post-redaction raw body bytes.'), OmittedNotNull] = None
     payload_length: Annotated[NonNegativeInt, Field(description='Byte length of the post-redaction body bytes represented by this recorded_call. Required in both `raw` and `digest` modes — symmetric across modes so runners can detect adopter-side truncation regardless of attestation choice. In `raw` mode this MUST equal the UTF-8 byte length of the emitted `payload` value after the same recursive secret-key redaction the controller applied before returning it. In `digest` mode this MUST equal the exact number of bytes fed into SHA-256 for `payload_digest_sha256`: RFC 8785 (JCS) canonical bytes for JSON-shaped content after redaction, or the post-redaction raw body bytes for non-JSON content. Digest-mode `payload_length` is therefore NOT the original outbound body length before JSON parsing, redaction, or canonicalization. Mismatch between observed payload length and reported `payload_length` is a controller-side bug worth surfacing in the report.')]
-    identifier_match_proofs: Annotated[list[IdentifierMatchProofsItem] | None, Field(description='Per-identifier echo proofs for digest-mode calls. Required when `attestation_mode` is `digest` AND the request supplied `params.identifier_value_digests`; MUST be absent or empty otherwise. Each entry corresponds to one digest from the request. Capped at 64 to match the request-side `params.identifier_value_digests` cap. Lets storyboards verify `identifier_paths` echo in digest mode without ever transmitting plaintext identifiers to the controller. SHA-256 is a privacy mechanism here, not a trust mechanism — controllers self-report `found` and a determined façade can return any boolean; consumers MUST NOT treat digest-mode passing as cryptographically more trustworthy than raw mode. Tokenization is normative: for `application/json` and `*+json` content types, controllers MUST scan exactly the JSON string-typed leaf values of the post-redaction canonicalized body — no substring matching, no word splitting, no case folding, no Unicode normalization. A token matches when its SHA-256 hash equals one of the requested digests byte-for-byte. For non-JSON content types (form-urlencoded, multipart, plain text), `identifier_match_proofs` MUST be empty and runner-side `identifier_paths` assertions targeting those calls grade `not_applicable` — token boundaries are not portably defined across non-JSON shapes.', max_length=64)] = None
+    identifier_match_proofs: Annotated[list[IdentifierMatchProofsItem] | None, Field(description='Per-identifier echo proofs for digest-mode calls. Required when `attestation_mode` is `digest` AND the request supplied `params.identifier_value_digests`; MUST be absent or empty otherwise. Each entry corresponds to one digest from the request. Capped at 64 to match the request-side `params.identifier_value_digests` cap. Lets storyboards verify `identifier_paths` echo in digest mode without ever transmitting plaintext identifiers to the controller. SHA-256 is a privacy mechanism here, not a trust mechanism — controllers self-report `found` and a determined façade can return any boolean; consumers MUST NOT treat digest-mode passing as cryptographically more trustworthy than raw mode. Tokenization is normative: for `application/json` and `*+json` content types, controllers MUST scan exactly the JSON string-typed leaf values of the post-redaction canonicalized body — no substring matching, no word splitting, no case folding, no Unicode normalization. A token matches when its SHA-256 hash equals one of the requested digests byte-for-byte. For non-JSON content types (form-urlencoded, multipart, plain text), `identifier_match_proofs` MUST be empty and runner-side `identifier_paths` assertions targeting those calls grade `not_applicable` — token boundaries are not portably defined across non-JSON shapes.', max_length=64), OmittedNotNull] = None
     timestamp: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp the adopter recorded the outbound call. MUST reflect the adopter's wall clock at the moment the outbound request was sent (not log-flush time), and MUST be monotonically non-decreasing across recorded_calls of a single response. Used by runners to scope assertions to a specific storyboard step's window — see runner-output-contract.yaml > validation_result for the timestamp boundary semantics.")]
-    status_code: Annotated[UpstreamTrafficSuccessRecordedCallsItemStatusCode | None, Field(description='HTTP status code returned by the upstream. Optional — adopters MAY omit when the call was instrumented before the response arrived.')] = None
+    status_code: Annotated[UpstreamTrafficSuccessRecordedCallsItemStatusCode | None, Field(description='HTTP status code returned by the upstream. Optional — adopters MAY omit when the call was instrumented before the response arrived.'), OmittedNotNull] = None
 
 
 class RawAttestation(RecordedCallsItem):
@@ -303,10 +303,10 @@ class UpstreamTrafficSuccess(ComplyTestControllerResponse):
     success: Literal[True]
     recorded_calls: Annotated[list[RecordedCallsItem], Field(description="Outbound HTTP calls caused by the requesting principal in the requested window, ordered by `timestamp` ascending. Cross-caller calls MUST NOT appear here. Each item declares its `attestation_mode`: `raw` items carry the full `payload`; `digest` items carry `payload_digest_sha256` + `payload_length` + optional `identifier_match_proofs[]` instead, for adopters who can't return raw payloads under their privacy/data-residency policy.")]
     total_count: Annotated[NonNegativeInt, Field(description='Total calls in the requested window before any pagination — `recorded_calls.length` may be smaller when `params.limit` truncated the response.')]
-    truncated: Annotated[bool | None, Field(description='True when `total_count > recorded_calls.length`. Runners MAY raise the `limit` and re-query, but storyboards SHOULD declare assertions that fit within the default 100-call window — a truncated response is a signal that the storyboard step is causing more upstream activity than expected.')] = None
+    truncated: Annotated[bool | None, Field(description='True when `total_count > recorded_calls.length`. Runners MAY raise the `limit` and re-query, but storyboards SHOULD declare assertions that fit within the default 100-call window — a truncated response is a signal that the storyboard step is causing more upstream activity than expected.'), OmittedNotNull] = None
     since_timestamp: Annotated[AwareDatetime, Field(description="Echo of the `since_timestamp` the runner requested (or the session-start timestamp the adopter substituted when the runner omitted it). Informational — the runner SHOULD use its own clock-bracket of when it issued the AdCP step request, not this echo, when attributing recorded_calls to a specific step. The controller is part of the adopter's claimed conformance; the echo is not adversarially trustworthy.")]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ControllerErrorError(StrEnum):
@@ -336,10 +336,10 @@ class ControllerError(ComplyTestControllerResponse):
     )
     success: Literal[False]
     error: Annotated[ControllerErrorError, Field(description='Structured error code. `JCS_NON_FINITE_NUMBER` is reserved for digest-mode upstream_traffic responses that cannot be RFC 8785/JCS-canonicalized because the parsed JSON-like value tree contains a non-finite numeric value (`NaN`, `+Infinity`, or `-Infinity`); controllers MUST NOT coerce those values during digest computation, and runners grade that validation `not_applicable`, not failed.')]
-    error_detail: Annotated[str | None, Field(description='Human-readable explanation of the failure')] = None
+    error_detail: Annotated[str | None, Field(description='Human-readable explanation of the failure'), OmittedNotNull] = None
     current_state: Annotated[str | None, Field(description='Current state of the entity, or null if not found')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 ComplyTestControllerResponse._branch_models = (ListScenariosSuccess, StateTransitionSuccess, SimulationSuccess, ForcedDirectiveSuccess, SeedSuccess, ProvenanceAuditObservationsSuccess, UpstreamTrafficSuccess, ControllerError,)

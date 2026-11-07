@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -57,7 +57,7 @@ class Calendar(AdCPBaseModel):
         NegatedConditional((Match('timezone_basis', True, ('configured_timezone',)),), require=(), forbid=('timezone',)),
     )
     timezone_basis: ReportCalendarTimezoneBasis
-    timezone: StrMinLen1MaxLen255 | None = None
+    timezone: Annotated[StrMinLen1MaxLen255 | None, OmittedNotNull] = None
 
 
 class Aggregation(StrEnum):
@@ -86,7 +86,7 @@ class MetricsItem(AdCPBaseModel):
     name: StrMinLen1MaxLen128
     source_expression: StrMinLen1MaxLen2048
     aggregation: Aggregation
-    unit: StrMinLen1MaxLen64 | None = None
+    unit: Annotated[StrMinLen1MaxLen64 | None, OmittedNotNull] = None
 
 
 class RestatementPolicy(AdCPBaseModel):
@@ -96,7 +96,7 @@ class RestatementPolicy(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/restatement_policy')
     source_requery_duration: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
     emit_only_on_content_change: Literal[True]
-    official_correction_mode: Annotated[Literal['adjustments_only'] | None, Field(description='Once an official revision is published it is immutable and cannot be superseded. Later source corrections are separate reporting-adjustment records applied to a later accounting period.')] = None
+    official_correction_mode: Annotated[Literal['adjustments_only'] | None, Field(description='Once an official revision is published it is immutable and cannot be superseded. Later source corrections are separate reporting-adjustment records applied to a later accounting period.'), OmittedNotNull] = None
 
 
 class FinalityPoliciesItemSourceFinal(AdCPBaseModel):

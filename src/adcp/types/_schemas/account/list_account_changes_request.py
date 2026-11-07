@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import MemberAlias, SchemaRef
+from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1Max100, ListAccountChangesRequestResourceTypesItem, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
@@ -38,15 +38,15 @@ class ListAccountChangesRequest(AdCPVersionEnvelope, AdcpRequest):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('resource_types'),
     )
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
     account: Annotated[AccountReference, Field(description='Account whose change feed to read. The resolved account and returned cursor are bound to the authenticated principal.')]
-    cursor: Annotated[StrMinLen1MaxLen4096 | None, Field(description='Opaque checkpoint returned by a prior call using the same authenticated principal, authorization scope epoch, account, and normalized filters. Returns changes strictly after the scanned high-water represented by this value. Sellers MUST reject reuse under a different principal, account, or filter set with INVALID_REQUEST at field cursor; an authorization-scope epoch change returns CURSOR_EXPIRED and requires snapshot rebootstrap.')] = None
-    starting_position: Annotated[StartingPosition | None, Field(description='Initial position when cursor is absent. Mutually exclusive with cursor; sellers enforce this semantic rule at runtime so the emitted MCP input schema can remain a plain root object. earliest intentionally begins at the oldest retained change. latest returns a checkpoint at the current seller-ingestion high-water and is used before a race-free snapshot bootstrap.', json_schema_extra={'default': 'earliest'})] = Field(default_factory=lambda: TypeAdapter(StartingPosition).validate_python('earliest'))
-    resource_types: Annotated[list[ListAccountChangesRequestResourceTypesItem] | None, Field(description='Optional exact resource-type filter. The cursor is bound to the normalized filter. Unknown resource types are allowed for forward compatibility.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=1)] = None
-    max_results: Annotated[IntMin1Max100 | None, Field(description='Maximum changes to return. Sellers still scan through nonmatching records and advance the returned cursor.')] = 50
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    cursor: Annotated[StrMinLen1MaxLen4096 | None, Field(description='Opaque checkpoint returned by a prior call using the same authenticated principal, authorization scope epoch, account, and normalized filters. Returns changes strictly after the scanned high-water represented by this value. Sellers MUST reject reuse under a different principal, account, or filter set with INVALID_REQUEST at field cursor; an authorization-scope epoch change returns CURSOR_EXPIRED and requires snapshot rebootstrap.'), OmittedNotNull] = None
+    starting_position: Annotated[StartingPosition | None, Field(description='Initial position when cursor is absent. Mutually exclusive with cursor; sellers enforce this semantic rule at runtime so the emitted MCP input schema can remain a plain root object. earliest intentionally begins at the oldest retained change. latest returns a checkpoint at the current seller-ingestion high-water and is used before a race-free snapshot bootstrap.', json_schema_extra={'default': 'earliest'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(StartingPosition).validate_python('earliest'))
+    resource_types: Annotated[list[ListAccountChangesRequestResourceTypesItem] | None, Field(description='Optional exact resource-type filter. The cursor is bound to the normalized filter. Unknown resource types are allowed for forward compatibility.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=1), OmittedNotNull] = None
+    max_results: Annotated[IntMin1Max100 | None, Field(description='Maximum changes to return. Sellers still scan through nonmatching records and advance the returned cursor.'), OmittedNotNull] = 50
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListAccountChangesRequest"]

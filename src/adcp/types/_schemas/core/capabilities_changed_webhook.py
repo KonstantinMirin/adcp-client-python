@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -60,8 +60,8 @@ class CapabilitiesChangedWebhook(AdCPBaseModel):
     changed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller recorded the material capability change. SHOULD match or precede `adcp.capability_changes.last_modified` on the next `get_adcp_capabilities` response.')]
     reason: Annotated[Reason, Field(description='Coarse reason for the invalidation. This is advisory routing/debug metadata; receivers MUST re-read `get_adcp_capabilities` rather than relying on the reason to infer the new capability surface.')]
     capabilities_version: Annotated[StrMinLen1MaxLen255, Field(description='Required opaque revision token for the capability document after the change. MUST equal `adcp.capability_changes.capabilities_version` on the authoritative `get_adcp_capabilities` response available before this webhook is sent. Receivers MUST treat the token as opaque and compare it only for equality.')]
-    changed_paths: Annotated[list[CapabilitiesChangedWebhookChangedPathsItem] | None, Field(description='Optional advisory JSON Pointer-style paths that identify the top-level or nested capability subtrees that changed (for example `/account/sandbox` or `/supported_protocols`). Receivers MAY use this for logging or selective downstream invalidation, but MUST still treat the full `get_adcp_capabilities` response as the authoritative replacement snapshot.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    changed_paths: Annotated[list[CapabilitiesChangedWebhookChangedPathsItem] | None, Field(description='Optional advisory JSON Pointer-style paths that identify the top-level or nested capability subtrees that changed (for example `/account/sandbox` or `/supported_protocols`). Receivers MAY use this for logging or selective downstream invalidation, but MUST still treat the full `get_adcp_capabilities` response as the authoritative replacement snapshot.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CapabilitiesChangedWebhook"]

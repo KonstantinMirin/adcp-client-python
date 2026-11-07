@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1, HttpUrl
 
 from ..core.ext import ExtensionObject
@@ -65,11 +65,11 @@ class Details(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/audit-observation.json', pointer='#/properties/details')
     agent_url: Annotated[HttpUrl, Field(description='Governance agent URL that produced the observation.')]
-    feature_id: Annotated[str | None, Field(description='Feature or policy check that produced the observation.')] = None
+    feature_id: Annotated[str | None, Field(description='Feature or policy check that produced the observation.'), OmittedNotNull] = None
     claimed_value: Annotated[ClaimedValue, Field(description='Compact object of claimed provenance values that triggered the observation.')]
     observed_value: Annotated[bool | float | str | None, Field(description='Verifier observation relevant to the claim, when applicable.')] = None
-    confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for the observation, when applicable.')] = None
-    substituted_for: Annotated[HttpUrl | None, Field(description='Buyer-nominated verifier URL when the seller or orchestrator used a different on-list governance agent.')] = None
+    confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for the observation, when applicable.'), OmittedNotNull] = None
+    substituted_for: Annotated[HttpUrl | None, Field(description='Buyer-nominated verifier URL when the seller or orchestrator used a different on-list governance agent.'), OmittedNotNull] = None
 
 
 class CreativeAuditObservation(AdCPBaseModel):
@@ -86,7 +86,7 @@ class CreativeAuditObservation(AdCPBaseModel):
     field: Annotated[str, Field(description='Resolved creative manifest path for the risky claim side of the observation, for example `creative_manifest.provenance.disclosure.required`. Some observations are triggered by a combination of fields; `field` anchors the primary claim, not necessarily every field in the trigger condition.')]
     message: Annotated[str, Field(description='Human-readable summary suitable for an audit queue. Do not include PII, cross-tenant data, or vendor-only report details.')]
     details: Annotated[Details, Field(description='Audit-safe structured details. Mirrors the safe allowlist keys used for `PROVENANCE_CLAIM_CONTRADICTED`; value shapes remain observation-specific. Top-level `ext` remains the standard protocol extension point, but details do not allow arbitrary verifier response fields.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CreativeAuditObservation"]

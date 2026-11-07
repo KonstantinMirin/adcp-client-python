@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AcceptancePolicyProfileRegionAliases,
@@ -65,18 +65,18 @@ class AcceptancePolicyRule(AdCPBaseModel):
     )
     rule_id: StrMediaBuyChangeTermID
     subject_category: Annotated[AccountAuthorizationAllowedTasksItem, Field(description='Registry policy-category-definition category_id. Named subject_category to avoid collision with PolicyEntry.category, whose values are regulation and standard.')]
-    subject_facets: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(description='Facet IDs defined by the selected policy category. Omission means the rule applies to every facet in the category.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    advertiser_roles: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(description='Registry-extensible roles such as political_actor, election_authority, government_entity, news_publisher, or commercial_advertiser.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    jurisdictions: Annotated[list[CountryCode] | None, Field(description='Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    jurisdiction_groups: Annotated[list[AcceptancePolicyProfileRegionAliases] | None, Field(description="Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    subject_facets: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(description='Facet IDs defined by the selected policy category. Omission means the rule applies to every facet in the category.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    advertiser_roles: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(description='Registry-extensible roles such as political_actor, election_authority, government_entity, news_publisher, or commercial_advertiser.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    jurisdictions: Annotated[list[CountryCode] | None, Field(description='Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    jurisdiction_groups: Annotated[list[AcceptancePolicyProfileRegionAliases] | None, Field(description="Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     applies_to: Annotated[list[AppliesToItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     disposition: Disposition
-    requirements: Annotated[list[AcceptancePolicyRequirement] | None, Field(min_length=1)] = None
-    policy_ids: Annotated[list[StrMinLen1] | None, Field(description='Registry policies that define the exact obligations behind this coarse rule.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    description: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Display-only explanation. Matchers MUST NOT interpret this text as executable instructions or use it to override typed fields.')] = None
-    effective_at: AwareDatetime | None = None
-    expires_at: AwareDatetime | None = None
-    ext: ExtensionObject | None = None
+    requirements: Annotated[list[AcceptancePolicyRequirement] | None, Field(min_length=1), OmittedNotNull] = None
+    policy_ids: Annotated[list[StrMinLen1] | None, Field(description='Registry policies that define the exact obligations behind this coarse rule.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    description: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Display-only explanation. Matchers MUST NOT interpret this text as executable instructions or use it to override typed fields.'), OmittedNotNull] = None
+    effective_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AcceptancePolicyRule"]

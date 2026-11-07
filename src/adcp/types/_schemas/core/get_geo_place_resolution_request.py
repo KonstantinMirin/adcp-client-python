@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
 from adcp.types.constraints import GeoForecastDimensionCode, IntMin1Max100, StrMinLen1
 
@@ -26,15 +26,15 @@ class GetGeographicPlaceResolutionRequest(AdCPBaseModel):
         ForbiddenGroups((('q', 'value'),)),
         RequiredGroups((('q',), ('value',)), 'anyOf'),
     )
-    q: Annotated[StrMinLen1 | None, Field(description='Unresolved place name or alias supplied by the user.')] = None
-    value: Annotated[StrMinLen1 | None, Field(description='Existing identifier to look up in the requested/current catalog version for lifecycle refresh or replacement discovery. Mutually exclusive with q.')] = None
+    q: Annotated[StrMinLen1 | None, Field(description='Unresolved place name or alias supplied by the user.'), OmittedNotNull] = None
+    value: Annotated[StrMinLen1 | None, Field(description='Existing identifier to look up in the requested/current catalog version for lifecycle refresh or replacement discovery. Mutually exclusive with q.'), OmittedNotNull] = None
     country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code used to disambiguate the query.')]
-    subdivision: Annotated[GeoForecastDimensionCode | None, Field(description='Optional ISO 3166-2 subdivision constraint.')] = None
-    place_type: GeographicPlaceType | None = None
-    system_version: Annotated[StrMinLen1 | None, Field(description='Optional exact supported catalog version to search.')] = None
-    locale: Annotated[LanguageTag | None, Field(description='Optional BCP 47 language tag for returned labels.')] = None
-    cursor: StrMinLen1 | None = None
-    limit: IntMin1Max100 | None = 20
+    subdivision: Annotated[GeoForecastDimensionCode | None, Field(description='Optional ISO 3166-2 subdivision constraint.'), OmittedNotNull] = None
+    place_type: Annotated[GeographicPlaceType | None, OmittedNotNull] = None
+    system_version: Annotated[StrMinLen1 | None, Field(description='Optional exact supported catalog version to search.'), OmittedNotNull] = None
+    locale: Annotated[LanguageTag | None, Field(description='Optional BCP 47 language tag for returned labels.'), OmittedNotNull] = None
+    cursor: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    limit: Annotated[IntMin1Max100 | None, OmittedNotNull] = 20
 
 
 __all__ = ["GetGeographicPlaceResolutionRequest"]

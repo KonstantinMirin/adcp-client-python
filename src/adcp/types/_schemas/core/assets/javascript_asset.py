@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ...enums.javascript_module_type import JavaScriptModuleType
 from ..provenance import Provenance
@@ -22,9 +22,9 @@ class JavaScriptAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/javascript-asset.json', pointer='#')
     asset_type: Annotated[Literal['javascript'], Field(description='Discriminator identifying this as a JavaScript asset. See /schemas/creative/asset-types for the registry.')]
     content: Annotated[str, Field(description='JavaScript content')]
-    module_type: Annotated[JavaScriptModuleType | None, Field(description='JavaScript module type')] = None
-    accessibility: Annotated[Accessibility | None, Field(description='Self-declared accessibility properties for this opaque creative')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    module_type: Annotated[JavaScriptModuleType | None, Field(description='JavaScript module type'), OmittedNotNull] = None
+    accessibility: Annotated[Accessibility | None, Field(description='Self-declared accessibility properties for this opaque creative'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["JavaScriptAsset"]

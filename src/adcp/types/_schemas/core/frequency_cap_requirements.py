@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.frequency_cap_control_mode import FrequencyCapControlMode
@@ -29,11 +29,11 @@ class FrequencyCapRequirements(AdCPBaseModel):
         UniqueItems('supported_window_units'),
         UniqueItems('supported_suppression_units'),
     )
-    mutable_fields: Annotated[list[FrequencyCapMutableField] | None, Field(description='Require each listed logical field to be mutable after creation. Matches a product whose mutable_fields contains every listed value, or a product that omits mutable_fields, or legacy frequency_cap: true. A product declaring mutable_fields: [] is create-only and never matches a non-empty list.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    supported_control_modes: Annotated[list[FrequencyCapControlMode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    supported_per_units: Annotated[list[ReachUnit] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    supported_window_units: Annotated[list[FrequencyCapDurationUnit] | None, Field(description='Require each listed unit to be a supported max_impressions.window unit after seller-wide inheritance.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    supported_suppression_units: Annotated[list[FrequencyCapDurationUnit] | None, Field(description='Require each listed unit to be a supported suppress unit after seller-wide inheritance.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    mutable_fields: Annotated[list[FrequencyCapMutableField] | None, Field(description='Require each listed logical field to be mutable after creation. Matches a product whose mutable_fields contains every listed value, or a product that omits mutable_fields, or legacy frequency_cap: true. A product declaring mutable_fields: [] is create-only and never matches a non-empty list.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    supported_control_modes: Annotated[list[FrequencyCapControlMode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    supported_per_units: Annotated[list[ReachUnit] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    supported_window_units: Annotated[list[FrequencyCapDurationUnit] | None, Field(description='Require each listed unit to be a supported max_impressions.window unit after seller-wide inheritance.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    supported_suppression_units: Annotated[list[FrequencyCapDurationUnit] | None, Field(description='Require each listed unit to be a supported suppress unit after seller-wide inheritance.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["FrequencyCapRequirements"]

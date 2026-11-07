@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -59,7 +59,7 @@ class Setup(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-status-changed-webhook.json', pointer='#/properties/setup')
     message: Annotated[str, Field(description='Human-readable setup message safe to fan out to every active account notification subscriber.')]
-    expires_at: Annotated[AwareDatetime | None, Field(description='When the setup action or hint expires, if known.')] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='When the setup action or hint expires, if known.'), OmittedNotNull] = None
 
 
 class AccountStatusChangedWebhook(AdCPBaseModel):
@@ -80,9 +80,9 @@ class AccountStatusChangedWebhook(AdCPBaseModel):
     status: Annotated[AccountStatus, Field(description='Account status after this transition. Receivers SHOULD treat this as advisory and re-read list_accounts for the authoritative account snapshot.')]
     observed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller recorded the account status transition. Used in the notification_id stability key; this is seller wall time for the transition, not webhook fire time.')]
     reason_code: Annotated[ReasonCode, Field(description='Machine-readable reason for the transition. This is advisory routing/debug metadata; receivers MUST re-read list_accounts rather than relying on the reason code as the source of truth.')]
-    reason_detail: Annotated[StrMaxLen500 | None, Field(description='Optional short human-readable detail. Treat as untrusted text. Sellers MUST NOT include secrets, setup tokens, internal stack traces, or regulated financial details.')] = None
-    setup: Annotated[Setup | None, Field(description='Reduced setup hint when the new status requires human action. This block intentionally omits setup.url; receivers fetch the current setup URL from list_accounts if the caller is authorized to see it.')] = None
-    ext: ExtensionObject | None = None
+    reason_detail: Annotated[StrMaxLen500 | None, Field(description='Optional short human-readable detail. Treat as untrusted text. Sellers MUST NOT include secrets, setup tokens, internal stack traces, or regulated financial details.'), OmittedNotNull] = None
+    setup: Annotated[Setup | None, Field(description='Reduced setup hint when the new status requires human action. This block intentionally omits setup.url; receivers fetch the current setup URL from list_accounts if the caller is authorized to see it.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AccountStatusChangedWebhook"]

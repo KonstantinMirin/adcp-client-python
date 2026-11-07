@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import MemberAlias, SchemaRef
+from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -35,9 +35,9 @@ class GetAdCPCapabilitiesRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-request.json', pointer='#')
-    protocols: Annotated[list[ProtocolsItem] | None, Field(description='Specific protocols to query capabilities for. If omitted, returns capabilities for all supported protocols.', min_length=1)] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    protocols: Annotated[list[ProtocolsItem] | None, Field(description='Specific protocols to query capabilities for. If omitted, returns capabilities for all supported protocols.', min_length=1), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetAdCPCapabilitiesRequest"]

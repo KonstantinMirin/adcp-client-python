@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from .placement_ref import PlacementReference
 
@@ -20,7 +20,7 @@ class PlacementForecastDimension(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-dimension-placement.json', pointer='#')
     kind: Annotated[Literal['placement'], Field(description='Dimension family discriminator.')]
     placement_ref: Annotated[PlacementReference, Field(description="Structured placement reference for this forecast row. References an entry from the product's placements array.")]
-    placement_name: Annotated[str | None, Field(description='Human-readable placement name, useful when the buyer has not resolved the placement catalog.')] = None
+    placement_name: Annotated[str | None, Field(description='Human-readable placement name, useful when the buyer has not resolved the placement catalog.'), OmittedNotNull] = None
 
 
 __all__ = ["PlacementForecastDimension"]

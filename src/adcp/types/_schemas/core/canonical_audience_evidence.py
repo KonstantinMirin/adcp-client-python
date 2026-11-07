@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
@@ -48,15 +48,15 @@ class CanonicalAudienceEvidence(AdCPBaseModel):
     evidence_type: EvidenceType
     methodology: AudienceEvidenceMethodology
     subject_type: AudienceSubjectType
-    resolution_method: AudienceResolutionMethod | None = None
+    resolution_method: Annotated[AudienceResolutionMethod | None, OmittedNotNull] = None
     provider: BrandKey
     measurement_window: DateRange
-    sample_size: IntMin1 | None = None
-    confidence: FloatMin0Max1 | None = None
+    sample_size: Annotated[IntMin1 | None, OmittedNotNull] = None
+    confidence: Annotated[FloatMin0Max1 | None, OmittedNotNull] = None
     last_updated: AwareDatetime
-    methodology_url: HTTPSURL | None = None
-    attestation_digests: Annotated[list[ZipAssetDigest] | None, Field(description='Portable-attestation reference digests available through the evidence provider; credential bodies are not inlined into product discovery.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    methodology_url: Annotated[HTTPSURL | None, OmittedNotNull] = None
+    attestation_digests: Annotated[list[ZipAssetDigest] | None, Field(description='Portable-attestation reference digests available through the evidence provider; credential bodies are not inlined into product discovery.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CanonicalAudienceEvidence"]

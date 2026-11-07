@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1Max200
 from adcp.types.envelopes import AdcpRequest
@@ -29,8 +29,8 @@ class Sort(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-request.json', pointer='#/properties/sort')
-    field: Annotated[CreativeSortField | None, Field(description='Field to sort by', json_schema_extra={'default': 'created_date'})] = Field(default_factory=lambda: TypeAdapter(CreativeSortField).validate_python('created_date'))
-    direction: Annotated[SortDirection | None, Field(description='Sort direction', json_schema_extra={'default': 'desc'})] = Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'))
+    field: Annotated[CreativeSortField | None, Field(description='Field to sort by', json_schema_extra={'default': 'created_date'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(CreativeSortField).validate_python('created_date'))
+    direction: Annotated[SortDirection | None, Field(description='Sort direction', json_schema_extra={'default': 'desc'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'))
 
 
 class AssignmentProjection(StrEnum):
@@ -100,23 +100,23 @@ class ListCreativesRequest(AdCPVersionEnvelope, AdcpRequest):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='creative/list-creatives-request.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'assignment_projection': {'const': 'matching'}}, 'required': ['assignment_projection']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    filters: CreativeFilters | None = None
-    sort: Annotated[Sort | None, Field(description='Sorting parameters')] = None
-    pagination: PaginationRequest | None = None
-    include_assignments: Annotated[bool | None, Field(description='Include package assignment information in response')] = True
-    assignment_projection: Annotated[AssignmentProjection | None, Field(description='Controls nested assigned_packages projection when assignments are included. all returns up to assignment_limit active assignments per creative. matching returns only assignments matching filters.indicator_types and requires that filter. Use matching for compact indicator discovery; get_media_buys remains the complete authoritative repair path when assignments_truncated is true.', json_schema_extra={'default': 'all'})] = Field(default_factory=lambda: TypeAdapter(AssignmentProjection).validate_python('all'))
-    assignment_limit: Annotated[IntMin1Max200 | None, Field(description='Maximum assigned_packages rows returned per creative. Sellers MUST set assignments.assignments_truncated when additional qualifying rows exist.')] = 50
-    include_snapshot: Annotated[bool | None, Field(description='Include a lightweight delivery snapshot per creative (lifetime impressions and last-served date). For detailed performance analytics, use get_creative_delivery.')] = False
-    include_items: Annotated[bool | None, Field(description='Include items for multi-asset formats like carousels and native ads')] = False
-    include_variables: Annotated[bool | None, Field(description='Include dynamic content variable definitions (DCO slots) for each creative')] = False
-    include_pricing: Annotated[bool | None, Field(description='Include pricing_options on each creative. Requires account to be provided. When false or omitted, pricing is not computed.')] = False
-    include_purged: Annotated[bool | None, Field(description="Include soft-purged creative tombstones in the result set. When true, creatives destroyed via `creative.purged` with `purge_kind: soft` surface as tombstone records carrying `purged: true`, `purged_at`, and the purge reason — within the seller's webhook activity retention window (30 days from `purged_at`, MUST match `webhook-activity-record` retention). Hard-purged creatives MUST NOT appear regardless of this flag. When false or omitted, the result set excludes all purged creatives — same default as today.")] = False
-    include_webhook_activity: Annotated[bool | None, Field(description='Include recent webhook activity per creative. When true, each returned creative carries a `webhook_activity[]` array of the most recent fires scoped to that creative — `creative.status_changed` and `creative.purged` deliveries. Adoption of the `webhook_activity[]` pattern per `snapshot-and-log.mdx § Webhook activity log pattern`. Retention is 30 days from `completed_at` (MUST). Three-state presence applies: omitted = seller does not surface; `[]` = persists but no recent fires; non-empty = actual records.')] = False
-    webhook_activity_limit: Annotated[IntMin1Max200 | None, Field(description="Maximum number of `webhook_activity[]` records to return per creative. Only meaningful when `include_webhook_activity: true`. Sellers MUST respect the cap; structural enforcement is provided by the response schema's `maxItems: 200` on the array.")] = 50
-    account: Annotated[AccountReference | None, Field(description="Account reference for pricing and access. When provided with include_pricing, the agent returns pricing_options from this account's rate card on each creative.")] = None
-    fields: Annotated[list[FieldsItem] | None, Field(description="Specific fields to include in response (omit for all fields). The 'concept' value returns both concept_id and concept_name. `format_id` is a deprecated 3.x compatibility projection; new integrations request `format_kind` and `format_option_ref`. Selecting localization automatically includes creative_id, status, assets, the selected format identity, and localization_unavailable when applicable. Selecting rights_attestation_evaluations automatically includes rights so each seller-produced result can be reconciled with the exact retained constraint and reference.", min_length=1)] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    filters: Annotated[CreativeFilters | None, OmittedNotNull] = None
+    sort: Annotated[Sort | None, Field(description='Sorting parameters'), OmittedNotNull] = None
+    pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
+    include_assignments: Annotated[bool | None, Field(description='Include package assignment information in response'), OmittedNotNull] = True
+    assignment_projection: Annotated[AssignmentProjection | None, Field(description='Controls nested assigned_packages projection when assignments are included. all returns up to assignment_limit active assignments per creative. matching returns only assignments matching filters.indicator_types and requires that filter. Use matching for compact indicator discovery; get_media_buys remains the complete authoritative repair path when assignments_truncated is true.', json_schema_extra={'default': 'all'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AssignmentProjection).validate_python('all'))
+    assignment_limit: Annotated[IntMin1Max200 | None, Field(description='Maximum assigned_packages rows returned per creative. Sellers MUST set assignments.assignments_truncated when additional qualifying rows exist.'), OmittedNotNull] = 50
+    include_snapshot: Annotated[bool | None, Field(description='Include a lightweight delivery snapshot per creative (lifetime impressions and last-served date). For detailed performance analytics, use get_creative_delivery.'), OmittedNotNull] = False
+    include_items: Annotated[bool | None, Field(description='Include items for multi-asset formats like carousels and native ads'), OmittedNotNull] = False
+    include_variables: Annotated[bool | None, Field(description='Include dynamic content variable definitions (DCO slots) for each creative'), OmittedNotNull] = False
+    include_pricing: Annotated[bool | None, Field(description='Include pricing_options on each creative. Requires account to be provided. When false or omitted, pricing is not computed.'), OmittedNotNull] = False
+    include_purged: Annotated[bool | None, Field(description="Include soft-purged creative tombstones in the result set. When true, creatives destroyed via `creative.purged` with `purge_kind: soft` surface as tombstone records carrying `purged: true`, `purged_at`, and the purge reason — within the seller's webhook activity retention window (30 days from `purged_at`, MUST match `webhook-activity-record` retention). Hard-purged creatives MUST NOT appear regardless of this flag. When false or omitted, the result set excludes all purged creatives — same default as today."), OmittedNotNull] = False
+    include_webhook_activity: Annotated[bool | None, Field(description='Include recent webhook activity per creative. When true, each returned creative carries a `webhook_activity[]` array of the most recent fires scoped to that creative — `creative.status_changed` and `creative.purged` deliveries. Adoption of the `webhook_activity[]` pattern per `snapshot-and-log.mdx § Webhook activity log pattern`. Retention is 30 days from `completed_at` (MUST). Three-state presence applies: omitted = seller does not surface; `[]` = persists but no recent fires; non-empty = actual records.'), OmittedNotNull] = False
+    webhook_activity_limit: Annotated[IntMin1Max200 | None, Field(description="Maximum number of `webhook_activity[]` records to return per creative. Only meaningful when `include_webhook_activity: true`. Sellers MUST respect the cap; structural enforcement is provided by the response schema's `maxItems: 200` on the array."), OmittedNotNull] = 50
+    account: Annotated[AccountReference | None, Field(description="Account reference for pricing and access. When provided with include_pricing, the agent returns pricing_options from this account's rate card on each creative."), OmittedNotNull] = None
+    fields: Annotated[list[FieldsItem] | None, Field(description="Specific fields to include in response (omit for all fields). The 'concept' value returns both concept_id and concept_name. `format_id` is a deprecated 3.x compatibility projection; new integrations request `format_kind` and `format_option_ref`. Selecting localization automatically includes creative_id, status, assets, the selected format identity, and localization_unavailable when applicable. Selecting rights_attestation_evaluations automatically includes rights so each seller-produced result can be reconciled with the exact retained constraint and reference.", min_length=1), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListCreativesRequest"]

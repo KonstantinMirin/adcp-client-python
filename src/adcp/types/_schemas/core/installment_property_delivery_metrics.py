@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 
 from .delivery_metrics import DeliveryMetrics
 from .domain_name import DomainName
@@ -23,12 +23,12 @@ class InstallmentPropertyDeliveryMetrics(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/installment-property-delivery-metrics.json', pointer='#')
     installment_ref: InstallmentReference
-    installment_name: Annotated[str | None, Field(description='Current human-readable installment name. Convenience metadata only.')] = None
-    scheduled_at: Annotated[AwareDatetime | None, Field(description="Convenience echo of the installment's scheduled publication or air time.")] = None
+    installment_name: Annotated[str | None, Field(description='Current human-readable installment name. Convenience metadata only.'), OmittedNotNull] = None
+    scheduled_at: Annotated[AwareDatetime | None, Field(description="Convenience echo of the installment's scheduled publication or air time."), OmittedNotNull] = None
     publisher_domain: Annotated[DomainName, Field(description='Publisher or platform authority that namespaces the property identifier, including for an unregistered surface.')]
     identifier: Annotated[Identifier, Field(description='Operational identity of the property that delivered the installment.')]
-    property_ref: Annotated[PropertyReference | None, Field(description="Canonical publisher-scoped catalog identity when available. Its publisher_domain MUST equal the row's publisher_domain.")] = None
-    property_name: Annotated[str | None, Field(description='Current human-readable property name. Convenience metadata only.')] = None
+    property_ref: Annotated[PropertyReference | None, Field(description="Canonical publisher-scoped catalog identity when available. Its publisher_domain MUST equal the row's publisher_domain."), OmittedNotNull] = None
+    property_name: Annotated[str | None, Field(description='Current human-readable property name. Convenience metadata only.'), OmittedNotNull] = None
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 

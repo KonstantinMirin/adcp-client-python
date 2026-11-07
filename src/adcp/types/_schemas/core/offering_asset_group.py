@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..enums.asset_content_type import AssetContentType
 from .assets.audio_asset import AudioAsset
@@ -35,7 +35,7 @@ class OfferingAssetGroup(AdCPBaseModel):
     asset_group_id: Annotated[str, Field(description="Identifies the creative role this group fills. Values are defined by each canonical format declaration's offering_asset_constraints — not protocol constants. Discover creative-agent declarations via get_adcp_capabilities creative.supported_formats[] and sales-product declarations via Product.format_options[] (e.g., 'headlines', 'images', or 'videos').")]
     asset_type: Annotated[AssetContentType, Field(description='The content type of all items in this group.')]
     items: Annotated[list[TextAsset | ImageAsset | VideoAsset | AudioAsset | URLAsset | HTMLAsset | MarkdownAsset | VASTAsset | DAASTAsset | CSSAsset | JavaScriptAsset | ZipAsset | WebhookAsset], Field(description='The assets in this group. Each item carries an `asset_type` discriminator that selects the matching asset schema. Note: the group-level `asset_type` declares the expected type; individual items must also self-tag so validators can narrow errors. Intentionally excludes `brief-asset` and `catalog-asset` — those are campaign-input metadata types, not delivery-ready creative assets suitable for a pooled offering group. See core/assets/asset-union.json for the full asset-variant union.', min_length=1)]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["OfferingAssetGroup"]

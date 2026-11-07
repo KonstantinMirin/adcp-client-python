@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 
@@ -18,7 +18,7 @@ class ProductIdentity(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-identity.json', pointer='#')
     persistent_identifier: Annotated[bool, Field(description='Whether delivery on this product has a persistent per-entity identifier suitable for identifier-backed reach, frequency, and frequency-cap enforcement. false does not prohibit modeled individuals or households measurement.')]
-    reach_methodology: Annotated[StrMinLen1 | None, Field(description="Human-readable methodology for this product's custom reach unit. Required when the product reports reach or frequency with reach_unit custom, including frequency-only reporting.")] = None
+    reach_methodology: Annotated[StrMinLen1 | None, Field(description="Human-readable methodology for this product's custom reach unit. Required when the product reports reach or frequency with reach_unit custom, including frequency-only reporting."), OmittedNotNull] = None
 
 
 __all__ = ["ProductIdentity"]

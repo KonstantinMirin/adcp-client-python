@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
 
@@ -43,7 +43,7 @@ class AppliedPrincipalConfiguration(AdCPBaseModel):
     principal_kind: Annotated[PrincipalKind, Field(description="Seller-resolved party kind of the authenticated principal: a buyer-agent workload, or an operator-side identity such as a person at the operator. Resolved solely from the seller's authorization system, never from request content, so per-party policy such as billing gates can rely on it.")]
     configuration_version: Annotated[StrMinLen1MaxLen255, Field(description='Opaque version of the persisted configuration. Compare only for equality and return it as expected_configuration_version on a later guarded replacement.')]
     configuration: PrincipalState
-    warnings: Annotated[list[Error] | None, Field(max_length=16)] = None
+    warnings: Annotated[list[Error] | None, Field(max_length=16), OmittedNotNull] = None
 
 
 class ValidatedPrincipalDryRunAction(StrEnum):
@@ -63,7 +63,7 @@ class ValidatedPrincipalDryRun(AdCPBaseModel):
     kind: Literal['validated']
     action: ValidatedPrincipalDryRunAction
     dry_run: Literal[True]
-    warnings: Annotated[list[Error] | None, Field(max_length=16)] = None
+    warnings: Annotated[list[Error] | None, Field(max_length=16), OmittedNotNull] = None
 
 
 class FailedPrincipalSync(AdCPBaseModel):
@@ -87,8 +87,8 @@ class SyncPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
         Approximation(document='protocol/sync-principal-response.json', pointer='#', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'result': {'properties': {'kind': {'const': 'failed'}}, 'required': ['kind']}}, 'required': ['result']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     result: AppliedPrincipalConfiguration | ValidatedPrincipalDryRun | FailedPrincipalSync
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SyncPrincipalResponse"]

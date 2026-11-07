@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import CommissionRate, StrMinLen1, StrMinLen1MaxLen1000
 
@@ -36,18 +36,18 @@ class CanonicalPricingOption(AdCPBaseModel):
     pricing_option_id: StrMinLen1
     pricing_model: PricingModel
     currency: CurrencyCode
-    fixed_price: NonNegativeFloat | None = None
-    floor_price: NonNegativeFloat | None = None
-    price_guidance: PriceGuidance | None = None
-    min_spend_per_package: NonNegativeFloat | None = None
-    price_breakdown: PriceBreakdown | None = None
-    eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    parameters: dict[str, Any] | None = None
-    event_type: EventType | None = None
-    custom_event_name: StrMinLen1 | None = None
-    event_source_id: StrMinLen1 | None = None
-    commission_rate: CommissionRate | None = None
-    commission_basis_description: StrMinLen1MaxLen1000 | None = None
+    fixed_price: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    floor_price: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    price_guidance: Annotated[PriceGuidance | None, OmittedNotNull] = None
+    min_spend_per_package: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    price_breakdown: Annotated[PriceBreakdown | None, OmittedNotNull] = None
+    eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    parameters: Annotated[dict[str, Any] | None, OmittedNotNull] = None
+    event_type: Annotated[EventType | None, OmittedNotNull] = None
+    custom_event_name: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    event_source_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    commission_rate: Annotated[CommissionRate | None, OmittedNotNull] = None
+    commission_basis_description: Annotated[StrMinLen1MaxLen1000 | None, OmittedNotNull] = None
 
 
 __all__ = ["CanonicalPricingOption"]

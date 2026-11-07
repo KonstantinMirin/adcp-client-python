@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, IntMin1
 
 from ...enums.audio_channel_layout import AudioChannelLayout
@@ -23,18 +23,18 @@ class AudioAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/audio-asset.json', pointer='#')
     asset_type: Annotated[Literal['audio'], Field(description='Discriminator identifying this as an audio asset. See /schemas/creative/asset-types for the registry.')]
     url: Annotated[HttpUrl, Field(description='URL to the audio asset')]
-    duration_ms: Annotated[NonNegativeInt | None, Field(description='Audio duration in milliseconds')] = None
-    file_size_bytes: Annotated[IntMin1 | None, Field(description='File size in bytes')] = None
-    container_format: Annotated[str | None, Field(description='Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)')] = None
-    codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, vorbis, opus, flac, ac3, eac3, etc.)')] = None
-    sampling_rate_hz: Annotated[int | None, Field(description='Sampling rate in Hz (e.g., 44100, 48000, 96000)')] = None
-    channels: Annotated[AudioChannelLayout | None, Field(description='Channel configuration')] = None
-    bit_depth: Annotated[AudioBitDepth | None, Field(description='Bit depth')] = None
-    bitrate_kbps: Annotated[IntMin1 | None, Field(description='Bitrate in kilobits per second')] = None
-    loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS')] = None
-    true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = None
-    transcript_url: Annotated[HttpUrl | None, Field(description='URL to text transcript of the audio content')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    duration_ms: Annotated[NonNegativeInt | None, Field(description='Audio duration in milliseconds'), OmittedNotNull] = None
+    file_size_bytes: Annotated[IntMin1 | None, Field(description='File size in bytes'), OmittedNotNull] = None
+    container_format: Annotated[str | None, Field(description='Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)'), OmittedNotNull] = None
+    codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, vorbis, opus, flac, ac3, eac3, etc.)'), OmittedNotNull] = None
+    sampling_rate_hz: Annotated[int | None, Field(description='Sampling rate in Hz (e.g., 44100, 48000, 96000)'), OmittedNotNull] = None
+    channels: Annotated[AudioChannelLayout | None, Field(description='Channel configuration'), OmittedNotNull] = None
+    bit_depth: Annotated[AudioBitDepth | None, Field(description='Bit depth'), OmittedNotNull] = None
+    bitrate_kbps: Annotated[IntMin1 | None, Field(description='Bitrate in kilobits per second'), OmittedNotNull] = None
+    loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS'), OmittedNotNull] = None
+    true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS'), OmittedNotNull] = None
+    transcript_url: Annotated[HttpUrl | None, Field(description='URL to text transcript of the audio content'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["AudioAsset"]

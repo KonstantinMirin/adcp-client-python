@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, NotValue, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen100, StrMinLen1
 
@@ -75,26 +75,26 @@ class ProductPurchase(AdCPBaseModel):
     )
     product_id: ProductId
     pricing_option_id: PricingOptionId
-    pricing: Annotated[CanonicalPricingOption | None, Field(description='Resolved selected pricing terms. Optional on buy_products input, where pricing_option_id plus the versioned feed identifies the offer; required inside accepted commercial_terms. Its pricing_option_id MUST match the sibling field.')] = None
-    format_option_refs: Annotated[FormatOptionRefs | None, Field(description='Canonical format options selected from the published product offer. Legacy named-format identifiers are not accepted.')] = None
-    catalog_ids: Annotated[CatalogIds | None, Field(description='Previously synchronized account catalog IDs promoted by this selection. Callers manage catalog bodies through sync_catalogs rather than inlining them here.', json_schema_extra={'uniqueItems': True})] = None
-    budget: Annotated[Budget | None, Field(description='Hard spend cap for this selection in the media-buy currency. In seller-optimized allocation it is an optional ceiling, not a reserved allocation, and requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')] = None
-    daily_budget_cap: Annotated[DailyBudgetCap | None, Field(description="Optional hard daily spend ceiling for this purchase. It is subordinate to the media-buy aggregate daily cap and is not a reserved daily allocation. Its day boundary is the media buy's budget_cap_timezone.")] = None
-    min_spend_target: Annotated[MinSpendTarget | None, Field(description='Soft lifetime spend target for seller-optimized allocation. Requires advertised media_buy.features.seller_optimized_min_spend_targets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')] = None
-    impressions: NonNegativeFloat | None = None
-    start_time: Annotated[StartTime | None, Field(description='Resolved package flight start. On direct-purchase input, omission inherits the MediaBuy start; accepted proposal snapshots carry the resolved timestamp.')] = None
-    end_time: Annotated[EndTime | None, Field(description='Resolved package flight end. On direct-purchase input, omission inherits the MediaBuy end; accepted proposal snapshots carry the resolved timestamp.')] = None
-    pacing: Annotated[Pacing | None, Field(description='Purchase pacing, subordinate to media-buy pacing. In seller-optimized allocation, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.')] = None
-    bidding: BiddingPolicy | None = None
-    targeting_overlay: Annotated[TargetingOverlay | None, Field(description="Resolved effective buyer-selected targeting, including compatible wholesale signal selections, applied within the product's published targeting contract. Cleared dimensions are omitted; null is invalid in an accepted snapshot.")] = None
-    optimization_goals: OptimizationGoals | None = None
-    audience_evidence_requirements: Annotated[ProductAudienceEvidenceRequirements | None, Field(description='Buyer evidence-admissibility policy carried into the accepted purchase snapshot.')] = None
-    audience_evidence_pins: Annotated[AudienceEvidencePins | None, Field(description='Exact immutable audience-evidence snapshots selected for package construction.')] = None
-    agency_estimate_number: Annotated[AgencyEstimateNumber | None, Field(description='Package-level agency estimate or authorization reference.')] = None
-    context: Annotated[ContextObject | None, Field(description='Opaque buyer package correlation preserved in the accepted snapshot and readback.')] = None
-    ext: ExtensionObject | None = None
-    measurement_terms: Annotated[CanonicalMeasurementTerms | None, Field(description='Published or negotiated billing-measurement and makegood terms for this purchase. Direct buyers may omit this to inherit the product default; accepted proposal snapshots preserve the resolved terms.')] = None
-    performance_standards: Annotated[PerformanceStandards | None, Field(description='Published or negotiated metric thresholds and measurement vendors. Direct buyers may omit this to inherit the product defaults; accepted proposal snapshots preserve every applicable standard.')] = None
+    pricing: Annotated[CanonicalPricingOption | None, Field(description='Resolved selected pricing terms. Optional on buy_products input, where pricing_option_id plus the versioned feed identifies the offer; required inside accepted commercial_terms. Its pricing_option_id MUST match the sibling field.'), OmittedNotNull] = None
+    format_option_refs: Annotated[FormatOptionRefs | None, Field(description='Canonical format options selected from the published product offer. Legacy named-format identifiers are not accepted.'), OmittedNotNull] = None
+    catalog_ids: Annotated[CatalogIds | None, Field(description='Previously synchronized account catalog IDs promoted by this selection. Callers manage catalog bodies through sync_catalogs rather than inlining them here.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    budget: Annotated[Budget | None, Field(description='Hard spend cap for this selection in the media-buy currency. In seller-optimized allocation it is an optional ceiling, not a reserved allocation, and requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.'), OmittedNotNull] = None
+    daily_budget_cap: Annotated[DailyBudgetCap | None, Field(description="Optional hard daily spend ceiling for this purchase. It is subordinate to the media-buy aggregate daily cap and is not a reserved daily allocation. Its day boundary is the media buy's budget_cap_timezone."), OmittedNotNull] = None
+    min_spend_target: Annotated[MinSpendTarget | None, Field(description='Soft lifetime spend target for seller-optimized allocation. Requires advertised media_buy.features.seller_optimized_min_spend_targets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.'), OmittedNotNull] = None
+    impressions: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    start_time: Annotated[StartTime | None, Field(description='Resolved package flight start. On direct-purchase input, omission inherits the MediaBuy start; accepted proposal snapshots carry the resolved timestamp.'), OmittedNotNull] = None
+    end_time: Annotated[EndTime | None, Field(description='Resolved package flight end. On direct-purchase input, omission inherits the MediaBuy end; accepted proposal snapshots carry the resolved timestamp.'), OmittedNotNull] = None
+    pacing: Annotated[Pacing | None, Field(description='Purchase pacing, subordinate to media-buy pacing. In seller-optimized allocation, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, OmittedNotNull] = None
+    targeting_overlay: Annotated[TargetingOverlay | None, Field(description="Resolved effective buyer-selected targeting, including compatible wholesale signal selections, applied within the product's published targeting contract. Cleared dimensions are omitted; null is invalid in an accepted snapshot."), OmittedNotNull] = None
+    optimization_goals: Annotated[OptimizationGoals | None, OmittedNotNull] = None
+    audience_evidence_requirements: Annotated[ProductAudienceEvidenceRequirements | None, Field(description='Buyer evidence-admissibility policy carried into the accepted purchase snapshot.'), OmittedNotNull] = None
+    audience_evidence_pins: Annotated[AudienceEvidencePins | None, Field(description='Exact immutable audience-evidence snapshots selected for package construction.'), OmittedNotNull] = None
+    agency_estimate_number: Annotated[AgencyEstimateNumber | None, Field(description='Package-level agency estimate or authorization reference.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, Field(description='Opaque buyer package correlation preserved in the accepted snapshot and readback.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+    measurement_terms: Annotated[CanonicalMeasurementTerms | None, Field(description='Published or negotiated billing-measurement and makegood terms for this purchase. Direct buyers may omit this to inherit the product default; accepted proposal snapshots preserve the resolved terms.'), OmittedNotNull] = None
+    performance_standards: Annotated[PerformanceStandards | None, Field(description='Published or negotiated metric thresholds and measurement vendors. Direct buyers may omit this to inherit the product defaults; accepted proposal snapshots preserve every applicable standard.'), OmittedNotNull] = None
 
 
 __all__ = ["AgencyEstimateNumber", "AudienceEvidencePins", "Budget", "CatalogIds", "DailyBudgetCap", "EndTime", "FormatOptionRefs", "MinSpendTarget", "OptimizationGoals", "PerformanceStandards", "PricingOptionId", "ProductId", "ProductPurchase", "StartTime"]

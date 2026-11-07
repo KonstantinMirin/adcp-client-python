@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
 from ..enums.adcp_protocol import AdCPProtocol
 from ..enums.sort_direction import SortDirection
@@ -27,19 +27,19 @@ class Filters(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-request.json', pointer='#/properties/filters')
-    protocol: Annotated[AdCPProtocol | None, Field(description='Filter by single AdCP protocol')] = None
-    protocols: Annotated[list[AdCPProtocol] | None, Field(description='Filter by multiple AdCP protocols', min_length=1)] = None
-    status: Annotated[TaskStatus | None, Field(description='Filter by single task status')] = None
-    statuses: Annotated[list[TaskStatus] | None, Field(description='Filter by multiple task statuses', min_length=1)] = None
-    task_type: Annotated[TaskType | None, Field(description='Filter by single task type')] = None
-    task_types: Annotated[list[TaskType] | None, Field(description='Filter by multiple task types', min_length=1)] = None
-    created_after: Annotated[AwareDatetime | None, Field(description='Filter tasks created after this date (ISO 8601)')] = None
-    created_before: Annotated[AwareDatetime | None, Field(description='Filter tasks created before this date (ISO 8601)')] = None
-    updated_after: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated after this date (ISO 8601)')] = None
-    updated_before: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated before this date (ISO 8601)')] = None
-    task_ids: Annotated[list[str] | None, Field(description='Filter by specific task IDs', max_length=100, min_length=1)] = None
-    context_contains: Annotated[str | None, Field(description='Filter tasks where context contains this text (searches media_buy_id, signal_id, etc.)')] = None
-    has_webhook: Annotated[bool | None, Field(description='Filter tasks that have webhook configuration when true')] = None
+    protocol: Annotated[AdCPProtocol | None, Field(description='Filter by single AdCP protocol'), OmittedNotNull] = None
+    protocols: Annotated[list[AdCPProtocol] | None, Field(description='Filter by multiple AdCP protocols', min_length=1), OmittedNotNull] = None
+    status: Annotated[TaskStatus | None, Field(description='Filter by single task status'), OmittedNotNull] = None
+    statuses: Annotated[list[TaskStatus] | None, Field(description='Filter by multiple task statuses', min_length=1), OmittedNotNull] = None
+    task_type: Annotated[TaskType | None, Field(description='Filter by single task type'), OmittedNotNull] = None
+    task_types: Annotated[list[TaskType] | None, Field(description='Filter by multiple task types', min_length=1), OmittedNotNull] = None
+    created_after: Annotated[AwareDatetime | None, Field(description='Filter tasks created after this date (ISO 8601)'), OmittedNotNull] = None
+    created_before: Annotated[AwareDatetime | None, Field(description='Filter tasks created before this date (ISO 8601)'), OmittedNotNull] = None
+    updated_after: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated after this date (ISO 8601)'), OmittedNotNull] = None
+    updated_before: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated before this date (ISO 8601)'), OmittedNotNull] = None
+    task_ids: Annotated[list[str] | None, Field(description='Filter by specific task IDs', max_length=100, min_length=1), OmittedNotNull] = None
+    context_contains: Annotated[str | None, Field(description='Filter tasks where context contains this text (searches media_buy_id, signal_id, etc.)'), OmittedNotNull] = None
+    has_webhook: Annotated[bool | None, Field(description='Filter tasks that have webhook configuration when true'), OmittedNotNull] = None
 
 
 class SortField(StrEnum):
@@ -66,8 +66,8 @@ class Sort(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-request.json', pointer='#/properties/sort')
-    field: Annotated[SortField | None, Field(description='Field to sort by', json_schema_extra={'default': 'created_at'})] = Field(default_factory=lambda: TypeAdapter(SortField).validate_python('created_at'))
-    direction: Annotated[SortDirection | None, Field(description='Sort direction', json_schema_extra={'default': 'desc'})] = Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'))
+    field: Annotated[SortField | None, Field(description='Field to sort by', json_schema_extra={'default': 'created_at'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(SortField).validate_python('created_at'))
+    direction: Annotated[SortDirection | None, Field(description='Sort direction', json_schema_extra={'default': 'desc'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'))
 
 
 class TasksListRequest(AdCPVersionEnvelope):
@@ -78,13 +78,13 @@ class TasksListRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-request.json', pointer='#')
-    account: Annotated[AccountReference | None, Field(description="Account scope for task reconciliation. Sellers MUST only return tasks created for the caller's authenticated account + principal pair. When omitted, the seller MAY use the credential-bound singleton account, but multi-account credentials SHOULD require an explicit account.")] = None
-    filters: Annotated[Filters | None, Field(description='Filter criteria for querying tasks')] = None
-    sort: Annotated[Sort | None, Field(description='Sorting parameters')] = None
-    pagination: PaginationRequest | None = None
-    include_history: Annotated[bool | None, Field(description='Include full conversation history for each task (may significantly increase response size)')] = False
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description="Account scope for task reconciliation. Sellers MUST only return tasks created for the caller's authenticated account + principal pair. When omitted, the seller MAY use the credential-bound singleton account, but multi-account credentials SHOULD require an explicit account."), OmittedNotNull] = None
+    filters: Annotated[Filters | None, Field(description='Filter criteria for querying tasks'), OmittedNotNull] = None
+    sort: Annotated[Sort | None, Field(description='Sorting parameters'), OmittedNotNull] = None
+    pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
+    include_history: Annotated[bool | None, Field(description='Include full conversation history for each task (may significantly increase response size)'), OmittedNotNull] = False
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["TasksListRequest"]

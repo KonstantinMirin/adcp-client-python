@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, RequiredGroups, Rule, UniqueItems
 
 from ..enums.outcome_target_cost_strength import OutcomeTargetCostStrength
@@ -65,10 +65,10 @@ class PolicyProfile(AdCPBaseModel):
         Approximation(document='core/bidding-policy-capability.json', pointer='#/definitions/policy_profile/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'modes': {'contains': {'const': 'cost_per'}}}, 'required': ['modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/bidding-policy-capability.json', pointer='#/definitions/policy_profile/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'modes': {'contains': {'const': 'roas'}}}, 'required': ['modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    modes: Annotated[list[ModesItem] | None, Field(description='Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    cost_per_strengths: Annotated[list[OutcomeTargetCostStrength] | None, Field(description='Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    roas_strengths: Annotated[list[RoasStrength] | None, Field(description='Supported standalone roas strengths in this profile. Required exactly when modes includes roas.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    supported_combinations: Annotated[list[MaxBidWithCostPer | MaxBidWithRoas] | None, Field(description='Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.', min_length=1)] = None
+    modes: Annotated[list[ModesItem] | None, Field(description='Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    cost_per_strengths: Annotated[list[OutcomeTargetCostStrength] | None, Field(description='Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    roas_strengths: Annotated[list[RoasStrength] | None, Field(description='Supported standalone roas strengths in this profile. Required exactly when modes includes roas.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    supported_combinations: Annotated[list[MaxBidWithCostPer | MaxBidWithRoas] | None, Field(description='Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.', min_length=1), OmittedNotNull] = None
 
 
 class ScopeCapability(AdCPBaseModel):
@@ -82,8 +82,8 @@ class ScopeCapability(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    fixed: Annotated[PolicyProfile | None, Field(description='Policies supported when budget allocation is fixed or omitted.')] = None
-    seller_optimized: Annotated[PolicyProfile | None, Field(description='Policies supported when budget_allocation.mode is seller_optimized.')] = None
+    fixed: Annotated[PolicyProfile | None, Field(description='Policies supported when budget allocation is fixed or omitted.'), OmittedNotNull] = None
+    seller_optimized: Annotated[PolicyProfile | None, Field(description='Policies supported when budget_allocation.mode is seller_optimized.'), OmittedNotNull] = None
 
 
 class BiddingPolicyCapability(AdCPBaseModel):
@@ -97,8 +97,8 @@ class BiddingPolicyCapability(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    media_buy: Annotated[ScopeCapability | None, Field(description='Policies accepted at media-buy scope and inherited by packages that omit a package override.')] = None
-    package: Annotated[ScopeCapability | None, Field(description='Policies accepted as package-authored policies, including explicit automatic overrides.')] = None
+    media_buy: Annotated[ScopeCapability | None, Field(description='Policies accepted at media-buy scope and inherited by packages that omit a package override.'), OmittedNotNull] = None
+    package: Annotated[ScopeCapability | None, Field(description='Policies accepted as package-authored policies, including explicit automatic overrides.'), OmittedNotNull] = None
 
 
 __all__ = ["BiddingPolicyCapability", "MaxBidWithCostPer", "MaxBidWithRoas", "PolicyProfile", "ScopeCapability"]

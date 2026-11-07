@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -29,10 +29,10 @@ class FrequencyCapIntervalConstraints(AdCPBaseModel):
         Approximation(document='core/frequency-cap-interval-constraints.json', pointer='#', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unit': {'const': 'campaign'}}, 'required': ['unit']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     unit: FrequencyCapDurationUnit
-    minimum_interval: IntMin1 | None = None
-    maximum_interval: IntMin1 | None = None
-    allowed_intervals: Annotated[list[IntMin1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    minimum_interval: Annotated[IntMin1 | None, OmittedNotNull] = None
+    maximum_interval: Annotated[IntMin1 | None, OmittedNotNull] = None
+    allowed_intervals: Annotated[list[IntMin1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["FrequencyCapIntervalConstraints"]

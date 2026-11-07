@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -27,8 +27,8 @@ class ListTasksResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     query_summary: Annotated[QuerySummary, Field(description='Summary of the query that was executed')]
     tasks: Annotated[list[TasksItem], Field(description='Array of tasks matching the query criteria')]
     pagination: PaginationResponse
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListTasksResponse"]

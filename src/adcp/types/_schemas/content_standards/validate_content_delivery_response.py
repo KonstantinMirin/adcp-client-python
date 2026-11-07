@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
@@ -50,7 +50,7 @@ class ResultsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/0/properties/results/items')
     record_id: Annotated[str, Field(description='Which delivery record was evaluated')]
     verdict: BinaryVerdict
-    features: Annotated[list[FeaturesItem] | None, Field(description="Per-feature breakdown. When present, SHOULD include all failed and warning features. MAY include passed features. Oracle pattern: exposes verdict + rule pointer, never the seller's threshold or the caller's submitted value (the seller authored the content standards).")] = None
+    features: Annotated[list[FeaturesItem] | None, Field(description="Per-feature breakdown. When present, SHOULD include all failed and warning features. MAY include passed features. Oracle pattern: exposes verdict + rule pointer, never the seller's threshold or the caller's submitted value (the seller authored the content standards)."), OmittedNotNull] = None
 
 
 class ValidateContentDeliveryResponseResultsSummary(ValidateContentDeliveryResponse):
@@ -63,8 +63,8 @@ class ValidateContentDeliveryResponseResultsSummary(ValidateContentDeliveryRespo
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/0')
     summary: Annotated[Summary, Field(description='Summary counts across all records')]
     results: Annotated[list[ResultsItem], Field(description='Per-record evaluation results')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ValidateContentDeliveryResponseErrors(ValidateContentDeliveryResponse, FailedResponse):
@@ -76,8 +76,8 @@ class ValidateContentDeliveryResponseErrors(ValidateContentDeliveryResponse, Fai
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/1')
     errors: list[Error]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 ValidateContentDeliveryResponse._branch_models = (ValidateContentDeliveryResponseResultsSummary, ValidateContentDeliveryResponseErrors,)

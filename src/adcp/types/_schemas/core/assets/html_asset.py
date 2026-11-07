@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..provenance import Provenance
 
@@ -15,10 +15,10 @@ class Accessibility(AdCPBaseModel):
     Self-declared accessibility properties for this opaque creative
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/html-asset.json', pointer='#/properties/accessibility')
-    alt_text: Annotated[str | None, Field(description='Text alternative describing the creative content')] = None
-    keyboard_navigable: Annotated[bool | None, Field(description='Whether the creative can be fully operated via keyboard')] = None
-    motion_control: Annotated[bool | None, Field(description='Whether the creative respects prefers-reduced-motion or provides pause/stop controls')] = None
-    screen_reader_tested: Annotated[bool | None, Field(description='Whether the creative has been tested with screen readers')] = None
+    alt_text: Annotated[str | None, Field(description='Text alternative describing the creative content'), OmittedNotNull] = None
+    keyboard_navigable: Annotated[bool | None, Field(description='Whether the creative can be fully operated via keyboard'), OmittedNotNull] = None
+    motion_control: Annotated[bool | None, Field(description='Whether the creative respects prefers-reduced-motion or provides pause/stop controls'), OmittedNotNull] = None
+    screen_reader_tested: Annotated[bool | None, Field(description='Whether the creative has been tested with screen readers'), OmittedNotNull] = None
 
 
 class HTMLAsset(AdCPBaseModel):
@@ -31,9 +31,9 @@ class HTMLAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/html-asset.json', pointer='#')
     asset_type: Annotated[Literal['html'], Field(description='Discriminator identifying this as an HTML asset. See /schemas/creative/asset-types for the registry.')]
     content: Annotated[str, Field(description='HTML content')]
-    version: Annotated[str | None, Field(description="HTML version (e.g., 'HTML5')")] = None
-    accessibility: Annotated[Accessibility | None, Field(description='Self-declared accessibility properties for this opaque creative')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    version: Annotated[str | None, Field(description="HTML version (e.g., 'HTML5')"), OmittedNotNull] = None
+    accessibility: Annotated[Accessibility | None, Field(description='Self-declared accessibility properties for this opaque creative'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["HTMLAsset"]

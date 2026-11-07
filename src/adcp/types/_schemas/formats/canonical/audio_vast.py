@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -26,16 +26,16 @@ class CanonicalFormatVASTAudio(CanonicalFormatBase):
         ForbiddenGroups((('vast_version', 'vast_versions'),)),
         UniqueItems('vast_versions'),
     )
-    slots: Annotated[list[SlotsItem] | None, Field(description='Default slots for the audio_vast canonical. The buyer supplies a VAST tag (URL or inline XML) plus an optional clickthrough URL, which falls back to the VAST ClickThrough when omitted. Tracking events and companion creatives carried by the VAST document do not require separate slots.', json_schema_extra={'default': [{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
-    vast_versions: Annotated[list[VASTVersion] | None, Field(description='VAST audio versions accepted by this product format option. Standardized audio support begins at VAST 4.1; listing 2.0, 3.0, or 4.0 explicitly declares seller-supported legacy audio interoperability rather than standards-conformant VAST audio. The asset declares exactly one vast_version; compatibility requires membership in this set and the seller-wide execution set.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    vast_version: Annotated[VASTVersion | None, Field(description='Deprecated one-element alias for vast_versions. Producers use either the singular legacy alias or the plural 3.2 field, never both. VAST 4.1+ is the standards-conformant audio profile; older values declare legacy audio interoperability.')] = None
-    media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for alternative audio MediaFile renditions in each resolved InLine linear creative. Declared MIME types must be audio/*; visual-dimension constraints are invalid because VAST represents audio MediaFiles with width and height 0.')] = None
-    duration_ms_range: Annotated[list[NonNegativeInt] | None, Field(description='[min, max] duration in milliseconds. duration_ms_exact takes precedence when both fields are present; SDKs SHOULD warn when both are supplied.', max_length=2, min_length=2)] = None
-    duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, the resolved audio creative duration must equal this value. Takes precedence over duration_ms_range.')] = None
-    skippable_after_ms: Annotated[NonNegativeInt | None, Field(description='When skippable, the buyer-side skip threshold in milliseconds.')] = None
-    max_wrapper_depth: Annotated[NonNegativeInt | None, Field(description='Maximum VAST wrapper redirect depth permitted.')] = None
-    ssl_required: bool | None = None
-    companion_image_required: Annotated[bool | None, Field(description='Whether the resolved VAST audio ad must include a companion creative.')] = None
+    slots: Annotated[list[SlotsItem] | None, Field(description='Default slots for the audio_vast canonical. The buyer supplies a VAST tag (URL or inline XML) plus an optional clickthrough URL, which falls back to the VAST ClickThrough when omitted. Tracking events and companion creatives carried by the VAST document do not require separate slots.', json_schema_extra={'default': [{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
+    vast_versions: Annotated[list[VASTVersion] | None, Field(description='VAST audio versions accepted by this product format option. Standardized audio support begins at VAST 4.1; listing 2.0, 3.0, or 4.0 explicitly declares seller-supported legacy audio interoperability rather than standards-conformant VAST audio. The asset declares exactly one vast_version; compatibility requires membership in this set and the seller-wide execution set.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    vast_version: Annotated[VASTVersion | None, Field(description='Deprecated one-element alias for vast_versions. Producers use either the singular legacy alias or the plural 3.2 field, never both. VAST 4.1+ is the standards-conformant audio profile; older values declare legacy audio interoperability.'), OmittedNotNull] = None
+    media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for alternative audio MediaFile renditions in each resolved InLine linear creative. Declared MIME types must be audio/*; visual-dimension constraints are invalid because VAST represents audio MediaFiles with width and height 0.'), OmittedNotNull] = None
+    duration_ms_range: Annotated[list[NonNegativeInt] | None, Field(description='[min, max] duration in milliseconds. duration_ms_exact takes precedence when both fields are present; SDKs SHOULD warn when both are supplied.', max_length=2, min_length=2), OmittedNotNull] = None
+    duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, the resolved audio creative duration must equal this value. Takes precedence over duration_ms_range.'), OmittedNotNull] = None
+    skippable_after_ms: Annotated[NonNegativeInt | None, Field(description='When skippable, the buyer-side skip threshold in milliseconds.'), OmittedNotNull] = None
+    max_wrapper_depth: Annotated[NonNegativeInt | None, Field(description='Maximum VAST wrapper redirect depth permitted.'), OmittedNotNull] = None
+    ssl_required: Annotated[bool | None, OmittedNotNull] = None
+    companion_image_required: Annotated[bool | None, Field(description='Whether the resolved VAST audio ad must include a companion creative.'), OmittedNotNull] = None
 
 
 __all__ = ["CanonicalFormatVASTAudio"]

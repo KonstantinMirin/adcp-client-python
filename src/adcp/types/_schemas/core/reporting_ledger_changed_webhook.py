@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -45,12 +45,12 @@ class ReportingLedgerChangedWebhook(AdCPBaseModel):
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1
     change_kind: ChangeKind
-    reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
-    supersedes_reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
-    finality: ReportingFinality | None = None
-    reporting_adjustment_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
-    adjusts_reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
-    ext: ExtensionObject | None = None
+    reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, OmittedNotNull] = None
+    supersedes_reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, OmittedNotNull] = None
+    finality: Annotated[ReportingFinality | None, OmittedNotNull] = None
+    reporting_adjustment_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, OmittedNotNull] = None
+    adjusts_reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ReportingLedgerChangedWebhook"]

@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 
 class Action(AdCPBaseModel):
@@ -17,7 +17,7 @@ class Action(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/user-action.json', pointer='#/properties/action')
     name: Annotated[str, Field(description="Action identifier (e.g., 'view_product', 'add_to_cart')")]
-    context: Annotated[dict[str, Any] | None, Field(description='Context data resolved from data model bindings')] = None
+    context: Annotated[dict[str, Any] | None, Field(description='Context data resolved from data model bindings'), OmittedNotNull] = None
 
 
 class A2UIUserAction(AdCPBaseModel):
@@ -31,7 +31,7 @@ class A2UIUserAction(AdCPBaseModel):
     surfaceId: Annotated[str, Field(description='ID of the surface where the action occurred')]
     componentId: Annotated[str, Field(description='ID of the component that triggered the action')]
     action: Annotated[Action, Field(description='The action that was triggered')]
-    timestamp: Annotated[AwareDatetime | None, Field(description='When the action occurred')] = None
+    timestamp: Annotated[AwareDatetime | None, Field(description='When the action occurred'), OmittedNotNull] = None
 
 
 __all__ = ["A2UIUserAction"]

@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
 from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMinLen1
 
@@ -90,7 +90,7 @@ class AppliesToAccount(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/$defs/appliesTo/oneOf/1')
     scope: Literal['account']
-    account_ids: Annotated[list[str] | None, Field(description="Optional. When present, names the accounts whose overlays are affected. When omitted, subscribers infer that their own principal's overlay is affected (they received the event because the per-subscriber scope filter routed it to them).", min_length=1)] = None
+    account_ids: Annotated[list[str] | None, Field(description="Optional. When present, names the accounts whose overlays are affected. When omitted, subscribers infer that their own principal's overlay is affected (they received the event because the per-subscriber scope filter routed it to them).", min_length=1), OmittedNotNull] = None
 
 
 AppliesTo = Annotated[AppliesToPublic | AppliesToAccount, Field(description='Declares which cache layer this event invalidates. See specs/wholesale-feed-webhooks.md §Cache layering and event scoping.')]
@@ -109,8 +109,8 @@ class WholesaleFeedEventProductCreatedProductPayload(AdCPBaseModel):
         RequiredGroups((('product',), ('canonical_product',)), 'anyOf'),
     )
     product_id: str
-    product: Annotated[Product | None, Field(description='Legacy 3.x post-change Product. Subscribers using get_products consume this form.')] = None
-    canonical_product: Annotated[CanonicalProduct | None, Field(description='Canonical post-change Product for subscribers that negotiated lifecycle_tools.list_products. Consumers replace the matching canonical mirror entry directly.')] = None
+    product: Annotated[Product | None, Field(description='Legacy 3.x post-change Product. Subscribers using get_products consume this form.'), OmittedNotNull] = None
+    canonical_product: Annotated[CanonicalProduct | None, Field(description='Canonical post-change Product for subscribers that negotiated lifecycle_tools.list_products. Consumers replace the matching canonical mirror entry directly.'), OmittedNotNull] = None
     applies_to: Annotated[AppliesTo, Field(description="REQUIRED. Sellers MUST declare the cache layer explicitly on every *.created event. When introducing an entity that exists only in an account overlay (e.g., a custom product for a single account), the seller MUST emit { scope: 'account', account_ids: [...] } to prevent the entity from leaking into every consumer's public-layer cache. For public-layer additions, declare { scope: 'public' } explicitly rather than relying on a default — schema-required declaration prevents the quiet-failure path where a forgotten applies_to leaks an account-only entity to all consumers.")]
 
 
@@ -137,9 +137,9 @@ class WholesaleFeedEventProductUpdatedProductPayload(AdCPBaseModel):
         RequiredGroups((('product',), ('canonical_product',)), 'anyOf'),
     )
     product_id: str
-    product: Annotated[Product | None, Field(description='Legacy 3.x post-change Product for get_products mirrors.')] = None
-    canonical_product: Annotated[CanonicalProduct | None, Field(description='Canonical post-change Product for list_products mirrors.')] = None
-    changed_fields: Annotated[list[str] | None, Field(description="Advisory list of changed top-level field names (e.g., ['format_ids', 'performance_standards']). Consumers MAY use for fine-grained re-render, but the product object is the source of truth for this webhook payload.")] = None
+    product: Annotated[Product | None, Field(description='Legacy 3.x post-change Product for get_products mirrors.'), OmittedNotNull] = None
+    canonical_product: Annotated[CanonicalProduct | None, Field(description='Canonical post-change Product for list_products mirrors.'), OmittedNotNull] = None
+    changed_fields: Annotated[list[str] | None, Field(description="Advisory list of changed top-level field names (e.g., ['format_ids', 'performance_standards']). Consumers MAY use for fine-grained re-render, but the product object is the source of truth for this webhook payload."), OmittedNotNull] = None
     applies_to: AppliesTo
 
 
@@ -166,11 +166,11 @@ class WholesaleFeedEventProductPricedProductPayload(AdCPBaseModel):
         RequiredGroups((('pricing_options',), ('canonical_pricing_options',)), 'anyOf'),
     )
     product_id: str
-    pricing_options: Annotated[list[PricingOption] | None, Field(description='Full post-change pricing_options array. NOT a delta — consumers replace the prior options with this list.', min_length=1)] = None
-    canonical_pricing_options: Annotated[list[CanonicalPricingOption] | None, Field(description='Full post-change canonical pricing array for list_products mirrors.', min_length=1)] = None
-    previous_pricing_option_ids: Annotated[list[str] | None, Field(description='Optional. Lets consumers detect which pricing_option_ids were retired.')] = None
-    effective_at: Annotated[AwareDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.')] = None
-    retracts_event_id: Annotated[str | None, Field(description="Optional. When this event retracts a prior pre-announced *.priced (per the §`effective_at` and pre-announce rules), set this to the event_id of the announcement being retracted. Lets consumers detect retraction deterministically by event_id lookup rather than maintaining per-entity 'latest-event' state. When present, the retraction MUST carry effective_at <= the retracted event's effective_at.", json_schema_extra={'format': 'uuid'})] = None
+    pricing_options: Annotated[list[PricingOption] | None, Field(description='Full post-change pricing_options array. NOT a delta — consumers replace the prior options with this list.', min_length=1), OmittedNotNull] = None
+    canonical_pricing_options: Annotated[list[CanonicalPricingOption] | None, Field(description='Full post-change canonical pricing array for list_products mirrors.', min_length=1), OmittedNotNull] = None
+    previous_pricing_option_ids: Annotated[list[str] | None, Field(description='Optional. Lets consumers detect which pricing_option_ids were retired.'), OmittedNotNull] = None
+    effective_at: Annotated[AwareDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.'), OmittedNotNull] = None
+    retracts_event_id: Annotated[str | None, Field(description="Optional. When this event retracts a prior pre-announced *.priced (per the §`effective_at` and pre-announce rules), set this to the event_id of the announcement being retracted. Lets consumers detect retraction deterministically by event_id lookup rather than maintaining per-entity 'latest-event' state. When present, the retraction MUST carry effective_at <= the retracted event's effective_at.", json_schema_extra={'format': 'uuid'}), OmittedNotNull] = None
     applies_to: AppliesTo
 
 
@@ -209,7 +209,7 @@ class WholesaleFeedEventProductRemovedProductPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/3/properties/payload')
     product_id: str
-    removal_reason: RemovalReason | None = None
+    removal_reason: Annotated[RemovalReason | None, OmittedNotNull] = None
     applies_to: AppliesTo
 
 
@@ -234,18 +234,18 @@ class Signal(SignalListing):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
     )
-    signal_ref: Annotated[SignalRef | None, Field(description='Canonical signal reference for this wholesale signal. New events SHOULD use signal_ref.')] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description='Canonical signal reference for this wholesale signal. New events SHOULD use signal_ref.'), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
     signal_agent_segment_id: Annotated[StrMinLen1, Field(description='Opaque activation handle returned by the signals agent.')]
     name: Annotated[StrMinLen1, Field(description='Human-readable signal name')]
     description: Annotated[StrMinLen1, Field(description='Detailed signal description')]
-    value_type: SignalValueType | None = None
+    value_type: Annotated[SignalValueType | None, OmittedNotNull] = None
     signal_type: SignalAvailabilityType
-    data_provider: StrMinLen1 | None = None
-    coverage_percentage: Annotated[FloatMin0Max100 | None, Field(description='DEPRECATED for detailed planning. Optional legacy scalar percentage of audience coverage retained only as a fallback for clients that do not consume coverage_forecast. When coverage_forecast is present, coverage_forecast is authoritative for signal-level discovery and coverage_percentage is fallback-only.')] = None
-    coverage_forecast: Annotated[SignalCoverageForecast | None, Field(description='Optional forecast-shaped signal availability guidance using the same wire shape as get_signals.signals[].coverage_forecast. When present, this is authoritative for signal-level discovery coverage.')] = None
+    data_provider: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    coverage_percentage: Annotated[FloatMin0Max100 | None, Field(description='DEPRECATED for detailed planning. Optional legacy scalar percentage of audience coverage retained only as a fallback for clients that do not consume coverage_forecast. When coverage_forecast is present, coverage_forecast is authoritative for signal-level discovery and coverage_percentage is fallback-only.'), OmittedNotNull] = None
+    coverage_forecast: Annotated[SignalCoverageForecast | None, Field(description='Optional forecast-shaped signal availability guidance using the same wire shape as get_signals.signals[].coverage_forecast. When present, this is authoritative for signal-level discovery coverage.'), OmittedNotNull] = None
     deployments: Annotated[list[Deployment], Field(min_length=1)]
-    pricing_options: Annotated[list[VendorPricingOption] | None, Field(min_length=1)] = None
+    pricing_options: Annotated[list[VendorPricingOption] | None, Field(min_length=1), OmittedNotNull] = None
 
 
 class WholesaleFeedEventSignalCreatedSignalPayload(AdCPBaseModel):
@@ -257,7 +257,7 @@ class WholesaleFeedEventSignalCreatedSignalPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/4/properties/payload')
     signal_agent_segment_id: str
-    signal_ref: SignalRef | None = None
+    signal_ref: Annotated[SignalRef | None, OmittedNotNull] = None
     applies_to: Annotated[AppliesTo, Field(description="REQUIRED. Agents MUST declare the cache layer explicitly on every *.created event. When introducing a signal that exists only in an account overlay (e.g., a custom segment for a single account), the agent MUST emit { scope: 'account', account_ids: [...] } to prevent leak into every consumer's public-layer cache. For public-layer additions, declare { scope: 'public' } explicitly rather than relying on a default — schema-required declaration prevents the quiet-failure path.")]
     signal: Annotated[Signal, Field(description='Full post-change signal object.')]
 
@@ -281,8 +281,8 @@ class WholesaleFeedEventSignalUpdatedSignalPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/5/properties/payload')
     signal_agent_segment_id: str
-    signal_ref: SignalRef | None = None
-    changed_fields: Annotated[list[str] | None, Field(description='Advisory list of changed top-level field names. Consumers MAY use for fine-grained re-render, but the signal object is the source of truth for this webhook payload.')] = None
+    signal_ref: Annotated[SignalRef | None, OmittedNotNull] = None
+    changed_fields: Annotated[list[str] | None, Field(description='Advisory list of changed top-level field names. Consumers MAY use for fine-grained re-render, but the signal object is the source of truth for this webhook payload.'), OmittedNotNull] = None
     applies_to: AppliesTo
     signal: Annotated[Signal, Field(description='Full post-change signal object. Consumers replace the prior signal mirror entry with this object.')]
 
@@ -306,11 +306,11 @@ class WholesaleFeedEventSignalPricedSignalPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/6/properties/payload')
     signal_agent_segment_id: str
-    signal_ref: SignalRef | None = None
+    signal_ref: Annotated[SignalRef | None, OmittedNotNull] = None
     pricing_options: Annotated[list[VendorPricingOption], Field(description='Full post-change pricing_options array. NOT a delta.', min_length=1)]
-    previous_pricing_option_ids: list[str] | None = None
-    effective_at: Annotated[AwareDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.')] = None
-    retracts_event_id: Annotated[str | None, Field(description='Optional. When this event retracts a prior pre-announced *.priced, set this to the event_id of the announcement being retracted. See product.priced for the full retraction contract.', json_schema_extra={'format': 'uuid'})] = None
+    previous_pricing_option_ids: Annotated[list[str] | None, OmittedNotNull] = None
+    effective_at: Annotated[AwareDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.'), OmittedNotNull] = None
+    retracts_event_id: Annotated[str | None, Field(description='Optional. When this event retracts a prior pre-announced *.priced, set this to the event_id of the announcement being retracted. See product.priced for the full retraction contract.', json_schema_extra={'format': 'uuid'}), OmittedNotNull] = None
     applies_to: AppliesTo
 
 
@@ -333,8 +333,8 @@ class WholesaleFeedEventSignalRemovedSignalPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/7/properties/payload')
     signal_agent_segment_id: str
-    signal_ref: SignalRef | None = None
-    removal_reason: RemovalReason | None = None
+    signal_ref: Annotated[SignalRef | None, OmittedNotNull] = None
+    removal_reason: Annotated[RemovalReason | None, OmittedNotNull] = None
     applies_to: AppliesTo
 
 
@@ -376,7 +376,7 @@ class WholesaleFeedEventWholesaleFeedBulkChangeFeedPayload(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/8/properties/payload')
     summary: Annotated[str, Field(description="Human-readable description of the bulk operation (e.g., 'Q3 2026 rate card refresh').")]
     affected_count: Annotated[IntMin1, Field(description='Approximate count of affected entities.')]
-    recommendation: Annotated[Recommendation | None, Field(description='Advisory recommendation. Consumers SHOULD repair by re-reading the affected feed named by affected_entity_type; the recommendation is not a synchronized trigger. Modeled as a single-value enum (not a boolean) so future minor versions can extend the recommendation vocabulary without a breaking shape change. Consumers MUST be prepared to ignore unknown recommendation values.')] = None
+    recommendation: Annotated[Recommendation | None, Field(description='Advisory recommendation. Consumers SHOULD repair by re-reading the affected feed named by affected_entity_type; the recommendation is not a synchronized trigger. Modeled as a single-value enum (not a boolean) so future minor versions can extend the recommendation vocabulary without a breaking shape change. Consumers MUST be prepared to ignore unknown recommendation values.'), OmittedNotNull] = None
     applies_to: AppliesTo
     affected_entity_type: Annotated[AffectedEntityType, Field(description='Which wholesale feed this bulk operation touched. A bulk operation that changes both products and signals MUST emit one webhook per feed so each envelope carries the correct post-change wholesale_feed_version.')]
 

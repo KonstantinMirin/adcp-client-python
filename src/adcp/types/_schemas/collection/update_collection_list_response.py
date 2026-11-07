@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -24,8 +24,8 @@ class UpdateCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRe
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/update-collection-list-response.json', pointer='#')
     list: Annotated[CollectionList, Field(description='The updated collection list')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["UpdateCollectionListResponse"]

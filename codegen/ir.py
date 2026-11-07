@@ -839,6 +839,58 @@ def symbols(decided: TypeRef) -> set[str]:
     return found
 
 
+#: **The two paths a decided type takes where the DOCUMENT admits a JSON ``null``**, and
+#: they are the whole of what the 3.2 bundle can state: ``null`` is reachable only through
+#: a ``type`` word, which ``lower.scalars`` decides as ``None``, and through a node that
+#: constrains nothing at all, which the same row decides as ``Any``.  Measured over the
+#: 1,054 portable documents of ``schemas/cache/3.2``: 1,549 nodes state ``null`` in a
+#: ``type``, **0** state a ``null`` member in an ``enum`` and **0** state ``const: null``
+#: -- so no vocabulary row reaches this and the two paths below are exhaustive for the
+#: bundle rather than for the derivation's convenience.  A later bundle stating one would
+#: arrive here as :attr:`TypeRef.literals` holding ``None``, which is the third entry.
+_ADMITS_NULL: tuple[str, ...] = ("None", "typing.Any")
+
+
+def admits_null(decided: TypeRef) -> bool:
+    """Does the type the walk decided for a node admit a JSON ``null`` of its own accord.
+
+    **The ONE reader of this question, and the reason it is asked of the decided TYPE and
+    not of the document a second time**: the walk already resolved the property through
+    its ``$ref`` and through every ``allOf`` conjunct, and ``type: [..., "null"]`` is the
+    only thing in the bundle that puts ``null`` in a property's accepted set
+    (:data:`_ADMITS_NULL`).  Re-reading the raw node here would be a second resolution of
+    the same reference graph and a second answer to the same question, which is the
+    arrangement §4 of the architecture document refuses throughout.
+
+    ``codegen.render._field`` is the reader: a field that is OPTIONAL and whose type does
+    not already admit ``null`` is emitted with ``adcp.types._base.OmittedNotNull`` beside
+    its ``Field(...)``, so absence stays spelled by omission and an explicit ``null`` is
+    refused -- ``docs/plan/final-state.md`` reading 1 at the 13,790 optional fields whose
+    document refuses one (``adcp-client-python-4yhb``).
+
+    **A ``local`` symbol answers ``False`` and that is SOUND rather than approximate.**
+    The symbol may be an ALIAS whose own type admits ``null`` (a root ``type: ["string",
+    "null"]`` reached by a ``$ref``), and nothing at the referring position says so.  It
+    costs nothing, because the marker strikes exactly ONE null arm -- the one the optional
+    rendering added -- so a type that admits ``null`` on its own account still admits it:
+    ``Annotated[Alias | None, …, OmittedNotNull]`` where ``Alias`` is ``str | None`` reads
+    back as ``str | None`` and takes a ``null`` (measured, ``adcp.types._base
+    ._omitting_null``).  So the reading is wrong only in the direction that loses a
+    refusal, never in the one that manufactures one.
+    """
+    if decided.path in _ADMITS_NULL and not decided.local:
+        return True
+    if None in decided.literals:
+        return True
+    #: **A UNION's arms and no other container's**, which is the one line here that could
+    #: be wrong in the dangerous direction.  A union admits what any arm admits, so a
+    #: ``Null`` arm is the node's own ``null``; a ``list[X | None]`` or a ``dict[str, X |
+    #: None]`` admits ``null`` at an ELEMENT and not at the field, and descending into
+    #: those would read the element's arm as the field's and leave the widening standing
+    #: at every array of a nullable type.
+    return decided.container == "union" and any(admits_null(arm) for arm in decided.of)
+
+
 def deduped(arms: Sequence[TypeRef]) -> tuple[TypeRef, ...]:
     """``arms`` in document order with the repeats dropped.
 

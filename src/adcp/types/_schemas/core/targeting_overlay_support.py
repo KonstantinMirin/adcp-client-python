@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Distinct, ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, NonEmptyList, StrCountryCode, StrMinLen1
 
@@ -34,7 +34,7 @@ class CountrySupportMaxValuesPerPackage(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-overlay-support.json', pointer='#/definitions/countrySupport/anyOf/1')
     max_values_per_package: Annotated[IntMin1, Field(description='Maximum number of country values accepted in this targeting field on one package.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 CountrySupport = Supported | CountrySupportMaxValuesPerPackage
@@ -49,9 +49,9 @@ class MetroSupportSystems(AdCPBaseModel):
         UniqueItems('systems'),
     )
     systems: Annotated[list[MetroAreaSystem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    max_values_per_package: IntMin1 | None = None
-    max_packages: Annotated[IntMin1 | None, Field(description='Optional maximum number of independently targeted packages the seller will create from this configured product.')] = None
-    ext: ExtensionObject | None = None
+    max_values_per_package: Annotated[IntMin1 | None, OmittedNotNull] = None
+    max_packages: Annotated[IntMin1 | None, Field(description='Optional maximum number of independently targeted packages the seller will create from this configured product.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 MetroSupport = Supported | MetroSupportSystems
@@ -71,7 +71,7 @@ class PlaceCatalogSupport(AdCPBaseModel):
     countries: Annotated[dict[StrCountryCode, Annotated[NonEmptyList[GeographicPlaceType], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]], Field(min_length=1)]
     current_version: Annotated[StrMinLen1, Field(description='Version applied when a later package overlay omits system_version. Must be present in system_versions.')]
     system_versions: Annotated[list[StrMinLen1], Field(description='Exact catalog versions selectable on later package overlays.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class PlaceSupport(AdCPBaseModel):
@@ -83,9 +83,9 @@ class PlaceSupport(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-overlay-support.json', pointer='#/definitions/placeSupport')
     systems: Annotated[dict[GeographicPlaceIdentifierSystem, PlaceCatalogSupport], Field(min_length=1)]
-    max_values_per_package: IntMin1 | None = None
-    max_packages: Annotated[IntMin1 | None, Field(description='Optional maximum number of independently place-targeted packages the seller will create from this configured product.')] = None
-    ext: ExtensionObject | None = None
+    max_values_per_package: Annotated[IntMin1 | None, OmittedNotNull] = None
+    max_packages: Annotated[IntMin1 | None, Field(description='Optional maximum number of independently place-targeted packages the seller will create from this configured product.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class TargetingOverlaySupportGeoProximity(AdCPBaseModel):
@@ -97,12 +97,12 @@ class TargetingOverlaySupportGeoProximity(AdCPBaseModel):
         RequiredGroups((('radius',), ('travel_time',), ('geometry',), ('transport_modes',)), 'anyOf'),
         UniqueItems('transport_modes'),
     )
-    radius: Supported | None = None
-    travel_time: Supported | None = None
-    geometry: Supported | None = None
-    transport_modes: Annotated[list[TransportMode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    max_values_per_package: Annotated[IntMin1 | None, Field(description='Maximum number of proximity entries accepted on one package.')] = None
-    ext: ExtensionObject | None = None
+    radius: Annotated[Supported | None, OmittedNotNull] = None
+    travel_time: Annotated[Supported | None, OmittedNotNull] = None
+    geometry: Annotated[Supported | None, OmittedNotNull] = None
+    transport_modes: Annotated[list[TransportMode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    max_values_per_package: Annotated[IntMin1 | None, Field(description='Maximum number of proximity entries accepted on one package.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 IanaTimezones = Supported
@@ -123,8 +123,8 @@ class DaypartSupportTimezoneModes(AdCPBaseModel):
         Approximation(document='core/targeting-overlay-support.json', pointer='#/definitions/daypartSupport/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'timezone_modes': {'contains': {'const': 'iana'}}}, 'required': ['timezone_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     timezone_modes: Annotated[list[DaypartTimezoneMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    iana_timezones: Annotated[IanaTimezones | Annotated[NonEmptyList[IANATimezoneIdentifier], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())] | None, Field(description="Concrete IANA timezone identifiers accepted by this product. true means every identifier valid in the seller's supported IANA TZDB; an array is the exact supported subset. Required when timezone_modes includes iana and forbidden otherwise.")] = None
-    ext: ExtensionObject | None = None
+    iana_timezones: Annotated[IanaTimezones | Annotated[NonEmptyList[IANATimezoneIdentifier], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())] | None, Field(description="Concrete IANA timezone identifiers accepted by this product. true means every identifier valid in the seller's supported IANA TZDB; an array is the exact supported subset. Required when timezone_modes includes iana and forbidden otherwise."), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 DaypartSupport = Literal[True] | DaypartSupportTimezoneModes
@@ -136,7 +136,7 @@ class TargetingOverlaySupportDemographicsAge(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-overlay-support.json', pointer='#/properties/demographics/anyOf/1')
     age: Supported
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class FrequencyCapSupport(FrequencyCapConstraints):
@@ -157,9 +157,9 @@ class TargetingOverlaySupportPlacementSelection(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    max_values_per_package: IntMin1 | None = None
-    max_packages: IntMin1 | None = None
-    ext: ExtensionObject | None = None
+    max_values_per_package: Annotated[IntMin1 | None, OmittedNotNull] = None
+    max_packages: Annotated[IntMin1 | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class BrowserSupportFamilies(AdCPBaseModel):
@@ -174,7 +174,7 @@ class BrowserSupportFamilies(AdCPBaseModel):
         UniqueItems('families'),
     )
     families: Annotated[list[BrowserFamily], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 BrowserSupport = Supported | BrowserSupportFamilies
@@ -189,7 +189,7 @@ class KeywordSupportSupportedMatchTypes(AdCPBaseModel):
         UniqueItems('supported_match_types'),
     )
     supported_match_types: Annotated[list[MatchType], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 KeywordSupport = Supported | KeywordSupportSupportedMatchTypes
@@ -207,41 +207,41 @@ class TargetingOverlaySupport(AdCPBaseModel):
         PropertyCount(minimum=1, maximum=None),
         ForbiddenGroups((('frequency_cap', 'frequency_cap_support'),)),
     )
-    geo_countries: CountrySupport | None = None
-    geo_countries_exclude: CountrySupport | None = None
-    geo_regions: Supported | GeographicRegionSupport | None = None
-    geo_regions_exclude: Supported | GeographicRegionSupport | None = None
-    geo_metros: MetroSupport | None = None
-    geo_metros_exclude: MetroSupport | None = None
-    geo_places: PlaceSupport | None = None
-    geo_places_exclude: PlaceSupport | None = None
-    geo_postal_areas: Supported | PositivePostalAreaSupport | None = None
-    geo_postal_areas_exclude: Supported | PositivePostalAreaSupport | None = None
-    geo_proximity: Supported | TargetingOverlaySupportGeoProximity | None = None
-    daypart_targets: DaypartSupport | None = None
-    audience_include: Supported | None = None
-    audience_exclude: Supported | None = None
-    signal_targeting_groups: Supported | None = None
-    demographics: Supported | TargetingOverlaySupportDemographicsAge | None = None
-    frequency_cap: Supported | None = None
-    frequency_cap_support: Annotated[FrequencyCapSupport | None, Field(description='Independently positive constrained package-cap support. Mutually exclusive with legacy frequency_cap: a product declares one form or the other.')] = None
-    property_list: Supported | None = None
-    property_list_exclude: Supported | None = None
-    collection_list: Supported | None = None
-    collection_list_exclude: Supported | None = None
-    placement_selection: Supported | TargetingOverlaySupportPlacementSelection | None = None
-    age_restriction: Supported | None = None
-    device_platform: Supported | None = None
-    device_platform_exclude: Supported | None = None
-    device_type: Supported | None = None
-    device_type_exclude: Supported | None = None
-    browser: BrowserSupport | None = None
-    browser_exclude: BrowserSupport | None = None
-    store_catchments: Supported | None = None
-    language: Supported | None = None
-    keyword_targets: KeywordSupport | None = None
-    negative_keywords: KeywordSupport | None = None
-    ext: ExtensionObject | None = None
+    geo_countries: Annotated[CountrySupport | None, OmittedNotNull] = None
+    geo_countries_exclude: Annotated[CountrySupport | None, OmittedNotNull] = None
+    geo_regions: Annotated[Supported | GeographicRegionSupport | None, OmittedNotNull] = None
+    geo_regions_exclude: Annotated[Supported | GeographicRegionSupport | None, OmittedNotNull] = None
+    geo_metros: Annotated[MetroSupport | None, OmittedNotNull] = None
+    geo_metros_exclude: Annotated[MetroSupport | None, OmittedNotNull] = None
+    geo_places: Annotated[PlaceSupport | None, OmittedNotNull] = None
+    geo_places_exclude: Annotated[PlaceSupport | None, OmittedNotNull] = None
+    geo_postal_areas: Annotated[Supported | PositivePostalAreaSupport | None, OmittedNotNull] = None
+    geo_postal_areas_exclude: Annotated[Supported | PositivePostalAreaSupport | None, OmittedNotNull] = None
+    geo_proximity: Annotated[Supported | TargetingOverlaySupportGeoProximity | None, OmittedNotNull] = None
+    daypart_targets: Annotated[DaypartSupport | None, OmittedNotNull] = None
+    audience_include: Annotated[Supported | None, OmittedNotNull] = None
+    audience_exclude: Annotated[Supported | None, OmittedNotNull] = None
+    signal_targeting_groups: Annotated[Supported | None, OmittedNotNull] = None
+    demographics: Annotated[Supported | TargetingOverlaySupportDemographicsAge | None, OmittedNotNull] = None
+    frequency_cap: Annotated[Supported | None, OmittedNotNull] = None
+    frequency_cap_support: Annotated[FrequencyCapSupport | None, Field(description='Independently positive constrained package-cap support. Mutually exclusive with legacy frequency_cap: a product declares one form or the other.'), OmittedNotNull] = None
+    property_list: Annotated[Supported | None, OmittedNotNull] = None
+    property_list_exclude: Annotated[Supported | None, OmittedNotNull] = None
+    collection_list: Annotated[Supported | None, OmittedNotNull] = None
+    collection_list_exclude: Annotated[Supported | None, OmittedNotNull] = None
+    placement_selection: Annotated[Supported | TargetingOverlaySupportPlacementSelection | None, OmittedNotNull] = None
+    age_restriction: Annotated[Supported | None, OmittedNotNull] = None
+    device_platform: Annotated[Supported | None, OmittedNotNull] = None
+    device_platform_exclude: Annotated[Supported | None, OmittedNotNull] = None
+    device_type: Annotated[Supported | None, OmittedNotNull] = None
+    device_type_exclude: Annotated[Supported | None, OmittedNotNull] = None
+    browser: Annotated[BrowserSupport | None, OmittedNotNull] = None
+    browser_exclude: Annotated[BrowserSupport | None, OmittedNotNull] = None
+    store_catchments: Annotated[Supported | None, OmittedNotNull] = None
+    language: Annotated[Supported | None, OmittedNotNull] = None
+    keyword_targets: Annotated[KeywordSupport | None, OmittedNotNull] = None
+    negative_keywords: Annotated[KeywordSupport | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["BrowserSupport", "CountrySupport", "DaypartSupport", "KeywordSupport", "MetroSupport", "PlaceCatalogSupport", "PlaceSupport", "Supported", "TargetingOverlaySupport"]

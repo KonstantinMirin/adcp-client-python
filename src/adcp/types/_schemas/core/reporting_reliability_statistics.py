@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     HttpUrl,
@@ -67,8 +67,8 @@ class Evidence(AdCPBaseModel):
     )
     basis: Basis
     generated_at: AwareDatetime
-    attestation_uri: HttpUrl | None = None
-    attestation_sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256 | None = None
+    attestation_uri: Annotated[HttpUrl | None, OmittedNotNull] = None
+    attestation_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, OmittedNotNull] = None
 
 
 class ReportingReliabilityStatistics(AdCPBaseModel):
@@ -92,8 +92,8 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
     official_revisions_published: Annotated[NonNegativeInt, Field(description='Denominator for the official-adjustment rate.')]
     official_revisions_adjusted: Annotated[NonNegativeInt, Field(description='Distinct official revisions receiving at least one adjustment. Divide by official_revisions_published for the adjustment rate.')]
     publication_latency_seconds: Annotated[LatencyPercentiles, Field(description='Observed seconds from period.end to publication of the required revision.')]
-    adjustment_latency_seconds: Annotated[LatencyPercentiles | None, Field(description='Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.')] = None
-    adjustment_magnitude: Annotated[list[AdjustmentMagnitudeItem] | None, Field(description='Optional absolute adjustment-magnitude percentiles for comparable control totals such as spend.', json_schema_extra={'uniqueItems': True})] = None
+    adjustment_latency_seconds: Annotated[LatencyPercentiles | None, Field(description='Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.'), OmittedNotNull] = None
+    adjustment_magnitude: Annotated[list[AdjustmentMagnitudeItem] | None, Field(description='Optional absolute adjustment-magnitude percentiles for comparable control totals such as spend.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     evidence: Evidence
 
 

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     PeriodDuration,
@@ -45,8 +45,8 @@ class ReportingSchedule(AdCPBaseModel):
     )
     period_duration: Annotated[PeriodDuration, Field(description='Strictly positive ISO 8601 duration of each reporting period, such as PT15M, P1D, or P1M.')]
     alignment: ReportingScheduleAlignment
-    period_anchor: Annotated[AwareDatetime | None, Field(description='Required for billing_cycle alignment. This immutable instant anchors the recurring half-open billing periods so producer and consumer derive the same month, quarter, or other contractual cycle.')] = None
-    period_timezone: Annotated[StrMinLen1MaxLen255 | None, Field(description='Required IANA timezone for source_timezone and billing_cycle calendar arithmetic. A numeric UTC offset is not sufficient because it does not define DST transitions.')] = None
+    period_anchor: Annotated[AwareDatetime | None, Field(description='Required for billing_cycle alignment. This immutable instant anchors the recurring half-open billing periods so producer and consumer derive the same month, quarter, or other contractual cycle.'), OmittedNotNull] = None
+    period_timezone: Annotated[StrMinLen1MaxLen255 | None, Field(description='Required IANA timezone for source_timezone and billing_cycle calendar arithmetic. A numeric UTC offset is not sufficient because it does not define DST transitions.'), OmittedNotNull] = None
     delivery_sla: Annotated[ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd, Field(description='Non-negative maximum time after period end before the required revision is due. PT0S means due at period close; expected_at equals the resolved period end plus this duration.')]
 
 

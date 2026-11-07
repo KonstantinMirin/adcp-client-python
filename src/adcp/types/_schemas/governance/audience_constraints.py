@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 
 from ..core.audience_selector import AudienceSelector
@@ -22,8 +22,8 @@ class AudienceConstraints(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    include: Annotated[list[AudienceSelector] | None, Field(description="Desired audience criteria. The seller's targeting should align with these. Each criterion is evaluated independently — the combined targeting should satisfy at least one inclusion criterion.", min_length=1)] = None
-    exclude: Annotated[list[AudienceSelector] | None, Field(description="Excluded audience criteria. The seller's targeting must not overlap with these. Exclusions take precedence over inclusions. Used for protected groups, vulnerable communities, regulatory restrictions, or brand safety.", min_length=1)] = None
+    include: Annotated[list[AudienceSelector] | None, Field(description="Desired audience criteria. The seller's targeting should align with these. Each criterion is evaluated independently — the combined targeting should satisfy at least one inclusion criterion.", min_length=1), OmittedNotNull] = None
+    exclude: Annotated[list[AudienceSelector] | None, Field(description="Excluded audience criteria. The seller's targeting must not overlap with these. Exclusions take precedence over inclusions. Used for protected groups, vulnerable communities, regulatory restrictions, or brand safety.", min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["AudienceConstraints"]

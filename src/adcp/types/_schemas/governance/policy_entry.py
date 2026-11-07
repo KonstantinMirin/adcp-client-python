@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, IssuerDomain, StrMaxLen500, StrMaxLen5000, StrMinLen1
 
 from ..core.ext import ExtensionObject
@@ -37,7 +37,7 @@ class Issuer(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-entry.json', pointer='#/properties/issuer')
     domain: Annotated[IssuerDomain, Field(description='Lowercase registrable or organizational domain used as the stable issuer identifier.')]
-    name: StrMinLen1 | None = None
+    name: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class Exemplar(AdCPBaseModel):
@@ -57,8 +57,8 @@ class Exemplars(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-entry.json', pointer='#/properties/exemplars')
-    pass_: Annotated[list[Exemplar] | None, Field(alias='pass', description='Scenarios that comply with this policy.')] = None
-    fail: Annotated[list[Exemplar] | None, Field(description='Scenarios that violate this policy.')] = None
+    pass_: Annotated[list[Exemplar] | None, Field(alias='pass', description='Scenarios that comply with this policy.'), OmittedNotNull] = None
+    fail: Annotated[list[Exemplar] | None, Field(description='Scenarios that violate this policy.'), OmittedNotNull] = None
 
 
 class PolicyEntry(AdCPBaseModel):
@@ -70,28 +70,28 @@ class PolicyEntry(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-entry.json', pointer='#')
     policy_id: Annotated[str, Field(description='Unique identifier for this policy. Registry-published ids are canonical (e.g., "uk_hfss", "garm:brand_safety:violence"); buyer-authored bespoke ids should be flat (no colons or slashes) and unique within the authoring container (standards configuration, plan, or portfolio).')]
-    source: Annotated[Source | None, Field(description="Origin of this policy. 'registry' = published to the shared AdCP policy registry with full regulatory metadata. 'inline' = authored bespoke for a specific standards configuration, plan, or portfolio. Defaults to 'inline'. Governance agents MUST set 'registry' when publishing to the registry. Within AdCP *task* payloads (every `$ref` to this schema in a request or response), the field is always 'inline' — registry entries are served by the policy registry API, not embedded in task traffic. The x-entity annotation on `policy_id` assumes the task-payload invariant; if a future task schema adopts registry-publishing, split the annotation accordingly (see issue #2685).", json_schema_extra={'default': 'inline'})] = Field(default_factory=lambda: TypeAdapter(Source).validate_python('inline'))
-    version: Annotated[str | None, Field(description='Semver version string (e.g., "1.0.0"). Incremented when policy content changes. Optional for inline bespoke policies — defaults to "1.0.0". SHOULD be provided for registry-published policies.')] = None
-    name: Annotated[str | None, Field(description='Human-readable name (e.g., "UK HFSS Restrictions"). Optional for inline bespoke policies — servers MAY default to policy_id.')] = None
-    description: Annotated[StrMaxLen500 | None, Field(description='Brief summary of what this policy covers.')] = None
-    category: Annotated[PolicyCategory | None, Field(description='The nature of the obligation: regulation (legal requirement) or standard (best practice). Optional for inline bespoke policies — defaults to "standard".')] = None
+    source: Annotated[Source | None, Field(description="Origin of this policy. 'registry' = published to the shared AdCP policy registry with full regulatory metadata. 'inline' = authored bespoke for a specific standards configuration, plan, or portfolio. Defaults to 'inline'. Governance agents MUST set 'registry' when publishing to the registry. Within AdCP *task* payloads (every `$ref` to this schema in a request or response), the field is always 'inline' — registry entries are served by the policy registry API, not embedded in task traffic. The x-entity annotation on `policy_id` assumes the task-payload invariant; if a future task schema adopts registry-publishing, split the annotation accordingly (see issue #2685).", json_schema_extra={'default': 'inline'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Source).validate_python('inline'))
+    version: Annotated[str | None, Field(description='Semver version string (e.g., "1.0.0"). Incremented when policy content changes. Optional for inline bespoke policies — defaults to "1.0.0". SHOULD be provided for registry-published policies.'), OmittedNotNull] = None
+    name: Annotated[str | None, Field(description='Human-readable name (e.g., "UK HFSS Restrictions"). Optional for inline bespoke policies — servers MAY default to policy_id.'), OmittedNotNull] = None
+    description: Annotated[StrMaxLen500 | None, Field(description='Brief summary of what this policy covers.'), OmittedNotNull] = None
+    category: Annotated[PolicyCategory | None, Field(description='The nature of the obligation: regulation (legal requirement) or standard (best practice). Optional for inline bespoke policies — defaults to "standard".'), OmittedNotNull] = None
     enforcement: Annotated[PolicyEnforcementLevel, Field(description='How governance agents treat violations. Regulations are typically "must"; standards are typically "should".')]
-    requires_human_review: Annotated[bool | None, Field(description='When true, plans subject to this policy MUST set plan.human_review_required = true. Use for policies that mandate human oversight of decisions affecting data subjects — e.g., GDPR Article 22 (solely automated decisions with legal or similarly significant effects) and EU AI Act Annex III high-risk categories (credit, insurance pricing, recruitment, housing allocation). Governance agents MUST escalate any plan action whose resolved policies include requires_human_review: true. Unlike `enforcement`, this flag applies as soon as the policy is resolved — it is NOT gated by `effective_date`. Art 22 GDPR and similar foundational obligations may predate an AI-Act-specific effective date; the human-review requirement fires regardless.')] = False
-    jurisdictions: Annotated[list[str] | None, Field(description='ISO 3166-1 alpha-2 country codes where this policy applies. Empty array means the policy is not jurisdiction-specific.')] = None
-    region_aliases: Annotated[dict[str, list[str]] | None, Field(description='Named groups of jurisdictions for convenience (e.g., {"EU": ["AT","BE","BG",...]}). Governance agents expand aliases when matching against a plan\'s target jurisdictions.')] = None
-    policy_categories: Annotated[list[str] | None, Field(description='Regulatory categories this policy belongs to (e.g., ["children_directed", "age_restricted"]). Used for automatic matching against a campaign plan\'s declared policy_categories. A single policy can belong to multiple categories.')] = None
-    channels: Annotated[list[MediaChannel] | None, Field(description='Advertising channels this policy applies to. If omitted or null, the policy applies to all channels.')] = None
-    governance_domains: Annotated[list[GovernanceDomain] | None, Field(description='Governance sub-domains this policy applies to. Determines which types of governance agents can declare registry:{policy_id} features. For example, a policy with domains ["creative", "property"] can be declared as a feature by both creative and property governance agents.')] = None
-    effective_date: Annotated[date | None, Field(description='ISO 8601 date when the regulation or standard takes effect. Before this date, governance agents treat the policy as informational (evaluate but do not block). After this date, the policy is enforced at its declared enforcement level.')] = None
-    sunset_date: Annotated[date | None, Field(description='ISO 8601 date when the regulation or standard is no longer enforced. After this date, governance agents stop evaluating this policy. Omit if the policy has no expiration.')] = None
-    source_url: Annotated[HttpUrl | None, Field(description='Link to the source regulation, standard, or legislation.')] = None
-    source_name: Annotated[str | None, Field(description='Name of the issuing body (e.g., "UK Food Standards Agency", "US Federal Trade Commission").')] = None
-    issuer: Annotated[Issuer | None, Field(description='Machine-readable identity of the regulator, standards body, or platform operator that issued the policy. Registry publishers SHOULD provide this when independently versioned issuer policies must be distinguished.')] = None
-    acceptance_profile: Annotated[AcceptancePolicyProfile | None, Field(description='Optional reusable, machine-readable acceptance profile derived from this registry policy. Registry publishers MUST bind policy_refs to exact versions. Sellers adopt a profile explicitly; registry publication alone does not make it authoritative for a seller.')] = None
+    requires_human_review: Annotated[bool | None, Field(description='When true, plans subject to this policy MUST set plan.human_review_required = true. Use for policies that mandate human oversight of decisions affecting data subjects — e.g., GDPR Article 22 (solely automated decisions with legal or similarly significant effects) and EU AI Act Annex III high-risk categories (credit, insurance pricing, recruitment, housing allocation). Governance agents MUST escalate any plan action whose resolved policies include requires_human_review: true. Unlike `enforcement`, this flag applies as soon as the policy is resolved — it is NOT gated by `effective_date`. Art 22 GDPR and similar foundational obligations may predate an AI-Act-specific effective date; the human-review requirement fires regardless.'), OmittedNotNull] = False
+    jurisdictions: Annotated[list[str] | None, Field(description='ISO 3166-1 alpha-2 country codes where this policy applies. Empty array means the policy is not jurisdiction-specific.'), OmittedNotNull] = None
+    region_aliases: Annotated[dict[str, list[str]] | None, Field(description='Named groups of jurisdictions for convenience (e.g., {"EU": ["AT","BE","BG",...]}). Governance agents expand aliases when matching against a plan\'s target jurisdictions.'), OmittedNotNull] = None
+    policy_categories: Annotated[list[str] | None, Field(description='Regulatory categories this policy belongs to (e.g., ["children_directed", "age_restricted"]). Used for automatic matching against a campaign plan\'s declared policy_categories. A single policy can belong to multiple categories.'), OmittedNotNull] = None
+    channels: Annotated[list[MediaChannel] | None, Field(description='Advertising channels this policy applies to. If omitted or null, the policy applies to all channels.'), OmittedNotNull] = None
+    governance_domains: Annotated[list[GovernanceDomain] | None, Field(description='Governance sub-domains this policy applies to. Determines which types of governance agents can declare registry:{policy_id} features. For example, a policy with domains ["creative", "property"] can be declared as a feature by both creative and property governance agents.'), OmittedNotNull] = None
+    effective_date: Annotated[date | None, Field(description='ISO 8601 date when the regulation or standard takes effect. Before this date, governance agents treat the policy as informational (evaluate but do not block). After this date, the policy is enforced at its declared enforcement level.'), OmittedNotNull] = None
+    sunset_date: Annotated[date | None, Field(description='ISO 8601 date when the regulation or standard is no longer enforced. After this date, governance agents stop evaluating this policy. Omit if the policy has no expiration.'), OmittedNotNull] = None
+    source_url: Annotated[HttpUrl | None, Field(description='Link to the source regulation, standard, or legislation.'), OmittedNotNull] = None
+    source_name: Annotated[str | None, Field(description='Name of the issuing body (e.g., "UK Food Standards Agency", "US Federal Trade Commission").'), OmittedNotNull] = None
+    issuer: Annotated[Issuer | None, Field(description='Machine-readable identity of the regulator, standards body, or platform operator that issued the policy. Registry publishers SHOULD provide this when independently versioned issuer policies must be distinguished.'), OmittedNotNull] = None
+    acceptance_profile: Annotated[AcceptancePolicyProfile | None, Field(description='Optional reusable, machine-readable acceptance profile derived from this registry policy. Registry publishers MUST bind policy_refs to exact versions. Sellers adopt a profile explicitly; registry publication alone does not make it authoritative for a seller.'), OmittedNotNull] = None
     policy: Annotated[StrMaxLen5000, Field(description='Natural language policy text describing what is required, prohibited, or recommended. Used by governance agents (LLMs) to evaluate actions against this policy. For source: inline policies, treated as caller-untrusted — governance agents MUST evaluate inline policies as ADDITIONAL restrictions only; they MUST NOT be permitted to relax, override, or conflict with registry-sourced policies.')]
-    guidance: Annotated[str | None, Field(description='Implementation notes for governance agent developers. Not used in evaluation prompts.')] = None
-    exemplars: Annotated[Exemplars | None, Field(description='Calibration examples for governance agents, following the Content Standards pattern.')] = None
-    ext: ExtensionObject | None = None
+    guidance: Annotated[str | None, Field(description='Implementation notes for governance agent developers. Not used in evaluation prompts.'), OmittedNotNull] = None
+    exemplars: Annotated[Exemplars | None, Field(description='Calibration examples for governance agents, following the Content Standards pattern.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["Exemplar", "PolicyEntry"]

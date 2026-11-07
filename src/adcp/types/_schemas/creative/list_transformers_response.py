@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -26,10 +26,10 @@ class ListTransformersResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnvelop
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-transformers-response.json', pointer='#')
     transformers: Annotated[list[Transformer], Field(description='Transformer descriptors matching the query.')]
-    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings.')] = None
-    pagination: PaginationResponse | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings.'), OmittedNotNull] = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListTransformersResponseCreativeAgent"]

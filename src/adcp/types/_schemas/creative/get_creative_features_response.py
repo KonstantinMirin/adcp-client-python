@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import AdcpResponse
@@ -55,10 +55,10 @@ class GetCreativeFeaturesError(GetCreativeFeaturesResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('results',),)),
     )
-    evaluation_id: Annotated[StrMinLen1 | None, Field(description='Optional provider evaluation identity when failure occurred after the evaluation was accepted. When present, it is the same value returned on the submitted acknowledgement.')] = None
+    evaluation_id: Annotated[StrMinLen1 | None, Field(description='Optional provider evaluation identity when failure occurred after the evaluation was accepted. When present, it is the same value returned on the submitted acknowledgement.'), OmittedNotNull] = None
     errors: list[Error]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class GetCreativeFeaturesResponseSubmitted(GetCreativeFeaturesResponse):
@@ -74,10 +74,10 @@ class GetCreativeFeaturesResponseSubmitted(GetCreativeFeaturesResponse):
     )
     status: Annotated[Literal['submitted'], Field(description='Task-level status literal that discriminates this acknowledgement from terminal success and error responses.')]
     task_id: Annotated[StrMinLen1, Field(description='AdCP task handle used to poll get_task_status or correlate terminal webhook delivery. Distinct from evaluation_id.')]
-    evaluation_id: Annotated[StrMinLen1 | None, Field(description='Provider-generated identity allocated when the evaluation is accepted. Optional in AdCP 3.x and required in AdCP 4.0. Providers SHOULD emit it in 3.x; when present, exact replays and the terminal result MUST carry this same value. Distinct from task_id and idempotency_key.')] = None
-    message: Annotated[StrMaxLen2000 | None, Field(description='Optional human-readable explanation of why the evaluation is submitted. Plain text only; callers treat it as untrusted provider input.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    evaluation_id: Annotated[StrMinLen1 | None, Field(description='Provider-generated identity allocated when the evaluation is accepted. Optional in AdCP 3.x and required in AdCP 4.0. Providers SHOULD emit it in 3.x; when present, exact replays and the terminal result MUST carry this same value. Distinct from task_id and idempotency_key.'), OmittedNotNull] = None
+    message: Annotated[StrMaxLen2000 | None, Field(description='Optional human-readable explanation of why the evaluation is submitted. Plain text only; callers treat it as untrusted provider input.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 GetCreativeFeaturesResponse._branch_models = (GetCreativeFeaturesResponseSuccess, GetCreativeFeaturesError, GetCreativeFeaturesResponseSubmitted,)

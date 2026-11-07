@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ..core.country_code import CountryCode
@@ -23,8 +23,8 @@ class RightsTermsExclusivity(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/rights-terms.json', pointer='#/properties/exclusivity')
-    scope: str | None = None
-    countries: list[CountryCode] | None = None
+    scope: Annotated[str | None, OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, OmittedNotNull] = None
 
 
 class RightsTerms(AdCPBaseModel):
@@ -38,13 +38,13 @@ class RightsTerms(AdCPBaseModel):
     pricing_option_id: str
     amount: NonNegativeFloat
     currency: CurrencyCode
-    period: RightsBillingPeriod | None = None
+    period: Annotated[RightsBillingPeriod | None, OmittedNotNull] = None
     uses: list[RightUse]
-    impression_cap: IntMin1 | None = None
-    overage_cpm: NonNegativeFloat | None = None
-    start_date: date | None = None
-    end_date: date | None = None
-    exclusivity: Annotated[RightsTermsExclusivity | None, Field(description='Exclusivity terms if applicable')] = None
+    impression_cap: Annotated[IntMin1 | None, OmittedNotNull] = None
+    overage_cpm: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    start_date: Annotated[date | None, OmittedNotNull] = None
+    end_date: Annotated[date | None, OmittedNotNull] = None
+    exclusivity: Annotated[RightsTermsExclusivity | None, Field(description='Exclusivity terms if applicable'), OmittedNotNull] = None
 
 
 __all__ = ["RightsTerms"]

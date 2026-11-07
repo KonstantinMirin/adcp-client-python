@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max100
 
 from ..core.context import ContextObject
@@ -20,12 +20,12 @@ class GetSignalsWorking(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='signals/get-signals-async-response-working.json', pointer='#')
-    percentage: Annotated[FloatMin0Max100 | None, Field(description='Progress percentage of the signal discovery operation.')] = None
-    current_step: Annotated[str | None, Field(description='Current step in the signal discovery process, such as `querying_providers`, `ranking_signals`, or `checking_deployments`.')] = None
-    total_steps: Annotated[int | None, Field(description='Total number of steps in the signal discovery process.')] = None
-    step_number: Annotated[int | None, Field(description='Current step number (1-indexed).')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    percentage: Annotated[FloatMin0Max100 | None, Field(description='Progress percentage of the signal discovery operation.'), OmittedNotNull] = None
+    current_step: Annotated[str | None, Field(description='Current step in the signal discovery process, such as `querying_providers`, `ranking_signals`, or `checking_deployments`.'), OmittedNotNull] = None
+    total_steps: Annotated[int | None, Field(description='Total number of steps in the signal discovery process.'), OmittedNotNull] = None
+    step_number: Annotated[int | None, Field(description='Current step number (1-indexed).'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetSignalsWorking"]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255, StrMinLen1MaxLen2000
 
@@ -50,8 +50,8 @@ class Setup(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-config-state.json', pointer='#/properties/setup')
     action: Action
     message: Annotated[StrMinLen1MaxLen2000, Field(description='Untrusted display text only. SDKs and agents dispatch only on the closed action value and never execute embedded links or instructions.')]
-    url: HTTPSURL | None = None
-    expires_at: AwareDatetime | None = None
+    url: Annotated[HTTPSURL | None, OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 class ReportingDeliveryConfigurationState(AdCPBaseModel):
@@ -72,15 +72,15 @@ class ReportingDeliveryConfigurationState(AdCPBaseModel):
     )
     configuration: ReportingDeliveryConfiguration
     state: ReportingDeliveryConfigLifecycleState
-    destination_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller-issued immutable destination-generation reference. It is caller-scoped and reusable across separately authorized account configurations; it is not itself account authority or a bearer grant. Present when and only when the configuration selects a managed-delivery offering; a Core (API-delivered) configuration becomes ready with no destination at all.')] = None
-    validated_at: AwareDatetime | None = None
-    activated_at: AwareDatetime | None = None
-    deactivated_at: AwareDatetime | None = None
-    publication_stopped_at: Annotated[AwareDatetime | None, Field(description='Applied schedule boundary at or after deactivation. No obligation whose period starts at or after this cutoff is created; earlier obligations remain owed through their SLA and recovery lifecycle.')] = None
-    seller_managed_access_ends_at: Annotated[AwareDatetime | None, Field(description='End of historical access to a producer-hosted share/resource for a still-authorized principal after voluntary deactivation. Inapplicable to data already written into a buyer-owned destination.')] = None
-    current_coverage: Annotated[ReportingCoverage | None, Field(description='Current effective product/package coverage for the selected offering and resolved account. This setup-time view may change as media buys or provider capabilities change; each period obligation later freezes its own authoritative coverage.')] = None
-    setup: Annotated[Setup | None, Field(description='Secret-free next step when provider-side authorization or recipient activation cannot be completed automatically.')] = None
-    issues: Annotated[list[ReportingStatusIssue] | None, Field(min_length=1)] = None
+    destination_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller-issued immutable destination-generation reference. It is caller-scoped and reusable across separately authorized account configurations; it is not itself account authority or a bearer grant. Present when and only when the configuration selects a managed-delivery offering; a Core (API-delivered) configuration becomes ready with no destination at all.'), OmittedNotNull] = None
+    validated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    activated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    deactivated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    publication_stopped_at: Annotated[AwareDatetime | None, Field(description='Applied schedule boundary at or after deactivation. No obligation whose period starts at or after this cutoff is created; earlier obligations remain owed through their SLA and recovery lifecycle.'), OmittedNotNull] = None
+    seller_managed_access_ends_at: Annotated[AwareDatetime | None, Field(description='End of historical access to a producer-hosted share/resource for a still-authorized principal after voluntary deactivation. Inapplicable to data already written into a buyer-owned destination.'), OmittedNotNull] = None
+    current_coverage: Annotated[ReportingCoverage | None, Field(description='Current effective product/package coverage for the selected offering and resolved account. This setup-time view may change as media buys or provider capabilities change; each period obligation later freezes its own authoritative coverage.'), OmittedNotNull] = None
+    setup: Annotated[Setup | None, Field(description='Secret-free next step when provider-side authorization or recipient activation cannot be completed automatically.'), OmittedNotNull] = None
+    issues: Annotated[list[ReportingStatusIssue] | None, Field(min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["ReportingDeliveryConfigLifecycleState", "ReportingDeliveryConfigurationState"]

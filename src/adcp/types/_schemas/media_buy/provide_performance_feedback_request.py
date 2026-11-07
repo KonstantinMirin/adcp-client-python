@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -24,8 +24,8 @@ class ProvidePerformanceFeedbackRequest(AdCPVersionEnvelope, PerformanceFeedback
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/provide-performance-feedback-request.json', pointer='#')
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for this logical assertion. MUST be unique per receiving agent to prevent cross-agent correlation; use a fresh UUID v4 for each new assertion. Retries use the same key and payload.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ProvidePerformanceFeedbackRequest"]

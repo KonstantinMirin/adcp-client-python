@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from .component import A2UIComponent
 
@@ -19,10 +19,10 @@ class A2UISurface(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/surface.json', pointer='#')
     surfaceId: Annotated[str, Field(description='Unique identifier for this surface')]
-    catalogId: Annotated[str | None, Field(description='Component catalog to use for rendering')] = 'standard'
+    catalogId: Annotated[str | None, Field(description='Component catalog to use for rendering'), OmittedNotNull] = 'standard'
     components: Annotated[list[A2UIComponent], Field(description='Flat list of components (adjacency list structure)')]
-    rootId: Annotated[str | None, Field(description='ID of the root component (if not specified, first component is root)')] = None
-    dataModel: Annotated[dict[str, Any] | None, Field(description='Application data that components can bind to')] = None
+    rootId: Annotated[str | None, Field(description='ID of the root component (if not specified, first component is root)'), OmittedNotNull] = None
+    dataModel: Annotated[dict[str, Any] | None, Field(description='Application data that components can bind to'), OmittedNotNull] = None
 
 
 __all__ = ["A2UISurface"]

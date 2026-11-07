@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
 from ..core.brand_ref import BrandReference
 from ..core.domain_name import DomainName
@@ -35,9 +35,9 @@ class PayingPrincipal(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/paying_principal')
     brand: Annotated[BrandReference, Field(description='Brand economically accountable for the sponsored context.')]
-    account: Annotated[PayingPrincipalAccount | None, Field(description='Optional seller-assigned account context for the paying principal. This intentionally carries only an account_id so the canonical economic principal remains paying_principal.brand.')] = None
-    operator: Annotated[DomainName | None, Field(description='Domain of the operator acting for the paying principal, when different from the brand domain.')] = None
-    display_name: Annotated[str | None, Field(description='Human-readable label for disclosure rendering. The canonical identity remains the brand/account reference.')] = None
+    account: Annotated[PayingPrincipalAccount | None, Field(description='Optional seller-assigned account context for the paying principal. This intentionally carries only an account_id so the canonical economic principal remains paying_principal.brand.'), OmittedNotNull] = None
+    operator: Annotated[DomainName | None, Field(description='Domain of the operator acting for the paying principal, when different from the brand domain.'), OmittedNotNull] = None
+    display_name: Annotated[str | None, Field(description='Human-readable label for disclosure rendering. The canonical identity remains the brand/account reference.'), OmittedNotNull] = None
 
 
 class Timing(StrEnum):
@@ -88,7 +88,7 @@ class JurisdictionsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/disclosure_obligation/properties/jurisdictions/items')
     country: Annotated[str, Field(description='ISO 3166-1 alpha-2 country code.')]
-    region: Annotated[str | None, Field(description='Optional sub-national region code.')] = None
+    region: Annotated[str | None, Field(description='Optional sub-national region code.'), OmittedNotNull] = None
     regulation: Annotated[str, Field(description='Regulation or policy identifier.')]
 
 
@@ -101,10 +101,10 @@ class DisclosureObligation(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/disclosure_obligation')
     required: Annotated[bool, Field(description='Whether the declaring party requires disclosure for this sponsored context.')]
-    label_text: Annotated[str | None, Field(description='Disclosure label text the host should render when disclosure is required.')] = None
-    timing: Annotated[Timing | None, Field(description="When the disclosure must be presented relative to the sponsored context's influence.")] = None
-    proximity: Annotated[Proximity | None, Field(description='Where the disclosure should appear relative to the affected output.')] = None
-    jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where this declared disclosure obligation applies.', min_length=1)] = None
+    label_text: Annotated[str | None, Field(description='Disclosure label text the host should render when disclosure is required.'), OmittedNotNull] = None
+    timing: Annotated[Timing | None, Field(description="When the disclosure must be presented relative to the sponsored context's influence."), OmittedNotNull] = None
+    proximity: Annotated[Proximity | None, Field(description='Where the disclosure should appear relative to the affected output.'), OmittedNotNull] = None
+    jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where this declared disclosure obligation applies.', min_length=1), OmittedNotNull] = None
 
 
 class Role(StrEnum):
@@ -129,7 +129,7 @@ class DeclaredBy(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/declared_by')
-    agent_url: Annotated[HTTPSURL | None, Field(description='HTTPS URL of the declaring agent or service.')] = None
+    agent_url: Annotated[HTTPSURL | None, Field(description='HTTPS URL of the declaring agent or service.'), OmittedNotNull] = None
     role: Annotated[Role, Field(description='Role of the declaring party.')]
 
 
@@ -144,9 +144,9 @@ class SISponsoredContext(AdCPBaseModel):
     paying_principal: Annotated[PayingPrincipal, Field(description="Economic accountability fact: the brand that funded or sponsored this context, with optional account/operator context. This identifies who paid for the sponsored context; it is distinct from the host's later receipt and use commitment.")]
     context_use: Annotated[SIContextUse, Field(description='Declared host-side use mode for this sponsored context.')]
     disclosure_obligation: Annotated[DisclosureObligation, Field(description='Disclosure obligation the receiving host must either accept and satisfy or reject before using this sponsored context. This is a declared obligation and audit input, not a protocol-level legal determination.')]
-    declared_at: Annotated[AwareDatetime | None, Field(description='When this sponsored-context declaration was made.')] = None
-    declared_by: Annotated[DeclaredBy | None, Field(description='Agent or service that attached the declaration.')] = None
-    ext: ExtensionObject | None = None
+    declared_at: Annotated[AwareDatetime | None, Field(description='When this sponsored-context declaration was made.'), OmittedNotNull] = None
+    declared_by: Annotated[DeclaredBy | None, Field(description='Agent or service that attached the declaration.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SISponsoredContext"]

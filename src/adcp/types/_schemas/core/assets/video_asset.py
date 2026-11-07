@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, IntMin1
 
 from ...enums.audio_channel_layout import AudioChannelLayout
@@ -88,33 +88,33 @@ class VideoAsset(AdCPBaseModel):
     url: Annotated[HttpUrl, Field(description='URL to the video asset')]
     width: Annotated[IntMin1, Field(description="Width in pixels — the video file's intrinsic native width. Required: a hosted file always has concrete dimensions. (Tag-delivered video carries no width; see the `vast` asset.)")]
     height: Annotated[IntMin1, Field(description="Height in pixels — the video file's intrinsic native height. Required: a hosted file always has concrete dimensions. (Tag-delivered video carries no height; see the `vast` asset.)")]
-    duration_ms: Annotated[IntMin1 | None, Field(description='Video duration in milliseconds')] = None
-    file_size_bytes: Annotated[IntMin1 | None, Field(description='File size in bytes')] = None
-    container_format: Annotated[str | None, Field(description='Video container format (mp4, webm, mov, etc.)')] = None
-    video_codec: Annotated[str | None, Field(description='Video codec used (h264, h265, vp9, av1, prores, etc.)')] = None
-    video_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Video stream bitrate in kilobits per second')] = None
-    frame_rate: Annotated[str | None, Field(description="Frame rate as string to preserve precision (e.g., '23.976', '29.97', '30')")] = None
-    frame_rate_type: FrameRateType | None = None
-    scan_type: ScanType | None = None
-    color_space: Annotated[ColorSpace | None, Field(description='Color space of the video')] = None
-    hdr_format: Annotated[HdrFormat | None, Field(description="HDR format if applicable, or 'sdr' for standard dynamic range")] = None
-    chroma_subsampling: Annotated[ChromaSubsampling | None, Field(description='Chroma subsampling format')] = None
-    video_bit_depth: Annotated[VideoBitDepth | None, Field(description='Video bit depth')] = None
-    gop_interval_seconds: Annotated[float | None, Field(description='GOP/keyframe interval in seconds')] = None
-    gop_type: GOPType | None = None
-    moov_atom_position: MoovAtomPosition | None = None
-    has_audio: Annotated[bool | None, Field(description='Whether the video contains an audio track')] = None
-    audio_codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)')] = None
-    audio_sampling_rate_hz: Annotated[int | None, Field(description='Audio sampling rate in Hz (e.g., 44100, 48000)')] = None
-    audio_channels: Annotated[AudioChannelLayout | None, Field(description='Audio channel configuration')] = None
-    audio_bit_depth: Annotated[AudioBitDepth | None, Field(description='Audio bit depth')] = None
-    audio_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Audio bitrate in kilobits per second')] = None
-    audio_loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS')] = None
-    audio_true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = None
-    captions_url: Annotated[HttpUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)')] = None
-    transcript_url: Annotated[HttpUrl | None, Field(description='URL to text transcript of the video content')] = None
-    audio_description_url: Annotated[HttpUrl | None, Field(description='URL to audio description track for visually impaired users')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    duration_ms: Annotated[IntMin1 | None, Field(description='Video duration in milliseconds'), OmittedNotNull] = None
+    file_size_bytes: Annotated[IntMin1 | None, Field(description='File size in bytes'), OmittedNotNull] = None
+    container_format: Annotated[str | None, Field(description='Video container format (mp4, webm, mov, etc.)'), OmittedNotNull] = None
+    video_codec: Annotated[str | None, Field(description='Video codec used (h264, h265, vp9, av1, prores, etc.)'), OmittedNotNull] = None
+    video_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Video stream bitrate in kilobits per second'), OmittedNotNull] = None
+    frame_rate: Annotated[str | None, Field(description="Frame rate as string to preserve precision (e.g., '23.976', '29.97', '30')"), OmittedNotNull] = None
+    frame_rate_type: Annotated[FrameRateType | None, OmittedNotNull] = None
+    scan_type: Annotated[ScanType | None, OmittedNotNull] = None
+    color_space: Annotated[ColorSpace | None, Field(description='Color space of the video'), OmittedNotNull] = None
+    hdr_format: Annotated[HdrFormat | None, Field(description="HDR format if applicable, or 'sdr' for standard dynamic range"), OmittedNotNull] = None
+    chroma_subsampling: Annotated[ChromaSubsampling | None, Field(description='Chroma subsampling format'), OmittedNotNull] = None
+    video_bit_depth: Annotated[VideoBitDepth | None, Field(description='Video bit depth'), OmittedNotNull] = None
+    gop_interval_seconds: Annotated[float | None, Field(description='GOP/keyframe interval in seconds'), OmittedNotNull] = None
+    gop_type: Annotated[GOPType | None, OmittedNotNull] = None
+    moov_atom_position: Annotated[MoovAtomPosition | None, OmittedNotNull] = None
+    has_audio: Annotated[bool | None, Field(description='Whether the video contains an audio track'), OmittedNotNull] = None
+    audio_codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)'), OmittedNotNull] = None
+    audio_sampling_rate_hz: Annotated[int | None, Field(description='Audio sampling rate in Hz (e.g., 44100, 48000)'), OmittedNotNull] = None
+    audio_channels: Annotated[AudioChannelLayout | None, Field(description='Audio channel configuration'), OmittedNotNull] = None
+    audio_bit_depth: Annotated[AudioBitDepth | None, Field(description='Audio bit depth'), OmittedNotNull] = None
+    audio_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Audio bitrate in kilobits per second'), OmittedNotNull] = None
+    audio_loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS'), OmittedNotNull] = None
+    audio_true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS'), OmittedNotNull] = None
+    captions_url: Annotated[HttpUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)'), OmittedNotNull] = None
+    transcript_url: Annotated[HttpUrl | None, Field(description='URL to text transcript of the video content'), OmittedNotNull] = None
+    audio_description_url: Annotated[HttpUrl | None, Field(description='URL to audio description track for visually impaired users'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["VideoAsset"]

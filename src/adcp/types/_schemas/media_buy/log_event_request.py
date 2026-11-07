@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -24,11 +24,11 @@ class LogEventRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/log-event-request.json', pointer='#')
     event_source_id: Annotated[str, Field(description='Event source configured on the account via sync_event_sources')]
-    test_event_code: Annotated[str | None, Field(description="Test event code for validation without affecting production data. Events with this code appear in the platform's test events UI.")] = None
+    test_event_code: Annotated[str | None, Field(description="Test event code for validation without affecting production data. Events with this code appear in the platform's test events UI."), OmittedNotNull] = None
     events: Annotated[list[Event], Field(description='Events to log', max_length=10000, min_length=1)]
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate event logging on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["LogEventRequest"]

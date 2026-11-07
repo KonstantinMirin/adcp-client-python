@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 from adcp.types.envelopes import AdcpResponse
 
@@ -44,10 +44,10 @@ class Aggregate(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#/properties/aggregate')
-    score: Annotated[float | None, Field(description='Numeric score (0-100 scale typical, but agent-defined)')] = None
-    grade: Annotated[str | None, Field(description="Letter grade or category (e.g., 'A+', 'B-', 'Gold', 'Compliant')")] = None
-    label: Annotated[str | None, Field(description="Human-readable summary (e.g., '85% compliant', 'High quality')")] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description='URL explaining how this aggregate was calculated')] = None
+    score: Annotated[float | None, Field(description='Numeric score (0-100 scale typical, but agent-defined)'), OmittedNotNull] = None
+    grade: Annotated[str | None, Field(description="Letter grade or category (e.g., 'A+', 'B-', 'Gold', 'Compliant')"), OmittedNotNull] = None
+    label: Annotated[str | None, Field(description="Human-readable summary (e.g., '85% compliant', 'High quality')"), OmittedNotNull] = None
+    methodology_url: Annotated[HttpUrl | None, Field(description='URL explaining how this aggregate was calculated'), OmittedNotNull] = None
 
 
 class AuthorizationSummary(AdCPBaseModel):
@@ -76,16 +76,16 @@ class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, Ad
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#')
-    compliant: Annotated[bool | None, Field(description='Overall compliance flag for the submitted delivery — true when every record is compliant, false when any record is non_compliant. Derived from summary.non_compliant_records === 0 but surfaced at the root as a convenience signal for buyers. Agents MAY omit this field when the response represents a partial validation (e.g., when include_compliant is false and results only contains non_compliant records); consumers SHOULD fall back to summary counts if compliant is absent.')] = None
+    compliant: Annotated[bool | None, Field(description='Overall compliance flag for the submitted delivery — true when every record is compliant, false when any record is non_compliant. Derived from summary.non_compliant_records === 0 but surfaced at the root as a convenience signal for buyers. Agents MAY omit this field when the response represents a partial validation (e.g., when include_compliant is false and results only contains non_compliant records); consumers SHOULD fall back to summary counts if compliant is absent.'), OmittedNotNull] = None
     list_id: Annotated[str, Field(description='ID of the property list validated against')]
     summary: Annotated[Summary, Field(description='Aggregate validation statistics')]
-    aggregate: Annotated[Aggregate | None, Field(description='Optional aggregate measurements computed by the governance agent. Format and meaning are agent-specific.')] = None
-    authorization_summary: Annotated[AuthorizationSummary | None, Field(description='Aggregate authorization statistics. Only present if any records included sales_agent_url.')] = None
+    aggregate: Annotated[Aggregate | None, Field(description='Optional aggregate measurements computed by the governance agent. Format and meaning are agent-specific.'), OmittedNotNull] = None
+    authorization_summary: Annotated[AuthorizationSummary | None, Field(description='Aggregate authorization statistics. Only present if any records included sales_agent_url.'), OmittedNotNull] = None
     results: Annotated[list[ValidationResult], Field(description='Per-record validation results. By default only includes non_compliant and unknown records. Set include_compliant=true to include all records.')]
     validated_at: Annotated[AwareDatetime, Field(description='Timestamp when validation was performed')]
-    list_resolved_at: Annotated[AwareDatetime | None, Field(description='Timestamp of the property list resolution used for validation')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    list_resolved_at: Annotated[AwareDatetime | None, Field(description='Timestamp of the property list resolution used for validation'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ValidatePropertyDeliveryResponse"]

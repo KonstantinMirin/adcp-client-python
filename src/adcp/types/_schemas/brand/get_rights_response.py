@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max1, HttpUrl
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -45,8 +45,8 @@ class ExclusivityStatus(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/exclusivity_status')
-    available: Annotated[bool | None, Field(description='Whether exclusivity is available')] = None
-    existing_exclusives: Annotated[list[str] | None, Field(description="Active exclusivity commitments that may affect availability. Implementers should use vague descriptions ('exclusive commitment in this category') rather than specific deal terms to protect confidential business relationships.")] = None
+    available: Annotated[bool | None, Field(description='Whether exclusivity is available'), OmittedNotNull] = None
+    existing_exclusives: Annotated[list[str] | None, Field(description="Active exclusivity commitments that may affect availability. Implementers should use vague descriptions ('exclusive commitment in this category') rather than specific deal terms to protect confidential business relationships."), OmittedNotNull] = None
 
 
 class PreviewAssetsItem(AdCPBaseModel):
@@ -55,7 +55,7 @@ class PreviewAssetsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items')
     url: HttpUrl
-    usage: str | None = None
+    usage: Annotated[str | None, OmittedNotNull] = None
 
 
 class RightsItem(AdCPBaseModel):
@@ -66,17 +66,17 @@ class RightsItem(AdCPBaseModel):
     rights_id: Annotated[str, Field(description='Identifier for this rights offering. Referenced in acquire_rights.')]
     brand_id: Annotated[str, Field(description="Brand identifier from the agent's roster")]
     name: Annotated[str, Field(description='Display name of the rights subject')]
-    description: Annotated[str | None, Field(description='Description of the rights subject')] = None
-    right_type: RightType | None = None
-    match_score: Annotated[FloatMin0Max1 | None, Field(description='Relevance score from 0 to 1')] = None
-    match_reasons: Annotated[list[str] | None, Field(description='Human-readable reasons for the match')] = None
+    description: Annotated[str | None, Field(description='Description of the rights subject'), OmittedNotNull] = None
+    right_type: Annotated[RightType | None, OmittedNotNull] = None
+    match_score: Annotated[FloatMin0Max1 | None, Field(description='Relevance score from 0 to 1'), OmittedNotNull] = None
+    match_reasons: Annotated[list[str] | None, Field(description='Human-readable reasons for the match'), OmittedNotNull] = None
     available_uses: Annotated[list[RightUse], Field(description='Rights uses available for licensing')]
-    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). When both countries and excluded_countries are present, the effective set is countries minus excluded_countries. If neither is present, all countries are available.')] = None
-    excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from availability')] = None
-    exclusivity_status: Annotated[ExclusivityStatus | None, Field(description='Current exclusivity availability')] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). When both countries and excluded_countries are present, the effective set is countries minus excluded_countries. If neither is present, all countries are available.'), OmittedNotNull] = None
+    excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from availability'), OmittedNotNull] = None
+    exclusivity_status: Annotated[ExclusivityStatus | None, Field(description='Current exclusivity availability'), OmittedNotNull] = None
     pricing_options: Annotated[list[RightsPricingOption], Field(description='Available pricing options for these rights', min_length=1)]
-    content_restrictions: Annotated[list[str] | None, Field(description='Content restrictions or approval requirements')] = None
-    preview_assets: Annotated[list[PreviewAssetsItem] | None, Field(description='Preview-only assets for evaluation')] = None
+    content_restrictions: Annotated[list[str] | None, Field(description='Content restrictions or approval requirements'), OmittedNotNull] = None
+    preview_assets: Annotated[list[PreviewAssetsItem] | None, Field(description='Preview-only assets for evaluation'), OmittedNotNull] = None
 
 
 class ExcludedItem(AdCPBaseModel):
@@ -85,9 +85,9 @@ class ExcludedItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/excluded/items')
     brand_id: str
-    name: str | None = None
+    name: Annotated[str | None, OmittedNotNull] = None
     reason: Annotated[str, Field(description='Why this result was excluded. May be sanitized to protect confidential brand rules.')]
-    suggestions: Annotated[list[str] | None, Field(description="Actionable alternatives if the exclusion is fixable (e.g., 'Available in BE and DE markets'). Absent if the exclusion is final.")] = None
+    suggestions: Annotated[list[str] | None, Field(description="Actionable alternatives if the exclusion is fixable (e.g., 'Available in BE and DE markets'). Absent if the exclusion is final."), OmittedNotNull] = None
 
 
 class GetRightsSuccess(GetRightsResponse):
@@ -99,9 +99,9 @@ class GetRightsSuccess(GetRightsResponse):
         ForbiddenGroups((('errors',),)),
     )
     rights: Annotated[list[RightsItem], Field(description='Matching rights with pricing options, ranked by relevance')]
-    excluded: Annotated[list[ExcludedItem] | None, Field(description='Results that matched but were filtered out, with reasons')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    excluded: Annotated[list[ExcludedItem] | None, Field(description='Results that matched but were filtered out, with reasons'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class GetRightsError(GetRightsResponse, FailedResponse):
@@ -113,8 +113,8 @@ class GetRightsError(GetRightsResponse, FailedResponse):
         ForbiddenGroups((('rights',),)),
     )
     errors: Annotated[list[Error], Field(min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 GetRightsResponse._branch_models = (GetRightsSuccess, GetRightsError,)

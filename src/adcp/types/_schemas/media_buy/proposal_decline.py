@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255, StrMinLen1MaxLen500
 
@@ -25,7 +25,7 @@ class ProposalDecline(AdCPBaseModel):
     )
     proposal_id: Annotated[StrMinLen1MaxLen255, Field(description='Immutable proposal ID returned by request_proposals or refine_proposals.')]
     reason: ProposalDeclineReason
-    detail: Annotated[StrMinLen1MaxLen500 | None, Field(description='Optional short, non-identifying explanation. MUST NOT identify a competitor or disclose sensitive campaign information.')] = None
+    detail: Annotated[StrMinLen1MaxLen500 | None, Field(description='Optional short, non-identifying explanation. MUST NOT identify a competitor or disclose sensitive campaign information.'), OmittedNotNull] = None
 
 
 __all__ = ["ProposalDecline"]

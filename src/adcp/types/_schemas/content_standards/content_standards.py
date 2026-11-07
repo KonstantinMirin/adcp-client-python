@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.ext import ExtensionObject
 from ..core.vendor_pricing_option import VendorPricingOption
@@ -19,8 +19,8 @@ class CalibrationExemplars(AdCPBaseModel):
     Training/test set to calibrate policy interpretation. Provides concrete examples of pass/fail decisions.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/content-standards.json', pointer='#/properties/calibration_exemplars')
-    pass_: Annotated[list[Artifact] | None, Field(alias='pass', description='Artifacts that pass the content standards')] = None
-    fail: Annotated[list[Artifact] | None, Field(description='Artifacts that fail the content standards')] = None
+    pass_: Annotated[list[Artifact] | None, Field(alias='pass', description='Artifacts that pass the content standards'), OmittedNotNull] = None
+    fail: Annotated[list[Artifact] | None, Field(description='Artifacts that fail the content standards'), OmittedNotNull] = None
 
 
 class ContentStandards(AdCPBaseModel):
@@ -29,14 +29,14 @@ class ContentStandards(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/content-standards.json', pointer='#')
     standards_id: Annotated[str, Field(description='Unique identifier for this standards configuration')]
-    name: Annotated[str | None, Field(description='Human-readable name for this standards configuration')] = None
-    countries_all: Annotated[list[str] | None, Field(description='ISO 3166-1 alpha-2 country codes. Standards apply in ALL listed countries (AND logic).', min_length=1)] = None
-    channels_any: Annotated[list[MediaChannel] | None, Field(description='Advertising channels. Standards apply to ANY of the listed channels (OR logic).', min_length=1)] = None
-    languages_any: Annotated[list[str] | None, Field(description="BCP 47 language tags (e.g., 'en', 'de', 'fr'). Standards apply to content in ANY of these languages (OR logic). Content in unlisted languages is not covered by these standards.", min_length=1)] = None
-    policies: Annotated[list[PolicyEntry] | None, Field(description='Bespoke policies for this content-standards configuration, using the same shape as registry entries. Each policy is addressable by policy_id; governance findings reference the policy_id that triggered them.', min_length=1)] = None
-    calibration_exemplars: Annotated[CalibrationExemplars | None, Field(description='Training/test set to calibrate policy interpretation. Provides concrete examples of pass/fail decisions.')] = None
-    pricing_options: Annotated[list[VendorPricingOption] | None, Field(description='Pricing options for this content standards service. The buyer passes the selected pricing_option_id in report_usage for billing verification.', min_length=1)] = None
-    ext: ExtensionObject | None = None
+    name: Annotated[str | None, Field(description='Human-readable name for this standards configuration'), OmittedNotNull] = None
+    countries_all: Annotated[list[str] | None, Field(description='ISO 3166-1 alpha-2 country codes. Standards apply in ALL listed countries (AND logic).', min_length=1), OmittedNotNull] = None
+    channels_any: Annotated[list[MediaChannel] | None, Field(description='Advertising channels. Standards apply to ANY of the listed channels (OR logic).', min_length=1), OmittedNotNull] = None
+    languages_any: Annotated[list[str] | None, Field(description="BCP 47 language tags (e.g., 'en', 'de', 'fr'). Standards apply to content in ANY of these languages (OR logic). Content in unlisted languages is not covered by these standards.", min_length=1), OmittedNotNull] = None
+    policies: Annotated[list[PolicyEntry] | None, Field(description='Bespoke policies for this content-standards configuration, using the same shape as registry entries. Each policy is addressable by policy_id; governance findings reference the policy_id that triggered them.', min_length=1), OmittedNotNull] = None
+    calibration_exemplars: Annotated[CalibrationExemplars | None, Field(description='Training/test set to calibrate policy interpretation. Provides concrete examples of pass/fail decisions.'), OmittedNotNull] = None
+    pricing_options: Annotated[list[VendorPricingOption] | None, Field(description='Pricing options for this content standards service. The buyer passes the selected pricing_option_id in report_usage for billing verification.', min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ContentStandards"]

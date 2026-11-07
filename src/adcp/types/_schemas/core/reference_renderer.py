@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationFormatsItemFormatRevision,
     HttpUrl,
@@ -38,7 +38,7 @@ class ReferenceRenderer(AdCPBaseModel):
     package: Annotated[Package, Field(description='npm package name, scoped or unscoped. The package is resolved from the npm registry; the AdCP registry does not proxy its executable contents.')]
     version: Annotated[Version, Field(description='Exact semantic version. Ranges and tags such as latest are forbidden so the registry entry is reproducible. Package semantic versioning identifies the pinned distribution artifact; it is independent of any one format revision because one package may expose renderers for multiple formats.')]
     export: Annotated[StrMinLen1, Field(description="Named package export that implements the renderer contract for this enclosing format entry. Compatibility is bound at the export-to-entry edge, not to matching version labels: registry review and contract fixtures verify that the export implements the entry's input contract. When that input contract changes, the registry MUST rerun those fixtures and MAY retain the existing export and package pin when they still pass. One package version MAY expose different named exports for different formats or input contracts.")]
-    format_revision: Annotated[AdCPAgentsAuthorizationFormatsItemFormatRevision | None, Field(description="Deprecated compatibility annotation retained for previously published registry entries. Renderer package versions and community format revisions have independent lifecycles, so consumers MUST NOT require this value to equal the enclosing entry's format_revision or use matching values as evidence of compatibility. Registry review and contract fixtures bind the named export to the enclosing format's input contract. New entries SHOULD omit this field.")] = None
+    format_revision: Annotated[AdCPAgentsAuthorizationFormatsItemFormatRevision | None, Field(description="Deprecated compatibility annotation retained for previously published registry entries. Renderer package versions and community format revisions have independent lifecycles, so consumers MUST NOT require this value to equal the enclosing entry's format_revision or use matching values as evidence of compatibility. Registry review and contract fixtures bind the named export to the enclosing format's input contract. New entries SHOULD omit this field."), OmittedNotNull] = None
     integrity: Annotated[Integrity, Field(description='Subresource Integrity value for the exact npm package tarball. Consumers MUST compare this value before loading code, require the provenance subject digest to match the same tarball, and fail closed on mismatch.')]
     provenance: ReferenceRendererProvenance
 

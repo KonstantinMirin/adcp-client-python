@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1, ZipAssetDigest
 
 from ..enums.canceled_by import CanceledBy
@@ -29,8 +29,8 @@ class RepresentationSelection(AdCPBaseModel):
     selected_representation_id: StrMinLen1
     strategy: Annotated[RepresentationSelectionStrategy, Field(description='Deterministic strategy applied after compatibility filtering.')]
     selected_output_digest: Annotated[ZipAssetDigest, Field(description='Digest of the derived seller-bound manifest projection, computed with RFC 8785 JCS after removing exactly top-level `$schema`, `representation_selection`, `creative_id`, `revision_id`, `name`, `tags`, `status`, `weight`, `placement_refs`, `placement_ids`, and `inputs`. Every other field, including unknown delivery fields, is included. The identical exclusion list applies to the returned CreativeManifest and its later CreativeAsset sync wrapper. A selected sync item cannot carry localization in this version. This is the review/execution fingerprint for the projection, distinct from revision_content_digest, which binds the complete source set.')]
-    execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST version verified for seller-assembled first-class VAST trackers. This is selection lineage and part of the execution review identity; it is not included in selected_output_digest.')] = None
-    execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST version verified for seller-assembled first-class DAAST trackers. This is selection lineage and part of the execution review identity; it is not included in selected_output_digest.')] = None
+    execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST version verified for seller-assembled first-class VAST trackers. This is selection lineage and part of the execution review identity; it is not included in selected_output_digest.'), OmittedNotNull] = None
+    execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST version verified for seller-assembled first-class DAAST trackers. This is selection lineage and part of the execution review identity; it is not included in selected_output_digest.'), OmittedNotNull] = None
     resolved_by: Annotated[CanceledBy, Field(description='Who performed deterministic compatibility resolution. A buyer may resolve locally from seller discovery. Seller resolution is valid only on the destination sales agent when it advertised representation_resolution; an independent creative agent cannot claim seller-bound compatibility.')]
 
 

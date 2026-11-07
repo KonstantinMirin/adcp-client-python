@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem
 
@@ -40,12 +40,12 @@ class SignalForecastDimension(AdCPBaseModel):
         Approximation(document='core/forecast-dimension-signal.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'presence': {'const': 'present'}}, 'required': ['presence']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     kind: Annotated[Literal['signal'], Field(description='Dimension family discriminator.')]
-    signal_ref: Annotated[SignalRef | None, Field(description='Canonical signal reference for this forecast row. Required when the row needs to disambiguate product-local, data-provider, or signal-source identity. Product-relative forecasts SHOULD use signal_ref.')] = None
-    signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Signal identifier shorthand for this forecast row. Use only when the enclosing context already identifies the signal unambiguously, such as a coverage_forecast nested directly under one get_signals signal item. Otherwise use signal_ref.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description='Canonical signal reference for this forecast row. Required when the row needs to disambiguate product-local, data-provider, or signal-source identity. Product-relative forecasts SHOULD use signal_ref.'), OmittedNotNull] = None
+    signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Signal identifier shorthand for this forecast row. Use only when the enclosing context already identifies the signal unambiguously, such as a coverage_forecast nested directly under one get_signals signal item. Otherwise use signal_ref.'), OmittedNotNull] = None
     signal_value: Annotated[str | float | bool | None, Field(description="Signal value bucket represented by this point. Use null with presence 'absent' to represent inventory where the signal is not present. Omit when the row describes any present value rather than one specific value.")] = None
     presence: Annotated[SignalForecastDimensionPresence, Field(description="Whether the signal is present for this point. Use 'absent' for the explicit not-present bucket.")]
-    signal_name: Annotated[str | None, Field(description='Human-readable signal name, useful when the buyer has not resolved the signal definition.')] = None
-    signal_value_name: Annotated[str | None, Field(description='Human-readable label for the signal value bucket.')] = None
+    signal_name: Annotated[str | None, Field(description='Human-readable signal name, useful when the buyer has not resolved the signal definition.'), OmittedNotNull] = None
+    signal_value_name: Annotated[str | None, Field(description='Human-readable label for the signal value bucket.'), OmittedNotNull] = None
 
 
 __all__ = ["SignalForecastDimension"]

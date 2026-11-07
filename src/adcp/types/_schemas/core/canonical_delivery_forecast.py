@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import MeasurementSource
 
 from ..enums.demographic_system import DemographicSystem
@@ -26,16 +26,16 @@ class CanonicalDeliveryForecast(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-delivery-forecast.json', pointer='#')
     points: Annotated[list[CanonicalForecastPoint], Field(min_length=1)]
-    forecast_range_unit: ForecastRangeUnit | None = None
+    forecast_range_unit: Annotated[ForecastRangeUnit | None, OmittedNotNull] = None
     method: ForecastMethod
     currency: CurrencyCode
-    demographic_system: DemographicSystem | None = None
-    demographic: str | None = None
-    measurement_source: MeasurementSource | None = None
-    reach_unit: ReachUnit | None = None
-    generated_at: AwareDatetime | None = None
-    valid_until: AwareDatetime | None = None
-    ext: ExtensionObject | None = None
+    demographic_system: Annotated[DemographicSystem | None, OmittedNotNull] = None
+    demographic: Annotated[str | None, OmittedNotNull] = None
+    measurement_source: Annotated[MeasurementSource | None, OmittedNotNull] = None
+    reach_unit: Annotated[ReachUnit | None, OmittedNotNull] = None
+    generated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    valid_until: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CanonicalDeliveryForecast"]

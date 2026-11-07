@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMinLen1
 
@@ -60,9 +60,9 @@ class BrandResponseAuthorizationResult(BranchDispatchMixin, AdCPBaseModel):
     def _branch_combinator(cls) -> str:
         return "oneOf"
     trust: Annotated[Trust, Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.')]
-    reason: Annotated[Reason | None, Field(description='Machine-readable reason for an untrusted result.')] = None
-    kid: Annotated[StrMinLen1 | None, Field(description='JWS kid evaluated by the cross-check.')] = None
-    jwks_uri: Annotated[HTTPSURL | None, Field(description='JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.')] = None
+    reason: Annotated[Reason | None, Field(description='Machine-readable reason for an untrusted result.'), OmittedNotNull] = None
+    kid: Annotated[StrMinLen1 | None, Field(description='JWS kid evaluated by the cross-check.'), OmittedNotNull] = None
+    jwks_uri: Annotated[HTTPSURL | None, Field(description='JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.'), OmittedNotNull] = None
 
 
 class BrandResponseAuthorizationResultTrusted(BrandResponseAuthorizationResult):
