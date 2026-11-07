@@ -98,6 +98,7 @@ from typing import (
 
 import jsonschema
 from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, RootModel, TypeAdapter
+from pydantic._internal._model_construction import ModelMetaclass
 from pydantic.fields import FieldInfo
 from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError, core_schema
 
@@ -1705,7 +1706,82 @@ class SchemaBound(RuleBound):
         return cls.model_validate(payload)
 
 
-class AdCPBaseModel(SchemaBound):
+class _Dispatching(ModelMetaclass):
+    """``Base(**data)`` is a CALL ON THE CLASS, so the dispatch for it lives here.
+
+    :meth:`BranchDispatchMixin.__new__` carried this and could not reach every call, and
+    the gap is MEASURED rather than reasoned about.  That method read
+
+    ::
+
+        if data and cls._dispatching():
+            return cls.__pydantic_validator__.validate_python(data)
+        return super().__new__(cls)
+
+    and the ``data and`` guard existed for a real reason its own docstring states --
+    ``model_construct``, ``copy`` and pickle all reach ``cls.__new__(cls)`` with no
+    arguments and must keep getting an ALLOCATION.  The sentence beside it, "that costs no
+    coverage: ``Base()`` is still refused, by ``__init__``'s own validation against the
+    union", is **false wherever a branch admits the empty object**, and there are 27 such
+    arms in this bundle (``adcp-client-python-nui0``'s second fault).  The value:
+
+    ::
+
+        AssetRequirements.model_validate({})  -> AssetRequirementsImage
+        AssetRequirements(**{})               -> AssetRequirements   + UserWarning
+            "A custom validator is returning a value other than `self`."
+
+    ``{}`` is falsy, so ``__new__`` allocated the BASE; ``BaseModel.__init__`` then
+    validated ``{}`` with ``self_instance=self`` against the base's own validator -- which
+    IS the union -- got the branch back, and pydantic DISCARDED it and kept ``self``,
+    warning that it was doing so.  All twelve arms of
+    ``core/requirements/asset-requirements.json`` are that case, which is why the five
+    dispatch paths disagreed there and nowhere else: the other four never pass through
+    ``__init__``.
+
+    **``__new__`` cannot close it, because the two callers are indistinguishable there.**
+    ``Base()`` and ``cls.__new__(cls)`` arrive with ``args == ()`` and ``data == {}``
+    both; the guard was the only thing separating an allocation request from a
+    construction, and it separates them by the payload rather than by the caller.  What
+    distinguishes them is the ROUTE: a construction goes through ``type.__call__`` and an
+    allocation does not.  So the dispatch moves to the metaclass's ``__call__``, which is
+    exactly that route and nothing else -- measured on the pinned pydantic:
+    ``model_construct``, ``__copy__`` and ``__deepcopy__`` each call ``cls.__new__(cls)``
+    directly (``BaseModel``'s own source), and pickle reaches it through
+    ``object.__reduce_ex__`` because ``BaseModel`` defines ``__getstate__`` and no
+    ``__reduce__``.  None of the four is a call on the class, so none of the four changes.
+
+    ``ModelMetaclass`` defines no ``__call__`` of its own on this pin, so ``super()`` is
+    ``type.__call__`` and a class that does not dispatch is constructed exactly as before.
+
+    **Here and not on the mixin.**  :class:`BranchDispatchMixin` is ``object`` at runtime
+    (:data:`_MixedInto`) precisely so that it adds no pydantic machinery, and declaring a
+    ``ModelMetaclass`` subclass on it would have ``ModelMetaclass`` build the mixin itself.
+    Every emitted union base is a subclass of :class:`AdCPBaseModel`, so carrying it here
+    reaches all of them and the guard below is what keeps it off everything else.
+    """
+
+    def __call__(cls, *args: Any, **data: Any) -> Any:
+        """Dispatch a construction of a union BASE to the branch the payload satisfies.
+
+        The guard is :meth:`BranchDispatchMixin._dispatching`'s own reading -- the base is
+        the class that DECLARES ``_branch_models`` -- read off ``cls.__dict__`` directly
+        because a metaclass may be asked about a class that is not a model at all during
+        the package's own construction.  A branch, a consumer's refinement and every
+        non-union class inherit the attribute rather than declaring it, so they take
+        ``type.__call__`` unchanged.
+
+        The validator asked is the base's own, which :meth:`
+        BranchDispatchMixin.__get_pydantic_core_schema__` has made the union, so this path
+        and ``model_validate`` are the same single-pass validation of the same payload --
+        where the old ``__new__`` validated twice (once here, once in ``__init__``).
+        """
+        if cls.__dict__.get("_branch_models"):
+            return cls.__pydantic_validator__.validate_python(data)
+        return super().__call__(*args, **data)
+
+
+class AdCPBaseModel(SchemaBound, metaclass=_Dispatching):
     """The base every emitted CLASS inherits.
 
     What is left here is the one thing that is a class's and not a root model's: the
@@ -1713,6 +1789,11 @@ class AdCPBaseModel(SchemaBound):
     ``additionalProperties`` ("absent -> ``ignore``").  The schema half and the rule
     tuple are :class:`SchemaBound`'s, which §8 shares between this and
     :class:`AdCPRootModel`.
+
+    **The metaclass is :class:`_Dispatching`**, which carries ``Base(**data)`` -- the one
+    of §4's five paths that no core schema reaches.  It was
+    :meth:`BranchDispatchMixin.__new__` and that position could not separate a
+    construction from an allocation; the metaclass's ``__call__`` is the route itself.
     """
 
     model_config = ConfigDict(extra="ignore", regex_engine=REGEX_ENGINE)
@@ -1868,19 +1949,22 @@ class BranchDispatchMixin(_MixedInto):
     and dispatches to the branches, and nothing has to put the document back into the model
     by hand.
 
-    **2. :meth:`__new__` covers ``Base(**data)``**, which no schema can reach:
-    ``BaseModel.__init__`` validates with ``self_instance=self``, so the object is already
-    allocated when validation runs.  Measured without this method: ``Base(kind="b")``
+    **2. :class:`_Dispatching.__call__` covers ``Base(**data)``**, which no schema can
+    reach: ``BaseModel.__init__`` validates with ``self_instance=self``, so the object is
+    already allocated when validation runs.  Measured without it: ``Base(kind="b")``
     returns a ``Base`` -- validation passes, the union matched, and the instance is still
     the base -- and pydantic warns ``A custom validator is returning a value other than
-    self``.  ``__new__`` asks the base's own validator, which IS that union, so all four
-    paths refuse and resolve identically.  Direct construction therefore validates twice
-    and is idempotent, and ``model_validate`` stays single-pass.
+    self``.  The metaclass asks the base's own validator, which IS that union, so all five
+    paths refuse and resolve identically, in ONE pass.
 
-    It dispatches only when it was given data, because ``model_construct``, ``copy`` and
-    pickle all call ``cls.__new__(cls)`` with none and must keep getting an allocation.
-    That costs no coverage: ``Base()`` is still refused, by ``__init__``'s own validation
-    against the union.
+    **It was ``__new__`` and that position was wrong**, which is measured and not a matter
+    of taste: ``__new__`` had to let ``model_construct``, ``copy`` and pickle through --
+    all three reach ``cls.__new__(cls)`` with no arguments -- and it separated them from a
+    construction by the payload's TRUTHINESS, so every union a branch of which admits
+    ``{}`` handed the BASE back from ``Base(**data)`` while the other four paths returned
+    the branch.  27 arms of this bundle, enumerated on
+    ``adcp-client-python-nui0``.  :class:`_Dispatching` separates them by the ROUTE
+    instead, which is the thing that actually differs.
 
     **3. The base is the class that DECLARES ``_branch_models``**
     (``"_branch_models" not in cls.__dict__``).  A class that inherits it gets its own
@@ -2284,7 +2368,8 @@ class BranchDispatchMixin(_MixedInto):
             ],
         )
 
-    def __new__(cls, *args: Any, **data: Any) -> Any:
-        if data and cls._dispatching():
-            return cls.__pydantic_validator__.validate_python(data)
-        return super().__new__(cls)
+    # ``Base(**data)`` IS NOT HERE ANY MORE: it is :class:`_Dispatching.__call__`, which
+    # carries the measurement for the move.  ``__new__`` had to separate a construction
+    # from an allocation and the two arrive identically, so it separated them by the
+    # payload's truthiness instead and handed the BASE back for every payload a branch
+    # admits empty.
