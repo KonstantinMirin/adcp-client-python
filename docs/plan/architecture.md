@@ -1766,6 +1766,27 @@ pairs a root model as it pairs a class.
 
 ## 9. The verifier: `codegen/verify/`
 
+**A CHECK'S COST IS LINEAR IN THE DOCUMENT'S NODES, EACH VISITED ONCE — AND A BUDGET IS EVIDENCE
+THAT ONE IS NOT.** Combinatorial explosion and unbounded recursion are **defects of the approach,
+not costs to control.** A time budget, a depth limit, a cap on examples: each is a parameter added
+so that an explosion stops being visible, and **every pair such a budget cuts is a check that did
+not run, recorded as though something had been learned.** That is the same evasion as an
+expected-failure marker, arriving as arithmetic instead of as a decorator.
+
+The two checks are linear by construction and nothing in the readings asks otherwise: draw a value
+the document admits and the class must admit it; instantiate, dump, and the document must admit the
+dump. **A document with N branches needs N values, not 2^N.** So where a cost is a power set, a
+cross-product of conjuncts, or "every combination of branches", the question is which reading
+demanded it — and the answer is none of the ten. Where a `$ref` cycle is survived by a depth limit,
+the cycle is to be **detected once and the node memoised**; this project has already found 189
+refusals that were a single reference loop.
+
+**MEMOISATION HERE IS THE DESIGN AND NOT AN OPTIMISATION.** One answer per node per document, keyed
+on the pointer, is what makes the cost linear and the budget unnecessary. The largest single saving
+this suite has had was exactly that — a per-pair grade left uncached beneath a cached whole-set
+one, so one body of work ran three times — and it was invisible because the gate written to
+prevent it read only one of the two names.
+
 The verifier grades an emitted class against the document it names, and it does so without
 reading the walk. Its import set is the whole of that rule, and `tests/test_import_rule.py`
 asserts it: `codegen.keywords` (for the compared set and the widenings), `codegen.attribution` (to
