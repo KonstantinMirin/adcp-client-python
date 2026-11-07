@@ -711,6 +711,12 @@ ignore = [
 # ``T201`` print: ``codegen/__main__.py`` is a command-line program and print
 # is its output channel.  Everywhere else a print is a finding.
 "codegen/__main__.py" = ["T201"]
+# ``survey/__main__.py`` is the instrument index and is the same case: its output
+# IS the list it prints.  ``INP001`` for the same reason ``tests/*`` carries it --
+# ``survey/`` is deliberately not a package, and ``python -m survey`` reaches this
+# file through the namespace package, which is what makes the glob over siblings
+# the index rather than an import of them.
+"survey/__main__.py" = ["T201", "INP001"]
 # The emitted tree's ``__init__.py`` files are 0 bytes by design (the layout
 # rule beside ``emit.write``), so a docstring rule has nothing to attach to.
 "src/adcp/types/_schemas/**/__init__.py" = ["D104"]

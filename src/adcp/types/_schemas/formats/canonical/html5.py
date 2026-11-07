@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
 from adcp.types.constraints import IntMin1, IntMin1Max100
 
@@ -27,7 +27,9 @@ class MraidVersion(StrEnum):
     Required MRAID version when mraid_required is true.
     """
     V_2_0 = '2.0'
+    field_2_0 = MemberAlias('V_2_0')
     V_3_0 = '3.0'
+    field_3_0 = MemberAlias('V_3_0')
 
 
 class CanonicalFormatHTML5Banner(CanonicalFormatBase):
