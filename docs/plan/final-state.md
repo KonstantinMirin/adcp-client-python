@@ -87,7 +87,8 @@ every bundle the compiler is pointed at, so nothing deciding it may be keyed to 
 1. **Draw a value from the document. The class must admit it.**
 2. **Instantiate the class, dump it. The document must admit the dump.**
 
-Plus the declared widenings of reading 2, each proved by a value.
+Plus the declared deviations of reading 2 — widenings, and the narrowings it admits on three
+conditions — each proved by a value.
 
 **BOTH CHECKS ARE A FUNCTION OF (class, document) AND OF NOTHING ELSE.** Point them at another
 bundle and they answer for that bundle, because there is nothing to carry over and nothing to
@@ -105,12 +106,36 @@ preserves what the document admits. A document that states no example and admits
 generator can produce is an ask over a set of the bundle — not a budget, not an exemption, and not
 a pair that passes by leaving the check unexecuted. A budget cut is reported as a cut.
 
-## 2. Every exception to reading 1 is a declared widening, proved by a value
+## 2. Every exception to reading 1 is declared and proved by a value
 
-A model may be wider than its document and never tighter. Each widening is declared at its own
-pointer in the emitted module, the declared set equals the set a run mints in both directions, and
-**every declaration holds a value that demonstrates it**. A declaration with no value behind it is
-an allowlist wearing a measurement.
+A model may be wider than its document, and **tighter only where the excluded set is declared and
+judged unsent**. Each deviation is declared at its own pointer in the emitted module, the declared
+set equals the set a run mints in both directions, and **every declaration holds a value that
+demonstrates it**. A declaration with no value behind it is an allowlist wearing a measurement.
+
+**AND A NARROWING IS NOT A WIDENING READ BACKWARDS — THE TWO FAIL IN OPPOSITE DIRECTIONS.** A
+widening admits what the document forbids, so bad data passes and the caller never learns. A
+narrowing refuses what the document admits, so a conforming caller is blocked and **learns
+immediately, by an error naming the field.** That asymmetry is why the two take different admission
+tests and not one: a widening is dangerous in proportion to what slips through unseen, and a
+narrowing in proportion to what a real caller actually sends.
+
+**SO A NARROWING IS ADMISSIBLE ON THREE CONDITIONS, AND THE THIRD IS A JUDGEMENT AND MUST SAY
+WHOSE.** It is declared at its own pointer like a widening; it holds a value the document admits and
+the class refuses, **with the class's reason named beside the document's sentence**; and the set it
+excludes is NAMED and judged one no caller sends. The third condition is not a measurement and must
+never be dressed as one — "no caller sends a 4,096-character URL" is a claim about the world that a
+person owns, recorded with their name, and revisable when a caller does.
+
+**AND THE REPAIR FOR A NARROWING IS NEVER TO DELETE THE TYPE THAT CAUSES IT, WHERE THE TYPE IS
+RULED RIGHT.** Where a URL is to be a URL, widening it to the document's own `str` to clear a
+length finding discards every other fact the type carries — scheme, host, parseability — to settle
+a bound nobody reaches. **That trade is the instrument steering the artifact**, which is the one
+direction this file forbids throughout. The finding is answered by the declaration, not by the type
+it indicts.
+
+**AN UNDECLARED NARROWING IS STILL A READING 1 FAILURE**, exactly as an undeclared widening is. The
+default is refusal; this clause opens a door and does not remove the wall.
 
 **AND THE DEMAND IS OVER FACTS, PROVED AT THE INNERMOST POSITION THAT CARRIES ONE.** A fact stated
 at a node and re-declared at every position composing that node is **one** fact, and the value
@@ -128,6 +153,13 @@ rigour while measuring nothing.
 **Decided by** the set equality in both directions, and by the store of proving values containing
 one for each FACT — where an entry recording a budget cut is not a value, and where a count over
 carrying positions is not the count this reading names.
+
+**And decided, for a narrowing, by all three conditions at once.** The declaration, the value with
+both reasons named, and the excluded set with the judgement's owner beside it. **A narrowing
+carrying two of the three is undeclared**, because the missing one is always the one that would have
+made it reviewable: a declaration with no value is an allowlist, a value with no named owner is a
+preference, and an excluded set left unnamed cannot be checked against a caller who turns up
+sending it.
 
 ## 3. Every union root dispatches
 
