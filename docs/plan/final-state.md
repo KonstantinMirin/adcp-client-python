@@ -257,6 +257,15 @@ application already imports, and a public name that changes because something un
 is worse than a long one. The uniform rule costs verbosity; the conditional rule costs a name's
 meaning, and only one of those is recoverable.
 
+**AND "THE PARENT'S NAME" IS THE PARENT'S OWN EXPORT WORD, READ TRANSITIVELY TO THE NEAREST TITLED
+ANCESTOR** — so the word is the node's whole chain and not its last two links. The sentence above
+admits three readings and only this one leaves no collision: the literal depth-2 reading leaves
+words that two positions of one domain both want, and keying on the parent's *post-collision*
+symbol cannot answer at all for a node whose parent is itself unnamed. **This reading is also the
+only one that is a function of the document's path alone**, which is the stability the clause is
+argued from — so it is not a third rule added to rescue the second, it is what the argument already
+required and the sentence failed to say.
+
 **AND A NAME THIS RULE MINTS IS STILL PENDING AN UPSTREAM TITLE**, because the bundle titled nothing
 here — so it is a §4 placeholder with every consequence §4 attaches, and reading 10's prohibition on
 aliasing onto a minted name applies to it unchanged except where that reading's own deprecation
