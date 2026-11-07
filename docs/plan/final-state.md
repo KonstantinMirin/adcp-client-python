@@ -247,6 +247,21 @@ thing it mandates is measuring the wrong quantity, not finding a defect.
 branches and aliases alike — at exactly one such path, with the domain derived from the document's
 own path. No second way reaches the same class, and no name in one namespace means two classes.
 
+**AND AN UNTITLED INNER NODE IS EXPORTED UNDER ITS PARENT'S NAME AND ITS KEY, ALWAYS — NEVER ONLY
+WHEN THE KEY COLLIDES.** A domain carries many a `method`, a `target`, an `items`, so the key alone
+cannot be the export for all of them. The tempting rule is to export the key alone where it happens
+to be unique in its domain and to prefix only the rest; measured, that would be 1,066 bare and 314
+prefixed across 121 colliding words. **REFUSE IT, because such a name is not stable under the
+bundle's own growth:** a document arriving later with a colliding key would RENAME an export an
+application already imports, and a public name that changes because something unrelated was added
+is worse than a long one. The uniform rule costs verbosity; the conditional rule costs a name's
+meaning, and only one of those is recoverable.
+
+**AND A NAME THIS RULE MINTS IS STILL PENDING AN UPSTREAM TITLE**, because the bundle titled nothing
+here — so it is a §4 placeholder with every consequence §4 attaches, and reading 10's prohibition on
+aliasing onto a minted name applies to it unchanged except where that reading's own deprecation
+clause admits one.
+
 **AND ONE NAME MEANING TWO THINGS IN TWO NAMESPACES IS NOT A VIOLATION OF THIS READING, BUT IT IS
 NOT NOTHING EITHER.** Where the bundle titles two unrelated nodes alike — one an object with a
 `oneOf`, one an enumeration, neither referencing the other — reading 4 is right to keep them apart,
