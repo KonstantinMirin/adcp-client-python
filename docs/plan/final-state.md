@@ -535,10 +535,17 @@ counted on its own terms rather than folded into one of them
 CHECKABLE.** Aliased plus the four refusals equals every spelling the bundle states, asserted as a
 partition — so **a fifth reason BREAKS the gate instead of hiding inside it**, which is the only
 form in which "we counted the exceptions" is a statement about the artifact rather than about who
-was looking. The re-casing reason is expected empty **by construction and not by luck**: §5's
-`enum` row already sends a node whose two values spell one member name to a `Literal` with no class
-and no member names at all, so such a collision is a migration-guide entry at the NODE, where both
-spellings are gone — and if that reason is ever non-empty, §5's row is what moved.
+was looking. **The re-casing reason is expected empty and that expectation is MEASURED, not proved —
+and I first wrote it the other way.** §5's `enum` row sends a node whose two values spell one member
+name to a `Literal` with no class and no member names at all, so a collision there is a
+migration-guide entry at the NODE, where both spellings are gone. That is a strong reason to expect
+emptiness and it is **not** a construction: the canonical namer keeps any character `str.isalnum`
+admits, the sanitiser keeps only ASCII, **so the two can disagree and the class can fill.** Calling
+it empty by construction asserted a theorem over two functions that were never shown to agree —
+which is the same error as the word *verbatim* and the leading-digit list above, for the third time
+in one clause. **An expected-empty count with no mechanism behind it is a coincidence waiting to be
+reported as a property**, so the count is read from the implementation and the gate's partition is
+what would catch it filling.
 
 **An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
 export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
