@@ -72,6 +72,26 @@ it", which is what retiring a row looks like.  **What is left is eight rows none
 is ours to collapse**: three ``NOT ONE TYPE`` rows awaiting a dropped conjunct, three
 ``SPLIT`` rows the bundle's own words decide, and two ``PENDING A NAME`` rows whose ask is
 upstream's.
+
+**AND THE CLAUSE ABOVE WAS ASSERTED ON A GROUPING THAT COULD NOT HAVE SEEN ONE KIND OF
+COLLAPSE, which is a second reading this file owed and now names**
+(``adcp-client-python-qpzf``).  Every row here is keyed on ``(document, pointer)``, but the
+GROUP a row answers is formed by ``test_one_node_is_one_declaration.grouped``'s five-part
+key -- so a row's key is a node set and the grouping's key is not.  Where the key SEPARATES
+two declarations no row can form over them, and two classes at ONE node that state
+different content are separated by part 1 of it.  Reading 4's clause is about the NODE ("a
+type stated at more than one position is written once and referenced"), so "no COLLAPSE row
+left" was a statement about every collapse the KEY can form and not about every collapse.
+``test_one_schema_node_is_declared_by_at_most_one_class`` is the clause keyed on the node
+alone, perturbed in the EMITTER by ``./perturb_two_classes_at_one_node.sh``; with it the
+sentence above holds of the node layer as well, and the live population is 0 nodes carrying
+two classes over the 2,340 the tree declares.
+
+The report that occasioned it found 17 nodes carrying 35 "classes" and every pair is ONE
+class object under two or three names -- ``SignalTagsValue = TagsValue``, which is
+``lower/names.adopt``'s "one class, as many names as the node has positions" working.  So no
+row is mis-closed and none of the 17 belongs in this table: an alias is not a duplicate, and
+a count that cannot tell one from a declaration decides nothing about this file either way.
 """
 
 from __future__ import annotations
