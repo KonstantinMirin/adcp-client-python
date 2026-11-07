@@ -295,8 +295,11 @@ class Background(StrEnum):
     Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background
     """
     DARK_BG = 'dark-bg'
+    dark_bg = MemberAlias('DARK_BG')
     LIGHT_BG = 'light-bg'
+    light_bg = MemberAlias('LIGHT_BG')
     TRANSPARENT_BG = 'transparent-bg'
+    transparent_bg = MemberAlias('TRANSPARENT_BG')
 
 
 class LogoVariant(StrEnum):
@@ -312,6 +315,7 @@ class LogoVariant(StrEnum):
     WORDMARK = 'wordmark'
     wordmark = MemberAlias('WORDMARK')
     FULL_LOCKUP = 'full-lockup'
+    full_lockup = MemberAlias('FULL_LOCKUP')
 
 
 class Logo(AdCPBaseModel):
@@ -694,6 +698,7 @@ class ProductFocus(StrEnum):
     How products are shown
     """
     IN_USE = 'in-use'
+    in_use = MemberAlias('IN_USE')
     ISOLATED = 'isolated'
     isolated = MemberAlias('ISOLATED')
     LIFESTYLE = 'lifestyle'
@@ -764,6 +769,7 @@ class StyleType(StrEnum):
     MINIMAL_LINE_ART = 'minimal_line_art'
     minimal_line_art = MemberAlias('MINIMAL_LINE_ART')
     V_3D_RENDER = '3d_render'
+    field_3d_render = MemberAlias('V_3D_RENDER')
     ISOMETRIC = 'isometric'
     isometric = MemberAlias('ISOMETRIC')
     PHOTOGRAPHIC_COMPOSITE = 'photographic_composite'
@@ -1183,11 +1189,17 @@ class PreferredPosition(StrEnum):
     Preferred logo position in layouts
     """
     TOP_LEFT = 'top-left'
+    top_left = MemberAlias('TOP_LEFT')
     TOP_CENTER = 'top-center'
+    top_center = MemberAlias('TOP_CENTER')
     TOP_RIGHT = 'top-right'
+    top_right = MemberAlias('TOP_RIGHT')
     BOTTOM_LEFT = 'bottom-left'
+    bottom_left = MemberAlias('BOTTOM_LEFT')
     BOTTOM_CENTER = 'bottom-center'
+    bottom_center = MemberAlias('BOTTOM_CENTER')
     BOTTOM_RIGHT = 'bottom-right'
+    bottom_right = MemberAlias('BOTTOM_RIGHT')
     CENTER = 'center'
 
 

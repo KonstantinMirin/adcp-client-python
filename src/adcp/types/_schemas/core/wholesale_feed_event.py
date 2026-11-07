@@ -29,14 +29,23 @@ class WholesaleFeedEventType(StrEnum):
     Discriminator. Determines the shape of `payload`.
     """
     PRODUCT_CREATED = 'product.created'
+    product_created = MemberAlias('PRODUCT_CREATED')
     PRODUCT_UPDATED = 'product.updated'
+    product_updated = MemberAlias('PRODUCT_UPDATED')
     PRODUCT_PRICED = 'product.priced'
+    product_priced = MemberAlias('PRODUCT_PRICED')
     PRODUCT_REMOVED = 'product.removed'
+    product_removed = MemberAlias('PRODUCT_REMOVED')
     SIGNAL_CREATED = 'signal.created'
+    signal_created = MemberAlias('SIGNAL_CREATED')
     SIGNAL_UPDATED = 'signal.updated'
+    signal_updated = MemberAlias('SIGNAL_UPDATED')
     SIGNAL_PRICED = 'signal.priced'
+    signal_priced = MemberAlias('SIGNAL_PRICED')
     SIGNAL_REMOVED = 'signal.removed'
+    signal_removed = MemberAlias('SIGNAL_REMOVED')
     WHOLESALE_FEED_BULK_CHANGE = 'wholesale_feed.bulk_change'
+    wholesale_feed_bulk_change = MemberAlias('WHOLESALE_FEED_BULK_CHANGE')
 
 
 class EntityType(StrEnum):

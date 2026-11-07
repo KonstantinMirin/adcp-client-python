@@ -603,10 +603,12 @@ as a clean match. Measured in the drop-in lane: **3,282 of upstream 9.6.1's own 
 tests failed on ONE member** — more than any class name in this guide — and the member was
 `Recovery.transient`.
 
-**Our generated members are `UPPER_SNAKE`; upstream's are the value verbatim.** `core/error.json`
-states the value list `transient|correctable|terminal` and says nothing about the attribute a
-caller types, so neither spelling is the document's. **This package now emits both**, as a
-class-body line beside the canonical member:
+**Our generated members are `UPPER_SNAKE` because that is PYTHON's** — `HTTPStatus.CONTINUE`,
+`Signals.SIGHUP`, `AddressFamily.AF_UNSPEC` — **and upstream's are the value pushed through
+`datamodel-code-generator`'s identifier sanitiser.** `core/error.json` states the value list
+`transient|correctable|terminal` and says nothing about the attribute a caller types, so neither
+spelling is the document's. **This package now emits both**, as a class-body line beside the
+canonical member:
 
 ```python
 class Recovery(StrEnum):
@@ -617,50 +619,65 @@ class Recovery(StrEnum):
 
 `Recovery.transient is Recovery.TRANSIENT` — the same object, not a second member.
 `len(Recovery.__members__)` is 3, the value set is the document's three strings, and
-`Recovery('transient')` works as it always did. So **for most members this section owes
-nothing and a port needs no edit**: of the **4,031 member spellings over 751 emitted
-enumerations**, **3,514 carry the value-verbatim attribute** and `259` more already spell it
-(the value is itself the `UPPER_SNAKE` name — `Method.GET` is the attribute on both
-packages, so nothing is owed and nothing changed).
+`Recovery('transient')` works as it always did.
 
-**What IS owed is the 258 spellings where the value cannot be a python attribute of that
-class, plus 2 at one node.** Each is a real edit for a caller who typed upstream's
-spelling, and each has one of three reasons:
-
-| reason | spellings | what to write instead |
-|---|---|---|
-| `not a python identifier` | 241 | the `UPPER_SNAKE` member, or the constructor |
-| `a name the enumeration already resolves` | 17 | the `UPPER_SNAKE` member, or the constructor |
-| `re-cases onto another member's attribute` | 2 (at 1 node) | the string — there is no class |
-| `already the canonical member name` | 259 | **nothing — unchanged** |
-
-**`not a python identifier` — 241 spellings, 193 distinct values, 44 enumerations.** The
-value carries a character a name cannot: **131** a dot (`1.0`, `v2.1`), **56** a hyphen
-(`dark-bg`, `top-left`, `full-lockup`), **22** a leading digit (`3d_render`), **24** a slash
-or a media type (`text/plain`, `/geo_countries`), **6** an integer value, and **4** a python
-KEYWORD — `pass` three times and `global` once, which `str.isidentifier` calls identifiers
-and a class body refuses outright. The spelling is **refused and never repaired**: a
-sanitised `dark_bg` would be a third convention belonging to neither package, so
+**AND THE SPELLING IS THE SANITISER'S OUTPUT, NOT THE VALUE VERBATIM — which is the one line
+of this section that USED TO SEND A CALLER TO REWRITE A LINE THAT WORKS.** Where the value is
+already an identifier the two coincide and the distinction is invisible. Where it is not,
+upstream does not refuse it: it replaces every character outside `[0-9A-Za-z_]` with `_`,
+suffixes a python keyword with `_`, and prefixes `field_` to anything that cannot begin an
+identifier. So
 
 ```python
-Background.dark_bg          # upstream
-Background.DARK_BG          # here — or Background('dark-bg')
+AdCPProtocol.media_buy      # upstream — and HERE, from enums/adcp-protocol.json's 'media-buy'
+Background.dark_bg          # upstream — and HERE, from brand.json's 'dark-bg'
+VastVersion.field_1_0       # upstream — and HERE, from '1.0'
+BinaryVerdict.pass_         # upstream — and HERE, from 'pass', which a class body refuses bare
 ```
 
-**`a name the enumeration already resolves` — 17 spellings, 9 distinct values.** The value
-verbatim is a name the enumeration already has before any member is declared:
-`name`, `value`, `count`, `index`, `format`, `title`, `split`, `center`, `capitalize`. The
-first two are `enum.Enum`'s own `name` and `value` descriptors, and binding over them makes
-`Kind.NAME.name` return the member instead of `'NAME'` — the enum protocol broken on a class
-whose document says nothing about python attributes. The rest are `str` methods a member
-inherits. So
+all resolve on this package, each `is` its `UPPER_SNAKE` member. The four clauses are read off
+upstream's installed 9.6.1 wheel and reproduce **6,159 of 6,159** of its generated member
+attributes, so an attribute named here is one a caller of their package actually writes.
+
+So **for nearly every member this section owes nothing and a port needs no edit**: most member
+spellings carry the value verbatim, a further set carry the sanitiser's spelling, and the rest
+already ARE it (the derived spelling is itself the `UPPER_SNAKE` name — `Method.GET` and
+`AuthenticationScheme.HMAC_SHA256` are the attribute on both packages, so nothing is owed and
+nothing changed).
+
+**What IS owed is the spellings the sanitiser cannot rescue, plus 2 at one node.** Each is a
+real edit for a caller who typed upstream's spelling, and each has one of three reasons:
+
+| reason | what to write instead |
+|---|---|
+| `no python identifier derives from the value` | the `UPPER_SNAKE` member, or the constructor |
+| `a name the enumeration already resolves` | the `UPPER_SNAKE` member, or the constructor |
+| `two values sanitise onto one attribute` | the string — there is no class |
+| `already the canonical member name` | **nothing — unchanged** |
+
+**`no python identifier derives from the value` — the INTEGER members, and nothing else.** A
+non-string value has no attribute spelling at all on either package: upstream's generator
+names such a member from the value too, and an integer cannot begin an identifier. Reading 10
+names a leading digit, the empty string and pure punctuation in this class as well; the
+derivation read off upstream's wheel says they are *not* in it, because `field_` rescues all
+three (`'1.0'` → `field_1_0`, `'3d_render'` → `field_3d_render`), and this document records
+that disagreement rather than repeating the clause.
+
+**`a name the enumeration already resolves` — the one place this package deliberately does
+NOT follow upstream's derivation.** The derived spelling is a name the enumeration already has
+before any member is declared: `name`, `value`, `count`, `index`, `format`, `title`, `split`,
+`center`, `capitalize`. The first two are `enum.Enum`'s own `name` and `value` descriptors, and
+upstream's wheel does bind over them — `name = 'name'` appears in eight of its generated
+classes — which makes `Kind.NAME.name` return the member instead of `'NAME'`: the enum protocol
+broken on a class whose document says nothing about python attributes. The rest are `str`
+methods a member inherits. This package refuses the spelling instead, so
 
 ```python
 Kind.name                   # upstream
 Kind.NAME                   # here — or Kind('name')
 ```
 
-**`re-cases onto another member's attribute` — 2 spellings, at one node, and there is no
+**`two values sanitise onto one attribute` — 2 spellings, at one node, and there is no
 class to spell them on.** `formats/canonical/html5.json#/properties/clicktag_macro` states
 `["clickTag", "clickTAG"]`, which our `UPPER_SNAKE` naming maps onto one attribute —
 `CLICKTAG` for both. The row renders a `Literal['clickTag', 'clickTAG']` and no enumeration,
@@ -673,11 +690,14 @@ ClickTagMacro.clickTag      # upstream
 "clickTag"                  # here — the field is Literal['clickTag', 'clickTAG']
 ```
 
-**Both tables are DERIVED and gated.** The counts are
+**Both tables are DERIVED and gated.** The reasons are
 `codegen.lower.enum.member_aliases` over the tree a fresh run emits, and
-`tests/test_the_member_spelling_is_emitted.py` partitions all 4,031 spellings across the
-four reasons, requires this section to name three of them in the compiler's own words, and
-reddens if a fifth reason is added to the compiler and not to this document.
+`tests/test_the_member_spelling_is_emitted.py` partitions every member spelling across the
+four reasons and the two emitted halves — verbatim and sanitised — requires this section to
+name three of them in the compiler's own words, and reddens if a fifth reason is added to the
+compiler and not to this document. The live counts are in
+`adcp-client-python-tuuc`, not here: a figure in a porting guide goes stale on the next bundle
+and a stale figure gets believed.
 
 ---
 

@@ -505,9 +505,20 @@ the private tree before the suite's own fixtures and brought down the collector,
 layer that must run before being true looks like when it is late.
 
 **THE ALIAS IS REFUSED WHERE THE SPELLING CANNOT BE ONE *AFTER* SANITISING**: where no identifier
-can be derived at all (a leading digit, the empty string, pure punctuation), where two values
-sanitise onto one attribute, and where the derived spelling collides with a canonical member. Those are reported with their counts, not silently skipped — a member
+can be derived at all, where two values sanitise onto one attribute, and where the derived spelling
+collides with a canonical member. Those are reported with their counts, not silently skipped — a member
 upstream spells and we cannot is a migration-guide entry, by the pair rule above.
+
+**AND THE FIRST CLASS IS SMALLER THAN THIS READING FIRST NAMED IT, WHICH IS THE DERIVATION
+CORRECTING THE RULE RATHER THAN THE RULE BEING APPROXIMATED.** This clause named a leading digit,
+the empty string and pure punctuation as cases where no identifier derives. Read off upstream's
+wheel, all three ARE derivable: the sanitiser prefixes them, so `1.0` becomes `field_1_0` and
+`3d_render` becomes `field_3d_render`, and a value made only of punctuation derives the prefix
+alone. The class holds what has no spelling on *either* package — a non-string value — and the
+implementation is where the measured partition is read (`codegen.lower.enum.ALIAS_REFUSALS`). **A
+refusal class named from the outside and not measured is the same mistake as the word *verbatim*
+above, one level down**: it describes what a rule-writer expects a sanitiser to fail at instead of
+what it does.
 
 **AND A FOURTH REASON, WHICH THE IMPLEMENTATION MEASURED AND THESE THREE DID NOT NAME**: where the
 value verbatim is a name the **enumeration itself already resolves**. `"name"` and `"value"` are

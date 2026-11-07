@@ -15,6 +15,7 @@ class AdCPProtocol(StrEnum):
     """Campaign creation, package management, delivery optimization, and conversion tracking"""
 
 
+    media_buy = MemberAlias('MEDIA_BUY')
     SIGNALS = 'signals'
     """Audience signal discovery and activation"""
 
@@ -39,6 +40,7 @@ class AdCPProtocol(StrEnum):
     """AI-mediated commerce and conversational sponsored experiences, including buyer-agent sessions and measurement of AI-surfaced outcomes"""
 
 
+    sponsored_intelligence = MemberAlias('SPONSORED_INTELLIGENCE')
     MEASUREMENT = 'measurement'
     """Experimental in 3.1. Measurement vendor capability discovery and buyer-orchestrator interchange. Providers list `measurement.core` in experimental_features; orchestrator gateways list `measurement.gateway`. The first gateway tier reuses get_media_buy_delivery and provide_performance_feedback; additional measurement tasks and transports land only with complete contracts."""
 

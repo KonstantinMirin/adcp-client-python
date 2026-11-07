@@ -51,6 +51,7 @@ class LocalVerdict(StrEnum):
     Seller's local model verdict for this artifact
     """
     PASS = 'pass'
+    pass_ = MemberAlias('PASS')
     FAIL = 'fail'
     fail = MemberAlias('FAIL')
     UNEVALUATED = 'unevaluated'

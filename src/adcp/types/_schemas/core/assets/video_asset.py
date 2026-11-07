@@ -54,8 +54,11 @@ class ChromaSubsampling(StrEnum):
     Chroma subsampling format
     """
     V_4_2_0 = '4:2:0'
+    field_4_2_0 = MemberAlias('V_4_2_0')
     V_4_2_2 = '4:2:2'
+    field_4_2_2 = MemberAlias('V_4_2_2')
     V_4_4_4 = '4:4:4'
+    field_4_4_4 = MemberAlias('V_4_4_4')
 
 
 class VideoBitDepth(IntEnum):

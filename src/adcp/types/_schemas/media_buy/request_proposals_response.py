@@ -75,8 +75,11 @@ class SourceAdcpVersion(StrEnum):
     Established AdCP version actually negotiated with the peer. This provenance is required; the coordinator MUST NOT infer stronger guarantees from the label.
     """
     V_2_5 = '2.5'
+    field_2_5 = MemberAlias('V_2_5')
     V_3_0 = '3.0'
+    field_3_0 = MemberAlias('V_3_0')
     V_3_1 = '3.1'
+    field_3_1 = MemberAlias('V_3_1')
 
 
 class LossesItem(StrEnum):

@@ -15,6 +15,7 @@ from .registry_event import GradingProfile
 
 class Role(StrEnum):
     MEDIA_BUY = 'media-buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     CREATIVE = 'creative'
     creative = MemberAlias('CREATIVE')
     SIGNALS = 'signals'
@@ -24,6 +25,7 @@ class Role(StrEnum):
     BRAND = 'brand'
     brand = MemberAlias('BRAND')
     SPONSORED_INTELLIGENCE = 'sponsored-intelligence'
+    sponsored_intelligence = MemberAlias('SPONSORED_INTELLIGENCE')
 
 
 class VerificationMode(StrEnum):

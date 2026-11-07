@@ -28,6 +28,7 @@ class SupportedTagTypesItem(StrEnum):
     JAVASCRIPT = 'javascript'
     javascript = MemberAlias('JAVASCRIPT')
     V_1X1_REDIRECT = '1x1_redirect'
+    field_1x1_redirect = MemberAlias('V_1X1_REDIRECT')
 
 
 class SupportedDeliveryTypesItem(StrEnum):

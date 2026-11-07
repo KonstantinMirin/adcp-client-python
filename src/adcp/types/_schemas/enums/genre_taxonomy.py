@@ -15,10 +15,12 @@ class GenreTaxonomy(StrEnum):
     """IAB Tech Lab Content Taxonomy 3.0 — industry standard for digital content classification. Maps to OpenRTB/AdCOM cattax=7."""
 
 
+    iab_content_3_0 = MemberAlias('IAB_CONTENT_3_0')
     IAB_CONTENT_2_2 = 'iab_content_2.2'
     """IAB Tech Lab Content Taxonomy 2.2 — previous version, still widely used. Maps to OpenRTB/AdCOM cattax=6."""
 
 
+    iab_content_2_2 = MemberAlias('IAB_CONTENT_2_2')
     GRACENOTE = 'gracenote'
     """Gracenote genre classification — entertainment metadata standard for TV, film, and music. Supports multi-level genre hierarchies; hierarchy-aware matching is the seller's responsibility."""
 

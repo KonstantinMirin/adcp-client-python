@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/vast-version.json', pointer='#')
 
@@ -12,11 +12,17 @@ class VASTVersion(StrEnum):
     Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.
     """
     V_2_0 = '2.0'
+    field_2_0 = MemberAlias('V_2_0')
     V_3_0 = '3.0'
+    field_3_0 = MemberAlias('V_3_0')
     V_4_0 = '4.0'
+    field_4_0 = MemberAlias('V_4_0')
     V_4_1 = '4.1'
+    field_4_1 = MemberAlias('V_4_1')
     V_4_2 = '4.2'
+    field_4_2 = MemberAlias('V_4_2')
     V_4_3 = '4.3'
+    field_4_3 = MemberAlias('V_4_3')
 
 
 strict_validate = strict_alias(__adcp_schema__, "VASTVersion", VASTVersion)

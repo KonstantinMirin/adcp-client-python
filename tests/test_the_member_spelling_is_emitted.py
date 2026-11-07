@@ -378,6 +378,228 @@ def test_a_described_last_member_gains_the_blank_line_the_template_already_gives
 
 
 # --------------------------------------------------------------------------- #
+# the SANITISER: the word that cost 159 files
+# --------------------------------------------------------------------------- #
+def test_every_value_that_is_not_already_an_identifier_resolves_under_its_sanitised_spelling() -> (
+    None
+):
+    """**THE ROW'S WHOLE CLAIM, over every value the verbatim rule could not reach.**
+
+    ``docs/plan/final-state.md`` reading 10: "'the derived spelling' is NOT 'the value
+    verbatim', which is the word that cost 159 files.  Where the value is not already an
+    identifier -- a kebab value like ``media-buy`` -- upstream does not refuse it, it
+    SANITISES it to ``media_buy`` and ships that."
+
+    So the population is exactly the values the predecessor rule REFUSED -- every string
+    enum value of the tree that ``str.isidentifier`` rejects -- and over that population
+    the claim is an identity:
+
+    * the sanitiser derives a spelling for EVERY one of them (``None`` is a non-string's
+      signature and nothing a string reaches), so the class of values with no derivable
+      identifier holds no string at all;
+    * that spelling RESOLVES on the class and ``is`` the canonical member -- whether it
+      got there as a descriptor or because the sanitiser landed on the canonical name
+      itself, which is the only two outcomes the refusal classes leave;
+    * and it resolves by ``is`` and never by ``==``: a ``StrEnum`` satisfies ``==``
+      against a bare string, and a SECOND MEMBER carrying the same value satisfies it too
+      -- which is the mechanism this row refuses.
+
+    The one exception is NAMED and is the fourth refusal class: a spelling the enumeration
+    itself already resolves (``name``, ``value``, ``count``) resolves to the LANGUAGE's
+    attribute, and asserting it is not the member is what keeps that class honest rather
+    than letting it pass as a success.
+    """
+    graded = _aliased()
+    assert graded, "no enum class was graded"
+
+    #: The values the predecessor rule refused, as the triple that identifies each one --
+    #: asserted non-empty FIRST, because every claim below is inside this loop.
+    not_already_identifiers: set[tuple[str, str, str]] = set()
+    for _, cls, _, _ in graded:
+        not_already_identifiers |= {
+            (cls.__module__, cls.__name__, name)
+            for name, member in cls.__members__.items()
+            if isinstance(member._value_, str) and not member._value_.isidentifier()
+        }
+    claimed("values that are not already python identifiers", not_already_identifiers)
+
+    #: A SET and not a counter, for :func:`emitted_enum_classes`'s own reason: D3's content
+    #: dedup binds one class under two or three names in its defining module, so
+    #: ``vars(module)`` yields the same class object more than once and a count would
+    #: exceed the population it is compared against.  Measured: 234 visits, 231 spellings.
+    checked: set[tuple[str, str, str]] = set()
+    for document, cls, _, refused in graded:
+        for name, member in cls.__members__.items():
+            value = member._value_
+            if not isinstance(value, str) or value.isidentifier():
+                continue
+            spelling = lower_enum.their_spelling(value)
+            assert spelling is not None, (document, cls.__name__, value)
+            assert spelling.isidentifier(), (document, cls.__name__, value, spelling)
+            if refused.get(name) == lower_enum.TAKEN_BY_THE_BASE:
+                # The fourth class: the spelling reaches the LANGUAGE's attribute, and the
+                # whole reason it is refused is that it would shadow it.
+                assert spelling in MEMBER_NAMES_TAKEN, (document, cls.__name__, spelling)
+                assert getattr(cls, spelling) is not member, (document, cls.__name__, spelling)
+            else:
+                assert refused.get(name) in (None, lower_enum.IS_THE_CANONICAL_NAME), (
+                    document,
+                    cls.__name__,
+                    value,
+                    refused.get(name),
+                )
+                assert getattr(cls, spelling) is member, (document, cls.__name__, value)
+                assert cls(value) is member, (document, cls.__name__, value)
+            checked.add((cls.__module__, cls.__name__, name))
+    assert checked == not_already_identifiers, len(checked ^ not_already_identifiers)
+
+    # AND ``None`` IS THE NON-STRING'S SIGNATURE AND NOTHING ELSE, which is the half of
+    # :func:`codegen.lower.enum.their_spelling`'s clause 4 that a loop over the bundle
+    # cannot show: asserted over the derivation directly.
+    assert lower_enum.their_spelling(42) is None
+    assert lower_enum.their_spelling(True) is None
+    for value in ("", "---", "1.0", "_x", "pass", "media-buy", "text/plain", "4:2:0"):
+        derived = lower_enum.their_spelling(value)
+        assert derived is not None and derived.isidentifier(), (value, derived)
+
+
+def test_the_member_set_is_unmoved_three_ways_with_the_sanitised_spellings_emitted() -> None:
+    """``__members__`` does not move, and the three readings are read SUMMED.
+
+    ``adcp-client-python-4yk8``'s invariant, re-stated for the sanitiser: ``sum
+    len(__members__)`` over every emitted enumeration read the same figure before and
+    after the aliases landed, and it must read the same figure after the spelling they are
+    emitted UNDER changes.  Adding 236 sanitised spellings adds 236 names and no members.
+
+    **Three readings and not one, because each one is a different way the claim could be
+    false**, and the sum is taken over the whole population so a class that gained a
+    member cannot be cancelled by one that lost one:
+
+    * ``__members__`` -- the mapping a consumer reads and ``tests/test_enum.py``'s census
+      reads.  A plain ``dark_bg = 'dark-bg'`` beside ``DARK_BG`` is python's own enum
+      aliasing and puts the second name HERE;
+    * ``list(E)`` -- ``__iter__``, which SKIPS an alias, so a spelling that became a member
+      python treats as an alias shows up as a difference between this and the first;
+    * ``_value2member_map_`` -- the map the runtime dispatches a value through.  A
+      spelling carrying a value of its own would widen the accepted set, and this is the
+      reading that would show it.
+
+    All three equal the number of VALUES the documents state, which is the figure none of
+    the three can be compared against each other to establish.
+    """
+    graded = _aliased()
+    assert graded, "no enum class was graded"
+
+    members = sum(len(cls.__members__) for _, cls, _, _ in graded)
+    listed = sum(len(list(cls)) for _, cls, _, _ in graded)
+    values = sum(len(cls._value2member_map_) for _, cls, _, _ in graded)
+    stated = sum(len({v for _, v in _members(cls)}) for _, cls, _, _ in graded)
+    assert members == listed == values == stated, (members, listed, values, stated)
+
+    # And the spellings are a NON-EMPTY addition that moved none of it, which is what
+    # makes the equality above a statement about this row rather than about an empty set.
+    spellings = sum(len(aliases) for _, _, aliases, _ in graded)
+    sanitised = sum(
+        1
+        for _, cls, aliases, _ in graded
+        for alias, canon in aliases.items()
+        if alias != cls[canon]._value_
+    )
+    assert spellings > 0 and sanitised > 0, (spellings, sanitised)
+    #: NOT also over ``_value2member_map_``, and the asymmetry is the point: that map is
+    #: keyed by VALUE, and a VERBATIM spelling IS its member's value -- ``'transient'`` is
+    #: a key there by construction and says nothing about a name.  The claim is over
+    #: ``__members__``, which is keyed by NAME and is where a plain assignment would land.
+    assert not any(
+        alias in cls.__members__ for _, cls, aliases, _ in graded for alias in aliases
+    )
+
+
+def test_the_kebab_case_is_covered_by_the_bundle_values_that_held_159_files_at_zero() -> None:
+    """**THE KEBAB CASE, named at the documents that state it and at the four clauses.**
+
+    ``adcp-client-python-tuuc``: "this exact gap held 159 of upstream's behavioural files
+    at ZERO.  ``alias_enum_members`` asked ``value.isidentifier()``, the bundle is
+    kebab-case, so ``AdcpProtocol.media_buy`` never resolved -- and ``webhooks.py:92``
+    reads that member AT MODULE SCOPE, so every one of those files aborted at pytest
+    startup."
+
+    So the values are read OUT OF THE BUNDLE, by document and pointer, and the attribute
+    asserted is the one a consumer of upstream's package types:
+
+    * ``enums/adcp-protocol.json`` states ``media-buy`` -> ``AdCPProtocol.media_buy``;
+    * ``brand.json#/definitions/logo/properties/background`` states ``dark-bg`` ->
+      ``Background.dark_bg``;
+    * ``brand.json#/definitions/logo_placement/properties/preferred_position`` states
+      ``top-left`` -> ``PreferredPosition.top_left``;
+    * ``brand.json#/definitions/logo/properties/variant`` states ``full-lockup`` ->
+      ``LogoVariant.full_lockup``.
+
+    Each is the spelling upstream's own 9.6.1 wheel carries (``media_buy = 'media-buy'`` in
+    ``adcp/types/domains/enums/adcp_protocol.py``, ``dark_bg = 'dark-bg'`` and
+    ``full_lockup = 'full-lockup'`` in ``adcp/types/domains/brand_discovery.py``), so the
+    assertion is against THEIR artifact and not against our own derivation read twice.
+
+    **And then over every kebab value of the whole tree**, so the four named cases are
+    examples of a property and not the property itself.
+    """
+    #: ``(document, pointer, value, class, attribute)`` -- the value is read off the
+    #: bundle and the attribute is upstream's, quoted from their wheel.
+    cases = [
+        ("enums/adcp-protocol.json", None, "media-buy", "AdCPProtocol", "media_buy"),
+        (
+            "brand.json",
+            "/definitions/logo/properties/background",
+            "dark-bg",
+            "Background",
+            "dark_bg",
+        ),
+        (
+            "brand.json",
+            "/definitions/logo_placement/properties/preferred_position",
+            "top-left",
+            "PreferredPosition",
+            "top_left",
+        ),
+        (
+            "brand.json",
+            "/definitions/logo/properties/variant",
+            "full-lockup",
+            "LogoVariant",
+            "full_lockup",
+        ),
+    ]
+    classes = {cls.__name__: cls for _, _, cls in emitted_enum_classes()}
+    for document, pointer, value, name, attribute in cases:
+        nodes = dict(bundle.nodes(bundle.read(BUNDLE, document)))
+        node = nodes[pointer] if pointer is not None else bundle.read(BUNDLE, document)
+        assert value in node["enum"], (document, pointer, value, node.get("enum"))
+        assert lower_enum.their_spelling(value) == attribute, (value, attribute)
+        cls = classes[name]
+        assert getattr(cls, attribute) is cls[lower_enum.member_name(value)], (name, attribute)
+        assert attribute not in cls.__members__, (name, attribute)
+
+    # EVERY kebab value of the tree, which is the property the four cases illustrate.
+    kebab: set[tuple[str, str, str]] = set()
+    for document, cls, _, refused in _aliased():
+        for name, member in cls.__members__.items():
+            if not isinstance(member._value_, str) or "-" not in member._value_:
+                continue
+            kebab.add((cls.__module__, cls.__name__, name))
+            spelling = lower_enum.their_spelling(member._value_)
+            assert spelling is not None and "-" not in spelling
+            assert getattr(cls, spelling) is member, (document, cls.__name__, member._value_)
+            # No kebab value is refused for want of an identifier any more, which is the
+            # ruling this row corrected: a transformation was named as a refusal.
+            assert refused.get(name) != lower_enum.NO_SPELLING_DERIVES, (
+                document,
+                cls.__name__,
+                member._value_,
+            )
+    claimed("kebab member values of the emitted tree", kebab)
+
+
+# --------------------------------------------------------------------------- #
 # the refusals, counted
 # --------------------------------------------------------------------------- #
 def test_every_refusal_class_is_counted_and_named_in_the_bundle() -> None:
@@ -392,23 +614,38 @@ def test_every_refusal_class_is_counted_and_named_in_the_bundle() -> None:
     **Each class is named at a real case of the bundle**, asserted non-empty, with the one
     exception the reading's own wording reaches:
 
-    * ``NOT_AN_IDENTIFIER`` -- ``'dark-bg'``, and the four KEYWORD values (``'pass'``
-      three times and ``'global'`` once) that make ``keyword.iskeyword`` a live branch
-      beside a naming that does not upper-case.  Emitting those four would have produced
-      four modules that do not PARSE.
+    * ``NO_SPELLING_DERIVES`` -- the INTEGER values, and after this row's re-partition
+      nothing else.  Its predecessor class was ``not a python identifier``, asked of the
+      value VERBATIM, and most of what it held was kebab that upstream's sanitiser
+      handles: ``'dark-bg'`` and the four KEYWORD values (``'pass'`` three times and
+      ``'global'`` once) are now EMITTED, under ``dark_bg`` and ``pass_``/``global_``,
+      which is what upstream's wheel carries.  Asserted here from both sides -- the
+      values this class holds are non-strings, and the five named values are not in it.
     * ``IS_THE_CANONICAL_NAME`` -- ``'GET'``, where the value already IS the ``UPPER_SNAKE``
       spelling, so no alias is needed or possible and no migration entry is owed:
-      ``Method.GET`` is the attribute on both packages.
+      ``Method.GET`` is the attribute on both packages.  And ``'HMAC-SHA256'``, which this
+      row MOVED here: it is kebab, so the verbatim rule refused it, and its sanitised
+      spelling ``HMAC_SHA256`` is exactly the canonical member -- so upstream's attribute
+      and ours are the same word and nothing is owed for it either.
     * ``TAKEN_BY_THE_BASE`` -- ``'name'``, the fourth class, which reading 10 does not name
       and the measurement added.
-    * ``RE_CASES`` is **EMPTY inside every emitted class, and that is a theorem rather than
-      a figure that could move** -- see :data:`codegen.lower.enum.ALIAS_REFUSALS`.  So the
-      bundle's one re-casing collision is named where it actually lives: at the NODE, where
+    * ``RE_CASES`` is **EMPTY over this bundle, and this row took away the argument that
+      made it a theorem** -- see :data:`codegen.lower.enum.ALIAS_REFUSALS`.  While the
+      alias was the value verbatim, a collision forced the two members to spell one
+      CANONICAL name, which §5's row has already sent to a ``Literal``; the sanitiser and
+      :func:`codegen.lower.enum.member_name` no longer agree on the character test, so the
+      emptiness is now MEASURED.  The bundle's one same-canonical-name collision is still
+      named where it lives: at the NODE, where
       ``formats/canonical/html5.json#/properties/clicktag_macro`` states ``clickTag`` and
       ``clickTAG``, §5's row renders a ``Literal`` and no enum class, and BOTH spellings
       are ones upstream has as members and this tree has as neither.  The clause is
       asserted here, over the bundle, so the day a second such node appears the count moves
       in a test that says what it costs.
+
+    **AND THE EMITTED HALF IS SPLIT IN TWO**, which is the other half of the
+    re-partition: a spelling that is the value VERBATIM owed nothing before this row, and
+    a spelling that is the SANITISER's output is the one that did not exist.  Both are in
+    the partition, so the 236 cannot grow or shrink without this test saying so.
     """
     graded = _aliased()
     assert graded, "no enum class was graded"
@@ -419,28 +656,62 @@ def test_every_refusal_class_is_counted_and_named_in_the_bundle() -> None:
     #: ``nodeset.partitions``'s own docstring is why: "two sets whose sizes sum correctly
     #: can still both miss a member and double-count another".
     whole: set[tuple[str, str, str]] = set()
-    emitted: set[tuple[str, str, str]] = set()
+    verbatim: set[tuple[str, str, str]] = set()
+    sanitised: set[tuple[str, str, str]] = set()
     refusals: dict[str, set[tuple[str, str, str]]] = {
         why: set() for why in lower_enum.ALIAS_REFUSALS
     }
     named: dict[str, set[Any]] = {why: set() for why in lower_enum.ALIAS_REFUSALS}
+    spelled_by_the_sanitiser: set[Any] = set()
     for _, cls, aliases, refused in graded:
         whole |= {(cls.__module__, cls.__name__, name) for name in cls.__members__}
-        emitted |= {(cls.__module__, cls.__name__, canon) for canon in aliases.values()}
+        for alias, canon in aliases.items():
+            row = (cls.__module__, cls.__name__, canon)
+            if alias == cls[canon]._value_:
+                verbatim.add(row)
+            else:
+                sanitised.add(row)
+                spelled_by_the_sanitiser.add(cls[canon]._value_)
         for canon, why in refused.items():
             refusals[why].add((cls.__module__, cls.__name__, canon))
             named[why].add(cls[canon]._value_)
 
-    # THE PARTITION: every member spelling is emitted or refused, under exactly one reason.
-    partitions(whole, emitted=emitted, **{f"refused: {w}": r for w, r in refusals.items()})
+    # THE PARTITION: every member spelling is emitted -- verbatim or sanitised -- or
+    # refused under exactly one reason.  SIX parts, which is this row's re-partition: the
+    # emitted half splits because the sanitised spelling is the one that did not exist,
+    # and a class changing size without this statement changing breaks the gate.
+    partitions(
+        whole,
+        emitted_verbatim=verbatim,
+        emitted_under_the_sanitised_spelling=sanitised,
+        **{f"refused: {w}": r for w, r in refusals.items()},
+    )
     counts = {why: len(rows) for why, rows in refusals.items()}
-    assert len(emitted) + sum(counts.values()) == len(whole), (len(emitted), counts, len(whole))
+    assert len(verbatim) + len(sanitised) + sum(counts.values()) == len(whole), (
+        len(verbatim),
+        len(sanitised),
+        counts,
+        len(whole),
+    )
 
-    # Each class, named at a case of the bundle.  ``RE_CASES`` is the theorem; the other
+    # Each class, named at a case of the bundle.  ``RE_CASES`` is measured empty; the other
     # three are asserted non-empty and spelled.
-    assert "dark-bg" in named[lower_enum.NOT_AN_IDENTIFIER]
-    assert {"pass", "global"} <= named[lower_enum.NOT_AN_IDENTIFIER]
+    assert all(not isinstance(v, str) for v in named[lower_enum.NO_SPELLING_DERIVES]), sorted(
+        map(repr, named[lower_enum.NO_SPELLING_DERIVES])
+    )
+    assert named[lower_enum.NO_SPELLING_DERIVES], "the integer members are the class"
+    # AND THE VALUES THE PREDECESSOR CLASS HELD ARE EMITTED NOW, not refused anywhere:
+    # the whole content of this row read off the refusal side.
+    rescued = {"dark-bg", "top-left", "full-lockup", "media-buy", "pass", "global"}
+    assert rescued <= spelled_by_the_sanitiser, sorted(rescued - spelled_by_the_sanitiser)
+    for why in lower_enum.ALIAS_REFUSALS:
+        assert not rescued & named[why], (why, sorted(rescued & named[why]))
+
     assert "GET" in named[lower_enum.IS_THE_CANONICAL_NAME]
+    # Kebab, and its sanitised spelling IS the canonical member -- so it moved HERE out of
+    # the predecessor class rather than into the emitted half.
+    assert "HMAC-SHA256" in named[lower_enum.IS_THE_CANONICAL_NAME]
+    assert lower_enum.their_spelling("HMAC-SHA256") == lower_enum.member_name("HMAC-SHA256")
     assert {"name", "value"} <= named[lower_enum.TAKEN_BY_THE_BASE]
     assert "name" in MEMBER_NAMES_TAKEN and "value" in MEMBER_NAMES_TAKEN
     assert counts[lower_enum.RE_CASES] == 0, sorted(refusals[lower_enum.RE_CASES])
@@ -477,13 +748,19 @@ def test_the_migration_guide_owes_an_entry_for_each_spelling_upstream_has_and_th
     **Two of the four classes owe one and two do not**, which is the whole content of the
     check and is why the entries are not one paragraph:
 
-    * ``NOT_AN_IDENTIFIER`` and ``TAKEN_BY_THE_BASE`` owe one -- the value is not an
-      attribute of ours, so a caller who wrote ``Background.dark_bg`` against upstream has
-      to write ``Background.DARK_BG`` or ``Background('dark-bg')`` here;
+    * ``NO_SPELLING_DERIVES`` and ``TAKEN_BY_THE_BASE`` owe one -- the value reaches no
+      attribute of ours, so a caller who wrote ``Kind.name`` against upstream has to write
+      ``Kind.NAME`` or ``Kind('name')`` here;
     * ``RE_CASES`` owes one at the NODE -- there is no class, so BOTH spellings are gone and
       the value is reached as a ``str``;
     * ``IS_THE_CANONICAL_NAME`` owes NOTHING, because the spelling upstream has is the one
-      this tree has: the value already IS the ``UPPER_SNAKE`` name.
+      this tree has: the derived spelling already IS the ``UPPER_SNAKE`` name.
+
+    **AND THE SANITISED SPELLING OWES AN ENTRY THAT IS NOT A REFUSAL AT ALL**, which this
+    row adds: ``Background.dark_bg`` used to be an entry under "the value is not a python
+    identifier" and is now an attribute this tree HAS.  A guide still carrying it as a
+    refusal would send a caller to rewrite a line that works, so the guide is required to
+    name the sanitised spelling as EMITTED -- the exact opposite of the entry it replaced.
 
     The document is read and the refusal WORDS are required to appear in it, so a reason
     added to the compiler and not to the guide reddens here.  The words are the compiler's
@@ -494,7 +771,7 @@ def test_the_migration_guide_owes_an_entry_for_each_spelling_upstream_has_and_th
     text = guide.read_text()
 
     for why in (
-        lower_enum.NOT_AN_IDENTIFIER,
+        lower_enum.NO_SPELLING_DERIVES,
         lower_enum.RE_CASES,
         lower_enum.TAKEN_BY_THE_BASE,
     ):
@@ -503,9 +780,17 @@ def test_the_migration_guide_owes_an_entry_for_each_spelling_upstream_has_and_th
     # to infer it from an absence.
     assert lower_enum.IS_THE_CANONICAL_NAME in text
 
-    # The three named cases, each spelled in the guide as a caller meets it.
-    for spelling in ("dark-bg", "clickTag", "Recovery.transient"):
+    # The named cases, each spelled in the guide as a caller meets it.
+    for spelling in ("clickTag", "Recovery.transient", "Kind.name"):
         assert spelling in text, spelling
+    # **AND THE RESCUED CASE, as the attribute it now IS rather than the edit it was.**
+    # ``Background.dark_bg`` is the one line of this guide this row inverts.
+    assert "Background.dark_bg" in text
+    assert "AdCPProtocol.media_buy" in text
+    # The FOUR CLAUSES are named, because a caller who meets ``field_1_0`` or ``pass_``
+    # cannot derive it from "the value verbatim" and has nowhere else to read it.
+    for clause in ("field_1_0", "pass_", "media_buy", lower_enum.THEIR_PREFIX):
+        assert clause in text, clause
 
 
 # --------------------------------------------------------------------------- #
