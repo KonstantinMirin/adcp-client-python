@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/pricing-structure.json', pointer='#')
 
@@ -15,12 +15,17 @@ class PricingStructure(StrEnum):
     """Seller-declared monetary unit price through fixed_price"""
 
 
+    fixed = MemberAlias('FIXED')
     AUCTION = 'auction'
     """Buyer bid against optional floor_price and price_guidance"""
 
 
+    auction = MemberAlias('AUCTION')
     CONTINGENT = 'contingent'
     """Price calculated from a measured business outcome after delivery"""
+
+
+    contingent = MemberAlias('CONTINGENT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PricingStructure", PricingStructure)

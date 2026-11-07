@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen1000, ZipAssetDigest
 from adcp.types.envelopes import AdcpRequest
@@ -23,7 +23,9 @@ class Action(StrEnum):
     report is seller-authenticated and creates a non-authoritative record; review is plan-owner-authenticated and accepts or disputes it.
     """
     REPORT = 'report'
+    report = MemberAlias('REPORT')
     REVIEW = 'review'
+    review = MemberAlias('REVIEW')
 
 
 class Decision(StrEnum):
@@ -31,7 +33,9 @@ class Decision(StrEnum):
     Buyer review decision. Acceptance is blocked while delivery evidence for the governed action is disputed in an open governance period; a historical closed_unresolved period is audit evidence, not a billing determination.
     """
     ACCEPT = 'accept'
+    accept = MemberAlias('ACCEPT')
     DISPUTE = 'dispute'
+    dispute = MemberAlias('DISPUTE')
 
 
 class Evidence(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMinLen1
 from adcp.types.envelopes import AdcpResponse
@@ -23,14 +23,20 @@ class Outcome(StrEnum):
     Whether this response carries a product page or confirms that the selected feed has not changed.
     """
     LISTED = 'listed'
+    listed = MemberAlias('LISTED')
     UNCHANGED = 'unchanged'
+    unchanged = MemberAlias('UNCHANGED')
 
 
 class Scope(StrEnum):
     PRODUCTS = 'products'
+    products = MemberAlias('PRODUCTS')
     PRICING = 'pricing'
+    pricing = MemberAlias('PRICING')
     FORECAST = 'forecast'
+    forecast = MemberAlias('FORECAST')
     WHOLESALE_FEED = 'wholesale_feed'
+    wholesale_feed = MemberAlias('WHOLESALE_FEED')
 
 
 class IncompleteItem(AdCPBaseModel):

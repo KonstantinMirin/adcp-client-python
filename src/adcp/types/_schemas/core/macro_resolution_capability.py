@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, NotValue, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMinLen1
 
@@ -20,12 +20,16 @@ from .macro_translation_target import MacroTranslationTarget
 
 class MappingStatus(StrEnum):
     VERIFIED_UNIVERSAL = 'verified_universal'
+    verified_universal = MemberAlias('VERIFIED_UNIVERSAL')
     DIALECT_DEFINED = 'dialect_defined'
+    dialect_defined = MemberAlias('DIALECT_DEFINED')
 
 
 class Operation(StrEnum):
     TRANSLATE_TO_NATIVE = 'translate_to_native'
+    translate_to_native = MemberAlias('TRANSLATE_TO_NATIVE')
     RESOLVE_VALUE = 'resolve_value'
+    resolve_value = MemberAlias('RESOLVE_VALUE')
 
 
 class MacroProcessingCapability(AdCPBaseModel):

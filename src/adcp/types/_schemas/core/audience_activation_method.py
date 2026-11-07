@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen256
 
@@ -61,7 +61,9 @@ class TMPIdentityMatch(AudienceActivationMethod):
 
 class DirectionsItem(StrEnum):
     BUYER_TO_SELLER = 'buyer_to_seller'
+    buyer_to_seller = MemberAlias('BUYER_TO_SELLER')
     SELLER_TO_BUYER = 'seller_to_buyer'
+    seller_to_buyer = MemberAlias('SELLER_TO_BUYER')
 
 
 class AudienceActivationMethodFileTransfer(AudienceActivationMethod):

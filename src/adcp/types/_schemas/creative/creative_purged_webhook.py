@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -24,7 +24,9 @@ class Initiator(StrEnum):
     Who initiated the purge. `seller` — explicit decision (legal team, content policy, takedown handler). `system` — automated retention sweep, storage policy enforcement. `buyer` never appears on this event — buyer-initiated destruction (if and when supported) is acknowledged on the `sync_creatives` response path.
     """
     SELLER = 'seller'
+    seller = MemberAlias('SELLER')
     SYSTEM = 'system'
+    system = MemberAlias('SYSTEM')
 
 
 class CreativePurgedWebhook(AdCPBaseModel):

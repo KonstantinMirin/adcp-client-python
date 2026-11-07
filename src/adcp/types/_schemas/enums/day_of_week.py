@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/day-of-week.json', pointer='#')
 
@@ -12,12 +12,19 @@ class DayOfWeek(StrEnum):
     Days of the week for daypart targeting
     """
     MONDAY = 'monday'
+    monday = MemberAlias('MONDAY')
     TUESDAY = 'tuesday'
+    tuesday = MemberAlias('TUESDAY')
     WEDNESDAY = 'wednesday'
+    wednesday = MemberAlias('WEDNESDAY')
     THURSDAY = 'thursday'
+    thursday = MemberAlias('THURSDAY')
     FRIDAY = 'friday'
+    friday = MemberAlias('FRIDAY')
     SATURDAY = 'saturday'
+    saturday = MemberAlias('SATURDAY')
     SUNDAY = 'sunday'
+    sunday = MemberAlias('SUNDAY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DayOfWeek", DayOfWeek)

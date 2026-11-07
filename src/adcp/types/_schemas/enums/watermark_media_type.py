@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/watermark-media-type.json', pointer='#')
 
@@ -15,16 +15,22 @@ class WatermarkMediaType(StrEnum):
     """Watermark applied to audio content (e.g., spread-spectrum, echo hiding)"""
 
 
+    audio = MemberAlias('AUDIO')
     IMAGE = 'image'
     """Watermark applied to image content (e.g., spatial domain, frequency domain)"""
 
 
+    image = MemberAlias('IMAGE')
     VIDEO = 'video'
     """Watermark applied to video content (e.g., per-frame image watermarking, temporal watermarking)"""
 
 
+    video = MemberAlias('VIDEO')
     TEXT = 'text'
     """Watermark applied to text content (e.g., synonym substitution, structural modification)"""
+
+
+    text = MemberAlias('TEXT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "WatermarkMediaType", WatermarkMediaType)

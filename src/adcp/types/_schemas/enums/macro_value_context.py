@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/macro-value-context.json', pointer='#')
 
@@ -12,8 +12,11 @@ class MacroValueContext(StrEnum):
     Syntactic occurrence context supported by the first macro contract. Substitution inside arbitrary JavaScript, JSON, or HTML text is intentionally not inferred; use `opaque` and preserve it unless a later governed context is added.
     """
     URL_QUERY_VALUE = 'url_query_value'
+    url_query_value = MemberAlias('URL_QUERY_VALUE')
     URL_PATH_SEGMENT = 'url_path_segment'
+    url_path_segment = MemberAlias('URL_PATH_SEGMENT')
     OPAQUE = 'opaque'
+    opaque = MemberAlias('OPAQUE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MacroValueContext", MacroValueContext)

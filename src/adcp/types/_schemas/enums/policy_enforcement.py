@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/policy-enforcement.json', pointer='#')
 
@@ -15,12 +15,17 @@ class PolicyEnforcementLevel(StrEnum):
     """Legal requirement. Governance agents reject actions that violate this policy."""
 
 
+    must = MemberAlias('MUST')
     SHOULD = 'should'
     """Best practice. Governance agents warn on violations but do not block."""
 
 
+    should = MemberAlias('SHOULD')
     MAY = 'may'
     """Recommendation. Governance agents log for informational purposes only."""
+
+
+    may = MemberAlias('MAY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PolicyEnforcementLevel", PolicyEnforcementLevel)

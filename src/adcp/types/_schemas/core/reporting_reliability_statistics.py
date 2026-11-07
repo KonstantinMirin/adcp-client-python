@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     HttpUrl,
@@ -51,7 +51,9 @@ class AdjustmentMagnitudeItem(AdCPBaseModel):
 
 class Basis(StrEnum):
     REPORTING_LEDGER = 'reporting_ledger'
+    reporting_ledger = MemberAlias('REPORTING_LEDGER')
     THIRD_PARTY_ATTESTATION = 'third_party_attestation'
+    third_party_attestation = MemberAlias('THIRD_PARTY_ATTESTATION')
 
 
 class Evidence(AdCPBaseModel):

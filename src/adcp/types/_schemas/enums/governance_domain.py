@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/governance-domain.json', pointer='#')
 
@@ -12,9 +12,13 @@ class GovernanceDomain(StrEnum):
     Governance sub-domains that a registry policy applies to. Used to indicate which types of governance agents can evaluate this policy.
     """
     CAMPAIGN = 'campaign'
+    campaign = MemberAlias('CAMPAIGN')
     PROPERTY = 'property'
+    property = MemberAlias('PROPERTY')
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
     CONTENT_STANDARDS = 'content_standards'
+    content_standards = MemberAlias('CONTENT_STANDARDS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "GovernanceDomain", GovernanceDomain)

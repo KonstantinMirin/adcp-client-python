@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/indicator-type.json', pointer='#')
 
@@ -15,28 +15,37 @@ class IndicatorType(StrEnum):
     """Package–creative assignment only. The seller currently attributes material audience saturation or objective-relevant performance degradation to repeated delivery of this creative in the enclosing package and optional publisher/placement scope, such that the buyer should consider changing it. Ordinary underperformance without an asserted repeated-exposure relationship is not creative fatigue."""
 
 
+    creative_fatigue = MemberAlias('CREATIVE_FATIGUE')
     CREATIVE_QUALITY_OPPORTUNITY = 'creative_quality_opportunity'
     """Package–creative assignment only. The creative remains accepted and usable, but the seller currently judges that a material format, asset, composition, or quality improvement could improve delivery or objective-relevant performance. Rejected or ineligible creative remains approval state, not this indicator."""
 
 
+    creative_quality_opportunity = MemberAlias('CREATIVE_QUALITY_OPPORTUNITY')
     CREATIVE_DIVERSITY_LOW = 'creative_diversity_low'
     """Package only. The seller currently judges that the package has too few meaningfully distinct eligible creatives for effective rotation, learning, reach, or fatigue resistance. This is package state rather than a defect on any one creative."""
 
 
+    creative_diversity_low = MemberAlias('CREATIVE_DIVERSITY_LOW')
     AUDIENCE_SATURATION = 'audience_saturation'
     """Package only. The seller currently judges that the package's reachable audience is materially saturated independent of any single creative, such that targeting, frequency, or reach strategy may need adjustment."""
 
 
+    audience_saturation = MemberAlias('AUDIENCE_SATURATION')
     INVENTORY_SHORTFALL_FORECAST = 'inventory_shortfall_forecast'
     """Package only. The seller's current forecast is materially below the package's requested delivery goal, although the package remains accepted and may still deliver partially. Forecast method, horizon, requested value, and projected value belong in ext."""
 
 
+    inventory_shortfall_forecast = MemberAlias('INVENTORY_SHORTFALL_FORECAST')
     PACING_RISK = 'pacing_risk'
     """Package only. The seller currently projects material over- or under-delivery by the end of the package flight absent intervention. Current factual delivery remains in snapshot/reporting; this type is the seller's forward-looking interpretation."""
 
 
+    pacing_risk = MemberAlias('PACING_RISK')
     BUDGET_CONSTRAINED = 'budget_constrained'
     """Media-buy or package. The seller currently judges that budget or a spend cap is materially limiting otherwise eligible delivery. Normal exhaustion at a completed flight is lifecycle/delivery state rather than this indicator."""
+
+
+    budget_constrained = MemberAlias('BUDGET_CONSTRAINED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "IndicatorType", IndicatorType)

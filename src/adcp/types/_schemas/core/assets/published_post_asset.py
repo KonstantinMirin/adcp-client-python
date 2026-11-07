@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import HttpUrl
 
@@ -31,11 +31,17 @@ class Status(StrEnum):
     Current seller-observed authorization state. `authorized`: seller can serve the referenced post. `pending`: additional creator/account action is required. `expired` or `revoked`: authorization previously existed but no longer permits serving. `not_required`: the seller can legally and technically serve without a separate identity authorization. `unknown`: seller has not checked or cannot disclose the state.
     """
     AUTHORIZED = 'authorized'
+    authorized = MemberAlias('AUTHORIZED')
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
     EXPIRED = 'expired'
+    expired = MemberAlias('EXPIRED')
     REVOKED = 'revoked'
+    revoked = MemberAlias('REVOKED')
     NOT_REQUIRED = 'not_required'
+    not_required = MemberAlias('NOT_REQUIRED')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class ReferenceAuthorization(AdCPBaseModel):

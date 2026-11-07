@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 from ..core.product_execution_requirement import ProductExecutionRequirement
@@ -17,8 +17,11 @@ class Reason(StrEnum):
     `not_bound`: the package does not reference a resource of this kind. `not_found`: the referenced resource is not available to the account (for example an `event_source_id` that was never registered through `sync_event_sources`); register or sync it, then retry. `ineligible`: the referenced resource exists but does not satisfy the requirement (for example an event type or catalog type the requirement does not list).
     """
     NOT_BOUND = 'not_bound'
+    not_bound = MemberAlias('NOT_BOUND')
     NOT_FOUND = 'not_found'
+    not_found = MemberAlias('NOT_FOUND')
     INELIGIBLE = 'ineligible'
+    ineligible = MemberAlias('INELIGIBLE')
 
 
 class UnmetRequirementsItem(AdCPBaseModel):

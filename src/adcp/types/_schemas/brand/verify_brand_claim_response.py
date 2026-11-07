@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen500
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -38,9 +38,13 @@ class VerifyBrandClaimResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
 
 class ClaimType(StrEnum):
     SUBSIDIARY = 'subsidiary'
+    subsidiary = MemberAlias('SUBSIDIARY')
     PARENT = 'parent'
+    parent = MemberAlias('PARENT')
     PROPERTY = 'property'
+    property = MemberAlias('PROPERTY')
     TRADEMARK = 'trademark'
+    trademark = MemberAlias('TRADEMARK')
 
 
 class SignedSuccessPayload(AdCPBaseModel):

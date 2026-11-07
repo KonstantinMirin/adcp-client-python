@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -26,9 +26,13 @@ class From(StrEnum):
     Prior status — restricted to the states from which a seller/system-initiated transition can fire. For initial review outcomes the prior status is `pending_review`; for processing outcomes it is `processing`; for seller re-review, post-approval revocation, recoverable suspension, and seller-initiated archive it is `approved`; for recovery from a dependency/authorization outage or terminal escalation after a suspension it is `suspended`.
     """
     PROCESSING = 'processing'
+    processing = MemberAlias('PROCESSING')
     PENDING_REVIEW = 'pending_review'
+    pending_review = MemberAlias('PENDING_REVIEW')
     APPROVED = 'approved'
+    approved = MemberAlias('APPROVED')
     SUSPENDED = 'suspended'
+    suspended = MemberAlias('SUSPENDED')
 
 
 class Transition(AdCPBaseModel):

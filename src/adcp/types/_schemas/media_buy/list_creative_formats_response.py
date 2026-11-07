@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -24,8 +24,11 @@ class Source(StrEnum):
     Deprecated compatibility provenance. `publisher` means publisher-origin catalog; `aao_mirror` means community catalog; `agent_derived` is retained only to parse historical 3.x responses and MUST NOT be produced by a new 3.2 implementation because seller products are not publisher authority.
     """
     PUBLISHER = 'publisher'
+    publisher = MemberAlias('PUBLISHER')
     AAO_MIRROR = 'aao_mirror'
+    aao_mirror = MemberAlias('AAO_MIRROR')
     AGENT_DERIVED = 'agent_derived'
+    agent_derived = MemberAlias('AGENT_DERIVED')
 
 
 class ListCreativeFormatsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):

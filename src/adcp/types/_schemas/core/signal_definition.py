@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
@@ -72,8 +72,11 @@ class ParentMatchBehavior(StrEnum):
     Whether this signal definition supports treating a parent taxonomy node as matching descendant nodes for discovery/filtering or seller-side expansion. 'exact_only' means only explicitly listed node ids match. 'descendants_supported' means the seller can expand known, version-pinned parent nodes to descendants internally, typically by ORing the children in its execution system. 'unknown' means the provider has not declared parent-node behavior. This field is metadata about discovery/translation behavior, not a package targeting operator.
     """
     EXACT_ONLY = 'exact_only'
+    exact_only = MemberAlias('EXACT_ONLY')
     DESCENDANTS_SUPPORTED = 'descendants_supported'
+    descendants_supported = MemberAlias('DESCENDANTS_SUPPORTED')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class Taxonomy(AdCPBaseModel):
@@ -95,22 +98,39 @@ class Taxonomy(AdCPBaseModel):
 
 class DataSourcesItem(StrEnum):
     APP_BEHAVIOR = 'app_behavior'
+    app_behavior = MemberAlias('APP_BEHAVIOR')
     APP_USAGE = 'app_usage'
+    app_usage = MemberAlias('APP_USAGE')
     WEB_USAGE = 'web_usage'
+    web_usage = MemberAlias('WEB_USAGE')
     GEO_LOCATION = 'geo_location'
+    geo_location = MemberAlias('GEO_LOCATION')
     EMAIL = 'email'
+    email = MemberAlias('EMAIL')
     TV_OTT_OR_STB_DEVICE = 'tv_ott_or_stb_device'
+    tv_ott_or_stb_device = MemberAlias('TV_OTT_OR_STB_DEVICE')
     PANEL = 'panel'
+    panel = MemberAlias('PANEL')
     ONLINE_ECOMMERCE = 'online_ecommerce'
+    online_ecommerce = MemberAlias('ONLINE_ECOMMERCE')
     CREDIT_DATA = 'credit_data'
+    credit_data = MemberAlias('CREDIT_DATA')
     LOYALTY_CARD = 'loyalty_card'
+    loyalty_card = MemberAlias('LOYALTY_CARD')
     TRANSACTION = 'transaction'
+    transaction = MemberAlias('TRANSACTION')
     ONLINE_SURVEY = 'online_survey'
+    online_survey = MemberAlias('ONLINE_SURVEY')
     OFFLINE_SURVEY = 'offline_survey'
+    offline_survey = MemberAlias('OFFLINE_SURVEY')
     PUBLIC_RECORD_CENSUS = 'public_record_census'
+    public_record_census = MemberAlias('PUBLIC_RECORD_CENSUS')
     PUBLIC_RECORD_VOTER_FILE = 'public_record_voter_file'
+    public_record_voter_file = MemberAlias('PUBLIC_RECORD_VOTER_FILE')
     PUBLIC_RECORD_OTHER = 'public_record_other'
+    public_record_other = MemberAlias('PUBLIC_RECORD_OTHER')
     OFFLINE_TRANSACTION = 'offline_transaction'
+    offline_transaction = MemberAlias('OFFLINE_TRANSACTION')
 
 
 class Methodology(StrEnum):
@@ -118,10 +138,15 @@ class Methodology(StrEnum):
     How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block.
     """
     OBSERVED = 'observed'
+    observed = MemberAlias('OBSERVED')
     DECLARED = 'declared'
+    declared = MemberAlias('DECLARED')
     DERIVED = 'derived'
+    derived = MemberAlias('DERIVED')
     INFERRED = 'inferred'
+    inferred = MemberAlias('INFERRED')
     MODELED = 'modeled'
+    modeled = MemberAlias('MODELED')
 
 
 class RefreshCadence(StrEnum):
@@ -129,13 +154,21 @@ class RefreshCadence(StrEnum):
     Cadence at which the signal definition's underlying segment membership is refreshed.
     """
     INTRA_DAY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[0]
+    intra_day = MemberAlias('INTRA_DAY')
     DAILY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[1]
+    daily = MemberAlias('DAILY')
     WEEKLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[2]
+    weekly = MemberAlias('WEEKLY')
     MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[3]
+    monthly = MemberAlias('MONTHLY')
     BI_MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[4]
+    bi_monthly = MemberAlias('BI_MONTHLY')
     QUARTERLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[5]
+    quarterly = MemberAlias('QUARTERLY')
     BI_ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[6]
+    bi_annually = MemberAlias('BI_ANNUALLY')
     ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[7]
+    annually = MemberAlias('ANNUALLY')
 
 
 class LookbackWindow(StrEnum):
@@ -143,33 +176,54 @@ class LookbackWindow(StrEnum):
     Time window in which a qualifying event can occur for inclusion.
     """
     INTRA_DAY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[0]
+    intra_day = MemberAlias('INTRA_DAY')
     DAILY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[1]
+    daily = MemberAlias('DAILY')
     WEEKLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[2]
+    weekly = MemberAlias('WEEKLY')
     MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[3]
+    monthly = MemberAlias('MONTHLY')
     BI_MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[4]
+    bi_monthly = MemberAlias('BI_MONTHLY')
     QUARTERLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[5]
+    quarterly = MemberAlias('QUARTERLY')
     BI_ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[6]
+    bi_annually = MemberAlias('BI_ANNUALLY')
     ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[7]
+    annually = MemberAlias('ANNUALLY')
 
 
 class MatchKeysItem(StrEnum):
     NAME = 'name'
     ADDRESS = 'address'
+    address = MemberAlias('ADDRESS')
     EMAIL = 'email'
+    email = MemberAlias('EMAIL')
     POSTAL = 'postal'
+    postal = MemberAlias('POSTAL')
     LAT_LONG = 'lat_long'
+    lat_long = MemberAlias('LAT_LONG')
     MOBILE_ID = 'mobile_id'
+    mobile_id = MemberAlias('MOBILE_ID')
     COOKIE_ID = 'cookie_id'
+    cookie_id = MemberAlias('COOKIE_ID')
     IP = 'ip'
+    ip = MemberAlias('IP')
     CUSTOMER_ID = 'customer_id'
+    customer_id = MemberAlias('CUSTOMER_ID')
     PHONE = 'phone'
+    phone = MemberAlias('PHONE')
 
 
 class PreOnboardingPrecisionLevel(StrEnum):
     INDIVIDUAL = 'individual'
+    individual = MemberAlias('INDIVIDUAL')
     HOUSEHOLD = 'household'
+    household = MemberAlias('HOUSEHOLD')
     BUSINESS = 'business'
+    business = MemberAlias('BUSINESS')
     GEOGRAPHY = 'geography'
+    geography = MemberAlias('GEOGRAPHY')
 
 
 class Onboarder(AdCPBaseModel):
@@ -188,9 +242,13 @@ class Onboarder(AdCPBaseModel):
 
 class IdTypesItem(StrEnum):
     COOKIE = 'cookie'
+    cookie = MemberAlias('COOKIE')
     MOBILE_ID = 'mobile_id'
+    mobile_id = MemberAlias('MOBILE_ID')
     PLATFORM_ID = 'platform_id'
+    platform_id = MemberAlias('PLATFORM_ID')
     USER_ENABLED_ID = 'user_enabled_id'
+    user_enabled_id = MemberAlias('USER_ENABLED_ID')
 
 
 class AudienceScope(StrEnum):
@@ -198,9 +256,13 @@ class AudienceScope(StrEnum):
     Context within which the audience attribute was determined. 'single_domain' requires originating_domain.
     """
     SINGLE_DOMAIN = 'single_domain'
+    single_domain = MemberAlias('SINGLE_DOMAIN')
     CROSS_DOMAIN_OWNED = 'cross_domain_owned'
+    cross_domain_owned = MemberAlias('CROSS_DOMAIN_OWNED')
     CROSS_DOMAIN_UNOWNED = 'cross_domain_unowned'
+    cross_domain_unowned = MemberAlias('CROSS_DOMAIN_UNOWNED')
     OFFLINE = 'offline'
+    offline = MemberAlias('OFFLINE')
 
 
 class Art9Basis(StrEnum):
@@ -208,24 +270,37 @@ class Art9Basis(StrEnum):
     GDPR Article 9 basis when restricted_attributes is non-empty and the signal is used in jurisdictions where Article 9 applies. Required by policy for applicable use cases rather than universally required at schema level because sensitivity and lawful basis are jurisdiction-relative.
     """
     EXPLICIT_CONSENT = 'explicit_consent'
+    explicit_consent = MemberAlias('EXPLICIT_CONSENT')
     MANIFESTLY_MADE_PUBLIC = 'manifestly_made_public'
+    manifestly_made_public = MemberAlias('MANIFESTLY_MADE_PUBLIC')
     SUBSTANTIAL_PUBLIC_INTEREST = 'substantial_public_interest'
+    substantial_public_interest = MemberAlias('SUBSTANTIAL_PUBLIC_INTEREST')
     VITAL_INTERESTS = 'vital_interests'
+    vital_interests = MemberAlias('VITAL_INTERESTS')
 
 
 class Method(StrEnum):
     LOOKALIKE = 'lookalike'
+    lookalike = MemberAlias('LOOKALIKE')
     SUPERVISED = 'supervised'
+    supervised = MemberAlias('SUPERVISED')
     EMBEDDING = 'embedding'
+    embedding = MemberAlias('EMBEDDING')
     RULES = 'rules'
+    rules = MemberAlias('RULES')
 
 
 class SeedSourceType(StrEnum):
     FIRST_PARTY_CRM = 'first_party_crm'
+    first_party_crm = MemberAlias('FIRST_PARTY_CRM')
     PANEL = 'panel'
+    panel = MemberAlias('PANEL')
     DECLARED_SURVEY = 'declared_survey'
+    declared_survey = MemberAlias('DECLARED_SURVEY')
     TRANSACTIONAL = 'transactional'
+    transactional = MemberAlias('TRANSACTIONAL')
     BEHAVIORAL = 'behavioral'
+    behavioral = MemberAlias('BEHAVIORAL')
 
 
 class ObjTypeProviderSigned(AdCPBaseModel):
@@ -242,8 +317,11 @@ class AiActRiskClass(StrEnum):
     EU AI Act risk classification self-declared by the provider. Prohibited-risk modeled signals must not be published as AdCP signal definitions.
     """
     MINIMAL = 'minimal'
+    minimal = MemberAlias('MINIMAL')
     LIMITED = 'limited'
+    limited = MemberAlias('LIMITED')
     HIGH_RISK = 'high_risk'
+    high_risk = MemberAlias('HIGH_RISK')
 
 
 class Modeling(AdCPBaseModel):
@@ -263,10 +341,15 @@ class Modeling(AdCPBaseModel):
 
 class RightsItem(StrEnum):
     ACCESS = 'access'
+    access = MemberAlias('ACCESS')
     RECTIFICATION = 'rectification'
+    rectification = MemberAlias('RECTIFICATION')
     ERASURE = 'erasure'
+    erasure = MemberAlias('ERASURE')
     PORTABILITY = 'portability'
+    portability = MemberAlias('PORTABILITY')
     OBJECTION = 'objection'
+    objection = MemberAlias('OBJECTION')
 
 
 class ChannelsItem(AdCPBaseModel):

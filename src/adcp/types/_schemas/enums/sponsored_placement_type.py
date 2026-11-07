@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/sponsored-placement-type.json', pointer='#')
 
@@ -15,12 +15,17 @@ class SponsoredPlacementType(StrEnum):
     """Sponsored placements rendered against retailer on-site search results, keyed to the shopper's query (e.g., Amazon Sponsored Products on search, Walmart Connect Sponsored Search)."""
 
 
+    sponsored_search = MemberAlias('SPONSORED_SEARCH')
     SPONSORED_DISPLAY = 'sponsored_display'
     """Sponsored placements rendered in display slots across retailer browse, category, and product-detail pages outside the search results stream (e.g., Criteo Sponsored Display, Amazon Sponsored Display on-site)."""
 
 
+    sponsored_display = MemberAlias('SPONSORED_DISPLAY')
     SPONSORED_NATIVE = 'sponsored_native'
     """Sponsored placements rendered using the retailer's native in-grid product template, blending into the organic product listing (e.g., CitrusAd native product cards, Pinterest catalog-driven collections)."""
+
+
+    sponsored_native = MemberAlias('SPONSORED_NATIVE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SponsoredPlacementType", SponsoredPlacementType)

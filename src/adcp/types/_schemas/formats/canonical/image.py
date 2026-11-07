@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, FloatGt0, IntMin1
 
@@ -28,11 +28,17 @@ class SizesItem(AdCPBaseModel):
 
 class ImageFormatsItem(StrEnum):
     JPG = 'jpg'
+    jpg = MemberAlias('JPG')
     JPEG = 'jpeg'
+    jpeg = MemberAlias('JPEG')
     PNG = 'png'
+    png = MemberAlias('PNG')
     GIF = 'gif'
+    gif = MemberAlias('GIF')
     WEBP = 'webp'
+    webp = MemberAlias('WEBP')
     SVG = 'svg'
+    svg = MemberAlias('SVG')
 
 
 class BuyerAssetAcceptance(StrEnum):
@@ -40,7 +46,9 @@ class BuyerAssetAcceptance(StrEnum):
     Whether the product accepts buyer-uploaded assets. When `rejected`, the buyer cannot ship pre-rendered bytes directly — they must use build_creative (or sync_creatives with brief inputs or reference assets) so the seller produces or resolves the asset. Combined with `asset_source`, lets a product declare 'I produce assets from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`) or 'I accept existing post references, not uploaded bytes' (asset_source=`publisher_owned_reference`, buyer_asset_acceptance=`rejected`).
     """
     ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    accepted = MemberAlias('ACCEPTED')
     REJECTED = _VALUES_ACCEPTED_REJECTED[1]
+    rejected = MemberAlias('REJECTED')
 
 
 class MotionLevel(StrEnum):
@@ -48,7 +56,9 @@ class MotionLevel(StrEnum):
     Accepted motion class (AdCOM attrs 21-22; `full_motion` is invalid on a static image canonical).
     """
     STATIC = 'static'
+    static = MemberAlias('STATIC')
     LIMITED_MOTION = 'limited_motion'
+    limited_motion = MemberAlias('LIMITED_MOTION')
 
 
 class CanonicalFormatImage(CanonicalFormatBase):

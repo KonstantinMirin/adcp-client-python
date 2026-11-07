@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -22,11 +22,17 @@ class ReasonCode(StrEnum):
     Stable machine-readable reason for the post-official correction.
     """
     INVALID_TRAFFIC = 'invalid_traffic'
+    invalid_traffic = MemberAlias('INVALID_TRAFFIC')
     LATE_ATTRIBUTION = 'late_attribution'
+    late_attribution = MemberAlias('LATE_ATTRIBUTION')
     SOURCE_CORRECTION = 'source_correction'
+    source_correction = MemberAlias('SOURCE_CORRECTION')
     MAPPING_CORRECTION = 'mapping_correction'
+    mapping_correction = MemberAlias('MAPPING_CORRECTION')
     COMMERCIAL_ADJUSTMENT = 'commercial_adjustment'
+    commercial_adjustment = MemberAlias('COMMERCIAL_ADJUSTMENT')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class ObjStartEnd(AdCPBaseModel):

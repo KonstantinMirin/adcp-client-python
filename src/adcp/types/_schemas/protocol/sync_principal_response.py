@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
 
@@ -24,8 +24,11 @@ class AppliedPrincipalConfigurationAction(StrEnum):
     Persisted outcome for the submitted sections, computed solely against the caller's own prior state. cleared applies only when every submitted section was []; any other change is updated; unchanged means no submitted section differed.
     """
     UPDATED = 'updated'
+    updated = MemberAlias('UPDATED')
     UNCHANGED = 'unchanged'
+    unchanged = MemberAlias('UNCHANGED')
     CLEARED = 'cleared'
+    cleared = MemberAlias('CLEARED')
 
 
 class AppliedPrincipalConfiguration(AdCPBaseModel):
@@ -45,8 +48,11 @@ class AppliedPrincipalConfiguration(AdCPBaseModel):
 
 class ValidatedPrincipalDryRunAction(StrEnum):
     WOULD_UPDATE = 'would_update'
+    would_update = MemberAlias('WOULD_UPDATE')
     WOULD_BE_UNCHANGED = 'would_be_unchanged'
+    would_be_unchanged = MemberAlias('WOULD_BE_UNCHANGED')
     WOULD_CLEAR = 'would_clear'
+    would_clear = MemberAlias('WOULD_CLEAR')
 
 
 class ValidatedPrincipalDryRun(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/frequency-cap-control-mode.json', pointer='#')
 
@@ -12,8 +12,11 @@ class FrequencyCapControlMode(StrEnum):
     A supported package frequency-cap control shape.
     """
     MAX_IMPRESSIONS = 'max_impressions'
+    max_impressions = MemberAlias('MAX_IMPRESSIONS')
     SUPPRESS = 'suppress'
+    suppress = MemberAlias('SUPPRESS')
     MAX_IMPRESSIONS_AND_SUPPRESS = 'max_impressions_and_suppress'
+    max_impressions_and_suppress = MemberAlias('MAX_IMPRESSIONS_AND_SUPPRESS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "FrequencyCapControlMode", FrequencyCapControlMode)

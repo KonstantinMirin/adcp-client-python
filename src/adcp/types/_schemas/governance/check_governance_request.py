@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule
 from adcp.types.constraints import (
     CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices,
@@ -41,8 +41,11 @@ class DeliveryMetricsPacing(StrEnum):
     Whether delivery is ahead of, on track with, or behind the planned pace.
     """
     AHEAD = 'ahead'
+    ahead = MemberAlias('AHEAD')
     ON_TRACK = 'on_track'
+    on_track = MemberAlias('ON_TRACK')
     BEHIND = 'behind'
+    behind = MemberAlias('BEHIND')
 
 
 class Baseline(StrEnum):
@@ -50,8 +53,11 @@ class Baseline(StrEnum):
     Population baseline used for index calculation. 'census': national census or equivalent population data. 'platform': the seller's active user base. 'custom': a custom baseline defined by the seller (describe in baseline_description).
     """
     CENSUS = 'census'
+    census = MemberAlias('CENSUS')
     PLATFORM = 'platform'
+    platform = MemberAlias('PLATFORM')
     CUSTOM = 'custom'
+    custom = MemberAlias('CUSTOM')
 
 
 class AudienceDistribution(AdCPBaseModel):

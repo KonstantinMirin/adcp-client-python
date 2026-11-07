@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, HttpUrl, IntMin1
 
@@ -331,7 +331,9 @@ class SelectionMode(StrEnum):
     How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).
     """
     SEQUENTIAL = 'sequential'
+    sequential = MemberAlias('SEQUENTIAL')
     OPTIMIZE = 'optimize'
+    optimize = MemberAlias('OPTIMIZE')
 
 
 class BaseGroupAsset(AdCPBaseModel):

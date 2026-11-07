@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/attribution-methodology.json', pointer='#')
 
@@ -15,16 +15,22 @@ class AttributionMethodology(StrEnum):
     """1:1 deterministic match between exposed users and purchasers, typically via shared identifier (loyalty card, logged-in account, hashed email). Standard in retail-media closed-loop measurement (Walmart Connect, Kroger Precision, Amazon DSP attribution)."""
 
 
+    deterministic_purchase = MemberAlias('DETERMINISTIC_PURCHASE')
     PROBABILISTIC = 'probabilistic'
     """Probabilistic match using statistical models over device graphs, IP/UA fingerprinting, or behavioral signals. No 1:1 identifier link."""
 
 
+    probabilistic = MemberAlias('PROBABILISTIC')
     PANEL_BASED = 'panel_based'
     """Panel methodology — outcomes measured against a recruited respondent panel and projected to the population. Standard for Nielsen, comScore, Edison Research, and similar panel providers."""
 
 
+    panel_based = MemberAlias('PANEL_BASED')
     MODELED = 'modeled'
     """Modeled output — Media Mix Modeling (MMM), Multi-Touch Attribution (MTA), incrementality testing, or other statistical inference that produces an estimated outcome rather than a directly-observed match. Includes most clean-room outputs."""
+
+
+    modeled = MemberAlias('MODELED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AttributionMethodology", AttributionMethodology)

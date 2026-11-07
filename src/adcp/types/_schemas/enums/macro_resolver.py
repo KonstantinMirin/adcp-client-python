@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/macro-resolver.json', pointer='#')
 
@@ -15,20 +15,27 @@ class MacroProcessingActor(StrEnum):
     """The buyer agent acts before submission."""
 
 
+    buyer = MemberAlias('BUYER')
     CREATIVE_AGENT = 'creative_agent'
     """The creative agent executing build_creative, preview_creative, or validate_input performs the declared build-time operation."""
 
 
+    creative_agent = MemberAlias('CREATIVE_AGENT')
     SELLER = 'seller'
     """The AdCP seller or its execution adapter acts during trafficking or serving."""
 
 
+    seller = MemberAlias('SELLER')
     REQUEST_EXECUTOR = 'request_executor'
     """The component executing the governed request acts, whether a client player, publisher player, SSAI service, or another request executor."""
 
 
+    request_executor = MemberAlias('REQUEST_EXECUTOR')
     SOURCE_AD_SERVER = 'source_ad_server'
     """The originating creative/ad server acts on its own native token."""
+
+
+    source_ad_server = MemberAlias('SOURCE_AD_SERVER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MacroProcessingActor", MacroProcessingActor)

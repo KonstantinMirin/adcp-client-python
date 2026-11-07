@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     FloatGt0,
@@ -46,13 +46,18 @@ class PlansItemStatus(StrEnum):
     Plan lifecycle status.
     """
     ACTIVE = _VALUES_ACTIVE_SUSPENDED_COMPLETED[0]
+    active = MemberAlias('ACTIVE')
     SUSPENDED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[1]
+    suspended = MemberAlias('SUSPENDED')
     COMPLETED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[2]
+    completed = MemberAlias('COMPLETED')
 
 
 class AccountingMode(StrEnum):
     GROSS_COMMITMENT = 'gross_commitment'
+    gross_commitment = MemberAlias('GROSS_COMMITMENT')
     VERIFIED_NET_COST = 'verified_net_cost'
+    verified_net_cost = MemberAlias('VERIFIED_NET_COST')
 
 
 class Budget(AdCPBaseModel):
@@ -116,8 +121,11 @@ class EscalationRateTrend(StrEnum):
     Direction of escalation rate over the plan's lifetime.
     """
     INCREASING = 'increasing'
+    increasing = MemberAlias('INCREASING')
     STABLE = 'stable'
+    stable = MemberAlias('STABLE')
     DECLINING = 'declining'
+    declining = MemberAlias('DECLINING')
 
 
 class Thresholds(AdCPBaseModel):
@@ -173,8 +181,11 @@ class EntriesItemType(StrEnum):
     Entry type.
     """
     CHECK = 'check'
+    check = MemberAlias('CHECK')
     OUTCOME = 'outcome'
+    outcome = MemberAlias('OUTCOME')
     ADJUSTMENT = 'adjustment'
+    adjustment = MemberAlias('ADJUSTMENT')
 
 
 class AdjustmentType(StrEnum):
@@ -182,9 +193,13 @@ class AdjustmentType(StrEnum):
     Commercial adjustment type (present for adjustment entries).
     """
     DECOMMITMENT = 'decommitment'
+    decommitment = MemberAlias('DECOMMITMENT')
     REFUND = 'refund'
+    refund = MemberAlias('REFUND')
     CREDIT = 'credit'
+    credit = MemberAlias('CREDIT')
     MAKEGOOD = 'makegood'
+    makegood = MemberAlias('MAKEGOOD')
 
 
 class Amount(AdCPBaseModel):
@@ -204,7 +219,9 @@ class Source(StrEnum):
     Whether the buyer is forwarding the seller statement it received or reporting an independently measured observation. A forwarded seller statement is not independent evidence.
     """
     SELLER_STATEMENT_COPY = 'seller_statement_copy'
+    seller_statement_copy = MemberAlias('SELLER_STATEMENT_COPY')
     BUYER_MEASUREMENT = 'buyer_measurement'
+    buyer_measurement = MemberAlias('BUYER_MEASUREMENT')
 
 
 class Delivery(AdCPBaseModel):
@@ -238,10 +255,15 @@ class RuntimeAttestationsItem(AdCPBaseModel):
 
 class DeliveryReconciliationStatus(StrEnum):
     CONSISTENT = 'consistent'
+    consistent = MemberAlias('CONSISTENT')
     MEASUREMENT_VARIANCE = 'measurement_variance'
+    measurement_variance = MemberAlias('MEASUREMENT_VARIANCE')
     DISPUTED = 'disputed'
+    disputed = MemberAlias('DISPUTED')
     UNMATCHED = 'unmatched'
+    unmatched = MemberAlias('UNMATCHED')
     CLOSED_UNRESOLVED = 'closed_unresolved'
+    closed_unresolved = MemberAlias('CLOSED_UNRESOLVED')
 
 
 class EntriesItemDeliveryPeriodState(StrEnum):
@@ -249,20 +271,29 @@ class EntriesItemDeliveryPeriodState(StrEnum):
     Operational governance-window state for this delivery observation.
     """
     OPEN = _VALUES_OPEN_CLOSED[0]
+    open = MemberAlias('OPEN')
     CLOSED = _VALUES_OPEN_CLOSED[1]
+    closed = MemberAlias('CLOSED')
 
 
 class AdjustmentState(StrEnum):
     REPORTED = 'reported'
+    reported = MemberAlias('REPORTED')
     VERIFIED = 'verified'
+    verified = MemberAlias('VERIFIED')
     DISPUTED = 'disputed'
+    disputed = MemberAlias('DISPUTED')
 
 
 class EvidenceType(StrEnum):
     DECOMMITMENT_AGREEMENT = 'decommitment_agreement'
+    decommitment_agreement = MemberAlias('DECOMMITMENT_AGREEMENT')
     REFUND_SETTLEMENT = 'refund_settlement'
+    refund_settlement = MemberAlias('REFUND_SETTLEMENT')
     CREDIT_NOTE = 'credit_note'
+    credit_note = MemberAlias('CREDIT_NOTE')
     MAKEGOOD_AGREEMENT = 'makegood_agreement'
+    makegood_agreement = MemberAlias('MAKEGOOD_AGREEMENT')
 
 
 class Evidence(AdCPBaseModel):
@@ -332,8 +363,11 @@ class GovernedActionsItemStatus(StrEnum):
     Action status.
     """
     ACTIVE = _VALUES_ACTIVE_SUSPENDED_COMPLETED[0]
+    active = MemberAlias('ACTIVE')
     SUSPENDED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[1]
+    suspended = MemberAlias('SUSPENDED')
     COMPLETED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[2]
+    completed = MemberAlias('COMPLETED')
 
 
 GovernedActionsItemDeliveryReconciliationStatus = DeliveryReconciliationStatus
@@ -344,7 +378,9 @@ class GovernedActionsItemDeliveryPeriodState(StrEnum):
     Whether the current governance reporting period remains actionable. Closure is not final billing.
     """
     OPEN = _VALUES_OPEN_CLOSED[0]
+    open = MemberAlias('OPEN')
     CLOSED = _VALUES_OPEN_CLOSED[1]
+    closed = MemberAlias('CLOSED')
 
 
 class GovernedActionsItem(AdCPBaseModel):

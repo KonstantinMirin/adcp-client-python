@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/audience-subject-type.json', pointer='#')
 
@@ -12,10 +12,15 @@ class AudienceSubjectType(StrEnum):
     The kind of subject characterized by audience data or population-level evidence.
     """
     INDIVIDUAL = 'individual'
+    individual = MemberAlias('INDIVIDUAL')
     HOUSEHOLD = 'household'
+    household = MemberAlias('HOUSEHOLD')
     BUSINESS = 'business'
+    business = MemberAlias('BUSINESS')
     CONTEXTUAL = 'contextual'
+    contextual = MemberAlias('CONTEXTUAL')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AudienceSubjectType", AudienceSubjectType)

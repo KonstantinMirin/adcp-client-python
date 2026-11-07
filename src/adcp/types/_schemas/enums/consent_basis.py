@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/consent-basis.json', pointer='#')
 
@@ -12,9 +12,13 @@ class ConsentBasis(StrEnum):
     Common GDPR lawful bases relevant to advertising. Covers the Article 6(1) bases used in programmatic advertising contexts.
     """
     CONSENT = 'consent'
+    consent = MemberAlias('CONSENT')
     LEGITIMATE_INTEREST = 'legitimate_interest'
+    legitimate_interest = MemberAlias('LEGITIMATE_INTEREST')
     CONTRACT = 'contract'
+    contract = MemberAlias('CONTRACT')
     LEGAL_OBLIGATION = 'legal_obligation'
+    legal_obligation = MemberAlias('LEGAL_OBLIGATION')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ConsentBasis", ConsentBasis)

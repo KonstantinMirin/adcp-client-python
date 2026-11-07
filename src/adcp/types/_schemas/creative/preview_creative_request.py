@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, IntMin1
 from adcp.types.envelopes import AdcpRequest
@@ -27,8 +27,11 @@ class RequestType(StrEnum):
     Preview mode. 'single' previews one creative manifest. 'batch' previews multiple creatives in one call. 'variant' replays a post-flight variant by ID.
     """
     SINGLE = 'single'
+    single = MemberAlias('SINGLE')
     BATCH = 'batch'
+    batch = MemberAlias('BATCH')
     VARIANT = 'variant'
+    variant = MemberAlias('VARIANT')
 
 
 class RequestsItem(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
 
@@ -29,8 +29,11 @@ class CreativeType(StrEnum):
     Required VAST creative class: `linear` (in-stream Linear), `nonlinear` (NonLinearAds overlay-class), or `either`. Supersedes `linear_required`; when both are present `creative_type` wins, and validators treat `linear_required: true` with no `creative_type` as `linear`.
     """
     LINEAR = 'linear'
+    linear = MemberAlias('LINEAR')
     NONLINEAR = 'nonlinear'
+    nonlinear = MemberAlias('NONLINEAR')
     EITHER = 'either'
+    either = MemberAlias('EITHER')
 
 
 class CanonicalFormatVASTVideo(CanonicalFormatBase):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/right-use.json', pointer='#')
 
@@ -15,10 +15,12 @@ class RightUse(StrEnum):
     """Visual representation of a person's appearance, including AI-generated imagery"""
 
 
+    likeness = MemberAlias('LIKENESS')
     VOICE = 'voice'
     """Audio reproduction of a person's voice, including AI-generated speech"""
 
 
+    voice = MemberAlias('VOICE')
     NAME = 'name'
     """Use of a person's name in advertising or promotional materials"""
 
@@ -27,36 +29,47 @@ class RightUse(StrEnum):
     """Implied or explicit endorsement of a product or service by a person"""
 
 
+    endorsement = MemberAlias('ENDORSEMENT')
     MOTION_CAPTURE = 'motion_capture'
     """Use of a person's movement patterns for animation or video"""
 
 
+    motion_capture = MemberAlias('MOTION_CAPTURE')
     SIGNATURE = 'signature'
     """Use of a person's signature or autograph"""
 
 
+    signature = MemberAlias('SIGNATURE')
     CATCHPHRASE = 'catchphrase'
     """Use of a person's well-known phrases or sayings"""
 
 
+    catchphrase = MemberAlias('CATCHPHRASE')
     SYNC = 'sync'
     """Synchronization of music with visual media (ads, video)"""
 
 
+    sync = MemberAlias('SYNC')
     BACKGROUND_MUSIC = 'background_music'
     """Use of music as background audio in advertising"""
 
 
+    background_music = MemberAlias('BACKGROUND_MUSIC')
     EDITORIAL = 'editorial'
     """Use in editorial or informational contexts"""
 
 
+    editorial = MemberAlias('EDITORIAL')
     COMMERCIAL = 'commercial'
     """Use in commercial advertising and promotional contexts"""
 
 
+    commercial = MemberAlias('COMMERCIAL')
     AI_GENERATED_IMAGE = 'ai_generated_image'
     """License to produce AI-generated still imagery derived from the rights holder's IP (brand assets, character designs, talent likeness). Distinct from likeness/voice by output modality — a get_rights query filtered on ai_generated_image returns rights whose pricing options cover image generation, regardless of the underlying IP category."""
+
+
+    ai_generated_image = MemberAlias('AI_GENERATED_IMAGE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "RightUse", RightUse)

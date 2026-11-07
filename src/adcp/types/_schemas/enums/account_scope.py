@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/account-scope.json', pointer='#')
 
@@ -15,16 +15,22 @@ class AccountScope(StrEnum):
     """Account is shared across all brands for this operator"""
 
 
+    operator = MemberAlias('OPERATOR')
     BRAND = 'brand'
     """Account is shared across all operators for this brand"""
 
 
+    brand = MemberAlias('BRAND')
     OPERATOR_BRAND = 'operator_brand'
     """Account is dedicated to a specific operator+brand combination"""
 
 
+    operator_brand = MemberAlias('OPERATOR_BRAND')
     AGENT = 'agent'
     """Agent-scoped account with no brand- or operator-specific split. This is an account scoping result, not a hidden credential-implied default for requests that omit account."""
+
+
+    agent = MemberAlias('AGENT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AccountScope", AccountScope)

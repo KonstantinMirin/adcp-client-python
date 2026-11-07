@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/javascript-module-type.json', pointer='#')
 
@@ -12,8 +12,11 @@ class JavaScriptModuleType(StrEnum):
     JavaScript module format types for creative assets
     """
     ESM = 'esm'
+    esm = MemberAlias('ESM')
     COMMONJS = 'commonjs'
+    commonjs = MemberAlias('COMMONJS')
     SCRIPT = 'script'
+    script = MemberAlias('SCRIPT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "JavaScriptModuleType", JavaScriptModuleType)

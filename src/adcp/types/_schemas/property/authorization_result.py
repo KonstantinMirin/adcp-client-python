@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
@@ -15,8 +15,11 @@ class Status(StrEnum):
     Authorization status: authorized (agent in adagents.json), unauthorized (agent not in adagents.json), unknown (could not fetch or parse adagents.json)
     """
     AUTHORIZED = 'authorized'
+    authorized = MemberAlias('AUTHORIZED')
     UNAUTHORIZED = 'unauthorized'
+    unauthorized = MemberAlias('UNAUTHORIZED')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class Violation(AdCPBaseModel):

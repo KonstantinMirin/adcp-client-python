@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/installment-status.json', pointer='#')
 
@@ -15,28 +15,37 @@ class InstallmentStatus(StrEnum):
     """Confirmed, will happen as planned"""
 
 
+    scheduled = MemberAlias('SCHEDULED')
     TENTATIVE = 'tentative'
     """May not happen (e.g., playoff Game 7 depends on Game 6)"""
 
 
+    tentative = MemberAlias('TENTATIVE')
     LIVE = 'live'
     """Currently airing or streaming right now"""
 
 
+    live = MemberAlias('LIVE')
     POSTPONED = 'postponed'
     """Was scheduled but delayed to a future date"""
 
 
+    postponed = MemberAlias('POSTPONED')
     CANCELLED = 'cancelled'
     """Will not happen"""
 
 
+    cancelled = MemberAlias('CANCELLED')
     AIRED = 'aired'
     """Already broadcast (live/linear content)"""
 
 
+    aired = MemberAlias('AIRED')
     PUBLISHED = 'published'
     """Already released (on-demand content)"""
+
+
+    published = MemberAlias('PUBLISHED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "InstallmentStatus", InstallmentStatus)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMinLen16
 
@@ -19,8 +19,11 @@ class ReportingWebhookReportingFrequency(StrEnum):
     Frequency for automated reporting delivery. Must be supported by all products in the media buy.
     """
     HOURLY = 'hourly'
+    hourly = MemberAlias('HOURLY')
     DAILY = 'daily'
+    daily = MemberAlias('DAILY')
     MONTHLY = 'monthly'
+    monthly = MemberAlias('MONTHLY')
 
 
 class ReportingWebhook(AdCPBaseModel):

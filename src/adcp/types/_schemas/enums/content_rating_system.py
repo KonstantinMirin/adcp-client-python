@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/content-rating-system.json', pointer='#')
 
@@ -15,44 +15,57 @@ class ContentRatingSystem(StrEnum):
     """US TV Parental Guidelines (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA)"""
 
 
+    tv_parental = MemberAlias('TV_PARENTAL')
     MPAA = 'mpaa'
     """Motion Picture Association film ratings (G, PG, PG-13, R, NC-17)"""
 
 
+    mpaa = MemberAlias('MPAA')
     PODCAST = 'podcast'
     """Podcast content advisories (clean, explicit)"""
 
 
+    podcast = MemberAlias('PODCAST')
     ESRB = 'esrb'
     """Entertainment Software Rating Board (E, E10+, T, M, AO) — US/Canada"""
 
 
+    esrb = MemberAlias('ESRB')
     BBFC = 'bbfc'
     """British Board of Film Classification (U, PG, 12A, 12, 15, 18, R18)"""
 
 
+    bbfc = MemberAlias('BBFC')
     FSK = 'fsk'
     """Freiwillige Selbstkontrolle der Filmwirtschaft (0, 6, 12, 16, 18) — Germany"""
 
 
+    fsk = MemberAlias('FSK')
     ACB = 'acb'
     """Australian Classification Board (G, PG, M, MA15+, R18+)"""
 
 
+    acb = MemberAlias('ACB')
     CHVRS = 'chvrs'
     """Canadian Home Video Rating System (G, PG, 14A, 18A, R, A)"""
 
 
+    chvrs = MemberAlias('CHVRS')
     CSA = 'csa'
     """Conseil superieur de l'audiovisuel / Arcom (-10, -12, -16, -18) — France"""
 
 
+    csa = MemberAlias('CSA')
     PEGI = 'pegi'
     """Pan European Game Information (3, 7, 12, 16, 18) — pan-European gaming"""
 
 
+    pegi = MemberAlias('PEGI')
     CUSTOM = 'custom'
     """Publisher-defined rating system with free-form values"""
+
+
+    custom = MemberAlias('CUSTOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ContentRatingSystem", ContentRatingSystem)

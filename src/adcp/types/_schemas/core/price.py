@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from .currency_code import CurrencyCode
 
@@ -16,9 +16,13 @@ class Period(StrEnum):
     Billing period. 'night' for hotel rates, 'month' or 'year' for salaries and rentals, 'one_time' for purchase prices. Omit when the period is obvious from context (e.g., a vehicle price is always one-time).
     """
     NIGHT = 'night'
+    night = MemberAlias('NIGHT')
     MONTH = 'month'
+    month = MemberAlias('MONTH')
     YEAR = 'year'
+    year = MemberAlias('YEAR')
     ONE_TIME = 'one_time'
+    one_time = MemberAlias('ONE_TIME')
 
 
 class Price(AdCPBaseModel):

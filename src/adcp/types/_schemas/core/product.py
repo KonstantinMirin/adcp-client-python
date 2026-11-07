@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import (
     ConditionalRequired,
     ForbiddenGroups,
@@ -95,7 +95,9 @@ class DeliveryMeasurement(AdCPBaseModel):
 
 class MetricOptimizationSupportedTargetsItem(StrEnum):
     COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    cost_per = MemberAlias('COST_PER')
     THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
+    threshold_rate = MemberAlias('THRESHOLD_RATE')
 
 
 class MetricOptimization(AdCPBaseModel):
@@ -118,8 +120,11 @@ class MetricOptimization(AdCPBaseModel):
 
 class ConversionTrackingSupportedTargetsItem(StrEnum):
     COST_PER = 'cost_per'
+    cost_per = MemberAlias('COST_PER')
     PER_AD_SPEND = 'per_ad_spend'
+    per_ad_spend = MemberAlias('PER_AD_SPEND')
     MAXIMIZE_VALUE = 'maximize_value'
+    maximize_value = MemberAlias('MAXIMIZE_VALUE')
 
 
 class ConversionTracking(AdCPBaseModel):

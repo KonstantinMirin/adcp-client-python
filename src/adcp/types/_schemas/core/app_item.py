@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import AppItemAppleId, FloatMin0Max5, HttpUrl
 
 from .ext import ExtensionObject
@@ -19,7 +19,9 @@ class Platform(StrEnum):
     Target platform. iOS and Android are separate items because they have distinct store identifiers and attribution mechanisms.
     """
     IOS = 'ios'
+    ios = MemberAlias('IOS')
     ANDROID = 'android'
+    android = MemberAlias('ANDROID')
 
 
 class AppItem(AdCPBaseModel):

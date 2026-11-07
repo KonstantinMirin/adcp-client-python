@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl
 from adcp.types.envelopes import AdcpResponse
 
@@ -34,9 +34,13 @@ class AcpHandoff(AdCPBaseModel):
 
 class Action(StrEnum):
     SAVE_FOR_LATER = 'save_for_later'
+    save_for_later = MemberAlias('SAVE_FOR_LATER')
     SET_REMINDER = 'set_reminder'
+    set_reminder = MemberAlias('SET_REMINDER')
     SUBSCRIBE_UPDATES = 'subscribe_updates'
+    subscribe_updates = MemberAlias('SUBSCRIBE_UPDATES')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 class FollowUp(AdCPBaseModel):

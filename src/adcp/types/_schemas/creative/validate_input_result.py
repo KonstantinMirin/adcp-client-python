@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..core.macro_resolution_result import MacroResolutionResult
@@ -14,9 +14,13 @@ from ..core.macro_resolution_result import MacroResolutionResult
 
 class Kind(StrEnum):
     CANONICAL = 'canonical'
+    canonical = MemberAlias('CANONICAL')
     PRODUCT = 'product'
+    product = MemberAlias('PRODUCT')
     THIRD_PARTY_FORMAT = 'third_party_format'
+    third_party_format = MemberAlias('THIRD_PARTY_FORMAT')
     CAPABILITY = 'capability'
+    capability = MemberAlias('CAPABILITY')
 
 
 class Target(AdCPBaseModel):
@@ -36,8 +40,11 @@ class ResultKind(StrEnum):
     Discriminator for the validation outcome. See schema description for the three states. Replaces the earlier boolean `ok` to distinguish 'failed validation' from 'platform is nondeterministic, can't pre-validate'.
     """
     VALIDATED_PASS = 'validated_pass'
+    validated_pass = MemberAlias('VALIDATED_PASS')
     VALIDATED_FAIL = 'validated_fail'
+    validated_fail = MemberAlias('VALIDATED_FAIL')
     UNVALIDATABLE_NONDETERMINISTIC = 'unvalidatable_nondeterministic'
+    unvalidatable_nondeterministic = MemberAlias('UNVALIDATABLE_NONDETERMINISTIC')
 
 
 class ViolationsItem(AdCPBaseModel):

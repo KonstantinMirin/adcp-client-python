@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/right-type.json', pointer='#')
 
@@ -15,20 +15,27 @@ class RightType(StrEnum):
     """Rights to a real person's likeness, voice, name, or endorsement (athletes, celebrities, influencers)"""
 
 
+    talent = MemberAlias('TALENT')
     CHARACTER = 'character'
     """Rights to fictional characters for advertising or co-branding"""
 
 
+    character = MemberAlias('CHARACTER')
     BRAND_IP = 'brand_ip'
     """Rights to brand intellectual property (logos, trademarks, trade dress)"""
 
 
+    brand_ip = MemberAlias('BRAND_IP')
     MUSIC = 'music'
     """Rights to musical compositions or recordings (sync, background music)"""
 
 
+    music = MemberAlias('MUSIC')
     STOCK_MEDIA = 'stock_media'
     """Rights to stock photography, video, or audio collections"""
+
+
+    stock_media = MemberAlias('STOCK_MEDIA')
 
 
 strict_validate = strict_alias(__adcp_schema__, "RightType", RightType)

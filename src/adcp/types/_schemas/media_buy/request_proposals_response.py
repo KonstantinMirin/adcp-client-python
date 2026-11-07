@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen16
 from adcp.types.envelopes import AdcpResponse
@@ -26,8 +26,11 @@ from .refine_proposals_response import Status
 
 class Outcome(StrEnum):
     PROPOSED = 'proposed'
+    proposed = MemberAlias('PROPOSED')
     PRODUCTS_AVAILABLE = 'products_available'
+    products_available = MemberAlias('PRODUCTS_AVAILABLE')
     REJECTED = 'rejected'
+    rejected = MemberAlias('REJECTED')
 
 
 class ProposalsItem(CanonicalProposal):
@@ -78,8 +81,11 @@ class SourceAdcpVersion(StrEnum):
 
 class LossesItem(StrEnum):
     FEED_VERSION_NOT_ATOMIC = 'feed_version_not_atomic'
+    feed_version_not_atomic = MemberAlias('FEED_VERSION_NOT_ATOMIC')
     PRICING_VERSION_NOT_ATOMIC = 'pricing_version_not_atomic'
+    pricing_version_not_atomic = MemberAlias('PRICING_VERSION_NOT_ATOMIC')
     MUTATION_IDEMPOTENCY_NOT_GUARANTEED = 'mutation_idempotency_not_guaranteed'
+    mutation_idempotency_not_guaranteed = MemberAlias('MUTATION_IDEMPOTENCY_NOT_GUARANTEED')
 
 
 class PurchaseContinuationLegacyCreate(AdCPBaseModel):

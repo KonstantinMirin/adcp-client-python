@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='core/reporting-reconciliation-mode.json', pointer='#')
 
@@ -12,7 +12,9 @@ class ReportingReconciliationMode(StrEnum):
     Whether producer delivery evidence is sufficient or an authenticated consumer receipt is required.
     """
     DELIVERY_ONLY = 'delivery_only'
+    delivery_only = MemberAlias('DELIVERY_ONLY')
     CONSUMER_RECEIPT = 'consumer_receipt'
+    consumer_receipt = MemberAlias('CONSUMER_RECEIPT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReportingReconciliationMode", ReportingReconciliationMode)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/proposal-status.json', pointer='#')
 
@@ -15,12 +15,17 @@ class ProposalStatus(StrEnum):
     """Indicative pricing and availability. The buyer can compare and revise the proposal but must finalize it before purchasing. Use refine_proposals with action 'finalize'; the legacy get_products facade uses its proposal-scoped 'finalize' refine action."""
 
 
+    draft = MemberAlias('DRAFT')
     COMMITTED = 'committed'
     """Firm pricing with inventory reserved. The buyer can accept this proposal via accept_proposal before expires_at. After expires_at, the hold lapses and the buyer must request or finalize a fresh proposal."""
 
 
+    committed = MemberAlias('COMMITTED')
     ACCEPTED = 'accepted'
     """Immutable historical commercial terms attached to a MediaBuy. The buyer may pass this proposal_id to refine_proposals to fork an amendment or cancellation proposal."""
+
+
+    accepted = MemberAlias('ACCEPTED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ProposalStatus", ProposalStatus)

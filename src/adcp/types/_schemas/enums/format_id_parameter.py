@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/format-id-parameter.json', pointer='#')
 
@@ -12,8 +12,11 @@ class FormatIDParameter(StrEnum):
     Types of parameters that template formats accept in format_id objects to create parameterized format identifiers
     """
     DIMENSIONS = 'dimensions'
+    dimensions = MemberAlias('DIMENSIONS')
     DURATION = 'duration'
+    duration = MemberAlias('DURATION')
     PIXEL_RATIO = 'pixel_ratio'
+    pixel_ratio = MemberAlias('PIXEL_RATIO')
 
 
 strict_validate = strict_alias(__adcp_schema__, "FormatIDParameter", FormatIDParameter)

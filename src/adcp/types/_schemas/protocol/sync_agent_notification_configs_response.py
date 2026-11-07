@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.agent_notification_config import AgentNotificationConfig
@@ -22,9 +22,13 @@ class Action(StrEnum):
     Outcome for the caller-scoped replacement. `updated`: a new subscriber set was persisted for this caller. `unchanged`: the submitted set matched this caller's current set. `cleared`: the submitted empty array removed all subscribers owned by this caller. `failed`: validation, authorization, or endpoint proof failed; the prior caller-scoped set remains unchanged and `errors[]` explains why.
     """
     UPDATED = 'updated'
+    updated = MemberAlias('UPDATED')
     UNCHANGED = 'unchanged'
+    unchanged = MemberAlias('UNCHANGED')
     CLEARED = 'cleared'
+    cleared = MemberAlias('CLEARED')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
 
 
 class SyncAgentNotificationConfigsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):

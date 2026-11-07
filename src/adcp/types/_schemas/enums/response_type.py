@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/response-type.json', pointer='#')
 
@@ -15,16 +15,22 @@ class TMPResponseType(StrEnum):
     """Binary activation with GAM key-values. Offers identify the package via package_id."""
 
 
+    activation = MemberAlias('ACTIVATION')
     CATALOG_ITEMS = 'catalog_items'
     """Preferred catalog items for rendering. Offers may include catalog item references."""
 
 
+    catalog_items = MemberAlias('CATALOG_ITEMS')
     CREATIVE = 'creative'
     """Inline creative manifest. Offers include full rendering details."""
 
 
+    creative = MemberAlias('CREATIVE')
     DEAL = 'deal'
     """Deal ID for programmatic execution. Offers include deal metadata."""
+
+
+    deal = MemberAlias('DEAL')
 
 
 strict_validate = strict_alias(__adcp_schema__, "TMPResponseType", TMPResponseType)

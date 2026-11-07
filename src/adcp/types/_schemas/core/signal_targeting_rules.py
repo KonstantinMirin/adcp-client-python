@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from .signal_selection_group_rule import SelectionMode, SignalSelectionGroupRule
@@ -17,7 +17,9 @@ class ResolutionModel(StrEnum):
     How selected signal_targeting_options are resolved against the product's inventory. 'direct_targeting' means selected signals are applied as targeting predicates to the package inventory. 'seller_planned' means selected signals are planning inputs that the seller resolves against product-specific inventory, timing, availability, reach, or pacing constraints; buyers SHOULD NOT attempt to decompose the signal selection into lower-level inventory or schedule decisions. Use 'seller_planned' for products such as linear broadcast schedules where the audience definition may be portable but the audience-to-avails plan is seller-resolved.
     """
     DIRECT_TARGETING = 'direct_targeting'
+    direct_targeting = MemberAlias('DIRECT_TARGETING')
     SELLER_PLANNED = 'seller_planned'
+    seller_planned = MemberAlias('SELLER_PLANNED')
 
 
 class SignalTargetingRules(AdCPBaseModel):

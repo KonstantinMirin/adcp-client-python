@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/collection-relationship.json', pointer='#')
 
@@ -15,20 +15,27 @@ class CollectionRelationship(StrEnum):
     """A collection derived from the referenced collection (e.g., an after-collection or character spinoff)"""
 
 
+    spinoff = MemberAlias('SPINOFF')
     COMPANION = 'companion'
     """A companion collection (behind-the-scenes, reaction, or supplementary content)"""
 
 
+    companion = MemberAlias('COMPANION')
     SEQUEL = 'sequel'
     """A continuation of the referenced collection"""
 
 
+    sequel = MemberAlias('SEQUEL')
     PREQUEL = 'prequel'
     """A predecessor to the referenced collection"""
 
 
+    prequel = MemberAlias('PREQUEL')
     CROSSOVER = 'crossover'
     """Shows that share installments, guests, or story arcs"""
+
+
+    crossover = MemberAlias('CROSSOVER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CollectionRelationship", CollectionRelationship)

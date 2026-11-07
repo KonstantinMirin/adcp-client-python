@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/tracker-execution-actor.json', pointer='#')
 
@@ -12,7 +12,9 @@ class TrackerExecutionActor(StrEnum):
     Actor responsible for initiating a buyer-supplied tracker under a seller-authored execution contract. This v1 vocabulary is intentionally narrower than the macro resolver actor vocabulary.
     """
     SELLER = 'seller'
+    seller = MemberAlias('SELLER')
     REQUEST_EXECUTOR = 'request_executor'
+    request_executor = MemberAlias('REQUEST_EXECUTOR')
 
 
 strict_validate = strict_alias(__adcp_schema__, "TrackerExecutionActor", TrackerExecutionActor)

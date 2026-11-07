@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AuthorizedOperatorBrandsItem,
@@ -67,12 +67,19 @@ class AuthoritativeLocationRedirectRedirectReason(StrEnum):
     Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.
     """
     ACQUISITION = 'acquisition'
+    acquisition = MemberAlias('ACQUISITION')
     DIVESTITURE = 'divestiture'
+    divestiture = MemberAlias('DIVESTITURE')
     REBRAND = 'rebrand'
+    rebrand = MemberAlias('REBRAND')
     REGIONAL = 'regional'
+    regional = MemberAlias('REGIONAL')
     LEGACY = 'legacy'
+    legacy = MemberAlias('LEGACY')
     CONSOLIDATION = 'consolidation'
+    consolidation = MemberAlias('CONSOLIDATION')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class AuthoritativeLocationRedirect(BrandDiscovery):
@@ -201,8 +208,11 @@ class Architecture(StrEnum):
     Brand architecture model: branded_house (Google), house_of_brands (P&G), hybrid (Nike)
     """
     BRANDED_HOUSE = 'branded_house'
+    branded_house = MemberAlias('BRANDED_HOUSE')
     HOUSE_OF_BRANDS = 'house_of_brands'
+    house_of_brands = MemberAlias('HOUSE_OF_BRANDS')
     HYBRID = 'hybrid'
+    hybrid = MemberAlias('HYBRID')
 
 
 class Scope(StrEnum):
@@ -210,7 +220,9 @@ class Scope(StrEnum):
     Whether this relying_party_id is shared across the entity's properties (entity → a within-entity unique-human graph) or scoped to a single property (property → per-property pseudonyms, unlinkable across the entity).
     """
     ENTITY = 'entity'
+    entity = MemberAlias('ENTITY')
     PROPERTY = 'property'
+    property = MemberAlias('PROPERTY')
 
 
 class IdentityRelyingParty(AdCPBaseModel):
@@ -252,9 +264,13 @@ class KellerType(StrEnum):
     Brand architecture type from Keller's theory. master: primary brand of house. sub_brand: carries parent name (Nike SB). endorsed: independent identity backed by parent (Air Jordan 'by Nike'). independent: operates separately (Converse under Nike, Inc.)
     """
     MASTER = 'master'
+    master = MemberAlias('MASTER')
     SUB_BRAND = 'sub_brand'
+    sub_brand = MemberAlias('SUB_BRAND')
     ENDORSED = 'endorsed'
+    endorsed = MemberAlias('ENDORSED')
     INDEPENDENT = 'independent'
+    independent = MemberAlias('INDEPENDENT')
 
 
 LogoId = Annotated[BrandDiscoveryLogoId, Field(description='Stable identifier for a logo entry within this brand.json document. Use lowercase words separated by underscores or hyphens; do not key integrations on mutable asset URLs.')]
@@ -265,9 +281,13 @@ class LogoOrientation(StrEnum):
     Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements
     """
     SQUARE = 'square'
+    square = MemberAlias('SQUARE')
     HORIZONTAL = 'horizontal'
+    horizontal = MemberAlias('HORIZONTAL')
     VERTICAL = 'vertical'
+    vertical = MemberAlias('VERTICAL')
     STACKED = 'stacked'
+    stacked = MemberAlias('STACKED')
 
 
 class Background(StrEnum):
@@ -284,9 +304,13 @@ class LogoVariant(StrEnum):
     Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo
     """
     PRIMARY = 'primary'
+    primary = MemberAlias('PRIMARY')
     SECONDARY = 'secondary'
+    secondary = MemberAlias('SECONDARY')
     ICON = 'icon'
+    icon = MemberAlias('ICON')
     WORDMARK = 'wordmark'
+    wordmark = MemberAlias('WORDMARK')
     FULL_LOCKUP = 'full-lockup'
 
 
@@ -344,8 +368,11 @@ class FontFileStyle(StrEnum):
     CSS font-style
     """
     NORMAL = 'normal'
+    normal = MemberAlias('NORMAL')
     ITALIC = 'italic'
+    italic = MemberAlias('ITALIC')
     OBLIQUE = 'oblique'
+    oblique = MemberAlias('OBLIQUE')
 
 
 class ObjUrlWeightWeightRangeStyle(AdCPBaseModel):
@@ -442,12 +469,19 @@ class Store(StrEnum):
     App store for mobile/CTV apps
     """
     APPLE = 'apple'
+    apple = MemberAlias('APPLE')
     GOOGLE = 'google'
+    google = MemberAlias('GOOGLE')
     AMAZON = 'amazon'
+    amazon = MemberAlias('AMAZON')
     ROKU = 'roku'
+    roku = MemberAlias('ROKU')
     SAMSUNG = 'samsung'
+    samsung = MemberAlias('SAMSUNG')
     LG = 'lg'
+    lg = MemberAlias('LG')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class Relationship(StrEnum):
@@ -455,9 +489,13 @@ class Relationship(StrEnum):
     How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.
     """
     OWNED = 'owned'
+    owned = MemberAlias('OWNED')
     DIRECT = 'direct'
+    direct = MemberAlias('DIRECT')
     DELEGATED = 'delegated'
+    delegated = MemberAlias('DELEGATED')
     AD_NETWORK = 'ad_network'
+    ad_network = MemberAlias('AD_NETWORK')
 
 
 class BrandDiscoveryProperty(AdCPBaseModel):
@@ -514,10 +552,15 @@ class Status(StrEnum):
     Registration status. Omit for active marks if status tracking is not maintained.
     """
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
     ABANDONED = 'abandoned'
+    abandoned = MemberAlias('ABANDONED')
     CANCELLED = 'cancelled'
+    cancelled = MemberAlias('CANCELLED')
     EXPIRED = 'expired'
+    expired = MemberAlias('EXPIRED')
 
 
 class LicenseType(StrEnum):
@@ -525,8 +568,11 @@ class LicenseType(StrEnum):
     Whether the publisher owns the mark, licenses it from another entity, or licenses it to others. 'owned' is the default if omitted.
     """
     OWNED = 'owned'
+    owned = MemberAlias('OWNED')
     LICENSED_IN = 'licensed_in'
+    licensed_in = MemberAlias('LICENSED_IN')
     LICENSED_OUT = 'licensed_out'
+    licensed_out = MemberAlias('LICENSED_OUT')
 
 
 class Trademark(AdCPBaseModel):
@@ -578,9 +624,13 @@ class Realism(StrEnum):
     Level of photographic realism
     """
     NATURAL = 'natural'
+    natural = MemberAlias('NATURAL')
     STYLIZED = 'stylized'
+    stylized = MemberAlias('STYLIZED')
     HYPERREAL = 'hyperreal'
+    hyperreal = MemberAlias('HYPERREAL')
     ABSTRACT = 'abstract'
+    abstract = MemberAlias('ABSTRACT')
 
 
 class ColorTemperature(StrEnum):
@@ -588,8 +638,11 @@ class ColorTemperature(StrEnum):
     Overall color temperature of photography
     """
     WARM = 'warm'
+    warm = MemberAlias('WARM')
     NEUTRAL = 'neutral'
+    neutral = MemberAlias('NEUTRAL')
     COOL = 'cool'
+    cool = MemberAlias('COOL')
 
 
 _VALUES_LOW_MEDIUM_HIGH: tuple[str, ...] = (
@@ -604,8 +657,11 @@ class Contrast(StrEnum):
     Contrast level in photography
     """
     LOW = _VALUES_LOW_MEDIUM_HIGH[0]
+    low = MemberAlias('LOW')
     MEDIUM = _VALUES_LOW_MEDIUM_HIGH[1]
+    medium = MemberAlias('MEDIUM')
     HIGH = _VALUES_LOW_MEDIUM_HIGH[2]
+    high = MemberAlias('HIGH')
 
 
 class DepthOfField(StrEnum):
@@ -613,8 +669,11 @@ class DepthOfField(StrEnum):
     Depth of field preference. shallow: blurred background with subject isolation, deep: everything in focus
     """
     SHALLOW = 'shallow'
+    shallow = MemberAlias('SHALLOW')
     MEDIUM = 'medium'
+    medium = MemberAlias('MEDIUM')
     DEEP = 'deep'
+    deep = MemberAlias('DEEP')
 
 
 class People(AdCPBaseModel):
@@ -636,8 +695,11 @@ class ProductFocus(StrEnum):
     """
     IN_USE = 'in-use'
     ISOLATED = 'isolated'
+    isolated = MemberAlias('ISOLATED')
     LIFESTYLE = 'lifestyle'
+    lifestyle = MemberAlias('LIFESTYLE')
     DETAIL = 'detail'
+    detail = MemberAlias('DETAIL')
 
 
 class Subject(AdCPBaseModel):
@@ -690,14 +752,22 @@ class StyleType(StrEnum):
     Primary graphic style
     """
     FLAT_ILLUSTRATION = 'flat_illustration'
+    flat_illustration = MemberAlias('FLAT_ILLUSTRATION')
     GEOMETRIC = 'geometric'
+    geometric = MemberAlias('GEOMETRIC')
     GRADIENT_MESH = 'gradient_mesh'
+    gradient_mesh = MemberAlias('GRADIENT_MESH')
     EDITORIAL_COLLAGE = 'editorial_collage'
+    editorial_collage = MemberAlias('EDITORIAL_COLLAGE')
     HAND_DRAWN = 'hand_drawn'
+    hand_drawn = MemberAlias('HAND_DRAWN')
     MINIMAL_LINE_ART = 'minimal_line_art'
+    minimal_line_art = MemberAlias('MINIMAL_LINE_ART')
     V_3D_RENDER = '3d_render'
     ISOMETRIC = 'isometric'
+    isometric = MemberAlias('ISOMETRIC')
     PHOTOGRAPHIC_COMPOSITE = 'photographic_composite'
+    photographic_composite = MemberAlias('PHOTOGRAPHIC_COMPOSITE')
 
 
 class StrokeStyle(StrEnum):
@@ -705,9 +775,13 @@ class StrokeStyle(StrEnum):
     Stroke end/join style
     """
     ROUNDED = 'rounded'
+    rounded = MemberAlias('ROUNDED')
     SQUARE = 'square'
+    square = MemberAlias('SQUARE')
     MIXED = 'mixed'
+    mixed = MemberAlias('MIXED')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 class GraphicStyle(AdCPBaseModel):
@@ -755,11 +829,17 @@ class IconographyStyle(StrEnum):
     Icon rendering style
     """
     OUTLINE = 'outline'
+    outline = MemberAlias('OUTLINE')
     FILLED = 'filled'
+    filled = MemberAlias('FILLED')
     DUOTONE = 'duotone'
+    duotone = MemberAlias('DUOTONE')
     FLAT = 'flat'
+    flat = MemberAlias('FLAT')
     GLYPH = 'glyph'
+    glyph = MemberAlias('GLYPH')
     HAND_DRAWN = 'hand_drawn'
+    hand_drawn = MemberAlias('HAND_DRAWN')
 
 
 class CornerStyle(StrEnum):
@@ -767,8 +847,11 @@ class CornerStyle(StrEnum):
     Corner style for icon paths
     """
     ROUNDED = 'rounded'
+    rounded = MemberAlias('ROUNDED')
     SQUARE = 'square'
+    square = MemberAlias('SQUARE')
     MIXED = 'mixed'
+    mixed = MemberAlias('MIXED')
 
 
 class IconographyUsage(AdCPBaseModel):
@@ -802,9 +885,13 @@ class GradientStyle(StrEnum):
     Gradient type for overlays
     """
     LINEAR = 'linear'
+    linear = MemberAlias('LINEAR')
     RADIAL = 'radial'
+    radial = MemberAlias('RADIAL')
     CONIC = 'conic'
+    conic = MemberAlias('CONIC')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 class Overlays(AdCPBaseModel):
@@ -825,11 +912,17 @@ class TextureStyle(StrEnum):
     Texture style applied to creative assets
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     SUBTLE_GRAIN = 'subtle_grain'
+    subtle_grain = MemberAlias('SUBTLE_GRAIN')
     NOISE = 'noise'
+    noise = MemberAlias('NOISE')
     PAPER = 'paper'
+    paper = MemberAlias('PAPER')
     FABRIC = 'fabric'
+    fabric = MemberAlias('FABRIC')
     CONCRETE = 'concrete'
+    concrete = MemberAlias('CONCRETE')
 
 
 class Intensity(StrEnum):
@@ -837,8 +930,11 @@ class Intensity(StrEnum):
     Texture intensity
     """
     LOW = _VALUES_LOW_MEDIUM_HIGH[0]
+    low = MemberAlias('LOW')
     MEDIUM = _VALUES_LOW_MEDIUM_HIGH[1]
+    medium = MemberAlias('MEDIUM')
     HIGH = _VALUES_LOW_MEDIUM_HIGH[2]
+    high = MemberAlias('HIGH')
 
 
 class Texture(AdCPBaseModel):
@@ -855,12 +951,19 @@ class Texture(AdCPBaseModel):
 
 class TypesAllowedItem(StrEnum):
     SOLID_COLOR = 'solid_color'
+    solid_color = MemberAlias('SOLID_COLOR')
     GRADIENT = 'gradient'
+    gradient = MemberAlias('GRADIENT')
     BLURRED_PHOTO = 'blurred_photo'
+    blurred_photo = MemberAlias('BLURRED_PHOTO')
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     VIDEO = 'video'
+    video = MemberAlias('VIDEO')
     PATTERN = 'pattern'
+    pattern = MemberAlias('PATTERN')
     TRANSPARENT = 'transparent'
+    transparent = MemberAlias('TRANSPARENT')
 
 
 class Backgrounds(AdCPBaseModel):
@@ -952,12 +1055,19 @@ class GraphicElementType(StrEnum):
     Element type
     """
     BORDER = 'border'
+    border = MemberAlias('BORDER')
     DIVIDER = 'divider'
+    divider = MemberAlias('DIVIDER')
     FRAME = 'frame'
+    frame = MemberAlias('FRAME')
     WATERMARK = 'watermark'
+    watermark = MemberAlias('WATERMARK')
     PATTERN = 'pattern'
+    pattern = MemberAlias('PATTERN')
     TEXTURE_OVERLAY = 'texture_overlay'
+    texture_overlay = MemberAlias('TEXTURE_OVERLAY')
     DECORATIVE = 'decorative'
+    decorative = MemberAlias('DECORATIVE')
 
 
 class Orientation(StrEnum):
@@ -965,8 +1075,11 @@ class Orientation(StrEnum):
     Preferred orientation when used in layouts
     """
     HORIZONTAL = 'horizontal'
+    horizontal = MemberAlias('HORIZONTAL')
     VERTICAL = 'vertical'
+    vertical = MemberAlias('VERTICAL')
     ANY = 'any'
+    any = MemberAlias('ANY')
 
 
 HexColor = Annotated[BrandDiscoveryColorValue, Field(description='A single hex color value')]
@@ -993,11 +1106,17 @@ class TransitionStyle(StrEnum):
     Primary transition style between scenes
     """
     CUT = 'cut'
+    cut = MemberAlias('CUT')
     DISSOLVE = 'dissolve'
+    dissolve = MemberAlias('DISSOLVE')
     SLIDE = 'slide'
+    slide = MemberAlias('SLIDE')
     WIPE = 'wipe'
+    wipe = MemberAlias('WIPE')
     ZOOM = 'zoom'
+    zoom = MemberAlias('ZOOM')
     FADE = 'fade'
+    fade = MemberAlias('FADE')
 
 
 class AnimationSpeed(StrEnum):
@@ -1005,8 +1124,11 @@ class AnimationSpeed(StrEnum):
     Overall animation pacing
     """
     SLOW = 'slow'
+    slow = MemberAlias('SLOW')
     MODERATE = 'moderate'
+    moderate = MemberAlias('MODERATE')
     FAST = 'fast'
+    fast = MemberAlias('FAST')
 
 
 class TextEntrance(StrEnum):
@@ -1014,11 +1136,17 @@ class TextEntrance(StrEnum):
     How text enters the frame
     """
     FADE = 'fade'
+    fade = MemberAlias('FADE')
     TYPEWRITER = 'typewriter'
+    typewriter = MemberAlias('TYPEWRITER')
     SLIDE_UP = 'slide_up'
+    slide_up = MemberAlias('SLIDE_UP')
     SLIDE_LEFT = 'slide_left'
+    slide_left = MemberAlias('SLIDE_LEFT')
     SCALE = 'scale'
+    scale = MemberAlias('SCALE')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 class MotionGuidelinesPacing(StrEnum):
@@ -1026,8 +1154,11 @@ class MotionGuidelinesPacing(StrEnum):
     Overall editing rhythm
     """
     LINGERING = 'lingering'
+    lingering = MemberAlias('LINGERING')
     MODERATE = 'moderate'
+    moderate = MemberAlias('MODERATE')
     FAST_CUTS = 'fast_cuts'
+    fast_cuts = MemberAlias('FAST_CUTS')
 
 
 class MotionGuidelines(AdCPBaseModel):
@@ -1065,8 +1196,11 @@ class BackgroundContrast(StrEnum):
     Permitted background contrast behind logo
     """
     LIGHT_ONLY = 'light_only'
+    light_only = MemberAlias('LIGHT_ONLY')
     DARK_ONLY = 'dark_only'
+    dark_only = MemberAlias('DARK_ONLY')
     ANY = 'any'
+    any = MemberAlias('ANY')
 
 
 class LogoPlacement(AdCPBaseModel):
@@ -1108,6 +1242,7 @@ class Kind(StrEnum):
     NAME = 'name'
     VALUE = 'value'
     SURFACE = 'surface'
+    surface = MemberAlias('SURFACE')
 
 
 _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT: tuple[str, ...] = (
@@ -1128,14 +1263,23 @@ class Surface(StrEnum):
     Usage surface rather than a specific color value.
     """
     BACKGROUND = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[0]
+    background = MemberAlias('BACKGROUND')
     FOREGROUND = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[1]
+    foreground = MemberAlias('FOREGROUND')
     TEXT = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[2]
+    text = MemberAlias('TEXT')
     LOGO_BACKGROUND = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[3]
+    logo_background = MemberAlias('LOGO_BACKGROUND')
     CTA = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[4]
+    cta = MemberAlias('CTA')
     ACCENT = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[5]
+    accent = MemberAlias('ACCENT')
     BORDER = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[6]
+    border = MemberAlias('BORDER')
     ICON = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[7]
+    icon = MemberAlias('ICON')
     GRAPHIC_ELEMENT = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[8]
+    graphic_element = MemberAlias('GRAPHIC_ELEMENT')
 
 
 class ColorRef(BranchDispatchMixin, AdCPBaseModel):
@@ -1191,14 +1335,23 @@ ColorRef.model_rebuild(force=True)
 
 class AppliesToItem(StrEnum):
     BACKGROUND = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[0]
+    background = MemberAlias('BACKGROUND')
     FOREGROUND = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[1]
+    foreground = MemberAlias('FOREGROUND')
     TEXT = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[2]
+    text = MemberAlias('TEXT')
     LOGO_BACKGROUND = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[3]
+    logo_background = MemberAlias('LOGO_BACKGROUND')
     CTA = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[4]
+    cta = MemberAlias('CTA')
     ACCENT = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[5]
+    accent = MemberAlias('ACCENT')
     BORDER = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[6]
+    border = MemberAlias('BORDER')
     ICON = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[7]
+    icon = MemberAlias('ICON')
     GRAPHIC_ELEMENT = _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT[8]
+    graphic_element = MemberAlias('GRAPHIC_ELEMENT')
 
 
 class GuidelineSeverity(StrEnum):
@@ -1206,7 +1359,9 @@ class GuidelineSeverity(StrEnum):
     Strength of a machine-readable brand guideline constraint.
     """
     MUST = 'must'
+    must = MemberAlias('MUST')
     SHOULD = 'should'
+    should = MemberAlias('SHOULD')
 
 
 class ColorConstraint(AdCPBaseModel):
@@ -1271,12 +1426,19 @@ class LockupType(StrEnum):
     Type of mark relationship governed by this lockup rule.
     """
     CO_BRAND = 'co_brand'
+    co_brand = MemberAlias('CO_BRAND')
     SECONDARY_MARK = 'secondary_mark'
+    secondary_mark = MemberAlias('SECONDARY_MARK')
     PARTNER = 'partner'
+    partner = MemberAlias('PARTNER')
     SPONSOR = 'sponsor'
+    sponsor = MemberAlias('SPONSOR')
     PROGRAM = 'program'
+    program = MemberAlias('PROGRAM')
     TALENT = 'talent'
+    talent = MemberAlias('TALENT')
     CUSTOM = 'custom'
+    custom = MemberAlias('CUSTOM')
 
 
 class Ordering(StrEnum):
@@ -1284,9 +1446,13 @@ class Ordering(StrEnum):
     Required visual ordering of the brand mark relative to partner or secondary marks.
     """
     BRAND_FIRST = 'brand_first'
+    brand_first = MemberAlias('BRAND_FIRST')
     PARTNER_FIRST = 'partner_first'
+    partner_first = MemberAlias('PARTNER_FIRST')
     EQUAL = 'equal'
+    equal = MemberAlias('EQUAL')
     CONTEXTUAL = 'contextual'
+    contextual = MemberAlias('CONTEXTUAL')
 
 
 class SeparatorType(StrEnum):
@@ -1294,9 +1460,13 @@ class SeparatorType(StrEnum):
     Separator style.
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     KEYLINE = 'keyline'
+    keyline = MemberAlias('KEYLINE')
     SPACE = 'space'
+    space = MemberAlias('SPACE')
     DIVIDER = 'divider'
+    divider = MemberAlias('DIVIDER')
 
 
 class Separator(AdCPBaseModel):
@@ -1341,8 +1511,11 @@ class TextTransform(StrEnum):
     Text transformation
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     UPPERCASE = 'uppercase'
+    uppercase = MemberAlias('UPPERCASE')
     LOWERCASE = 'lowercase'
+    lowercase = MemberAlias('LOWERCASE')
     CAPITALIZE = 'capitalize'
 
 
@@ -1384,10 +1557,15 @@ class AssetLibraryType(StrEnum):
     Type of asset library
     """
     ICON_SET = 'icon_set'
+    icon_set = MemberAlias('ICON_SET')
     ILLUSTRATION_SYSTEM = 'illustration_system'
+    illustration_system = MemberAlias('ILLUSTRATION_SYSTEM')
     IMAGE_LIBRARY = 'image_library'
+    image_library = MemberAlias('IMAGE_LIBRARY')
     VIDEO_LIBRARY = 'video_library'
+    video_library = MemberAlias('VIDEO_LIBRARY')
     TEMPLATE_LIBRARY = 'template_library'
+    template_library = MemberAlias('TEMPLATE_LIBRARY')
 
 
 class PalettesItem(AdCPBaseModel):
@@ -1544,12 +1722,19 @@ class PortfolioEntry(AdCPBaseModel):
 
 class ScopesItem(StrEnum):
     ALL = 'all'
+    all = MemberAlias('ALL')
     MEDIA_BUYING = 'media_buying'
+    media_buying = MemberAlias('MEDIA_BUYING')
     CREATIVE_GENERATION = 'creative_generation'
+    creative_generation = MemberAlias('CREATIVE_GENERATION')
     RIGHTS_CLEARANCE = 'rights_clearance'
+    rights_clearance = MemberAlias('RIGHTS_CLEARANCE')
     GOVERNANCE = 'governance'
+    governance = MemberAlias('GOVERNANCE')
     MEASUREMENT = 'measurement'
+    measurement = MemberAlias('MEASUREMENT')
     AGENT_OPERATIONS = 'agent_operations'
+    agent_operations = MemberAlias('AGENT_OPERATIONS')
 
 
 class AuthorizedOperator(AdCPBaseModel):

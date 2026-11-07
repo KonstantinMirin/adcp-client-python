@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/impairment-reason-code.json', pointer='#')
 
@@ -15,44 +15,57 @@ class ImpairmentReasonCode(StrEnum):
     """Seller policy enforcement removed the resource from active use. Applies to: audience, creative, catalog_item, property."""
 
 
+    policy_violation = MemberAlias('POLICY_VIOLATION')
     CONSENT_EXPIRED = 'consent_expired'
     """Consent basis for using the resource has lapsed (e.g., hashed identifier consent expiry on a synced audience). Applies to: audience."""
 
 
+    consent_expired = MemberAlias('CONSENT_EXPIRED')
     TTL_EXPIRED = 'ttl_expired'
     """Resource exceeded its time-to-live and was retired by the seller. Applies to: audience."""
 
 
+    ttl_expired = MemberAlias('TTL_EXPIRED')
     PII_AUDIT_FAILED = 'pii_audit_failed'
     """Resource failed a privacy / PII audit. Applies to: audience."""
 
 
+    pii_audit_failed = MemberAlias('PII_AUDIT_FAILED')
     SELLER_REMOVED = 'seller_removed'
     """Seller withdrew the resource from active use for operational reasons not covered by other codes (e.g., inventory withdrawal). Applies to: catalog_item, audience, creative, property. Distinct from policy_violation (seller-policy-driven) and from catalog_item's withdrawn state (the lifecycle endpoint) — this code is the impairment reason that surfaces when a previously-active resource is withdrawn."""
 
 
+    seller_removed = MemberAlias('SELLER_REMOVED')
     CONTENT_REJECTED = 'content_rejected'
     """Previously-approved creative content was re-reviewed and rejected. Applies to: creative."""
 
 
+    content_rejected = MemberAlias('CONTENT_REJECTED')
     IDENTITY_AUTHORIZATION_REVOKED = 'identity_authorization_revoked'
     """Authorization for a creative's referenced identity or post was revoked. Applies to: creative, especially `published_post` reference creatives. Offline state is usually `suspended` while authorization can be restored."""
 
 
+    identity_authorization_revoked = MemberAlias('IDENTITY_AUTHORIZATION_REVOKED')
     IDENTITY_AUTHORIZATION_EXPIRED = 'identity_authorization_expired'
     """Authorization for a creative's referenced identity or post expired. Applies to: creative, especially `published_post` reference creatives. Offline state is usually `suspended` while authorization can be renewed."""
 
 
+    identity_authorization_expired = MemberAlias('IDENTITY_AUTHORIZATION_EXPIRED')
     SOURCE_PRIVATE = 'source_private'
     """A creative's referenced source post became private or inaccessible to the seller. Applies to: creative, especially `published_post` reference creatives. Offline state is usually `suspended` while visibility can be restored."""
 
 
+    source_private = MemberAlias('SOURCE_PRIVATE')
     SOURCE_OFFLINE = 'source_offline'
     """Underlying event/signal source stopped firing (zero events received over the seller's evaluation window). Applies to: event_source."""
 
 
+    source_offline = MemberAlias('SOURCE_OFFLINE')
     PROPERTY_DEPUBLISHED = 'property_depublished'
     """Property was depublished or removed from the seller's catalog via brand.json / adagents.json. Verification is via the publisher's brand.json / adagents.json files. Applies to: property."""
+
+
+    property_depublished = MemberAlias('PROPERTY_DEPUBLISHED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ImpairmentReasonCode", ImpairmentReasonCode)

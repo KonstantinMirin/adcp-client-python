@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/creative-selection-strategy.json', pointer='#')
 
@@ -15,24 +15,32 @@ class CreativeSelectionStrategy(StrEnum):
     """Rank by relevance to the buyer's audience signal(s) — the user-side axis. Drawn from the SAME signal_ref pointers in signal_conditions / package targeting, not a parallel signals[] array."""
 
 
+    audience_relevance = MemberAlias('AUDIENCE_RELEVANCE')
     CONTEXTUAL_FIT = 'contextual_fit'
     """Rank by fit to the content/context the creative renders against — the content-side counterpart to audience_relevance (user-side). Uses the same signal_ref mechanism with a context signal rather than an audience signal. Mirrors the Trusted Match Protocol Context Match / Identity Match split."""
 
 
+    contextual_fit = MemberAlias('CONTEXTUAL_FIT')
     PERFORMANCE = 'performance'
     """Rank by the catalog item's historical delivery performance (e.g. CTR, completion, conversion) where the agent has that signal."""
 
 
+    performance = MemberAlias('PERFORMANCE')
     PROXIMITY = 'proximity'
     """Rank by proximity to a location input. Reuse the existing geo targeting shape (see docs/media-buy/advanced-topics/targeting.mdx) rather than a parallel one; the exact geo-input binding is still being settled, which the experimental status of this surface keeps revisable."""
 
 
+    proximity = MemberAlias('PROXIMITY')
     INVENTORY_PRIORITY = 'inventory_priority'
     """Rank by seller-side catalog metadata (margin, overstock, promotional priority). No buyer input."""
 
 
+    inventory_priority = MemberAlias('INVENTORY_PRIORITY')
     RANDOM = 'random'
     """Status-quo fallback: agent samples without a ranking preference. Default when selection_strategy is omitted."""
+
+
+    random = MemberAlias('RANDOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CreativeSelectionStrategy", CreativeSelectionStrategy)

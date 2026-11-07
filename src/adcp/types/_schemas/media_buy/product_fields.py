@@ -6,49 +6,86 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import AdCPRootModel, SchemaRef
+from adcp.types._base import AdCPRootModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 
 class ProductResponseFieldsItem(StrEnum):
     PRODUCT_ID = 'product_id'
+    product_id = MemberAlias('PRODUCT_ID')
     NAME = 'name'
     DESCRIPTION = 'description'
+    description = MemberAlias('DESCRIPTION')
     PUBLISHER_PROPERTIES = 'publisher_properties'
+    publisher_properties = MemberAlias('PUBLISHER_PROPERTIES')
     CHANNELS = 'channels'
+    channels = MemberAlias('CHANNELS')
     VIDEO_PLACEMENT_TYPES = 'video_placement_types'
+    video_placement_types = MemberAlias('VIDEO_PLACEMENT_TYPES')
     AUDIO_DISTRIBUTION_TYPES = 'audio_distribution_types'
+    audio_distribution_types = MemberAlias('AUDIO_DISTRIBUTION_TYPES')
     SPONSORED_PLACEMENT_TYPES = 'sponsored_placement_types'
+    sponsored_placement_types = MemberAlias('SPONSORED_PLACEMENT_TYPES')
     SOCIAL_PLACEMENT_SURFACES = 'social_placement_surfaces'
+    social_placement_surfaces = MemberAlias('SOCIAL_PLACEMENT_SURFACES')
     FORMAT_OPTIONS = 'format_options'
+    format_options = MemberAlias('FORMAT_OPTIONS')
     PLACEMENTS = 'placements'
+    placements = MemberAlias('PLACEMENTS')
     DELIVERY_TYPE = 'delivery_type'
+    delivery_type = MemberAlias('DELIVERY_TYPE')
     EXCLUSIVITY = 'exclusivity'
+    exclusivity = MemberAlias('EXCLUSIVITY')
     PRICING_OPTIONS = 'pricing_options'
+    pricing_options = MemberAlias('PRICING_OPTIONS')
     FORECAST = 'forecast'
+    forecast = MemberAlias('FORECAST')
     REPORTING_CAPABILITIES = 'reporting_capabilities'
+    reporting_capabilities = MemberAlias('REPORTING_CAPABILITIES')
     MEASUREMENT_TERMS = 'measurement_terms'
+    measurement_terms = MemberAlias('MEASUREMENT_TERMS')
     PERFORMANCE_STANDARDS = 'performance_standards'
+    performance_standards = MemberAlias('PERFORMANCE_STANDARDS')
     CATALOG_TYPES = 'catalog_types'
+    catalog_types = MemberAlias('CATALOG_TYPES')
     SIGNAL_TARGETING_ALLOWED = 'signal_targeting_allowed'
+    signal_targeting_allowed = MemberAlias('SIGNAL_TARGETING_ALLOWED')
     SIGNAL_TARGETING_RULES = 'signal_targeting_rules'
+    signal_targeting_rules = MemberAlias('SIGNAL_TARGETING_RULES')
     DEMOGRAPHIC_TARGETING = 'demographic_targeting'
+    demographic_targeting = MemberAlias('DEMOGRAPHIC_TARGETING')
     OVERLAY_SUPPORT = 'overlay_support'
+    overlay_support = MemberAlias('OVERLAY_SUPPORT')
     COLLECTIONS = 'collections'
+    collections = MemberAlias('COLLECTIONS')
     COLLECTION_TARGETING_ALLOWED = 'collection_targeting_allowed'
+    collection_targeting_allowed = MemberAlias('COLLECTION_TARGETING_ALLOWED')
     MEDIA_BUY_SUPPORT = 'media_buy_support'
+    media_buy_support = MemberAlias('MEDIA_BUY_SUPPORT')
     AUDIENCE_EVIDENCE = 'audience_evidence'
+    audience_evidence = MemberAlias('AUDIENCE_EVIDENCE')
     AUDIENCE_EVIDENCE_SELECTIONS = 'audience_evidence_selections'
+    audience_evidence_selections = MemberAlias('AUDIENCE_EVIDENCE_SELECTIONS')
     MAX_OPTIMIZATION_GOALS = 'max_optimization_goals'
+    max_optimization_goals = MemberAlias('MAX_OPTIMIZATION_GOALS')
     CATALOG_MATCH = 'catalog_match'
+    catalog_match = MemberAlias('CATALOG_MATCH')
     LIST_APPLICATIONS = 'list_applications'
+    list_applications = MemberAlias('LIST_APPLICATIONS')
     BRIEF_RELEVANCE = 'brief_relevance'
+    brief_relevance = MemberAlias('BRIEF_RELEVANCE')
     TARGETING_RESOLUTION = 'targeting_resolution'
+    targeting_resolution = MemberAlias('TARGETING_RESOLUTION')
     ACCEPTANCE_POLICY_PROFILE_IDS = 'acceptance_policy_profile_ids'
+    acceptance_policy_profile_ids = MemberAlias('ACCEPTANCE_POLICY_PROFILE_IDS')
     IDENTITY = 'identity'
+    identity = MemberAlias('IDENTITY')
     EXECUTION_REQUIREMENTS = 'execution_requirements'
+    execution_requirements = MemberAlias('EXECUTION_REQUIREMENTS')
     EXPIRES_AT = 'expires_at'
+    expires_at = MemberAlias('EXPIRES_AT')
     ALLOWED_ACTIONS = 'allowed_actions'
+    allowed_actions = MemberAlias('ALLOWED_ACTIONS')
 
 
 class ProductResponseFields(AdCPRootModel):

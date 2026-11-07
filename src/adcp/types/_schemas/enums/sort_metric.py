@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/sort-metric.json', pointer='#')
 
@@ -12,42 +12,79 @@ class SortMetric(StrEnum):
     Numeric delivery metrics available for sorting breakdown rows. Contains the flat numeric fields of `core/delivery-metrics.json` plus leaf identities that resolve to a single numeric value nested inside an object-shaped metric: `quartile_25`–`quartile_100` order rows by `quartile_data.q1_views`–`q4_views`; `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds` order rows by the same-named fields of `viewability`. Sorting by a leaf identity orders on the nested value — the nested object remains the only carrier of the value in responses; no duplicate flat fields exist. Excludes object/array containers (`quartile_data`, `dooh_metrics`, `viewability`, `time_based_views`, `by_event_type`, `by_action_source`, `vendor_metric_values`) and the survey/model-based lift scalars (`incremental_sales_lift`, `brand_lift`, `foot_traffic`, `conversion_lift`, `brand_search_lift`), which are package-grain estimates rather than row-grain orderings.
     """
     IMPRESSIONS = 'impressions'
+    impressions = MemberAlias('IMPRESSIONS')
     SPEND = 'spend'
+    spend = MemberAlias('SPEND')
     CLICKS = 'clicks'
+    clicks = MemberAlias('CLICKS')
     CTR = 'ctr'
+    ctr = MemberAlias('CTR')
     VIEWS = 'views'
+    views = MemberAlias('VIEWS')
     COMPLETED_VIEWS = 'completed_views'
+    completed_views = MemberAlias('COMPLETED_VIEWS')
     COMPLETION_RATE = 'completion_rate'
+    completion_rate = MemberAlias('COMPLETION_RATE')
     CONVERSIONS = 'conversions'
+    conversions = MemberAlias('CONVERSIONS')
     CONVERSION_VALUE = 'conversion_value'
+    conversion_value = MemberAlias('CONVERSION_VALUE')
     ROAS = 'roas'
+    roas = MemberAlias('ROAS')
     COST_PER_ACQUISITION = 'cost_per_acquisition'
+    cost_per_acquisition = MemberAlias('COST_PER_ACQUISITION')
     NEW_TO_BRAND_RATE = 'new_to_brand_rate'
+    new_to_brand_rate = MemberAlias('NEW_TO_BRAND_RATE')
     LEADS = 'leads'
+    leads = MemberAlias('LEADS')
     GRPS = 'grps'
+    grps = MemberAlias('GRPS')
     REACH = 'reach'
+    reach = MemberAlias('REACH')
     FREQUENCY = 'frequency'
+    frequency = MemberAlias('FREQUENCY')
     ENGAGEMENTS = 'engagements'
+    engagements = MemberAlias('ENGAGEMENTS')
     FOLLOWS = 'follows'
+    follows = MemberAlias('FOLLOWS')
     SAVES = 'saves'
+    saves = MemberAlias('SAVES')
     PROFILE_VISITS = 'profile_visits'
+    profile_visits = MemberAlias('PROFILE_VISITS')
     ENGAGEMENT_RATE = 'engagement_rate'
+    engagement_rate = MemberAlias('ENGAGEMENT_RATE')
     COST_PER_CLICK = 'cost_per_click'
+    cost_per_click = MemberAlias('COST_PER_CLICK')
     COMMISSIONABLE_VALUE = 'commissionable_value'
+    commissionable_value = MemberAlias('COMMISSIONABLE_VALUE')
     PLAYS = 'plays'
+    plays = MemberAlias('PLAYS')
     COST_PER_COMPLETED_VIEW = 'cost_per_completed_view'
+    cost_per_completed_view = MemberAlias('COST_PER_COMPLETED_VIEW')
     CPM = 'cpm'
+    cpm = MemberAlias('CPM')
     DOWNLOADS = 'downloads'
+    downloads = MemberAlias('DOWNLOADS')
     UNITS_SOLD = 'units_sold'
+    units_sold = MemberAlias('UNITS_SOLD')
     NEW_TO_BRAND_UNITS = 'new_to_brand_units'
+    new_to_brand_units = MemberAlias('NEW_TO_BRAND_UNITS')
     VIEWABLE_RATE = 'viewable_rate'
+    viewable_rate = MemberAlias('VIEWABLE_RATE')
     VIEWABLE_IMPRESSIONS = 'viewable_impressions'
+    viewable_impressions = MemberAlias('VIEWABLE_IMPRESSIONS')
     MEASURABLE_IMPRESSIONS = 'measurable_impressions'
+    measurable_impressions = MemberAlias('MEASURABLE_IMPRESSIONS')
     VIEWED_SECONDS = 'viewed_seconds'
+    viewed_seconds = MemberAlias('VIEWED_SECONDS')
     QUARTILE_25 = 'quartile_25'
+    quartile_25 = MemberAlias('QUARTILE_25')
     QUARTILE_50 = 'quartile_50'
+    quartile_50 = MemberAlias('QUARTILE_50')
     QUARTILE_75 = 'quartile_75'
+    quartile_75 = MemberAlias('QUARTILE_75')
     QUARTILE_100 = 'quartile_100'
+    quartile_100 = MemberAlias('QUARTILE_100')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SortMetric", SortMetric)

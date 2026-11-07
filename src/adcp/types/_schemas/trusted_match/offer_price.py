@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import StrCurrencyCode
 
 
@@ -15,10 +15,15 @@ class Model(StrEnum):
     Pricing model for this offer
     """
     CPM = 'cpm'
+    cpm = MemberAlias('CPM')
     CPC = 'cpc'
+    cpc = MemberAlias('CPC')
     CPCV = 'cpcv'
+    cpcv = MemberAlias('CPCV')
     CPA = 'cpa'
+    cpa = MemberAlias('CPA')
     FLAT = 'flat'
+    flat = MemberAlias('FLAT')
 
 
 class OfferPrice(AdCPBaseModel):

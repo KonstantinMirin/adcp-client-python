@@ -6,16 +6,20 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
 
 class Status(StrEnum):
     FULL = 'full'
+    full = MemberAlias('FULL')
     PARTIAL = 'partial'
+    partial = MemberAlias('PARTIAL')
     NONE = 'none'
+    none = MemberAlias('NONE')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 ReportingMediaBuyId = StrMinLen1
@@ -26,10 +30,15 @@ ReportingPackageId = StrMinLen1
 
 class Reason(StrEnum):
     OFFERING_UNSUPPORTED = 'offering_unsupported'
+    offering_unsupported = MemberAlias('OFFERING_UNSUPPORTED')
     ACCOUNT_ENTITLEMENT_UNAVAILABLE = 'account_entitlement_unavailable'
+    account_entitlement_unavailable = MemberAlias('ACCOUNT_ENTITLEMENT_UNAVAILABLE')
     CREDENTIAL_SCOPE_INSUFFICIENT = 'credential_scope_insufficient'
+    credential_scope_insufficient = MemberAlias('CREDENTIAL_SCOPE_INSUFFICIENT')
     PROVIDER_LIMITATION = 'provider_limitation'
+    provider_limitation = MemberAlias('PROVIDER_LIMITATION')
     CAPABILITY_UNKNOWN = 'capability_unknown'
+    capability_unknown = MemberAlias('CAPABILITY_UNKNOWN')
 
 
 class LimitationsItem(AdCPBaseModel):

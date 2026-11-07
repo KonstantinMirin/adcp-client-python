@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/audio-channel-layout.json', pointer='#')
 
@@ -12,7 +12,9 @@ class AudioChannelLayout(StrEnum):
     Audio channel configuration for audio and video assets
     """
     MONO = 'mono'
+    mono = MemberAlias('MONO')
     STEREO = 'stereo'
+    stereo = MemberAlias('STEREO')
     V_5_1 = '5.1'
     V_7_1 = '7.1'
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/frequency-cap-mutable-field.json', pointer='#')
 
@@ -12,9 +12,13 @@ class FrequencyCapMutableField(StrEnum):
     A logical frequency-cap field that a product implementation can change after creation. suppress covers the effective cooldown whether represented by suppress or the deprecated suppress_minutes alias.
     """
     MAX_IMPRESSIONS = 'max_impressions'
+    max_impressions = MemberAlias('MAX_IMPRESSIONS')
     PER = 'per'
+    per = MemberAlias('PER')
     WINDOW = 'window'
+    window = MemberAlias('WINDOW')
     SUPPRESS = 'suppress'
+    suppress = MemberAlias('SUPPRESS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "FrequencyCapMutableField", FrequencyCapMutableField)

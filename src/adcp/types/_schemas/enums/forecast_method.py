@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/forecast-method.json', pointer='#')
 
@@ -15,12 +15,17 @@ class ForecastMethod(StrEnum):
     """Rough approximation based on historical averages or heuristics. No delivery commitment."""
 
 
+    estimate = MemberAlias('ESTIMATE')
     MODELED = 'modeled'
     """Forecast derived from platform-specific predictive models or historical data. Publisher uses this to set expectations but does not guarantee delivery."""
 
 
+    modeled = MemberAlias('MODELED')
     GUARANTEED = 'guaranteed'
     """Contractually committed delivery levels backed by reserved inventory"""
+
+
+    guaranteed = MemberAlias('GUARANTEED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ForecastMethod", ForecastMethod)

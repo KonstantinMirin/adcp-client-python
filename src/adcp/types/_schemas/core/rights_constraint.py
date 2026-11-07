@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, IntMin1, StrMinLen1, ZipAssetDigest
 
@@ -34,8 +34,11 @@ class ApprovalStatus(StrEnum):
     Approval status from the rights holder at manifest creation time (snapshot, not a live value)
     """
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
     APPROVED = 'approved'
+    approved = MemberAlias('APPROVED')
     REJECTED = 'rejected'
+    rejected = MemberAlias('REJECTED')
 
 
 class GrantStatus(StrEnum):
@@ -43,8 +46,11 @@ class GrantStatus(StrEnum):
     Authoritative lifecycle state bound into the grant digest and credential status evidence. Only active can evaluate to verified. paused and revoked credentials are ineligible for serving; resumption issues a fresh active credential and reference.
     """
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     PAUSED = 'paused'
+    paused = MemberAlias('PAUSED')
     REVOKED = 'revoked'
+    revoked = MemberAlias('REVOKED')
 
 
 class Disclosure(AdCPBaseModel):

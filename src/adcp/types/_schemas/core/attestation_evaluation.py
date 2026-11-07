@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, HttpUrl, ReasonCodesItem, StrMinLen1MaxLen1024, ZipAssetDigest
 
@@ -18,17 +18,29 @@ class Outcome(StrEnum):
     Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.
     """
     VERIFIED = 'verified'
+    verified = MemberAlias('VERIFIED')
     NOT_FOUND = 'not_found'
+    not_found = MemberAlias('NOT_FOUND')
     EXPIRED = 'expired'
+    expired = MemberAlias('EXPIRED')
     REVOKED = 'revoked'
+    revoked = MemberAlias('REVOKED')
     INVALID = 'invalid'
+    invalid = MemberAlias('INVALID')
     UNSUPPORTED = 'unsupported'
+    unsupported = MemberAlias('UNSUPPORTED')
     UNVERIFIABLE = 'unverifiable'
+    unverifiable = MemberAlias('UNVERIFIABLE')
     UNTRUSTED_ISSUER = 'untrusted_issuer'
+    untrusted_issuer = MemberAlias('UNTRUSTED_ISSUER')
     UNTRUSTED_RESOLVER = 'untrusted_resolver'
+    untrusted_resolver = MemberAlias('UNTRUSTED_RESOLVER')
     SUBJECT_MISMATCH = 'subject_mismatch'
+    subject_mismatch = MemberAlias('SUBJECT_MISMATCH')
     DIGEST_MISMATCH = 'digest_mismatch'
+    digest_mismatch = MemberAlias('DIGEST_MISMATCH')
     RESOLUTION_FAILED = 'resolution_failed'
+    resolution_failed = MemberAlias('RESOLUTION_FAILED')
 
 
 class ActionBinding(AdCPBaseModel):

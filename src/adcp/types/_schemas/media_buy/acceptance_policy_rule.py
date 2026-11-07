@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AcceptancePolicyProfileRegionAliases,
@@ -23,18 +23,27 @@ from .acceptance_policy_requirement import AcceptancePolicyRequirement
 
 class AppliesToItem(StrEnum):
     ACCOUNT = 'account'
+    account = MemberAlias('ACCOUNT')
     MEDIA_BUY = 'media_buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
     LANDING_PAGE = 'landing_page'
+    landing_page = MemberAlias('LANDING_PAGE')
     TARGETING = 'targeting'
+    targeting = MemberAlias('TARGETING')
     DELIVERY = 'delivery'
+    delivery = MemberAlias('DELIVERY')
     FORMAT = 'format'
 
 
 class Disposition(StrEnum):
     ALLOWED = 'allowed'
+    allowed = MemberAlias('ALLOWED')
     CONDITIONAL = 'conditional'
+    conditional = MemberAlias('CONDITIONAL')
     PROHIBITED = 'prohibited'
+    prohibited = MemberAlias('PROHIBITED')
 
 
 class AcceptancePolicyRule(AdCPBaseModel):

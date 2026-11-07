@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1
 
@@ -16,9 +16,13 @@ class TransformerParamType(StrEnum):
     JSON type of the value the buyer supplies for this field.
     """
     STRING = 'string'
+    string = MemberAlias('STRING')
     NUMBER = 'number'
+    number = MemberAlias('NUMBER')
     INTEGER = 'integer'
+    integer = MemberAlias('INTEGER')
     BOOLEAN = 'boolean'
+    boolean = MemberAlias('BOOLEAN')
 
 
 class ValueSource(StrEnum):
@@ -26,9 +30,13 @@ class ValueSource(StrEnum):
     Where the legal values come from. `inline` — a small closed set listed in `allowed_values` (e.g. mastering_preset). `range` — a numeric interval bounded by `minimum`/`maximum` (e.g. speaking_rate). `enumerable` — an account-scoped, dynamic set (e.g. voices, including custom/cloned ones) resolved per-credential; values appear in `options[]` only when expanded. `free_text` — an open buyer-authored string with no closed/enumerable set (e.g. a negative_prompt or style note for a generative agent); `type` MUST be `string` and `allowed_values`/`minimum`/`maximum`/`options`/`options_cursor` MUST be absent. NOTE: a transformer-param MUST NOT be a generation-count knob (sample_count/n/num_images/count) — output count is owned by `max_variants`/`max_creatives`, never config.
     """
     INLINE = 'inline'
+    inline = MemberAlias('INLINE')
     RANGE = 'range'
+    range = MemberAlias('RANGE')
     ENUMERABLE = 'enumerable'
+    enumerable = MemberAlias('ENUMERABLE')
     FREE_TEXT = 'free_text'
+    free_text = MemberAlias('FREE_TEXT')
 
 
 class OptionsItem(AdCPBaseModel):

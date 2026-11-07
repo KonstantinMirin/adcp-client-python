@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/metro-system.json', pointer='#')
 
@@ -12,10 +12,15 @@ class MetroAreaSystem(StrEnum):
     Metro area classification systems for geographic targeting
     """
     NIELSEN_DMA = 'nielsen_dma'
+    nielsen_dma = MemberAlias('NIELSEN_DMA')
     UK_ITL1 = 'uk_itl1'
+    uk_itl1 = MemberAlias('UK_ITL1')
     UK_ITL2 = 'uk_itl2'
+    uk_itl2 = MemberAlias('UK_ITL2')
     EUROSTAT_NUTS2 = 'eurostat_nuts2'
+    eurostat_nuts2 = MemberAlias('EUROSTAT_NUTS2')
     CUSTOM = 'custom'
+    custom = MemberAlias('CUSTOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MetroAreaSystem", MetroAreaSystem)

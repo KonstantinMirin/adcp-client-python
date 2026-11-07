@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/match-type.json', pointer='#')
 
@@ -15,12 +15,17 @@ class MatchType(StrEnum):
     """Ads may serve on queries semantically related to the keyword"""
 
 
+    broad = MemberAlias('BROAD')
     PHRASE = 'phrase'
     """Ads serve when the query contains the keyword phrase in order"""
 
 
+    phrase = MemberAlias('PHRASE')
     EXACT = 'exact'
     """Ads serve only when the query matches the keyword exactly"""
+
+
+    exact = MemberAlias('EXACT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MatchType", MatchType)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1Max100, ListAccountChangesRequestResourceTypesItem, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
@@ -22,7 +22,9 @@ class StartingPosition(StrEnum):
     Initial position when cursor is absent. Mutually exclusive with cursor; sellers enforce this semantic rule at runtime so the emitted MCP input schema can remain a plain root object. earliest intentionally begins at the oldest retained change. latest returns a checkpoint at the current seller-ingestion high-water and is used before a race-free snapshot bootstrap.
     """
     EARLIEST = 'earliest'
+    earliest = MemberAlias('EARLIEST')
     LATEST = 'latest'
+    latest = MemberAlias('LATEST')
 
 
 class ListAccountChangesRequest(AdCPVersionEnvelope, AdcpRequest):

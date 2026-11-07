@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255
 
@@ -19,7 +19,9 @@ class Status(StrEnum):
     found returns current state; failed means the reference could not be read.
     """
     FOUND = 'found'
+    found = MemberAlias('FOUND')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
 
 
 class Availability(StrEnum):
@@ -27,7 +29,9 @@ class Availability(StrEnum):
     Current buyer-authored overlay state. active does not imply seller approval or delivery eligibility.
     """
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     SUPPRESSED = 'suppressed'
+    suppressed = MemberAlias('SUPPRESSED')
 
 
 class CatalogItemAvailabilityState(AdCPBaseModel):

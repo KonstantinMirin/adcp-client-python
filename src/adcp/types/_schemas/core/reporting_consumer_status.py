@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -38,10 +38,15 @@ class ConsumerStatus(StrEnum):
     received means the exact revision content was successfully consumed; obligation_missing means the independently expected period was absent from the seller ledger; revision_missing means the obligation existed but no required revision was available after expected_at; unreadable means a named revision was advertised but its exact content could not be consumed; content_mismatch means the exact revision content was read but contradicts a fact the accepted configuration generation already fixed, named by the closed mismatch_code. None of these values reconciles billing evidence, and content_mismatch in particular is not a measurement dispute.
     """
     RECEIVED = 'received'
+    received = MemberAlias('RECEIVED')
     OBLIGATION_MISSING = 'obligation_missing'
+    obligation_missing = MemberAlias('OBLIGATION_MISSING')
     REVISION_MISSING = 'revision_missing'
+    revision_missing = MemberAlias('REVISION_MISSING')
     UNREADABLE = 'unreadable'
+    unreadable = MemberAlias('UNREADABLE')
     CONTENT_MISMATCH = 'content_mismatch'
+    content_mismatch = MemberAlias('CONTENT_MISMATCH')
 
 
 class MismatchCode(StrEnum):
@@ -49,11 +54,17 @@ class MismatchCode(StrEnum):
     Closed reason the consumed revision contradicts the accepted configuration generation. Each value is decidable from the obligation, the pinned report definition, and the revision itself, with no reference to either party's own measurement. scope_media_buy_missing: a media buy frozen in the obligation's media_buy_ids denominator is absent from the revision and is not represented by an explicit zero row, so the revision cannot distinguish zero delivery from an omitted buy. coverage_short: the revision covers fewer packages than the obligation's frozen coverage.covered_package_ids claims. metric_missing: a metric named in the pinned report definition's metrics[].name is absent from the revision. schema_nonconformant: rows do not validate against the reporting profile's pinned schema_uri and schema_sha256. currency_mismatch: a value's unit disagrees with the unit the pinned report definition fixed for that metric, or a control total's unit disagrees with the profile-defined unit for that name. period_mismatch: the revision carries a time dimension declared by the pinned grain whose values fall outside the obligation's half-open period. Precedence when more than one applies: schema_nonconformant is used only when the failure is structural validation against the pinned schema; a metric that is simply absent uses metric_missing even when the pinned schema declares it required. Each names a contract fact already fixed by the accepted generation, never a difference of opinion about counts. Agents dispatch on this value, not on prose.
     """
     SCOPE_MEDIA_BUY_MISSING = 'scope_media_buy_missing'
+    scope_media_buy_missing = MemberAlias('SCOPE_MEDIA_BUY_MISSING')
     COVERAGE_SHORT = 'coverage_short'
+    coverage_short = MemberAlias('COVERAGE_SHORT')
     METRIC_MISSING = 'metric_missing'
+    metric_missing = MemberAlias('METRIC_MISSING')
     SCHEMA_NONCONFORMANT = 'schema_nonconformant'
+    schema_nonconformant = MemberAlias('SCHEMA_NONCONFORMANT')
     CURRENCY_MISMATCH = 'currency_mismatch'
+    currency_mismatch = MemberAlias('CURRENCY_MISMATCH')
     PERIOD_MISMATCH = 'period_mismatch'
+    period_mismatch = MemberAlias('PERIOD_MISMATCH')
 
 
 class FailureCode(StrEnum):
@@ -61,10 +72,15 @@ class FailureCode(StrEnum):
     Typed reason a named revision was unreadable. Agents dispatch on this value, not prose or provider response bodies.
     """
     ACCESS_DENIED = 'access_denied'
+    access_denied = MemberAlias('ACCESS_DENIED')
     RESOURCE_NOT_FOUND = 'resource_not_found'
+    resource_not_found = MemberAlias('RESOURCE_NOT_FOUND')
     INTEGRITY_MISMATCH = 'integrity_mismatch'
+    integrity_mismatch = MemberAlias('INTEGRITY_MISMATCH')
     READER_INCOMPATIBLE = 'reader_incompatible'
+    reader_incompatible = MemberAlias('READER_INCOMPATIBLE')
     TRANSPORT_FAILED = 'transport_failed'
+    transport_failed = MemberAlias('TRANSPORT_FAILED')
 
 
 class ReportingConsumerStatus(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import FloatMin0Max1, HttpUrl
 
 from ..core.ext import ExtensionObject
@@ -31,6 +31,7 @@ class Recovery(StrEnum):
     Caller recovery category for audit observations, distinct from the canonical error-code recovery enum. `informational` means the creative can continue through the normal flow; the observation is audit context rather than a required correction.
     """
     INFORMATIONAL = 'informational'
+    informational = MemberAlias('INFORMATIONAL')
 
 
 class HumanOversight(StrEnum):
@@ -38,7 +39,9 @@ class HumanOversight(StrEnum):
     Human oversight level declared by the creative provenance.
     """
     EDITED = 'edited'
+    edited = MemberAlias('EDITED')
     DIRECTED = 'directed'
+    directed = MemberAlias('DIRECTED')
 
 
 class ClaimedValue(AdCPBaseModel):

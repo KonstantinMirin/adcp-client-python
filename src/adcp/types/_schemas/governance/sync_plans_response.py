@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -21,7 +21,9 @@ class PlansItemStatus(StrEnum):
     Sync result status. 'active' means sync succeeded; 'error' means sync failed.
     """
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     ERROR = 'error'
+    error = MemberAlias('ERROR')
 
 
 class CategoriesItemStatus(StrEnum):
@@ -29,7 +31,9 @@ class CategoriesItemStatus(StrEnum):
     Whether this category is active for this plan.
     """
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     INACTIVE = 'inactive'
+    inactive = MemberAlias('INACTIVE')
 
 
 class CategoriesItem(AdCPBaseModel):
@@ -46,7 +50,9 @@ class Source(StrEnum):
     How this policy was included. 'explicit': referenced in the brand compliance configuration. 'auto_applied': matched automatically by jurisdiction or policy category.
     """
     EXPLICIT = 'explicit'
+    explicit = MemberAlias('EXPLICIT')
     AUTO_APPLIED = 'auto_applied'
+    auto_applied = MemberAlias('AUTO_APPLIED')
 
 
 class ResolvedPoliciesItem(AdCPBaseModel):

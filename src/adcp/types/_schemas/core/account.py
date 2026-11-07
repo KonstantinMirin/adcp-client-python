@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
 from adcp.types.constraints import (
     HttpUrl,
@@ -71,7 +71,9 @@ class Compression(StrEnum):
     Compression applied to delivered files
     """
     GZIP = 'gzip'
+    gzip = MemberAlias('GZIP')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 class ReportingBucket(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/disclosure-persistence.json', pointer='#')
 
@@ -15,12 +15,17 @@ class DisclosurePersistence(StrEnum):
     """Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle."""
 
 
+    continuous = MemberAlias('CONTINUOUS')
     INITIAL = 'initial'
     """Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration."""
 
 
+    initial = MemberAlias('INITIAL')
     FLEXIBLE = 'flexible'
     """Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion"""
+
+
+    flexible = MemberAlias('FLEXIBLE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DisclosurePersistence", DisclosurePersistence)

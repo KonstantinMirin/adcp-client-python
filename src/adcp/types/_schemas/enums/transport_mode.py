@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/transport-mode.json', pointer='#')
 
@@ -15,16 +15,22 @@ class TransportMode(StrEnum):
     """Pedestrian travel on walkable paths and sidewalks"""
 
 
+    walking = MemberAlias('WALKING')
     CYCLING = 'cycling'
     """Bicycle travel on roads and cycle paths"""
 
 
+    cycling = MemberAlias('CYCLING')
     DRIVING = 'driving'
     """Motor vehicle travel on road networks"""
 
 
+    driving = MemberAlias('DRIVING')
     PUBLIC_TRANSPORT = 'public_transport'
     """Public transit including bus, rail, metro, and ferry"""
+
+
+    public_transport = MemberAlias('PUBLIC_TRANSPORT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "TransportMode", TransportMode)

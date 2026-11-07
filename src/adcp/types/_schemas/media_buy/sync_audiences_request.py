@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 from adcp.types.envelopes import AdcpRequest
@@ -26,8 +26,11 @@ class AudienceType(StrEnum):
     Intended use for this audience. 'crm': target these users. 'suppression': exclude these users from delivery. 'lookalike_seed': use as a seed for the seller's lookalike modeling. Sellers may handle audiences differently based on type (e.g., suppression lists bypass minimum size requirements on some platforms).
     """
     CRM = 'crm'
+    crm = MemberAlias('CRM')
     SUPPRESSION = 'suppression'
+    suppression = MemberAlias('SUPPRESSION')
     LOOKALIKE_SEED = 'lookalike_seed'
+    lookalike_seed = MemberAlias('LOOKALIKE_SEED')
 
 
 class AudiencesItem(AdCPBaseModel):

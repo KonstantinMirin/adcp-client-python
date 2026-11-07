@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/account-currency-mode.json', pointer='#')
 
@@ -15,8 +15,12 @@ class AccountCurrencyMode(StrEnum):
     """The advertiser account is bound to one immutable ISO 4217 currency supplied during provisioning; currency participates in the natural account key."""
 
 
+    fixed = MemberAlias('FIXED')
     PER_MEDIA_BUY = 'per_media_buy'
     """The advertiser account is not currency-bound; omit account currency and select currency in each proposal or media buy."""
+
+
+    per_media_buy = MemberAlias('PER_MEDIA_BUY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AccountCurrencyMode", AccountCurrencyMode)

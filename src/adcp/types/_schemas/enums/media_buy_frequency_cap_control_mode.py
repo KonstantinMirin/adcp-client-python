@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/media-buy-frequency-cap-control-mode.json', pointer='#')
 
@@ -12,6 +12,7 @@ class MediaBuyFrequencyCapControlMode(StrEnum):
     The aggregate MediaBuy frequency-cap control shape supported in 3.2.
     """
     MAX_IMPRESSIONS = 'max_impressions'
+    max_impressions = MemberAlias('MAX_IMPRESSIONS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MediaBuyFrequencyCapControlMode", MediaBuyFrequencyCapControlMode)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Distinct, Rule, UniqueItems
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, CustomScope
 
@@ -16,6 +16,7 @@ class StandardScope(StrEnum):
     Standard named scopes defined by the AdCP spec. `attestation_verifier` binds to the AAO Verified (Live) qualifier (a Media Buy Protocol flow — live observation requires real ad delivery) — the authorization mechanism itself is protocol-neutral, but this particular named scope is media-buy-specific.
     """
     ATTESTATION_VERIFIER = 'attestation_verifier'
+    attestation_verifier = MemberAlias('ATTESTATION_VERIFIER')
 
 
 class AccountAuthorization(AdCPBaseModel):

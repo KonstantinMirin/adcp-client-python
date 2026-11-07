@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, HttpUrl
 
@@ -22,12 +22,16 @@ from .ext import ExtensionObject
 
 class RequirementMode(StrEnum):
     REQUIRED = 'required'
+    required = MemberAlias('REQUIRED')
     PREFERRED = 'preferred'
+    preferred = MemberAlias('PREFERRED')
 
 
 class EvidencePresence(StrEnum):
     REQUIRED = 'required'
+    required = MemberAlias('REQUIRED')
     WHEN_AVAILABLE = 'when_available'
+    when_available = MemberAlias('WHEN_AVAILABLE')
 
 
 class Unit(StrEnum):
@@ -35,9 +39,13 @@ class Unit(StrEnum):
     Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.
     """
     SECONDS = 'seconds'
+    seconds = MemberAlias('SECONDS')
     MINUTES = 'minutes'
+    minutes = MemberAlias('MINUTES')
     HOURS = 'hours'
+    hours = MemberAlias('HOURS')
     DAYS = 'days'
+    days = MemberAlias('DAYS')
 
 
 class MaximumAge(Duration):

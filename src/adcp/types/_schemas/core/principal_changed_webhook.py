@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -22,11 +22,17 @@ class Reason(StrEnum):
     Coarse reason for the invalidation. Advisory routing/debug metadata; receivers MUST re-read get_principal rather than inferring the new state from the reason.
     """
     DESTINATION_STATE_CHANGED = 'destination_state_changed'
+    destination_state_changed = MemberAlias('DESTINATION_STATE_CHANGED')
     SETUP_EXPIRING = 'setup_expiring'
+    setup_expiring = MemberAlias('SETUP_EXPIRING')
     SETUP_EXPIRED = 'setup_expired'
+    setup_expired = MemberAlias('SETUP_EXPIRED')
     PROOF_INVALIDATED = 'proof_invalidated'
+    proof_invalidated = MemberAlias('PROOF_INVALIDATED')
     DECLARATIONS_INTERSECTION_CHANGED = 'declarations_intersection_changed'
+    declarations_intersection_changed = MemberAlias('DECLARATIONS_INTERSECTION_CHANGED')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class PrincipalChangedWebhook(AdCPBaseModel):

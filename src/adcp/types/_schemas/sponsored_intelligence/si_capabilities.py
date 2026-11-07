@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 
 class Voice(AdCPBaseModel):
@@ -52,11 +52,17 @@ class Modalities(AdCPBaseModel):
 
 class StandardItem(StrEnum):
     TEXT = 'text'
+    text = MemberAlias('TEXT')
     LINK = 'link'
+    link = MemberAlias('LINK')
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     PRODUCT_CARD = 'product_card'
+    product_card = MemberAlias('PRODUCT_CARD')
     CAROUSEL = 'carousel'
+    carousel = MemberAlias('CAROUSEL')
     ACTION_BUTTON = 'action_button'
+    action_button = MemberAlias('ACTION_BUTTON')
 
 
 class Components(AdCPBaseModel):

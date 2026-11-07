@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import (
     FloatMin0Max1,
@@ -83,7 +83,9 @@ class DeliveryMode(StrEnum):
     How artifacts are delivered. 'realtime' pushes artifacts as impressions occur. 'batched' aggregates artifacts and pushes periodically (see batch_frequency).
     """
     REALTIME = 'realtime'
+    realtime = MemberAlias('REALTIME')
     BATCHED = 'batched'
+    batched = MemberAlias('BATCHED')
 
 
 class BatchFrequency(StrEnum):
@@ -91,7 +93,9 @@ class BatchFrequency(StrEnum):
     For batched delivery, how often to push artifacts. Required when delivery_mode is 'batched'.
     """
     HOURLY = 'hourly'
+    hourly = MemberAlias('HOURLY')
     DAILY = 'daily'
+    daily = MemberAlias('DAILY')
 
 
 class ArtifactWebhook(AdCPBaseModel):

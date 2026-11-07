@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/brand-agent-type.json', pointer='#')
 
@@ -15,32 +15,42 @@ class BrandAgentType(StrEnum):
     """Provides brand identity data (logos, colors, tone, guidelines) via MCP"""
 
 
+    brand = MemberAlias('BRAND')
     RIGHTS = 'rights'
     """Handles rights discovery, pricing, and acquisition for licensable assets"""
 
 
+    rights = MemberAlias('RIGHTS')
     MEASUREMENT = 'measurement'
     """Provides campaign measurement, attribution, and reporting services"""
 
 
+    measurement = MemberAlias('MEASUREMENT')
     GOVERNANCE = 'governance'
     """Enforces brand safety, compliance, and policy rules"""
 
 
+    governance = MemberAlias('GOVERNANCE')
     CREATIVE = 'creative'
     """Manages creative asset generation, review, and approval"""
 
 
+    creative = MemberAlias('CREATIVE')
     SALES = 'sales'
     """Sells inventory on behalf of publishers and media owners"""
 
 
+    sales = MemberAlias('SALES')
     BUYING = 'buying'
     """Executes media buying on behalf of the brand"""
 
 
+    buying = MemberAlias('BUYING')
     SIGNALS = 'signals'
     """Provides audience signal discovery and activation"""
+
+
+    signals = MemberAlias('SIGNALS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "BrandAgentType", BrandAgentType)

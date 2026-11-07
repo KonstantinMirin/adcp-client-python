@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatGt0
 
@@ -18,8 +18,11 @@ class Transform(StrEnum):
     Named transform to apply to the feed field value before writing to the catalog schema. See transform-specific parameters (format, timezone, by, separator).
     """
     DATE = 'date'
+    date = MemberAlias('DATE')
     DIVIDE = 'divide'
+    divide = MemberAlias('DIVIDE')
     BOOLEAN = 'boolean'
+    boolean = MemberAlias('BOOLEAN')
     SPLIT = 'split'
 
 

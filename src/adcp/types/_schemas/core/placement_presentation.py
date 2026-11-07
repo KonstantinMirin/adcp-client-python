@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     BrandDiscoveryColorValue,
     IntMin0Max8192,
@@ -41,8 +41,11 @@ class CreativeSlotFit(StrEnum):
     How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.
     """
     CONTAIN = _VALUES_CONTAIN_COVER_STRETCH[0]
+    contain = MemberAlias('CONTAIN')
     COVER = _VALUES_CONTAIN_COVER_STRETCH[1]
+    cover = MemberAlias('COVER')
     STRETCH = _VALUES_CONTAIN_COVER_STRETCH[2]
+    stretch = MemberAlias('STRETCH')
 
 
 class CreativeSlot(AdCPBaseModel):
@@ -63,7 +66,9 @@ class CreativeSlot(AdCPBaseModel):
 
 class Layer(StrEnum):
     BEHIND_CREATIVE = 'behind_creative'
+    behind_creative = MemberAlias('BEHIND_CREATIVE')
     IN_FRONT_OF_CREATIVE = 'in_front_of_creative'
+    in_front_of_creative = MemberAlias('IN_FRONT_OF_CREATIVE')
 
 
 class Rectangle(AdCPBaseModel):
@@ -115,8 +120,11 @@ class ImageRef(AdCPBaseModel):
 
 class ImageDecorationFit(StrEnum):
     CONTAIN = _VALUES_CONTAIN_COVER_STRETCH[0]
+    contain = MemberAlias('CONTAIN')
     COVER = _VALUES_CONTAIN_COVER_STRETCH[1]
+    cover = MemberAlias('COVER')
     STRETCH = _VALUES_CONTAIN_COVER_STRETCH[2]
+    stretch = MemberAlias('STRETCH')
 
 
 class ImageDecoration(AdCPBaseModel):

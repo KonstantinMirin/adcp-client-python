@@ -6,13 +6,15 @@ from typing import Annotated
 
 from pydantic import Field
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 from adcp.types.constraints import StrMinLen1
 
 
 class ProductChangeMapValue(StrEnum):
     INCLUDE = 'include'
+    include = MemberAlias('INCLUDE')
     OMIT = 'omit'
+    omit = MemberAlias('OMIT')
 
 
 __adcp_schema__ = SchemaRef(document='core/product-change-map.json', pointer='#')

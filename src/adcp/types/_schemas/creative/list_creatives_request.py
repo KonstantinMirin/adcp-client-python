@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1Max200
 from adcp.types.envelopes import AdcpRequest
@@ -38,30 +38,51 @@ class AssignmentProjection(StrEnum):
     Controls nested assigned_packages projection when assignments are included. all returns up to assignment_limit active assignments per creative. matching returns only assignments matching filters.indicator_types and requires that filter. Use matching for compact indicator discovery; get_media_buys remains the complete authoritative repair path when assignments_truncated is true.
     """
     ALL = 'all'
+    all = MemberAlias('ALL')
     MATCHING = 'matching'
+    matching = MemberAlias('MATCHING')
 
 
 class FieldsItem(StrEnum):
     CREATIVE_ID = 'creative_id'
+    creative_id = MemberAlias('CREATIVE_ID')
     NAME = 'name'
     FORMAT_ID = 'format_id'
+    format_id = MemberAlias('FORMAT_ID')
     FORMAT_KIND = 'format_kind'
+    format_kind = MemberAlias('FORMAT_KIND')
     FORMAT_OPTION_REF = 'format_option_ref'
+    format_option_ref = MemberAlias('FORMAT_OPTION_REF')
     ASSETS = 'assets'
+    assets = MemberAlias('ASSETS')
     STATUS = 'status'
+    status = MemberAlias('STATUS')
     CREATED_DATE = 'created_date'
+    created_date = MemberAlias('CREATED_DATE')
     UPDATED_DATE = 'updated_date'
+    updated_date = MemberAlias('UPDATED_DATE')
     TAGS = 'tags'
+    tags = MemberAlias('TAGS')
     RIGHTS = 'rights'
+    rights = MemberAlias('RIGHTS')
     RIGHTS_ATTESTATION_EVALUATIONS = 'rights_attestation_evaluations'
+    rights_attestation_evaluations = MemberAlias('RIGHTS_ATTESTATION_EVALUATIONS')
     LOCALIZATION = 'localization'
+    localization = MemberAlias('LOCALIZATION')
     LOCALIZATION_UNAVAILABLE = 'localization_unavailable'
+    localization_unavailable = MemberAlias('LOCALIZATION_UNAVAILABLE')
     ASSIGNMENTS = 'assignments'
+    assignments = MemberAlias('ASSIGNMENTS')
     SNAPSHOT = 'snapshot'
+    snapshot = MemberAlias('SNAPSHOT')
     ITEMS = 'items'
+    items = MemberAlias('ITEMS')
     VARIABLES = 'variables'
+    variables = MemberAlias('VARIABLES')
     CONCEPT = 'concept'
+    concept = MemberAlias('CONCEPT')
     PRICING_OPTIONS = 'pricing_options'
+    pricing_options = MemberAlias('PRICING_OPTIONS')
 
 
 class ListCreativesRequest(AdCPVersionEnvelope, AdcpRequest):

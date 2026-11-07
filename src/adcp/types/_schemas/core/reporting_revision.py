@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -29,14 +29,20 @@ class FinalityBasis(StrEnum):
     Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.
     """
     SOURCE_FINAL = 'source_final'
+    source_final = MemberAlias('SOURCE_FINAL')
     CONTRACTUAL_CUTOFF = 'contractual_cutoff'
+    contractual_cutoff = MemberAlias('CONTRACTUAL_CUTOFF')
     STABILIZED = 'stabilized'
+    stabilized = MemberAlias('STABILIZED')
 
 
 class DataThroughPrecision(StrEnum):
     EXACT = 'exact'
+    exact = MemberAlias('EXACT')
     LOWER_BOUND = 'lower_bound'
+    lower_bound = MemberAlias('LOWER_BOUND')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class ReportingRevision(AdCPBaseModel):

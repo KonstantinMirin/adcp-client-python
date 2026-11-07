@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 
 from ..core.account_ref import AccountReference
@@ -26,9 +26,13 @@ class ListCreativeFormatsRequestCreativeAgentType(StrEnum):
     Filter by format type (technical categories with distinct requirements)
     """
     AUDIO = 'audio'
+    audio = MemberAlias('AUDIO')
     VIDEO = 'video'
+    video = MemberAlias('VIDEO')
     DISPLAY = 'display'
+    display = MemberAlias('DISPLAY')
     DOOH = 'dooh'
+    dooh = MemberAlias('DOOH')
 
 
 class ListCreativeFormatsRequestCreativeAgent(AdCPVersionEnvelope):

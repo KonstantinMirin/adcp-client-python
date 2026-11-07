@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMinLen1
 
@@ -18,9 +18,13 @@ class RotationMode(StrEnum):
     Package-scoped rotation policy repeated on assignment rows for wire compatibility. Omission means weighted, preserving existing weight behavior. Every assignment in a package MUST resolve to the same effective mode: weighted uses relative weights; even balances delivery across eligible assignments; sequential cycles through sequence_position in ascending order within each group; random makes an independent uniform selection from eligible assignments. Sellers MUST reject conflicting effective modes rather than choose one by array order.
     """
     WEIGHTED = 'weighted'
+    weighted = MemberAlias('WEIGHTED')
     EVEN = 'even'
+    even = MemberAlias('EVEN')
     SEQUENTIAL = 'sequential'
+    sequential = MemberAlias('SEQUENTIAL')
     RANDOM = 'random'
+    random = MemberAlias('RANDOM')
 
 
 class CreativeAssignment(AdCPBaseModel):

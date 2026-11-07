@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/vendor-relationship.json', pointer='#')
 
@@ -15,12 +15,17 @@ class VendorRelationship(StrEnum):
     """The seller (or the seller's own measurement agent) produced the number: `vendor` resolves to the selling party's own `brand.json`. Covers seller-operated sensors (DOOH camera or WiFi presence, in-store retail-media counting, cinema audience counting), walled-garden self-reported measurement, and retail-media closed loops. The seller MUST still publish the metric in a `brand.json` `agents[type='measurement']` catalog like any other vendor; `first_party` is a disclosure, not an exemption from the catalog contract."""
 
 
+    first_party = MemberAlias('FIRST_PARTY')
     AFFILIATED = 'affiliated'
     """The vendor is a distinct legal entity under common ownership or control with the seller — a parent or subsidiary, a controlling or majority equity stake, a joint venture, or disclosed board overlap. Defined on structural facts only: a commercial dependency (an issuer-pays vendor whose principal customer is the seller) does NOT make a vendor `affiliated`, however real the incentive problem — that concern is graded, not binary, and belongs to accreditation, methodology, and confidence surfaces (#5758) rather than to this enum. Buyers MAY treat `affiliated` as `first_party` for reconciliation purposes; if the set is ever collapsed to two values it collapses toward `first_party`, never toward `third_party`."""
 
 
+    affiliated = MemberAlias('AFFILIATED')
     THIRD_PARTY = 'third_party'
     """An independent measurement vendor with no ownership or control relationship to the seller (Nielsen, DoubleVerify, IAS, Adelaide, Lumen, TVision, Scope3, Kantar, etc.). Source of truth is the vendor. This is the topology the `vendor_metric` surface was designed around. It is a structural fact, not a quality grade — see the type description — and it is never the default: a seller that omits the field has declared nothing."""
+
+
+    third_party = MemberAlias('THIRD_PARTY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "VendorRelationship", VendorRelationship)

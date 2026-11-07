@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/creative-approval-status.json', pointer='#')
 
@@ -15,16 +15,22 @@ class CreativeApprovalStatus(StrEnum):
     """Creative has been submitted and is awaiting platform review"""
 
 
+    pending_review = MemberAlias('PENDING_REVIEW')
     APPROVED = 'approved'
     """Creative has been approved and is eligible for delivery across the whole package–creative assignment."""
 
 
+    approved = MemberAlias('APPROVED')
     PARTIALLY_APPROVED = 'partially_approved'
     """A multi-publisher or multi-placement assignment is eligible in at least one scope but not uniformly eligible across all scopes. Inspect approval_scopes for the complete per-scope outcomes."""
 
 
+    partially_approved = MemberAlias('PARTIALLY_APPROVED')
     REJECTED = 'rejected'
     """Creative was rejected by the platform, including change requests; see rejection_reason for required fixes and re-upload via sync_creatives"""
+
+
+    rejected = MemberAlias('REJECTED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CreativeApprovalStatus", CreativeApprovalStatus)

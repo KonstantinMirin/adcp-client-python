@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/demographic-system.json', pointer='#')
 
@@ -15,28 +15,37 @@ class DemographicSystem(StrEnum):
     """Nielsen notation. Prefix: P(ersons), M(en), W(omen), A(dults), C(hildren), T(eens) + age range. Examples: P18-49, M25-54, W35+"""
 
 
+    nielsen = MemberAlias('NIELSEN')
     NIELSEN_AUDIO = 'nielsen_audio'
     """Nielsen Audio (US radio, formerly Arbitron). Same P/M/W/A prefix + age-range notation as Nielsen TV, measured on the PPM/diary radio panel. Examples: P25-54, A18+, W25-54"""
 
 
+    nielsen_audio = MemberAlias('NIELSEN_AUDIO')
     BARB = 'barb'
     """BARB (UK). NRS social grade + age bands. Examples: ABC1 Adults, 16-34, Adults"""
 
 
+    barb = MemberAlias('BARB')
     AGF = 'agf'
     """AGF Videoforschung (Germany). Erwachsene notation + age bands. Examples: E 14-49, E 14+"""
 
 
+    agf = MemberAlias('AGF')
     OZTAM = 'oztam'
     """OzTAM (Australia). Age/gender bands, 4+ measurement universe"""
 
 
+    oztam = MemberAlias('OZTAM')
     MEDIAMETRIE = 'mediametrie'
     """Mediametrie (France). Named segments + age bands"""
 
 
+    mediametrie = MemberAlias('MEDIAMETRIE')
     CUSTOM = 'custom'
     """Publisher-defined demographic notation"""
+
+
+    custom = MemberAlias('CUSTOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DemographicSystem", DemographicSystem)

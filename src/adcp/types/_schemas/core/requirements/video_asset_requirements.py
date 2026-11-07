@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import BrandDiscoveryPhotographyStylePreferredAspectRatiosItem, FloatMin1, IntMin1
 
 from ...enums.audio_channel_layout import AudioChannelLayout
@@ -19,21 +19,34 @@ from ...formats.canonical.video_hosted import VideoCodec
 
 class ContainersItem(StrEnum):
     MP4 = 'mp4'
+    mp4 = MemberAlias('MP4')
     WEBM = 'webm'
+    webm = MemberAlias('WEBM')
     MOV = 'mov'
+    mov = MemberAlias('MOV')
     AVI = 'avi'
+    avi = MemberAlias('AVI')
     MKV = 'mkv'
+    mkv = MemberAlias('MKV')
 
 
 class AudioCodecsItem(StrEnum):
     AAC = 'aac'
+    aac = MemberAlias('AAC')
     PCM = 'pcm'
+    pcm = MemberAlias('PCM')
     AC3 = 'ac3'
+    ac3 = MemberAlias('AC3')
     EAC3 = 'eac3'
+    eac3 = MemberAlias('EAC3')
     MP3 = 'mp3'
+    mp3 = MemberAlias('MP3')
     OPUS = 'opus'
+    opus = MemberAlias('OPUS')
     VORBIS = 'vorbis'
+    vorbis = MemberAlias('VORBIS')
     FLAC = 'flac'
+    flac = MemberAlias('FLAC')
 
 
 class VideoAssetRequirements(AdCPBaseModel):

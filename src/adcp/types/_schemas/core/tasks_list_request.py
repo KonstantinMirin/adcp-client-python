@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from ..enums.adcp_protocol import AdCPProtocol
 from ..enums.sort_direction import SortDirection
@@ -47,10 +47,15 @@ class SortField(StrEnum):
     Field to sort by
     """
     CREATED_AT = 'created_at'
+    created_at = MemberAlias('CREATED_AT')
     UPDATED_AT = 'updated_at'
+    updated_at = MemberAlias('UPDATED_AT')
     STATUS = 'status'
+    status = MemberAlias('STATUS')
     TASK_TYPE = 'task_type'
+    task_type = MemberAlias('TASK_TYPE')
     PROTOCOL = 'protocol'
+    protocol = MemberAlias('PROTOCOL')
 
 
 class Sort(AdCPBaseModel):

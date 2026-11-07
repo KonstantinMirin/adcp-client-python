@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import Approximation, MemberAlias, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ...enums.catalog_type import CatalogType
@@ -19,24 +19,40 @@ class FanoutMode(StrEnum):
     How items map to delivery: per_item = one ad per catalog item; multi_item_in_creative = composed multi-item ad (Pinterest Collection, Snap Collection); single_item = one ad showing one item.
     """
     PER_ITEM = 'per_item'
+    per_item = MemberAlias('PER_ITEM')
     MULTI_ITEM_IN_CREATIVE = 'multi_item_in_creative'
+    multi_item_in_creative = MemberAlias('MULTI_ITEM_IN_CREATIVE')
     SINGLE_ITEM = 'single_item'
+    single_item = MemberAlias('SINGLE_ITEM')
 
 
 class SupportedIdTypesItem(StrEnum):
     ASIN = 'asin'
+    asin = MemberAlias('ASIN')
     SKU = 'sku'
+    sku = MemberAlias('SKU')
     GTIN = 'gtin'
+    gtin = MemberAlias('GTIN')
     OFFERING_ID = 'offering_id'
+    offering_id = MemberAlias('OFFERING_ID')
     STORE_ID = 'store_id'
+    store_id = MemberAlias('STORE_ID')
     HOTEL_ID = 'hotel_id'
+    hotel_id = MemberAlias('HOTEL_ID')
     FLIGHT_ID = 'flight_id'
+    flight_id = MemberAlias('FLIGHT_ID')
     VEHICLE_ID = 'vehicle_id'
+    vehicle_id = MemberAlias('VEHICLE_ID')
     LISTING_ID = 'listing_id'
+    listing_id = MemberAlias('LISTING_ID')
     PROGRAM_ID = 'program_id'
+    program_id = MemberAlias('PROGRAM_ID')
     DESTINATION_ID = 'destination_id'
+    destination_id = MemberAlias('DESTINATION_ID')
     APP_ID = 'app_id'
+    app_id = MemberAlias('APP_ID')
     JOB_ID = 'job_id'
+    job_id = MemberAlias('JOB_ID')
 
 
 class ItemProductionModel(StrEnum):
@@ -44,9 +60,13 @@ class ItemProductionModel(StrEnum):
     How each per-item creative is produced. Covers the same production-source axis as `asset_source` on `image` / `video_hosted` / `audio_hosted` but with a 4-value subset — drops `publisher_host_recorded` because it's audio-specific and doesn't apply to retail-media catalog placements. SDK codegen MAY share a base enum and narrow per-canonical, or emit two distinct enums; either way the wire values overlap exactly for the 4 retained values. `buyer_uploaded` (default, current Amazon/Criteo/CitrusAd pattern): the buyer's catalog already contains rendered assets per item; the seller composes the placement using those assets. ("Uploaded" reads slightly off for catalog-keyed items where the buyer didn't actively upload bytes — the catalog ingestion already supplied them — but the semantic is the same: rendered bytes are buyer-supplied, not seller-produced.) `seller_pre_rendered_from_brief`: the buyer ships a brief plus the catalog reference; the seller renders one creative per catalog item from the brief at sync_creatives time. `seller_human_designed`: seller's design team produces per-item renders manually. `agent_synthesized`: AI synthesis pipeline produces per-item renders; pair with `synthesis_nondeterministic: true` for Veo/Sora-class generative video applied per item. Captures the multi-output generative pattern (1 brief × N catalog items → N rendered creatives) under the existing canonical without requiring a separate canonical. Distinct from `fanout_mode`, which describes how items map to delivery slots after rendering.
     """
     BUYER_UPLOADED = 'buyer_uploaded'
+    buyer_uploaded = MemberAlias('BUYER_UPLOADED')
     SELLER_PRE_RENDERED_FROM_BRIEF = 'seller_pre_rendered_from_brief'
+    seller_pre_rendered_from_brief = MemberAlias('SELLER_PRE_RENDERED_FROM_BRIEF')
     SELLER_HUMAN_DESIGNED = 'seller_human_designed'
+    seller_human_designed = MemberAlias('SELLER_HUMAN_DESIGNED')
     AGENT_SYNTHESIZED = 'agent_synthesized'
+    agent_synthesized = MemberAlias('AGENT_SYNTHESIZED')
 
 
 class CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven(CanonicalFormatBase):

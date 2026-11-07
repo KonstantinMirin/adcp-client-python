@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -21,9 +21,13 @@ class TimeUnit(StrEnum):
     The time unit for pricing. Total cost = fixed_price × number of time_units in the campaign flight.
     """
     HOUR = 'hour'
+    hour = MemberAlias('HOUR')
     DAY = 'day'
+    day = MemberAlias('DAY')
     WEEK = 'week'
+    week = MemberAlias('WEEK')
     MONTH = 'month'
+    month = MemberAlias('MONTH')
 
 
 class Parameters(AdCPBaseModel):

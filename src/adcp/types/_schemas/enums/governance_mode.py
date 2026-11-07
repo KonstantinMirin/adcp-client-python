@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/governance-mode.json', pointer='#')
 
@@ -15,12 +15,17 @@ class GovernanceMode(StrEnum):
     """Log all checks, never block. Findings are recorded but the governance agent always returns approved."""
 
 
+    audit = MemberAlias('AUDIT')
     ADVISORY = 'advisory'
     """Flag issues and return findings, but do not block execution. Human reviews happen post-hoc."""
 
 
+    advisory = MemberAlias('ADVISORY')
     ENFORCE = 'enforce'
     """Block on denied or escalated. Require resolution before proceeding."""
+
+
+    enforce = MemberAlias('ENFORCE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "GovernanceMode", GovernanceMode)

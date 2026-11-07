@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/webhook-response-type.json', pointer='#')
 
@@ -12,9 +12,13 @@ class WebhookResponseType(StrEnum):
     Expected response content type from webhook endpoints
     """
     HTML = 'html'
+    html = MemberAlias('HTML')
     JSON = 'json'
+    json = MemberAlias('JSON')
     XML = 'xml'
+    xml = MemberAlias('XML')
     JAVASCRIPT = 'javascript'
+    javascript = MemberAlias('JAVASCRIPT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "WebhookResponseType", WebhookResponseType)

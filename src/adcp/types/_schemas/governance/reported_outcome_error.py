@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 from adcp.types.constraints import (
     DictMaxProperties32,
@@ -39,7 +39,9 @@ class ClassificationSource(StrEnum):
     seller_response_copy means the buyer forwards what it received; it is still not independently authenticated seller evidence.
     """
     SELLER_RESPONSE_COPY = 'seller_response_copy'
+    seller_response_copy = MemberAlias('SELLER_RESPONSE_COPY')
     BUYER_CLASSIFICATION = 'buyer_classification'
+    buyer_classification = MemberAlias('BUYER_CLASSIFICATION')
 
 
 class ReportedOutcomeError(AdCPBaseModel):

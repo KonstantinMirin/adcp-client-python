@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/ctv-ad-experience.json', pointer='#')
 
@@ -12,11 +12,17 @@ class CTVAdExperience(StrEnum):
     IAB Tech Lab CTV Ad Portfolio experience for a format option. `menu` covers smart-TV home/menu surfaces (tiles and headline banners, OpenRTB Native plcmttype 1/3); `pause`, `screensaver`, `overlay`, `squeezeback`, and `in_scene` are the on-glass experiences the portfolio signals via OpenRTB Video with VAST NonLinearAds (AdCOM plcmt 5-9). One format option declares at most one experience; sellers offering several publish sibling format options. Each canonical format permits only the experiences in its documented matrix — pairings outside the matrix fail validation. Linear CTV video is ordinary video_vast/video_hosted and declares no experience.
     """
     MENU = 'menu'
+    menu = MemberAlias('MENU')
     PAUSE = 'pause'
+    pause = MemberAlias('PAUSE')
     SCREENSAVER = 'screensaver'
+    screensaver = MemberAlias('SCREENSAVER')
     OVERLAY = 'overlay'
+    overlay = MemberAlias('OVERLAY')
     SQUEEZEBACK = 'squeezeback'
+    squeezeback = MemberAlias('SQUEEZEBACK')
     IN_SCENE = 'in_scene'
+    in_scene = MemberAlias('IN_SCENE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CTVAdExperience", CTVAdExperience)

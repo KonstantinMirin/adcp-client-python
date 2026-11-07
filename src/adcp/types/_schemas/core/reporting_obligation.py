@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -33,9 +33,13 @@ class ReconciliationStatus(StrEnum):
     Consumer agreement state for the current required revision. A later superseding revision returns a receipt-required obligation to pending until that revision is accepted.
     """
     NOT_REQUIRED = 'not_required'
+    not_required = MemberAlias('NOT_REQUIRED')
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
     ACCEPTED = 'accepted'
+    accepted = MemberAlias('ACCEPTED')
     REJECTED = 'rejected'
+    rejected = MemberAlias('REJECTED')
 
 
 class ProductionStatus(StrEnum):
@@ -43,9 +47,13 @@ class ProductionStatus(StrEnum):
     Whether any revision has been produced for this obligation. published includes zero-row revisions.
     """
     NOT_DUE = 'not_due'
+    not_due = MemberAlias('NOT_DUE')
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
     PUBLISHED = 'published'
+    published = MemberAlias('PUBLISHED')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
 
 
 class ReportingObligation(AdCPBaseModel):

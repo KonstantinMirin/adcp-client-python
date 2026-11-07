@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 from adcp.types.envelopes import AdcpRequest
@@ -27,37 +27,68 @@ from ..protocol.get_adcp_capabilities_response import DiscoveryMode
 
 class FieldsItem(StrEnum):
     SIGNAL_REF = 'signal_ref'
+    signal_ref = MemberAlias('SIGNAL_REF')
     SIGNAL_ID = 'signal_id'
+    signal_id = MemberAlias('SIGNAL_ID')
     SIGNAL_AGENT_SEGMENT_ID = 'signal_agent_segment_id'
+    signal_agent_segment_id = MemberAlias('SIGNAL_AGENT_SEGMENT_ID')
     NAME = 'name'
     DESCRIPTION = 'description'
+    description = MemberAlias('DESCRIPTION')
     VALUE_TYPE = 'value_type'
+    value_type = MemberAlias('VALUE_TYPE')
     CATEGORIES = 'categories'
+    categories = MemberAlias('CATEGORIES')
     RANGE = 'range'
+    range = MemberAlias('RANGE')
     DEMOGRAPHIC_PREDICATE = 'demographic_predicate'
+    demographic_predicate = MemberAlias('DEMOGRAPHIC_PREDICATE')
     SIGNAL_TYPE = 'signal_type'
+    signal_type = MemberAlias('SIGNAL_TYPE')
     DATA_PROVIDER = 'data_provider'
+    data_provider = MemberAlias('DATA_PROVIDER')
     COVERAGE_PERCENTAGE = 'coverage_percentage'
+    coverage_percentage = MemberAlias('COVERAGE_PERCENTAGE')
     DEPLOYMENTS = 'deployments'
+    deployments = MemberAlias('DEPLOYMENTS')
     PRICING_OPTIONS = 'pricing_options'
+    pricing_options = MemberAlias('PRICING_OPTIONS')
     TAXONOMY = 'taxonomy'
+    taxonomy = MemberAlias('TAXONOMY')
     DATA_SOURCES = 'data_sources'
+    data_sources = MemberAlias('DATA_SOURCES')
     METHODOLOGY = 'methodology'
+    methodology = MemberAlias('METHODOLOGY')
     SEGMENTATION_CRITERIA = 'segmentation_criteria'
+    segmentation_criteria = MemberAlias('SEGMENTATION_CRITERIA')
     CRITERIA_URL = 'criteria_url'
+    criteria_url = MemberAlias('CRITERIA_URL')
     REFRESH_CADENCE = 'refresh_cadence'
+    refresh_cadence = MemberAlias('REFRESH_CADENCE')
     LOOKBACK_WINDOW = 'lookback_window'
+    lookback_window = MemberAlias('LOOKBACK_WINDOW')
     ONBOARDER = 'onboarder'
+    onboarder = MemberAlias('ONBOARDER')
     MODELING = 'modeling'
+    modeling = MemberAlias('MODELING')
     AUDIENCE_EXPANSION = 'audience_expansion'
+    audience_expansion = MemberAlias('AUDIENCE_EXPANSION')
     DEVICE_EXPANSION = 'device_expansion'
+    device_expansion = MemberAlias('DEVICE_EXPANSION')
     COUNTRIES = 'countries'
+    countries = MemberAlias('COUNTRIES')
     CONSENT_BASIS = 'consent_basis'
+    consent_basis = MemberAlias('CONSENT_BASIS')
     RESTRICTED_ATTRIBUTES = 'restricted_attributes'
+    restricted_attributes = MemberAlias('RESTRICTED_ATTRIBUTES')
     POLICY_CATEGORIES = 'policy_categories'
+    policy_categories = MemberAlias('POLICY_CATEGORIES')
     ART9_BASIS = 'art9_basis'
+    art9_basis = MemberAlias('ART9_BASIS')
     DATA_SUBJECT_RIGHTS = 'data_subject_rights'
+    data_subject_rights = MemberAlias('DATA_SUBJECT_RIGHTS')
     LAST_UPDATED = 'last_updated'
+    last_updated = MemberAlias('LAST_UPDATED')
 
 
 class GetSignalsRequest(AdCPVersionEnvelope, AdcpRequest):

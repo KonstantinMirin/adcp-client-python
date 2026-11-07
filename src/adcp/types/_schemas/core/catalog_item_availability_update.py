@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255, StrMinLen1MaxLen1000
 
@@ -19,15 +19,25 @@ class Reason(StrEnum):
     Machine-readable reason for the transition. Use other only when no standard reason applies and explain the condition in reason_detail.
     """
     OUT_OF_STOCK = 'out_of_stock'
+    out_of_stock = MemberAlias('OUT_OF_STOCK')
     BACK_IN_STOCK = 'back_in_stock'
+    back_in_stock = MemberAlias('BACK_IN_STOCK')
     CONTENT_UNAVAILABLE = 'content_unavailable'
+    content_unavailable = MemberAlias('CONTENT_UNAVAILABLE')
     CONTENT_AVAILABLE = 'content_available'
+    content_available = MemberAlias('CONTENT_AVAILABLE')
     PROMOTION_START = 'promotion_start'
+    promotion_start = MemberAlias('PROMOTION_START')
     PROMOTION_END = 'promotion_end'
+    promotion_end = MemberAlias('PROMOTION_END')
     TIME_WINDOW_STARTED = 'time_window_started'
+    time_window_started = MemberAlias('TIME_WINDOW_STARTED')
     TIME_WINDOW_EXPIRED = 'time_window_expired'
+    time_window_expired = MemberAlias('TIME_WINDOW_EXPIRED')
     BUYER_REQUEST = 'buyer_request'
+    buyer_request = MemberAlias('BUYER_REQUEST')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class CatalogItemAvailabilityUpdate(AdCPBaseModel):

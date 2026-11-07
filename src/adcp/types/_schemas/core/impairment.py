@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, StrMaxLen500
 
 from ..enums.impairment_offline_state import ImpairmentOfflineState
@@ -18,10 +18,15 @@ class ResourceType(StrEnum):
     The kind of upstream dependency that transitioned to an offline state. Values are drawn from the x-entity vocabulary (see core/x-entity-types.json) and identify a buyer-referenced object with its own lifecycle that the seller can take offline. This is the subset of x-entity types for which a media buy's serving depends on the resource — not a new typology, just the impairment-relevant slice.
     """
     AUDIENCE = 'audience'
+    audience = MemberAlias('AUDIENCE')
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
     CATALOG_ITEM = 'catalog_item'
+    catalog_item = MemberAlias('CATALOG_ITEM')
     EVENT_SOURCE = 'event_source'
+    event_source = MemberAlias('EVENT_SOURCE')
     PROPERTY = 'property'
+    property = MemberAlias('PROPERTY')
 
 
 class Transition(AdCPBaseModel):

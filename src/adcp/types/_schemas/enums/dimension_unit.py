@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/dimension-unit.json', pointer='#')
 
@@ -12,11 +12,17 @@ class DimensionUnit(StrEnum):
     Units of measurement for creative format dimensions
     """
     PX = 'px'
+    px = MemberAlias('PX')
     DP = 'dp'
+    dp = MemberAlias('DP')
     INCHES = 'inches'
+    inches = MemberAlias('INCHES')
     CM = 'cm'
+    cm = MemberAlias('CM')
     MM = 'mm'
+    mm = MemberAlias('MM')
     PT = 'pt'
+    pt = MemberAlias('PT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DimensionUnit", DimensionUnit)

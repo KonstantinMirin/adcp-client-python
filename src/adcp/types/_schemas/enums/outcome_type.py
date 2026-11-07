@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/outcome-type.json', pointer='#')
 
@@ -15,12 +15,17 @@ class OutcomeType(StrEnum):
     """The action completed successfully. The seller confirmed the request."""
 
 
+    completed = MemberAlias('COMPLETED')
     FAILED = 'failed'
     """The action failed. No budget is committed."""
 
 
+    failed = MemberAlias('FAILED')
     DELIVERY = 'delivery'
     """Periodic delivery report with pacing and performance metrics."""
+
+
+    delivery = MemberAlias('DELIVERY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "OutcomeType", OutcomeType)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ..content_standards.content_standards import CalibrationExemplars
@@ -21,7 +21,9 @@ class Direction(StrEnum):
     Sort direction for this feature: `maximize` ranks higher feature values first (e.g. creative_quality_score), `minimize` ranks lower values first (e.g. predicted_cpa).
     """
     MAXIMIZE = 'maximize'
+    maximize = MemberAlias('MAXIMIZE')
     MINIMIZE = 'minimize'
+    minimize = MemberAlias('MINIMIZE')
 
 
 class RankByItem(AdCPBaseModel):

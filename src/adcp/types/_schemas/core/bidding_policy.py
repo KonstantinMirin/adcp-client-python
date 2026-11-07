@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import FloatGt0
 
@@ -30,7 +30,9 @@ class RoasStrength(StrEnum):
     `floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.
     """
     FLOOR = 'floor'
+    floor = MemberAlias('FLOOR')
     TARGET = 'target'
+    target = MemberAlias('TARGET')
 
 
 class Roas(AdCPBaseModel):

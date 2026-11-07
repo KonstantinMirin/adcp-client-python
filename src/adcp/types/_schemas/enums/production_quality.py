@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/production-quality.json', pointer='#')
 
@@ -15,12 +15,17 @@ class ProductionQuality(StrEnum):
     """Studio-produced content with professional crew and equipment"""
 
 
+    professional = MemberAlias('PROFESSIONAL')
     PROSUMER = 'prosumer'
     """Semi-professional production (high-quality independent creators)"""
 
 
+    prosumer = MemberAlias('PROSUMER')
     UGC = 'ugc'
     """User-generated content"""
+
+
+    ugc = MemberAlias('UGC')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ProductionQuality", ProductionQuality)

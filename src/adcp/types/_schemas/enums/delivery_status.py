@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/delivery-status.json', pointer='#')
 
@@ -15,24 +15,32 @@ class DeliveryStatus(StrEnum):
     """Package is actively delivering impressions within its scheduled flight"""
 
 
+    delivering = MemberAlias('DELIVERING')
     NOT_DELIVERING = 'not_delivering'
     """Package is within its scheduled flight but is not delivering impressions for the observation window defined by the response surface"""
 
 
+    not_delivering = MemberAlias('NOT_DELIVERING')
     COMPLETED = 'completed'
     """Package has finished its scheduled flight"""
 
 
+    completed = MemberAlias('COMPLETED')
     BUDGET_EXHAUSTED = 'budget_exhausted'
     """Package has spent its full allocated budget"""
 
 
+    budget_exhausted = MemberAlias('BUDGET_EXHAUSTED')
     FLIGHT_ENDED = 'flight_ended'
     """Package's scheduled flight window has ended"""
 
 
+    flight_ended = MemberAlias('FLIGHT_ENDED')
     GOAL_MET = 'goal_met'
     """Package has reached its delivery goal"""
+
+
+    goal_met = MemberAlias('GOAL_MET')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DeliveryStatus", DeliveryStatus)

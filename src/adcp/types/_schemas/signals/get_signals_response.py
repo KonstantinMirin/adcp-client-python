@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import FloatMin0Max100
 from adcp.types.envelopes import AdcpResponse
@@ -60,8 +60,11 @@ class Scope(StrEnum):
     'signals': not all matching signals were returned. 'pricing': signals returned but pricing is absent or unconfirmed. 'wholesale_feed': in wholesale mode, full feed enumeration could not complete in the time budget.
     """
     SIGNALS = 'signals'
+    signals = MemberAlias('SIGNALS')
     PRICING = 'pricing'
+    pricing = MemberAlias('PRICING')
     WHOLESALE_FEED = 'wholesale_feed'
+    wholesale_feed = MemberAlias('WHOLESALE_FEED')
 
 
 class EstimatedWait(Duration):

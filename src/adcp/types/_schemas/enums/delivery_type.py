@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/delivery-type.json', pointer='#')
 
@@ -15,8 +15,12 @@ class DeliveryType(StrEnum):
     """Reserved inventory with guaranteed delivery"""
 
 
+    guaranteed = MemberAlias('GUARANTEED')
     NON_GUARANTEED = 'non_guaranteed'
     """Inventory without reserved or guaranteed delivery, commonly auction-based or otherwise best-effort. Do not use for scheduled broadcast buys solely because final audience delivery is estimated from historical ranges or settles through third-party measurement."""
+
+
+    non_guaranteed = MemberAlias('NON_GUARANTEED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DeliveryType", DeliveryType)

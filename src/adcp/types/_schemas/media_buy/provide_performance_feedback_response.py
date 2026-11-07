@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMaxLen500, StrMinLen1
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -39,8 +39,11 @@ class ApplicationStatus(StrEnum):
     Optimizer disposition at response time, distinct from the protocol envelope's task status. accepted means stored and eligible for evaluation, not that optimizer use is guaranteed. applied means incorporated into the seller's optimization inputs. not_applied means evaluated but not incorporated. Sellers declaring reports_application_status MUST return this field.
     """
     ACCEPTED = 'accepted'
+    accepted = MemberAlias('ACCEPTED')
     APPLIED = 'applied'
+    applied = MemberAlias('APPLIED')
     NOT_APPLIED = 'not_applied'
+    not_applied = MemberAlias('NOT_APPLIED')
 
 
 class ProvidePerformanceFeedbackSuccess(ProvidePerformanceFeedbackResponse):

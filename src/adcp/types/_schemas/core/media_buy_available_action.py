@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.media_buy_action_mode import MediaBuyActionMode
@@ -22,8 +22,11 @@ class Task(StrEnum):
     Compact-lifecycle task for this resolved action: operational control, commercial refinement, or creative lifecycle mutation.
     """
     CONTROL_MEDIA_BUY = 'control_media_buy'
+    control_media_buy = MemberAlias('CONTROL_MEDIA_BUY')
     REFINE_PROPOSALS = 'refine_proposals'
+    refine_proposals = MemberAlias('REFINE_PROPOSALS')
     SYNC_CREATIVES = 'sync_creatives'
+    sync_creatives = MemberAlias('SYNC_CREATIVES')
 
 
 class MediaBuyAvailableAction(AdCPBaseModel):

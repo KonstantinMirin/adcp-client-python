@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from .package_signal_targeting_group import PackageSignalTargetingGroup
 
@@ -16,6 +16,7 @@ class Operator(StrEnum):
     Groups-level operator. Required even though v1 only supports 'all': every child group must be satisfied.
     """
     ALL = 'all'
+    all = MemberAlias('ALL')
 
 
 class PackageSignalTargetingGroups(AdCPBaseModel):

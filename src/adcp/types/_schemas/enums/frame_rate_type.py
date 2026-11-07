@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/frame-rate-type.json', pointer='#')
 
@@ -15,8 +15,12 @@ class FrameRateType(StrEnum):
     """Constant frame rate (CFR) — each frame occupies an identical time interval"""
 
 
+    constant = MemberAlias('CONSTANT')
     VARIABLE = 'variable'
     """Variable frame rate (VFR) — frame intervals may differ"""
+
+
+    variable = MemberAlias('VARIABLE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "FrameRateType", FrameRateType)

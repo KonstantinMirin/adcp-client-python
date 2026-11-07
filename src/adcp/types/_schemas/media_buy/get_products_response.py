@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen1000, StrMinLen1MaxLen2000
 from adcp.types.envelopes import AdcpResponse
@@ -28,8 +28,11 @@ class RefinementAppliedItemRequestStatus(StrEnum):
     'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled — see notes for details. 'unable': the seller could not fulfill the ask — see notes for why.
     """
     APPLIED = 'applied'
+    applied = MemberAlias('APPLIED')
     PARTIAL = 'partial'
+    partial = MemberAlias('PARTIAL')
     UNABLE = 'unable'
+    unable = MemberAlias('UNABLE')
 
 
 class RefinementAppliedItemRequest(AdCPBaseModel):
@@ -75,10 +78,15 @@ class Scope(StrEnum):
     'products': not all inventory sources were searched. 'pricing': products returned but pricing is absent or unconfirmed. 'forecast': products returned but forecast data is absent. 'proposals': proposals were not generated or are incomplete. 'wholesale_feed': in wholesale mode, full feed enumeration could not complete in the time budget — symmetric with get_signals' 'wholesale_feed' scope so sellers have a precise way to declare wholesale-incomplete on the products surface.
     """
     PRODUCTS = 'products'
+    products = MemberAlias('PRODUCTS')
     PRICING = 'pricing'
+    pricing = MemberAlias('PRICING')
     FORECAST = 'forecast'
+    forecast = MemberAlias('FORECAST')
     PROPOSALS = 'proposals'
+    proposals = MemberAlias('PROPOSALS')
     WHOLESALE_FEED = 'wholesale_feed'
+    wholesale_feed = MemberAlias('WHOLESALE_FEED')
 
 
 class EstimatedWait(Duration):
@@ -106,8 +114,11 @@ class Semantics(StrEnum):
     How `excluded_by[*].count` values are computed across multiple filters. `only`: counts products that would have been included if not for THIS filter alone (deterministic; the right value for 'which filter killed my result set' triage — recommended when feasible). `any`: counts products excluded by ANY filter (so multiple filters' counts may overlap and sum to more than `total_candidates`). `approximate`: sellers SHOULD use this when their pipeline can't cleanly attribute exclusions to a single filter. Buyers SHOULD inspect `semantics` before doing arithmetic on counts.
     """
     ONLY = 'only'
+    only = MemberAlias('ONLY')
     ANY = 'any'
+    any = MemberAlias('ANY')
     APPROXIMATE = 'approximate'
+    approximate = MemberAlias('APPROXIMATE')
 
 
 class ExcludedByValue(AdCPBaseModel):
@@ -138,7 +149,9 @@ class CacheScope(StrEnum):
     Declares whether the wholesale_feed_version and pricing_version on this response describe a universal layer or an account-specific overlay. REQUIRED on every 3.1+ response (the 3.1 schema enforces this — the safety property of the two-layer cache model depends on it). 'public': this response describes the seller's published rate card; the buyer MAY dedupe under (agent, buying_mode, filters, targeting_overlay, media_buy_frequency_cap, required_overlay_support, required_media_buy_support, deprecated property_list, catalog) without scoping by account. 'account': this response includes account-specific overrides; the buyer MUST cache the version under that tuple plus account_id. When the request did NOT include `account`, the seller MUST return `cache_scope: 'public'`. When the request included `account`, the seller MUST return either: 'public' (this account prices off the public rate card — buyer dedupes) or 'account' (account-specific overrides exist — buyer caches under the account key). Sellers MAY return 'public' on an account-scoped request that previously had overrides — buyers SHOULD interpret this as a downgrade and drop their account-overlay. Without schema-required cache_scope, a seller silently omitting the field on an account-scoped response would cause buyers to mis-key the cache and serve account-overlay payloads to other accounts. **Backward-compatibility note for 3.1 validators:** SDKs that validate strictly against the 3.1 schema MUST select the validator based on the server-declared `adcp_version` (release-precision version negotiation, 3.1). For responses with `adcp_version` starting `3.0`, the 3.1 cache_scope-required constraint MUST be relaxed.
     """
     PUBLIC = 'public'
+    public = MemberAlias('PUBLIC')
     ACCOUNT = 'account'
+    account = MemberAlias('ACCOUNT')
 
 
 class GetProductsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/offering-availability-status.json', pointer='#')
 
@@ -15,24 +15,32 @@ class OfferingAvailabilityStatus(StrEnum):
     """In stock and orderable."""
 
 
+    available = MemberAlias('AVAILABLE')
     LIMITED = 'limited'
     """Available but constrained (low stock, limited sizes/variants, or limited time)."""
 
 
+    limited = MemberAlias('LIMITED')
     SOLD_OUT = 'sold_out'
     """Inventory exhausted. Corresponds to unavailable_reason 'sold_out'."""
 
 
+    sold_out = MemberAlias('SOLD_OUT')
     EXPIRED = 'expired'
     """Offering is past its end date (see expires_at). Corresponds to unavailable_reason 'expired'."""
 
 
+    expired = MemberAlias('EXPIRED')
     REGION_RESTRICTED = 'region_restricted'
     """Not available in the requesting region. Corresponds to unavailable_reason 'region_restricted'."""
 
 
+    region_restricted = MemberAlias('REGION_RESTRICTED')
     INACTIVE = 'inactive'
     """Campaign paused or ended by the seller. Corresponds to unavailable_reason 'inactive'."""
+
+
+    inactive = MemberAlias('INACTIVE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "OfferingAvailabilityStatus", OfferingAvailabilityStatus)

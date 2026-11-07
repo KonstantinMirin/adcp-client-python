@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl, IntMin1, RegionsItem, StrMinLen1
 
@@ -164,7 +164,9 @@ class TargetingMode(StrEnum):
     Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.
     """
     INCLUDE = _VALUES_INCLUDE_EXCLUDE[0]
+    include = MemberAlias('INCLUDE')
     EXCLUDE = _VALUES_INCLUDE_EXCLUDE[1]
+    exclude = MemberAlias('EXCLUDE')
 
 
 class SignalTargetingItem(BranchDispatchMixin, AdCPBaseModel):

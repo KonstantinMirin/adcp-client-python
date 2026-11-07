@@ -593,6 +593,94 @@ alias layer is what keeps it working.
 
 ---
 
+## §8. Member spellings — the ATTRIBUTE a caller types, not the class
+
+**Every section above is about a NAME an application imports. This one is about an
+attribute OF one, and it is the granularity the instrument's identity join cannot reach:**
+the join is over a class's field set or an enumeration's value list, and our value lists are
+upstream's exactly, so an enumeration whose every member a caller spells differently joins
+as a clean match. Measured in the drop-in lane: **3,282 of upstream 9.6.1's own behavioural
+tests failed on ONE member** — more than any class name in this guide — and the member was
+`Recovery.transient`.
+
+**Our generated members are `UPPER_SNAKE`; upstream's are the value verbatim.** `core/error.json`
+states the value list `transient|correctable|terminal` and says nothing about the attribute a
+caller types, so neither spelling is the document's. **This package now emits both**, as a
+class-body line beside the canonical member:
+
+```python
+class Recovery(StrEnum):
+    TRANSIENT = 'transient'
+    transient = MemberAlias('TRANSIENT')
+    ...
+```
+
+`Recovery.transient is Recovery.TRANSIENT` — the same object, not a second member.
+`len(Recovery.__members__)` is 3, the value set is the document's three strings, and
+`Recovery('transient')` works as it always did. So **for most members this section owes
+nothing and a port needs no edit**: of the **4,031 member spellings over 751 emitted
+enumerations**, **3,514 carry the value-verbatim attribute** and `259` more already spell it
+(the value is itself the `UPPER_SNAKE` name — `Method.GET` is the attribute on both
+packages, so nothing is owed and nothing changed).
+
+**What IS owed is the 258 spellings where the value cannot be a python attribute of that
+class, plus 2 at one node.** Each is a real edit for a caller who typed upstream's
+spelling, and each has one of three reasons:
+
+| reason | spellings | what to write instead |
+|---|---|---|
+| `not a python identifier` | 241 | the `UPPER_SNAKE` member, or the constructor |
+| `a name the enumeration already resolves` | 17 | the `UPPER_SNAKE` member, or the constructor |
+| `re-cases onto another member's attribute` | 2 (at 1 node) | the string — there is no class |
+| `already the canonical member name` | 259 | **nothing — unchanged** |
+
+**`not a python identifier` — 241 spellings, 193 distinct values, 44 enumerations.** The
+value carries a character a name cannot: **131** a dot (`1.0`, `v2.1`), **56** a hyphen
+(`dark-bg`, `top-left`, `full-lockup`), **22** a leading digit (`3d_render`), **24** a slash
+or a media type (`text/plain`, `/geo_countries`), **6** an integer value, and **4** a python
+KEYWORD — `pass` three times and `global` once, which `str.isidentifier` calls identifiers
+and a class body refuses outright. The spelling is **refused and never repaired**: a
+sanitised `dark_bg` would be a third convention belonging to neither package, so
+
+```python
+Background.dark_bg          # upstream
+Background.DARK_BG          # here — or Background('dark-bg')
+```
+
+**`a name the enumeration already resolves` — 17 spellings, 9 distinct values.** The value
+verbatim is a name the enumeration already has before any member is declared:
+`name`, `value`, `count`, `index`, `format`, `title`, `split`, `center`, `capitalize`. The
+first two are `enum.Enum`'s own `name` and `value` descriptors, and binding over them makes
+`Kind.NAME.name` return the member instead of `'NAME'` — the enum protocol broken on a class
+whose document says nothing about python attributes. The rest are `str` methods a member
+inherits. So
+
+```python
+Kind.name                   # upstream
+Kind.NAME                   # here — or Kind('name')
+```
+
+**`re-cases onto another member's attribute` — 2 spellings, at one node, and there is no
+class to spell them on.** `formats/canonical/html5.json#/properties/clicktag_macro` states
+`["clickTag", "clickTAG"]`, which our `UPPER_SNAKE` naming maps onto one attribute —
+`CLICKTAG` for both. The row renders a `Literal['clickTag', 'clickTAG']` and no enumeration,
+so this is the one place a port loses the member object as well as the spelling: the field
+holds and accepts the plain strings, and both values are carried exactly as the document
+writes them.
+
+```python
+ClickTagMacro.clickTag      # upstream
+"clickTag"                  # here — the field is Literal['clickTag', 'clickTAG']
+```
+
+**Both tables are DERIVED and gated.** The counts are
+`codegen.lower.enum.member_aliases` over the tree a fresh run emits, and
+`tests/test_the_member_spelling_is_emitted.py` partitions all 4,031 spellings across the
+four reasons, requires this section to name three of them in the compiler's own words, and
+reddens if a fifth reason is added to the compiler and not to this document.
+
+---
+
 ## Re-deriving this document, and the gate that keeps it true
 
 Two interpreters, because the two trees cannot be imported into one — the table at the top

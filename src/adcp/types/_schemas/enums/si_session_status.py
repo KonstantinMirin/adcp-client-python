@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/si-session-status.json', pointer='#')
 
@@ -15,16 +15,22 @@ class SISessionStatus(StrEnum):
     """Session is in progress and accepting messages"""
 
 
+    active = MemberAlias('ACTIVE')
     PENDING_HANDOFF = 'pending_handoff'
     """Brand agent is requesting handoff to a commerce or external flow; host should process the handoff object"""
 
 
+    pending_handoff = MemberAlias('PENDING_HANDOFF')
     COMPLETE = 'complete'
     """Session ended normally after successful conversation or handoff"""
 
 
+    complete = MemberAlias('COMPLETE')
     TERMINATED = 'terminated'
     """Session was ended due to timeout, error, policy violation, or explicit host/user action"""
+
+
+    terminated = MemberAlias('TERMINATED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SISessionStatus", SISessionStatus)

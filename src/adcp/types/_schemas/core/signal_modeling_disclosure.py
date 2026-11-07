@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMaxLen2000
 
@@ -18,9 +18,13 @@ class Audience(StrEnum):
     Primary audience for this disclosure entry.
     """
     BUYER = 'buyer'
+    buyer = MemberAlias('BUYER')
     DATA_SUBJECT = 'data_subject'
+    data_subject = MemberAlias('DATA_SUBJECT')
     REGULATOR = 'regulator'
+    regulator = MemberAlias('REGULATOR')
     PUBLIC = 'public'
+    public = MemberAlias('PUBLIC')
 
 
 class JurisdictionsItem(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -32,8 +32,11 @@ class ReportingStatusView(StrEnum):
     Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.
     """
     SUMMARY = 'summary'
+    summary = MemberAlias('SUMMARY')
     PERIODS = 'periods'
+    periods = MemberAlias('PERIODS')
     REVISION = 'revision'
+    revision = MemberAlias('REVISION')
 
 
 class GetReportingStatusRequest(AdCPVersionEnvelope, AdcpRequest):

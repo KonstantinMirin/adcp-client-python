@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import InlineMarkupMarkup
 
@@ -79,8 +79,11 @@ class MarkupType(StrEnum):
     How the destination traffics the byte-preserved markup.
     """
     IFRAME_JAVASCRIPT = 'iframe_javascript'
+    iframe_javascript = MemberAlias('IFRAME_JAVASCRIPT')
     JAVASCRIPT = 'javascript'
+    javascript = MemberAlias('JAVASCRIPT')
     STANDARD = 'standard'
+    standard = MemberAlias('STANDARD')
 
 
 class InlineMarkup(DisplayTagAsset):
@@ -103,7 +106,9 @@ class LocationField(StrEnum):
     Asset field containing this occurrence.
     """
     AD_REQUEST_URL = 'ad_request_url'
+    ad_request_url = MemberAlias('AD_REQUEST_URL')
     CLICKTHROUGH_URL = 'clickthrough_url'
+    clickthrough_url = MemberAlias('CLICKTHROUGH_URL')
 
 
 class PairedRedirectMacroDeclarationsItemLocation(AdCPBaseModel):

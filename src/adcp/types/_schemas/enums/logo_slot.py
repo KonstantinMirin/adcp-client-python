@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/logo-slot.json', pointer='#')
 
@@ -15,52 +15,67 @@ class LogoSlot(StrEnum):
     """Logo rendered in a card or framed placement on a light background."""
 
 
+    logo_card_light = MemberAlias('LOGO_CARD_LIGHT')
     LOGO_CARD_DARK = 'logo_card_dark'
     """Logo rendered in a card or framed placement on a dark background."""
 
 
+    logo_card_dark = MemberAlias('LOGO_CARD_DARK')
     PROFILE_MARK = 'profile_mark'
     """Small square logo mark for profile-style UI. Distinct from brand.json's top-level animated or conversational avatar object."""
 
 
+    profile_mark = MemberAlias('PROFILE_MARK')
     FAVICON = 'favicon'
     """Browser favicon or similarly tiny tab/bookmark icon."""
 
 
+    favicon = MemberAlias('FAVICON')
     APP_ICON = 'app_icon'
     """Application icon or launcher icon."""
 
 
+    app_icon = MemberAlias('APP_ICON')
     SOCIAL_PROFILE_MARK = 'social_profile_mark'
     """Social profile logo mark or feed identity mark."""
 
 
+    social_profile_mark = MemberAlias('SOCIAL_PROFILE_MARK')
     NAV_HEADER = 'nav_header'
     """Primary navigation header logo."""
 
 
+    nav_header = MemberAlias('NAV_HEADER')
     FOOTER = 'footer'
     """Footer logo."""
 
 
+    footer = MemberAlias('FOOTER')
     EMAIL_HEADER = 'email_header'
     """Email header logo."""
 
 
+    email_header = MemberAlias('EMAIL_HEADER')
     WATERMARK = 'watermark'
     """Subtle watermark or bug."""
 
 
+    watermark = MemberAlias('WATERMARK')
     AD_END_CARD = 'ad_end_card'
     """Advertising end card, especially video or CTV."""
 
 
+    ad_end_card = MemberAlias('AD_END_CARD')
     CO_BRAND_LOCKUP = 'co_brand_lockup'
     """Co-brand, partner, sponsor, or secondary-mark lockup."""
 
 
+    co_brand_lockup = MemberAlias('CO_BRAND_LOCKUP')
     MARKETPLACE_LISTING = 'marketplace_listing'
     """Marketplace, catalog, directory, or store listing logo."""
+
+
+    marketplace_listing = MemberAlias('MARKETPLACE_LISTING')
 
 
 strict_validate = strict_alias(__adcp_schema__, "LogoSlot", LogoSlot)

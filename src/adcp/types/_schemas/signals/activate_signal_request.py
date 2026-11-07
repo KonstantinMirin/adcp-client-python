@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types.constraints import GovernanceContext
 from adcp.types.envelopes import AdcpRequest
 
@@ -23,7 +23,9 @@ class Action(StrEnum):
     Whether to activate or deactivate the signal. Deactivating removes the segment from downstream platforms, required when campaigns end to comply with data governance policies (GDPR, CCPA). Defaults to 'activate' when omitted.
     """
     ACTIVATE = 'activate'
+    activate = MemberAlias('ACTIVATE')
     DEACTIVATE = 'deactivate'
+    deactivate = MemberAlias('DEACTIVATE')
 
 
 class ActivateSignalRequest(AdCPVersionEnvelope, AdcpRequest):

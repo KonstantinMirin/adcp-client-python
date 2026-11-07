@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..common._vocabularies import _VALUES_OPEN_CLOSED
@@ -22,7 +22,9 @@ class OutcomeState(StrEnum):
     Outcome state. 'accepted' means state updated with no issues. 'findings' means issues were detected. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization.
     """
     ACCEPTED = 'accepted'
+    accepted = MemberAlias('ACCEPTED')
     FINDINGS = 'findings'
+    findings = MemberAlias('FINDINGS')
 
 
 class DeliveryPeriodState(StrEnum):
@@ -30,7 +32,9 @@ class DeliveryPeriodState(StrEnum):
     Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.
     """
     OPEN = _VALUES_OPEN_CLOSED[0]
+    open = MemberAlias('OPEN')
     CLOSED = _VALUES_OPEN_CLOSED[1]
+    closed = MemberAlias('CLOSED')
 
 
 class FindingsItem(AdCPBaseModel):

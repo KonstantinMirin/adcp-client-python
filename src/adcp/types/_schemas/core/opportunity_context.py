@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, StrMinLen1MaxLen500
 
@@ -19,8 +19,11 @@ class Phase(StrEnum):
     Current stage of buyer planning.
     """
     EXPLORATORY = 'exploratory'
+    exploratory = MemberAlias('EXPLORATORY')
     PLANNING = 'planning'
+    planning = MemberAlias('PLANNING')
     ACTIVE_SOURCING = 'active_sourcing'
+    active_sourcing = MemberAlias('ACTIVE_SOURCING')
 
 
 class Intent(StrEnum):
@@ -28,9 +31,13 @@ class Intent(StrEnum):
     How seriously the buyer is evaluating supply in this cycle.
     """
     TEST = 'test'
+    test = MemberAlias('TEST')
     SPECULATIVE = 'speculative'
+    speculative = MemberAlias('SPECULATIVE')
     PLANNING = 'planning'
+    planning = MemberAlias('PLANNING')
     LIVE_RFP = 'live_rfp'
+    live_rfp = MemberAlias('LIVE_RFP')
 
 
 class Status(StrEnum):
@@ -38,7 +45,9 @@ class Status(StrEnum):
     Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.
     """
     OPEN = _VALUES_OPEN_CLOSED[0]
+    open = MemberAlias('OPEN')
     CLOSED = _VALUES_OPEN_CLOSED[1]
+    closed = MemberAlias('CLOSED')
 
 
 class CloseReason(StrEnum):
@@ -46,12 +55,19 @@ class CloseReason(StrEnum):
     Why the opportunity closed. Required when status is closed.
     """
     ACCEPTED_WITH_SELLER = 'accepted_with_seller'
+    accepted_with_seller = MemberAlias('ACCEPTED_WITH_SELLER')
     PURCHASED_ELSEWHERE = 'purchased_elsewhere'
+    purchased_elsewhere = MemberAlias('PURCHASED_ELSEWHERE')
     SELECTED_ALTERNATIVE = 'selected_alternative'
+    selected_alternative = MemberAlias('SELECTED_ALTERNATIVE')
     NOT_PURSUED = 'not_pursued'
+    not_pursued = MemberAlias('NOT_PURSUED')
     BUDGET_CHANGED = 'budget_changed'
+    budget_changed = MemberAlias('BUDGET_CHANGED')
     TIMING_CHANGED = 'timing_changed'
+    timing_changed = MemberAlias('TIMING_CHANGED')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class OpportunityContext(AdCPBaseModel):

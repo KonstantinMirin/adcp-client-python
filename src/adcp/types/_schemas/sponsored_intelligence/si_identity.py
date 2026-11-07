@@ -6,16 +6,20 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
 class ConsentScopeItem(StrEnum):
     NAME = 'name'
     EMAIL = 'email'
+    email = MemberAlias('EMAIL')
     SHIPPING_ADDRESS = 'shipping_address'
+    shipping_address = MemberAlias('SHIPPING_ADDRESS')
     PHONE = 'phone'
+    phone = MemberAlias('PHONE')
     LOCALE = 'locale'
+    locale = MemberAlias('LOCALE')
 
 
 class PrivacyPolicyAcknowledged(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -27,7 +27,9 @@ class Kind(StrEnum):
     Placement authority discriminator. `publisher_ref` is publisher-catalog identity; `seller_inline` is sales-agent-authored identity.
     """
     PUBLISHER_REF = 'publisher_ref'
+    publisher_ref = MemberAlias('PUBLISHER_REF')
     SELLER_INLINE = 'seller_inline'
+    seller_inline = MemberAlias('SELLER_INLINE')
 
 
 class Mode(StrEnum):
@@ -35,7 +37,9 @@ class Mode(StrEnum):
     Required product-level relationship to this placement. targetable means the buyer may include the publisher-scoped ref in targeting_overlay.placement_selection; a creative may be routed there only after it is purchased. included means fixed product inventory: it cannot be independently selected, but across discovery, create, and update a selected request exactly equal to the product's complete included placement set is an inherent restatement and may be echoed on the package without overlay_support.placement_selection. A product containing any included placement MUST NOT declare overlay_support.placement_selection; partial selection requires a separately selectable product configuration. During the migration window ending 2026-11-25, buyers MAY tolerate legacy products that omit mode and treat them as targetable; after that date buyers SHOULD fail closed.
     """
     TARGETABLE = 'targetable'
+    targetable = MemberAlias('TARGETABLE')
     INCLUDED = 'included'
+    included = MemberAlias('INCLUDED')
 
 
 class ProductDoohScreenResolution(AdCPBaseModel):

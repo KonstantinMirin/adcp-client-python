@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -27,9 +27,13 @@ class Status(StrEnum):
     Lifecycle of this attempt. pending may transition once to available, delivered, or failed; terminal evidence is immutable. Staleness is evaluated in get_reporting_status health, not stored as a materialization state.
     """
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
     AVAILABLE = 'available'
+    available = MemberAlias('AVAILABLE')
     DELIVERED = 'delivered'
+    delivered = MemberAlias('DELIVERED')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
 
 
 class ReportingMaterialization(AdCPBaseModel):

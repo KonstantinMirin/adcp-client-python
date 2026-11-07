@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
@@ -165,10 +165,15 @@ class PackagesItemIndicatorTypesEvaluatedItem(StrEnum):
     A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.
     """
     CREATIVE_DIVERSITY_LOW = 'creative_diversity_low'
+    creative_diversity_low = MemberAlias('CREATIVE_DIVERSITY_LOW')
     AUDIENCE_SATURATION = 'audience_saturation'
+    audience_saturation = MemberAlias('AUDIENCE_SATURATION')
     INVENTORY_SHORTFALL_FORECAST = 'inventory_shortfall_forecast'
+    inventory_shortfall_forecast = MemberAlias('INVENTORY_SHORTFALL_FORECAST')
     PACING_RISK = 'pacing_risk'
+    pacing_risk = MemberAlias('PACING_RISK')
     BUDGET_CONSTRAINED = 'budget_constrained'
+    budget_constrained = MemberAlias('BUDGET_CONSTRAINED')
 
 
 PackagesItemIndicatorsItemType = PackagesItemIndicatorTypesEvaluatedItem
@@ -245,6 +250,7 @@ class MediaBuysItemIndicatorTypesEvaluatedItem(StrEnum):
     A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.
     """
     BUDGET_CONSTRAINED = 'budget_constrained'
+    budget_constrained = MemberAlias('BUDGET_CONSTRAINED')
 
 
 MediaBuysItemIndicatorsItemType = MediaBuysItemIndicatorTypesEvaluatedItem

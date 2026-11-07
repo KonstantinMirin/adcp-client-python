@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/browser-family.json', pointer='#')
 
@@ -12,14 +12,23 @@ class BrowserFamily(StrEnum):
     Portable browser families for targeting the impression delivery and rendering environment, not a post-click landing-page browser. Values identify browser families, not versions or seller-native browser IDs, and MUST NOT be inferred solely from operating system, device, web/mobile-web inventory, or placement. android_webview means an impression reliably classified as rendering in Android WebView. other means a seller-recognized browser family that is not explicitly enumerated; unknown means the seller cannot classify the browser into a recognized family.
     """
     CHROME = 'chrome'
+    chrome = MemberAlias('CHROME')
     SAFARI = 'safari'
+    safari = MemberAlias('SAFARI')
     FIREFOX = 'firefox'
+    firefox = MemberAlias('FIREFOX')
     EDGE = 'edge'
+    edge = MemberAlias('EDGE')
     OPERA = 'opera'
+    opera = MemberAlias('OPERA')
     SAMSUNG_INTERNET = 'samsung_internet'
+    samsung_internet = MemberAlias('SAMSUNG_INTERNET')
     ANDROID_WEBVIEW = 'android_webview'
+    android_webview = MemberAlias('ANDROID_WEBVIEW')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "BrowserFamily", BrowserFamily)

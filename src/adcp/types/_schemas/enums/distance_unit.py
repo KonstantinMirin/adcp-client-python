@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/distance-unit.json', pointer='#')
 
@@ -15,12 +15,17 @@ class DistanceUnit(StrEnum):
     """Kilometers"""
 
 
+    km = MemberAlias('KM')
     MI = 'mi'
     """Miles"""
 
 
+    mi = MemberAlias('MI')
     M = 'm'
     """Meters"""
+
+
+    m = MemberAlias('M')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DistanceUnit", DistanceUnit)

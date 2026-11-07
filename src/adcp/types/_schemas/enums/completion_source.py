@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/completion-source.json', pointer='#')
 
@@ -15,8 +15,12 @@ class CompletionSource(StrEnum):
     """The party serving the ad witnessed and counted the completion event. Includes ad-server / player completion beacons, walled-garden first-party measurement, and IAB-certified first-party podcast measurement on the platform's own inventory. Source of truth is the seller's delivery infrastructure."""
 
 
+    seller_attested = MemberAlias('SELLER_ATTESTED')
     VENDOR_ATTESTED = 'vendor_attested'
     """An independent third-party measurement vendor (Nielsen, DV, IAS, Moat, HUMAN, Podtrac on third-party inventory, Edison Research panel, etc.) attested to the completion via SDK callbacks, server-beacon validation, or panel methodology. Source of truth is the vendor; vendor identity SHOULD be anchored on a matching `performance_standard.vendor` BrandRef in the buy contract — if a buyer wants vendor-attested completion for transparency without an accountability gate, they MAY commit a vendor metric via `vendor_metrics` on the product rather than `committed_metrics` with this qualifier."""
+
+
+    vendor_attested = MemberAlias('VENDOR_ATTESTED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CompletionSource", CompletionSource)

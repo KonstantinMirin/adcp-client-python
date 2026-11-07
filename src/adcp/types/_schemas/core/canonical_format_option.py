@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -22,19 +22,33 @@ from .tracker_execution_contract import TrackerExecutionContract
 
 class FormatKind(StrEnum):
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     HTML5 = 'html5'
+    html5 = MemberAlias('HTML5')
     DISPLAY_TAG = 'display_tag'
+    display_tag = MemberAlias('DISPLAY_TAG')
     IMAGE_CAROUSEL = 'image_carousel'
+    image_carousel = MemberAlias('IMAGE_CAROUSEL')
     VIDEO_HOSTED = 'video_hosted'
+    video_hosted = MemberAlias('VIDEO_HOSTED')
     VIDEO_VAST = 'video_vast'
+    video_vast = MemberAlias('VIDEO_VAST')
     AUDIO_HOSTED = 'audio_hosted'
+    audio_hosted = MemberAlias('AUDIO_HOSTED')
     AUDIO_VAST = 'audio_vast'
+    audio_vast = MemberAlias('AUDIO_VAST')
     AUDIO_DAAST = 'audio_daast'
+    audio_daast = MemberAlias('AUDIO_DAAST')
     SPONSORED_PLACEMENT = 'sponsored_placement'
+    sponsored_placement = MemberAlias('SPONSORED_PLACEMENT')
     NATIVE_IN_FEED = 'native_in_feed'
+    native_in_feed = MemberAlias('NATIVE_IN_FEED')
     RESPONSIVE_CREATIVE = 'responsive_creative'
+    responsive_creative = MemberAlias('RESPONSIVE_CREATIVE')
     AGENT_PLACEMENT = 'agent_placement'
+    agent_placement = MemberAlias('AGENT_PLACEMENT')
     CUSTOM = 'custom'
+    custom = MemberAlias('CUSTOM')
 
 
 class CanonicalFormatOption(AdCPBaseModel):

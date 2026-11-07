@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -41,7 +41,9 @@ class Code(StrEnum):
 
 class ReportingStatusSeverity(StrEnum):
     DELAYED = 'delayed'
+    delayed = MemberAlias('DELAYED')
     ACTION_REQUIRED = 'action_required'
+    action_required = MemberAlias('ACTION_REQUIRED')
 
 
 class IssueState(StrEnum):
@@ -49,26 +51,41 @@ class IssueState(StrEnum):
     Optional seller-maintained lifecycle for this issue_id. open is the default when omitted. acknowledged means a human on responsible_party has taken it up but the condition persists. resolved means the underlying condition no longer holds; a recurrence uses a new issue_id. waived means the parties agreed off-protocol to disregard this exact issue even though its underlying condition may still hold. Only open and acknowledged issues appear in issues[]; retiring an issue removes it from the projection rather than publishing it at resolved or waived, so a reader that treats a nonempty issues[] as degradation stays correct. A CONSUMER_STATUS_MISMATCH waiver follows the bilateral, exact-scope requirements in consumer_mismatch_lifecycle.
     """
     OPEN = 'open'
+    open = MemberAlias('OPEN')
     ACKNOWLEDGED = 'acknowledged'
+    acknowledged = MemberAlias('ACKNOWLEDGED')
     RESOLVED = 'resolved'
+    resolved = MemberAlias('RESOLVED')
     WAIVED = 'waived'
+    waived = MemberAlias('WAIVED')
 
 
 class ResponsibleParty(StrEnum):
     BUYER = 'buyer'
+    buyer = MemberAlias('BUYER')
     SELLER = 'seller'
+    seller = MemberAlias('SELLER')
     PROVIDER = 'provider'
+    provider = MemberAlias('PROVIDER')
 
 
 class RecommendedAction(StrEnum):
     WAIT_FOR_RETRY = 'wait_for_retry'
+    wait_for_retry = MemberAlias('WAIT_FOR_RETRY')
     CONTACT_BUYER = 'contact_buyer'
+    contact_buyer = MemberAlias('CONTACT_BUYER')
     CONTACT_SELLER = 'contact_seller'
+    contact_seller = MemberAlias('CONTACT_SELLER')
     CONTACT_PROVIDER = 'contact_provider'
+    contact_provider = MemberAlias('CONTACT_PROVIDER')
     REPAIR_ACCESS = 'repair_access'
+    repair_access = MemberAlias('REPAIR_ACCESS')
     UPDATE_CONFIGURATION = 'update_configuration'
+    update_configuration = MemberAlias('UPDATE_CONFIGURATION')
     CHANGE_REPORTING_SCOPE = 'change_reporting_scope'
+    change_reporting_scope = MemberAlias('CHANGE_REPORTING_SCOPE')
     USE_SUPPORTED_READER = 'use_supported_reader'
+    use_supported_reader = MemberAlias('USE_SUPPORTED_READER')
 
 
 class ReportingStatusIssue(AdCPBaseModel):

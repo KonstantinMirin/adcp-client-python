@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from .currency_code import CurrencyCode
@@ -20,11 +20,17 @@ class EmploymentType(StrEnum):
     Type of employment.
     """
     FULL_TIME = 'full_time'
+    full_time = MemberAlias('FULL_TIME')
     PART_TIME = 'part_time'
+    part_time = MemberAlias('PART_TIME')
     CONTRACT = 'contract'
+    contract = MemberAlias('CONTRACT')
     TEMPORARY = 'temporary'
+    temporary = MemberAlias('TEMPORARY')
     INTERNSHIP = 'internship'
+    internship = MemberAlias('INTERNSHIP')
     FREELANCE = 'freelance'
+    freelance = MemberAlias('FREELANCE')
 
 
 class ExperienceLevel(StrEnum):
@@ -32,10 +38,15 @@ class ExperienceLevel(StrEnum):
     Required experience level.
     """
     ENTRY_LEVEL = 'entry_level'
+    entry_level = MemberAlias('ENTRY_LEVEL')
     MID_LEVEL = 'mid_level'
+    mid_level = MemberAlias('MID_LEVEL')
     SENIOR = 'senior'
+    senior = MemberAlias('SENIOR')
     DIRECTOR = 'director'
+    director = MemberAlias('DIRECTOR')
     EXECUTIVE = 'executive'
+    executive = MemberAlias('EXECUTIVE')
 
 
 class Period(StrEnum):
@@ -43,8 +54,11 @@ class Period(StrEnum):
     Pay period.
     """
     HOUR = 'hour'
+    hour = MemberAlias('HOUR')
     MONTH = 'month'
+    month = MemberAlias('MONTH')
     YEAR = 'year'
+    year = MemberAlias('YEAR')
 
 
 class Salary(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/signal-source.json', pointer='#')
 
@@ -15,8 +15,12 @@ class SignalSource(StrEnum):
     """Signal from a data provider's published catalog. Referenced by data_provider_domain + id. Authorization can be verified by checking the data provider's adagents.json."""
 
 
+    catalog = MemberAlias('CATALOG')
     AGENT = 'agent'
     """Signal native to a signal source identified by agent_url. Referenced by agent_url + id. Not externally verifiable through an upstream catalog - buyer trusts the issuing source's claim about the signal."""
+
+
+    agent = MemberAlias('AGENT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SignalSource", SignalSource)

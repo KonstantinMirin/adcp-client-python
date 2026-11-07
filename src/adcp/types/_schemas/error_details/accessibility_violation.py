@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     ViolationsItemCriterion,
     ViolationsItemCriterionSource,
@@ -19,13 +19,21 @@ from adcp.types.constraints import (
 
 class FailureKind(StrEnum):
     ALT_TEXT_MISSING = 'alt_text_missing'
+    alt_text_missing = MemberAlias('ALT_TEXT_MISSING')
     CONTRAST_RATIO_INSUFFICIENT = 'contrast_ratio_insufficient'
+    contrast_ratio_insufficient = MemberAlias('CONTRAST_RATIO_INSUFFICIENT')
     CAPTIONS_MISSING = 'captions_missing'
+    captions_missing = MemberAlias('CAPTIONS_MISSING')
     TRANSCRIPT_MISSING = 'transcript_missing'
+    transcript_missing = MemberAlias('TRANSCRIPT_MISSING')
     KEYBOARD_NAVIGATION_FAILURE = 'keyboard_navigation_failure'
+    keyboard_navigation_failure = MemberAlias('KEYBOARD_NAVIGATION_FAILURE')
     FOCUS_ORDER_INVALID = 'focus_order_invalid'
+    focus_order_invalid = MemberAlias('FOCUS_ORDER_INVALID')
     ARIA_LABEL_MISSING = 'aria_label_missing'
+    aria_label_missing = MemberAlias('ARIA_LABEL_MISSING')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class ViolationsItem(AdCPBaseModel):

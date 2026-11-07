@@ -6,13 +6,16 @@ from typing import ClassVar
 
 from pydantic import ConfigDict, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 
 
 class Kind(StrEnum):
     NONE = 'none'
+    none = MemberAlias('NONE')
     RFC3986 = 'rfc3986'
+    rfc3986 = MemberAlias('RFC3986')
     IAB_VAST_URI = 'iab_vast_uri'
+    iab_vast_uri = MemberAlias('IAB_VAST_URI')
 
 
 class MacroEncoding(AdCPBaseModel):

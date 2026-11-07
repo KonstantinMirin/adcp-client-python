@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/dooh-motion-type.json', pointer='#')
 
@@ -15,12 +15,17 @@ class DOOHMotionType(StrEnum):
     """Screen supports full-motion video playback (e.g., LED billboards, transit screens with video capability)"""
 
 
+    full_motion = MemberAlias('FULL_MOTION')
     PARTIAL_MOTION = 'partial_motion'
     """Screen supports animated stills or limited motion (e.g., scrolling text, animated GIFs, HTML5 banners) but not full video"""
 
 
+    partial_motion = MemberAlias('PARTIAL_MOTION')
     STATIC = 'static'
     """Screen displays static images only (e.g., e-ink displays, printed poster replacements)"""
+
+
+    static = MemberAlias('STATIC')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DOOHMotionType", DOOHMotionType)

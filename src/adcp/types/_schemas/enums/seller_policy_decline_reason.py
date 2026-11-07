@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/seller-policy-decline-reason.json', pointer='#')
 
@@ -15,28 +15,37 @@ class SellerPolicyDeclineReason(StrEnum):
     """The seller cannot forecast or reserve the requested volume in the requested window."""
 
 
+    inventory = MemberAlias('INVENTORY')
     SHARE_OF_VOICE = 'share_of_voice'
     """The requested change would exceed a seller concentration cap, such as an advertiser, category, or section share limit."""
 
 
+    share_of_voice = MemberAlias('SHARE_OF_VOICE')
     MINIMUM_COMMITMENT = 'minimum_commitment'
     """The requested change would take the buy below a product-level or account-level minimum commitment."""
 
 
+    minimum_commitment = MemberAlias('MINIMUM_COMMITMENT')
     NOTICE_PERIOD = 'notice_period'
     """The change is permitted in general but was requested inside a seller notice window."""
 
 
+    notice_period = MemberAlias('NOTICE_PERIOD')
     CONTRACT_TERMS = 'contract_terms'
     """The product permits the right in general, but the right was not negotiated into this buy because of account tier, insertion-order terms, or a buy-level override."""
 
 
+    contract_terms = MemberAlias('CONTRACT_TERMS')
     FREQUENCY_CAP = 'frequency_cap'
     """The requested frequency-cap shape is incompatible with the seller's permitted exposure policy."""
 
 
+    frequency_cap = MemberAlias('FREQUENCY_CAP')
     OTHER = 'other'
     """Another seller-policy reason; the buyer-safe error message carries the explanation."""
+
+
+    other = MemberAlias('OTHER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SellerPolicyDeclineReason", SellerPolicyDeclineReason)

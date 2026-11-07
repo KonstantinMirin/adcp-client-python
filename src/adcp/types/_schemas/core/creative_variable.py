@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 
 class VariableType(StrEnum):
@@ -14,14 +14,23 @@ class VariableType(StrEnum):
     Data type of the variable. Each type represents a semantic content slot: text (headlines, body copy), image/video/audio (media URLs), url (clickthrough or tracking URLs), number (prices, counts), boolean (conditional flags like show_discount or is_raining), color (hex color values), date (ISO 8601 date-time for countdowns and offer expirations).
     """
     TEXT = 'text'
+    text = MemberAlias('TEXT')
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     VIDEO = 'video'
+    video = MemberAlias('VIDEO')
     AUDIO = 'audio'
+    audio = MemberAlias('AUDIO')
     URL = 'url'
+    url = MemberAlias('URL')
     NUMBER = 'number'
+    number = MemberAlias('NUMBER')
     BOOLEAN = 'boolean'
+    boolean = MemberAlias('BOOLEAN')
     COLOR = 'color'
+    color = MemberAlias('COLOR')
     DATE = 'date'
+    date = MemberAlias('DATE')
 
 
 class CreativeVariable(AdCPBaseModel):

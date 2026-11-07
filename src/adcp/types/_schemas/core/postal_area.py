@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import NotValue
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
@@ -146,7 +146,9 @@ class System(StrEnum):
     Country-local postal code system.
     """
     POSTAL_CODE = _VALUES_POSTAL_CODE_CUSTOM[0]
+    postal_code = MemberAlias('POSTAL_CODE')
     CUSTOM = _VALUES_POSTAL_CODE_CUSTOM[1]
+    custom = MemberAlias('CUSTOM')
 
 
 class PostalAreaBranch9(PostalAreaCountrySystemValues, PostalCountrySystemBranch9):

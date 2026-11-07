@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/landing-page-requirement.json', pointer='#')
 
@@ -12,8 +12,11 @@ class LandingPageRequirement(StrEnum):
     Landing page policy for creative click-through destinations
     """
     ANY = 'any'
+    any = MemberAlias('ANY')
     RETAILER_SITE_ONLY = 'retailer_site_only'
+    retailer_site_only = MemberAlias('RETAILER_SITE_ONLY')
     MUST_INCLUDE_RETAILER = 'must_include_retailer'
+    must_include_retailer = MemberAlias('MUST_INCLUDE_RETAILER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "LandingPageRequirement", LandingPageRequirement)

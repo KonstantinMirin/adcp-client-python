@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/webhook-security-method.json', pointer='#')
 
@@ -12,8 +12,11 @@ class WebhookSecurityMethod(StrEnum):
     Security methods for authenticating webhook requests
     """
     HMAC_SHA256 = 'hmac_sha256'
+    hmac_sha256 = MemberAlias('HMAC_SHA256')
     API_KEY = 'api_key'
+    api_key = MemberAlias('API_KEY')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "WebhookSecurityMethod", WebhookSecurityMethod)

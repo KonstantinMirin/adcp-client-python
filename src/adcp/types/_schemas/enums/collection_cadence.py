@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/collection-cadence.json', pointer='#')
 
@@ -15,24 +15,32 @@ class CollectionCadence(StrEnum):
     """New installments every day or weekday"""
 
 
+    daily = MemberAlias('DAILY')
     WEEKLY = 'weekly'
     """New installments weekly"""
 
 
+    weekly = MemberAlias('WEEKLY')
     MONTHLY = 'monthly'
     """New installments monthly (magazines, newsletters)"""
 
 
+    monthly = MemberAlias('MONTHLY')
     SEASONAL = 'seasonal'
     """Installments released in defined seasons with breaks between"""
 
 
+    seasonal = MemberAlias('SEASONAL')
     EVENT = 'event'
     """One-time or occasional special events"""
 
 
+    event = MemberAlias('EVENT')
     IRREGULAR = 'irregular'
     """No predictable schedule"""
+
+
+    irregular = MemberAlias('IRREGULAR')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CollectionCadence", CollectionCadence)

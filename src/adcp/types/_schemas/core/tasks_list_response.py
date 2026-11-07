@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from ..enums.sort_direction import SortDirection
 from ..enums.task_status import TaskStatus
@@ -65,7 +65,9 @@ class Domain(StrEnum):
     """
     MEDIA_BUY = 'media-buy'
     SIGNALS = 'signals'
+    signals = MemberAlias('SIGNALS')
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
 
 
 class TasksItem(AdCPBaseModel):

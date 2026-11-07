@@ -485,6 +485,24 @@ identifier, where two values would re-case onto one attribute, and where the ali
 with a canonical member. Those are reported with their counts, not silently skipped — a member
 upstream spells and we cannot is a migration-guide entry, by the pair rule above.
 
+**AND A FOURTH REASON, WHICH THE IMPLEMENTATION MEASURED AND THESE THREE DID NOT NAME**: where the
+value verbatim is a name the **enumeration itself already resolves**. `"name"` and `"value"` are
+live enum values of this bundle, so the first tree emitted under this clause carried
+`name = MemberAlias('NAME')` and `Kind.NAME.name` returned the MEMBER — `enum.Enum.name`'s own
+descriptor shadowed by a class-body line, the enum protocol broken on a class whose document says
+nothing about Python attributes. `pass` and `global` are live values too, and their verbatim
+spellings are KEYWORDS: four modules that do not parse. The three above are collisions with
+something a *document* put in the class; this one is a collision with the *language*, and it is
+counted on its own terms rather than folded into one of them
+(`codegen.lower.enum.ALIAS_REFUSALS`, `adcp.types._base.MEMBER_NAMES_TAKEN`). **Measured over the
+3.2 bundle: 4,031 member spellings over 751 emitted enumerations — 3,514 aliased, 241 not an
+identifier (4 of them keywords), 259 already the canonical name and so owing nothing, 17 taken by
+the base, and 0 re-casing inside a class.** The re-casing case is empty by construction and not by
+luck: §5's `enum` row already sends a node whose two values spell one member name to a `Literal`
+with no class and no member names at all, so the bundle's one collision
+(`formats/canonical/html5.json#/properties/clicktag_macro`, `clickTag`/`clickTAG`) is a
+migration-guide entry at the NODE, where both spellings are gone.
+
 **An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
 export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
 that is a second class is the duplication this whole project exists to remove, arriving as

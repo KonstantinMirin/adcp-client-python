@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     BrandDiscoveryAgentId,
     StrMaxLen50,
@@ -79,14 +79,23 @@ class VerifyParentClaim(VerifyBrandClaimRequest):
 
 class Store(StrEnum):
     APPLE = 'apple'
+    apple = MemberAlias('APPLE')
     GOOGLE = 'google'
+    google = MemberAlias('GOOGLE')
     AMAZON = 'amazon'
+    amazon = MemberAlias('AMAZON')
     ROKU = 'roku'
+    roku = MemberAlias('ROKU')
     FIRE_TV = 'fire_tv'
+    fire_tv = MemberAlias('FIRE_TV')
     SAMSUNG = 'samsung'
+    samsung = MemberAlias('SAMSUNG')
     LG = 'lg'
+    lg = MemberAlias('LG')
     VIZIO = 'vizio'
+    vizio = MemberAlias('VIZIO')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class ObjTypeIdentifierStoreRegion(AdCPBaseModel):

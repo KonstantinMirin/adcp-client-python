@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='core/frequency-cap-duration-unit.json', pointer='#')
 
@@ -12,10 +12,15 @@ class FrequencyCapDurationUnit(StrEnum):
     A duration unit supported for a frequency-cap window or suppression period.
     """
     SECONDS = 'seconds'
+    seconds = MemberAlias('SECONDS')
     MINUTES = 'minutes'
+    minutes = MemberAlias('MINUTES')
     HOURS = 'hours'
+    hours = MemberAlias('HOURS')
     DAYS = 'days'
+    days = MemberAlias('DAYS')
     CAMPAIGN = 'campaign'
+    campaign = MemberAlias('CAMPAIGN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "FrequencyCapDurationUnit", FrequencyCapDurationUnit)

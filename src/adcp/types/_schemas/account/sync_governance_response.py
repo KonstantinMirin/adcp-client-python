@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -40,7 +40,9 @@ class Status(StrEnum):
     Sync result. synced: governance agents persisted. failed: could not complete (see errors).
     """
     SYNCED = 'synced'
+    synced = MemberAlias('SYNCED')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
 
 
 class AccountsItem(AdCPBaseModel):

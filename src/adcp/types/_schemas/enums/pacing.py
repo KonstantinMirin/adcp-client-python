@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/pacing.json', pointer='#')
 
@@ -15,12 +15,17 @@ class Pacing(StrEnum):
     """Allocate remaining budget evenly over remaining campaign duration (default)"""
 
 
+    even = MemberAlias('EVEN')
     ASAP = 'asap'
     """Spend remaining budget as quickly as possible"""
 
 
+    asap = MemberAlias('ASAP')
     FRONT_LOADED = 'front_loaded'
     """Allocate more remaining budget earlier in the remaining campaign period"""
+
+
+    front_loaded = MemberAlias('FRONT_LOADED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "Pacing", Pacing)

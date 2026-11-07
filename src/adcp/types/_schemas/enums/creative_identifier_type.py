@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/creative-identifier-type.json', pointer='#')
 
@@ -15,16 +15,22 @@ class CreativeIdentifierType(StrEnum):
     """Ad-ID registry code. Common for US television workflows and accepted by some radio/audio workflows. Often 12-character alphanumeric (4-character company prefix + 8-character unique identifier, e.g., ABCD1234000H). Managed by the Ad-ID registry (ad-id.org). Ties creative assets to rotation instructions and traffic systems."""
 
 
+    ad_id = MemberAlias('AD_ID')
     ISCI = 'isci'
     """Industry Standard Coding Identification. Longstanding creative identifier still used by broadcast radio and legacy traffic systems, sometimes interchangeably with Ad-ID in audio workflows."""
 
 
+    isci = MemberAlias('ISCI')
     CLEARCAST_CLOCK = 'clearcast_clock'
     """Clearcast clock number. UK broadcast creative identifier assigned during the Clearcast clearance process and used from clearance through transmission and reporting."""
 
 
+    clearcast_clock = MemberAlias('CLEARCAST_CLOCK')
     IDCREA = 'idcrea'
     """IDcrea identifier. French ARPP.PUB creative identifier for current ARPP.PUB workflows; historical PubID values remain valid for older creatives."""
+
+
+    idcrea = MemberAlias('IDCREA')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CreativeIdentifierType", CreativeIdentifierType)

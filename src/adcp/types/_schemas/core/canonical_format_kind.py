@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='core/canonical-format-kind.json', pointer='#')
 
@@ -12,21 +12,37 @@ class CanonicalFormatKind(StrEnum):
     Discriminator naming one of the 15 AdCP 3.2 canonical creative formats, plus `custom` for adopter-defined shapes. AdCP 3.2 adds `audio_vast` for VAST-tag-delivered audio (the standards-conformant profile starts at VAST 4.1, with older versions available only as seller-declared legacy interoperability) and promotes the legacy `multi_state_display` and `multi_placement_takeover` custom shapes to `seller_rendered_stateful_display` and `coordinated_placements`. When `format_kind` is `custom`, the declaration also carries `format_shape` and `format_schema`. The enum mirrors the branches in `product-format-declaration.json` and is closed for producer validation: sellers do not mint ad-hoc values. SDKs may retain unknown future values in tolerant in-memory parsers, but that does not change versioned JSON Schema validation. A seller responding to a 3.1-or-earlier request MUST project away 3.2-only kinds and emit a compatible legacy declaration; a strict older schema correctly rejects an unprojected newer kind. See adcp#3666 and the promotion migration contract in canonical-formats.mdx.
     """
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     HTML5 = 'html5'
+    html5 = MemberAlias('HTML5')
     DISPLAY_TAG = 'display_tag'
+    display_tag = MemberAlias('DISPLAY_TAG')
     IMAGE_CAROUSEL = 'image_carousel'
+    image_carousel = MemberAlias('IMAGE_CAROUSEL')
     VIDEO_HOSTED = 'video_hosted'
+    video_hosted = MemberAlias('VIDEO_HOSTED')
     VIDEO_VAST = 'video_vast'
+    video_vast = MemberAlias('VIDEO_VAST')
     AUDIO_HOSTED = 'audio_hosted'
+    audio_hosted = MemberAlias('AUDIO_HOSTED')
     AUDIO_VAST = 'audio_vast'
+    audio_vast = MemberAlias('AUDIO_VAST')
     AUDIO_DAAST = 'audio_daast'
+    audio_daast = MemberAlias('AUDIO_DAAST')
     SPONSORED_PLACEMENT = 'sponsored_placement'
+    sponsored_placement = MemberAlias('SPONSORED_PLACEMENT')
     NATIVE_IN_FEED = 'native_in_feed'
+    native_in_feed = MemberAlias('NATIVE_IN_FEED')
     RESPONSIVE_CREATIVE = 'responsive_creative'
+    responsive_creative = MemberAlias('RESPONSIVE_CREATIVE')
     AGENT_PLACEMENT = 'agent_placement'
+    agent_placement = MemberAlias('AGENT_PLACEMENT')
     SELLER_RENDERED_STATEFUL_DISPLAY = 'seller_rendered_stateful_display'
+    seller_rendered_stateful_display = MemberAlias('SELLER_RENDERED_STATEFUL_DISPLAY')
     COORDINATED_PLACEMENTS = 'coordinated_placements'
+    coordinated_placements = MemberAlias('COORDINATED_PLACEMENTS')
     CUSTOM = 'custom'
+    custom = MemberAlias('CUSTOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CanonicalFormatKind", CanonicalFormatKind)

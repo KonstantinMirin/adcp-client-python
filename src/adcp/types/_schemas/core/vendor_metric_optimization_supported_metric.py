@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..common._vocabularies import _VALUES_COST_PER_THRESHOLD_RATE
@@ -16,7 +16,9 @@ from .vendor_metric_id import VendorMetricID
 
 class SupportedTargetsItem(StrEnum):
     COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    cost_per = MemberAlias('COST_PER')
     THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
+    threshold_rate = MemberAlias('THRESHOLD_RATE')
 
 
 class VendorMetricOptimizationSupportedMetric(AdCPBaseModel):

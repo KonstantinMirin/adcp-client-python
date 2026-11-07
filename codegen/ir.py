@@ -467,6 +467,24 @@ class Member:
     #: harness draws or validates reads an annotation that changes no accepted set, so
     #: only a reader of the emitted module notices the loss.
     description: str | None = None
+    #: **The member's SECOND spelling: the value verbatim, as a class-body line beside
+    #: the canonical one** (``adcp.types._base.MemberAlias``), or ``None`` where the
+    #: spelling cannot be an attribute of this class.
+    #:
+    #: ``docs/plan/final-state.md`` reading 10 at ATTRIBUTE granularity.  Our members are
+    #: ``UPPER_SNAKE`` and ``datamodel-code-generator``'s are the value verbatim;
+    #: ``core/error.json`` states the value list ``transient|correctable|terminal`` and
+    #: nothing about the attribute a caller types, so neither spelling is the document's
+    #: and carrying both widens nothing -- ``Recovery.transient is Recovery.TRANSIENT``,
+    #: ``__members__`` unmoved, no value set touched, no fact attributed.
+    #:
+    #: ``None`` is one of :data:`codegen.lower.enum.ALIAS_REFUSALS`' three cases and is
+    #: never a silence: ``codegen.lower.enum.member_aliases`` is the one derivation and it
+    #: returns the refusal beside the alias, so a spelling upstream has and we do not is
+    #: COUNTED.  Defaulting to ``None`` is also what keeps a hand-built ``Member`` free of
+    #: one: the spelling is decided over a whole member SET (the collision cases are
+    #: about the other members' names) and cannot be read off one member alone.
+    alias: str | None = None
 
 
 @dataclass(frozen=True)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/action-not-allowed-reason.json', pointer='#')
 
@@ -15,20 +15,27 @@ class ActionNotAllowedReason(StrEnum):
     """The action is supported by the product and the buy, but the buy's current status does not permit it. Recovery: transition the buy to an allowed status (or wait for one) before retrying."""
 
 
+    wrong_status = MemberAlias('WRONG_STATUS')
     NOT_SUPPORTED_ON_PRODUCT = 'not_supported_on_product'
     """The product does not declare this action in its `allowed_actions[]`. Recovery: not retryable on this buy. Buyer must select a different product for future buys requiring this action."""
 
 
+    not_supported_on_product = MemberAlias('NOT_SUPPORTED_ON_PRODUCT')
     NOT_SUPPORTED_ON_BUY = 'not_supported_on_buy'
     """The product would permit the action in general but the specific buy was negotiated without this capability (account tier, IO terms, or buy-level override). Recovery: not retryable; renegotiate buy terms."""
 
 
+    not_supported_on_buy = MemberAlias('NOT_SUPPORTED_ON_BUY')
     MODE_MISMATCH = 'mode_mismatch'
     """The action is available but only in a mode the buyer's request did not satisfy (for example, a mutation that requires approval was issued as a direct self-serve update). Recovery is a flow switch, not a retry against the same task: follow the mode indicated by `available_actions[<action>].mode` (e.g. wait for the seller's webhook for `requires_approval`). Requotes are not modeled as an action mode in 3.1; sellers use REQUOTE_REQUIRED when the requested update exceeds the current quoted envelope."""
 
 
+    mode_mismatch = MemberAlias('MODE_MISMATCH')
     CONDITION_UNRESOLVED = 'condition_unresolved'
     """The negotiated action is scoped to the current status, but the seller cannot establish that an opaque condition is satisfied. Recovery: do not issue the mutation until the seller can resolve the condition and advertises the action in the current available_actions projection."""
+
+
+    condition_unresolved = MemberAlias('CONDITION_UNRESOLVED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ActionNotAllowedReason", ActionNotAllowedReason)

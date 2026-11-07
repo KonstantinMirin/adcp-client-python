@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types.constraints import AgentReportingDestinationFileTransferDestinationTransport
 
 from .reporting_dataset_share_destination import ReportingDatasetShareDestination
@@ -31,7 +31,9 @@ class ReportingOrchestration(StrEnum):
     Party responsible for starting, configuring, and monitoring the delivery operation. Independent of destination ownership and the service that moves the data.
     """
     PRODUCER_MANAGED = 'producer_managed'
+    producer_managed = MemberAlias('PRODUCER_MANAGED')
     CONSUMER_MANAGED = 'consumer_managed'
+    consumer_managed = MemberAlias('CONSUMER_MANAGED')
 
 
 class FileFormat(StrEnum):
@@ -39,10 +41,15 @@ class FileFormat(StrEnum):
     Physical file format.
     """
     JSONL = 'jsonl'
+    jsonl = MemberAlias('JSONL')
     CSV = 'csv'
+    csv = MemberAlias('CSV')
     PARQUET = 'parquet'
+    parquet = MemberAlias('PARQUET')
     AVRO = 'avro'
+    avro = MemberAlias('AVRO')
     ORC = 'orc'
+    orc = MemberAlias('ORC')
 
 
 class ReportingDeliveryMethodFileTransfer(ReportingDeliveryMethod):

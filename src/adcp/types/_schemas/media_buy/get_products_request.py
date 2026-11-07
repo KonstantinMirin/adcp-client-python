@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 from adcp.types.envelopes import AdcpRequest
@@ -38,8 +38,11 @@ class BuyingMode(StrEnum):
     Declares buyer intent for this request. 'brief': publisher curates product recommendations from the provided brief. 'wholesale': buyer requests raw product inventory to apply their own audiences — brief must not be provided, and proposals are omitted. 'refine': iterate on products and proposals from a previous get_products response using the refine array of change requests. v3 clients MUST include buying_mode. Sellers receiving requests from pre-v3 clients without buying_mode SHOULD default to 'brief'. Timing semantics: 'wholesale' is a wholesale product feed read — sellers SHOULD return a synchronous response and MUST NOT route a 'wholesale' request through the async/Submitted arm; partial completion is signalled via the response's incomplete[] field (with optional estimated_wait), not via a task-handoff envelope. 'brief' and 'refine' MAY complete synchronously, or MAY return a Submitted envelope (see get-products-async-response-submitted.json) when curation requires upstream-system queries or HITL review the seller cannot complete inside time_budget. Buyers needing predictable fast wholesale product feed access MUST use 'wholesale'; buyers open to slower curation use 'brief' or 'refine'.
     """
     BRIEF = 'brief'
+    brief = MemberAlias('BRIEF')
     WHOLESALE = 'wholesale'
+    wholesale = MemberAlias('WHOLESALE')
     REFINE = 'refine'
+    refine = MemberAlias('REFINE')
 
 
 class ObjScopeAsk(AdCPBaseModel):
@@ -56,8 +59,11 @@ class RefineItemProductAction(StrEnum):
     'include' (default): return this product with updated pricing and data. 'omit': exclude this product from the response. 'more_like_this': find additional products similar to this one (the original is also returned). Optional — when omitted, the seller treats the entry as action: 'include'.
     """
     INCLUDE = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[0]
+    include = MemberAlias('INCLUDE')
     OMIT = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[1]
+    omit = MemberAlias('OMIT')
     MORE_LIKE_THIS = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[2]
+    more_like_this = MemberAlias('MORE_LIKE_THIS')
 
 
 class ObjScopeProductIdActionAsk(AdCPBaseModel):
@@ -78,8 +84,11 @@ class RefineItemProposalAction(StrEnum):
     Legacy finalize is exclusive within the parent `refine[]` array: see the array-level description for the finalize-exclusivity rule (mixing finalize with non-finalize entries is rejected) and multi-finalize atomicity contract.
     """
     INCLUDE = _VALUES_INCLUDE_OMIT_FINALIZE[0]
+    include = MemberAlias('INCLUDE')
     OMIT = _VALUES_INCLUDE_OMIT_FINALIZE[1]
+    omit = MemberAlias('OMIT')
     FINALIZE = _VALUES_INCLUDE_OMIT_FINALIZE[2]
+    finalize = MemberAlias('FINALIZE')
 
 
 class ObjScopeProposalIdActionAsk(AdCPBaseModel):
@@ -95,22 +104,39 @@ class ObjScopeProposalIdActionAsk(AdCPBaseModel):
 
 class FieldsItem(StrEnum):
     FORMAT_IDS = 'format_ids'
+    format_ids = MemberAlias('FORMAT_IDS')
     OUTCOME_MEASUREMENT = 'outcome_measurement'
+    outcome_measurement = MemberAlias('OUTCOME_MEASUREMENT')
     DELIVERY_MEASUREMENT = 'delivery_measurement'
+    delivery_measurement = MemberAlias('DELIVERY_MEASUREMENT')
     CREATIVE_POLICY = 'creative_policy'
+    creative_policy = MemberAlias('CREATIVE_POLICY')
     METRIC_OPTIMIZATION = 'metric_optimization'
+    metric_optimization = MemberAlias('METRIC_OPTIMIZATION')
     CONVERSION_TRACKING = 'conversion_tracking'
+    conversion_tracking = MemberAlias('CONVERSION_TRACKING')
     DATA_PROVIDER_SIGNALS = 'data_provider_signals'
+    data_provider_signals = MemberAlias('DATA_PROVIDER_SIGNALS')
     INCLUDED_SIGNALS = 'included_signals'
+    included_signals = MemberAlias('INCLUDED_SIGNALS')
     SIGNAL_TARGETING_OPTIONS = 'signal_targeting_options'
+    signal_targeting_options = MemberAlias('SIGNAL_TARGETING_OPTIONS')
     OVERLAY_SUPPORT = 'overlay_support'
+    overlay_support = MemberAlias('OVERLAY_SUPPORT')
     MEDIA_BUY_SUPPORT = 'media_buy_support'
+    media_buy_support = MemberAlias('MEDIA_BUY_SUPPORT')
     INSTALLMENTS = 'installments'
+    installments = MemberAlias('INSTALLMENTS')
     IS_CUSTOM = 'is_custom'
+    is_custom = MemberAlias('IS_CUSTOM')
     PRODUCT_CARD = 'product_card'
+    product_card = MemberAlias('PRODUCT_CARD')
     PRODUCT_CARD_DETAILED = 'product_card_detailed'
+    product_card_detailed = MemberAlias('PRODUCT_CARD_DETAILED')
     ENFORCED_POLICIES = 'enforced_policies'
+    enforced_policies = MemberAlias('ENFORCED_POLICIES')
     TRUSTED_MATCH = 'trusted_match'
+    trusted_match = MemberAlias('TRUSTED_MATCH')
 
 
 class TimeBudget(Duration):

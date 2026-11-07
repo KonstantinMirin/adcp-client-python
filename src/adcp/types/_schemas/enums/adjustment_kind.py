@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/adjustment-kind.json', pointer='#')
 
@@ -15,16 +15,22 @@ class PriceAdjustmentKind(StrEnum):
     """Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification)."""
 
 
+    fee = MemberAlias('FEE')
     DISCOUNT = 'discount'
     """Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking)."""
 
 
+    discount = MemberAlias('DISCOUNT')
     COMMISSION = 'commission'
     """Does not change the buyer's price or budget. Represents a revenue split — the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions."""
 
 
+    commission = MemberAlias('COMMISSION')
     SETTLEMENT = 'settlement'
     """Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."""
+
+
+    settlement = MemberAlias('SETTLEMENT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PriceAdjustmentKind", PriceAdjustmentKind)

@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     ConsultationContext,
@@ -34,7 +34,9 @@ class CheckType(StrEnum):
     Check shape that produced the verdict. Required for the cross-role governance_enforcement contract. Its presence selects the modern verdict-specific response rules; its absence selects the deprecated legacy 3.x compatibility shape. Intent checks may return conditions; execution checks are binary approved or denied.
     """
     INTENT = 'intent'
+    intent = MemberAlias('INTENT')
     EXECUTION = 'execution'
+    execution = MemberAlias('EXECUTION')
 
 
 class FindingsItem(AdCPBaseModel):

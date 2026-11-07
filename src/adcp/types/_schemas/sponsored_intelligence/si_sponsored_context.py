@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from ..core.brand_ref import BrandReference
 from ..core.domain_name import DomainName
@@ -48,12 +48,17 @@ class Timing(StrEnum):
     """Disclose before the host uses the sponsored context."""
 
 
+    before_use = MemberAlias('BEFORE_USE')
     AT_FIRST_INFLUENCED_OUTPUT = 'at_first_influenced_output'
     """Disclose at the first host output influenced by the sponsored context."""
 
 
+    at_first_influenced_output = MemberAlias('AT_FIRST_INFLUENCED_OUTPUT')
     NEAR_EACH_INFLUENCED_OUTPUT = 'near_each_influenced_output'
     """Disclose near each output that presents, compares, or is materially influenced by the sponsored context."""
+
+
+    near_each_influenced_output = MemberAlias('NEAR_EACH_INFLUENCED_OUTPUT')
 
 
 class Proximity(StrEnum):
@@ -64,12 +69,17 @@ class Proximity(StrEnum):
     """A session-level disclosure is sufficient."""
 
 
+    session_level = MemberAlias('SESSION_LEVEL')
     NEAR_RENDERED_UNIT = 'near_rendered_unit'
     """Disclosure should appear near the sponsored card, answer block, handoff, or other rendered unit."""
 
 
+    near_rendered_unit = MemberAlias('NEAR_RENDERED_UNIT')
     NEAR_INFLUENCED_OUTPUT = 'near_influenced_output'
     """Disclosure should appear near the host output that was shaped by the sponsored context, even if no single rendered unit is the ad."""
+
+
+    near_influenced_output = MemberAlias('NEAR_INFLUENCED_OUTPUT')
 
 
 class JurisdictionsItem(AdCPBaseModel):
@@ -102,9 +112,13 @@ class Role(StrEnum):
     Role of the declaring party.
     """
     BRAND_AGENT = 'brand_agent'
+    brand_agent = MemberAlias('BRAND_AGENT')
     SELLER = 'seller'
+    seller = MemberAlias('SELLER')
     NETWORK = 'network'
+    network = MemberAlias('NETWORK')
     PLATFORM = 'platform'
+    platform = MemberAlias('PLATFORM')
 
 
 class DeclaredBy(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from .package_signal_targeting import PackageSignalTargeting
 
@@ -16,7 +16,9 @@ class Operator(StrEnum):
     How to evaluate the signals in this group. 'any' is an OR include group. 'none' is an exclusion group equivalent to NOT (A OR B OR C).
     """
     ANY = 'any'
+    any = MemberAlias('ANY')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 class PackageSignalTargetingGroup(AdCPBaseModel):

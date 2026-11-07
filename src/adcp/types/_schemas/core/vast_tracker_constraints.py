@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
@@ -16,38 +16,68 @@ from ._vocabularies import _VALUES_LINEAR_NON_LINEAR_COMPANION
 
 class VastEvent(StrEnum):
     CREATIVEVIEW = 'creativeView'
+    creativeView = MemberAlias('CREATIVEVIEW')
     LOADED = 'loaded'
+    loaded = MemberAlias('LOADED')
     START = 'start'
+    start = MemberAlias('START')
     FIRSTQUARTILE = 'firstQuartile'
+    firstQuartile = MemberAlias('FIRSTQUARTILE')
     MIDPOINT = 'midpoint'
+    midpoint = MemberAlias('MIDPOINT')
     THIRDQUARTILE = 'thirdQuartile'
+    thirdQuartile = MemberAlias('THIRDQUARTILE')
     COMPLETE = 'complete'
+    complete = MemberAlias('COMPLETE')
     MUTE = 'mute'
+    mute = MemberAlias('MUTE')
     UNMUTE = 'unmute'
+    unmute = MemberAlias('UNMUTE')
     PAUSE = 'pause'
+    pause = MemberAlias('PAUSE')
     RESUME = 'resume'
+    resume = MemberAlias('RESUME')
     REWIND = 'rewind'
+    rewind = MemberAlias('REWIND')
     SKIP = 'skip'
+    skip = MemberAlias('SKIP')
     PLAYEREXPAND = 'playerExpand'
+    playerExpand = MemberAlias('PLAYEREXPAND')
     PLAYERCOLLAPSE = 'playerCollapse'
+    playerCollapse = MemberAlias('PLAYERCOLLAPSE')
     FULLSCREEN = 'fullscreen'
+    fullscreen = MemberAlias('FULLSCREEN')
     EXITFULLSCREEN = 'exitFullscreen'
+    exitFullscreen = MemberAlias('EXITFULLSCREEN')
     PROGRESS = 'progress'
+    progress = MemberAlias('PROGRESS')
     ACCEPTINVITATION = 'acceptInvitation'
+    acceptInvitation = MemberAlias('ACCEPTINVITATION')
     ADEXPAND = 'adExpand'
+    adExpand = MemberAlias('ADEXPAND')
     ADCOLLAPSE = 'adCollapse'
+    adCollapse = MemberAlias('ADCOLLAPSE')
     MINIMIZE = 'minimize'
+    minimize = MemberAlias('MINIMIZE')
     OVERLAYVIEWDURATION = 'overlayViewDuration'
+    overlayViewDuration = MemberAlias('OVERLAYVIEWDURATION')
     OTHERADINTERACTION = 'otherAdInteraction'
+    otherAdInteraction = MemberAlias('OTHERADINTERACTION')
     INTERACTIVESTART = 'interactiveStart'
+    interactiveStart = MemberAlias('INTERACTIVESTART')
     CLOSE = 'close'
+    close = MemberAlias('CLOSE')
     CLOSELINEAR = 'closeLinear'
+    closeLinear = MemberAlias('CLOSELINEAR')
 
 
 class VastTarget(StrEnum):
     LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[0]
+    linear = MemberAlias('LINEAR')
     NON_LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[1]
+    non_linear = MemberAlias('NON_LINEAR')
     COMPANION = _VALUES_LINEAR_NON_LINEAR_COMPANION[2]
+    companion = MemberAlias('COMPANION')
 
 
 VastOffset = DAASTTrackerAssetOffset

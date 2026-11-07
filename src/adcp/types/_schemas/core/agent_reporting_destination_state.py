@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, HttpUrl, StrMinLen1MaxLen255
 
@@ -17,9 +17,13 @@ from .error import Error
 
 class Action(StrEnum):
     GRANT_ACCESS = 'grant_access'
+    grant_access = MemberAlias('GRANT_ACCESS')
     ACCEPT_SHARE = 'accept_share'
+    accept_share = MemberAlias('ACCEPT_SHARE')
     PROVE_CONTROL = 'prove_control'
+    prove_control = MemberAlias('PROVE_CONTROL')
     CONTACT_SUPPORT = 'contact_support'
+    contact_support = MemberAlias('CONTACT_SUPPORT')
 
 
 class Setup(AdCPBaseModel):

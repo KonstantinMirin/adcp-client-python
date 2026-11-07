@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types.constraints import IntMin1, StrMinLen1
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -57,9 +57,13 @@ class Action(StrEnum):
     Action taken for this account. created: new account provisioned. updated: existing account modified. unchanged: no changes needed. failed: could not process (see errors).
     """
     CREATED = 'created'
+    created = MemberAlias('CREATED')
     UPDATED = 'updated'
+    updated = MemberAlias('UPDATED')
     UNCHANGED = 'unchanged'
+    unchanged = MemberAlias('UNCHANGED')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
 
 
 class AccountsItem(AdCPBaseModel):

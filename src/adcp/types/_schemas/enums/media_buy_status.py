@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/media-buy-status.json', pointer='#')
 
@@ -15,28 +15,37 @@ class MediaBuyStatus(StrEnum):
     """**Buyer-side action required.** The media buy is approved by the seller and has no creatives assigned — the buyer must attach creatives via `sync_creatives` before the buy can serve. Not to be confused with a publisher-side or governance-side approval queue: the seller has already accepted the buy; only the buyer's creative submission is missing. Naming convention: `pending_X` names the lifecycle phase that is next required (here, `creatives`), not a state of waiting on seller/operator approval — consistent with `pending_start` (waiting for the flight date to begin)."""
 
 
+    pending_creatives = MemberAlias('PENDING_CREATIVES')
     PENDING_START = 'pending_start'
     """Media buy is ready to serve and waiting for its flight date to begin."""
 
 
+    pending_start = MemberAlias('PENDING_START')
     ACTIVE = 'active'
     """Media buy is currently running"""
 
 
+    active = MemberAlias('ACTIVE')
     PAUSED = 'paused'
     """Media buy is temporarily paused"""
 
 
+    paused = MemberAlias('PAUSED')
     COMPLETED = 'completed'
     """Media buy has finished running"""
 
 
+    completed = MemberAlias('COMPLETED')
     REJECTED = 'rejected'
     """Media buy was declined by the seller after creation"""
 
 
+    rejected = MemberAlias('REJECTED')
     CANCELED = 'canceled'
     """Media buy was terminated before natural completion. Check cancellation.canceled_by to determine whether the buyer or seller initiated."""
+
+
+    canceled = MemberAlias('CANCELED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MediaBuyStatus", MediaBuyStatus)

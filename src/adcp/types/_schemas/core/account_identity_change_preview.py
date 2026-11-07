@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import AtLeastOne
 from adcp.types.constraints import StrMinLen1MaxLen1000
 
@@ -28,19 +28,30 @@ class AccountIdentityChangePreview(BranchDispatchMixin, AdCPBaseModel):
 
 class Area(StrEnum):
     ACCOUNT_ID = 'account_id'
+    account_id = MemberAlias('ACCOUNT_ID')
     MEDIA_BUYS = 'media_buys'
+    media_buys = MemberAlias('MEDIA_BUYS')
     REPORTING = 'reporting'
+    reporting = MemberAlias('REPORTING')
     APPROVAL = 'approval'
+    approval = MemberAlias('APPROVAL')
     BILLING = 'billing'
+    billing = MemberAlias('BILLING')
     GRANTS = 'grants'
+    grants = MemberAlias('GRANTS')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class ImpactEffect(StrEnum):
     PRESERVED = 'preserved'
+    preserved = MemberAlias('PRESERVED')
     REVALIDATION_REQUIRED = 'revalidation_required'
+    revalidation_required = MemberAlias('REVALIDATION_REQUIRED')
     REVOKE_AND_REGRANT = 'revoke_and_regrant'
+    revoke_and_regrant = MemberAlias('REVOKE_AND_REGRANT')
     BLOCKED = 'blocked'
+    blocked = MemberAlias('BLOCKED')
 
 
 class Impact(AdCPBaseModel):
@@ -55,8 +66,11 @@ class Impact(AdCPBaseModel):
 
 class NonblockingImpactsItemEffect(StrEnum):
     PRESERVED = 'preserved'
+    preserved = MemberAlias('PRESERVED')
     REVALIDATION_REQUIRED = 'revalidation_required'
+    revalidation_required = MemberAlias('REVALIDATION_REQUIRED')
     REVOKE_AND_REGRANT = 'revoke_and_regrant'
+    revoke_and_regrant = MemberAlias('REVOKE_AND_REGRANT')
 
 
 class NonblockingImpactsItem(Impact):

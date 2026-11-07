@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/disclosure-position.json', pointer='#')
 
@@ -12,13 +12,21 @@ class DisclosurePosition(StrEnum):
     Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.
     """
     PROMINENT = 'prominent'
+    prominent = MemberAlias('PROMINENT')
     FOOTER = 'footer'
+    footer = MemberAlias('FOOTER')
     AUDIO = 'audio'
+    audio = MemberAlias('AUDIO')
     SUBTITLE = 'subtitle'
+    subtitle = MemberAlias('SUBTITLE')
     OVERLAY = 'overlay'
+    overlay = MemberAlias('OVERLAY')
     END_CARD = 'end_card'
+    end_card = MemberAlias('END_CARD')
     PRE_ROLL = 'pre_roll'
+    pre_roll = MemberAlias('PRE_ROLL')
     COMPANION = 'companion'
+    companion = MemberAlias('COMPANION')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DisclosurePosition", DisclosurePosition)

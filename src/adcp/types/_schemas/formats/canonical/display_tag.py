@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -24,14 +24,19 @@ class SizesItem(AdCPBaseModel):
 
 class SupportedTagTypesItem(StrEnum):
     IFRAME = 'iframe'
+    iframe = MemberAlias('IFRAME')
     JAVASCRIPT = 'javascript'
+    javascript = MemberAlias('JAVASCRIPT')
     V_1X1_REDIRECT = '1x1_redirect'
 
 
 class SupportedDeliveryTypesItem(StrEnum):
     TAG_URL = 'tag_url'
+    tag_url = MemberAlias('TAG_URL')
     INLINE_MARKUP = 'inline_markup'
+    inline_markup = MemberAlias('INLINE_MARKUP')
     PAIRED_REDIRECT = 'paired_redirect'
+    paired_redirect = MemberAlias('PAIRED_REDIRECT')
 
 
 class CanonicalFormatDisplayTag(CanonicalFormatBase):

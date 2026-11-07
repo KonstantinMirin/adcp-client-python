@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 from ._vocabularies import _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED
 
@@ -14,10 +14,15 @@ class CatalogAction(StrEnum):
     Action taken on a catalog during sync operation
     """
     CREATED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[0]
+    created = MemberAlias('CREATED')
     UPDATED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[1]
+    updated = MemberAlias('UPDATED')
     UNCHANGED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[2]
+    unchanged = MemberAlias('UNCHANGED')
     FAILED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[3]
+    failed = MemberAlias('FAILED')
     DELETED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[4]
+    deleted = MemberAlias('DELETED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CatalogAction", CatalogAction)

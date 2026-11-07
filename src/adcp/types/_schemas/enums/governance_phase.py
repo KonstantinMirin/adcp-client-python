@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/governance-phase.json', pointer='#')
 
@@ -12,8 +12,11 @@ class GovernancePhase(StrEnum):
     The phase of the governed action's lifecycle that triggered the governance check.
     """
     PURCHASE = 'purchase'
+    purchase = MemberAlias('PURCHASE')
     MODIFICATION = 'modification'
+    modification = MemberAlias('MODIFICATION')
     DELIVERY = 'delivery'
+    delivery = MemberAlias('DELIVERY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "GovernancePhase", GovernancePhase)

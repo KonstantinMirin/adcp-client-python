@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/audience-source.json', pointer='#')
 
@@ -12,11 +12,17 @@ class AudienceSource(StrEnum):
     Origin of an audience segment in delivery reporting breakdowns. Only 'synced' audiences are directly targetable via the targeting overlay; other sources are informational.
     """
     SYNCED = 'synced'
+    synced = MemberAlias('SYNCED')
     PLATFORM = 'platform'
+    platform = MemberAlias('PLATFORM')
     THIRD_PARTY = 'third_party'
+    third_party = MemberAlias('THIRD_PARTY')
     LOOKALIKE = 'lookalike'
+    lookalike = MemberAlias('LOOKALIKE')
     RETARGETING = 'retargeting'
+    retargeting = MemberAlias('RETARGETING')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AudienceSource", AudienceSource)

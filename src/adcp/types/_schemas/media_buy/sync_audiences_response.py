@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -42,10 +42,15 @@ class Action(StrEnum):
     Action taken for this audience. 'status' is present when action is created, updated, or unchanged. 'status' is absent when action is deleted or failed.
     """
     CREATED = 'created'
+    created = MemberAlias('CREATED')
     UPDATED = 'updated'
+    updated = MemberAlias('UPDATED')
     UNCHANGED = 'unchanged'
+    unchanged = MemberAlias('UNCHANGED')
     DELETED = 'deleted'
+    deleted = MemberAlias('DELETED')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
 
 
 class MatchBreakdownItem(AdCPBaseModel):
@@ -64,7 +69,9 @@ class Kind(StrEnum):
     Source kind, echoed from the request.
     """
     DATASET = 'dataset'
+    dataset = MemberAlias('DATASET')
     PLATFORM_SEGMENT = 'platform_segment'
+    platform_segment = MemberAlias('PLATFORM_SEGMENT')
 
 
 class AccessStatus(StrEnum):
@@ -72,7 +79,9 @@ class AccessStatus(StrEnum):
     Source pipe health. Set to unavailable after a failed read (the seller cannot reliably distinguish revocation from expiry from a transient vendor outage — all three observables are a failed read); cleared to active on the next successful one. With last_synced_at this tells the buyer both that the pipe is down and how stale the membership is. Never a status input: membership stays frozen at the last successful read and remains targetable.
     """
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     UNAVAILABLE = 'unavailable'
+    unavailable = MemberAlias('UNAVAILABLE')
 
 
 class Source(AdCPBaseModel):

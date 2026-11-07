@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 from ._vocabularies import _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL
 
@@ -17,16 +17,22 @@ class MediaBuyActionMode(StrEnum):
     """Seller honors the request synchronously without approval or conditional checks. Buyer SDKs dispatch the task declared on the available action; legacy entries without task metadata use update_media_buy."""
 
 
+    self_serve = MemberAlias('SELF_SERVE')
     CONDITIONAL_SELF_SERVE = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[1]
     """Seller completes the action automatically within declared tolerances and uses seller-managed processing outside them. Constraint metadata defining the tolerances is out of scope for v1; buyers cannot statically predict which path will apply unless negotiated terms define it."""
 
 
+    conditional_self_serve = MemberAlias('CONDITIONAL_SELF_SERVE')
     SELLER_MANAGED = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[2]
     """Asynchronous seller-managed processing. Buyer SDKs use the standard submitted, working, and input-required lifecycle and do not infer whether a person, model, queue, or other internal control is involved."""
 
 
+    seller_managed = MemberAlias('SELLER_MANAGED')
     REQUIRES_APPROVAL = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[3]
     """Legacy 3.x mode indicating an approval-dependent async path. New declarations SHOULD use seller_managed so the protocol describes externally meaningful processing without exposing internal workflow."""
+
+
+    requires_approval = MemberAlias('REQUIRES_APPROVAL')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MediaBuyActionMode", MediaBuyActionMode)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ListAccountChangesRequestResourceTypesItem,
@@ -26,7 +26,9 @@ from ..core.version_envelope import AdCPVersionEnvelope
 
 class Kind(StrEnum):
     SELLER = 'seller'
+    seller = MemberAlias('SELLER')
     CONNECTED_PLATFORM = 'connected_platform'
+    connected_platform = MemberAlias('CONNECTED_PLATFORM')
 
 
 class Status(StrEnum):
@@ -34,9 +36,13 @@ class Status(StrEnum):
     Connector freshness classification. For connected_platform, current means last_successful_sync_at is no older than stale_after_seconds at generated_at and the seller knows of no ingestion gap; delayed means that threshold is exceeded or a gap is known.
     """
     CURRENT = 'current'
+    current = MemberAlias('CURRENT')
     DELAYED = 'delayed'
+    delayed = MemberAlias('DELAYED')
     UNAVAILABLE = 'unavailable'
+    unavailable = MemberAlias('UNAVAILABLE')
     NOT_CONFIGURED = 'not_configured'
+    not_configured = MemberAlias('NOT_CONFIGURED')
 
 
 class SourceCoverageItem(AdCPBaseModel):

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from .ext import ExtensionObject
@@ -20,12 +20,19 @@ class DegreeType(StrEnum):
     Type of credential awarded.
     """
     CERTIFICATE = 'certificate'
+    certificate = MemberAlias('CERTIFICATE')
     ASSOCIATE = 'associate'
+    associate = MemberAlias('ASSOCIATE')
     BACHELOR = 'bachelor'
+    bachelor = MemberAlias('BACHELOR')
     MASTER = 'master'
+    master = MemberAlias('MASTER')
     DOCTORATE = 'doctorate'
+    doctorate = MemberAlias('DOCTORATE')
     PROFESSIONAL = 'professional'
+    professional = MemberAlias('PROFESSIONAL')
     BOOTCAMP = 'bootcamp'
+    bootcamp = MemberAlias('BOOTCAMP')
 
 
 class Level(StrEnum):
@@ -33,8 +40,11 @@ class Level(StrEnum):
     Difficulty or prerequisite level.
     """
     BEGINNER = 'beginner'
+    beginner = MemberAlias('BEGINNER')
     INTERMEDIATE = 'intermediate'
+    intermediate = MemberAlias('INTERMEDIATE')
     ADVANCED = 'advanced'
+    advanced = MemberAlias('ADVANCED')
 
 
 class Modality(StrEnum):
@@ -42,8 +52,11 @@ class Modality(StrEnum):
     Delivery format.
     """
     ONLINE = 'online'
+    online = MemberAlias('ONLINE')
     IN_PERSON = 'in_person'
+    in_person = MemberAlias('IN_PERSON')
     HYBRID = 'hybrid'
+    hybrid = MemberAlias('HYBRID')
 
 
 class EducationItem(AdCPBaseModel):

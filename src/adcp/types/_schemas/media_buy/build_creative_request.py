@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, GovernanceContext, IntMin1
 from adcp.types.envelopes import AdcpRequest
@@ -38,7 +38,9 @@ class Mode(StrEnum):
     `execute` (default) produces and bills the creative(s). `estimate` is a DRY RUN: the agent produces nothing and bills nothing, and returns a BuildCreativeEstimate with a projected cost band (cost_low/cost_high) computed against THIS request's actual inputs (script length, brief, catalog size, max_creatives × max_variants) — the band the buyer cannot derive itself, since per_unit gives the rate but not the unit count. Requires the agent to advertise `creative.supports_spend_controls`; otherwise rejected with `UNSUPPORTED_FEATURE`.
     """
     EXECUTE = 'execute'
+    execute = MemberAlias('EXECUTE')
     ESTIMATE = 'estimate'
+    estimate = MemberAlias('ESTIMATE')
 
 
 class MaxSpend(AdCPBaseModel):
@@ -103,10 +105,15 @@ class Dimension(StrEnum):
     What varies across variants. `transformer_config` varies a named config param (name it in `field`); `best_of_n` lets the agent explore and rank; `custom` is agent-defined (describe in `label`).
     """
     VOICE = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[0]
+    voice = MemberAlias('VOICE')
     THEME = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[1]
+    theme = MemberAlias('THEME')
     BEST_OF_N = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[2]
+    best_of_n = MemberAlias('BEST_OF_N')
     TRANSFORMER_CONFIG = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[3]
+    transformer_config = MemberAlias('TRANSFORMER_CONFIG')
     CUSTOM = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[4]
+    custom = MemberAlias('CUSTOM')
 
 
 class VariantAxis(AdCPBaseModel):

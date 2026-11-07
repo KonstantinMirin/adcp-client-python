@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/vast-tracking-event.json', pointer='#')
 
@@ -12,41 +12,77 @@ class VASTTrackingEvent(StrEnum):
     Tracking events for VAST video and audio ads. Includes the IAB VAST 4.2 `Tracking@event` enumeration (vast_4.2.xsd `TrackingEvents_type`, lines 112–136), plus AdCP-flattened representations of the `Impression`, `Error`, `VideoClicks`, and `ViewableImpression` elements (which live in dedicated VAST elements, not under `<TrackingEvents>` — they are surfaced here so a single declared list can cover everything a measurement vendor wants to track). Audio players execute only events applicable to and present in the audio VAST document; visual viewability, fullscreen, expand, collapse, and interactive events are not implied by `audio_vast`. `fullscreen` / `exitFullscreen` are retained for VAST 2.x / 3.x video compatibility (VAST 4.0+ replaced them with `playerExpand` / `playerCollapse`). `measurableImpression` is an AdCP extension for MRC measurability signals.
     """
     IMPRESSION = 'impression'
+    impression = MemberAlias('IMPRESSION')
     CREATIVEVIEW = 'creativeView'
+    creativeView = MemberAlias('CREATIVEVIEW')
     LOADED = 'loaded'
+    loaded = MemberAlias('LOADED')
     START = 'start'
+    start = MemberAlias('START')
     FIRSTQUARTILE = 'firstQuartile'
+    firstQuartile = MemberAlias('FIRSTQUARTILE')
     MIDPOINT = 'midpoint'
+    midpoint = MemberAlias('MIDPOINT')
     THIRDQUARTILE = 'thirdQuartile'
+    thirdQuartile = MemberAlias('THIRDQUARTILE')
     COMPLETE = 'complete'
+    complete = MemberAlias('COMPLETE')
     MUTE = 'mute'
+    mute = MemberAlias('MUTE')
     UNMUTE = 'unmute'
+    unmute = MemberAlias('UNMUTE')
     PAUSE = 'pause'
+    pause = MemberAlias('PAUSE')
     RESUME = 'resume'
+    resume = MemberAlias('RESUME')
     REWIND = 'rewind'
+    rewind = MemberAlias('REWIND')
     SKIP = 'skip'
+    skip = MemberAlias('SKIP')
     PLAYEREXPAND = 'playerExpand'
+    playerExpand = MemberAlias('PLAYEREXPAND')
     PLAYERCOLLAPSE = 'playerCollapse'
+    playerCollapse = MemberAlias('PLAYERCOLLAPSE')
     FULLSCREEN = 'fullscreen'
+    fullscreen = MemberAlias('FULLSCREEN')
     EXITFULLSCREEN = 'exitFullscreen'
+    exitFullscreen = MemberAlias('EXITFULLSCREEN')
     PROGRESS = 'progress'
+    progress = MemberAlias('PROGRESS')
     ACCEPTINVITATION = 'acceptInvitation'
+    acceptInvitation = MemberAlias('ACCEPTINVITATION')
     ADEXPAND = 'adExpand'
+    adExpand = MemberAlias('ADEXPAND')
     ADCOLLAPSE = 'adCollapse'
+    adCollapse = MemberAlias('ADCOLLAPSE')
     MINIMIZE = 'minimize'
+    minimize = MemberAlias('MINIMIZE')
     OVERLAYVIEWDURATION = 'overlayViewDuration'
+    overlayViewDuration = MemberAlias('OVERLAYVIEWDURATION')
     OTHERADINTERACTION = 'otherAdInteraction'
+    otherAdInteraction = MemberAlias('OTHERADINTERACTION')
     INTERACTIVESTART = 'interactiveStart'
+    interactiveStart = MemberAlias('INTERACTIVESTART')
     CLICKTRACKING = 'clickTracking'
+    clickTracking = MemberAlias('CLICKTRACKING')
     CUSTOMCLICK = 'customClick'
+    customClick = MemberAlias('CUSTOMCLICK')
     CLOSE = 'close'
+    close = MemberAlias('CLOSE')
     CLOSELINEAR = 'closeLinear'
+    closeLinear = MemberAlias('CLOSELINEAR')
     ERROR = 'error'
+    error = MemberAlias('ERROR')
     VIEWABLE = 'viewable'
+    viewable = MemberAlias('VIEWABLE')
     NOTVIEWABLE = 'notViewable'
+    notViewable = MemberAlias('NOTVIEWABLE')
     VIEWUNDETERMINED = 'viewUndetermined'
+    viewUndetermined = MemberAlias('VIEWUNDETERMINED')
     MEASURABLEIMPRESSION = 'measurableImpression'
+    measurableImpression = MemberAlias('MEASURABLEIMPRESSION')
     VIEWABLEIMPRESSION = 'viewableImpression'
+    viewableImpression = MemberAlias('VIEWABLEIMPRESSION')
 
 
 strict_validate = strict_alias(__adcp_schema__, "VASTTrackingEvent", VASTTrackingEvent)

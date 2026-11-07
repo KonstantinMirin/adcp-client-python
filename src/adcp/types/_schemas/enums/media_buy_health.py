@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/media-buy-health.json', pointer='#')
 
@@ -15,8 +15,12 @@ class MediaBuyHealth(StrEnum):
     """No open impairments. All upstream dependencies referenced by this buy's targeting and creatives are in serviceable states."""
 
 
+    ok = MemberAlias('OK')
     IMPAIRED = 'impaired'
     """One or more upstream dependencies have entered an offline state that affects delivery for at least one package on this buy. See impairments[] for detail. Sellers MUST flip to 'impaired' on the next sync/poll response after the underlying resource transitions offline, and MUST flip back to 'ok' when all impairments clear."""
+
+
+    impaired = MemberAlias('IMPAIRED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MediaBuyHealth", MediaBuyHealth)

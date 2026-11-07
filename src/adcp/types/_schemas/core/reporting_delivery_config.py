@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -44,7 +44,9 @@ class CoverageRequirement(StrEnum):
     Whether every package in the resolved media-buy scope must support the exact selected offering. full fails closed when any package is unsupported or unknown. allow_partial permits publication only for the explicitly covered package denominator; every revision and status response still exposes partial coverage and MUST NOT present covered-subset totals as whole-buy totals.
     """
     FULL = 'full'
+    full = MemberAlias('FULL')
     ALLOW_PARTIAL = 'allow_partial'
+    allow_partial = MemberAlias('ALLOW_PARTIAL')
 
 
 class AuthoritativeParty(StrEnum):
@@ -52,7 +54,9 @@ class AuthoritativeParty(StrEnum):
     Reserved: which party's count of this feed is authoritative. seller (the default, and the only value any 3.2 seller accepts) means the seller produces every revision and the consumer may only attest to what it consumed. consumer is reserved for the buyer-deposited billing revision task scoped to a later minor; until that task exists sellers MUST reject it with UNSUPPORTED_FEATURE. Reserving the field now keeps a future buyer-basis billing feed additive instead of breaking the billing-feed constraints. See https://github.com/adcontextprotocol/adcp/issues/7440.
     """
     SELLER = 'seller'
+    seller = MemberAlias('SELLER')
     CONSUMER = 'consumer'
+    consumer = MemberAlias('CONSUMER')
 
 
 class ReportingDeliveryConfiguration(AdCPBaseModel):

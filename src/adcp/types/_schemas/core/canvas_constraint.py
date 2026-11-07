@@ -6,21 +6,27 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, FloatGt0
 
 
 class Constraint(StrEnum):
     SAFE_AREA = 'safe_area'
+    safe_area = MemberAlias('SAFE_AREA')
     RESERVED_REGION = 'reserved_region'
+    reserved_region = MemberAlias('RESERVED_REGION')
     DECORATION_ONLY_EDGE = 'decoration_only_edge'
+    decoration_only_edge = MemberAlias('DECORATION_ONLY_EDGE')
     NO_TEXT_OR_LOGOS = 'no_text_or_logos'
+    no_text_or_logos = MemberAlias('NO_TEXT_OR_LOGOS')
 
 
 class Unit(StrEnum):
     PX = 'px'
+    px = MemberAlias('PX')
     PERCENT = 'percent'
+    percent = MemberAlias('PERCENT')
 
 
 class Region(AdCPBaseModel):

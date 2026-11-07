@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='core/reporting-verification-profile.json', pointer='#')
 
@@ -12,8 +12,11 @@ class ReportingVerificationProfile(StrEnum):
     Assurance evidence used for one reporting materialization or receipt.
     """
     NATIVE_COMMIT = 'native_commit'
+    native_commit = MemberAlias('NATIVE_COMMIT')
     MANIFEST_CHECKSUMS = 'manifest_checksums'
+    manifest_checksums = MemberAlias('MANIFEST_CHECKSUMS')
     CANONICAL_DIGEST = 'canonical_digest'
+    canonical_digest = MemberAlias('CANONICAL_DIGEST')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReportingVerificationProfile", ReportingVerificationProfile)

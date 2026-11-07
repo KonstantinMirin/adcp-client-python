@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrFormatUuid
 
@@ -59,10 +59,15 @@ class EntityType(StrEnum):
     Entity class touched by this event.
     """
     PROPERTY = 'property'
+    property = MemberAlias('PROPERTY')
     COLLECTION = 'collection'
+    collection = MemberAlias('COLLECTION')
     AGENT = 'agent'
+    agent = MemberAlias('AGENT')
     PUBLISHER = 'publisher'
+    publisher = MemberAlias('PUBLISHER')
     AUTHORIZATION = 'authorization'
+    authorization = MemberAlias('AUTHORIZATION')
 
 
 class RegistryEvent(BranchDispatchMixin, AdCPBaseModel):
@@ -87,16 +92,24 @@ class RegistryEvent(BranchDispatchMixin, AdCPBaseModel):
 
 class Classification(StrEnum):
     PROPERTY = 'property'
+    property = MemberAlias('PROPERTY')
     AD_INFRA = 'ad_infra'
+    ad_infra = MemberAlias('AD_INFRA')
     PUBLISHER_MASK = 'publisher_mask'
+    publisher_mask = MemberAlias('PUBLISHER_MASK')
     NETWORK = 'network'
+    network = MemberAlias('NETWORK')
     UNCLASSIFIED = 'unclassified'
+    unclassified = MemberAlias('UNCLASSIFIED')
 
 
 class PropertySource(StrEnum):
     AUTHORITATIVE = 'authoritative'
+    authoritative = MemberAlias('AUTHORITATIVE')
     ENRICHED = 'enriched'
+    enriched = MemberAlias('ENRICHED')
     CONTRIBUTED = 'contributed'
+    contributed = MemberAlias('CONTRIBUTED')
 
 
 ChangedFields = Annotated[Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(description='Advisory list of changed top-level field names from the source document. Example values for publisher.adagents_changed include "formats", "placements", and "authorized_agents"; for agent.profile_updated these are profile field names such as "channels" or "format_kinds". Producers SHOULD enumerate every changed semantic field, explicitly including formats and placements for catalog-only revisions (additive from 3.2). Consumers MAY use this for targeted index refresh but MUST re-resolve every depended-on field when reading an older retained event that lacks this list.', min_length=1)]
@@ -230,8 +243,11 @@ class RegistryEventPropertyReactivatedProperty(RegistryEvent):
 
 class Status(StrEnum):
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     STALE = 'stale'
+    stale = MemberAlias('STALE')
     REMOVED = 'removed'
+    removed = MemberAlias('REMOVED')
 
 
 class CollectionIdentifier(AdCPBaseModel):
@@ -354,11 +370,17 @@ class RegistryEventCollectionRemovedCollection(RegistryEvent):
 
 class AgentProfilePayloadType(StrEnum):
     SALES = 'sales'
+    sales = MemberAlias('SALES')
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
     SIGNALS = 'signals'
+    signals = MemberAlias('SIGNALS')
     GOVERNANCE = 'governance'
+    governance = MemberAlias('GOVERNANCE')
     MEASUREMENT = 'measurement'
+    measurement = MemberAlias('MEASUREMENT')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 StringArray = list[str]
@@ -458,30 +480,48 @@ class RegistryEventAgentProfileUpdatedAgent(RegistryEvent):
 
 class ComplianceStatus(StrEnum):
     PASSING = 'passing'
+    passing = MemberAlias('PASSING')
     DEGRADED = 'degraded'
+    degraded = MemberAlias('DEGRADED')
     FAILING = 'failing'
+    failing = MemberAlias('FAILING')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class TracksValue(StrEnum):
     PASS = 'pass'
     FAIL = 'fail'
+    fail = MemberAlias('FAIL')
     PARTIAL = 'partial'
+    partial = MemberAlias('PARTIAL')
     SKIP = 'skip'
+    skip = MemberAlias('SKIP')
     SILENT = 'silent'
+    silent = MemberAlias('SILENT')
     WARNING = 'warning'
+    warning = MemberAlias('WARNING')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
     SKIPPED = 'skipped'
+    skipped = MemberAlias('SKIPPED')
 
 
 class StoryboardStatus(StrEnum):
     PASSING = 'passing'
+    passing = MemberAlias('PASSING')
     FAILING = 'failing'
+    failing = MemberAlias('FAILING')
     PARTIAL = 'partial'
+    partial = MemberAlias('PARTIAL')
     UNTESTED = 'untested'
+    untested = MemberAlias('UNTESTED')
     SKIPPED = 'skipped'
+    skipped = MemberAlias('SKIPPED')
     NOT_SELECTED = 'not_selected'
+    not_selected = MemberAlias('NOT_SELECTED')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class StoryboardsItem(AdCPBaseModel):
@@ -525,7 +565,9 @@ class GradingProfile(StrEnum):
     Grading profile that produced the badge. Historical events emitted before profile selection may omit this field and are Legacy.
     """
     LEGACY = 'legacy'
+    legacy = MemberAlias('LEGACY')
     SPEC = 'spec'
+    spec = MemberAlias('SPEC')
 
 
 class RegistryEventAgentVerificationEarnedAgentPayload(AdCPBaseModel):
@@ -638,11 +680,17 @@ class AuthorizationType(StrEnum):
     When present, identifies the adagents.json authorization variant represented by this payload.
     """
     PROPERTY_IDS = 'property_ids'
+    property_ids = MemberAlias('PROPERTY_IDS')
     PROPERTY_TAGS = 'property_tags'
+    property_tags = MemberAlias('PROPERTY_TAGS')
     INLINE_PROPERTIES = 'inline_properties'
+    inline_properties = MemberAlias('INLINE_PROPERTIES')
     PUBLISHER_PROPERTIES = 'publisher_properties'
+    publisher_properties = MemberAlias('PUBLISHER_PROPERTIES')
     SIGNAL_IDS = 'signal_ids'
+    signal_ids = MemberAlias('SIGNAL_IDS')
     SIGNAL_TAGS = 'signal_tags'
+    signal_tags = MemberAlias('SIGNAL_TAGS')
 
 
 Countries = Annotated[Annotated[list[CountryCode], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
@@ -650,9 +698,13 @@ Countries = Annotated[Annotated[list[CountryCode], Field(json_schema_extra={'uni
 
 class Evidence(StrEnum):
     ADAGENTS_JSON = 'adagents_json'
+    adagents_json = MemberAlias('ADAGENTS_JSON')
     AGENT_CLAIM = 'agent_claim'
+    agent_claim = MemberAlias('AGENT_CLAIM')
     COMMUNITY = 'community'
+    community = MemberAlias('COMMUNITY')
     OVERRIDE = 'override'
+    override = MemberAlias('OVERRIDE')
 
 
 class AuthorizationPayload(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/history-entry-type.json', pointer='#')
 
@@ -12,7 +12,9 @@ class HistoryEntryType(StrEnum):
     Type of entry in task execution history
     """
     REQUEST = 'request'
+    request = MemberAlias('REQUEST')
     RESPONSE = 'response'
+    response = MemberAlias('RESPONSE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "HistoryEntryType", HistoryEntryType)

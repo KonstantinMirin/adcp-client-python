@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/video-placement-type.json', pointer='#')
 
@@ -15,16 +15,22 @@ class VideoPlacementType(StrEnum):
     """OpenRTB 2.6 video.plcmt=1: video ads played before, during, or after streaming video content requested by the user."""
 
 
+    instream = MemberAlias('INSTREAM')
     ACCOMPANYING_CONTENT = 'accompanying_content'
     """OpenRTB 2.6 video.plcmt=2: video ads played with accompanying video content in a player associated with the page or app content."""
 
 
+    accompanying_content = MemberAlias('ACCOMPANYING_CONTENT')
     INTERSTITIAL = 'interstitial'
     """OpenRTB 2.6 video.plcmt=3: video ads shown as an interstitial experience, typically between content or app states."""
 
 
+    interstitial = MemberAlias('INTERSTITIAL')
     STANDALONE = 'standalone'
     """OpenRTB 2.6 video.plcmt=4: video ads shown without associated video content, also called no-content or standalone video."""
+
+
+    standalone = MemberAlias('STANDALONE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "VideoPlacementType", VideoPlacementType)

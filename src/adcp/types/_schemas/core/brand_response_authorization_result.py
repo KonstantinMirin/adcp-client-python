@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMinLen1
 
@@ -18,7 +18,9 @@ class Trust(StrEnum):
     Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.
     """
     TRUSTED = 'trusted'
+    trusted = MemberAlias('TRUSTED')
     UNTRUSTED = 'untrusted'
+    untrusted = MemberAlias('UNTRUSTED')
 
 
 class Reason(StrEnum):
@@ -26,13 +28,21 @@ class Reason(StrEnum):
     Machine-readable reason for an untrusted result.
     """
     BRAND_JSON_UNAVAILABLE = 'brand_json_unavailable'
+    brand_json_unavailable = MemberAlias('BRAND_JSON_UNAVAILABLE')
     AGENT_NOT_AUTHORIZED = 'agent_not_authorized'
+    agent_not_authorized = MemberAlias('AGENT_NOT_AUTHORIZED')
     AGENT_AUTHORIZATION_AMBIGUOUS = 'agent_authorization_ambiguous'
+    agent_authorization_ambiguous = MemberAlias('AGENT_AUTHORIZATION_AMBIGUOUS')
     JWKS_UNAVAILABLE = 'jwks_unavailable'
+    jwks_unavailable = MemberAlias('JWKS_UNAVAILABLE')
     KID_NOT_AUTHORIZED = 'kid_not_authorized'
+    kid_not_authorized = MemberAlias('KID_NOT_AUTHORIZED')
     KID_AUTHORIZATION_AMBIGUOUS = 'kid_authorization_ambiguous'
+    kid_authorization_ambiguous = MemberAlias('KID_AUTHORIZATION_AMBIGUOUS')
     KEY_MATERIAL_MISMATCH = 'key_material_mismatch'
+    key_material_mismatch = MemberAlias('KEY_MATERIAL_MISMATCH')
     KEY_PURPOSE_INVALID = 'key_purpose_invalid'
+    key_purpose_invalid = MemberAlias('KEY_PURPOSE_INVALID')
 
 
 class BrandResponseAuthorizationResult(BranchDispatchMixin, AdCPBaseModel):

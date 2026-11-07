@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/reach-aggregation.json', pointer='#')
 
@@ -15,8 +15,12 @@ class ReachAggregation(StrEnum):
     """Unique reach deduplicated across every media buy included in the aggregate."""
 
 
+    deduplicated = MemberAlias('DEDUPLICATED')
     SUM_OF_CONSTITUENT_REACH = 'sum_of_constituent_reach'
     """The arithmetic sum of independently unique per-buy reach values. A person, household, device, account, or cookie may therefore be counted more than once across buys."""
+
+
+    sum_of_constituent_reach = MemberAlias('SUM_OF_CONSTITUENT_REACH')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReachAggregation", ReachAggregation)

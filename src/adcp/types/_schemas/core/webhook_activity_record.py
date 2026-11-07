@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     HttpUrl,
@@ -24,10 +24,15 @@ class Status(StrEnum):
     Outcome of this attempt. `success` — response received with 2xx (`http_status_code` populated). `failed` — response received with non-2xx (`http_status_code` populated). `timeout` — no response within the seller's configured timeout (`http_status_code` null). `connection_error` — DNS / TLS / socket failure before any HTTP response (`http_status_code` null). `pending` — attempt is in flight or queued for retry (`completed_at` null, `http_status_code` null). The `timeout` / `connection_error` split is intentional and operationally distinct: `timeout` typically signals a slow / overloaded buyer endpoint, `connection_error` typically signals it is unreachable or misconfigured.
     """
     SUCCESS = 'success'
+    success = MemberAlias('SUCCESS')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
     TIMEOUT = 'timeout'
+    timeout = MemberAlias('TIMEOUT')
     CONNECTION_ERROR = 'connection_error'
+    connection_error = MemberAlias('CONNECTION_ERROR')
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
 
 
 class WebhookActivityRecord(AdCPBaseModel):

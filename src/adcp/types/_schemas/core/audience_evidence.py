@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
@@ -26,8 +26,10 @@ class Relationship(StrEnum):
     What the estimate says: population share, ratio to a baseline, or estimated reachable count.
     """
     COMPOSITION = 'composition'
+    composition = MemberAlias('COMPOSITION')
     INDEX = 'index'
     REACH_ESTIMATE = 'reach_estimate'
+    reach_estimate = MemberAlias('REACH_ESTIMATE')
 
 
 class Unit(StrEnum):
@@ -35,7 +37,9 @@ class Unit(StrEnum):
     composition uses fraction in [0,1], index uses ratio, and reach_estimate uses count.
     """
     FRACTION = 'fraction'
+    fraction = MemberAlias('FRACTION')
     RATIO = 'ratio'
+    ratio = MemberAlias('RATIO')
     COUNT = 'count'
 
 
@@ -58,8 +62,11 @@ class EvidenceType(StrEnum):
     Nature of the evidence. Independent verification is represented separately by attestation_refs and never inferred from this value.
     """
     MEASURED = 'measured'
+    measured = MemberAlias('MEASURED')
     FORECAST = 'forecast'
+    forecast = MemberAlias('FORECAST')
     SELLER_DECLARED = 'seller_declared'
+    seller_declared = MemberAlias('SELLER_DECLARED')
 
 
 class Subject(AttestationResourceSubject):

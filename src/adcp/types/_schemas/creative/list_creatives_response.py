@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, CreativesItemAssignmentsReturnedAssignmentCount
 from adcp.types.envelopes import AdcpResponse
@@ -93,7 +93,9 @@ class AssignmentIndicatorType(StrEnum):
     A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.
     """
     CREATIVE_FATIGUE = 'creative_fatigue'
+    creative_fatigue = MemberAlias('CREATIVE_FATIGUE')
     CREATIVE_QUALITY_OPPORTUNITY = 'creative_quality_opportunity'
+    creative_quality_opportunity = MemberAlias('CREATIVE_QUALITY_OPPORTUNITY')
 
 
 class AssignedPackagesItem(IndicatorBearingResourceState):
@@ -171,6 +173,7 @@ class Kind(StrEnum):
     Always `soft` on tombstones — hard purges do not surface on this read.
     """
     SOFT = 'soft'
+    soft = MemberAlias('SOFT')
 
 
 class Purge(AdCPBaseModel):

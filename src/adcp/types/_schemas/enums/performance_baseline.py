@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/performance-baseline.json', pointer='#')
 
@@ -12,11 +12,17 @@ class PerformanceBaseline(StrEnum):
     The expectation represented by performance_index = 1.0. Naming the baseline makes normalized feedback interpretable without disclosing the underlying benchmark value.
     """
     CAMPAIGN_TARGET = 'campaign_target'
+    campaign_target = MemberAlias('CAMPAIGN_TARGET')
     CONTROL_GROUP = 'control_group'
+    control_group = MemberAlias('CONTROL_GROUP')
     SELLER_HISTORY = 'seller_history'
+    seller_history = MemberAlias('SELLER_HISTORY')
     BUYER_PORTFOLIO = 'buyer_portfolio'
+    buyer_portfolio = MemberAlias('BUYER_PORTFOLIO')
     MARKET_BENCHMARK = 'market_benchmark'
+    market_benchmark = MemberAlias('MARKET_BENCHMARK')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PerformanceBaseline", PerformanceBaseline)

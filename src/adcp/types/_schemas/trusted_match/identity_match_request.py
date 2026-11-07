@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     AdCPVersionEnvelopeAdcpVersion,
@@ -27,8 +27,11 @@ class VerificationLevel(StrEnum):
     Credential strength (e.g. World ID Orb = biometric unique-human; Device = weaker; Document = passport/NFC).
     """
     ORB = 'orb'
+    orb = MemberAlias('ORB')
     DEVICE = 'device'
+    device = MemberAlias('DEVICE')
     DOCUMENT = 'document'
+    document = MemberAlias('DOCUMENT')
 
 
 class Attestation(AdCPBaseModel):

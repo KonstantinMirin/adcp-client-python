@@ -6,15 +6,19 @@ from typing import ClassVar
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 
 class ResourceType(StrEnum):
     MEDIA_BUY = 'media_buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     PACKAGE = 'package'
+    package = MemberAlias('PACKAGE')
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
     CREATIVE_ASSIGNMENT = 'creative_assignment'
+    creative_assignment = MemberAlias('CREATIVE_ASSIGNMENT')
 
 
 class WarningAffectedResource(AdCPBaseModel):

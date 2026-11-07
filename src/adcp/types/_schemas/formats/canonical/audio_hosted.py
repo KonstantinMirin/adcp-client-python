@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types.constraints import FloatGt0, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -15,15 +15,22 @@ from ._base import CanonicalFormatBase, SlotsItem
 
 class AudioCodecsItem(StrEnum):
     MP3 = 'mp3'
+    mp3 = MemberAlias('MP3')
     AAC = 'aac'
+    aac = MemberAlias('AAC')
     WAV = 'wav'
+    wav = MemberAlias('WAV')
     OPUS = 'opus'
+    opus = MemberAlias('OPUS')
     FLAC = 'flac'
+    flac = MemberAlias('FLAC')
 
 
 class AudioChannels(StrEnum):
     MONO = 'mono'
+    mono = MemberAlias('MONO')
     STEREO = 'stereo'
+    stereo = MemberAlias('STEREO')
 
 
 class AssetSource(StrEnum):
@@ -31,11 +38,17 @@ class AssetSource(StrEnum):
     Where the rendered audio bytes come from. Single shared enum across canonicals (see `image.json#asset_source` for the full semantics). `publisher_host_recorded`: the publisher's host records the audio (podcast host-read pattern); buyer must use the publisher's build_creative capability. `publisher_owned_reference` is valid only when the product accepts a reference asset whose publisher-owned source resolves to playable audio. `publisher_host_recorded` remains the normal audio-specific host-read value.
     """
     BUYER_UPLOADED = 'buyer_uploaded'
+    buyer_uploaded = MemberAlias('BUYER_UPLOADED')
     PUBLISHER_HOST_RECORDED = 'publisher_host_recorded'
+    publisher_host_recorded = MemberAlias('PUBLISHER_HOST_RECORDED')
     SELLER_PRE_RENDERED_FROM_BRIEF = 'seller_pre_rendered_from_brief'
+    seller_pre_rendered_from_brief = MemberAlias('SELLER_PRE_RENDERED_FROM_BRIEF')
     SELLER_HUMAN_DESIGNED = 'seller_human_designed'
+    seller_human_designed = MemberAlias('SELLER_HUMAN_DESIGNED')
     AGENT_SYNTHESIZED = 'agent_synthesized'
+    agent_synthesized = MemberAlias('AGENT_SYNTHESIZED')
     PUBLISHER_OWNED_REFERENCE = 'publisher_owned_reference'
+    publisher_owned_reference = MemberAlias('PUBLISHER_OWNED_REFERENCE')
 
 
 class BuyerAssetAcceptance(StrEnum):
@@ -43,7 +56,9 @@ class BuyerAssetAcceptance(StrEnum):
     Whether the product accepts buyer-uploaded audio. When `rejected`, the buyer cannot ship an audio asset directly — they must use build_creative (or sync_creatives with brief inputs) so the seller produces the audio. Combined with `asset_source`, lets a product declare 'I produce audio from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`).
     """
     ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    accepted = MemberAlias('ACCEPTED')
     REJECTED = _VALUES_ACCEPTED_REJECTED[1]
+    rejected = MemberAlias('REJECTED')
 
 
 class CanonicalFormatHostedAudio(CanonicalFormatBase):

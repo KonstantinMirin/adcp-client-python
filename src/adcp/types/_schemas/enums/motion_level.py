@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/motion-level.json', pointer='#')
 
@@ -12,8 +12,11 @@ class CreativeMotionLevel(StrEnum):
     Motion class of a rendered creative, mirroring AdCOM creative attributes 21 (Static Visual), 22 (Limited Motion / Cinemagraph), and 23 (Full-Motion Video). Sellers constrain the accepted level on a format option; buyers declare the level their creative carries. OpenRTB bridges map the value to `attr` on the bid and `battr` on the request.
     """
     STATIC = 'static'
+    static = MemberAlias('STATIC')
     LIMITED_MOTION = 'limited_motion'
+    limited_motion = MemberAlias('LIMITED_MOTION')
     FULL_MOTION = 'full_motion'
+    full_motion = MemberAlias('FULL_MOTION')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CreativeMotionLevel", CreativeMotionLevel)

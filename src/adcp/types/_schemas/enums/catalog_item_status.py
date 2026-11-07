@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/catalog-item-status.json', pointer='#')
 
@@ -15,20 +15,27 @@ class CatalogItemStatus(StrEnum):
     """Item passed platform review and is eligible for use in campaigns. May be transitioned by the seller to 'withdrawn' on seller-initiated removal (inventory pulled, policy enforcement) — distinct from 'rejected', which signals a review outcome the buyer can remediate."""
 
 
+    approved = MemberAlias('APPROVED')
     PENDING = 'pending'
     """Item is awaiting platform review. Items enter this state on initial sync and when re-synced after rejection."""
 
 
+    pending = MemberAlias('PENDING')
     REJECTED = 'rejected'
     """Item failed platform review (missing fields, policy violation, invalid data). Not terminal — fix the issue in the catalog and re-sync to reset the item to pending."""
 
 
+    rejected = MemberAlias('REJECTED')
     WARNING = 'warning'
     """Item is approved and serving but has issues worth fixing (e.g., low-quality image, missing optional fields). The item remains eligible for delivery."""
 
 
+    warning = MemberAlias('WARNING')
     WITHDRAWN = 'withdrawn'
     """Seller has removed the item from active use — inventory pulled, policy enforcement, or other seller-initiated reasons not covered by 'rejected'. Distinct lifecycle from 'rejected': no buyer-side resubmit path. Sellers MUST surface a corresponding impairment on any active media buy that targets a package referencing this catalog item. Sellers MAY return the item to 'approved' on re-publication."""
+
+
+    withdrawn = MemberAlias('WITHDRAWN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CatalogItemStatus", CatalogItemStatus)

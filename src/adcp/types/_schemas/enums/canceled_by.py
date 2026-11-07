@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/canceled-by.json', pointer='#')
 
@@ -15,8 +15,12 @@ class CanceledBy(StrEnum):
     """Cancellation initiated by the buyer via update_media_buy"""
 
 
+    buyer = MemberAlias('BUYER')
     SELLER = 'seller'
     """Cancellation initiated by the seller (e.g., policy violation, inventory withdrawal)"""
+
+
+    seller = MemberAlias('SELLER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CanceledBy", CanceledBy)

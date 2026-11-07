@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin0Max150, StrMinLen1
 
@@ -17,8 +17,11 @@ from .demographic_age_range import DemographicAgeRange
 
 class ExecutionModesItem(StrEnum):
     CONTINUOUS_BOUNDS = 'continuous_bounds'
+    continuous_bounds = MemberAlias('CONTINUOUS_BOUNDS')
     ENUMERATED_INTERVALS = 'enumerated_intervals'
+    enumerated_intervals = MemberAlias('ENUMERATED_INTERVALS')
     SIGNALS = 'signals'
+    signals = MemberAlias('SIGNALS')
 
 
 class UnknownHandling(StrEnum):
@@ -26,8 +29,11 @@ class UnknownHandling(StrEnum):
     How this product handles people whose age is unavailable. selectable honors either include_unknown value; always_excluded supports only false; always_included supports only true. A seller MUST reject a request incompatible with this declaration rather than silently changing it.
     """
     SELECTABLE = 'selectable'
+    selectable = MemberAlias('SELECTABLE')
     ALWAYS_EXCLUDED = 'always_excluded'
+    always_excluded = MemberAlias('ALWAYS_EXCLUDED')
     ALWAYS_INCLUDED = 'always_included'
+    always_included = MemberAlias('ALWAYS_INCLUDED')
 
 
 class IntervalsItem(AdCPBaseModel):

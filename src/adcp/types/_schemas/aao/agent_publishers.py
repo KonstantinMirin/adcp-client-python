@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HttpUrl, StrDomainName
 
@@ -18,9 +18,13 @@ class DiscoveryMethod(StrEnum):
     How the directory discovered this authorization. `direct`: agent listed in publisher's own /.well-known/adagents.json. `authoritative_location`: publisher's /.well-known/adagents.json declared `authoritative_location` pointing to a manager file that lists the agent. `adagents_authoritative`: discovered via the manager file (publisher-declared in the manager's own properties[]). `ads_txt_managerdomain`: discovered via the publisher's ads.txt `MANAGERDOMAIN=` directive pointing to the manager file. The last three paths converge on the same manager file but have different trust profiles — the `managerdomain` path is the weakest because the manager file's `publisher_domain` anchor (the `managerdomain` fallback safety rule) is the only positive cross-check.
     """
     DIRECT = 'direct'
+    direct = MemberAlias('DIRECT')
     AUTHORITATIVE_LOCATION = 'authoritative_location'
+    authoritative_location = MemberAlias('AUTHORITATIVE_LOCATION')
     ADAGENTS_AUTHORITATIVE = 'adagents_authoritative'
+    adagents_authoritative = MemberAlias('ADAGENTS_AUTHORITATIVE')
     ADS_TXT_MANAGERDOMAIN = 'ads_txt_managerdomain'
+    ads_txt_managerdomain = MemberAlias('ADS_TXT_MANAGERDOMAIN')
 
 
 class Status(StrEnum):
@@ -28,7 +32,9 @@ class Status(StrEnum):
     Lifecycle state for this publisher → agent edge. v1: `authorized` (selector resolves to ≥ 1 property under this publisher) and `revoked` (this publisher_domain newly appears in a parent file's `revoked_publisher_domains[]`; emitted as a tombstone on the next sync after revocation lands, then dropped). Future states (`unbound`, `pending`) deferred — the directory does not have the crawler state to emit them honestly.
     """
     AUTHORIZED = 'authorized'
+    authorized = MemberAlias('AUTHORIZED')
     REVOKED = 'revoked'
+    revoked = MemberAlias('REVOKED')
 
 
 class PublisherEntry(AdCPBaseModel):

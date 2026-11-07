@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from ..core.ext import ExtensionObject
 from ..core.property_id import PropertyID
@@ -18,8 +18,11 @@ class CoverageStatus(StrEnum):
     Whether this property is covered by this governance agent: covered (has data), not_covered (not measured), pending (measurement in progress)
     """
     COVERED = 'covered'
+    covered = MemberAlias('COVERED')
     NOT_COVERED = 'not_covered'
+    not_covered = MemberAlias('NOT_COVERED')
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
 
 
 class PropertyFeatureResult(AdCPBaseModel):
