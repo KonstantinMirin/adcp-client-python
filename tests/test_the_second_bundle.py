@@ -66,10 +66,19 @@ SECOND = fresh.SECOND
 PUBLISHED = fresh.PUBLISHED
 
 #: **The patch set the second bundle can be graded against today: five extractions and no
-#: addition.**  ``patches/8735``'s thirteenth addition is already STATED by this bundle --
-#: upstream's own commit ``9c32fa997`` landed it -- so ``patch.additions`` refuses that set
-#: here by design, which is the removability guarantee working and is
-#: ``adcp-client-python-82m.60``'s row to settle rather than this file's to suppress.
+#: addition.**  ``patches/8735``'s thirteenth addition is already STATED by this bundle, so
+#: ``patch.additions`` refuses that set here by design, which is the removability guarantee
+#: working and is ``adcp-client-python-82m.60``'s row to settle rather than this file's to
+#: suppress.
+#:
+#: **AND THE STATING IS OURS AND NOT UPSTREAM'S.**  This bundle was built at ``9c32fa997``,
+#: a commit on the FORK's branch ``schemas/title-data-subject-contestation-8735`` -- OUR ask
+#: #8735 -- and **upstream has not landed it**: the node carries no ``title`` at 3.2.4, at
+#: 3.2.8, or at ``schemas/cache/3.3.0-beta.4``, which is upstream's newest 3.3.  Measured:
+#: 18 of 18 entries APPLY on each of those three bundles with **0 already-landed**, so five
+#: 3.3 releases (beta.0 through beta.4) and four 3.2.x releases fixed none of the 18.  The
+#: refusal below therefore reads OUR OWN patch back out of a bundle we built, which is the
+#: mechanism working and is NOT evidence that the defect went away.
 EXTRACTIONS = Path("patches/8525")
 #: ``patches/8735``: thirteen additions and **zero extractions**, which is the second half of
 #: :func:`codegen.patch.load`'s revision -- a manifest that adds no reference asks the bundle
@@ -331,13 +340,24 @@ def test_a_manifest_with_no_extraction_asks_the_bundle_for_no_base_uri(tmp_path:
 def test_the_addition_the_second_bundle_already_states_refuses_by_name() -> None:
     """THE REMOVABILITY GUARANTEE, on the bundle that expired an entry.
 
-    ``patches/8735``'s ``brand.json#/definitions/data_subject_contestation`` was landed
-    upstream by this very pin's own commit ``9c32fa997``, so against 3.3 the entry's defect
-    is GONE -- and ``patch.additions`` raises rather than overwriting, which is the one
-    failure clause an additive override cannot do without.  It is asserted here rather than
-    suppressed: the instruction in the refusal is to delete the entry for this bundle, and
-    the declared-per-bundle shape that lets it be deleted for one pin and kept for the other
-    is ``adcp-client-python-82m.60``'s row.
+    ``patches/8735``'s ``brand.json#/definitions/data_subject_contestation`` is already
+    titled in THIS BUNDLE'S BYTES, so against 3.3 the entry reads as expired -- and
+    ``patch.additions`` raises rather than overwriting, which is the one failure clause an
+    additive override cannot do without.  It is asserted here rather than suppressed: the
+    instruction in the refusal is to delete the entry for this bundle, and the
+    declared-per-bundle shape that lets it be deleted for one pin and kept for the other is
+    ``adcp-client-python-82m.60``'s row.
+
+    **WHOSE LANDING IT IS, because the refusal's wording invites the wrong answer.**  The
+    title did NOT land upstream.  This pin was built at ``9c32fa997``, a commit on the
+    FORK's branch ``schemas/title-data-subject-contestation-8735`` carrying OUR ask #8735 --
+    it is on no upstream branch and under no tag -- and **upstream has not landed it**:
+    ``brand.json#/definitions/data_subject_contestation`` states no ``title`` at 3.2.4, at
+    3.2.8, or at ``schemas/cache/3.3.0-beta.4``, which is upstream's newest 3.3.  Measured
+    across those three: 18 of 18 entries APPLY and **0 are already-landed**, so five 3.3
+    releases (beta.0 through beta.4) and four 3.2.x releases fixed none of the 18.  What
+    this test reads is our own patch reflected out of a bundle we built, which exercises the
+    clause and is not a protocol fix.
     """
     assert patch.additions(ADDITIONS, PUBLISHED), "the set is empty, so the raise below is vacuous"
     with pytest.raises(ValueError, match="already states 'title'"):

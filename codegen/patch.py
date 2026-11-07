@@ -1175,7 +1175,13 @@ def additions(patch_set: Path, published: Path) -> tuple[Addition, ...]:
       the document it names, and an addition has no document, so what fails is the keyword
       arriving at the node.  The instruction is then to DELETE the entry -- never to prefer
       our value to the protocol's, which is the one way an override here could outlive its
-      cause while looking like success;
+      cause while looking like success.  **AND NO ENTRY OF THIS SET HAS EARNED THAT
+      INSTRUCTION YET**: the only bundle the clause fires on is ``schemas/cache/3.3``, built
+      at ``9c32fa997`` -- a commit on the FORK's branch
+      ``schemas/title-data-subject-contestation-8735``, OUR ask #8735, which upstream has
+      not landed.  Against the three bundles that ARE upstream's (3.2.4, 3.2.8 and
+      3.3.0-beta.4) all 18 entries APPLY and 0 are already-landed, so a reader meeting this
+      refusal today is meeting our own ask reflected back and not a protocol fix;
     * **the entry's declared kind and its keyword's kind disagree.**  An ANNOTATION entry
       (no ``narrows`` key) whose keyword decides acceptance at that position is the old
       refusal, unweakened: by :func:`codegen.bundle.is_an_annotation`, the predicate
@@ -1464,7 +1470,19 @@ def apply(published: Path, patch_set: Path, out: Path) -> tuple[Extraction, ...]
     published bundle already holds an extraction's document or already states an addition's
     keyword.  That is how an override retires itself when upstream fixes the schema, and it
     still fires -- against ``schemas/cache/3.3``'s ``brand.json#/definitions/
-    data_subject_contestation``, which upstream's own ``9c32fa997`` titled.
+    data_subject_contestation``.
+
+    **AND THAT ONE FIRING IS NOT AN UPSTREAM FIX, which is the opposite reading and the one
+    this sentence used to carry.**  ``schemas/cache/3.3`` was built at ``9c32fa997``, a
+    commit on the FORK's branch ``schemas/title-data-subject-contestation-8735`` -- OUR OWN
+    ASK #8735, authored by us, on no upstream branch and under no tag.  So the ``title`` the
+    refusal reads is one WE wrote, and **upstream has never published it.**  Measured over
+    all four pinned bundles: 18 of 18 entries APPLY on ``schemas/cache/3.2`` (3.2.4), on
+    ``schemas/cache/3.2.8`` and on ``schemas/cache/3.3.0-beta.4`` -- upstream's newest 3.3 --
+    with **0 already-landed**, and ``schemas/cache/3.3`` alone reads 17 APPLIES + 1 expired.
+    Five 3.3 releases (beta.0 through beta.4) and four 3.2.x releases fixed NONE of the 18.
+    The clause is therefore exercised against our own fork's bytes, and the day it fires
+    because a defect went away upstream is still ahead.
 
     **The output carries a record of what it holds** (:func:`_a_patched_record`),
     written beside the directory and never inside it -- ``bundle.portable`` enumerates
