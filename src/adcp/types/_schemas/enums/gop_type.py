@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/gop-type.json', pointer='#')
 
@@ -15,8 +15,12 @@ class GOPType(StrEnum):
     """Each GOP is independently decodable — required for SSAI and broadcast splicing"""
 
 
+    closed = MemberAlias('CLOSED')
     OPEN = 'open'
     """GOPs may reference frames from adjacent GOPs — not suitable for splicing"""
+
+
+    open = MemberAlias('OPEN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "GOPType", GOPType)

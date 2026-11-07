@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     AddressPostalCode,
     BankBic,
@@ -46,16 +46,22 @@ class Role(StrEnum):
     """Accounts payable and invoice queries"""
 
 
+    billing = MemberAlias('BILLING')
     LEGAL = 'legal'
     """Contract and compliance matters"""
 
 
+    legal = MemberAlias('LEGAL')
     CREATIVE = 'creative'
     """Material submission and creative approval"""
 
 
+    creative = MemberAlias('CREATIVE')
     GENERAL = 'general'
     """Default contact when no specific role applies"""
+
+
+    general = MemberAlias('GENERAL')
 
 
 class ContactsItem(AdCPBaseModel):

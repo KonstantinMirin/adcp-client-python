@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, HttpUrl, IntMin1
 
@@ -38,20 +38,27 @@ class HumanOversight(StrEnum):
     """Fully automated with no human involvement in generation"""
 
 
+    none = MemberAlias('NONE')
     PROMPT_ONLY = 'prompt_only'
     """Human provided the prompt or instructions but did not review outputs"""
 
 
+    prompt_only = MemberAlias('PROMPT_ONLY')
     SELECTED = 'selected'
     """Human selected from multiple AI-generated candidates"""
 
 
+    selected = MemberAlias('SELECTED')
     EDITED = 'edited'
     """Human edited or refined AI-generated output"""
 
 
+    edited = MemberAlias('EDITED')
     DIRECTED = 'directed'
     """Human directed the creative process with AI as an assistive tool"""
+
+
+    directed = MemberAlias('DIRECTED')
 
 
 class Role(StrEnum):
@@ -62,20 +69,27 @@ class Role(StrEnum):
     """The party that created or generated the content"""
 
 
+    creator = MemberAlias('CREATOR')
     ADVERTISER = 'advertiser'
     """The brand or advertiser that owns the content"""
 
 
+    advertiser = MemberAlias('ADVERTISER')
     AGENCY = 'agency'
     """Agency acting on behalf of the advertiser"""
 
 
+    agency = MemberAlias('AGENCY')
     PLATFORM = 'platform'
     """Ad platform or publisher that processed the content"""
 
 
+    platform = MemberAlias('PLATFORM')
     TOOL = 'tool'
     """Automated tool or service that attached provenance metadata"""
+
+
+    tool = MemberAlias('TOOL')
 
 
 class DeclaredBy(AdCPBaseModel):
@@ -178,9 +192,13 @@ class Result(StrEnum):
     Verification outcome
     """
     AUTHENTIC = 'authentic'
+    authentic = MemberAlias('AUTHENTIC')
     AI_GENERATED = 'ai_generated'
+    ai_generated = MemberAlias('AI_GENERATED')
     AI_MODIFIED = 'ai_modified'
+    ai_modified = MemberAlias('AI_MODIFIED')
     INCONCLUSIVE = 'inconclusive'
+    inconclusive = MemberAlias('INCONCLUSIVE')
 
 
 class VerificationItem(AdCPBaseModel):

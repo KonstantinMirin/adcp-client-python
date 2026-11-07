@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/vast-media-delivery-method.json', pointer='#')
 
@@ -12,7 +12,9 @@ class VASTMediaDeliveryMethod(StrEnum):
     Delivery method declared by the required VAST MediaFile `delivery` attribute.
     """
     PROGRESSIVE = 'progressive'
+    progressive = MemberAlias('PROGRESSIVE')
     STREAMING = 'streaming'
+    streaming = MemberAlias('STREAMING')
 
 
 strict_validate = strict_alias(__adcp_schema__, "VASTMediaDeliveryMethod", VASTMediaDeliveryMethod)

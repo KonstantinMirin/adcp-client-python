@@ -800,6 +800,51 @@ def _member(member: ir.Member, values: str | None = None, at: int = 0) -> DataMo
     )
 
 
+#: ``adcp.types._base.MemberAlias``, as the ``(module, name)`` pair this module holds an
+#: import as -- :data:`TYPE_ADAPTER`'s and :data:`FIELD`'s own form, and for their reason:
+#: the NAME is written into the class body and the IMPORT is written into the module
+#: header, and two spellings of one symbol is how those come apart.
+MEMBER_ALIAS = (ir.BASE_MODULE, "MemberAlias")
+
+
+def _alias(member: ir.Member) -> DataModelFieldBase:
+    """One member's SECOND spelling as the model layer's field.
+
+    ``docs/plan/final-state.md`` reading 10: "the emitted enum carries the value-verbatim
+    spelling as an alias member", "EMITTED in the class body, never installed at runtime,
+    because reading 8 says the wheel is the artifact".  So it is a FIELD of the same list
+    the canonical member is in, rendered through the same ``{{ field.name }} = {{
+    field.default }}`` line by the same template -- not a string appended to the rendering,
+    which D9 forbids, and not a slot the template has not got (``Enum.jinja2`` has no
+    ``class_body_lines``, which is why an ``__adcp_schema__`` cannot reach an enum's body
+    at all; see :class:`ir.EnumDecl`).
+
+    **The VALUE is ``MemberAlias(<canonical>)`` and not the member's own value**, which is
+    the whole of why ``__members__`` does not move: a plain ``transient = 'transient'``
+    beside ``TRANSIENT = 'transient'`` is python's own enum aliasing and puts the second
+    name IN ``__members__`` -- 6 entries where the document states 3, and
+    ``tests/test_enum.py``'s ``_members`` then reads a lower-case member off a class whose
+    every member is asserted upper-case.  ``enum._EnumDict`` passes a DESCRIPTOR over
+    without making it a member, so this binds a NAME and nothing else.
+
+    ``PythonCode`` is the carrier because the default is an EXPRESSION, which is the same
+    selection :func:`_member` makes for ``<values>[<i>]``: the alternative is to write the
+    call as text and have two escapings in one class body.  The argument is the canonical
+    member NAME -- an identifier this module derived, never a document's value -- so
+    ``repr`` of it is a python literal by construction.
+
+    No description, and that is not a loss: a ``enumDescriptions`` entry describes a VALUE
+    and the value's own member carries it, so a second docstring under the second spelling
+    would be the one fact this compiler restated.
+    """
+    return DataModelFieldBase(
+        name=member.alias,
+        data_type=DataType(),
+        default=PythonCode(f"{MEMBER_ALIAS[1]}({member.name!r})"),
+        required=True,
+    )
+
+
 #: The Python type word for each kind's MEMBER VALUE, for the annotation a value list
 #: carries.  ``lower.enum.BASES`` is the same mapping read from the other side.
 _VALUE_TYPES = {"string": "str", "integer": "int"}
@@ -845,14 +890,27 @@ def enum(decl: ir.EnumDecl) -> Rendered:
     [attr-defined]``, measured against a wheel), which is a regression in reading 7.  So
     the two docstring slots the correction was willing to give up are kept as well, and
     nothing about this function differs between a value list of its own and a shared one.
+
+    **A MEMBER WITH A SECOND SPELLING RENDERS TWO CLASS-BODY LINES, THE ALIAS BESIDE THE
+    CANONICAL ONE** (:func:`_alias`, reading 10).  Beside and not in a trailing block,
+    because the two lines are two names for ONE member and a reader of the module meets
+    them together; the import is reported exactly where one was written, so a module whose
+    every member spelling is refused imports nothing it does not use.
     """
+    fields: list[DataModelFieldBase] = []
+    for at, member in enumerate(decl.members):
+        fields.append(_member(member, decl.values, at))
+        if member.alias is not None:
+            fields.append(_alias(member))
     model = _ENUM_BASES[decl.kind](
         reference=Reference(path=f"#/{decl.name}", original_name=decl.name, name=decl.name),
-        fields=[_member(m, decl.values, at) for at, m in enumerate(decl.members)],
+        fields=fields,
         description=decl.description or None,
     )
     out = Rendered(text=model.render().rstrip("\n"))
     _reported(model.imports, out.imports)
+    if any(member.alias is not None for member in decl.members):
+        out.imports.add(MEMBER_ALIAS)
     return out
 
 

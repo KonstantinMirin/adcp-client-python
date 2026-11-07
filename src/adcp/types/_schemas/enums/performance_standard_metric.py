@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/performance-standard-metric.json', pointer='#')
 
@@ -15,20 +15,27 @@ class PerformanceStandardMetric(StrEnum):
     """Viewable impression rate (floor — must exceed threshold). Requires viewability_standard. Denominator: measurable_impressions."""
 
 
+    viewability = MemberAlias('VIEWABILITY')
     IVT = 'ivt'
     """Invalid Traffic rate (ceiling — must not exceed threshold). Denominator: total_impressions."""
 
 
+    ivt = MemberAlias('IVT')
     COMPLETION_RATE = 'completion_rate'
     """Video or audio completion rate (floor — must exceed threshold). Denominator: total_impressions."""
 
 
+    completion_rate = MemberAlias('COMPLETION_RATE')
     BRAND_SAFETY = 'brand_safety'
     """Brand-safe impression rate (floor — must exceed threshold). Denominator: total_impressions."""
 
 
+    brand_safety = MemberAlias('BRAND_SAFETY')
     ATTENTION_SCORE = 'attention_score'
     """Attention score rate (floor — must exceed threshold). Denominator: measurable_impressions."""
+
+
+    attention_score = MemberAlias('ATTENTION_SCORE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PerformanceStandardMetric", PerformanceStandardMetric)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 from ._vocabularies import _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL
 
@@ -17,16 +17,22 @@ class CanonicalMediaBuyActionMode(StrEnum):
     """The declared task completes synchronously without approval."""
 
 
+    self_serve = MemberAlias('SELF_SERVE')
     CONDITIONAL_SELF_SERVE = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[1]
     """The declared task completes synchronously inside seller tolerances and may become asynchronous outside them."""
 
 
+    conditional_self_serve = MemberAlias('CONDITIONAL_SELF_SERVE')
     SELLER_MANAGED = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[2]
     """The seller processes the action through the standard async lifecycle. The internal use of people, models, queues, or other controls is intentionally opaque."""
 
 
+    seller_managed = MemberAlias('SELLER_MANAGED')
     REQUIRES_APPROVAL = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[3]
     """Legacy 3.x mode indicating an approval-dependent async path. New proposal-bound terms SHOULD use seller_managed so they do not expose an internal implementation."""
+
+
+    requires_approval = MemberAlias('REQUIRES_APPROVAL')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CanonicalMediaBuyActionMode", CanonicalMediaBuyActionMode)

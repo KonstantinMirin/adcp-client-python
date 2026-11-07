@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from .assets.image_asset import ImageAsset
@@ -20,11 +20,17 @@ class Role(StrEnum):
     Semantic role of this asset. coverage_map: geographic or audience reach visualization; sample_render: mockup of ad placement in context; environment_photo: photo of the physical or digital environment; media_kit: downloadable media kit or spec sheet; logo: seller or property logo; other: seller-defined role (provide role_label).
     """
     COVERAGE_MAP = 'coverage_map'
+    coverage_map = MemberAlias('COVERAGE_MAP')
     SAMPLE_RENDER = 'sample_render'
+    sample_render = MemberAlias('SAMPLE_RENDER')
     ENVIRONMENT_PHOTO = 'environment_photo'
+    environment_photo = MemberAlias('ENVIRONMENT_PHOTO')
     MEDIA_KIT = 'media_kit'
+    media_kit = MemberAlias('MEDIA_KIT')
     LOGO = 'logo'
+    logo = MemberAlias('LOGO')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class ProductCardReferenceAsset(AdCPBaseModel):

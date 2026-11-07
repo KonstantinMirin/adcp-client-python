@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/social-placement-surface.json', pointer='#')
 
@@ -15,20 +15,27 @@ class SocialPlacementSurface(StrEnum):
     """The primary scrolling home or timeline surface where posts and ads are interleaved with followed and recommended content."""
 
 
+    feed = MemberAlias('FEED')
     STORIES = 'stories'
     """The full-screen, ephemeral tap-through surface presented between or alongside users' story content."""
 
 
+    stories = MemberAlias('STORIES')
     SHORT_VIDEO = 'short_video'
     """The full-screen, sound-on, swipe-past, algorithmically-recommended vertical short-video surface. Subsumes the platform brand names for this surface (Reels, Shorts, Spotlight, and TikTok's For You short-video experience) — platform identity belongs to a property/publisher axis, not here."""
 
 
+    short_video = MemberAlias('SHORT_VIDEO')
     EXPLORE = 'explore'
     """The discovery or browse surface presenting recommended content outside the user's followed graph."""
 
 
+    explore = MemberAlias('EXPLORE')
     SEARCH = 'search'
     """The in-app search-results surface, keyed to the user's query."""
+
+
+    search = MemberAlias('SEARCH')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SocialPlacementSurface", SocialPlacementSurface)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import AdcpVersion, HttpUrl, StrMinLen1
 
@@ -16,15 +16,21 @@ from .registry_event import GradingProfile
 class Role(StrEnum):
     MEDIA_BUY = 'media-buy'
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
     SIGNALS = 'signals'
+    signals = MemberAlias('SIGNALS')
     GOVERNANCE = 'governance'
+    governance = MemberAlias('GOVERNANCE')
     BRAND = 'brand'
+    brand = MemberAlias('BRAND')
     SPONSORED_INTELLIGENCE = 'sponsored-intelligence'
 
 
 class VerificationMode(StrEnum):
     SPEC = 'spec'
+    spec = MemberAlias('SPEC')
     LIVE = 'live'
+    live = MemberAlias('LIVE')
 
 
 VerificationTokenGradingProfile = GradingProfile

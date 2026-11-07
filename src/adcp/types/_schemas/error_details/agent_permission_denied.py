@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 
 class Reason(StrEnum):
@@ -14,6 +14,7 @@ class Reason(StrEnum):
     Registered per-agent provisioning gate that fired. `"sandbox_only"` — the agent is provisioned for sandbox traffic only and the request was against a non-sandbox account. New `reason` values MUST be added here (the enum is closed by `additionalProperties: false`) so cross-language SDKs can dispatch without parsing prose.
     """
     SANDBOX_ONLY = 'sandbox_only'
+    sandbox_only = MemberAlias('SANDBOX_ONLY')
 
 
 class AgentPermissionDeniedDetails(AdCPBaseModel):

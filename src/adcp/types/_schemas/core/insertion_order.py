@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMaxLen255, StrMaxLen500, TermsTotalBudgetCurrency
 
 
@@ -24,10 +24,15 @@ class TermsPaymentTerms(StrEnum):
     Payment terms
     """
     NET_30 = 'net_30'
+    net_30 = MemberAlias('NET_30')
     NET_60 = 'net_60'
+    net_60 = MemberAlias('NET_60')
     NET_90 = 'net_90'
+    net_90 = MemberAlias('NET_90')
     PREPAID = 'prepaid'
+    prepaid = MemberAlias('PREPAID')
     DUE_ON_RECEIPT = 'due_on_receipt'
+    due_on_receipt = MemberAlias('DUE_ON_RECEIPT')
 
 
 class Terms(AdCPBaseModel):

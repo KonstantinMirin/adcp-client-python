@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/property-type.json', pointer='#')
 
@@ -15,40 +15,52 @@ class PropertyType(StrEnum):
     """Web properties accessible via browser, identified by domain"""
 
 
+    website = MemberAlias('WEBSITE')
     MOBILE_APP = 'mobile_app'
     """Native mobile applications, identified by app store IDs or bundle identifiers"""
 
 
+    mobile_app = MemberAlias('MOBILE_APP')
     CTV_APP = 'ctv_app'
     """Connected TV applications, identified by platform-specific store IDs"""
 
 
+    ctv_app = MemberAlias('CTV_APP')
     DESKTOP_APP = 'desktop_app'
     """Desktop applications (Electron, native, Chromium wrappers), identified by application bundle IDs"""
 
 
+    desktop_app = MemberAlias('DESKTOP_APP')
     DOOH = 'dooh'
     """Venue-operated digital endpoint networks, including screens and audio players, identified by network/venue IDs"""
 
 
+    dooh = MemberAlias('DOOH')
     PODCAST = 'podcast'
     """Podcast feeds and episodes, identified by RSS feed URLs or podcast IDs"""
 
 
+    podcast = MemberAlias('PODCAST')
     RADIO = 'radio'
     """Radio station properties, identified by station ID or facility ID"""
 
 
+    radio = MemberAlias('RADIO')
     LINEAR_TV = 'linear_tv'
     """Linear television stations and networks, identified by station ID or facility ID"""
 
 
+    linear_tv = MemberAlias('LINEAR_TV')
     STREAMING_AUDIO = 'streaming_audio'
     """Digital audio streaming properties, identified by platform-specific IDs"""
 
 
+    streaming_audio = MemberAlias('STREAMING_AUDIO')
     AI_ASSISTANT = 'ai_assistant'
     """AI-powered conversational interfaces including chatbots, AI assistants, and conversational AI platforms, identified by platform-specific IDs"""
+
+
+    ai_assistant = MemberAlias('AI_ASSISTANT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PropertyType", PropertyType)

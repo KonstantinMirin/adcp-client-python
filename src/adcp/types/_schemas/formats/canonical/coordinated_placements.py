@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
@@ -39,7 +39,9 @@ class ServingPolicy(StrEnum):
     Per-component serving/tracking policy. Some sellers restrict specific components (e.g., page skins) to first-party serving while allowing third-party tags on sibling components. Defaults to the product-level policy when absent.
     """
     SELLER_SERVED_ONLY = 'seller_served_only'
+    seller_served_only = MemberAlias('SELLER_SERVED_ONLY')
     THIRD_PARTY_ALLOWED = 'third_party_allowed'
+    third_party_allowed = MemberAlias('THIRD_PARTY_ALLOWED')
 
 
 class ComponentsItem(BranchDispatchMixin, AdCPBaseModel):
@@ -220,26 +222,47 @@ ComponentsItem.model_rebuild(force=True)
 
 class AssetType(StrEnum):
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     VIDEO = 'video'
+    video = MemberAlias('VIDEO')
     AUDIO = 'audio'
+    audio = MemberAlias('AUDIO')
     TEXT = 'text'
+    text = MemberAlias('TEXT')
     MARKDOWN = 'markdown'
+    markdown = MemberAlias('MARKDOWN')
     URL = 'url'
+    url = MemberAlias('URL')
     HTML = 'html'
+    html = MemberAlias('HTML')
     CSS = 'css'
+    css = MemberAlias('CSS')
     JAVASCRIPT = 'javascript'
+    javascript = MemberAlias('JAVASCRIPT')
     VAST = 'vast'
+    vast = MemberAlias('VAST')
     DAAST = 'daast'
+    daast = MemberAlias('DAAST')
     WEBHOOK = 'webhook'
+    webhook = MemberAlias('WEBHOOK')
     BRIEF = 'brief'
+    brief = MemberAlias('BRIEF')
     CATALOG = 'catalog'
+    catalog = MemberAlias('CATALOG')
     PUBLISHED_POST = 'published_post'
+    published_post = MemberAlias('PUBLISHED_POST')
     ZIP = 'zip'
+    zip = MemberAlias('ZIP')
     CARD = 'card'
+    card = MemberAlias('CARD')
     OBJECT = 'object'
+    object = MemberAlias('OBJECT')
     PIXEL_TRACKER = 'pixel_tracker'
+    pixel_tracker = MemberAlias('PIXEL_TRACKER')
     VAST_TRACKER = 'vast_tracker'
+    vast_tracker = MemberAlias('VAST_TRACKER')
     DAAST_TRACKER = 'daast_tracker'
+    daast_tracker = MemberAlias('DAAST_TRACKER')
 
 
 class SharedSlotsItem(AdCPBaseModel):

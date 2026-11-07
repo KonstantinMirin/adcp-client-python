@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/warning-code.json', pointer='#')
 
@@ -15,12 +15,17 @@ class WarningCode(StrEnum):
     """The operation succeeded, but the seller's current forecast is materially below the requested delivery goal. If the condition remains current, the seller also exposes inventory_shortfall_forecast on the affected package read."""
 
 
+    inventory_shortfall_forecast = MemberAlias('INVENTORY_SHORTFALL_FORECAST')
     FLIGHT_CHANGE_CREATES_PACING_RISK = 'flight_change_creates_pacing_risk'
     """The requested flight change was accepted, but the seller projects material over- or under-delivery risk. If the condition remains current, the seller also exposes pacing_risk on the affected package read."""
 
 
+    flight_change_creates_pacing_risk = MemberAlias('FLIGHT_CHANGE_CREATES_PACING_RISK')
     FIELDS_IGNORED_DUE_TO_PRECEDENCE = 'fields_ignored_due_to_precedence'
     """The operation succeeded, but one or more submitted fields were intentionally ignored because another field has defined precedence, such as canceled: true overriding other media-buy updates. details SHOULD list the ignored field paths."""
+
+
+    fields_ignored_due_to_precedence = MemberAlias('FIELDS_IGNORED_DUE_TO_PRECEDENCE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "WarningCode", WarningCode)

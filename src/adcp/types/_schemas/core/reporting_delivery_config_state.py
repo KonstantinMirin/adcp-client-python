@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255, StrMinLen1MaxLen2000
 
@@ -18,17 +18,26 @@ from .reporting_status_issue import ReportingStatusIssue
 
 class ReportingDeliveryConfigLifecycleState(StrEnum):
     PENDING_VALIDATION = 'pending_validation'
+    pending_validation = MemberAlias('PENDING_VALIDATION')
     PENDING_SETUP = 'pending_setup'
+    pending_setup = MemberAlias('PENDING_SETUP')
     READY = 'ready'
+    ready = MemberAlias('READY')
     ACTION_REQUIRED = 'action_required'
+    action_required = MemberAlias('ACTION_REQUIRED')
     INACTIVE = 'inactive'
+    inactive = MemberAlias('INACTIVE')
 
 
 class Action(StrEnum):
     GRANT_ACCESS = 'grant_access'
+    grant_access = MemberAlias('GRANT_ACCESS')
     ACTIVATE_RECIPIENT = 'activate_recipient'
+    activate_recipient = MemberAlias('ACTIVATE_RECIPIENT')
     AUTHORIZE_PROVIDER = 'authorize_provider'
+    authorize_provider = MemberAlias('AUTHORIZE_PROVIDER')
     REPAIR_ACCESS = 'repair_access'
+    repair_access = MemberAlias('REPAIR_ACCESS')
 
 
 class Setup(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/binary-verdict.json', pointer='#')
 
@@ -17,6 +17,9 @@ class BinaryVerdict(StrEnum):
 
     FAIL = 'fail'
     """The evaluated record failed one or more content standard checks"""
+
+
+    fail = MemberAlias('FAIL')
 
 
 strict_validate = strict_alias(__adcp_schema__, "BinaryVerdict", BinaryVerdict)

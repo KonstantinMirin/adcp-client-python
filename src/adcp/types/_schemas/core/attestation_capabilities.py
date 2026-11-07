@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
@@ -20,8 +20,11 @@ from .ext import ExtensionObject
 
 class SupportedDeliveryMethodsItem(StrEnum):
     CREDENTIAL_URI = 'credential_uri'
+    credential_uri = MemberAlias('CREDENTIAL_URI')
     ISSUER_CREDENTIAL_ID = 'issuer_credential_id'
+    issuer_credential_id = MemberAlias('ISSUER_CREDENTIAL_ID')
     EMBEDDED = 'embedded'
+    embedded = MemberAlias('EMBEDDED')
 
 
 class Authentication(StrEnum):
@@ -29,7 +32,9 @@ class Authentication(StrEnum):
     Whether the resolver is public or uses credentials managed outside AdCP task payloads. Presenter-supplied credentials are never accepted.
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     EVALUATOR_MANAGED = 'evaluator_managed'
+    evaluator_managed = MemberAlias('EVALUATOR_MANAGED')
 
 
 class ResolversItem(AdCPBaseModel):

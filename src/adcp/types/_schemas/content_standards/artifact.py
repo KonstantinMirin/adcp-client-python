@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import AssetsItemContent, AssetsItemHeadingLevel, AssetsItemTranscript, HttpUrl
 
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -20,11 +20,17 @@ class Role(StrEnum):
     """
     TITLE = 'title'
     PARAGRAPH = 'paragraph'
+    paragraph = MemberAlias('PARAGRAPH')
     HEADING = 'heading'
+    heading = MemberAlias('HEADING')
     CAPTION = 'caption'
+    caption = MemberAlias('CAPTION')
     QUOTE = 'quote'
+    quote = MemberAlias('QUOTE')
     LIST_ITEM = 'list_item'
+    list_item = MemberAlias('LIST_ITEM')
     DESCRIPTION = 'description'
+    description = MemberAlias('DESCRIPTION')
 
 
 class ContentFormat(StrEnum):
@@ -65,7 +71,9 @@ class Provider(StrEnum):
     Cloud provider
     """
     GCP = 'gcp'
+    gcp = MemberAlias('GCP')
     AWS = 'aws'
+    aws = MemberAlias('AWS')
 
 
 class AssetAccessServiceAccount(AdCPBaseModel):
@@ -118,10 +126,15 @@ class AssetsItemVideoTranscriptSource(StrEnum):
     How the transcript was generated
     """
     ORIGINAL_SCRIPT = 'original_script'
+    original_script = MemberAlias('ORIGINAL_SCRIPT')
     SUBTITLES = 'subtitles'
+    subtitles = MemberAlias('SUBTITLES')
     CLOSED_CAPTIONS = 'closed_captions'
+    closed_captions = MemberAlias('CLOSED_CAPTIONS')
     DUB = 'dub'
+    dub = MemberAlias('DUB')
     GENERATED = 'generated'
+    generated = MemberAlias('GENERATED')
 
 
 class AssetsItemVideo(AdCPBaseModel):
@@ -148,8 +161,11 @@ class AssetsItemAudioTranscriptSource(StrEnum):
     How the transcript was generated
     """
     ORIGINAL_SCRIPT = 'original_script'
+    original_script = MemberAlias('ORIGINAL_SCRIPT')
     CLOSED_CAPTIONS = 'closed_captions'
+    closed_captions = MemberAlias('CLOSED_CAPTIONS')
     GENERATED = 'generated'
+    generated = MemberAlias('GENERATED')
 
 
 class AssetsItemAudio(AdCPBaseModel):

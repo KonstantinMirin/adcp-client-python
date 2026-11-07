@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/macro-dialect.json', pointer='#')
 
@@ -15,20 +15,27 @@ class MacroDialectFamily(StrEnum):
     """AdCP universal macro syntax and semantics."""
 
 
+    adcp = MemberAlias('ADCP')
     IAB_VAST = 'iab_vast'
     """IAB VAST macro syntax, qualified by the referenced live-registry revision."""
 
 
+    iab_vast = MemberAlias('IAB_VAST')
     IAB_DAAST = 'iab_daast'
     """IAB DAAST macro syntax, qualified by the referenced specification/registry revision."""
 
 
+    iab_daast = MemberAlias('IAB_DAAST')
     VENDOR = 'vendor'
     """A vendor- or platform-owned macro namespace, qualified by its authoritative URI and immutable revision."""
 
 
+    vendor = MemberAlias('VENDOR')
     UNKNOWN = 'unknown'
     """The token namespace cannot be established. Preserve the token unchanged and never advertise it as resolvable."""
+
+
+    unknown = MemberAlias('UNKNOWN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MacroDialectFamily", MacroDialectFamily)

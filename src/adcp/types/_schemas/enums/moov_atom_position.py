@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/moov-atom-position.json', pointer='#')
 
@@ -15,8 +15,12 @@ class MoovAtomPosition(StrEnum):
     """moov atom at beginning of file — enables progressive download and streaming delivery"""
 
 
+    start = MemberAlias('START')
     END = 'end'
     """moov atom at end of file — requires full download before playback can begin"""
+
+
+    end = MemberAlias('END')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MoovAtomPosition", MoovAtomPosition)

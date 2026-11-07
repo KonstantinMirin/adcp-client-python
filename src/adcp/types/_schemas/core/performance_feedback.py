@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from ..enums.feedback_source import FeedbackSource
 from ..enums.metric_type import MetricType
@@ -20,9 +20,13 @@ class Status(StrEnum):
     Processing status of the performance feedback
     """
     ACCEPTED = 'accepted'
+    accepted = MemberAlias('ACCEPTED')
     QUEUED = 'queued'
+    queued = MemberAlias('QUEUED')
     APPLIED = 'applied'
+    applied = MemberAlias('APPLIED')
     REJECTED = 'rejected'
+    rejected = MemberAlias('REJECTED')
 
 
 class PerformanceFeedback(AdCPBaseModel):

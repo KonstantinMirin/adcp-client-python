@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
@@ -21,8 +21,11 @@ class DecisionUse(StrEnum):
     How this evidence affected the seller's decision. This is not targeting execution.
     """
     RECOMMENDATION = 'recommendation'
+    recommendation = MemberAlias('RECOMMENDATION')
     ELIGIBILITY = 'eligibility'
+    eligibility = MemberAlias('ELIGIBILITY')
     PACKAGE_CONSTRUCTION = 'package_construction'
+    package_construction = MemberAlias('PACKAGE_CONSTRUCTION')
 
 
 class ActionBinding(AdCPBaseModel):

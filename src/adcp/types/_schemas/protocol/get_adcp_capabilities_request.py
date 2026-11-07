@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -16,10 +16,15 @@ from ..core.version_envelope import AdCPVersionEnvelope
 
 class ProtocolsItem(StrEnum):
     MEDIA_BUY = 'media_buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     SIGNALS = 'signals'
+    signals = MemberAlias('SIGNALS')
     GOVERNANCE = 'governance'
+    governance = MemberAlias('GOVERNANCE')
     SPONSORED_INTELLIGENCE = 'sponsored_intelligence'
+    sponsored_intelligence = MemberAlias('SPONSORED_INTELLIGENCE')
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
 
 
 class GetAdCPCapabilitiesRequest(AdCPVersionEnvelope, AdcpRequest):

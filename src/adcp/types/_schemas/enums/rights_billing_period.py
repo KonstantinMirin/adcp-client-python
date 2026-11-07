@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/rights-billing-period.json', pointer='#')
 
@@ -12,11 +12,17 @@ class RightsBillingPeriod(StrEnum):
     Billing period for brand rights pricing
     """
     DAILY = 'daily'
+    daily = MemberAlias('DAILY')
     WEEKLY = 'weekly'
+    weekly = MemberAlias('WEEKLY')
     MONTHLY = 'monthly'
+    monthly = MemberAlias('MONTHLY')
     QUARTERLY = 'quarterly'
+    quarterly = MemberAlias('QUARTERLY')
     ANNUAL = 'annual'
+    annual = MemberAlias('ANNUAL')
     ONE_TIME = 'one_time'
+    one_time = MemberAlias('ONE_TIME')
 
 
 strict_validate = strict_alias(__adcp_schema__, "RightsBillingPeriod", RightsBillingPeriod)

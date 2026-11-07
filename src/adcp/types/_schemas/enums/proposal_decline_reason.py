@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/proposal-decline-reason.json', pointer='#')
 
@@ -15,40 +15,52 @@ class ProposalDeclineReason(StrEnum):
     """Price, rate, or cost efficiency did not meet the buyer's requirement."""
 
 
+    price = MemberAlias('PRICE')
     INVENTORY_FIT = 'inventory_fit'
     """Inventory, placements, format mix, availability, or forecast did not fit the brief."""
 
 
+    inventory_fit = MemberAlias('INVENTORY_FIT')
     AUDIENCE_FIT = 'audience_fit'
     """The proposal did not sufficiently match the required audience or targeting."""
 
 
+    audience_fit = MemberAlias('AUDIENCE_FIT')
     CREATIVE_UNSUPPORTED = 'creative_unsupported'
     """The seller could not support the required creative format, asset, or production workflow."""
 
 
+    creative_unsupported = MemberAlias('CREATIVE_UNSUPPORTED')
     MEASUREMENT_UNSUPPORTED = 'measurement_unsupported'
     """The seller could not support required measurement, reporting, attribution, or verification."""
 
 
+    measurement_unsupported = MemberAlias('MEASUREMENT_UNSUPPORTED')
     POLICY = 'policy'
     """The proposal was incompatible with buyer, seller, governance, legal, or brand-suitability policy."""
 
 
+    policy = MemberAlias('POLICY')
     TIMING = 'timing'
     """The schedule, expiry, approval timing, or delivery window did not fit."""
 
 
+    timing = MemberAlias('TIMING')
     BUDGET_CHANGED = 'budget_changed'
     """The buyer's budget, scope, or campaign plan changed after evaluation."""
 
 
+    budget_changed = MemberAlias('BUDGET_CHANGED')
     SELECTED_ALTERNATIVE = 'selected_alternative'
     """The buyer selected another approach or supply source."""
 
 
+    selected_alternative = MemberAlias('SELECTED_ALTERNATIVE')
     OTHER = 'other'
     """Another reason; detail is required."""
+
+
+    other = MemberAlias('OTHER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ProposalDeclineReason", ProposalDeclineReason)

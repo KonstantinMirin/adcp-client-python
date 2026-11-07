@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/proposal-refinement-reason.json', pointer='#')
 
@@ -15,32 +15,42 @@ class ProposalRefinementReason(StrEnum):
     """The seller understood terms requested through the free-text ask but declined to offer them. An unmet typed constraint or product change always uses constraint_unsatisfiable instead, whether the seller cannot or will not meet it."""
 
 
+    commercially_declined = MemberAlias('COMMERCIALLY_DECLINED')
     CONSTRAINT_UNSATISFIABLE = 'constraint_unsatisfiable'
     """One or more typed hard constraints or product changes were not satisfied. Takes precedence over every other code when failures co-occur."""
 
 
+    constraint_unsatisfiable = MemberAlias('CONSTRAINT_UNSATISFIABLE')
     UNSUPPORTED_DIMENSION = 'unsupported_dimension'
     """The seller cannot parse or validate one or more typed refinement dimensions used by the request."""
 
 
+    unsupported_dimension = MemberAlias('UNSUPPORTED_DIMENSION')
     UNINTERPRETED = 'uninterpreted'
     """The seller could not interpret some or all of the free-text ask."""
 
 
+    uninterpreted = MemberAlias('UNINTERPRETED')
     ALTERNATIVES_UNAVAILABLE = 'alternatives_unavailable'
     """The seller produced fewer distinct draft alternatives than requested."""
 
 
+    alternatives_unavailable = MemberAlias('ALTERNATIVES_UNAVAILABLE')
     SOURCE_UNAVAILABLE = 'source_unavailable'
     """The source proposal was not found, visible, or eligible for revision by this caller."""
 
 
+    source_unavailable = MemberAlias('SOURCE_UNAVAILABLE')
     HOLD_UNAVAILABLE = 'hold_unavailable'
     """The seller declined or failed to reserve inventory for this finalize, whether from sell-through since drafting or from hold policy such as a concurrent-hold cap."""
 
 
+    hold_unavailable = MemberAlias('HOLD_UNAVAILABLE')
     BATCH_ABORTED = 'batch_aborted'
     """This entry failed only because a sibling entry in the all-or-none finalize batch failed; the entry itself was otherwise eligible."""
+
+
+    batch_aborted = MemberAlias('BATCH_ABORTED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ProposalRefinementReason", ProposalRefinementReason)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     PhysicalChecksumsItemSHA512PhysicalChecksumValue,
@@ -25,8 +25,11 @@ class VerificationPath(StrEnum):
     Path on which verification succeeded. dataset_share readiness requires representative_consumer; delivered warehouse state requires destination.
     """
     PRODUCER = 'producer'
+    producer = MemberAlias('PRODUCER')
     REPRESENTATIVE_CONSUMER = 'representative_consumer'
+    representative_consumer = MemberAlias('REPRESENTATIVE_CONSUMER')
     DESTINATION = 'destination'
+    destination = MemberAlias('DESTINATION')
 
 
 class SHA256PhysicalChecksum(AdCPBaseModel):
@@ -51,7 +54,9 @@ class SHA512PhysicalChecksum(AdCPBaseModel):
 
 class ObservedThrough(StrEnum):
     REPRESENTATIVE_CONSUMER = 'representative_consumer'
+    representative_consumer = MemberAlias('REPRESENTATIVE_CONSUMER')
     DESTINATION = 'destination'
+    destination = MemberAlias('DESTINATION')
 
 
 class NativeCommitEvidence(AdCPBaseModel):

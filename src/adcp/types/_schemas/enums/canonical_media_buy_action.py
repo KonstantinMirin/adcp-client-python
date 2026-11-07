@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/canonical-media-buy-action.json', pointer='#')
 
@@ -12,31 +12,57 @@ class CanonicalMediaBuyActionName(StrEnum):
     Fine-grained MediaBuy action vocabulary for compact product and lifecycle surfaces. Deprecated coarse 3.x actions are absent.
     """
     PAUSE = 'pause'
+    pause = MemberAlias('PAUSE')
     RESUME = 'resume'
+    resume = MemberAlias('RESUME')
     CANCEL = 'cancel'
+    cancel = MemberAlias('CANCEL')
     EXTEND_FLIGHT = 'extend_flight'
+    extend_flight = MemberAlias('EXTEND_FLIGHT')
     SHORTEN_FLIGHT = 'shorten_flight'
+    shorten_flight = MemberAlias('SHORTEN_FLIGHT')
     UPDATE_FLIGHT_DATES = 'update_flight_dates'
+    update_flight_dates = MemberAlias('UPDATE_FLIGHT_DATES')
     INCREASE_BUDGET = 'increase_budget'
+    increase_budget = MemberAlias('INCREASE_BUDGET')
     DECREASE_BUDGET = 'decrease_budget'
+    decrease_budget = MemberAlias('DECREASE_BUDGET')
     REALLOCATE_BUDGET = 'reallocate_budget'
+    reallocate_budget = MemberAlias('REALLOCATE_BUDGET')
     UPDATE_BUDGET_ALLOCATION = 'update_budget_allocation'
+    update_budget_allocation = MemberAlias('UPDATE_BUDGET_ALLOCATION')
     UPDATE_TARGETING = 'update_targeting'
+    update_targeting = MemberAlias('UPDATE_TARGETING')
     UPDATE_PACING = 'update_pacing'
+    update_pacing = MemberAlias('UPDATE_PACING')
     UPDATE_BIDDING = 'update_bidding'
+    update_bidding = MemberAlias('UPDATE_BIDDING')
     UPDATE_FREQUENCY_CAPS = 'update_frequency_caps'
+    update_frequency_caps = MemberAlias('UPDATE_FREQUENCY_CAPS')
     UPDATE_MEDIA_BUY_FREQUENCY_CAP = 'update_media_buy_frequency_cap'
+    update_media_buy_frequency_cap = MemberAlias('UPDATE_MEDIA_BUY_FREQUENCY_CAP')
     UPDATE_CATALOG_ASSIGNMENTS = 'update_catalog_assignments'
+    update_catalog_assignments = MemberAlias('UPDATE_CATALOG_ASSIGNMENTS')
     UPDATE_KEYWORDS = 'update_keywords'
+    update_keywords = MemberAlias('UPDATE_KEYWORDS')
     UPDATE_OPTIMIZATION_GOALS = 'update_optimization_goals'
+    update_optimization_goals = MemberAlias('UPDATE_OPTIMIZATION_GOALS')
     UPDATE_IMPRESSION_GOAL = 'update_impression_goal'
+    update_impression_goal = MemberAlias('UPDATE_IMPRESSION_GOAL')
     UPDATE_SPEND_TARGET = 'update_spend_target'
+    update_spend_target = MemberAlias('UPDATE_SPEND_TARGET')
     UPDATE_REPORTING_WEBHOOK = 'update_reporting_webhook'
+    update_reporting_webhook = MemberAlias('UPDATE_REPORTING_WEBHOOK')
     REPLACE_CREATIVE = 'replace_creative'
+    replace_creative = MemberAlias('REPLACE_CREATIVE')
     UPDATE_CREATIVE_ASSIGNMENTS = 'update_creative_assignments'
+    update_creative_assignments = MemberAlias('UPDATE_CREATIVE_ASSIGNMENTS')
     REMOVE_CREATIVE = 'remove_creative'
+    remove_creative = MemberAlias('REMOVE_CREATIVE')
     ADD_PACKAGES = 'add_packages'
+    add_packages = MemberAlias('ADD_PACKAGES')
     REMOVE_PACKAGES = 'remove_packages'
+    remove_packages = MemberAlias('REMOVE_PACKAGES')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CanonicalMediaBuyActionName", CanonicalMediaBuyActionName)

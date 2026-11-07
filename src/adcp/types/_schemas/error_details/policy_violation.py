@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, HttpUrl, StrMinLen1
 
 
@@ -15,8 +15,11 @@ class Origin(StrEnum):
     Whose policy produced the rejection. Optional so undisclosed seller policies can return only the typed POLICY_VIOLATION code if even origin would reveal sensitive information.
     """
     BUYER_PLAN = 'buyer_plan'
+    buyer_plan = MemberAlias('BUYER_PLAN')
     REGISTRY = 'registry'
+    registry = MemberAlias('REGISTRY')
     SELLER = 'seller'
+    seller = MemberAlias('SELLER')
 
 
 class PolicyViolationDetails(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/collection-status.json', pointer='#')
 
@@ -15,16 +15,22 @@ class CollectionStatus(StrEnum):
     """Currently producing and releasing installments"""
 
 
+    active = MemberAlias('ACTIVE')
     HIATUS = 'hiatus'
     """Temporarily paused, expected to resume"""
 
 
+    hiatus = MemberAlias('HIATUS')
     ENDED = 'ended'
     """No longer producing new installments"""
 
 
+    ended = MemberAlias('ENDED')
     UPCOMING = 'upcoming'
     """Announced but not yet released"""
+
+
+    upcoming = MemberAlias('UPCOMING')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CollectionStatus", CollectionStatus)

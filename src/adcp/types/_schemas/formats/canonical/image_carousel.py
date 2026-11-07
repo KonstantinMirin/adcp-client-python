@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1, MinCards
 
 from ._base import CanonicalFormatBase, SlotsItem
@@ -14,7 +14,9 @@ from ._base import CanonicalFormatBase, SlotsItem
 
 class AllowedCardMediaAssetTypesItem(StrEnum):
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     VIDEO = 'video'
+    video = MemberAlias('VIDEO')
 
 
 AllowedCardAssetTypesItem = AllowedCardMediaAssetTypesItem

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -25,12 +25,19 @@ class Reason(StrEnum):
     Coarse reason for the invalidation. This is advisory routing/debug metadata; receivers MUST re-read `get_adcp_capabilities` rather than relying on the reason to infer the new capability surface.
     """
     CONFIGURATION_CHANGED = 'configuration_changed'
+    configuration_changed = MemberAlias('CONFIGURATION_CHANGED')
     DEPLOYMENT_CHANGED = 'deployment_changed'
+    deployment_changed = MemberAlias('DEPLOYMENT_CHANGED')
     CAPABILITY_ENABLED = 'capability_enabled'
+    capability_enabled = MemberAlias('CAPABILITY_ENABLED')
     CAPABILITY_DISABLED = 'capability_disabled'
+    capability_disabled = MemberAlias('CAPABILITY_DISABLED')
     PROTOCOL_VERSIONS_CHANGED = 'protocol_versions_changed'
+    protocol_versions_changed = MemberAlias('PROTOCOL_VERSIONS_CHANGED')
     MANUAL_REFRESH = 'manual_refresh'
+    manual_refresh = MemberAlias('MANUAL_REFRESH')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class CapabilitiesChangedWebhook(AdCPBaseModel):

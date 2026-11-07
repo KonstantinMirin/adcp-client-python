@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -23,18 +23,31 @@ class ReasonCode(StrEnum):
     Machine-readable reason for the transition. This is advisory routing/debug metadata; receivers MUST re-read list_accounts rather than relying on the reason code as the source of truth.
     """
     SELLER_APPROVED = 'seller_approved'
+    seller_approved = MemberAlias('SELLER_APPROVED')
     SELLER_REJECTED = 'seller_rejected'
+    seller_rejected = MemberAlias('SELLER_REJECTED')
     PAYMENT_REQUIRED = 'payment_required'
+    payment_required = MemberAlias('PAYMENT_REQUIRED')
     CREDIT_LIMIT_REACHED = 'credit_limit_reached'
+    credit_limit_reached = MemberAlias('CREDIT_LIMIT_REACHED')
     FUNDS_DEPLETED = 'funds_depleted'
+    funds_depleted = MemberAlias('FUNDS_DEPLETED')
     SETUP_REQUIRED = 'setup_required'
+    setup_required = MemberAlias('SETUP_REQUIRED')
     POLICY_REVIEW = 'policy_review'
+    policy_review = MemberAlias('POLICY_REVIEW')
     POLICY_VIOLATION = 'policy_violation'
+    policy_violation = MemberAlias('POLICY_VIOLATION')
     COMPLIANCE_HOLD = 'compliance_hold'
+    compliance_hold = MemberAlias('COMPLIANCE_HOLD')
     BUYER_REQUESTED = 'buyer_requested'
+    buyer_requested = MemberAlias('BUYER_REQUESTED')
     SELLER_CLOSED = 'seller_closed'
+    seller_closed = MemberAlias('SELLER_CLOSED')
     MANUAL_UPDATE = 'manual_update'
+    manual_update = MemberAlias('MANUAL_UPDATE')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class Setup(AdCPBaseModel):

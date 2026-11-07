@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/task-status.json', pointer='#')
 
@@ -15,10 +15,12 @@ class TaskStatus(StrEnum):
     """Task accepted and queued for long-running execution (hours to days). Client can always poll get_task_status (legacy tasks/get) with task_id; push_notification_config is an optional notification channel for terminal completion/failure and optional progress updates."""
 
 
+    submitted = MemberAlias('SUBMITTED')
     WORKING = 'working'
     """Agent is actively processing the task, expect completion within 120 seconds"""
 
 
+    working = MemberAlias('WORKING')
     INPUT_REQUIRED = 'input-required'
     """Task is paused and waiting for input from the user (e.g., clarification, approval)"""
 
@@ -27,24 +29,31 @@ class TaskStatus(StrEnum):
     """Task has been successfully completed"""
 
 
+    completed = MemberAlias('COMPLETED')
     CANCELED = 'canceled'
     """Task was canceled by the user"""
 
 
+    canceled = MemberAlias('CANCELED')
     FAILED = 'failed'
     """Task failed due to an error during execution"""
 
 
+    failed = MemberAlias('FAILED')
     REJECTED = 'rejected'
     """The agent declined the request as a structured AdCP task outcome, either before execution or after evaluating a well-formed request as defined by the task-specific schema. This is not a transport failure; A2A carries an AdCP business rejection in a completed task's DataPart."""
 
 
+    rejected = MemberAlias('REJECTED')
     AUTH_REQUIRED = 'auth-required'
     """Task requires authentication to proceed"""
 
 
     UNKNOWN = 'unknown'
     """Task is in an unknown or indeterminate state"""
+
+
+    unknown = MemberAlias('UNKNOWN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "TaskStatus", TaskStatus)

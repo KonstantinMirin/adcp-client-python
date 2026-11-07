@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -21,7 +21,9 @@ from .reporting_delivery_offering import ReportingFeedPurpose
 
 class Readiness(StrEnum):
     AVAILABLE = 'available'
+    available = MemberAlias('AVAILABLE')
     DELIVERED = 'delivered'
+    delivered = MemberAlias('DELIVERED')
 
 
 class ReportingDeliveryReadyWebhook(AdCPBaseModel):

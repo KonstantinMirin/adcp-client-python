@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/advertiser-industry.json', pointer='#')
 
@@ -15,6 +15,7 @@ class AdvertiserIndustry(StrEnum):
     """Automotive manufacturers, dealerships, and auto industry"""
 
 
+    automotive = MemberAlias('AUTOMOTIVE')
     AUTOMOTIVE_ELECTRIC_VEHICLES = 'automotive.electric_vehicles'
     """Electric vehicle manufacturers and charging infrastructure"""
 
@@ -31,6 +32,7 @@ class AdvertiserIndustry(StrEnum):
     """Beauty, cosmetics, and prestige skincare brands. Distinct from cpg.personal_care — use beauty_cosmetics for brands whose identity is rooted in beauty (L'Oreal Paris, Estee Lauder, Sephora) and cpg.personal_care for mass-market personal hygiene (Dove, Colgate)"""
 
 
+    beauty_cosmetics = MemberAlias('BEAUTY_COSMETICS')
     BEAUTY_COSMETICS_SKINCARE = 'beauty_cosmetics.skincare'
     """Skincare brands and dermatological products"""
 
@@ -47,10 +49,12 @@ class AdvertiserIndustry(StrEnum):
     """Cannabis products and dispensaries. Subject to heavy platform restrictions — most platforms require explicit category declaration for ad acceptance"""
 
 
+    cannabis = MemberAlias('CANNABIS')
     CPG = 'cpg'
     """Consumer packaged goods — mass-market products sold through retail. For food and beverage manufacturers, use food_beverage. For prestige beauty, use beauty_cosmetics"""
 
 
+    cpg = MemberAlias('CPG')
     CPG_PERSONAL_CARE = 'cpg.personal_care'
     """Mass-market personal care and hygiene products (deodorant, toothpaste, soap). For prestige beauty brands, use beauty_cosmetics"""
 
@@ -63,10 +67,12 @@ class AdvertiserIndustry(StrEnum):
     """Dating apps and matchmaking services. Subject to platform restrictions similar to gambling_betting"""
 
 
+    dating = MemberAlias('DATING')
     EDUCATION = 'education'
     """Educational institutions and learning services"""
 
 
+    education = MemberAlias('EDUCATION')
     EDUCATION_HIGHER_EDUCATION = 'education.higher_education'
     """Universities, colleges, and graduate programs"""
 
@@ -83,6 +89,7 @@ class AdvertiserIndustry(StrEnum):
     """Energy companies and utilities"""
 
 
+    energy_utilities = MemberAlias('ENERGY_UTILITIES')
     ENERGY_UTILITIES_RENEWABLE = 'energy_utilities.renewable'
     """Renewable energy, solar, wind, and clean technology"""
 
@@ -91,6 +98,7 @@ class AdvertiserIndustry(StrEnum):
     """Clothing, footwear, and fashion accessories"""
 
 
+    fashion_apparel = MemberAlias('FASHION_APPAREL')
     FASHION_APPAREL_LUXURY = 'fashion_apparel.luxury'
     """Luxury fashion and designer brands"""
 
@@ -103,6 +111,7 @@ class AdvertiserIndustry(StrEnum):
     """Financial services, banking, and insurance"""
 
 
+    finance = MemberAlias('FINANCE')
     FINANCE_BANKING = 'finance.banking'
     """Retail and commercial banking"""
 
@@ -123,6 +132,7 @@ class AdvertiserIndustry(StrEnum):
     """Food and beverage companies — manufacturers (Coca-Cola, Nestle), restaurants, and alcohol brands. For non-food packaged goods, use cpg"""
 
 
+    food_beverage = MemberAlias('FOOD_BEVERAGE')
     FOOD_BEVERAGE_ALCOHOL = 'food_beverage.alcohol'
     """Alcoholic beverages (beer, wine, spirits). Subject to platform age-gating and regional restrictions"""
 
@@ -139,6 +149,7 @@ class AdvertiserIndustry(StrEnum):
     """Gambling, sports betting, and wagering. Subject to heavy platform restrictions — most platforms require explicit category declaration"""
 
 
+    gambling_betting = MemberAlias('GAMBLING_BETTING')
     GAMBLING_BETTING_SPORTS_BETTING = 'gambling_betting.sports_betting'
     """Sports betting and daily fantasy sports"""
 
@@ -151,6 +162,7 @@ class AdvertiserIndustry(StrEnum):
     """Video games and interactive entertainment"""
 
 
+    gaming = MemberAlias('GAMING')
     GAMING_MOBILE = 'gaming.mobile'
     """Mobile gaming"""
 
@@ -167,6 +179,7 @@ class AdvertiserIndustry(StrEnum):
     """Government agencies and nonprofit organizations"""
 
 
+    government_nonprofit = MemberAlias('GOVERNMENT_NONPROFIT')
     GOVERNMENT_NONPROFIT_POLITICAL = 'government_nonprofit.political'
     """Political advertising and advocacy. Subject to platform transparency and disclosure requirements"""
 
@@ -179,6 +192,7 @@ class AdvertiserIndustry(StrEnum):
     """Healthcare, pharmaceuticals, and medical"""
 
 
+    healthcare = MemberAlias('HEALTHCARE')
     HEALTHCARE_PHARMACEUTICAL = 'healthcare.pharmaceutical'
     """Pharmaceutical and biotech companies. Subject to platform restrictions on drug advertising"""
 
@@ -195,6 +209,7 @@ class AdvertiserIndustry(StrEnum):
     """Home furnishing, improvement, and garden"""
 
 
+    home_garden = MemberAlias('HOME_GARDEN')
     HOME_GARDEN_FURNITURE = 'home_garden.furniture'
     """Furniture and home decor"""
 
@@ -207,6 +222,7 @@ class AdvertiserIndustry(StrEnum):
     """Media, entertainment, and content"""
 
 
+    media_entertainment = MemberAlias('MEDIA_ENTERTAINMENT')
     MEDIA_ENTERTAINMENT_PODCASTS = 'media_entertainment.podcasts'
     """Podcast networks and podcast-first brands"""
 
@@ -231,10 +247,12 @@ class AdvertiserIndustry(StrEnum):
     """Pet food, supplies, and veterinary services"""
 
 
+    pets = MemberAlias('PETS')
     PROFESSIONAL_SERVICES = 'professional_services'
     """Professional and business services"""
 
 
+    professional_services = MemberAlias('PROFESSIONAL_SERVICES')
     PROFESSIONAL_SERVICES_LEGAL = 'professional_services.legal'
     """Law firms and legal services"""
 
@@ -247,6 +265,7 @@ class AdvertiserIndustry(StrEnum):
     """Real estate, property, and construction"""
 
 
+    real_estate = MemberAlias('REAL_ESTATE')
     REAL_ESTATE_RESIDENTIAL = 'real_estate.residential'
     """Residential real estate and housing"""
 
@@ -259,10 +278,12 @@ class AdvertiserIndustry(StrEnum):
     """Job boards, staffing agencies, and HR technology"""
 
 
+    recruitment_hr = MemberAlias('RECRUITMENT_HR')
     RETAIL = 'retail'
     """Retail stores and e-commerce"""
 
 
+    retail = MemberAlias('RETAIL')
     RETAIL_ECOMMERCE = 'retail.ecommerce'
     """Online-first retailers and marketplaces"""
 
@@ -275,6 +296,7 @@ class AdvertiserIndustry(StrEnum):
     """Sports, fitness, and athletics"""
 
 
+    sports_fitness = MemberAlias('SPORTS_FITNESS')
     SPORTS_FITNESS_EQUIPMENT = 'sports_fitness.equipment'
     """Sports and fitness equipment"""
 
@@ -287,6 +309,7 @@ class AdvertiserIndustry(StrEnum):
     """Technology companies and digital services"""
 
 
+    technology = MemberAlias('TECHNOLOGY')
     TECHNOLOGY_SOFTWARE = 'technology.software'
     """Software products, platforms, and SaaS"""
 
@@ -303,6 +326,7 @@ class AdvertiserIndustry(StrEnum):
     """Telecommunications and connectivity"""
 
 
+    telecom = MemberAlias('TELECOM')
     TELECOM_MOBILE_CARRIERS = 'telecom.mobile_carriers'
     """Mobile network operators"""
 
@@ -315,10 +339,12 @@ class AdvertiserIndustry(StrEnum):
     """Shipping, logistics, and freight services"""
 
 
+    transportation_logistics = MemberAlias('TRANSPORTATION_LOGISTICS')
     TRAVEL_HOSPITALITY = 'travel_hospitality'
     """Travel, hospitality, and tourism"""
 
 
+    travel_hospitality = MemberAlias('TRAVEL_HOSPITALITY')
     TRAVEL_HOSPITALITY_AIRLINES = 'travel_hospitality.airlines'
     """Airlines and air travel"""
 

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin1, StrMinLen1
 
@@ -37,15 +37,25 @@ class CanonicalOptimizationGoal(BranchDispatchMixin, AdCPBaseModel):
 
 class Metric(StrEnum):
     CLICKS = 'clicks'
+    clicks = MemberAlias('CLICKS')
     VIEWS = 'views'
+    views = MemberAlias('VIEWS')
     COMPLETED_VIEWS = 'completed_views'
+    completed_views = MemberAlias('COMPLETED_VIEWS')
     VIEWED_SECONDS = 'viewed_seconds'
+    viewed_seconds = MemberAlias('VIEWED_SECONDS')
     VIEWABLE_RATE = 'viewable_rate'
+    viewable_rate = MemberAlias('VIEWABLE_RATE')
     ENGAGEMENTS = 'engagements'
+    engagements = MemberAlias('ENGAGEMENTS')
     FOLLOWS = 'follows'
+    follows = MemberAlias('FOLLOWS')
     SAVES = 'saves'
+    saves = MemberAlias('SAVES')
     PROFILE_VISITS = 'profile_visits'
+    profile_visits = MemberAlias('PROFILE_VISITS')
     REACH = 'reach'
+    reach = MemberAlias('REACH')
 
 
 class TargetFrequency(AdCPBaseModel):

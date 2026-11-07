@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/device-platform.json', pointer='#')
 
@@ -12,17 +12,29 @@ class DevicePlatform(StrEnum):
     Operating system platforms for device targeting. Browser values from Sec-CH-UA-Platform standard, extended for CTV.
     """
     IOS = 'ios'
+    ios = MemberAlias('IOS')
     ANDROID = 'android'
+    android = MemberAlias('ANDROID')
     WINDOWS = 'windows'
+    windows = MemberAlias('WINDOWS')
     MACOS = 'macos'
+    macos = MemberAlias('MACOS')
     LINUX = 'linux'
+    linux = MemberAlias('LINUX')
     CHROMEOS = 'chromeos'
+    chromeos = MemberAlias('CHROMEOS')
     TVOS = 'tvos'
+    tvos = MemberAlias('TVOS')
     TIZEN = 'tizen'
+    tizen = MemberAlias('TIZEN')
     WEBOS = 'webos'
+    webos = MemberAlias('WEBOS')
     FIRE_OS = 'fire_os'
+    fire_os = MemberAlias('FIRE_OS')
     ROKU_OS = 'roku_os'
+    roku_os = MemberAlias('ROKU_OS')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DevicePlatform", DevicePlatform)

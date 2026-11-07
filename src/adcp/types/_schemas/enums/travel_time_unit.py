@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/travel-time-unit.json', pointer='#')
 
@@ -15,8 +15,12 @@ class TravelTimeUnit(StrEnum):
     """Minutes"""
 
 
+    min = MemberAlias('MIN')
     HR = 'hr'
     """Hours"""
+
+
+    hr = MemberAlias('HR')
 
 
 strict_validate = strict_alias(__adcp_schema__, "TravelTimeUnit", TravelTimeUnit)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import PropertyCount, RequiredGroups, Rule, UniqueItems
 
 from ..enums.outcome_target_cost_strength import OutcomeTargetCostStrength
@@ -15,10 +15,15 @@ from .bidding_policy import RoasStrength
 
 class ModesItem(StrEnum):
     AUTOMATIC = 'automatic'
+    automatic = MemberAlias('AUTOMATIC')
     BID_AMOUNT = 'bid_amount'
+    bid_amount = MemberAlias('BID_AMOUNT')
     MAX_BID = 'max_bid'
+    max_bid = MemberAlias('MAX_BID')
     COST_PER = 'cost_per'
+    cost_per = MemberAlias('COST_PER')
     ROAS = 'roas'
+    roas = MemberAlias('ROAS')
 
 
 class MaxBidWithCostPer(AdCPBaseModel):

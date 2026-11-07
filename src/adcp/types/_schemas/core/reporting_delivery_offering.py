@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AgentReportingDestinationFileTransferDestinationTransport,
@@ -33,8 +33,11 @@ class ReportingFeedPurpose(StrEnum):
     Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.
     """
     PACING = 'pacing'
+    pacing = MemberAlias('PACING')
     ANALYTICS = 'analytics'
+    analytics = MemberAlias('ANALYTICS')
     BILLING = 'billing'
+    billing = MemberAlias('BILLING')
 
 
 class ReportingProfile(AdCPBaseModel):
@@ -65,13 +68,18 @@ class ReportingProfile(AdCPBaseModel):
 
 class ReportingDeliveryPattern(StrEnum):
     FILE_TRANSFER = 'file_transfer'
+    file_transfer = MemberAlias('FILE_TRANSFER')
     DATASET_SHARE = 'dataset_share'
+    dataset_share = MemberAlias('DATASET_SHARE')
     WAREHOUSE_MATERIALIZATION = 'warehouse_materialization'
+    warehouse_materialization = MemberAlias('WAREHOUSE_MATERIALIZATION')
 
 
 class DestinationModesItem(StrEnum):
     PROVISION = 'provision'
+    provision = MemberAlias('PROVISION')
     EXISTING = 'existing'
+    existing = MemberAlias('EXISTING')
 
 
 class ProducerIdentity(AdCPBaseModel):

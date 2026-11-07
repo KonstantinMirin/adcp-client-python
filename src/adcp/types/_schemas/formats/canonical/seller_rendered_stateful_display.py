@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
@@ -29,8 +29,11 @@ class SupplyMode(StrEnum):
     Which end of the template contract the buyer feeds. `components`: buyer supplies component slots; seller renders states (no `state_canvases`/`layered_source` assets allowed). `rendered_canvases`: buyer supplies exactly one `state_canvases` image per declared state × breakpoint pair. `layered_source`: buyer ships design source (+ optional `font_files`); seller production derives states (`production_window_business_days` applies) — transitional for sellers without executable templates.
     """
     COMPONENTS = 'components'
+    components = MemberAlias('COMPONENTS')
     RENDERED_CANVASES = 'rendered_canvases'
+    rendered_canvases = MemberAlias('RENDERED_CANVASES')
     LAYERED_SOURCE = 'layered_source'
+    layered_source = MemberAlias('LAYERED_SOURCE')
 
 
 class Anchoring(StrEnum):
@@ -38,11 +41,17 @@ class Anchoring(StrEnum):
     `underlay` renders the canvas beneath page content, which scrolls over it (IAB New Ad Portfolio underlay class: skins, reveal units). Transitions into `overlay`/`fullscreen_overlay` states SHOULD be user-initiated; non-user-action entries emit LEAN policy warnings.
     """
     INLINE = 'inline'
+    inline = MemberAlias('INLINE')
     STICKY_TOP = 'sticky_top'
+    sticky_top = MemberAlias('STICKY_TOP')
     STICKY_BOTTOM = 'sticky_bottom'
+    sticky_bottom = MemberAlias('STICKY_BOTTOM')
     OVERLAY = 'overlay'
+    overlay = MemberAlias('OVERLAY')
     FULLSCREEN_OVERLAY = 'fullscreen_overlay'
+    fullscreen_overlay = MemberAlias('FULLSCREEN_OVERLAY')
     UNDERLAY = 'underlay'
+    underlay = MemberAlias('UNDERLAY')
 
 
 class Motion(StrEnum):
@@ -50,7 +59,9 @@ class Motion(StrEnum):
     Whether the seller-rendered layout animates within this state (attract loops, load animations). Intra-state animation is seller-rendered; buyer canvases stay static images.
     """
     STATIC = 'static'
+    static = MemberAlias('STATIC')
     ANIMATED = 'animated'
+    animated = MemberAlias('ANIMATED')
 
 
 class WidthMode(StrEnum):
@@ -58,7 +69,9 @@ class WidthMode(StrEnum):
     Fluid width classes. `full_bleed`: edge-to-edge viewport width (IAB adhesion, topscroll). `gutter_residual`: the margin remaining beside the page content column (desktop skins). Fluid breakpoints cannot be targeted by `rendered_canvases` supply — semantic validation rejects that pairing.
     """
     FULL_BLEED = 'full_bleed'
+    full_bleed = MemberAlias('FULL_BLEED')
     GUTTER_RESIDUAL = 'gutter_residual'
+    gutter_residual = MemberAlias('GUTTER_RESIDUAL')
 
 
 class BreakpointsItem(AdCPBaseModel):
@@ -102,8 +115,11 @@ class Reveal(StrEnum):
     How the unit enters view, distinct from state changes. `clip_window`: canvas fixed and progressively exposed through a scrolling window (interscroller, topscroll). `scroll_parallax`: canvas moves at a different rate than content. Reveal is presentation of one canvas, not a transition; do not fabricate a second state to express it.
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     CLIP_WINDOW = 'clip_window'
+    clip_window = MemberAlias('CLIP_WINDOW')
     SCROLL_PARALLAX = 'scroll_parallax'
+    scroll_parallax = MemberAlias('SCROLL_PARALLAX')
 
 
 class Trigger(StrEnum):
@@ -111,11 +127,17 @@ class Trigger(StrEnum):
     Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.
     """
     TIMER = 'timer'
+    timer = MemberAlias('TIMER')
     IN_VIEW_TIMER = 'in_view_timer'
+    in_view_timer = MemberAlias('IN_VIEW_TIMER')
     SCROLL_THRESHOLD = 'scroll_threshold'
+    scroll_threshold = MemberAlias('SCROLL_THRESHOLD')
     SCROLL_PROGRESS = 'scroll_progress'
+    scroll_progress = MemberAlias('SCROLL_PROGRESS')
     USER_ACTION = 'user_action'
+    user_action = MemberAlias('USER_ACTION')
     MEDIA_EVENT = 'media_event'
+    media_event = MemberAlias('MEDIA_EVENT')
 
 
 class Input(StrEnum):
@@ -123,14 +145,23 @@ class Input(StrEnum):
     Input driving a user or scroll transition. `hover` expansion is disallowed by IAB NAP guidance and emits a LEAN policy warning visible to buyers.
     """
     TAP = 'tap'
+    tap = MemberAlias('TAP')
     HOVER = 'hover'
+    hover = MemberAlias('HOVER')
     SWIPE_UP = 'swipe_up'
+    swipe_up = MemberAlias('SWIPE_UP')
     SWIPE_DOWN = 'swipe_down'
+    swipe_down = MemberAlias('SWIPE_DOWN')
     SWIPE_LEFT = 'swipe_left'
+    swipe_left = MemberAlias('SWIPE_LEFT')
     SWIPE_RIGHT = 'swipe_right'
+    swipe_right = MemberAlias('SWIPE_RIGHT')
     SCROLL = 'scroll'
+    scroll = MemberAlias('SCROLL')
     EXPAND_CONTROL = 'expand_control'
+    expand_control = MemberAlias('EXPAND_CONTROL')
     COLLAPSE_CONTROL = 'collapse_control'
+    collapse_control = MemberAlias('COLLAPSE_CONTROL')
 
 
 class MediaEvent(StrEnum):
@@ -138,7 +169,9 @@ class MediaEvent(StrEnum):
     Playback milestone of `video_main` driving a `media_event` transition (endframes, collapse-on-complete).
     """
     VIDEO_START = 'video_start'
+    video_start = MemberAlias('VIDEO_START')
     VIDEO_COMPLETE = 'video_complete'
+    video_complete = MemberAlias('VIDEO_COMPLETE')
 
 
 class Direction(StrEnum):
@@ -146,7 +179,9 @@ class Direction(StrEnum):
     Scroll direction that arms a `scroll_threshold` transition; enables direction-aware expand/collapse cycles. Re-crossing in the opposite direction does not re-fire this transition.
     """
     DOWN = 'down'
+    down = MemberAlias('DOWN')
     UP = 'up'
+    up = MemberAlias('UP')
 
 
 class TransitionsItemTransitionMode(StrEnum):
@@ -154,8 +189,11 @@ class TransitionsItemTransitionMode(StrEnum):
     `scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.
     """
     INSTANT = 'instant'
+    instant = MemberAlias('INSTANT')
     ANIMATED = 'animated'
+    animated = MemberAlias('ANIMATED')
     SCROLL_LINKED = 'scroll_linked'
+    scroll_linked = MemberAlias('SCROLL_LINKED')
 
 
 class ScrollReference(StrEnum):
@@ -163,7 +201,9 @@ class ScrollReference(StrEnum):
     Reference frame for scroll percentages. Progress is `scroll_offset / max(scroll_extent - viewport_extent, 1) * 100`, measured on either the page document or the nearest seller-declared containing scroller.
     """
     DOCUMENT_PROGRESS = 'document_progress'
+    document_progress = MemberAlias('DOCUMENT_PROGRESS')
     CONTAINING_SCROLLER_PROGRESS = 'containing_scroller_progress'
+    containing_scroller_progress = MemberAlias('CONTAINING_SCROLLER_PROGRESS')
 
 
 class TransitionsItem(BranchDispatchMixin, AdCPBaseModel):
@@ -199,7 +239,9 @@ class TransitionsItemTimerTransitionMode(StrEnum):
     `scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.
     """
     INSTANT = 'instant'
+    instant = MemberAlias('INSTANT')
     ANIMATED = 'animated'
+    animated = MemberAlias('ANIMATED')
 
 
 class TransitionsItemTimer(TransitionsItem):
@@ -315,14 +357,20 @@ class UserControls(AdCPBaseModel):
 
 class ContainersItem(StrEnum):
     MP4 = 'mp4'
+    mp4 = MemberAlias('MP4')
     WEBM = 'webm'
+    webm = MemberAlias('WEBM')
     MOV = 'mov'
+    mov = MemberAlias('MOV')
 
 
 class VideoPlayback(StrEnum):
     NONE = 'none'
+    none = MemberAlias('NONE')
     AUTO_MUTED = 'auto_muted'
+    auto_muted = MemberAlias('AUTO_MUTED')
     USER_INITIATED = 'user_initiated'
+    user_initiated = MemberAlias('USER_INITIATED')
 
 
 class CanonicalFormatSellerRenderedStatefulDisplay(CanonicalFormatBase):

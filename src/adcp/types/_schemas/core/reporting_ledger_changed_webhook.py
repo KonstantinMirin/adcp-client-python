@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -21,7 +21,9 @@ from .idempotency_key import IdempotencyKey
 
 class ChangeKind(StrEnum):
     REVISION_PUBLISHED = 'revision_published'
+    revision_published = MemberAlias('REVISION_PUBLISHED')
     ADJUSTMENT_PUBLISHED = 'adjustment_published'
+    adjustment_published = MemberAlias('ADJUSTMENT_PUBLISHED')
 
 
 class ReportingLedgerChangedWebhook(AdCPBaseModel):

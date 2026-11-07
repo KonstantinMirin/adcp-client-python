@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/tracker-firing-path.json', pointer='#')
 
@@ -12,7 +12,9 @@ class TrackerFiringPath(StrEnum):
     Environment in which the responsible actor initiates a tracker. A selector may permit both values, but exactly one path is used for each logical event occurrence.
     """
     CLIENT = 'client'
+    client = MemberAlias('CLIENT')
     SERVER = 'server'
+    server = MemberAlias('SERVER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "TrackerFiringPath", TrackerFiringPath)

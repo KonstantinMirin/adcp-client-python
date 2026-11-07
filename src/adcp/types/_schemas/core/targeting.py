@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AgeRestrictionMin,
@@ -157,7 +157,9 @@ class GeometryType(StrEnum):
     GeoJSON geometry type.
     """
     POLYGON = 'Polygon'
+    Polygon = MemberAlias('POLYGON')
     MULTIPOLYGON = 'MultiPolygon'
+    MultiPolygon = MemberAlias('MULTIPOLYGON')
 
 
 class ObjTypeCoordinates(AdCPBaseModel):

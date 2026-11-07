@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/billing-party.json', pointer='#')
 
@@ -15,12 +15,17 @@ class BillingParty(StrEnum):
     """Seller invoices the operator — agency or brand buying direct"""
 
 
+    operator = MemberAlias('OPERATOR')
     AGENT = 'agent'
     """Agent consolidates billing across brands and is invoiced by the seller"""
 
 
+    agent = MemberAlias('AGENT')
     ADVERTISER = 'advertiser'
     """Seller invoices the advertiser directly, even when a different operator places orders on their behalf"""
+
+
+    advertiser = MemberAlias('ADVERTISER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "BillingParty", BillingParty)

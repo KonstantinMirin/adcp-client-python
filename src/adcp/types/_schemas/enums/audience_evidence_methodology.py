@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/audience-evidence-methodology.json', pointer='#')
 
@@ -12,11 +12,17 @@ class AudienceEvidenceMethodology(StrEnum):
     How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.
     """
     OBSERVED = 'observed'
+    observed = MemberAlias('OBSERVED')
     DECLARED = 'declared'
+    declared = MemberAlias('DECLARED')
     DERIVED = 'derived'
+    derived = MemberAlias('DERIVED')
     INFERRED = 'inferred'
+    inferred = MemberAlias('INFERRED')
     MODELED = 'modeled'
+    modeled = MemberAlias('MODELED')
     PROJECTED = 'projected'
+    projected = MemberAlias('PROJECTED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AudienceEvidenceMethodology", AudienceEvidenceMethodology)

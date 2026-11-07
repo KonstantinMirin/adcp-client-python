@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl, Year
 
 from .destination_item import ObjLatLng
@@ -20,8 +20,11 @@ class Condition(StrEnum):
     Vehicle condition.
     """
     NEW = 'new'
+    new = MemberAlias('NEW')
     USED = 'used'
+    used = MemberAlias('USED')
     CERTIFIED_PRE_OWNED = 'certified_pre_owned'
+    certified_pre_owned = MemberAlias('CERTIFIED_PRE_OWNED')
 
 
 class Unit(StrEnum):
@@ -29,7 +32,9 @@ class Unit(StrEnum):
     Distance unit.
     """
     KM = 'km'
+    km = MemberAlias('KM')
     MI = 'mi'
+    mi = MemberAlias('MI')
 
 
 class Mileage(AdCPBaseModel):
@@ -49,13 +54,21 @@ class BodyStyle(StrEnum):
     Vehicle body style.
     """
     SEDAN = 'sedan'
+    sedan = MemberAlias('SEDAN')
     SUV = 'suv'
+    suv = MemberAlias('SUV')
     TRUCK = 'truck'
+    truck = MemberAlias('TRUCK')
     COUPE = 'coupe'
+    coupe = MemberAlias('COUPE')
     CONVERTIBLE = 'convertible'
+    convertible = MemberAlias('CONVERTIBLE')
     WAGON = 'wagon'
+    wagon = MemberAlias('WAGON')
     VAN = 'van'
+    van = MemberAlias('VAN')
     HATCHBACK = 'hatchback'
+    hatchback = MemberAlias('HATCHBACK')
 
 
 class Transmission(StrEnum):
@@ -63,8 +76,11 @@ class Transmission(StrEnum):
     Transmission type.
     """
     AUTOMATIC = 'automatic'
+    automatic = MemberAlias('AUTOMATIC')
     MANUAL = 'manual'
+    manual = MemberAlias('MANUAL')
     CVT = 'cvt'
+    cvt = MemberAlias('CVT')
 
 
 class FuelType(StrEnum):
@@ -72,10 +88,15 @@ class FuelType(StrEnum):
     Fuel or powertrain type.
     """
     GASOLINE = 'gasoline'
+    gasoline = MemberAlias('GASOLINE')
     DIESEL = 'diesel'
+    diesel = MemberAlias('DIESEL')
     ELECTRIC = 'electric'
+    electric = MemberAlias('ELECTRIC')
     HYBRID = 'hybrid'
+    hybrid = MemberAlias('HYBRID')
     PLUG_IN_HYBRID = 'plug_in_hybrid'
+    plug_in_hybrid = MemberAlias('PLUG_IN_HYBRID')
 
 
 class VehicleItem(AdCPBaseModel):

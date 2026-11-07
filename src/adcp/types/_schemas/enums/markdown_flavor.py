@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/markdown-flavor.json', pointer='#')
 
@@ -12,7 +12,9 @@ class MarkdownFlavor(StrEnum):
     Markdown specification flavors supported for text assets
     """
     COMMONMARK = 'commonmark'
+    commonmark = MemberAlias('COMMONMARK')
     GFM = 'gfm'
+    gfm = MemberAlias('GFM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MarkdownFlavor", MarkdownFlavor)

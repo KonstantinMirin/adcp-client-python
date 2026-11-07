@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -23,8 +23,11 @@ class Kind(StrEnum):
     Shape through which the durable revision is consumed.
     """
     MANIFEST = 'manifest'
+    manifest = MemberAlias('MANIFEST')
     DATASET = 'dataset'
+    dataset = MemberAlias('DATASET')
     WAREHOUSE_RELATION = 'warehouse_relation'
+    warehouse_relation = MemberAlias('WAREHOUSE_RELATION')
 
 
 class Immutability(StrEnum):
@@ -32,7 +35,9 @@ class Immutability(StrEnum):
     How this descriptor selects the exact immutable materialization.
     """
     IMMUTABLE_LOCATION = 'immutable_location'
+    immutable_location = MemberAlias('IMMUTABLE_LOCATION')
     NATIVE_VERSION = 'native_version'
+    native_version = MemberAlias('NATIVE_VERSION')
 
 
 ReportingReaderCompatibilityItem = StrMinLen1MaxLen128

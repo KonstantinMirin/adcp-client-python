@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/reach-unit.json', pointer='#')
 
@@ -15,24 +15,32 @@ class ReachUnit(StrEnum):
     """Unique people. Panel-based or identity-resolved measurement."""
 
 
+    individuals = MemberAlias('INDIVIDUALS')
     HOUSEHOLDS = 'households'
     """Unique households or TV homes."""
 
 
+    households = MemberAlias('HOUSEHOLDS')
     DEVICES = 'devices'
     """Unique device identifiers (IDFA, GAID, CTV device ID)."""
 
 
+    devices = MemberAlias('DEVICES')
     ACCOUNTS = 'accounts'
     """Unique logged-in accounts (platform-specific identity)."""
 
 
+    accounts = MemberAlias('ACCOUNTS')
     COOKIES = 'cookies'
     """Unique browser cookies."""
 
 
+    cookies = MemberAlias('COOKIES')
     CUSTOM = 'custom'
     """Seller-defined reach unit. Describe in ext. For a Product.identity declaration with persistent_identifier false, describe the unit in Product.identity.reach_methodology."""
+
+
+    custom = MemberAlias('CUSTOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReachUnit", ReachUnit)

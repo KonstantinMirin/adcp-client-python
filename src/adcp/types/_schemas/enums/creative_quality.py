@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/creative-quality.json', pointer='#')
 
@@ -15,8 +15,12 @@ class CreativeQuality(StrEnum):
     """Fast, lower-fidelity output for iteration and review"""
 
 
+    draft = MemberAlias('DRAFT')
     PRODUCTION = 'production'
     """Full-quality output for final delivery"""
+
+
+    production = MemberAlias('PRODUCTION')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CreativeQuality", CreativeQuality)

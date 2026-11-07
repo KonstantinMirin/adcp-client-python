@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
@@ -15,12 +15,19 @@ class Role(StrEnum):
     How the creative agent should use this asset. style_reference: match the visual style; product_shot: include this product; mood_board: overall look and feel; example_creative: example of a similar execution; logo: logo to use; strategy_doc: strategy or planning document for context; storyboard: sequential visual direction for video or multi-scene creative
     """
     STYLE_REFERENCE = 'style_reference'
+    style_reference = MemberAlias('STYLE_REFERENCE')
     PRODUCT_SHOT = 'product_shot'
+    product_shot = MemberAlias('PRODUCT_SHOT')
     MOOD_BOARD = 'mood_board'
+    mood_board = MemberAlias('MOOD_BOARD')
     EXAMPLE_CREATIVE = 'example_creative'
+    example_creative = MemberAlias('EXAMPLE_CREATIVE')
     LOGO = 'logo'
+    logo = MemberAlias('LOGO')
     STRATEGY_DOC = 'strategy_doc'
+    strategy_doc = MemberAlias('STRATEGY_DOC')
     STORYBOARD = 'storyboard'
+    storyboard = MemberAlias('STORYBOARD')
 
 
 class ReferenceAsset(AdCPBaseModel):

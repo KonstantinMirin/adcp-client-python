@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/signal-catalog-type.json', pointer='#')
 
@@ -15,12 +15,17 @@ class SignalAvailabilityType(StrEnum):
     """Resold third-party segments (provider authorization verifiable via the provider's adagents.json)"""
 
 
+    marketplace = MemberAlias('MARKETPLACE')
     CUSTOM = 'custom'
     """Source-native segment built on demand from models, composites, or buyer inputs - not attributable to a standing upstream provider"""
 
 
+    custom = MemberAlias('CUSTOM')
     OWNED = 'owned'
     """First-party segments derived from data the signal agent or seller directly owns (retailer purchase data, publisher behavioral data, telco data)"""
+
+
+    owned = MemberAlias('OWNED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SignalAvailabilityType", SignalAvailabilityType)

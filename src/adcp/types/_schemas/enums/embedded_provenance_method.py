@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/embedded-provenance-method.json', pointer='#')
 
@@ -15,8 +15,12 @@ class EmbeddedProvenanceMethod(StrEnum):
     """A provenance manifest embedded in the file container per format-specific rules (e.g., JUMBF box in JPEG, C2PATextManifestWrapper in plaintext per C2PA Section A.7). The manifest travels with the file but is tied to the file's byte structure."""
 
 
+    manifest_wrapper = MemberAlias('MANIFEST_WRAPPER')
     PROVENANCE_MARKERS = 'provenance_markers'
     """Invisible markers embedded within the content stream that encode or reference a provenance record. Designed to survive reformatting, copy-paste, CMS ingestion, and ad-server transcoding that breaks file-level bindings."""
+
+
+    provenance_markers = MemberAlias('PROVENANCE_MARKERS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "EmbeddedProvenanceMethod", EmbeddedProvenanceMethod)

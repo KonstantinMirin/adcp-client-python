@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/metric-type.json', pointer='#')
 
@@ -21,13 +21,21 @@ class MetricType(StrEnum):
     - `cost_efficiency` → **omit `metric` entirely** for general efficiency feedback. For specific cost-per concerns, use `{ scope: 'standard', metric_id: 'cost_per_acquisition' \\| 'cost_per_click' \\| 'cost_per_completed_view' \\| 'roas' }`.
     """
     OVERALL_PERFORMANCE = 'overall_performance'
+    overall_performance = MemberAlias('OVERALL_PERFORMANCE')
     CONVERSION_RATE = 'conversion_rate'
+    conversion_rate = MemberAlias('CONVERSION_RATE')
     BRAND_LIFT = 'brand_lift'
+    brand_lift = MemberAlias('BRAND_LIFT')
     CLICK_THROUGH_RATE = 'click_through_rate'
+    click_through_rate = MemberAlias('CLICK_THROUGH_RATE')
     COMPLETION_RATE = 'completion_rate'
+    completion_rate = MemberAlias('COMPLETION_RATE')
     VIEWABILITY = 'viewability'
+    viewability = MemberAlias('VIEWABILITY')
     BRAND_SAFETY = 'brand_safety'
+    brand_safety = MemberAlias('BRAND_SAFETY')
     COST_EFFICIENCY = 'cost_efficiency'
+    cost_efficiency = MemberAlias('COST_EFFICIENCY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MetricType", MetricType)

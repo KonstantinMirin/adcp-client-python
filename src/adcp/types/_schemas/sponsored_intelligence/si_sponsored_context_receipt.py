@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -20,7 +20,9 @@ class HostReceiptStatus(StrEnum):
     Whether the host accepted the declared sponsored context for use.
     """
     ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    accepted = MemberAlias('ACCEPTED')
     REJECTED = _VALUES_ACCEPTED_REJECTED[1]
+    rejected = MemberAlias('REJECTED')
 
 
 class DisclosureCommitmentStatus(StrEnum):
@@ -28,7 +30,9 @@ class DisclosureCommitmentStatus(StrEnum):
     Host commitment status for the disclosure obligation. Use accepted when the declaration requires disclosure and the host will satisfy it; use not_required only when the declaration's disclosure_obligation.required is false. A host that will not satisfy a required disclosure rejects the sponsored context.
     """
     ACCEPTED = 'accepted'
+    accepted = MemberAlias('ACCEPTED')
     NOT_REQUIRED = 'not_required'
+    not_required = MemberAlias('NOT_REQUIRED')
 
 
 class DisclosureCommitment(AdCPBaseModel):

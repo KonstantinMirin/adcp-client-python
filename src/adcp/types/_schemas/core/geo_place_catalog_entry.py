@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import GeoForecastDimensionCode, StrMinLen1
 
@@ -17,8 +17,11 @@ from .geo_place_type import GeographicPlaceType
 
 class Status(StrEnum):
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     REMOVAL_PLANNED = 'removal_planned'
+    removal_planned = MemberAlias('REMOVAL_PLANNED')
     DEPRECATED = 'deprecated'
+    deprecated = MemberAlias('DEPRECATED')
 
 
 class GeographicPlaceCatalogEntry(AdCPBaseModel):

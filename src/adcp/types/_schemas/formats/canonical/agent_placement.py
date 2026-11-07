@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ._base import CanonicalFormatBase, SlotsItem
@@ -17,8 +17,11 @@ class OutputModality(StrEnum):
     How the surface presents the mention. `text` = inline text (chat, search snippet). `audio` = TTS-synthesized voice. `card` = structured card with optional image + text.
     """
     TEXT = 'text'
+    text = MemberAlias('TEXT')
     AUDIO = 'audio'
+    audio = MemberAlias('AUDIO')
     CARD = 'card'
+    card = MemberAlias('CARD')
 
 
 class CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement(CanonicalFormatBase):

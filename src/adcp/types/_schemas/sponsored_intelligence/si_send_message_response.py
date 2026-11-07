@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..a2ui.surface import A2UISurface
@@ -38,7 +38,9 @@ class HandoffType(StrEnum):
     Type of handoff: transaction (ready for ACP checkout) or complete (conversation done)
     """
     TRANSACTION = 'transaction'
+    transaction = MemberAlias('TRANSACTION')
     COMPLETE = 'complete'
+    complete = MemberAlias('COMPLETE')
 
 
 class IntentPrice(AdCPBaseModel):

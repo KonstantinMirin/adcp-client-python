@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import PrincipalDeclarationsStateSelectedAsyncAdcpVersion
 
@@ -15,6 +15,7 @@ from .experimental_feature_id import ExperimentalFeatureID
 
 class WebhookSigningAlgorithm(StrEnum):
     ED25519 = 'ed25519'
+    ed25519 = MemberAlias('ED25519')
     ECDSA_P256_SHA256 = 'ecdsa-p256-sha256'
 
 

@@ -72,6 +72,7 @@ document accepts.
 
 from __future__ import annotations
 
+import enum
 import functools
 import importlib
 import inspect
@@ -155,6 +156,122 @@ class SchemaRef(NamedTuple):
 
     document: str
     pointer: str = "#"
+
+
+#: The owner of a :class:`MemberAlias`, resolved at the ACCESS and never declared on the
+#: descriptor: one class-body line per member cannot name its own enumeration, because the
+#: class does not exist while its body runs.  Scoped to ``__get__``, so a checker reads the
+#: member's type off ``owner`` -- ``Recovery.transient`` is a ``Recovery``.
+MemberT = TypeVar("MemberT", bound=enum.Enum)
+
+
+class MemberAlias:
+    """A SECOND SPELLING of one enum member, as a class-body line beside it.
+
+    ``docs/plan/final-state.md`` reading 10, at ATTRIBUTE granularity: our generated
+    members are ``UPPER_SNAKE`` and ``datamodel-code-generator``'s are the value verbatim,
+    so ``Recovery('transient')`` works on both and ``Recovery.transient`` worked on
+    theirs alone.  3,282 of upstream 9.6.1's behavioural tests failed on that ONE member,
+    more than any class name.  ``core/error.json`` states the value list
+    ``transient|correctable|terminal`` and says NOTHING about the attribute a caller
+    types, so ``UPPER_SNAKE`` is our convention and value-verbatim is theirs and neither
+    is the document's -- which is why refusing the second spelling defends the schema from
+    nothing.  Both spellings reach the same member, so there is no wire difference, no
+    widening, and no fact to attribute.
+
+    **AN ALIAS IS A NAME AND NEVER A SECOND MEMBER, and THAT is what a descriptor is for.**
+    The obvious spelling -- ``transient = 'transient'`` beside ``TRANSIENT = 'transient'``
+    -- is python's own enum aliasing, and it puts the second name in ``__members__``:
+    ``len(Recovery.__members__)`` goes from 3 to 6, so every census that reads the
+    canonical member set off ``__members__`` (``tests/test_enum.py``'s ``_members``) would
+    see a lower-case member and a reading of "one member per value" would become false.
+    ``enum._EnumDict`` passes a DESCRIPTOR over without making it a member, so this binds a
+    name and moves nothing: ``__members__`` is unchanged, ``_value2member_map_`` is
+    unchanged, ``list(Recovery)`` is unchanged, and ``Recovery.transient is
+    Recovery.TRANSIENT``.
+
+    **In the CLASS BODY and never installed at runtime**, which is reading 8 -- the wheel
+    is the artifact.  ``src/adcp/types/_dropin.py``'s ``alias_enum_members`` did it with
+    ``pkgutil.walk_packages`` and ``setattr``, and an alias that exists because an import
+    had a side effect is a property of having RUN rather than of the artifact: a consumer's
+    type checker cannot see it, and the eager walk bound ``adcp.types._schemas`` before
+    ``tests/conftest.py`` and reddened ``tests/fresh.py::_bound`` with an INTERNALERROR.
+    A runtime walk and an emitted member are two mechanisms for one fact.
+
+    :attr:`canonical` is the member's own ``UPPER_SNAKE`` name, resolved on the OWNER at
+    each access rather than captured: the descriptor is constructed while the class body
+    runs, when neither the class nor the member object exists.
+
+    **Resolved as ``owner[name]`` and not as ``getattr(owner, name)``**, which is a typing
+    decision and the one §14 step 6 forces: ``getattr`` with a computed name returns
+    ``Any``, and the three suppressions that would make ``Any`` fit a declared ``MemberT``
+    -- ``cast``, ``type: ignore``, an ``assert isinstance`` -- are each counted to zero over
+    this file by ``tests/test_type_checker.py``.  ``EnumMeta.__getitem__`` is typed
+    ``(type[_E], str) -> _E``, so the member's type is read from the owner with nothing
+    silenced.
+
+    ``owner`` takes no default, because the descriptor protocol passes both arguments at
+    every access python makes -- ``type.__getattribute__`` calls ``__get__(None, cls)`` and
+    an instance access calls ``__get__(obj, type(obj))`` -- and a default would buy an
+    unreachable branch whose only honest answer is ``type(instance)``, which is ``type[object]``
+    and resolves no member type.
+    """
+
+    __slots__ = ("canonical",)
+
+    def __init__(self, canonical: str) -> None:
+        self.canonical = canonical
+
+    def __get__(self, instance: object, owner: type[MemberT]) -> MemberT:
+        return owner[self.canonical]
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.canonical!r})"
+
+
+def _resolves_on(base: type) -> set[str]:
+    """Every name an enumeration over ``base`` -- or one of its members -- already resolves."""
+    names = set(dir(base)) | set(dir(type(base)))
+    for holder in (base, type(base)):
+        for klass in holder.__mro__:
+            names |= set(vars(klass))
+    return names
+
+
+#: **The names a :class:`MemberAlias` MAY NOT TAKE: the ones an enumeration already
+#: resolves before a single member is declared.**
+#:
+#: Reading 10's three refusal classes do not name this one and the MEASUREMENT added it.
+#: The second spelling is the value VERBATIM, so a document whose enum states ``"name"``
+#: emits ``name = MemberAlias('NAME')`` into the class body -- which SHADOWS
+#: ``enum.Enum.name``, the ``DynamicClassAttribute`` every member's own ``.name`` resolves
+#: through.  Measured: the first regeneration of the tree with aliases emitted made
+#: ``Kind.NAME.name`` return the MEMBER instead of the string ``'NAME'``, and the census
+#: that reads a member's own name off it crashed with ``KeyError: <Kind.NAME: 'name'>``.
+#: That is not a cosmetic collision -- it breaks the enum protocol on a class whose
+#: document says nothing about python attributes at all, which is the one thing reading 10
+#: forbids the alias layer to do.
+#:
+#: The three the reading names are collisions with something a DOCUMENT put in the class
+#: (the member's own canonical name, another member's).  This one is a collision with the
+#: LANGUAGE, so the refusal belongs here rather than being folded into one of those, and
+#: it is counted on its own terms.
+#:
+#: **Derived with ``dir`` and ``vars`` and never listed**, for ``codegen.render.RESERVED``'s
+#: reason (``frozenset(dir(BaseModel))``): a list of names is a second copy of another
+#: package's surface and drifts the first time that package adds one.  Both metaclass and
+#: MRO are read because the two answer different halves -- ``mro`` comes from ``type`` and
+#: ``name``/``value`` from ``vars(enum.Enum)``, and neither is in ``dir(enum.StrEnum)``,
+#: whose ``EnumType.__dir__`` reports members rather than inherited machinery.
+#:
+#: **Both bases, unioned**, so no caller maps a member type to a reserved set: the str half
+#: is the only one that can ever fire, because an integer value is not an identifier and is
+#: refused as :data:`codegen.lower.enum.NOT_AN_IDENTIFIER` before this set is consulted.
+#: Unioning therefore costs nothing measurable and removes a mapping that could disagree
+#: with ``codegen.render._ENUM_BASES``.
+MEMBER_NAMES_TAKEN: frozenset[str] = frozenset(
+    _resolves_on(enum.StrEnum) | _resolves_on(enum.IntEnum)
+)
 
 
 class Approximation(NamedTuple):

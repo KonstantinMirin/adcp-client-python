@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from .destination_item import ObjLatLng
@@ -21,11 +21,17 @@ class RealEstateItemPropertyType(StrEnum):
     Type of property.
     """
     HOUSE = 'house'
+    house = MemberAlias('HOUSE')
     APARTMENT = 'apartment'
+    apartment = MemberAlias('APARTMENT')
     CONDO = 'condo'
+    condo = MemberAlias('CONDO')
     TOWNHOUSE = 'townhouse'
+    townhouse = MemberAlias('TOWNHOUSE')
     LAND = 'land'
+    land = MemberAlias('LAND')
     COMMERCIAL = 'commercial'
+    commercial = MemberAlias('COMMERCIAL')
 
 
 class ListingType(StrEnum):
@@ -33,7 +39,9 @@ class ListingType(StrEnum):
     Whether the property is for sale or rent.
     """
     FOR_SALE = 'for_sale'
+    for_sale = MemberAlias('FOR_SALE')
     FOR_RENT = 'for_rent'
+    for_rent = MemberAlias('FOR_RENT')
 
 
 class Unit(StrEnum):
@@ -41,7 +49,9 @@ class Unit(StrEnum):
     Area unit.
     """
     SQFT = 'sqft'
+    sqft = MemberAlias('SQFT')
     SQM = 'sqm'
+    sqm = MemberAlias('SQM')
 
 
 class Area(AdCPBaseModel):

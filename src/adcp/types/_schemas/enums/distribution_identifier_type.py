@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/distribution-identifier-type.json', pointer='#')
 
@@ -15,96 +15,122 @@ class DistributionIdentifierType(StrEnum):
     """Apple Podcasts collection ID"""
 
 
+    apple_podcast_id = MemberAlias('APPLE_PODCAST_ID')
     SPOTIFY_COLLECTION_ID = 'spotify_collection_id'
     """Spotify collection URI"""
 
 
+    spotify_collection_id = MemberAlias('SPOTIFY_COLLECTION_ID')
     RSS_URL = 'rss_url'
     """Canonical RSS feed URL"""
 
 
+    rss_url = MemberAlias('RSS_URL')
     PODCAST_GUID = 'podcast_guid'
     """Podcasting 2.0 GUID"""
 
 
+    podcast_guid = MemberAlias('PODCAST_GUID')
     AMAZON_MUSIC_ID = 'amazon_music_id'
     """Amazon Music / Audible ID"""
 
 
+    amazon_music_id = MemberAlias('AMAZON_MUSIC_ID')
     IHEART_ID = 'iheart_id'
     """iHeartRadio collection ID"""
 
 
+    iheart_id = MemberAlias('IHEART_ID')
     PODCAST_INDEX_ID = 'podcast_index_id'
     """PodcastIndex.org ID"""
 
 
+    podcast_index_id = MemberAlias('PODCAST_INDEX_ID')
     YOUTUBE_CHANNEL_ID = 'youtube_channel_id'
     """YouTube channel ID. Preferred canonical identifier for YouTube channels; handles and URLs are discovery aliases that should resolve to this when possible."""
 
 
+    youtube_channel_id = MemberAlias('YOUTUBE_CHANNEL_ID')
     YOUTUBE_CHANNEL_HANDLE = 'youtube_channel_handle'
     """YouTube channel handle such as @example. Useful as a discovery alias; channel ID is preferred for canonical matching."""
 
 
+    youtube_channel_handle = MemberAlias('YOUTUBE_CHANNEL_HANDLE')
     YOUTUBE_CHANNEL_URL = 'youtube_channel_url'
     """YouTube channel URL such as https://www.youtube.com/@example or https://www.youtube.com/channel/UC.... Useful as a discovery alias; channel ID is preferred for canonical matching."""
 
 
+    youtube_channel_url = MemberAlias('YOUTUBE_CHANNEL_URL')
     YOUTUBE_PLAYLIST_ID = 'youtube_playlist_id'
     """YouTube playlist ID (for series within a channel)"""
 
 
+    youtube_playlist_id = MemberAlias('YOUTUBE_PLAYLIST_ID')
     AMAZON_TITLE_ID = 'amazon_title_id'
     """Amazon Prime Video title ID"""
 
 
+    amazon_title_id = MemberAlias('AMAZON_TITLE_ID')
     PLATFORM_CHANNEL_ID = 'platform_channel_id'
     """Stable channel identifier assigned by the platform named in the enclosing distribution's publisher_domain. Use as the portable fallback when no platform-specific identifier type exists; identity is the tuple (publisher_domain, value), so this type is only meaningful inside a distribution entry and MUST NOT appear in bare {type, value} contexts (distribution_ids sources, exclude filters). Use the platform's stable catalog identifier, not an EPG position number — hosts renumber lineups."""
 
 
+    platform_channel_id = MemberAlias('PLATFORM_CHANNEL_ID')
     ROKU_CHANNEL_ID = 'roku_channel_id'
     """Roku Channel ID"""
 
 
+    roku_channel_id = MemberAlias('ROKU_CHANNEL_ID')
     PLUTO_CHANNEL_ID = 'pluto_channel_id'
     """Pluto TV channel ID"""
 
 
+    pluto_channel_id = MemberAlias('PLUTO_CHANNEL_ID')
     TUBI_ID = 'tubi_id'
     """Tubi content ID"""
 
 
+    tubi_id = MemberAlias('TUBI_ID')
     PEACOCK_ID = 'peacock_id'
     """Peacock content ID"""
 
 
+    peacock_id = MemberAlias('PEACOCK_ID')
     TIKTOK_ID = 'tiktok_id'
     """TikTok account ID"""
 
 
+    tiktok_id = MemberAlias('TIKTOK_ID')
     TWITCH_CHANNEL = 'twitch_channel'
     """Twitch channel name"""
 
 
+    twitch_channel = MemberAlias('TWITCH_CHANNEL')
     IMDB_ID = 'imdb_id'
     """IMDb title ID — platform-independent cross-reference"""
 
 
+    imdb_id = MemberAlias('IMDB_ID')
     GRACENOTE_ID = 'gracenote_id'
     """Gracenote TMS ID — industry standard for TV metadata"""
 
 
+    gracenote_id = MemberAlias('GRACENOTE_ID')
     EIDR_ID = 'eidr_id'
     """EIDR (Entertainment Identifier Registry) — ISO 10528 for audiovisual content"""
 
 
+    eidr_id = MemberAlias('EIDR_ID')
     DOMAIN = 'domain'
     """Show's own website domain"""
 
 
+    domain = MemberAlias('DOMAIN')
     SUBSTACK_ID = 'substack_id'
     """Substack publication identifier"""
+
+
+    substack_id = MemberAlias('SUBSTACK_ID')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DistributionIdentifierType", DistributionIdentifierType)

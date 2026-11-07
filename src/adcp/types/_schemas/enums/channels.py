@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/channels.json', pointer='#')
 
@@ -15,80 +15,102 @@ class MediaChannel(StrEnum):
     """Digital display advertising (banners, native, rich media) across web and app"""
 
 
+    display = MemberAlias('DISPLAY')
     OLV = 'olv'
     """Online video advertising outside CTV (pre-roll, outstream, in-app video)"""
 
 
+    olv = MemberAlias('OLV')
     SOCIAL = 'social'
     """Social media platforms (Facebook, Instagram, TikTok, LinkedIn, etc.)"""
 
 
+    social = MemberAlias('SOCIAL')
     SEARCH = 'search'
     """Search engine advertising and search networks"""
 
 
+    search = MemberAlias('SEARCH')
     CTV = 'ctv'
     """Connected TV and streaming on television screens"""
 
 
+    ctv = MemberAlias('CTV')
     LINEAR_TV = 'linear_tv'
     """Traditional broadcast and cable television"""
 
 
+    linear_tv = MemberAlias('LINEAR_TV')
     RADIO = 'radio'
     """Traditional AM/FM radio broadcast"""
 
 
+    radio = MemberAlias('RADIO')
     STREAMING_AUDIO = 'streaming_audio'
     """Digital audio streaming services (Spotify, Pandora, etc.)"""
 
 
+    streaming_audio = MemberAlias('STREAMING_AUDIO')
     PODCAST = 'podcast'
     """Podcast advertising (host-read or dynamically inserted)"""
 
 
+    podcast = MemberAlias('PODCAST')
     DOOH = 'dooh'
     """Digital out-of-home buying context, including inventory on venue-operated screens and audio players"""
 
 
+    dooh = MemberAlias('DOOH')
     OOH = 'ooh'
     """Classic out-of-home (physical billboards, transit, etc.)"""
 
 
+    ooh = MemberAlias('OOH')
     PRINT = 'print'
     """Newspapers, magazines, and other print publications"""
 
 
+    print = MemberAlias('PRINT')
     CINEMA = 'cinema'
     """Movie theater advertising"""
 
 
+    cinema = MemberAlias('CINEMA')
     EMAIL = 'email'
     """Email advertising and sponsored newsletter content"""
 
 
+    email = MemberAlias('EMAIL')
     GAMING = 'gaming'
     """In-game advertising across platforms"""
 
 
+    gaming = MemberAlias('GAMING')
     RETAIL_MEDIA = 'retail_media'
     """Retail media networks and commerce marketplaces (Amazon, Walmart, Instacart)"""
 
 
+    retail_media = MemberAlias('RETAIL_MEDIA')
     INFLUENCER = 'influencer'
     """Creator and influencer marketing partnerships"""
 
 
+    influencer = MemberAlias('INFLUENCER')
     AFFILIATE = 'affiliate'
     """Affiliate networks, comparison sites, and performance-based partnerships"""
 
 
+    affiliate = MemberAlias('AFFILIATE')
     PRODUCT_PLACEMENT = 'product_placement'
     """Product placement, branded content, and sponsorship integrations"""
 
 
+    product_placement = MemberAlias('PRODUCT_PLACEMENT')
     SPONSORED_INTELLIGENCE = 'sponsored_intelligence'
     """Sponsored Intelligence — advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"""
+
+
+    sponsored_intelligence = MemberAlias('SPONSORED_INTELLIGENCE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MediaChannel", MediaChannel)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMinLen1
 
@@ -16,8 +16,11 @@ class ConnectionType(StrEnum):
     Kind of downstream connection required. `advertiser_account` is the platform account used to buy/manage ads. `publisher_identity` is the creator, page, channel, organization, or profile that owns source posts. `post_authorization` is a post-scoped grant when the platform authorizes individual posts instead of, or in addition to, the owning identity.
     """
     ADVERTISER_ACCOUNT = 'advertiser_account'
+    advertiser_account = MemberAlias('ADVERTISER_ACCOUNT')
     PUBLISHER_IDENTITY = 'publisher_identity'
+    publisher_identity = MemberAlias('PUBLISHER_IDENTITY')
     POST_AUTHORIZATION = 'post_authorization'
+    post_authorization = MemberAlias('POST_AUTHORIZATION')
 
 
 class Scope(StrEnum):
@@ -25,9 +28,13 @@ class Scope(StrEnum):
     Granularity of the downstream grant.
     """
     ACCOUNT = 'account'
+    account = MemberAlias('ACCOUNT')
     IDENTITY = 'identity'
+    identity = MemberAlias('IDENTITY')
     POST = 'post'
+    post = MemberAlias('POST')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class Status(StrEnum):
@@ -35,12 +42,19 @@ class Status(StrEnum):
     Current seller-observed state for this downstream connection when known. Product declarations MAY omit status or use `unknown`; AUTHORIZATION_REQUIRED details SHOULD use `missing`, `expired`, or `revoked` for the connection that blocked the call.
     """
     CONNECTED = 'connected'
+    connected = MemberAlias('CONNECTED')
     MISSING = 'missing'
+    missing = MemberAlias('MISSING')
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
     EXPIRED = 'expired'
+    expired = MemberAlias('EXPIRED')
     REVOKED = 'revoked'
+    revoked = MemberAlias('REVOKED')
     NOT_REQUIRED = 'not_required'
+    not_required = MemberAlias('NOT_REQUIRED')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class ResourceRef(AdCPBaseModel):

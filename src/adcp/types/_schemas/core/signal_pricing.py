@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 from adcp.types.constraints import FloatMin0Max100, StrMinLen1
 
@@ -61,9 +61,13 @@ class Period(StrEnum):
     Billing period for the flat fee.
     """
     MONTHLY = 'monthly'
+    monthly = MemberAlias('MONTHLY')
     QUARTERLY = 'quarterly'
+    quarterly = MemberAlias('QUARTERLY')
     ANNUAL = 'annual'
+    annual = MemberAlias('ANNUAL')
     CAMPAIGN = 'campaign'
+    campaign = MemberAlias('CAMPAIGN')
 
 
 class FlatFeePricing(VendorPricing):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import DeclarationId, HttpUrl, StrMinLen1
 
@@ -25,10 +25,15 @@ class LocationField(StrEnum):
     Asset field containing this occurrence.
     """
     URL = 'url'
+    url = MemberAlias('URL')
     MARKUP = 'markup'
+    markup = MemberAlias('MARKUP')
     CONTENT = 'content'
+    content = MemberAlias('CONTENT')
     AD_REQUEST_URL = 'ad_request_url'
+    ad_request_url = MemberAlias('AD_REQUEST_URL')
     CLICKTHROUGH_URL = 'clickthrough_url'
+    clickthrough_url = MemberAlias('CLICKTHROUGH_URL')
 
 
 class Location(AdCPBaseModel):
@@ -46,9 +51,13 @@ class UnavailableBehavior(StrEnum):
     Action when the responsible actor has no value. Omission is legal only for a complete URL query-value occurrence; dialect sentinels require a cited dialect rule.
     """
     PRESERVE = 'preserve'
+    preserve = MemberAlias('PRESERVE')
     OMIT_PARAMETER = 'omit_parameter'
+    omit_parameter = MemberAlias('OMIT_PARAMETER')
     DIALECT_SENTINEL = 'dialect_sentinel'
+    dialect_sentinel = MemberAlias('DIALECT_SENTINEL')
     REJECT = 'reject'
+    reject = MemberAlias('REJECT')
 
 
 class MacroDeclaration(AdCPBaseModel):

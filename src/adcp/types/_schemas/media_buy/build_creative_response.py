@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
@@ -231,8 +231,11 @@ class KeepMode(StrEnum):
     Echoes the `keep_mode` the agent applied (mirrors the request hint). Present when the request set `keep_mode`. `keep_mode` is advisory — it does not change what is produced or billed (you pay for every leaf in `variants[]`) — so this echo is the buyer's confirmation that the hint was received, the audit paper trail for a 'I asked for keep_one but was billed for N' dispute. Whether the agent acted on it shows in the `recommended`/`rank` it set on the leaves.
     """
     KEEP_ALL = 'keep_all'
+    keep_all = MemberAlias('KEEP_ALL')
     KEEP_ONE = 'keep_one'
+    keep_one = MemberAlias('KEEP_ONE')
     KEEP_SOME = 'keep_some'
+    keep_some = MemberAlias('KEEP_SOME')
 
 
 class BudgetStatus(StrEnum):
@@ -240,7 +243,9 @@ class BudgetStatus(StrEnum):
     `complete` (default; absent == complete for back-compat) means the agent produced everything requested. `capped` means a `max_spend` ceiling stopped production early: every returned leaf is real/billed, and an advisory `BUDGET_CAP_REACHED` entry in `errors[]` is the authoritative cap signal. The leaf-granular shortfall is `leaves_returned` < `leaves_total` (do NOT rely on items_returned < items_total — that is also the normal max_creatives-sampling signal and does not capture a mid-item or variant-only cap). This is a successful partial build, not a failure.
     """
     COMPLETE = 'complete'
+    complete = MemberAlias('COMPLETE')
     CAPPED = 'capped'
+    capped = MemberAlias('CAPPED')
 
 
 class BuildCreativeVariantSuccess(BuildCreativeResponse):
@@ -279,8 +284,11 @@ class Basis(StrEnum):
     `fixed` = per-format flat pricing (cost_low == cost_high, exact). `estimated_units` = generative per_unit where the seller projects a unit range (band reflects the uncertainty in seconds/images/tokens). `cpm_deferred` = CPM-priced; build-time cost is 0 and cost accrues at serve time (mirrors the vendor_cost:0 CPM convention).
     """
     FIXED = 'fixed'
+    fixed = MemberAlias('FIXED')
     ESTIMATED_UNITS = 'estimated_units'
+    estimated_units = MemberAlias('ESTIMATED_UNITS')
     CPM_DEFERRED = 'cpm_deferred'
+    cpm_deferred = MemberAlias('CPM_DEFERRED')
 
 
 class PerLeafItem(AdCPBaseModel):

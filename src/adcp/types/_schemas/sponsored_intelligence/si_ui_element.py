@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 
 
 class SIUIElementType(StrEnum):
@@ -14,13 +14,21 @@ class SIUIElementType(StrEnum):
     Component type
     """
     TEXT = 'text'
+    text = MemberAlias('TEXT')
     LINK = 'link'
+    link = MemberAlias('LINK')
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     PRODUCT_CARD = 'product_card'
+    product_card = MemberAlias('PRODUCT_CARD')
     CAROUSEL = 'carousel'
+    carousel = MemberAlias('CAROUSEL')
     ACTION_BUTTON = 'action_button'
+    action_button = MemberAlias('ACTION_BUTTON')
     APP_HANDOFF = 'app_handoff'
+    app_handoff = MemberAlias('APP_HANDOFF')
     INTEGRATION_ACTIONS = 'integration_actions'
+    integration_actions = MemberAlias('INTEGRATION_ACTIONS')
 
 
 class SIUIElement(AdCPBaseModel):

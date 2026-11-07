@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 from .https_url import HTTPSURL
 
@@ -16,7 +16,9 @@ class Auth(StrEnum):
     Authentication mode. seller_credentials means use the same authorization credentials as the seller's AdCP endpoint and is valid only for a same-origin resolver URL; credentials MUST NOT be forwarded cross-origin.
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     SELLER_CREDENTIALS = 'seller_credentials'
+    seller_credentials = MemberAlias('SELLER_CREDENTIALS')
 
 
 class GeographicPlaceResolver(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import ComplianceRequiredDisclosuresItemJurisdictionsItem, IntMin1
 
 from ..enums.disclosure_persistence import DisclosurePersistence
@@ -19,10 +19,15 @@ class Objective(StrEnum):
     Campaign objective that guides creative tone and call-to-action strategy
     """
     AWARENESS = 'awareness'
+    awareness = MemberAlias('AWARENESS')
     CONSIDERATION = 'consideration'
+    consideration = MemberAlias('CONSIDERATION')
     CONVERSION = 'conversion'
+    conversion = MemberAlias('CONVERSION')
     RETENTION = 'retention'
+    retention = MemberAlias('RETENTION')
     ENGAGEMENT = 'engagement'
+    engagement = MemberAlias('ENGAGEMENT')
 
 
 class Messaging(AdCPBaseModel):

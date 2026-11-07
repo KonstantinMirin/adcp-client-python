@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/url-asset-type.json', pointer='#')
 
@@ -12,9 +12,13 @@ class URLAssetType(StrEnum):
     Invocation mechanisms for URL assets. `ad_request` invokes a third-party display ad endpoint at impression time; it is not a tracker or click destination.
     """
     CLICKTHROUGH = 'clickthrough'
+    clickthrough = MemberAlias('CLICKTHROUGH')
     AD_REQUEST = 'ad_request'
+    ad_request = MemberAlias('AD_REQUEST')
     TRACKER_PIXEL = 'tracker_pixel'
+    tracker_pixel = MemberAlias('TRACKER_PIXEL')
     TRACKER_SCRIPT = 'tracker_script'
+    tracker_script = MemberAlias('TRACKER_SCRIPT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "URLAssetType", URLAssetType)

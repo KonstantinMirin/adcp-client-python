@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 
 from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
@@ -20,12 +20,16 @@ class ActivationStatus(StrEnum):
     Whether this signal option is ready to select on create_media_buy for the requesting account. 'ready' means the buyer can select it directly. 'requires_activation' means the buyer must activate the signal first or include an activation_key the seller accepts.
     """
     READY = 'ready'
+    ready = MemberAlias('READY')
     REQUIRES_ACTIVATION = 'requires_activation'
+    requires_activation = MemberAlias('REQUIRES_ACTIVATION')
 
 
 class AllowedTargetingModesItem(StrEnum):
     INCLUDE = _VALUES_INCLUDE_EXCLUDE[0]
+    include = MemberAlias('INCLUDE')
     EXCLUDE = _VALUES_INCLUDE_EXCLUDE[1]
+    exclude = MemberAlias('EXCLUDE')
 
 
 class ProductSignalTargetingOption(SignalListing):

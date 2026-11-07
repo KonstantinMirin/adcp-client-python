@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/creative-agent-capability.json', pointer='#')
 
@@ -12,10 +12,15 @@ class CreativeAgentCapability(StrEnum):
     Capabilities supported by creative agents for format handling
     """
     VALIDATION = 'validation'
+    validation = MemberAlias('VALIDATION')
     ASSEMBLY = 'assembly'
+    assembly = MemberAlias('ASSEMBLY')
     GENERATION = 'generation'
+    generation = MemberAlias('GENERATION')
     PREVIEW = 'preview'
+    preview = MemberAlias('PREVIEW')
     DELIVERY = 'delivery'
+    delivery = MemberAlias('DELIVERY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CreativeAgentCapability", CreativeAgentCapability)

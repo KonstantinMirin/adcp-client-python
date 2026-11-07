@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/escalation-severity.json', pointer='#')
 
@@ -15,12 +15,17 @@ class EscalationSeverity(StrEnum):
     """Logged for audit. No action required."""
 
 
+    info = MemberAlias('INFO')
     WARNING = 'warning'
     """Agent may proceed but human should review within a deadline."""
 
 
+    warning = MemberAlias('WARNING')
     CRITICAL = 'critical'
     """Agent must not proceed until human approves."""
+
+
+    critical = MemberAlias('CRITICAL')
 
 
 strict_validate = strict_alias(__adcp_schema__, "EscalationSeverity", EscalationSeverity)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/availability-status.json', pointer='#')
 
@@ -15,8 +15,12 @@ class AvailabilityStatus(StrEnum):
     """The inventory described by this row can be booked as of generated_at. This is a snapshot, not a reservation — another buyer can take the window before this buyer commits."""
 
 
+    available = MemberAlias('AVAILABLE')
     UNAVAILABLE = 'unavailable'
     """The inventory described by this row cannot be booked. Sellers MUST apply all product booking eligibility constraints — including minimum and maximum bookable duration, day-of-week restrictions, and other scheduling rules — before reporting status; a window that fails any such constraint is 'unavailable' even when no competing hold exists. Rows may carry empty metrics. Sellers MUST NOT disclose who holds a conflicting booking."""
+
+
+    unavailable = MemberAlias('UNAVAILABLE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AvailabilityStatus", AvailabilityStatus)

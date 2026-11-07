@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl, IntMin1
 
@@ -41,10 +41,15 @@ class VoiceSynthesisRefItem(AdCPBaseModel):
 
 class VariantDimensionsItem(StrEnum):
     VOICE = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[0]
+    voice = MemberAlias('VOICE')
     THEME = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[1]
+    theme = MemberAlias('THEME')
     BEST_OF_N = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[2]
+    best_of_n = MemberAlias('BEST_OF_N')
     TRANSFORMER_CONFIG = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[3]
+    transformer_config = MemberAlias('TRANSFORMER_CONFIG')
     CUSTOM = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[4]
+    custom = MemberAlias('CUSTOM')
 
 
 class Multiplicity(AdCPBaseModel):

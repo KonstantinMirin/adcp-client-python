@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatHostname
 
 
@@ -15,16 +15,24 @@ class Role(StrEnum):
     Purpose this URL slot serves in the format — distinct from `url_type` on the manifest-side asset (which declares the receiver's invocation mechanism). A slot can be `click_tracker` (purpose) and accept a `tracker_pixel` (mechanism) URL, or `clickthrough` (purpose) and accept a `clickthrough` (mechanism) URL. Complements `asset_role` (human-readable label) by providing a machine-readable enum and serves as the receiver's fallback signal when a manifest URL asset omits `url_type`.
     """
     CLICKTHROUGH = 'clickthrough'
+    clickthrough = MemberAlias('CLICKTHROUGH')
     LANDING_PAGE = 'landing_page'
+    landing_page = MemberAlias('LANDING_PAGE')
     IMPRESSION_TRACKER = 'impression_tracker'
+    impression_tracker = MemberAlias('IMPRESSION_TRACKER')
     CLICK_TRACKER = 'click_tracker'
+    click_tracker = MemberAlias('CLICK_TRACKER')
     VIEWABILITY_TRACKER = 'viewability_tracker'
+    viewability_tracker = MemberAlias('VIEWABILITY_TRACKER')
     THIRD_PARTY_TRACKER = 'third_party_tracker'
+    third_party_tracker = MemberAlias('THIRD_PARTY_TRACKER')
 
 
 class ProtocolsItem(StrEnum):
     HTTPS = 'https'
+    https = MemberAlias('HTTPS')
     HTTP = 'http'
+    http = MemberAlias('HTTP')
 
 
 class URLAssetRequirements(AdCPBaseModel):

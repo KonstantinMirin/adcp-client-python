@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import CanonicalProposalTermsDigest, HttpUrl, ResponsePayloadJWSEnvelopeProtected
 
 from .domain_name import DomainName
@@ -17,7 +17,9 @@ class Task(StrEnum):
     Designated task whose response payload is signed.
     """
     VERIFY_BRAND_CLAIM = 'verify_brand_claim'
+    verify_brand_claim = MemberAlias('VERIFY_BRAND_CLAIM')
     VERIFY_BRAND_CLAIMS = 'verify_brand_claims'
+    verify_brand_claims = MemberAlias('VERIFY_BRAND_CLAIMS')
 
 
 class ResponsePayload(AdCPBaseModel):

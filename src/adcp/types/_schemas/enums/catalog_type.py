@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/catalog-type.json', pointer='#')
 
@@ -12,18 +12,31 @@ class CatalogType(StrEnum):
     The type of catalog feed. Determines the item schema and how the platform resolves catalog items. Multiple catalog types can be synced to the same account and referenced together in creatives.
     """
     OFFERING = 'offering'
+    offering = MemberAlias('OFFERING')
     PRODUCT = 'product'
+    product = MemberAlias('PRODUCT')
     INVENTORY = 'inventory'
+    inventory = MemberAlias('INVENTORY')
     STORE = 'store'
+    store = MemberAlias('STORE')
     PROMOTION = 'promotion'
+    promotion = MemberAlias('PROMOTION')
     HOTEL = 'hotel'
+    hotel = MemberAlias('HOTEL')
     FLIGHT = 'flight'
+    flight = MemberAlias('FLIGHT')
     JOB = 'job'
+    job = MemberAlias('JOB')
     VEHICLE = 'vehicle'
+    vehicle = MemberAlias('VEHICLE')
     REAL_ESTATE = 'real_estate'
+    real_estate = MemberAlias('REAL_ESTATE')
     EDUCATION = 'education'
+    education = MemberAlias('EDUCATION')
     DESTINATION = 'destination'
+    destination = MemberAlias('DESTINATION')
     APP = 'app'
+    app = MemberAlias('APP')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CatalogType", CatalogType)

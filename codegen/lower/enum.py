@@ -19,10 +19,26 @@ enum-plus-``minLength`` intersection for this row to resolve.
 a convention.**  ``pass`` and ``global`` are both live enum VALUES in this bundle,
 and a lower-cased member emits ``pass = "pass"`` -- a module that does not parse,
 so the failure is an import error at the gate rather than a wrong type.
-Upper-casing is also the whole of the keyword question: every Python keyword is
-lower-case, so a ``keyword.iskeyword`` branch beside the rule would be
-unreachable code, and the same holds for ``enum.Enum``'s own reserved names
-(``name``, ``value``, ``_name_``, ``_value_``) and for ``mro``.
+Upper-casing is also the whole of the keyword question *for the canonical name*:
+every Python keyword is lower-case, so a ``keyword.iskeyword`` branch beside the
+rule would be unreachable code, and the same holds for ``enum.Enum``'s own
+reserved names (``name``, ``value``, ``_name_``, ``_value_``) and for ``mro``.
+
+**EACH MEMBER ALSO CARRIES A SECOND SPELLING -- THE VALUE VERBATIM -- AND THAT
+ONE IS WHERE THE KEYWORD QUESTION COMES BACK** (:func:`member_aliases`,
+:attr:`ir.Member.alias`, ``adcp.types._base.MemberAlias``).
+``docs/plan/final-state.md`` reading 10: our members are ``UPPER_SNAKE`` and
+``datamodel-code-generator``'s are the value verbatim, and ``core/error.json``
+states the value list ``transient|correctable|terminal`` while saying nothing
+about the attribute a caller types -- so neither spelling is the document's, both
+reach the same member, and a class carrying both admits exactly the same set.
+``Recovery.transient is Recovery.TRANSIENT``, with ``__members__`` unmoved,
+because the second spelling is a DESCRIPTOR and a descriptor is not a member.
+The spelling is refused rather than repaired where it cannot be an attribute,
+under one of FOUR counted reasons (:data:`ALIAS_REFUSALS`) -- reading 10 names
+three and the measurement added the fourth.  ``pass`` and ``global`` are the two
+values that make ``keyword.iskeyword`` a live branch there: declining to touch
+the value brings back every question upper-casing settled.
 
 **No member name is ever suffixed.**  A suffix would make two different values
 reachable under two names that differ only by punctuation nobody chose, so two
@@ -81,10 +97,15 @@ not reach either:
 
 from __future__ import annotations
 
+import unicodedata
+from collections.abc import Sequence
+from dataclasses import replace
+from keyword import iskeyword
 from typing import Any
 
 import jsonschema
 
+from adcp.types._base import MEMBER_NAMES_TAKEN
 from codegen import compiler, ir
 from codegen.compiler import Module
 from codegen.keywords import Position
@@ -157,6 +178,112 @@ def member_name(value: Any) -> str:
     """
     name = "".join(c if c.isalnum() or c == "_" else "_" for c in str(value)).strip("_").upper()
     return name if name and not name[0].isdigit() else f"{PREFIX}{name}"
+
+
+#: **The three reasons a member's SECOND spelling cannot be emitted**, as the words a
+#: count is reported under.  ``docs/plan/final-state.md`` reading 10: "REFUSED where the
+#: spelling cannot be one: invalid identifier, two values re-casing onto one attribute,
+#: collision with a canonical member -- reported with counts, never silently skipped."
+#:
+#: Each is a property of the member SET and not of one value, which is why
+#: :func:`member_aliases` ranges over the whole set and why :attr:`ir.Member.alias`
+#: defaults to ``None``: whether ``'FOO'`` can be a second name depends on what the other
+#: members are called.
+#:
+#: **``RE_CASES`` is empty inside any enum class this compiler emits, and that is a
+#: THEOREM about the two namings rather than a measurement that could move.**  An alias is
+#: the value verbatim and a canonical name is ``member_name(value)``, so an alias
+#: colliding with a second member's canonical name makes that alias its own canonical name
+#: too (an identifier equal to an ``UPPER_SNAKE`` string re-cases to itself), and the two
+#: members then spell ONE canonical name -- which §5's row has already sent to a
+#: ``Literal`` with no class and no member names at all
+#: (:func:`two_members_spell_one_name`).  Alias-against-alias is the same statement about
+#: a duplicate VALUE, which :func:`decide` refuses before any name is read.  The case is
+#: therefore kept as a GUARD and counted at the node that reaches it -- the bundle's one
+#: re-casing collision is ``formats/canonical/html5.json#/properties/clicktag_macro``
+#: (``clickTag``/``clickTAG``), whose two member spellings upstream has and this tree has
+#: NEITHER of, which is the migration-guide entry rather than an alias refusal inside a
+#: class.  ``unicodedata`` is why the guard is not dead code in principle: python
+#: NFKC-normalises an identifier, so two distinct values could bind one attribute without
+#: being equal as strings.
+#: **A FOURTH REASON THE MEASUREMENT ADDED, which reading 10's three do not name**
+#: (``adcp.types._base.MEMBER_NAMES_TAKEN``): the value verbatim is a name the
+#: ENUMERATION ITSELF already resolves.  ``"name"`` is a live enum value of this bundle, so
+#: the first tree emitted with aliases carried ``name = MemberAlias('NAME')`` and
+#: ``Kind.NAME.name`` returned the MEMBER instead of ``'NAME'`` -- the ``enum.Enum.name``
+#: descriptor shadowed by a class-body line, which breaks the enum protocol on a class
+#: whose document says nothing about python attributes.  The three named reasons are
+#: collisions with something a DOCUMENT put in the class; this one is a collision with the
+#: LANGUAGE, and it is counted on its own terms rather than folded into one of them.
+NOT_AN_IDENTIFIER = "not a python identifier"
+RE_CASES = "re-cases onto another member's attribute"
+IS_THE_CANONICAL_NAME = "already the canonical member name"
+TAKEN_BY_THE_BASE = "a name the enumeration already resolves"
+
+ALIAS_REFUSALS = (NOT_AN_IDENTIFIER, RE_CASES, IS_THE_CANONICAL_NAME, TAKEN_BY_THE_BASE)
+
+
+def member_aliases(members: Sequence[ir.Member]) -> tuple[dict[str, str], dict[str, str]]:
+    """The second spelling of each member, and the reason for each one refused.
+
+    ``({alias: canonical name}, {canonical name: reason})``, over the members of ONE
+    decided enumeration, and the two halves partition the member set: every member is in
+    exactly one of them, so a spelling this compiler does not emit is reported under one
+    of :data:`ALIAS_REFUSALS` and never dropped by silence.
+
+    THE one derivation, read by :func:`decide` to fill :attr:`ir.Member.alias` and by the
+    gate to count the refusals -- the discipline :func:`member_name` already carries for
+    the canonical spelling, for the same reason: a second spelling function written beside
+    the one that runs is a copy that can disagree with it, and a refusal count derived
+    from a copy would describe a tree nobody emitted.
+
+    **The alias is the value VERBATIM and is never sanitised.**  ``datamodel-code-generator``
+    is the spelling reading 10 is about, and a repaired spelling would be a third
+    convention belonging to neither side -- a name no caller of either package writes.  So
+    a value that cannot be an attribute gets no alias and gets a count, which is what
+    makes it a migration-guide entry instead of an invention.
+
+    **``str.isidentifier`` is NOT the whole of the first test, and the module docstring's
+    own measurement is why.**  ``pass`` and ``global`` are live enum VALUES of this bundle
+    -- which is the paragraph that makes upper-casing the canonical member a correctness
+    requirement rather than a convention -- and both are identifiers by that method, so
+    the verbatim spelling of each is ``pass = MemberAlias('PASS')``: a module that does not
+    PARSE.  ``keyword.iskeyword`` is therefore a live branch here where it would be
+    unreachable code beside :func:`member_name`, and that asymmetry is the whole content of
+    the difference between the two namings: upper-casing a value makes every keyword
+    question go away, and declining to touch the value brings all of them back.  A SOFT
+    keyword (``match``, ``case``, ``type``, ``_``) is contextual and binds a name fine, so
+    only the hard list is read.  The NFKC clause is the second half: python normalises an
+    identifier at compile time, so a value not already in NFKC would bind an attribute
+    spelled differently from the value -- the one way "the value verbatim" could be false
+    of a name this function approved.
+
+    **The LAST test is the one reading 10 does not name** (:data:`TAKEN_BY_THE_BASE`), and
+    it is asked last on purpose: a value that is already its own canonical name or another
+    member's is refused for the reason a reader of the class would give, and only a
+    spelling that would otherwise be EMITTED is weighed against the language's own names.
+    """
+    aliases: dict[str, str] = {}
+    refused: dict[str, str] = {}
+    taken = {member.name for member in members}
+    for member in members:
+        value = member.value
+        if (
+            not isinstance(value, str)
+            or not value.isidentifier()
+            or iskeyword(value)
+            or unicodedata.normalize("NFKC", value) != value
+        ):
+            refused[member.name] = NOT_AN_IDENTIFIER
+        elif value == member.name:
+            refused[member.name] = IS_THE_CANONICAL_NAME
+        elif value in taken or value in aliases:
+            refused[member.name] = RE_CASES
+        elif value in MEMBER_NAMES_TAKEN:
+            refused[member.name] = TAKEN_BY_THE_BASE
+        else:
+            aliases[value] = member.name
+    return aliases, refused
 
 
 #: What §3a's module-level value list is named under, before its members.  PRIVATE by its
@@ -613,10 +740,19 @@ def decide(
             )
         )
 
+    # **Reading 10's SECOND spelling, filled here because this is where the member set is
+    # finished.**  Every refusal above has already run, so the set handed to
+    # :func:`member_aliases` is exactly the one a class would carry -- one member per
+    # value, each with its canonical name -- which is what the collision cases are asked
+    # over.  The refusal half of the return is not read here and is not dropped either:
+    # it is a function of the members, so the gate derives it from the same call rather
+    # than from a record this function would have to carry.
+    aliases, _ = member_aliases(members)
+    spelled = {canonical: alias for alias, canonical in aliases.items()}
     return ir.EnumDecl(
         name=name,
         kind=kind,
-        members=tuple(members),
+        members=tuple(replace(m, alias=spelled.get(m.name)) for m in members),
         description=node.description,
         values=value_list,
     )

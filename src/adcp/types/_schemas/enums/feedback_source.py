@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/feedback-source.json', pointer='#')
 
@@ -12,9 +12,13 @@ class FeedbackSource(StrEnum):
     Source of performance feedback data
     """
     BUYER_ATTRIBUTION = 'buyer_attribution'
+    buyer_attribution = MemberAlias('BUYER_ATTRIBUTION')
     THIRD_PARTY_MEASUREMENT = 'third_party_measurement'
+    third_party_measurement = MemberAlias('THIRD_PARTY_MEASUREMENT')
     PLATFORM_ANALYTICS = 'platform_analytics'
+    platform_analytics = MemberAlias('PLATFORM_ANALYTICS')
     VERIFICATION_PARTNER = 'verification_partner'
+    verification_partner = MemberAlias('VERIFICATION_PARTNER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "FeedbackSource", FeedbackSource)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin1, StrMinLen1
 
@@ -40,17 +40,29 @@ class OptimizationMetric(StrEnum):
     Seller-native metric to optimize for. Delivery metrics: clicks (link clicks, swipe-throughs, CTA taps that navigate away), views (content views at the billable view threshold, as defined by delivery-metrics `views`; for viewability use viewable_rate), completed_views (video/audio completions — see view_duration_seconds), reach (unique audience reach — see reach_unit and target_frequency). Duration/score metrics: viewed_seconds (time in view per impression — reported back via `delivery-metrics.viewability.viewed_seconds`, governed by the viewability `standard`). Quality-rate metrics: viewable_rate (viewable / measurable impressions under the goal's `standard`; requires `standard`). Audience action metrics: engagements (any direct interaction with the ad unit beyond viewing — social reactions/comments/shares, story/unit opens, interactive overlay taps, companion banner interactions on audio and CTV), follows (new followers, page likes, artist/podcast/channel follows, or free channel/feed subscribes; paid subscriptions use event_type: subscribe), saves (saves, bookmarks, playlist adds, pins — signals of intent to return), profile_visits (visits to the brand's in-platform page — profile, artist page, channel, or storefront. Does not include external website clicks, which are covered by 'clicks'). **DEPRECATED values** (slated for removal at next major): `attention_seconds` and `attention_score` — these have no industry-graduated definition (DoubleVerify, IAS, Adelaide, TVision, Lumen each define them differently) and cannot be meaningfully optimized for without a vendor binding. Use `kind: 'vendor_metric'` with an explicit `vendor` and `metric_id` instead — that path binds the goal to a specific measurement vendor and reconciles to the same `(vendor, metric_id)` key in delivery's `vendor_metric_values[]`. Sellers MAY reject the deprecated values with `TERMS_REJECTED` and a suggestion to use the `vendor_metric` kind.
     """
     CLICKS = 'clicks'
+    clicks = MemberAlias('CLICKS')
     VIEWS = 'views'
+    views = MemberAlias('VIEWS')
     COMPLETED_VIEWS = 'completed_views'
+    completed_views = MemberAlias('COMPLETED_VIEWS')
     VIEWED_SECONDS = 'viewed_seconds'
+    viewed_seconds = MemberAlias('VIEWED_SECONDS')
     VIEWABLE_RATE = 'viewable_rate'
+    viewable_rate = MemberAlias('VIEWABLE_RATE')
     ATTENTION_SECONDS = 'attention_seconds'
+    attention_seconds = MemberAlias('ATTENTION_SECONDS')
     ATTENTION_SCORE = 'attention_score'
+    attention_score = MemberAlias('ATTENTION_SCORE')
     ENGAGEMENTS = 'engagements'
+    engagements = MemberAlias('ENGAGEMENTS')
     FOLLOWS = 'follows'
+    follows = MemberAlias('FOLLOWS')
     SAVES = 'saves'
+    saves = MemberAlias('SAVES')
     PROFILE_VISITS = 'profile_visits'
+    profile_visits = MemberAlias('PROFILE_VISITS')
     REACH = 'reach'
+    reach = MemberAlias('REACH')
 
 
 class Vendor(BrandReference):

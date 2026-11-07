@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import FloatMin0Max1
 
@@ -18,9 +18,13 @@ class CancellationFeeType(StrEnum):
     Fee calculation method. 'percent_remaining': percentage of remaining uncommitted spend. 'full_commitment': buyer owes the full committed budget regardless of delivery. 'fixed_fee': flat monetary amount. 'none': no financial fee (cancellation with notice is free).
     """
     PERCENT_REMAINING = 'percent_remaining'
+    percent_remaining = MemberAlias('PERCENT_REMAINING')
     FULL_COMMITMENT = 'full_commitment'
+    full_commitment = MemberAlias('FULL_COMMITMENT')
     FIXED_FEE = 'fixed_fee'
+    fixed_fee = MemberAlias('FIXED_FEE')
     NONE = 'none'
+    none = MemberAlias('NONE')
 
 
 class CancellationFee(AdCPBaseModel):

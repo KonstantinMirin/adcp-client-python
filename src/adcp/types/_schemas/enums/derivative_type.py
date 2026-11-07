@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/derivative-type.json', pointer='#')
 
@@ -15,20 +15,27 @@ class DerivativeType(StrEnum):
     """Short excerpt from the source installment"""
 
 
+    clip = MemberAlias('CLIP')
     HIGHLIGHT = 'highlight'
     """Editorially curated best-of segment from the source installment"""
 
 
+    highlight = MemberAlias('HIGHLIGHT')
     RECAP = 'recap'
     """Summary of the source installment's content"""
 
 
+    recap = MemberAlias('RECAP')
     TRAILER = 'trailer'
     """Promotional content for the source installment"""
 
 
+    trailer = MemberAlias('TRAILER')
     BONUS = 'bonus'
     """Supplementary content (behind-the-scenes, extended interviews, deleted segments)"""
+
+
+    bonus = MemberAlias('BONUS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DerivativeType", DerivativeType)

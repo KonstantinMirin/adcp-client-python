@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/reporting-frequency.json', pointer='#')
 
@@ -12,11 +12,17 @@ class ReportingFrequency(StrEnum):
     Available frequencies for delivery reports and metrics updates. Weekly and quarterly match audience-currency publication cycles in measured channels (e.g. weekly OOH/radio increments, quarterly circulation updates); post_campaign is a single report after the flight ends. Buy-side agents MUST treat a product's declared frequencies as an optimization-eligibility gate: a buyer MUST NOT make mid-flight optimization decisions against metrics whose declared cadence is quarterly or post_campaign — such data describes a period that has closed, and optimizing on it means acting on a model of the channel that is false at decision time.
     """
     HOURLY = 'hourly'
+    hourly = MemberAlias('HOURLY')
     DAILY = 'daily'
+    daily = MemberAlias('DAILY')
     WEEKLY = 'weekly'
+    weekly = MemberAlias('WEEKLY')
     MONTHLY = 'monthly'
+    monthly = MemberAlias('MONTHLY')
     QUARTERLY = 'quarterly'
+    quarterly = MemberAlias('QUARTERLY')
     POST_CAMPAIGN = 'post_campaign'
+    post_campaign = MemberAlias('POST_CAMPAIGN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReportingFrequency", ReportingFrequency)

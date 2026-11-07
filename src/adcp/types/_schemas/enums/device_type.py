@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/device-type.json', pointer='#')
 
@@ -12,11 +12,17 @@ class DeviceType(StrEnum):
     Device form factor categories for targeting and reporting. Complements device-platform (operating system) with hardware classification. OpenRTB mapping: 1 (Mobile/Tablet General) → mobile, 2 (PC) → desktop, 4 (Phone) → mobile, 5 (Tablet) → tablet, 6 (Connected Device) → ctv, 7 (Set Top Box) → ctv. DOOH inventory uses dooh.
     """
     DESKTOP = 'desktop'
+    desktop = MemberAlias('DESKTOP')
     MOBILE = 'mobile'
+    mobile = MemberAlias('MOBILE')
     TABLET = 'tablet'
+    tablet = MemberAlias('TABLET')
     CTV = 'ctv'
+    ctv = MemberAlias('CTV')
     DOOH = 'dooh'
+    dooh = MemberAlias('DOOH')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DeviceType", DeviceType)

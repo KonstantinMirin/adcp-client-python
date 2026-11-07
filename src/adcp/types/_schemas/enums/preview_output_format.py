@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/preview-output-format.json', pointer='#')
 
@@ -12,7 +12,9 @@ class PreviewOutputFormat(StrEnum):
     Output format for creative previews
     """
     URL = 'url'
+    url = MemberAlias('URL')
     HTML = 'html'
+    html = MemberAlias('HTML')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PreviewOutputFormat", PreviewOutputFormat)

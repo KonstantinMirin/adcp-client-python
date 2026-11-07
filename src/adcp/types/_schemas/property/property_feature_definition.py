@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from ..common._vocabularies import _VALUES_BINARY_QUANTITATIVE_CATEGORICAL
@@ -19,8 +19,11 @@ class PropertyFeatureDefinitionType(StrEnum):
     The type of values this feature produces: binary (true/false), quantitative (numeric range), categorical (enumerated values)
     """
     BINARY = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[0]
+    binary = MemberAlias('BINARY')
     QUANTITATIVE = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[1]
+    quantitative = MemberAlias('QUANTITATIVE')
     CATEGORICAL = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[2]
+    categorical = MemberAlias('CATEGORICAL')
 
 
 class Coverage(AdCPBaseModel):

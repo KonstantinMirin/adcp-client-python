@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/audience-resolution-method.json', pointer='#')
 
@@ -12,11 +12,17 @@ class AudienceResolutionMethod(StrEnum):
     How subjects were resolved when producing a signal or population-level evidence estimate.
     """
     DETERMINISTIC_ID = 'deterministic_id'
+    deterministic_id = MemberAlias('DETERMINISTIC_ID')
     PROBABILISTIC_DEVICE = 'probabilistic_device'
+    probabilistic_device = MemberAlias('PROBABILISTIC_DEVICE')
     BROWSER = 'browser'
+    browser = MemberAlias('BROWSER')
     GEOGRAPHIC = 'geographic'
+    geographic = MemberAlias('GEOGRAPHIC')
     CONTENT_SIGNAL = 'content_signal'
+    content_signal = MemberAlias('CONTENT_SIGNAL')
     MIXED = 'mixed'
+    mixed = MemberAlias('MIXED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AudienceResolutionMethod", AudienceResolutionMethod)

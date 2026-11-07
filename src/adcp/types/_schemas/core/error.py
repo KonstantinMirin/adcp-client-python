@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import RetryAfter, StrMinLen1, StrMinLen1MaxLen64
 
@@ -50,8 +50,11 @@ class Recovery(StrEnum):
     Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found). AdCP 3.2 producers MUST populate `recovery` on every error; 3.1 producers SHOULD populate it. The shared 3.x schema intentionally does not add `recovery` to `required` so retained and live errors from earlier 3.x producers remain decodable. When `buyer_reason` is present, `recovery` is required and MUST classify that buyer-actionable reason. If the enclosing code and buyer reason are both registered, their standard recovery classifications MUST agree with each other and with this field. A receiver that does not recognize `error.code` (a newer code, or a platform-specific code) MUST still be able to classify the error from `recovery`. When a legacy error omits `recovery`, receivers use the registered classification for a known code and fall back to `transient` for an unknown code, subject to the bounded retry budget. The `enumMetadata.recovery` block in `enums/error-code.json` is the documentary mirror for known top-level and buyer-reason codes; `error.recovery` on the wire is authoritative when present.
     """
     TRANSIENT = 'transient'
+    transient = MemberAlias('TRANSIENT')
     CORRECTABLE = 'correctable'
+    correctable = MemberAlias('CORRECTABLE')
     TERMINAL = 'terminal'
+    terminal = MemberAlias('TERMINAL')
 
 
 class Source(StrEnum):
@@ -63,7 +66,9 @@ class Source(StrEnum):
     **Replay/audit safety.** Persisted or replayed responses carry `source` and `sdk_id` so the audit trail can distinguish seller-emitted entries from SDK-augmented ones. Without `source`, a downstream consumer can't tell whether a code came from the seller or an intermediate SDK, which corrupts attribution.
     """
     PRODUCER = 'producer'
+    producer = MemberAlias('PRODUCER')
     SDK = 'sdk'
+    sdk = MemberAlias('SDK')
 
 
 class Error(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMinLen1
 
 from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
@@ -30,7 +30,9 @@ class PropertyListApplicationEffect(StrEnum):
     Whether matching properties were retained as an allowlist or removed as a blocklist.
     """
     INCLUDE = _VALUES_INCLUDE_EXCLUDE[0]
+    include = MemberAlias('INCLUDE')
     EXCLUDE = _VALUES_INCLUDE_EXCLUDE[1]
+    exclude = MemberAlias('EXCLUDE')
 
 
 class PropertyListApplicationSummary(AdCPBaseModel):
@@ -64,7 +66,9 @@ class CollectionListApplicationEffect(StrEnum):
     Whether matching collections were retained as an allowlist or removed as a blocklist.
     """
     INCLUDE = _VALUES_INCLUDE_EXCLUDE[0]
+    include = MemberAlias('INCLUDE')
     EXCLUDE = _VALUES_INCLUDE_EXCLUDE[1]
+    exclude = MemberAlias('EXCLUDE')
 
 
 class CollectionListApplicationSummary(AdCPBaseModel):

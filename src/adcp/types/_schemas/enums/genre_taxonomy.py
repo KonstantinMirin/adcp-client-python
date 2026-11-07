@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/genre-taxonomy.json', pointer='#')
 
@@ -23,28 +23,37 @@ class GenreTaxonomy(StrEnum):
     """Gracenote genre classification — entertainment metadata standard for TV, film, and music. Supports multi-level genre hierarchies; hierarchy-aware matching is the seller's responsibility."""
 
 
+    gracenote = MemberAlias('GRACENOTE')
     EIDR = 'eidr'
     """EIDR genre classification — ISO 10528 for audiovisual content identification"""
 
 
+    eidr = MemberAlias('EIDR')
     APPLE_GENRES = 'apple_genres'
     """Apple App Store / Apple TV genre taxonomy"""
 
 
+    apple_genres = MemberAlias('APPLE_GENRES')
     GOOGLE_GENRES = 'google_genres'
     """Google Play / Google TV genre taxonomy"""
 
 
+    google_genres = MemberAlias('GOOGLE_GENRES')
     ROKU = 'roku'
     """Roku Channel Store / Roku TV genre taxonomy"""
 
 
+    roku = MemberAlias('ROKU')
     AMAZON_GENRES = 'amazon_genres'
     """Amazon Fire TV / Freevee genre taxonomy"""
 
 
+    amazon_genres = MemberAlias('AMAZON_GENRES')
     CUSTOM = 'custom'
     """Publisher-defined genre taxonomy with free-form values. Buyer and seller must negotiate the vocabulary out of band."""
+
+
+    custom = MemberAlias('CUSTOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "GenreTaxonomy", GenreTaxonomy)

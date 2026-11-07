@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import AdcpResponse
@@ -19,7 +19,9 @@ from ..core.ext import ExtensionObject
 
 class Outcome(StrEnum):
     DECLINED = 'declined'
+    declined = MemberAlias('DECLINED')
     UNABLE = 'unable'
+    unable = MemberAlias('UNABLE')
 
 
 class ResultsItem(BranchDispatchMixin, AdCPBaseModel):

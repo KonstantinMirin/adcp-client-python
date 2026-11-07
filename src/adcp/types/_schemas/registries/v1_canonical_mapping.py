@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -48,7 +48,9 @@ class Transform(StrEnum):
     Value transform applied during forwarding. identity copies the value; singleton_array wraps it in a one-element array.
     """
     IDENTITY = 'identity'
+    identity = MemberAlias('IDENTITY')
     SINGLETON_ARRAY = 'singleton_array'
+    singleton_array = MemberAlias('SINGLETON_ARRAY')
 
 
 class ParameterMappingsItem(AdCPBaseModel):

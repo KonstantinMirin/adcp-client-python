@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     AdCPVersionEnvelopeAdcpVersion,
     ContextSignalsEmbeddingDims,
@@ -30,14 +30,23 @@ class ArtifactRefsItemType(StrEnum):
     Identifier type. 'url' for web pages, 'url_hash' for URL-addressable content the publisher prefers not to share directly (buyer matches against pre-crawled index), 'eidr' for film/TV (EIDR DOI), 'gracenote' for music/TV (Gracenote TMS ID), 'isrc' for music recordings (International Standard Recording Code), 'gtin' for products (Global Trade Item Number — UPC, EAN, ISBN-13), 'rss_guid' for podcast episodes (RSS GUID), 'isbn' for books, 'custom' for publisher-defined identifiers.
     """
     URL = 'url'
+    url = MemberAlias('URL')
     URL_HASH = 'url_hash'
+    url_hash = MemberAlias('URL_HASH')
     EIDR = 'eidr'
+    eidr = MemberAlias('EIDR')
     GRACENOTE = 'gracenote'
+    gracenote = MemberAlias('GRACENOTE')
     ISRC = 'isrc'
+    isrc = MemberAlias('ISRC')
     GTIN = 'gtin'
+    gtin = MemberAlias('GTIN')
     RSS_GUID = 'rss_guid'
+    rss_guid = MemberAlias('RSS_GUID')
     ISBN = 'isbn'
+    isbn = MemberAlias('ISBN')
     CUSTOM = 'custom'
+    custom = MemberAlias('CUSTOM')
 
 
 class ArtifactRefsItem(AdCPBaseModel):
@@ -79,9 +88,13 @@ class Sentiment(StrEnum):
     Content sentiment classification.
     """
     POSITIVE = 'positive'
+    positive = MemberAlias('POSITIVE')
     NEGATIVE = 'negative'
+    negative = MemberAlias('NEGATIVE')
     NEUTRAL = 'neutral'
+    neutral = MemberAlias('NEUTRAL')
     MIXED = 'mixed'
+    mixed = MemberAlias('MIXED')
 
 
 class ContextSignals(AdCPBaseModel):

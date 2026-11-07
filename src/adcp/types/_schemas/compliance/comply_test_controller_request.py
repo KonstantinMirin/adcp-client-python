@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -41,24 +41,43 @@ class Operation(StrEnum):
     Scenario-specific probe operation. catalog_item_availability_probe uses seed_inaccessible_item, query_eligibility, advance_time, and recreate_catalog. compact_product_lifecycle_probe uses prepare to make one seeded product's compact proposal, acceptance, operational-control, and MediaBuy readback path deterministic and expire_proposal to advance strictly beyond a committed proposal's stored expires_at and process the hold lapse. compact_direct_buy_lifecycle_probe uses prepare to make one seeded product's list, direct-purchase, operational-control, and readback path deterministic. reporting_core_lifecycle_probe uses prepare, advance_time, publish_zero_row, publish_nonempty, restate_snapshot, restate_after_received, omit_obligation, advance_past_status_deadline, and advance_past_escalation to exercise obligation availability, health deadlines, explicit reporting, provisional restatement, stale-received grace, buyer-side missing-obligation detection, counted consumer-status silence, and consumer-mismatch escalation. advance_past_status_deadline moves the clock strictly past expected_at plus the advertised automated_recovery_window_seconds without recording any consumer status, so obligation_counts.consumer_status_pending is gradable; advance_past_escalation moves it strictly past the open CONSUMER_STATUS_MISMATCH issue opened_at plus the advertised consumer_mismatch_escalation_seconds and returns both that boundary and any still-future stale_received_grace_deadline, so the escalation precedence rule is gradable. restate_snapshot publishes a new snapshot revision that immediately supersedes the current snapshot for the same logical slice and is invalid when the current revision is official. restate_after_received does the same restatement but only against the revision named in received_reporting_revision_id, so the stale-received grace projection can be graded live; it returns the grace deadline and advance_to positions the virtual clock inside or past it. Reliable Reporting tier probes use prepare plus publish_official_adjustment, probe_scheduler_dst, suppress_readiness, advance_within_retention, revoke_access, or publish_adjustment to seed deterministic Core-integrity, Managed Delivery, and Reconciled Billing lifecycle evidence.
     """
     SEED_INACCESSIBLE_ITEM = 'seed_inaccessible_item'
+    seed_inaccessible_item = MemberAlias('SEED_INACCESSIBLE_ITEM')
     QUERY_ELIGIBILITY = 'query_eligibility'
+    query_eligibility = MemberAlias('QUERY_ELIGIBILITY')
     ADVANCE_TIME = 'advance_time'
+    advance_time = MemberAlias('ADVANCE_TIME')
     RECREATE_CATALOG = 'recreate_catalog'
+    recreate_catalog = MemberAlias('RECREATE_CATALOG')
     PREPARE = 'prepare'
+    prepare = MemberAlias('PREPARE')
     EXPIRE_PROPOSAL = 'expire_proposal'
+    expire_proposal = MemberAlias('EXPIRE_PROPOSAL')
     PUBLISH_ZERO_ROW = 'publish_zero_row'
+    publish_zero_row = MemberAlias('PUBLISH_ZERO_ROW')
     PUBLISH_NONEMPTY = 'publish_nonempty'
+    publish_nonempty = MemberAlias('PUBLISH_NONEMPTY')
     RESTATE_SNAPSHOT = 'restate_snapshot'
+    restate_snapshot = MemberAlias('RESTATE_SNAPSHOT')
     RESTATE_AFTER_RECEIVED = 'restate_after_received'
+    restate_after_received = MemberAlias('RESTATE_AFTER_RECEIVED')
     OMIT_OBLIGATION = 'omit_obligation'
+    omit_obligation = MemberAlias('OMIT_OBLIGATION')
     ADVANCE_PAST_STATUS_DEADLINE = 'advance_past_status_deadline'
+    advance_past_status_deadline = MemberAlias('ADVANCE_PAST_STATUS_DEADLINE')
     ADVANCE_PAST_ESCALATION = 'advance_past_escalation'
+    advance_past_escalation = MemberAlias('ADVANCE_PAST_ESCALATION')
     PUBLISH_OFFICIAL_ADJUSTMENT = 'publish_official_adjustment'
+    publish_official_adjustment = MemberAlias('PUBLISH_OFFICIAL_ADJUSTMENT')
     PROBE_SCHEDULER_DST = 'probe_scheduler_dst'
+    probe_scheduler_dst = MemberAlias('PROBE_SCHEDULER_DST')
     SUPPRESS_READINESS = 'suppress_readiness'
+    suppress_readiness = MemberAlias('SUPPRESS_READINESS')
     ADVANCE_WITHIN_RETENTION = 'advance_within_retention'
+    advance_within_retention = MemberAlias('ADVANCE_WITHIN_RETENTION')
     REVOKE_ACCESS = 'revoke_access'
+    revoke_access = MemberAlias('REVOKE_ACCESS')
     PUBLISH_ADJUSTMENT = 'publish_adjustment'
+    publish_adjustment = MemberAlias('PUBLISH_ADJUSTMENT')
 
 
 class AdvanceTo(StrEnum):
@@ -66,7 +85,9 @@ class AdvanceTo(StrEnum):
     Where reporting_core_lifecycle_probe restate_after_received leaves the virtual clock relative to the returned stale_received_grace_deadline. within_grace grades the delayed projection; past_grace grades the escalation to action_required. Repeating the operation is convergent: it reuses the committed restatement and only moves the clock.
     """
     WITHIN_GRACE = 'within_grace'
+    within_grace = MemberAlias('WITHIN_GRACE')
     PAST_GRACE = 'past_grace'
+    past_grace = MemberAlias('PAST_GRACE')
 
 
 class PurgeKind(StrEnum):
@@ -74,7 +95,9 @@ class PurgeKind(StrEnum):
     Purge mode for force_creative_purge. soft retains a list_creatives tombstone; hard removes the creative entirely.
     """
     SOFT = 'soft'
+    soft = MemberAlias('SOFT')
     HARD = 'hard'
+    hard = MemberAlias('HARD')
 
 
 class ParamsDoohMetrics(DoohMetrics):
@@ -115,9 +138,12 @@ class Arm(StrEnum):
     Response arm for the next forced operation call. Used by force_create_media_buy_arm, force_get_products_arm, force_get_signals_arm, and force_get_creative_features_arm. 'submitted' is supported for all four operations; get_creative_features also supports 'completed' with a deterministic result; create_media_buy also supports 'input-required'; get_products also supports 'rejected'. Async completion after a submitted task is covered by force_task_completion; 'working' is an out-of-band progress signal, not an initial response arm.
     """
     SUBMITTED = 'submitted'
+    submitted = MemberAlias('SUBMITTED')
     COMPLETED = 'completed'
+    completed = MemberAlias('COMPLETED')
     INPUT_REQUIRED = 'input-required'
     REJECTED = 'rejected'
+    rejected = MemberAlias('REJECTED')
 
 
 class MetricsItem(AdCPBaseModel):

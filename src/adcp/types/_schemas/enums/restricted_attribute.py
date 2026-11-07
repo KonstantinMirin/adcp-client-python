@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/restricted-attribute.json', pointer='#')
 
@@ -15,40 +15,52 @@ class RestrictedAttribute(StrEnum):
     """Race or ethnic origin. GDPR Article 9(1), US FHA/ECOA/EEOC protected class."""
 
 
+    racial_ethnic_origin = MemberAlias('RACIAL_ETHNIC_ORIGIN')
     POLITICAL_OPINIONS = 'political_opinions'
     """Political opinions or affiliations. GDPR Article 9(1). EU DSA Article 26 prohibits targeting on this category."""
 
 
+    political_opinions = MemberAlias('POLITICAL_OPINIONS')
     RELIGIOUS_BELIEFS = 'religious_beliefs'
     """Religious or philosophical beliefs. GDPR Article 9(1), US FHA/EEOC protected class."""
 
 
+    religious_beliefs = MemberAlias('RELIGIOUS_BELIEFS')
     TRADE_UNION_MEMBERSHIP = 'trade_union_membership'
     """Trade union membership. GDPR Article 9(1)."""
 
 
+    trade_union_membership = MemberAlias('TRADE_UNION_MEMBERSHIP')
     HEALTH_DATA = 'health_data'
     """Health status, medical conditions, disability. GDPR Article 9(1), US ADA protected class. Includes inferred health data from behavioral signals."""
 
 
+    health_data = MemberAlias('HEALTH_DATA')
     SEX_LIFE_SEXUAL_ORIENTATION = 'sex_life_sexual_orientation'
     """Sex life or sexual orientation. GDPR Article 9(1)."""
 
 
+    sex_life_sexual_orientation = MemberAlias('SEX_LIFE_SEXUAL_ORIENTATION')
     GENETIC_DATA = 'genetic_data'
     """Genetic data. GDPR Article 9(1), US GINA."""
 
 
+    genetic_data = MemberAlias('GENETIC_DATA')
     BIOMETRIC_DATA = 'biometric_data'
     """Biometric data used for identification. GDPR Article 9(1)."""
 
 
+    biometric_data = MemberAlias('BIOMETRIC_DATA')
     AGE = 'age'
     """A person's age or age range. US ADEA (40+) for employment, US FHA for housing, EU AVMSD for content-directed targeting. Restricted for regulated verticals."""
 
 
+    age = MemberAlias('AGE')
     FAMILIAL_STATUS = 'familial_status'
     """Whether a household includes children under 18, a pregnant person, or a person seeking custody of a minor. US FHA protected class."""
+
+
+    familial_status = MemberAlias('FAMILIAL_STATUS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "RestrictedAttribute", RestrictedAttribute)

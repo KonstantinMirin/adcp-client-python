@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/purchase-type.json', pointer='#')
 
@@ -12,9 +12,13 @@ class PurchaseType(StrEnum):
     The type of financial commitment being governed.
     """
     MEDIA_BUY = 'media_buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     RIGHTS_LICENSE = 'rights_license'
+    rights_license = MemberAlias('RIGHTS_LICENSE')
     SIGNAL_ACTIVATION = 'signal_activation'
+    signal_activation = MemberAlias('SIGNAL_ACTIVATION')
     CREATIVE_SERVICES = 'creative_services'
+    creative_services = MemberAlias('CREATIVE_SERVICES')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PurchaseType", PurchaseType)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import AssetPath, HttpUrl, StrMinLen1
 
@@ -22,9 +22,13 @@ from .macro_encoding import MacroEncoding
 
 class Status(StrEnum):
     RESOLVABLE = 'resolvable'
+    resolvable = MemberAlias('RESOLVABLE')
     PRESERVED_FOR_DOWNSTREAM = 'preserved_for_downstream'
+    preserved_for_downstream = MemberAlias('PRESERVED_FOR_DOWNSTREAM')
     UNSUPPORTED = 'unsupported'
+    unsupported = MemberAlias('UNSUPPORTED')
     AMBIGUOUS = 'ambiguous'
+    ambiguous = MemberAlias('AMBIGUOUS')
 
 
 class MacroResolutionResult(AdCPBaseModel):

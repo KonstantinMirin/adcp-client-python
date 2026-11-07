@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -16,7 +16,9 @@ class Mode(StrEnum):
     seller_fixed means every account uses fixed_timezone. account_fixed means each account has an immutable timezone returned on Account and selected or assigned during account establishment.
     """
     SELLER_FIXED = 'seller_fixed'
+    seller_fixed = MemberAlias('SELLER_FIXED')
     ACCOUNT_FIXED = 'account_fixed'
+    account_fixed = MemberAlias('ACCOUNT_FIXED')
 
 
 class AccountSelection(StrEnum):
@@ -24,7 +26,9 @@ class AccountSelection(StrEnum):
     How an account_fixed timezone is established. seller_assigned covers an existing upstream account or seller onboarding choice; buyer_selected requires timezone in buyer-declared sync_accounts provisioning.
     """
     SELLER_ASSIGNED = 'seller_assigned'
+    seller_assigned = MemberAlias('SELLER_ASSIGNED')
     BUYER_SELECTED = 'buyer_selected'
+    buyer_selected = MemberAlias('BUYER_SELECTED')
 
 
 class AccountTimezoneCapability(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -23,7 +23,9 @@ class Mode(StrEnum):
     Future webhook delivery authentication mode. `rfc9421` is used when notification_configs[].authentication is absent; Bearer and HMAC-SHA256 are the deprecated legacy modes selected by notification_configs[].authentication.
     """
     RFC9421 = 'rfc9421'
+    rfc9421 = MemberAlias('RFC9421')
     BEARER = 'Bearer'
+    Bearer = MemberAlias('BEARER')
     HMAC_SHA256 = 'HMAC-SHA256'
 
 

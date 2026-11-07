@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/uid-type.json', pointer='#')
 
@@ -15,44 +15,57 @@ class UIDType(StrEnum):
     """LiveRamp RampID maintained form (XY, 32 bytes on the wire)"""
 
 
+    rampid = MemberAlias('RAMPID')
     RAMPID_DERIVED = 'rampid_derived'
     """LiveRamp RampID derived form (Xi, 48 bytes on the wire)"""
 
 
+    rampid_derived = MemberAlias('RAMPID_DERIVED')
     ID5 = 'id5'
     """ID5 universal ID"""
 
 
+    id5 = MemberAlias('ID5')
     UID2 = 'uid2'
     """Unified ID 2.0"""
 
 
+    uid2 = MemberAlias('UID2')
     EUID = 'euid'
     """European Unified ID"""
 
 
+    euid = MemberAlias('EUID')
     PAIRID = 'pairid'
     """Publisher Addressable Identity via IAB Tech Lab PAIR. The OpenRTB profile uses User.eids[].source pair-protocol.com, EID.mm 3, EID.matcher set to the publisher's canonical ads.txt ownerdomain, and uids[].atype 3. The URL-safe Base64-encoded KsKp Publisher Identifier must be interpreted with that matcher scope. It is stable across a publisher's advertiser matches only within a Ks key epoch; Ks rotates every 30 days, and current and prior Publisher Identifiers can overlap during rollover. TMP identity objects do not carry matcher or ownerdomain, so a bridge requires an authenticated out-of-band binding to preserve PAIR scope."""
 
 
+    pairid = MemberAlias('PAIRID')
     MAID = 'maid'
     """Mobile Advertising ID (IDFA/GAID)"""
 
 
+    maid = MemberAlias('MAID')
     HASHED_EMAIL = 'hashed_email'
     """SHA-256 hashed email address. Pseudonymous PII, not anonymous — unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous."""
 
 
+    hashed_email = MemberAlias('HASHED_EMAIL')
     PUBLISHER_FIRST_PARTY = 'publisher_first_party'
     """Publisher's own first-party identifier, opaque to buyers"""
 
 
+    publisher_first_party = MemberAlias('PUBLISHER_FIRST_PARTY')
     WORLD_ID_NULLIFIER = 'world_id_nullifier'
     """World ID nullifier — a Sybil-resistant, relying-party-scoped, unlinkable pseudonym. Carries NO personhood or age assertion on its own; trust comes only from an accompanying verified `attestation`, never from this type tag. Distinct from the `world_id` value in the age-verification-method enum, which names a method, not an identifier."""
 
 
+    world_id_nullifier = MemberAlias('WORLD_ID_NULLIFIER')
     OTHER = 'other'
     """Other universal ID type (specify in ext)"""
+
+
+    other = MemberAlias('OTHER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "UIDType", UIDType)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin2Max10, StrMinLen1
 
@@ -21,7 +21,9 @@ class Action(StrEnum):
     revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.
     """
     REVISE = 'revise'
+    revise = MemberAlias('REVISE')
     FINALIZE = 'finalize'
+    finalize = MemberAlias('FINALIZE')
 
 
 class ChangeKind(StrEnum):
@@ -29,7 +31,9 @@ class ChangeKind(StrEnum):
     Desired successor proposal. cancellation is valid only when the source proposal is accepted and attached to a non-terminal MediaBuy.
     """
     AMENDMENT = 'amendment'
+    amendment = MemberAlias('AMENDMENT')
     CANCELLATION = 'cancellation'
+    cancellation = MemberAlias('CANCELLATION')
 
 
 class Cpm(AdCPBaseModel):

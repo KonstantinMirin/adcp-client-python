@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/exclusivity.json', pointer='#')
 
@@ -15,12 +15,17 @@ class Exclusivity(StrEnum):
     """No exclusivity — multiple advertisers can buy this product simultaneously"""
 
 
+    none = MemberAlias('NONE')
     CATEGORY = 'category'
     """Category-exclusive — only one advertiser per industry category (e.g., one auto brand per collection sponsorship)"""
 
 
+    category = MemberAlias('CATEGORY')
     EXCLUSIVE = 'exclusive'
     """Sole sponsorship — only one advertiser can buy this product"""
+
+
+    exclusive = MemberAlias('EXCLUSIVE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "Exclusivity", Exclusivity)

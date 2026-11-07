@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/feature-check-status.json', pointer='#')
 
@@ -15,16 +15,22 @@ class FeatureCheckStatus(StrEnum):
     """Feature met the applicable content standard"""
 
 
+    passed = MemberAlias('PASSED')
     FAILED = 'failed'
     """Feature did not meet the applicable content standard"""
 
 
+    failed = MemberAlias('FAILED')
     WARNING = 'warning'
     """Feature is within tolerance but approaching a threshold — informational, not blocking"""
 
 
+    warning = MemberAlias('WARNING')
     UNEVALUATED = 'unevaluated'
     """Feature was not assessed in this evaluation run (e.g., required data not present)"""
+
+
+    unevaluated = MemberAlias('UNEVALUATED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "FeatureCheckStatus", FeatureCheckStatus)

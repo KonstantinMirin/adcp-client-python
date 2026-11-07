@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max100
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -81,8 +81,11 @@ class PaymentStatus(StrEnum):
     Overall payment status. current: all obligations met. past_due: one or more invoices overdue. suspended: account suspended due to payment issues.
     """
     CURRENT = 'current'
+    current = MemberAlias('CURRENT')
     PAST_DUE = 'past_due'
+    past_due = MemberAlias('PAST_DUE')
     SUSPENDED = 'suspended'
+    suspended = MemberAlias('SUSPENDED')
 
 
 class Status(StrEnum):
@@ -90,10 +93,15 @@ class Status(StrEnum):
     Invoice status
     """
     DRAFT = 'draft'
+    draft = MemberAlias('DRAFT')
     ISSUED = 'issued'
+    issued = MemberAlias('ISSUED')
     PAID = 'paid'
+    paid = MemberAlias('PAID')
     PAST_DUE = 'past_due'
+    past_due = MemberAlias('PAST_DUE')
     VOID = 'void'
+    void = MemberAlias('VOID')
 
 
 class InvoicesItem(AdCPBaseModel):

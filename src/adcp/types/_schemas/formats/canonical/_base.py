@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import CanonicalFormatBaseMigrationTargetVersion, FloatGt0, IntMin1
 
@@ -20,7 +20,9 @@ class CompositionModel(StrEnum):
     Whether the surface composes deterministically (buyer can predict per-slot rendering — sponsored_placement, image, video) or algorithmically (surface chooses combinations or phrasing — responsive_creative, agent_placement).
     """
     DETERMINISTIC = 'deterministic'
+    deterministic = MemberAlias('DETERMINISTIC')
     ALGORITHMIC = 'algorithmic'
+    algorithmic = MemberAlias('ALGORITHMIC')
 
 
 class AssetType(StrEnum):
@@ -28,27 +30,49 @@ class AssetType(StrEnum):
     Discriminator selecting the asset schema this slot accepts. SDK codegen uses this to type the slot value. `display_tag` is the atomic third-party display representation (URL, inline markup, or paired redirect). `published_post` is an existing-post reference asset. `pixel_tracker` / `vast_tracker` / `daast_tracker` are renderer-fired tracker primitives. `object` is a last-resort fallback.
     """
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     VIDEO = 'video'
+    video = MemberAlias('VIDEO')
     AUDIO = 'audio'
+    audio = MemberAlias('AUDIO')
     TEXT = 'text'
+    text = MemberAlias('TEXT')
     MARKDOWN = 'markdown'
+    markdown = MemberAlias('MARKDOWN')
     URL = 'url'
+    url = MemberAlias('URL')
     HTML = 'html'
+    html = MemberAlias('HTML')
     CSS = 'css'
+    css = MemberAlias('CSS')
     JAVASCRIPT = 'javascript'
+    javascript = MemberAlias('JAVASCRIPT')
     VAST = 'vast'
+    vast = MemberAlias('VAST')
     DAAST = 'daast'
+    daast = MemberAlias('DAAST')
     DISPLAY_TAG = 'display_tag'
+    display_tag = MemberAlias('DISPLAY_TAG')
     WEBHOOK = 'webhook'
+    webhook = MemberAlias('WEBHOOK')
     BRIEF = 'brief'
+    brief = MemberAlias('BRIEF')
     CATALOG = 'catalog'
+    catalog = MemberAlias('CATALOG')
     PUBLISHED_POST = 'published_post'
+    published_post = MemberAlias('PUBLISHED_POST')
     ZIP = 'zip'
+    zip = MemberAlias('ZIP')
     CARD = 'card'
+    card = MemberAlias('CARD')
     OBJECT = 'object'
+    object = MemberAlias('OBJECT')
     PIXEL_TRACKER = 'pixel_tracker'
+    pixel_tracker = MemberAlias('PIXEL_TRACKER')
     VAST_TRACKER = 'vast_tracker'
+    vast_tracker = MemberAlias('VAST_TRACKER')
     DAAST_TRACKER = 'daast_tracker'
+    daast_tracker = MemberAlias('DAAST_TRACKER')
 
 
 class SlotsItem(AdCPBaseModel):
@@ -91,8 +115,11 @@ class ReferenceMutability(StrEnum):
     Policy for formats whose `slots` accept a `published_post` reference. `immutable_snapshot`: seller snapshots the referenced post at approval and later source changes do not change the served creative. `mutable_requires_reapproval`: the source post may change and material changes require review before continued serving. `mutable_auto_recheck`: the source post may change and the seller continuously or periodically rechecks authorization/policy without requiring buyer resubmission. Omit when the format has no `published_post` slot.
     """
     IMMUTABLE_SNAPSHOT = 'immutable_snapshot'
+    immutable_snapshot = MemberAlias('IMMUTABLE_SNAPSHOT')
     MUTABLE_REQUIRES_REAPPROVAL = 'mutable_requires_reapproval'
+    mutable_requires_reapproval = MemberAlias('MUTABLE_REQUIRES_REAPPROVAL')
     MUTABLE_AUTO_RECHECK = 'mutable_auto_recheck'
+    mutable_auto_recheck = MemberAlias('MUTABLE_AUTO_RECHECK')
 
 
 class CanonicalFormatBase(AdCPBaseModel):

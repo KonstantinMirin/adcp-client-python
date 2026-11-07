@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/signal-value-type.json', pointer='#')
 
@@ -15,12 +15,17 @@ class SignalValueType(StrEnum):
     """Boolean signal - user either matches or doesn't (e.g., 'likely_tesla_buyers')"""
 
 
+    binary = MemberAlias('BINARY')
     CATEGORICAL = 'categorical'
     """Signal with discrete values from a defined set (e.g., 'vehicle_ownership' with values 'tesla', 'bmw', etc.)"""
 
 
+    categorical = MemberAlias('CATEGORICAL')
     NUMERIC = 'numeric'
     """Signal with continuous numeric values within a range (e.g., 'purchase_propensity' from 0.0 to 1.0)"""
+
+
+    numeric = MemberAlias('NUMERIC')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SignalValueType", SignalValueType)

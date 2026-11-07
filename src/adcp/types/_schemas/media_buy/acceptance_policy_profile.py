@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AcceptancePolicyProfileRegionAliases,
@@ -37,7 +37,9 @@ class Coverage(StrEnum):
     partial means additional unpublished rules may apply and omission is unknown. complete means this profile is exhaustive only for its declared scope and version.
     """
     PARTIAL = 'partial'
+    partial = MemberAlias('PARTIAL')
     COMPLETE = 'complete'
+    complete = MemberAlias('COMPLETE')
 
 
 class Scope(AdCPBaseModel):

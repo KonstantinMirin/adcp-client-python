@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
@@ -15,24 +15,40 @@ from ..enums.daast_version import DAASTVersion
 
 class DaastEvent(StrEnum):
     CREATIVEVIEW = 'creativeView'
+    creativeView = MemberAlias('CREATIVEVIEW')
     START = 'start'
+    start = MemberAlias('START')
     FIRSTQUARTILE = 'firstQuartile'
+    firstQuartile = MemberAlias('FIRSTQUARTILE')
     MIDPOINT = 'midpoint'
+    midpoint = MemberAlias('MIDPOINT')
     THIRDQUARTILE = 'thirdQuartile'
+    thirdQuartile = MemberAlias('THIRDQUARTILE')
     COMPLETE = 'complete'
+    complete = MemberAlias('COMPLETE')
     MUTE = 'mute'
+    mute = MemberAlias('MUTE')
     UNMUTE = 'unmute'
+    unmute = MemberAlias('UNMUTE')
     PAUSE = 'pause'
+    pause = MemberAlias('PAUSE')
     RESUME = 'resume'
+    resume = MemberAlias('RESUME')
     REWIND = 'rewind'
+    rewind = MemberAlias('REWIND')
     SKIP = 'skip'
+    skip = MemberAlias('SKIP')
     PROGRESS = 'progress'
+    progress = MemberAlias('PROGRESS')
     CLOSE = 'close'
+    close = MemberAlias('CLOSE')
 
 
 class DaastTarget(StrEnum):
     LINEAR = 'linear'
+    linear = MemberAlias('LINEAR')
     COMPANION = 'companion'
+    companion = MemberAlias('COMPANION')
 
 
 DaastOffset = DAASTTrackerAssetOffset

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/adcp-protocol.json', pointer='#')
 
@@ -19,24 +19,31 @@ class AdCPProtocol(StrEnum):
     """Audience signal discovery and activation"""
 
 
+    signals = MemberAlias('SIGNALS')
     GOVERNANCE = 'governance'
     """Property governance (identity, authorization, data, selection), brand standards, and compliance"""
 
 
+    governance = MemberAlias('GOVERNANCE')
     CREATIVE = 'creative'
     """Creative asset management, format discovery, and rendering"""
 
 
+    creative = MemberAlias('CREATIVE')
     BRAND = 'brand'
     """Brand identity, rights discovery, and rights acquisition"""
 
 
+    brand = MemberAlias('BRAND')
     SPONSORED_INTELLIGENCE = 'sponsored-intelligence'
     """AI-mediated commerce and conversational sponsored experiences, including buyer-agent sessions and measurement of AI-surfaced outcomes"""
 
 
     MEASUREMENT = 'measurement'
     """Experimental in 3.1. Measurement vendor capability discovery and buyer-orchestrator interchange. Providers list `measurement.core` in experimental_features; orchestrator gateways list `measurement.gateway`. The first gateway tier reuses get_media_buy_delivery and provide_performance_feedback; additional measurement tasks and transports land only with complete contracts."""
+
+
+    measurement = MemberAlias('MEASUREMENT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AdCPProtocol", AdCPProtocol)

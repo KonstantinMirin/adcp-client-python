@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/viewability-standard.json', pointer='#')
 
@@ -15,8 +15,12 @@ class ViewabilityStandard(StrEnum):
     """MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."""
 
 
+    mrc = MemberAlias('MRC')
     GROUPM = 'groupm'
     """GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration."""
+
+
+    groupm = MemberAlias('GROUPM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ViewabilityStandard", ViewabilityStandard)

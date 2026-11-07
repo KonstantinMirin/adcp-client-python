@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import FloatMin1Max5, FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl
 
 from .country_code import CountryCode
@@ -32,12 +32,19 @@ class DestinationType(StrEnum):
     Destination category.
     """
     BEACH = 'beach'
+    beach = MemberAlias('BEACH')
     MOUNTAIN = 'mountain'
+    mountain = MemberAlias('MOUNTAIN')
     URBAN = 'urban'
+    urban = MemberAlias('URBAN')
     CULTURAL = 'cultural'
+    cultural = MemberAlias('CULTURAL')
     ADVENTURE = 'adventure'
+    adventure = MemberAlias('ADVENTURE')
     WELLNESS = 'wellness'
+    wellness = MemberAlias('WELLNESS')
     CRUISE = 'cruise'
+    cruise = MemberAlias('CRUISE')
 
 
 class DestinationItem(AdCPBaseModel):

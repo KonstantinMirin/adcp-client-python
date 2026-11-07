@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import BrandDiscoveryAgentId, NonEmptyList, StrMinLen1MaxLen255
 
@@ -19,7 +19,9 @@ class UnmatchedLocaleAction(StrEnum):
     Final action after strict Lookup and explicit locale_fallbacks both miss.
     """
     SERVE_DEFAULT = 'serve_default'
+    serve_default = MemberAlias('SERVE_DEFAULT')
     DO_NOT_SERVE = 'do_not_serve'
+    do_not_serve = MemberAlias('DO_NOT_SERVE')
 
 
 class LocaleFallbacksItem(AdCPBaseModel):

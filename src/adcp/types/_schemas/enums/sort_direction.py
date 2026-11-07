@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/sort-direction.json', pointer='#')
 
@@ -12,7 +12,9 @@ class SortDirection(StrEnum):
     Sort direction for list queries
     """
     ASC = 'asc'
+    asc = MemberAlias('ASC')
     DESC = 'desc'
+    desc = MemberAlias('DESC')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SortDirection", SortDirection)

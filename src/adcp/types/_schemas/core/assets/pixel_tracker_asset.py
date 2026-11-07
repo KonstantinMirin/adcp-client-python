@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 
 from ...enums.pixel_tracking_event import PixelTrackingEvent
@@ -24,7 +24,9 @@ class Method(StrEnum):
     Matches IAB OpenRTB Native 1.2 method enum (1=img, 2=js). `js` MUST only be used by sellers whose renderer supports JavaScript trackers; sellers without JS-tracker support MUST reject `method: js` declarations at sync_creatives time with `CREATIVE_REJECTED` carrying the reason.
     """
     IMG = 'img'
+    img = MemberAlias('IMG')
     JS = 'js'
+    js = MemberAlias('JS')
 
 
 class PixelTrackerAsset(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/macro-mapping-status.json', pointer='#')
 
@@ -15,12 +15,17 @@ class MacroMappingStatus(StrEnum):
     """The cited dialect mapping verifies an AdCP universal semantic."""
 
 
+    verified_universal = MemberAlias('VERIFIED_UNIVERSAL')
     DIALECT_DEFINED = 'dialect_defined'
     """The dialect defines the token, but no AdCP universal semantic is asserted."""
 
 
+    dialect_defined = MemberAlias('DIALECT_DEFINED')
     UNRESOLVED = 'unresolved'
     """No safe meaning is established; the token remains byte-preserved."""
+
+
+    unresolved = MemberAlias('UNRESOLVED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MacroMappingStatus", MacroMappingStatus)

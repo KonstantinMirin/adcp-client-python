@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.available_metric import AvailableMetric
@@ -36,7 +36,9 @@ class DateRangeSupport(StrEnum):
     Whether delivery data can be filtered to arbitrary date ranges. 'date_range' means the platform supports start_date/end_date parameters. 'lifetime_only' means the platform returns campaign lifetime totals and date range parameters are not accepted.
     """
     DATE_RANGE = 'date_range'
+    date_range = MemberAlias('DATE_RANGE')
     LIFETIME_ONLY = 'lifetime_only'
+    lifetime_only = MemberAlias('LIFETIME_ONLY')
 
 
 class ReportingCapabilities(AdCPBaseModel):

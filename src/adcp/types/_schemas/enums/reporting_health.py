@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/reporting-health.json', pointer='#')
 
@@ -15,20 +15,27 @@ class ReportingHealth(StrEnum):
     """Due obligations in the queried active scope are current and automated delivery is working."""
 
 
+    healthy = MemberAlias('HEALTHY')
     WAITING = 'waiting'
     """No obligation in the queried active scope is due yet."""
 
 
+    waiting = MemberAlias('WAITING')
     DELAYED = 'delayed'
     """At least one obligation is late but remains within the seller's declared automated recovery path, or — for a caller-scoped Reliable Reporting view only — an authenticated consumer's received status was made stale by a seller restatement and is still inside its bounded re-read grace window. In the second case nothing is late; treat the two causes separately when building a seller-lateness SLA view, and read issues[].code to tell them apart."""
 
 
+    delayed = MemberAlias('DELAYED')
     ACTION_REQUIRED = 'action_required'
     """A delivery, SLA, retry, or immediate readable-evidence receipt-reconciliation boundary was crossed and at least one structured human action is supplied."""
 
 
+    action_required = MemberAlias('ACTION_REQUIRED')
     COMPLETE = 'complete'
     """The queried scope is closed, retained coverage is complete, and every obligation has its configured required finality plus a verified readable materialization."""
+
+
+    complete = MemberAlias('COMPLETE')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReportingHealth", ReportingHealth)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/lift-dimension.json', pointer='#')
 
@@ -15,20 +15,27 @@ class LiftDimension(StrEnum):
     """Lift in unaided or aided brand awareness — typically measured as 'have you heard of [brand]'."""
 
 
+    awareness = MemberAlias('AWARENESS')
     CONSIDERATION = 'consideration'
     """Lift in brand consideration — 'would you consider buying [brand] next time'."""
 
 
+    consideration = MemberAlias('CONSIDERATION')
     FAVORABILITY = 'favorability'
     """Lift in brand favorability or affinity — 'how favorable is your view of [brand]'."""
 
 
+    favorability = MemberAlias('FAVORABILITY')
     PURCHASE_INTENT = 'purchase_intent'
     """Lift in stated purchase intent — 'are you likely to buy [brand] in the next [N] days'."""
 
 
+    purchase_intent = MemberAlias('PURCHASE_INTENT')
     AD_RECALL = 'ad_recall'
     """Lift in unaided or aided ad recall — 'do you remember seeing an ad for [brand]'."""
+
+
+    ad_recall = MemberAlias('AD_RECALL')
 
 
 strict_validate = strict_alias(__adcp_schema__, "LiftDimension", LiftDimension)

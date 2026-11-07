@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -19,15 +19,22 @@ class Reason(StrEnum):
     Reason for termination
     """
     HANDOFF_TRANSACTION = 'handoff_transaction'
+    handoff_transaction = MemberAlias('HANDOFF_TRANSACTION')
     HANDOFF_COMPLETE = 'handoff_complete'
+    handoff_complete = MemberAlias('HANDOFF_COMPLETE')
     USER_EXIT = 'user_exit'
+    user_exit = MemberAlias('USER_EXIT')
     SESSION_TIMEOUT = 'session_timeout'
+    session_timeout = MemberAlias('SESSION_TIMEOUT')
     HOST_TERMINATED = 'host_terminated'
+    host_terminated = MemberAlias('HOST_TERMINATED')
 
 
 class Action(StrEnum):
     PURCHASE = 'purchase'
+    purchase = MemberAlias('PURCHASE')
     SUBSCRIBE = 'subscribe'
+    subscribe = MemberAlias('SUBSCRIBE')
 
 
 class TransactionIntent(AdCPBaseModel):

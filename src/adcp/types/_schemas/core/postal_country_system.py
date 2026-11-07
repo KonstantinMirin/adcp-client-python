@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import NotValue
 
 from ..enums.postal_system import PostalCodeSystem
@@ -34,7 +34,9 @@ class USPostalCodeSystem(StrEnum):
     Country-local postal code system.
     """
     ZIP = 'zip'
+    zip = MemberAlias('ZIP')
     ZIP_PLUS_FOUR = 'zip_plus_four'
+    zip_plus_four = MemberAlias('ZIP_PLUS_FOUR')
 
 
 class PostalCountrySystemUS(PostalCountrySystem):
@@ -48,7 +50,9 @@ class GBPostalCodeSystem(StrEnum):
     Country-local postal code system.
     """
     OUTWARD = 'outward'
+    outward = MemberAlias('OUTWARD')
     FULL = 'full'
+    full = MemberAlias('FULL')
 
 
 class PostalCountrySystemGB(PostalCountrySystem):
@@ -62,7 +66,9 @@ class CaPostalCodeSystem(StrEnum):
     Country-local postal code system.
     """
     FSA = 'fsa'
+    fsa = MemberAlias('FSA')
     FULL = 'full'
+    full = MemberAlias('FULL')
 
 
 class PostalCountrySystemCA(PostalCountrySystem):
@@ -121,7 +127,9 @@ class System(StrEnum):
     Country-local postal code system.
     """
     POSTAL_CODE = _VALUES_POSTAL_CODE_CUSTOM[0]
+    postal_code = MemberAlias('POSTAL_CODE')
     CUSTOM = _VALUES_POSTAL_CODE_CUSTOM[1]
+    custom = MemberAlias('CUSTOM')
 
 
 class PostalCountrySystemBranch9(PostalCountrySystem):

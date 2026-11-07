@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/creative-sort-field.json', pointer='#')
 
@@ -12,10 +12,14 @@ class CreativeSortField(StrEnum):
     Fields available for sorting creative library listings
     """
     CREATED_DATE = 'created_date'
+    created_date = MemberAlias('CREATED_DATE')
     UPDATED_DATE = 'updated_date'
+    updated_date = MemberAlias('UPDATED_DATE')
     NAME = 'name'
     STATUS = 'status'
+    status = MemberAlias('STATUS')
     ASSIGNMENT_COUNT = 'assignment_count'
+    assignment_count = MemberAlias('ASSIGNMENT_COUNT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CreativeSortField", CreativeSortField)

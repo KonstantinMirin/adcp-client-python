@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     PrincipalDeclarationsStateSelectedAsyncAdcpVersion,
     StrMinLen1MaxLen128,
@@ -18,8 +18,11 @@ from .principal_declarations import AgentDeclarations
 
 class Axis(StrEnum):
     ASYNC_ADCP_VERSIONS = 'async_adcp_versions'
+    async_adcp_versions = MemberAlias('ASYNC_ADCP_VERSIONS')
     WEBHOOK_SIGNING_ALGORITHMS = 'webhook_signing_algorithms'
+    webhook_signing_algorithms = MemberAlias('WEBHOOK_SIGNING_ALGORITHMS')
     EXPERIMENTAL_FEATURES = 'experimental_features'
+    experimental_features = MemberAlias('EXPERIMENTAL_FEATURES')
 
 
 class ExclusionsItem(AdCPBaseModel):

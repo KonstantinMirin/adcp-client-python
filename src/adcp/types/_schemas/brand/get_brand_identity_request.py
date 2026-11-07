@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -16,17 +16,29 @@ from ..core.version_envelope import AdCPVersionEnvelope
 
 class BrandIdentityField(StrEnum):
     DESCRIPTION = 'description'
+    description = MemberAlias('DESCRIPTION')
     INDUSTRIES = 'industries'
+    industries = MemberAlias('INDUSTRIES')
     KELLER_TYPE = 'keller_type'
+    keller_type = MemberAlias('KELLER_TYPE')
     LOGOS = 'logos'
+    logos = MemberAlias('LOGOS')
     COLORS = 'colors'
+    colors = MemberAlias('COLORS')
     FONTS = 'fonts'
+    fonts = MemberAlias('FONTS')
     VISUAL_GUIDELINES = 'visual_guidelines'
+    visual_guidelines = MemberAlias('VISUAL_GUIDELINES')
     TONE = 'tone'
+    tone = MemberAlias('TONE')
     TAGLINE = 'tagline'
+    tagline = MemberAlias('TAGLINE')
     VOICE_SYNTHESIS = 'voice_synthesis'
+    voice_synthesis = MemberAlias('VOICE_SYNTHESIS')
     ASSETS = 'assets'
+    assets = MemberAlias('ASSETS')
     RIGHTS = 'rights'
+    rights = MemberAlias('RIGHTS')
 
 
 class GetBrandIdentityRequest(AdCPVersionEnvelope, AdcpRequest):

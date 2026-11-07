@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/feed-format.json', pointer='#')
 
@@ -15,32 +15,42 @@ class FeedFormat(StrEnum):
     """Google Merchant Center / Google Shopping product data specification — the de-facto e-commerce product-feed lingua franca that the other named commerce formats derive from."""
 
 
+    google_merchant_center = MemberAlias('GOOGLE_MERCHANT_CENTER')
     FACEBOOK_CATALOG = 'facebook_catalog'
     """Meta (Facebook / Instagram) product catalog feed — a Google-Merchant-Center-derived dialect, the closest clone of the GMC field set."""
 
 
+    facebook_catalog = MemberAlias('FACEBOOK_CATALOG')
     SHOPIFY = 'shopify'
     """Shopify product feed export."""
 
 
+    shopify = MemberAlias('SHOPIFY')
     LINKEDIN_JOBS = 'linkedin_jobs'
     """LinkedIn job-posting feed (XML)."""
 
 
+    linkedin_jobs = MemberAlias('LINKEDIN_JOBS')
     TIKTOK_SHOP = 'tiktok_shop'
     """TikTok Shop product catalog feed — a GMC-derived dialect with material deltas (sku_id as the primary identifier rather than id, and a first-class video_link) that a GMC parser keyed on id would mis-parse."""
 
 
+    tiktok_shop = MemberAlias('TIKTOK_SHOP')
     PINTEREST_CATALOG = 'pinterest_catalog'
     """Pinterest product catalog feed — a GMC-derived dialect with stricter serialization (composite-encoded price and shipping, a mandatory google_product_category, space-delimited availability enums) that a strict GMC parser would mis-handle."""
 
 
+    pinterest_catalog = MemberAlias('PINTEREST_CATALOG')
     OPENAI_PRODUCT_FEED = 'openai_product_feed'
     """OpenAI Commerce product feed for ChatGPT shopping — a GMC-derived dialect adding ChatGPT-specific eligibility flags (is_eligible_search / is_eligible_checkout / is_eligible_ads). Spec: https://developers.openai.com/commerce/specs/file-upload/products"""
 
 
+    openai_product_feed = MemberAlias('OPENAI_PRODUCT_FEED')
     CUSTOM = 'custom'
     """A feed whose shape is not one of the named formats above. The buyer MUST supply feed_field_mappings to normalize it to the AdCP catalog item schema."""
+
+
+    custom = MemberAlias('CUSTOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "FeedFormat", FeedFormat)

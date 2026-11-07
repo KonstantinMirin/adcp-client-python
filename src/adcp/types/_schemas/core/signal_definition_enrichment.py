@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMaxLen500
 
@@ -20,13 +20,21 @@ from .signal_definition import Art9Basis, DataSourcesItem, DataSubjectRights, Me
 
 class RefreshCadence(StrEnum):
     INTRA_DAY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[0]
+    intra_day = MemberAlias('INTRA_DAY')
     DAILY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[1]
+    daily = MemberAlias('DAILY')
     WEEKLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[2]
+    weekly = MemberAlias('WEEKLY')
     MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[3]
+    monthly = MemberAlias('MONTHLY')
     BI_MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[4]
+    bi_monthly = MemberAlias('BI_MONTHLY')
     QUARTERLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[5]
+    quarterly = MemberAlias('QUARTERLY')
     BI_ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[6]
+    bi_annually = MemberAlias('BI_ANNUALLY')
     ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[7]
+    annually = MemberAlias('ANNUALLY')
 
 
 LookbackWindow = RefreshCadence

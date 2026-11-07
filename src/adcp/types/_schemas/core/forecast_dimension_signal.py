@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem
 
@@ -18,7 +18,9 @@ class SignalForecastDimensionPresence(StrEnum):
     Whether the signal is present for this point. Use 'absent' for the explicit not-present bucket.
     """
     PRESENT = 'present'
+    present = MemberAlias('PRESENT')
     ABSENT = 'absent'
+    absent = MemberAlias('ABSENT')
 
 
 class SignalForecastDimension(AdCPBaseModel):

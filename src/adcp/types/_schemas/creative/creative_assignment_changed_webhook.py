@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -18,8 +18,11 @@ from ..core.idempotency_key import IdempotencyKey
 
 class ChangeKind(StrEnum):
     ASSIGNED = 'assigned'
+    assigned = MemberAlias('ASSIGNED')
     UNASSIGNED = 'unassigned'
+    unassigned = MemberAlias('UNASSIGNED')
     APPROVAL_CHANGED = 'approval_changed'
+    approval_changed = MemberAlias('APPROVAL_CHANGED')
 
 
 class CreativeAssignmentChangedWebhook(AdCPBaseModel):

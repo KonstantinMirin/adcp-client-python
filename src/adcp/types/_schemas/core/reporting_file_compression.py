@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='core/reporting-file-compression.json', pointer='#')
 
@@ -12,9 +12,13 @@ class ReportingFileCompression(StrEnum):
     Physical compression applied to each data object listed by a reporting file manifest.
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     GZIP = 'gzip'
+    gzip = MemberAlias('GZIP')
     ZSTD = 'zstd'
+    zstd = MemberAlias('ZSTD')
     SNAPPY = 'snappy'
+    snappy = MemberAlias('SNAPPY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReportingFileCompression", ReportingFileCompression)

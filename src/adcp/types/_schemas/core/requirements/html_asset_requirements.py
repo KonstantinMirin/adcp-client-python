@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatHostname
 
 
@@ -15,9 +15,13 @@ class Sandbox(StrEnum):
     Sandbox environment the HTML must be compatible with. 'none' = direct DOM access, 'iframe' = standard iframe isolation, 'safeframe' = IAB SafeFrame container, 'fencedframe' = Privacy Sandbox fenced frame
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     IFRAME = 'iframe'
+    iframe = MemberAlias('IFRAME')
     SAFEFRAME = 'safeframe'
+    safeframe = MemberAlias('SAFEFRAME')
     FENCEDFRAME = 'fencedframe'
+    fencedframe = MemberAlias('FENCEDFRAME')
 
 
 class HTMLAssetRequirements(AdCPBaseModel):

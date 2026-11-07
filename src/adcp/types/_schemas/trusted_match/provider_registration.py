@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ContextMatchResponseRouterPublisherSignalsByProvider,
@@ -25,8 +25,11 @@ class Status(StrEnum):
     Provider lifecycle status. Active providers receive requests. Inactive providers are skipped entirely. Draining providers stop receiving new requests but in-flight requests complete normally.
     """
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     INACTIVE = 'inactive'
+    inactive = MemberAlias('INACTIVE')
     DRAINING = 'draining'
+    draining = MemberAlias('DRAINING')
 
 
 class TMPProviderRegistration(BranchDispatchMixin, AdCPBaseModel):

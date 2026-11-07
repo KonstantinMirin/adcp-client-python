@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/attribution-model.json', pointer='#')
 
@@ -12,10 +12,15 @@ class AttributionModel(StrEnum):
     Attribution model used for conversion measurement
     """
     LAST_TOUCH = 'last_touch'
+    last_touch = MemberAlias('LAST_TOUCH')
     FIRST_TOUCH = 'first_touch'
+    first_touch = MemberAlias('FIRST_TOUCH')
     LINEAR = 'linear'
+    linear = MemberAlias('LINEAR')
     TIME_DECAY = 'time_decay'
+    time_decay = MemberAlias('TIME_DECAY')
     DATA_DRIVEN = 'data_driven'
+    data_driven = MemberAlias('DATA_DRIVEN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AttributionModel", AttributionModel)

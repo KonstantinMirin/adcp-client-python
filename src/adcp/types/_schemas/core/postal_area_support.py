@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Distinct, Rule, UniqueItems
 from adcp.types.constraints import NonEmptyList, StrCountryCode
 
@@ -17,7 +17,9 @@ from .postal_country_system import CaPostalCodeSystem, GBPostalCodeSystem, USPos
 
 class PostalAreaSupportValueItem(StrEnum):
     POSTAL_CODE = _VALUES_POSTAL_CODE_CUSTOM[0]
+    postal_code = MemberAlias('POSTAL_CODE')
     CUSTOM = _VALUES_POSTAL_CODE_CUSTOM[1]
+    custom = MemberAlias('CUSTOM')
 
 
 class PostalAreaSupport(AdCPBaseModel):

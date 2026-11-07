@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
 
 from ..enums.channels import MediaChannel
@@ -41,8 +41,11 @@ class SellerPreference(StrEnum):
     **Not an enforcement axis (normative).** `seller_preference` does NOT carry the meaning of 'this format won't work / required-only'. That case is structural: `format_options[]` IS the closed set of accepted formats; anything outside the list is rejected at `create_media_buy` regardless of preference. A seller that accepts only one format lists exactly that one entry — the structural fact does the enforcement work, no enum value needed. There is intentionally no `required` value; preference is bounded to *ranking within the already-accepted set*, not gating into it.
     """
     PREFERRED = 'preferred'
+    preferred = MemberAlias('PREFERRED')
     ACCEPTED = 'accepted'
+    accepted = MemberAlias('ACCEPTED')
     DISCOURAGED = 'discouraged'
+    discouraged = MemberAlias('DISCOURAGED')
 
 
 class ProductFormatDeclaration(BranchDispatchMixin, AdCPBaseModel):

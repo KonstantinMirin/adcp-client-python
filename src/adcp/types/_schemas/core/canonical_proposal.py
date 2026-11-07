@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
@@ -27,8 +27,11 @@ from .insertion_order import InsertionOrder
 
 class ProposalKind(StrEnum):
     NEW_MEDIA_BUY = 'new_media_buy'
+    new_media_buy = MemberAlias('NEW_MEDIA_BUY')
     MEDIA_BUY_UPDATE = 'media_buy_update'
+    media_buy_update = MemberAlias('MEDIA_BUY_UPDATE')
     MEDIA_BUY_CANCELLATION = 'media_buy_cancellation'
+    media_buy_cancellation = MemberAlias('MEDIA_BUY_CANCELLATION')
 
 
 class TotalBudgetGuidance(AdCPBaseModel):

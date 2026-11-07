@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/impairment-offline-state.json', pointer='#')
 
@@ -15,20 +15,27 @@ class ImpairmentOfflineState(StrEnum):
     """Offline value of audience-status and a recoverable offline value of creative-status. Valid when resource_type='audience', and valid when resource_type='creative' for recoverable dependency/authorization loss such as a published-post authorization expiring or a source post becoming private."""
 
 
+    suspended = MemberAlias('SUSPENDED')
     REJECTED = 'rejected'
     """Offline value of creative-status. Valid when resource_type='creative'. Reached from approved when seller revokes post-approval."""
 
 
+    rejected = MemberAlias('REJECTED')
     WITHDRAWN = 'withdrawn'
     """Offline value of catalog-item-status. Valid when resource_type='catalog_item'. Seller-initiated removal, distinct from review-failure rejection."""
 
 
+    withdrawn = MemberAlias('WITHDRAWN')
     INSUFFICIENT = 'insufficient'
     """Offline value of assessment-status surfaced through event-source-health.status. Valid when resource_type='event_source'. Covers source-offline (zero events received over the evaluation window) — disambiguate via events_received_24h and last_event_at."""
 
 
+    insufficient = MemberAlias('INSUFFICIENT')
     DEPUBLISHED = 'depublished'
     """Synthetic offline marker — property has no per-resource status field; publication state is derived from brand.json / adagents.json. Valid when resource_type='property'."""
+
+
+    depublished = MemberAlias('DEPUBLISHED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ImpairmentOfflineState", ImpairmentOfflineState)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/principal-kind.json', pointer='#')
 
@@ -12,7 +12,9 @@ class PrincipalKind(StrEnum):
     Seller-resolved kind of the authenticated principal: an autonomous buyer-agent workload or an operator-side identity such as a person at the operator.
     """
     BUYER_AGENT = 'buyer_agent'
+    buyer_agent = MemberAlias('BUYER_AGENT')
     OPERATOR = 'operator'
+    operator = MemberAlias('OPERATOR')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PrincipalKind", PrincipalKind)

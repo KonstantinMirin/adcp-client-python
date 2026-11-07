@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='sponsored-intelligence/si-context-use.json', pointer='#')
 
@@ -15,12 +15,17 @@ class SIContextUse(StrEnum):
     """The sponsored context is intended to be rendered or offered as a distinct labeled unit, not used as comparison candidates or folded into host model reasoning."""
 
 
+    presentation_only = MemberAlias('PRESENTATION_ONLY')
     COMPARISON_SET = 'comparison_set'
     """The sponsored context is intended to form or influence a candidate set used for comparison, ranking, or selection; individual candidates may or may not be rendered."""
 
 
+    comparison_set = MemberAlias('COMPARISON_SET')
     REASONING_CONTEXT = 'reasoning_context'
     """The sponsored context is intended to be available to the host model or orchestration layer as context for answer generation, planning, ranking, or other reasoning."""
+
+
+    reasoning_context = MemberAlias('REASONING_CONTEXT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "SIContextUse", SIContextUse)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types.constraints import IntMin1, StrMaxLen50, StrMinLen1
 
 from ..core.attribution_window import AttributionWindow
@@ -25,10 +25,15 @@ class MediaBuyDeliveryWebhookResultNotificationType(StrEnum):
     Type of delivery-report notification: scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = corrected data for the same window, window_update = a wider measurement window supersedes a prior window.
     """
     SCHEDULED = 'scheduled'
+    scheduled = MemberAlias('SCHEDULED')
     FINAL = 'final'
+    final = MemberAlias('FINAL')
     DELAYED = 'delayed'
+    delayed = MemberAlias('DELAYED')
     ADJUSTED = 'adjusted'
+    adjusted = MemberAlias('ADJUSTED')
     WINDOW_UPDATE = 'window_update'
+    window_update = MemberAlias('WINDOW_UPDATE')
 
 
 class ObjStartEndTimezone(AdCPBaseModel):
@@ -49,15 +54,25 @@ class Status(StrEnum):
     Current media buy lifecycle or reporting status. This is distinct from the webhook envelope's top-level task status.
     """
     PENDING_CREATIVES = 'pending_creatives'
+    pending_creatives = MemberAlias('PENDING_CREATIVES')
     PENDING_START = 'pending_start'
+    pending_start = MemberAlias('PENDING_START')
     PENDING = 'pending'
+    pending = MemberAlias('PENDING')
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     PAUSED = 'paused'
+    paused = MemberAlias('PAUSED')
     COMPLETED = 'completed'
+    completed = MemberAlias('COMPLETED')
     REJECTED = 'rejected'
+    rejected = MemberAlias('REJECTED')
     CANCELED = 'canceled'
+    canceled = MemberAlias('CANCELED')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
     REPORTING_DELAYED = 'reporting_delayed'
+    reporting_delayed = MemberAlias('REPORTING_DELAYED')
 
 
 class Totals(DeliveryMetrics):

@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsIdentifierValueDigestsItem,
@@ -190,7 +190,9 @@ class AttestationMode(StrEnum):
     Per-call attestation mode echoing the request's `params.attestation_mode`. Required on every recorded_call so the `oneOf` discriminator always has an explicit value to dispatch on — no implicit defaults inside oneOf branches. Adopters MAY unilaterally downgrade a `raw` request to `digest` for a specific call when their policy requires it (e.g., the call carried regulated PII the adopter can't return raw). The runner reads this field to know which assertions to apply.
     """
     RAW = 'raw'
+    raw = MemberAlias('RAW')
     DIGEST = 'digest'
+    digest = MemberAlias('DIGEST')
 
 
 class Purpose(StrEnum):
@@ -198,11 +200,17 @@ class Purpose(StrEnum):
     Optional adopter-supplied semantic tag for the call's role. Values: `platform_primary` for the primary upstream platform the adapter is integrating with (e.g., a TikTok audience-upload call from a sales-social adapter); `measurement` for ancillary calls to measurement vendors (DV, IAS, Nielsen, MOAT); `attribution` for server-side conversion APIs (TTD Trans-API, Meta CAPI, AppsFlyer/Branch postbacks) that flow alongside primary platform calls in a buy-step; `creative_serving` for ad-server / CDN / tag-build calls (GAM tag generation, VAST/CDN fetches, creative trafficking); `identity` for ID-graph / hashing-service calls (LiveRamp, ID5, UID2); `other` for everything else (config fetches, internal telemetry, consent signal exchange). Lets storyboards scope `upstream_traffic` assertions via `purpose_filter` so a buyer-agent adapter that legitimately calls measurement vendors during a single buy step doesn't muddy the platform-primary assertion. Calls without a `purpose` field are treated as `purpose: other` for `purpose_filter` matching — adopters who haven't classified are matched only by storyboards filtering on `other` (or by storyboards with no `purpose_filter`). Self-reported, not adversarially trustworthy — same trust model as the rest of recorded_calls; misclassification by a façade is bounded by the runner's reporting of unclassified-call counts in `actual` when filters match zero.
     """
     PLATFORM_PRIMARY = 'platform_primary'
+    platform_primary = MemberAlias('PLATFORM_PRIMARY')
     MEASUREMENT = 'measurement'
+    measurement = MemberAlias('MEASUREMENT')
     ATTRIBUTION = 'attribution'
+    attribution = MemberAlias('ATTRIBUTION')
     CREATIVE_SERVING = 'creative_serving'
+    creative_serving = MemberAlias('CREATIVE_SERVING')
     IDENTITY = 'identity'
+    identity = MemberAlias('IDENTITY')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class IdentifierMatchProofsItem(AdCPBaseModel):

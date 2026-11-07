@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/attestation-claim.json', pointer='#')
 
@@ -15,20 +15,27 @@ class AttestationClaim(StrEnum):
     """The subject is a verified unique human (proof of personhood)."""
 
 
+    unique_human = MemberAlias('UNIQUE_HUMAN')
     AGE_OVER_13 = 'age_over_13'
     """The subject is at least 13 years old."""
 
 
+    age_over_13 = MemberAlias('AGE_OVER_13')
     AGE_OVER_16 = 'age_over_16'
     """The subject is at least 16 years old."""
 
 
+    age_over_16 = MemberAlias('AGE_OVER_16')
     AGE_OVER_18 = 'age_over_18'
     """The subject is at least 18 years old."""
 
 
+    age_over_18 = MemberAlias('AGE_OVER_18')
     AGE_OVER_21 = 'age_over_21'
     """The subject is at least 21 years old."""
+
+
+    age_over_21 = MemberAlias('AGE_OVER_21')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AttestationClaim", AttestationClaim)

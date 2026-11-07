@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -19,7 +19,9 @@ class MismatchReason(StrEnum):
     Machine-readable modern mismatch branch.
     """
     ASSET_OUTSIDE_ACCEPTANCE = 'asset_outside_acceptance'
+    asset_outside_acceptance = MemberAlias('ASSET_OUTSIDE_ACCEPTANCE')
     DOCUMENT_VERSION_MISMATCH = 'document_version_mismatch'
+    document_version_mismatch = MemberAlias('DOCUMENT_VERSION_MISMATCH')
 
 
 class DocumentRole(StrEnum):
@@ -27,8 +29,11 @@ class DocumentRole(StrEnum):
     Role of the inspected document. Only the submitted document is required to equal the asset declaration; wrapper and terminal documents are checked against the applicable acceptance sets.
     """
     SUBMITTED = 'submitted'
+    submitted = MemberAlias('SUBMITTED')
     WRAPPER = 'wrapper'
+    wrapper = MemberAlias('WRAPPER')
     TERMINAL_INLINE = 'terminal_inline'
+    terminal_inline = MemberAlias('TERMINAL_INLINE')
 
 
 class VASTVersionMismatchDetails(BranchDispatchMixin, AdCPBaseModel):

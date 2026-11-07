@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/event-type.json', pointer='#')
 
@@ -15,124 +15,157 @@ class EventType(StrEnum):
     """User viewed a page"""
 
 
+    page_view = MemberAlias('PAGE_VIEW')
     VIEW_CONTENT = 'view_content'
     """User viewed specific content (product, article, etc.)"""
 
 
+    view_content = MemberAlias('VIEW_CONTENT')
     SELECT_CONTENT = 'select_content'
     """User selected or clicked on content (article, video, etc.)"""
 
 
+    select_content = MemberAlias('SELECT_CONTENT')
     SELECT_ITEM = 'select_item'
     """User selected a specific product or item from a list"""
 
 
+    select_item = MemberAlias('SELECT_ITEM')
     SEARCH = 'search'
     """User performed a search"""
 
 
+    search = MemberAlias('SEARCH')
     SHARE = 'share'
     """User shared content via social or messaging"""
 
 
+    share = MemberAlias('SHARE')
     ADD_TO_CART = 'add_to_cart'
     """User added an item to cart"""
 
 
+    add_to_cart = MemberAlias('ADD_TO_CART')
     REMOVE_FROM_CART = 'remove_from_cart'
     """User removed an item from cart"""
 
 
+    remove_from_cart = MemberAlias('REMOVE_FROM_CART')
     VIEWED_CART = 'viewed_cart'
     """User viewed their shopping cart"""
 
 
+    viewed_cart = MemberAlias('VIEWED_CART')
     ADD_TO_WISHLIST = 'add_to_wishlist'
     """User added an item to a wishlist"""
 
 
+    add_to_wishlist = MemberAlias('ADD_TO_WISHLIST')
     INITIATE_CHECKOUT = 'initiate_checkout'
     """User started checkout process"""
 
 
+    initiate_checkout = MemberAlias('INITIATE_CHECKOUT')
     ADD_PAYMENT_INFO = 'add_payment_info'
     """User added payment information"""
 
 
+    add_payment_info = MemberAlias('ADD_PAYMENT_INFO')
     PURCHASE = 'purchase'
     """User completed a purchase"""
 
 
+    purchase = MemberAlias('PURCHASE')
     REFUND = 'refund'
     """A purchase was fully or partially refunded (adjusts ROAS)"""
 
 
+    refund = MemberAlias('REFUND')
     LEAD = 'lead'
     """User expressed interest (form submission, signup, etc.)"""
 
 
+    lead = MemberAlias('LEAD')
     QUALIFY_LEAD = 'qualify_lead'
     """Lead qualified by sales or scoring criteria"""
 
 
+    qualify_lead = MemberAlias('QUALIFY_LEAD')
     CLOSE_CONVERT_LEAD = 'close_convert_lead'
     """Lead converted to a customer or closed deal"""
 
 
+    close_convert_lead = MemberAlias('CLOSE_CONVERT_LEAD')
     DISQUALIFY_LEAD = 'disqualify_lead'
     """Lead disqualified or marked as not viable"""
 
 
+    disqualify_lead = MemberAlias('DISQUALIFY_LEAD')
     COMPLETE_REGISTRATION = 'complete_registration'
     """User completed account registration"""
 
 
+    complete_registration = MemberAlias('COMPLETE_REGISTRATION')
     SUBSCRIBE = 'subscribe'
     """User started a paid subscription or paid membership"""
 
 
+    subscribe = MemberAlias('SUBSCRIBE')
     FOLLOW = 'follow'
     """User made a free, durable opt-in to an account, channel, feed, list, podcast, or similar owned property"""
 
 
+    follow = MemberAlias('FOLLOW')
     CONTENT_VIEW = 'content_view'
     """User meaningfully consumed a content unit, such as a watch, listen, stream, episode play, or read"""
 
 
+    content_view = MemberAlias('CONTENT_VIEW')
     WATCH_MILESTONE = 'watch_milestone'
     """User reached a content progress threshold, such as 25%, 50%, 75%, 100%, or a seconds-viewed milestone"""
 
 
+    watch_milestone = MemberAlias('WATCH_MILESTONE')
     START_TRIAL = 'start_trial'
     """User started a free trial"""
 
 
+    start_trial = MemberAlias('START_TRIAL')
     APP_INSTALL = 'app_install'
     """User installed an application"""
 
 
+    app_install = MemberAlias('APP_INSTALL')
     APP_LAUNCH = 'app_launch'
     """User launched an application"""
 
 
+    app_launch = MemberAlias('APP_LAUNCH')
     CONTACT = 'contact'
     """User initiated contact (call, message, etc.)"""
 
 
+    contact = MemberAlias('CONTACT')
     SCHEDULE = 'schedule'
     """User scheduled an appointment or event"""
 
 
+    schedule = MemberAlias('SCHEDULE')
     DONATE = 'donate'
     """User made a donation"""
 
 
+    donate = MemberAlias('DONATE')
     SUBMIT_APPLICATION = 'submit_application'
     """User submitted an application (loan, job, etc.)"""
 
 
+    submit_application = MemberAlias('SUBMIT_APPLICATION')
     CUSTOM = 'custom'
     """Custom event type (specify in custom_event_name)"""
+
+
+    custom = MemberAlias('CUSTOM')
 
 
 strict_validate = strict_alias(__adcp_schema__, "EventType", EventType)

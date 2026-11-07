@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import AtLeastOne, Rule, UniqueItems
 
 from ..enums.forecast_method import ForecastMethod
@@ -63,9 +63,13 @@ class Kind(StrEnum):
     Denominator family for the coverage forecast.
     """
     INVENTORY = 'inventory'
+    inventory = MemberAlias('INVENTORY')
     PRODUCT = 'product'
+    product = MemberAlias('PRODUCT')
     ACCOUNT = 'account'
+    account = MemberAlias('ACCOUNT')
     CUSTOM = 'custom'
+    custom = MemberAlias('CUSTOM')
 
 
 class Scope(AdCPBaseModel):
@@ -93,7 +97,9 @@ class BucketSemantics(StrEnum):
     'exclusive' means the returned signal-value buckets do not overlap with each other. 'overlapping' means one impression or user can appear in multiple returned buckets, so coverage_rate values may sum above 1.0. This field describes overlap among returned buckets; bucket_completeness declares whether the returned buckets cover the full denominator.
     """
     EXCLUSIVE = 'exclusive'
+    exclusive = MemberAlias('EXCLUSIVE')
     OVERLAPPING = 'overlapping'
+    overlapping = MemberAlias('OVERLAPPING')
 
 
 class BucketCompleteness(StrEnum):
@@ -101,7 +107,9 @@ class BucketCompleteness(StrEnum):
     'complete' means the returned buckets cover the declared denominator. For complete + exclusive forecasts, count metrics and coverage_rate values can be treated as a full partition, subject to metric additivity rules. 'partial' means omitted denominator share represents undisclosed, other, or unsupported buckets; buyers MUST NOT infer totals by summing returned points.
     """
     COMPLETE = 'complete'
+    complete = MemberAlias('COMPLETE')
     PARTIAL = 'partial'
+    partial = MemberAlias('PARTIAL')
 
 
 class SignalCoverageForecast(AdCPBaseModel):

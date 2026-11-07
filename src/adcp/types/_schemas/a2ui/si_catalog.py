@@ -6,21 +6,32 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 
 class ComponentsItem(StrEnum):
     TEXT = 'Text'
+    Text = MemberAlias('TEXT')
     BUTTON = 'Button'
+    Button = MemberAlias('BUTTON')
     LINK = 'Link'
+    Link = MemberAlias('LINK')
     IMAGE = 'Image'
+    Image = MemberAlias('IMAGE')
     CARD = 'Card'
+    Card = MemberAlias('CARD')
     PRODUCTCARD = 'ProductCard'
+    ProductCard = MemberAlias('PRODUCTCARD')
     LIST = 'List'
+    List = MemberAlias('LIST')
     ROW = 'Row'
+    Row = MemberAlias('ROW')
     COLUMN = 'Column'
+    Column = MemberAlias('COLUMN')
     INTEGRATIONACTION = 'IntegrationAction'
+    IntegrationAction = MemberAlias('INTEGRATIONACTION')
     APPHANDOFF = 'AppHandoff'
+    AppHandoff = MemberAlias('APPHANDOFF')
 
 
 class SIComponentCatalog(AdCPBaseModel):

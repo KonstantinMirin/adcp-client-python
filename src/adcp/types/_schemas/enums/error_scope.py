@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/error-scope.json', pointer='#')
 
@@ -15,12 +15,17 @@ class ErrorScope(StrEnum):
     """Seller-wide capability rejection — the seller's declared capability does not include the requested value at the wire level. Used by `error-details/billing-not-supported.json`. Recovery: choose from the seller's declared capability and retry."""
 
 
+    capability = MemberAlias('CAPABILITY')
     ACCOUNT = 'account'
     """Per-account-relationship rejection — the seller's capability accepts the value generally but not for the specific operator on this account. Used by `error-details/billing-not-supported.json`. Recovery: try the next-most-permissive value the capability allows. Sellers MUST omit `scope` on the unauthenticated/unestablished-identity path so the discriminator does not act as a per-account oracle."""
 
 
+    account = MemberAlias('ACCOUNT')
     AGENT = 'agent'
     """Per-buyer-agent rejection — the gate fired against the calling buyer agent's commercial relationship with the seller, independent of capability and per-account state. Used by `error-details/agent-permission-denied.json` (and `error-details/billing-not-permitted-for-agent.json` implicitly — the per-agent code does not carry an explicit `scope` field). Sellers MUST emit per-agent scope only when buyer-agent identity has been established via signed-request derivation or a credential-to-agent mapping in the seller's onboarding record; emitting it without established identity is a cross-tenant onboarding oracle. The full channel-coverage rules (response shape, HTTP/A2A/MCP status, headers, side effects, observability, latency parity, retry-counter side channel) are normative in error-handling.mdx Per-Agent Authorization Gate — sellers MUST consult that section, not infer scope from this enum description."""
+
+
+    agent = MemberAlias('AGENT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ErrorScope", ErrorScope)

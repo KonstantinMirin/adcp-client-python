@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import Approximation, MemberAlias, SchemaRef
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -21,30 +21,46 @@ class Orientation(StrEnum):
     Video orientation. Vertical = 9:16 (Reels, Stories, Shorts). Horizontal = 16:9 (instream, CTV). Square = 1:1 (in-feed).
     """
     VERTICAL = 'vertical'
+    vertical = MemberAlias('VERTICAL')
     HORIZONTAL = 'horizontal'
+    horizontal = MemberAlias('HORIZONTAL')
     SQUARE = 'square'
+    square = MemberAlias('SQUARE')
 
 
 class VideoCodec(StrEnum):
     H264 = 'h264'
+    h264 = MemberAlias('H264')
     H265 = 'h265'
+    h265 = MemberAlias('H265')
     VP8 = 'vp8'
+    vp8 = MemberAlias('VP8')
     VP9 = 'vp9'
+    vp9 = MemberAlias('VP9')
     AV1 = 'av1'
+    av1 = MemberAlias('AV1')
     PRORES = 'prores'
+    prores = MemberAlias('PRORES')
 
 
 class AudioCodecsItem(StrEnum):
     AAC = 'aac'
+    aac = MemberAlias('AAC')
     MP3 = 'mp3'
+    mp3 = MemberAlias('MP3')
     OPUS = 'opus'
+    opus = MemberAlias('OPUS')
     PCM = 'pcm'
+    pcm = MemberAlias('PCM')
 
 
 class Captions(StrEnum):
     REQUIRED = 'required'
+    required = MemberAlias('REQUIRED')
     RECOMMENDED = 'recommended'
+    recommended = MemberAlias('RECOMMENDED')
     NOT_REQUIRED = 'not_required'
+    not_required = MemberAlias('NOT_REQUIRED')
 
 
 class BuyerAssetAcceptance(StrEnum):
@@ -52,7 +68,9 @@ class BuyerAssetAcceptance(StrEnum):
     Whether the product accepts buyer-uploaded video. When `rejected`, the buyer cannot ship a video asset directly — they must use build_creative, sync_creatives with brief inputs, or sync_creatives with an accepted reference asset so the seller produces or resolves the video.
     """
     ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    accepted = MemberAlias('ACCEPTED')
     REJECTED = _VALUES_ACCEPTED_REJECTED[1]
+    rejected = MemberAlias('REJECTED')
 
 
 class CanonicalFormatHostedVideo(CanonicalFormatBase):

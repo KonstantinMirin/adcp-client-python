@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/notification-type.json', pointer='#')
 
@@ -15,26 +15,32 @@ class NotificationType(StrEnum):
     """Scheduled delivery report fire. Fired at the cadence the buyer registered on reporting_webhook (e.g., hourly, daily). Carries the window's delivery metrics. **notification_id**: absent — point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only."""
 
 
+    scheduled = MemberAlias('SCHEDULED')
     FINAL = 'final'
     """Terminal delivery report fire. Sent once after the media buy reaches a terminal lifecycle state (completed, canceled, rejected). Carries final delivery aggregates. **notification_id**: absent — point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only."""
 
 
+    final = MemberAlias('FINAL')
     DELAYED = 'delayed'
     """Off-cadence delivery report fire indicating that the seller has detected late-arriving data for a prior window. Buyers SHOULD reconcile the affected window against this fire. **notification_id**: absent — point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only."""
 
 
+    delayed = MemberAlias('DELAYED')
     ADJUSTED = 'adjusted'
     """Off-cadence delivery report fire indicating that the seller has revised a prior window's metrics (e.g., IVT filtering applied, attribution model run, makegood adjustment). Buyers SHOULD replace prior values for the affected window. **notification_id**: absent — point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only."""
 
 
+    adjusted = MemberAlias('ADJUSTED')
     WINDOW_UPDATE = 'window_update'
     """Off-cadence delivery report fire indicating that a wider measurement window supersedes an earlier window for the same reporting period (for example, C3 superseding live or C7 superseding C3). Buyers SHOULD replace the slice named by `supersedes_window` with the new `measurement_window` data. **notification_id**: absent — point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only."""
 
 
+    window_update = MemberAlias('WINDOW_UPDATE')
     IMPAIRMENT = 'impairment'
     """Dependency state change fire. Sent when a resource referenced by the buy enters an offline state that affects delivery for at least one package. Payload carries the impairment object and the buy's updated health. See impairment.json and the impairment.coherence assertion. **notification_id**: equals `impairment.impairment_id`. Stable across re-emissions of the same open impairment and across the closing fire that signals resolution; a new impairment for the same resource after closure receives a new id."""
 
 
+    impairment = MemberAlias('IMPAIRMENT')
     CREATIVE_STATUS_CHANGED = 'creative.status_changed'
     """Account-anchored fire. Sent when a creative in the account's library transitions status by seller or system initiative — `pending_review → approved`/`rejected`, `approved → pending_review` (re-review), `approved → suspended` (recoverable dependency/authorization loss), `suspended → approved` (recovery), `suspended → rejected` (terminal dependency/authorization loss), `approved → rejected` (post-approval revocation), `approved → archived` (seller-initiated). Fires per subscriber against each `notification_configs[]` entry whose `event_types` includes this value. Buyer-initiated transitions (archive, unarchive, resubmit) do NOT fire — those are acknowledged on the `sync_creatives` response path. Payload: `creative-status-changed-webhook.json`. **notification_id**: stable per (creative_id, transition) — re-emissions reuse the id; a fresh transition gets a new id."""
 

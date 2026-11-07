@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import DemographicReportingCapabilityAgeIntervalsItemDemographic, IntMin0Max150
 
@@ -16,7 +16,9 @@ from .demographic_age_range import DemographicAgeRange
 
 class ReportingModesItem(StrEnum):
     EXACT_PREDICATES = 'exact_predicates'
+    exact_predicates = MemberAlias('EXACT_PREDICATES')
     ENUMERATED_INTERVALS = 'enumerated_intervals'
+    enumerated_intervals = MemberAlias('ENUMERATED_INTERVALS')
 
 
 class IntervalsItem(AdCPBaseModel):

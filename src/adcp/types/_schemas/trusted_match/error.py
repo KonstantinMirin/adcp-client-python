@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 
 class Code(StrEnum):
@@ -14,12 +14,19 @@ class Code(StrEnum):
     Machine-readable error code. `seller_not_authorized` is returned by providers at sync time when an AvailablePackage declares a `seller_agent.agent_url` that is not present in the `authorized_agents` list of the publisher's adagents.json for a property the package claims to serve.
     """
     INVALID_REQUEST = 'invalid_request'
+    invalid_request = MemberAlias('INVALID_REQUEST')
     UNKNOWN_PACKAGE = 'unknown_package'
+    unknown_package = MemberAlias('UNKNOWN_PACKAGE')
     SELLER_NOT_AUTHORIZED = 'seller_not_authorized'
+    seller_not_authorized = MemberAlias('SELLER_NOT_AUTHORIZED')
     RATE_LIMITED = 'rate_limited'
+    rate_limited = MemberAlias('RATE_LIMITED')
     TIMEOUT = 'timeout'
+    timeout = MemberAlias('TIMEOUT')
     INTERNAL_ERROR = 'internal_error'
+    internal_error = MemberAlias('INTERNAL_ERROR')
     PROVIDER_UNAVAILABLE = 'provider_unavailable'
+    provider_unavailable = MemberAlias('PROVIDER_UNAVAILABLE')
 
 
 class TMPError(AdCPBaseModel):

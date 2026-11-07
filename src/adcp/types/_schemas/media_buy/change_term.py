@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import ConditionsItem, StrMediaBuyChangeTermID, StrMinLen1MaxLen1000
 
@@ -19,9 +19,13 @@ from .change_term_constraints import MediaBuyChangeTermConstraints
 
 class AllowedStatusesItem(StrEnum):
     PENDING_CREATIVES = 'pending_creatives'
+    pending_creatives = MemberAlias('PENDING_CREATIVES')
     PENDING_START = 'pending_start'
+    pending_start = MemberAlias('PENDING_START')
     ACTIVE = 'active'
+    active = MemberAlias('ACTIVE')
     PAUSED = 'paused'
+    paused = MemberAlias('PAUSED')
 
 
 class MediaBuyChangeTerm(AdCPBaseModel):

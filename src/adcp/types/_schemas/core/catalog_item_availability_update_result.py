@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255
 
@@ -20,7 +20,9 @@ class Action(StrEnum):
     Action from the request.
     """
     SUPPRESS = 'suppress'
+    suppress = MemberAlias('SUPPRESS')
     RESTORE = 'restore'
+    restore = MemberAlias('RESTORE')
 
 
 class Status(StrEnum):
@@ -28,8 +30,11 @@ class Status(StrEnum):
     applied means the requested overlay transition completed, including replacement or removal of an existing expires_at; unchanged means the item was already in the requested buyer-availability state with the same expiry; failed means no transition was applied.
     """
     APPLIED = 'applied'
+    applied = MemberAlias('APPLIED')
     UNCHANGED = 'unchanged'
+    unchanged = MemberAlias('UNCHANGED')
     FAILED = 'failed'
+    failed = MemberAlias('FAILED')
 
 
 class CatalogItemAvailabilityUpdateResult(AdCPBaseModel):

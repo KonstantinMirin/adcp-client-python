@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -45,9 +45,13 @@ class SnippetType(StrEnum):
     Type of implementation. 'server_only' means no client-side tag is needed.
     """
     JAVASCRIPT = 'javascript'
+    javascript = MemberAlias('JAVASCRIPT')
     HTML = 'html'
+    html = MemberAlias('HTML')
     PIXEL_URL = 'pixel_url'
+    pixel_url = MemberAlias('PIXEL_URL')
     SERVER_ONLY = 'server_only'
+    server_only = MemberAlias('SERVER_ONLY')
 
 
 class Setup(AdCPBaseModel):

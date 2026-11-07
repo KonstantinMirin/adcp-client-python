@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     PeriodDuration,
@@ -22,7 +22,9 @@ class PeriodAnchorPolicy(StrEnum):
     For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.
     """
     FIXED = 'fixed'
+    fixed = MemberAlias('FIXED')
     CONFIGURABLE = 'configurable'
+    configurable = MemberAlias('CONFIGURABLE')
 
 
 class PeriodTimezonePolicy(StrEnum):
@@ -30,7 +32,9 @@ class PeriodTimezonePolicy(StrEnum):
     For source_timezone only. fixed advertises one exact upstream IANA timezone; account_resolved requires the seller to resolve and echo the account's upstream reporting timezone during configuration.
     """
     FIXED = 'fixed'
+    fixed = MemberAlias('FIXED')
     ACCOUNT_RESOLVED = 'account_resolved'
+    account_resolved = MemberAlias('ACCOUNT_RESOLVED')
 
 
 class ReportingScheduleOffering(AdCPBaseModel):

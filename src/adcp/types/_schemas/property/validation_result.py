@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
 
 from ..core.ext import ExtensionObject
@@ -20,9 +20,13 @@ class Status(StrEnum):
     Validation status: compliant (in list), non_compliant (not in list), not_covered (identifier recognized but no data available), unidentified (identifier type not resolvable by this governance agent)
     """
     COMPLIANT = 'compliant'
+    compliant = MemberAlias('COMPLIANT')
     NON_COMPLIANT = 'non_compliant'
+    non_compliant = MemberAlias('NON_COMPLIANT')
     NOT_COVERED = 'not_covered'
+    not_covered = MemberAlias('NOT_COVERED')
     UNIDENTIFIED = 'unidentified'
+    unidentified = MemberAlias('UNIDENTIFIED')
 
 
 class Requirement(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/asset-content-type.json', pointer='#')
 
@@ -12,21 +12,37 @@ class AssetContentType(StrEnum):
     Types of content that can be used as creative assets. Describes what KIND of content an asset contains (image, video, code, etc.), not where it displays.
     """
     IMAGE = 'image'
+    image = MemberAlias('IMAGE')
     VIDEO = 'video'
+    video = MemberAlias('VIDEO')
     AUDIO = 'audio'
+    audio = MemberAlias('AUDIO')
     TEXT = 'text'
+    text = MemberAlias('TEXT')
     MARKDOWN = 'markdown'
+    markdown = MemberAlias('MARKDOWN')
     HTML = 'html'
+    html = MemberAlias('HTML')
     CSS = 'css'
+    css = MemberAlias('CSS')
     JAVASCRIPT = 'javascript'
+    javascript = MemberAlias('JAVASCRIPT')
     ZIP = 'zip'
+    zip = MemberAlias('ZIP')
     VAST = 'vast'
+    vast = MemberAlias('VAST')
     DAAST = 'daast'
+    daast = MemberAlias('DAAST')
     URL = 'url'
+    url = MemberAlias('URL')
     WEBHOOK = 'webhook'
+    webhook = MemberAlias('WEBHOOK')
     BRIEF = 'brief'
+    brief = MemberAlias('BRIEF')
     CATALOG = 'catalog'
+    catalog = MemberAlias('CATALOG')
     PUBLISHED_POST = 'published_post'
+    published_post = MemberAlias('PUBLISHED_POST')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AssetContentType", AssetContentType)

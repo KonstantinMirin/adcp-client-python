@@ -6,19 +6,27 @@ from typing import Any, ClassVar
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 
 class Code(StrEnum):
     INCOMPATIBLE_FORMAT_KIND = 'incompatible_format_kind'
+    incompatible_format_kind = MemberAlias('INCOMPATIBLE_FORMAT_KIND')
     FORMAT_OPTION_MISMATCH = 'format_option_mismatch'
+    format_option_mismatch = MemberAlias('FORMAT_OPTION_MISMATCH')
     UNSUPPORTED_DELIVERY_TYPE = 'unsupported_delivery_type'
+    unsupported_delivery_type = MemberAlias('UNSUPPORTED_DELIVERY_TYPE')
     VAST_VERSION_MISMATCH = 'vast_version_mismatch'
+    vast_version_mismatch = MemberAlias('VAST_VERSION_MISMATCH')
     MACRO_UNSUPPORTED = 'macro_unsupported'
+    macro_unsupported = MemberAlias('MACRO_UNSUPPORTED')
     TRACKER_CONTRACT_MISMATCH = 'tracker_contract_mismatch'
+    tracker_contract_mismatch = MemberAlias('TRACKER_CONTRACT_MISMATCH')
     ASSET_REQUIREMENT_FAILED = 'asset_requirement_failed'
+    asset_requirement_failed = MemberAlias('ASSET_REQUIREMENT_FAILED')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class RepresentationRejection(AdCPBaseModel):

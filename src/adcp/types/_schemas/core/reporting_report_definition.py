@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -38,9 +38,13 @@ class ReportCalendarTimezoneBasis(StrEnum):
     Calendar used by source query semantics. schedule_timezone means the installed reporting schedule supplies the resolved IANA timezone; configured_timezone pins one IANA timezone directly in this definition.
     """
     UTC = 'utc'
+    utc = MemberAlias('UTC')
     ACCOUNT_TIMEZONE = 'account_timezone'
+    account_timezone = MemberAlias('ACCOUNT_TIMEZONE')
     SCHEDULE_TIMEZONE = 'schedule_timezone'
+    schedule_timezone = MemberAlias('SCHEDULE_TIMEZONE')
     CONFIGURED_TIMEZONE = 'configured_timezone'
+    configured_timezone = MemberAlias('CONFIGURED_TIMEZONE')
 
 
 class Calendar(AdCPBaseModel):
@@ -58,13 +62,20 @@ class Calendar(AdCPBaseModel):
 
 class Aggregation(StrEnum):
     SUM = 'sum'
+    sum = MemberAlias('SUM')
     COUNT = 'count'
     MIN = 'min'
+    min = MemberAlias('MIN')
     MAX = 'max'
+    max = MemberAlias('MAX')
     AVERAGE = 'average'
+    average = MemberAlias('AVERAGE')
     RATIO = 'ratio'
+    ratio = MemberAlias('RATIO')
     LAST = 'last'
+    last = MemberAlias('LAST')
     CUSTOM = 'custom'
+    custom = MemberAlias('CUSTOM')
 
 
 class MetricsItem(AdCPBaseModel):

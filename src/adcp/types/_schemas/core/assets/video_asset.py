@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import HttpUrl, IntMin1
 
 from ...enums.audio_channel_layout import AudioChannelLayout
@@ -22,10 +22,15 @@ class ColorSpace(StrEnum):
     Color space of the video
     """
     REC709 = 'rec709'
+    rec709 = MemberAlias('REC709')
     REC2020 = 'rec2020'
+    rec2020 = MemberAlias('REC2020')
     REC2100 = 'rec2100'
+    rec2100 = MemberAlias('REC2100')
     SRGB = 'srgb'
+    srgb = MemberAlias('SRGB')
     DCI_P3 = 'dci_p3'
+    dci_p3 = MemberAlias('DCI_P3')
 
 
 class HdrFormat(StrEnum):
@@ -33,10 +38,15 @@ class HdrFormat(StrEnum):
     HDR format if applicable, or 'sdr' for standard dynamic range
     """
     SDR = 'sdr'
+    sdr = MemberAlias('SDR')
     HDR10 = 'hdr10'
+    hdr10 = MemberAlias('HDR10')
     HDR10_PLUS = 'hdr10_plus'
+    hdr10_plus = MemberAlias('HDR10_PLUS')
     HLG = 'hlg'
+    hlg = MemberAlias('HLG')
     DOLBY_VISION = 'dolby_vision'
+    dolby_vision = MemberAlias('DOLBY_VISION')
 
 
 class ChromaSubsampling(StrEnum):

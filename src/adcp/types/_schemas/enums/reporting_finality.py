@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/reporting-finality.json', pointer='#')
 
@@ -15,8 +15,12 @@ class ReportingFinality(StrEnum):
     """Provisional seller/source reporting evidence; not sufficient by itself for billing."""
 
 
+    snapshot = MemberAlias('SNAPSHOT')
     OFFICIAL = 'official'
     """Immutable seller-authoritative close for the represented period. Buyers may key invoices and settlement records to its reporting_revision_id. Later corrections are explicit adjustments, never superseding revisions."""
+
+
+    official = MemberAlias('OFFICIAL')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReportingFinality", ReportingFinality)

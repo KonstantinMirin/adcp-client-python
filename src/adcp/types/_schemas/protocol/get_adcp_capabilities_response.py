@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
@@ -128,14 +128,20 @@ class IdempotencyUnsupported(AdCPBaseModel):
 
 class SupportedSectionsItem(StrEnum):
     NOTIFICATION_CONFIGS = 'notification_configs'
+    notification_configs = MemberAlias('NOTIFICATION_CONFIGS')
     REPORTING_DESTINATIONS = 'reporting_destinations'
+    reporting_destinations = MemberAlias('REPORTING_DESTINATIONS')
     DECLARATIONS = 'declarations'
+    declarations = MemberAlias('DECLARATIONS')
 
 
 class ReportingDestinationOfferingsItemPattern(StrEnum):
     FILE_TRANSFER = 'file_transfer'
+    file_transfer = MemberAlias('FILE_TRANSFER')
     WAREHOUSE_MATERIALIZATION = 'warehouse_materialization'
+    warehouse_materialization = MemberAlias('WAREHOUSE_MATERIALIZATION')
     DATASET_SHARE = 'dataset_share'
+    dataset_share = MemberAlias('DATASET_SHARE')
 
 
 class ReportingDestinationOfferingsItem(AdCPBaseModel):
@@ -186,7 +192,9 @@ class RegistrationTask(StrEnum):
     Task consumers call to manage their caller-scoped agent-level subscriber set.
     """
     SYNC_AGENT_NOTIFICATION_CONFIGS = 'sync_agent_notification_configs'
+    sync_agent_notification_configs = MemberAlias('SYNC_AGENT_NOTIFICATION_CONFIGS')
     SYNC_PRINCIPAL = 'sync_principal'
+    sync_principal = MemberAlias('SYNC_PRINCIPAL')
 
 
 class CapabilityChangeNotificationsSupportedEventTypesItem(StrEnum):
@@ -237,7 +245,9 @@ class CapabilityChanges(AdCPBaseModel):
 
 class TasksItemCreateMediaBuyModesItem(StrEnum):
     SIGNED_CONTEXT = 'signed_context'
+    signed_context = MemberAlias('SIGNED_CONTEXT')
     ONLINE_EXECUTION_CHECK = 'online_execution_check'
+    online_execution_check = MemberAlias('ONLINE_EXECUTION_CHECK')
 
 
 class TasksItemCreateMediaBuy(AdCPBaseModel):
@@ -396,12 +406,19 @@ class Adcp(AdCPBaseModel):
 
 class SupportedProtocolsItem(StrEnum):
     MEDIA_BUY = 'media_buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     SIGNALS = 'signals'
+    signals = MemberAlias('SIGNALS')
     GOVERNANCE = 'governance'
+    governance = MemberAlias('GOVERNANCE')
     SPONSORED_INTELLIGENCE = 'sponsored_intelligence'
+    sponsored_intelligence = MemberAlias('SPONSORED_INTELLIGENCE')
     CREATIVE = 'creative'
+    creative = MemberAlias('CREATIVE')
     BRAND = 'brand'
+    brand = MemberAlias('BRAND')
     MEASUREMENT = 'measurement'
+    measurement = MemberAlias('MEASUREMENT')
 
 
 class AccountNotificationsSupportedEventTypesItem(StrEnum):
@@ -463,8 +480,11 @@ class AccountChangeFeedUnsupported(AdCPBaseModel):
 
 class SupportedChangesItem(StrEnum):
     OPERATOR_UNIT_NAME = 'operator_unit_name'
+    operator_unit_name = MemberAlias('OPERATOR_UNIT_NAME')
     OPERATOR_UNIT = 'operator_unit'
+    operator_unit = MemberAlias('OPERATOR_UNIT')
     OPERATOR = 'operator'
+    operator = MemberAlias('OPERATOR')
 
 
 class AccountIdentityUpdatesSupported(AdCPBaseModel):
@@ -529,22 +549,36 @@ class AcceptancePolicyDiscovery(AdCPBaseModel):
 
 class LifecycleToolsItem(StrEnum):
     LIST_PRODUCTS = 'list_products'
+    list_products = MemberAlias('LIST_PRODUCTS')
     REQUEST_PROPOSALS = 'request_proposals'
+    request_proposals = MemberAlias('REQUEST_PROPOSALS')
     REFINE_PROPOSALS = 'refine_proposals'
+    refine_proposals = MemberAlias('REFINE_PROPOSALS')
     DECLINE_PROPOSALS = 'decline_proposals'
+    decline_proposals = MemberAlias('DECLINE_PROPOSALS')
     BUY_PRODUCTS = 'buy_products'
+    buy_products = MemberAlias('BUY_PRODUCTS')
     ACCEPT_PROPOSAL = 'accept_proposal'
+    accept_proposal = MemberAlias('ACCEPT_PROPOSAL')
     CONTROL_MEDIA_BUY = 'control_media_buy'
+    control_media_buy = MemberAlias('CONTROL_MEDIA_BUY')
 
 
 class SupportedDimensionsItem(StrEnum):
     TOTAL_BUDGET = 'total_budget'
+    total_budget = MemberAlias('TOTAL_BUDGET')
     CPM = 'cpm'
+    cpm = MemberAlias('CPM')
     IMPRESSIONS = 'impressions'
+    impressions = MemberAlias('IMPRESSIONS')
     FLIGHT = 'flight'
+    flight = MemberAlias('FLIGHT')
     PRODUCT_CHANGES = 'product_changes'
+    product_changes = MemberAlias('PRODUCT_CHANGES')
     ALTERNATIVES = 'alternatives'
+    alternatives = MemberAlias('ALTERNATIVES')
     CRITERIA = 'criteria'
+    criteria = MemberAlias('CRITERIA')
 
 
 class MediaBuyProposalRefinement(AdCPBaseModel):
@@ -567,7 +601,9 @@ class MediaBuyProposalRefinement(AdCPBaseModel):
 
 class CapabilityReportingDeliveryMethod(StrEnum):
     WEBHOOK = 'webhook'
+    webhook = MemberAlias('WEBHOOK')
     OFFLINE = 'offline'
+    offline = MemberAlias('OFFLINE')
 
 
 class MediaBuyPerformanceFeedback(AdCPBaseModel):
@@ -583,8 +619,11 @@ class MediaBuyPerformanceFeedback(AdCPBaseModel):
 
 class PropagationSurfacesItem(StrEnum):
     SNAPSHOT = 'snapshot'
+    snapshot = MemberAlias('SNAPSHOT')
     WEBHOOK = 'webhook'
+    webhook = MemberAlias('WEBHOOK')
     OUT_OF_BAND = 'out_of_band'
+    out_of_band = MemberAlias('OUT_OF_BAND')
 
 
 class CreativeApprovalMode(StrEnum):
@@ -592,7 +631,9 @@ class CreativeApprovalMode(StrEnum):
     Tenant-wide applicability signal for media-buy creative approval behavior. This is not a notification or new approval workflow. `auto_approve` means human review does not block serving eligibility after creatives are assigned and automated validation passes. `require_human` means one or more products/accounts may require manual review before creatives become eligible to serve; buyers and compliance runners MUST treat this as a worst-case ceiling across this seller's portfolio unless a future product-level override says otherwise. Compliance runners use this mainly to decide whether auto-approval-dependent storyboards apply. When absent, approval behavior is legacy-unspecified; runners SHOULD NOT treat omission as an affirmative auto-approval claim. `ai_assisted` is intentionally not part of the enum until a behavioral contract is defined.
     """
     AUTO_APPROVE = 'auto_approve'
+    auto_approve = MemberAlias('AUTO_APPROVE')
     REQUIRE_HUMAN = 'require_human'
+    require_human = MemberAlias('REQUIRE_HUMAN')
 
 
 class RelationshipNotificationsEventTypesItem(StrEnum):
@@ -656,8 +697,11 @@ class VastValidation(StrEnum):
     Level of VAST asset validation the seller performs at sync_creatives (including dry_run): 'structural' checks manifest shape and format requirements only and never inspects the VAST document; 'document' additionally parses the VAST document and can return VAST_PARSE_FAILED / VAST_VERSION_MISMATCH; 'wrapper' additionally resolves the wrapper chain and can return VAST_WRAPPER_DEPTH_EXCEEDED. Absent means 'structural'. See the VAST Validation section of the video channel documentation for the normative checks at each level.
     """
     STRUCTURAL = 'structural'
+    structural = MemberAlias('STRUCTURAL')
     DOCUMENT = 'document'
+    document = MemberAlias('DOCUMENT')
     WRAPPER = 'wrapper'
+    wrapper = MemberAlias('WRAPPER')
 
 
 class CreativeSpecs(AdCPBaseModel):
@@ -806,7 +850,9 @@ class RightsAttestationsRequirement(StrEnum):
     required means every applicable rights constraint needs at least one current verified attestation evaluation before the creative is eligible to serve. optional permits independent legacy contractual policy, but unattested constraints remain machine-unverified and verification_url is never a downgrade path.
     """
     OPTIONAL = _VALUES_OPTIONAL_REQUIRED[0]
+    optional = MemberAlias('OPTIONAL')
     REQUIRED = _VALUES_OPTIONAL_REQUIRED[1]
+    required = MemberAlias('REQUIRED')
 
 
 class RightsAttestations(AdCPBaseModel):
@@ -822,7 +868,9 @@ class RightsAttestations(AdCPBaseModel):
 
 class SupportedIdentifierTypesItem(StrEnum):
     HASHED_EMAIL = 'hashed_email'
+    hashed_email = MemberAlias('HASHED_EMAIL')
     HASHED_PHONE = 'hashed_phone'
+    hashed_phone = MemberAlias('HASHED_PHONE')
 
 
 class MatchingLatencyHours(AdCPBaseModel):
@@ -855,7 +903,9 @@ class AudienceTargeting(AdCPBaseModel):
 
 class SupportedTargetsItem(StrEnum):
     COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    cost_per = MemberAlias('COST_PER')
     THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
+    threshold_rate = MemberAlias('THRESHOLD_RATE')
 
 
 class MediaBuyVendorMetricOptimization(AdCPBaseModel):
@@ -924,16 +974,21 @@ class FrequencyCapping(AdCPBaseModel):
 
 class SupportedScopesItem(StrEnum):
     MEDIA_BUY = 'media_buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     PACKAGE = 'package'
+    package = MemberAlias('PACKAGE')
 
 
 class SupportedPeriodsItem(StrEnum):
     DAY = 'day'
+    day = MemberAlias('DAY')
 
 
 class BudgetCappingTimezoneBasis(StrEnum):
     ACCOUNT = 'account'
+    account = MemberAlias('ACCOUNT')
     FIXED = 'fixed'
+    fixed = MemberAlias('FIXED')
 
 
 class BudgetCapping(AdCPBaseModel):
@@ -1040,7 +1095,9 @@ class GetAdCPCapabilitiesResponseMediaBuy(AdCPBaseModel):
 
 class DiscoveryMode(StrEnum):
     BRIEF = 'brief'
+    brief = MemberAlias('BRIEF')
     WHOLESALE = 'wholesale'
+    wholesale = MemberAlias('WHOLESALE')
 
 
 class SignalsFeatures(AdCPBaseModel):
@@ -1080,7 +1137,9 @@ class SignalActivationRequirement(StrEnum):
     Whether an activate_signal activation check may omit runtime_attestations. When required, missing evidence fails an activation check. Deactivation and privacy-removal checks never require signal-quality evidence and remain available without it.
     """
     OPTIONAL = _VALUES_OPTIONAL_REQUIRED[0]
+    optional = MemberAlias('OPTIONAL')
     REQUIRED = _VALUES_OPTIONAL_REQUIRED[1]
+    required = MemberAlias('REQUIRED')
 
 
 class SignalActivation(AdCPBaseModel):
@@ -1111,8 +1170,11 @@ class PropertyFeaturesItemType(StrEnum):
     Data type: 'binary' for yes/no, 'quantitative' for numeric scores, 'categorical' for enum values
     """
     BINARY = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[0]
+    binary = MemberAlias('BINARY')
     QUANTITATIVE = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[1]
+    quantitative = MemberAlias('QUANTITATIVE')
     CATEGORICAL = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[2]
+    categorical = MemberAlias('CATEGORICAL')
 
 
 class PropertyFeaturesItemRange(AdCPBaseModel):
@@ -1175,7 +1237,9 @@ class ProtocolTransportType(StrEnum):
     Preferred transport when host supports multiple
     """
     MCP = 'mcp'
+    mcp = MemberAlias('MCP')
     A2A = 'a2a'
+    a2a = MemberAlias('A2A')
 
 
 class Endpoint(AdCPBaseModel):
@@ -1229,10 +1293,15 @@ class RepresentationResolution(AdCPBaseModel):
 
 class VariantDimensionsItem(StrEnum):
     VOICE = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[0]
+    voice = MemberAlias('VOICE')
     THEME = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[1]
+    theme = MemberAlias('THEME')
     BEST_OF_N = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[2]
+    best_of_n = MemberAlias('BEST_OF_N')
     TRANSFORMER_CONFIG = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[3]
+    transformer_config = MemberAlias('TRANSFORMER_CONFIG')
     CUSTOM = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[4]
+    custom = MemberAlias('CUSTOM')
 
 
 class Multiplicity(AdCPBaseModel):
@@ -1259,8 +1328,11 @@ class Multiplicity(AdCPBaseModel):
 
 class OperationsItem(StrEnum):
     BUILD = 'build'
+    build = MemberAlias('BUILD')
     VALIDATE = 'validate'
+    validate = MemberAlias('VALIDATE')
     PREVIEW = 'preview'
+    preview = MemberAlias('PREVIEW')
 
 
 class SupportedFormatsItem(AdCPBaseModel):
@@ -1364,8 +1436,11 @@ class CoversContentDigest(StrEnum):
     Policy for content-digest coverage in request signatures. In AdCP 3.2 and later, an agent with request_signing.supported=true MUST explicitly emit 'required': every accepted signature on a request with a body covers content-digest, and a body-unbound signature is rejected with request_signature_components_incomplete. Omission retains the legacy effective default of 'either' only for a 3.0/3.1 response; 3.2 responses require this field explicitly. 'either' and 'forbidden' are deprecated legacy 3.0/3.1 postures retained only for version negotiation with pre-3.2 peers; they MUST NOT be advertised as a 3.2 signing posture and are removed in 4.0. A shared endpoint MUST select the verifier policy from trusted endpoint configuration and negotiated capabilities before dispatch, never from an unbound request-body version field.
     """
     REQUIRED = 'required'
+    required = MemberAlias('REQUIRED')
     FORBIDDEN = 'forbidden'
+    forbidden = MemberAlias('FORBIDDEN')
     EITHER = 'either'
+    either = MemberAlias('EITHER')
 
 
 class RequestSigning(AdCPBaseModel):

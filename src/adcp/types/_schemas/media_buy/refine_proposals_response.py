@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
@@ -25,9 +25,13 @@ from .get_products_targeting_resolution import ProductDiscoveryTargetingResoluti
 
 class Outcome(StrEnum):
     REVISED = 'revised'
+    revised = MemberAlias('REVISED')
     PARTIAL = 'partial'
+    partial = MemberAlias('PARTIAL')
     FINALIZED = 'finalized'
+    finalized = MemberAlias('FINALIZED')
     UNABLE = 'unable'
+    unable = MemberAlias('UNABLE')
 
 
 class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
@@ -144,7 +148,9 @@ ResultsItem.model_rebuild(force=True)
 
 class Status(StrEnum):
     COMPLETED = 'completed'
+    completed = MemberAlias('COMPLETED')
     SUBMITTED = 'submitted'
+    submitted = MemberAlias('SUBMITTED')
 
 
 class RefineProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):

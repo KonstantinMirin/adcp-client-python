@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/publisher-identifier-types.json', pointer='#')
 
@@ -12,10 +12,15 @@ class PublisherIdentifierTypes(StrEnum):
     Valid identifier types for publisher/legal entity identification
     """
     TAG_ID = 'tag_id'
+    tag_id = MemberAlias('TAG_ID')
     DUNS = 'duns'
+    duns = MemberAlias('DUNS')
     LEI = 'lei'
+    lei = MemberAlias('LEI')
     SELLER_ID = 'seller_id'
+    seller_id = MemberAlias('SELLER_ID')
     GLN = 'gln'
+    gln = MemberAlias('GLN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PublisherIdentifierTypes", PublisherIdentifierTypes)

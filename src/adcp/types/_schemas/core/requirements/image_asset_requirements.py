@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, IntMin1, MaxWeightGrams
 
@@ -15,15 +15,25 @@ from ...enums.dimension_unit import DimensionUnit
 
 class FormatsItem(StrEnum):
     JPG = 'jpg'
+    jpg = MemberAlias('JPG')
     JPEG = 'jpeg'
+    jpeg = MemberAlias('JPEG')
     PNG = 'png'
+    png = MemberAlias('PNG')
     GIF = 'gif'
+    gif = MemberAlias('GIF')
     WEBP = 'webp'
+    webp = MemberAlias('WEBP')
     SVG = 'svg'
+    svg = MemberAlias('SVG')
     AVIF = 'avif'
+    avif = MemberAlias('AVIF')
     TIFF = 'tiff'
+    tiff = MemberAlias('TIFF')
     PDF = 'pdf'
+    pdf = MemberAlias('PDF')
     EPS = 'eps'
+    eps = MemberAlias('EPS')
 
 
 class BleedUniform(AdCPBaseModel):
@@ -50,8 +60,11 @@ class ColorSpace(StrEnum):
     Required color space. Print typically requires CMYK.
     """
     RGB = 'rgb'
+    rgb = MemberAlias('RGB')
     CMYK = 'cmyk'
+    cmyk = MemberAlias('CMYK')
     GRAYSCALE = 'grayscale'
+    grayscale = MemberAlias('GRAYSCALE')
 
 
 class ImageAssetRequirements(AdCPBaseModel):

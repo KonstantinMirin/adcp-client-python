@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/audio-distribution-type.json', pointer='#')
 
@@ -15,28 +15,37 @@ class AudioDistributionType(StrEnum):
     """OpenRTB 2.6 audio.feed=1: music streaming service."""
 
 
+    music_streaming_service = MemberAlias('MUSIC_STREAMING_SERVICE')
     FM_AM_BROADCAST = 'fm_am_broadcast'
     """OpenRTB 2.6 audio.feed=2: FM/AM broadcast, including live content broadcast over the air and also available via online streaming."""
 
 
+    fm_am_broadcast = MemberAlias('FM_AM_BROADCAST')
     PODCAST = 'podcast'
     """OpenRTB 2.6 audio.feed=3: original, pre-recorded content distributed as episodes in a series."""
 
 
+    podcast = MemberAlias('PODCAST')
     CATCH_UP_RADIO = 'catch_up_radio'
     """OpenRTB 2.6 audio.feed=4: recorded segment of a radio show that was originally broadcast live."""
 
 
+    catch_up_radio = MemberAlias('CATCH_UP_RADIO')
     WEB_RADIO = 'web_radio'
     """OpenRTB 2.6 audio.feed=5: live audio content only available via online streaming, not as FM/AM broadcast."""
 
 
+    web_radio = MemberAlias('WEB_RADIO')
     VIDEO_GAME = 'video_game'
     """OpenRTB 2.6 audio.feed=6: background audio in video games."""
 
 
+    video_game = MemberAlias('VIDEO_GAME')
     TEXT_TO_SPEECH = 'text_to_speech'
     """OpenRTB 2.6 audio.feed=7: text-to-speech audio such as audio books or website/plugin article narration."""
+
+
+    text_to_speech = MemberAlias('TEXT_TO_SPEECH')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AudioDistributionType", AudioDistributionType)

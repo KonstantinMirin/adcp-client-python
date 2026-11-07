@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, HttpUrl, StrMinLen32
 
@@ -40,7 +40,9 @@ class ProductPayloadView(StrEnum):
     Product webhook representation selected by this subscriber. Use canonical with lifecycle_tools.list_products; legacy is the default for 3.x get_products consumers. Sellers emit exactly canonical_product/canonical_pricing_options or product/pricing_options accordingly. Valid only when event_types includes a product.* event.
     """
     CANONICAL = 'canonical'
+    canonical = MemberAlias('CANONICAL')
     LEGACY = 'legacy'
+    legacy = MemberAlias('LEGACY')
 
 
 class Authentication(AdCPBaseModel):

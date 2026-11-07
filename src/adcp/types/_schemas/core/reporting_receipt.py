@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -25,7 +25,9 @@ from .reporting_verification_profile import ReportingVerificationProfile
 
 class Status(StrEnum):
     ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    accepted = MemberAlias('ACCEPTED')
     REJECTED = _VALUES_ACCEPTED_REJECTED[1]
+    rejected = MemberAlias('REJECTED')
 
 
 class ReportingReceipt(AdCPBaseModel):

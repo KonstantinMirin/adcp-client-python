@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/cloud-storage-protocol.json', pointer='#')
 
@@ -12,8 +12,11 @@ class CloudStorageProtocol(StrEnum):
     Cloud storage protocols supported for offline file delivery
     """
     S3 = 's3'
+    s3 = MemberAlias('S3')
     GCS = 'gcs'
+    gcs = MemberAlias('GCS')
     AZURE_BLOB = 'azure_blob'
+    azure_blob = MemberAlias('AZURE_BLOB')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CloudStorageProtocol", CloudStorageProtocol)

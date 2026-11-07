@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import StrMinLen1, Version
 
 
@@ -15,7 +15,9 @@ class RenderingOrigin(StrEnum):
     Informational implementation origin copied from the selected route. It does not grant authority.
     """
     PLATFORM_NATIVE = 'platform_native'
+    platform_native = MemberAlias('PLATFORM_NATIVE')
     AGENT_APPROXIMATION = 'agent_approximation'
+    agent_approximation = MemberAlias('AGENT_APPROXIMATION')
 
 
 class PreviewRendererMetadata(AdCPBaseModel):

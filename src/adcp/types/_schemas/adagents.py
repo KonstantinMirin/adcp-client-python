@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
@@ -102,9 +102,13 @@ class Reason(StrEnum):
     Reason for revocation. **Operator-internal self-classification for review routing — not a public accusation.** `relationship_ended` is the routine commercial case. `compliance_violation` SHOULD be used only when the network has itself determined the publisher is out of policy; for un-adjudicated third-party allegations (regulator inquiries, advertiser complaints, ongoing investigations), use `other` to avoid making a discoverable adverse statement. `publisher_request` is for publisher-initiated exits. Compare to sellers.json, which deliberately carries no reason field for the same exposure concern.
     """
     RELATIONSHIP_ENDED = 'relationship_ended'
+    relationship_ended = MemberAlias('RELATIONSHIP_ENDED')
     COMPLIANCE_VIOLATION = 'compliance_violation'
+    compliance_violation = MemberAlias('COMPLIANCE_VIOLATION')
     PUBLISHER_REQUEST = 'publisher_request'
+    publisher_request = MemberAlias('PUBLISHER_REQUEST')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class RevokedPublisherDomainsItem(AdCPBaseModel):
@@ -228,8 +232,11 @@ class DelegationType(StrEnum):
     Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint.
     """
     DIRECT = 'direct'
+    direct = MemberAlias('DIRECT')
     DELEGATED = 'delegated'
+    delegated = MemberAlias('DELEGATED')
     AD_NETWORK = 'ad_network'
+    ad_network = MemberAlias('AD_NETWORK')
 
 
 class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds(AuthorizedAgentBaseFields):

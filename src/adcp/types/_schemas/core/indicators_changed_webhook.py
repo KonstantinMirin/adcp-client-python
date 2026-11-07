@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -23,8 +23,11 @@ class RelationshipKind(StrEnum):
     Identifies which indicator-bearing snapshot changed.
     """
     MEDIA_BUY = 'media_buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     PACKAGE = 'package'
+    package = MemberAlias('PACKAGE')
     CREATIVE_ASSIGNMENT = 'creative_assignment'
+    creative_assignment = MemberAlias('CREATIVE_ASSIGNMENT')
 
 
 class ChangeKind(StrEnum):
@@ -32,11 +35,17 @@ class ChangeKind(StrEnum):
     Coarse invalidation reason. Buyers MUST reread rather than applying this value as state. invalidated is emitted when a material creative-content update retires the prior evaluation and the relationship becomes unknown until reevaluated. assignment_removed is emitted to indicator subscribers when deletion retires keys for a package–creative relationship.
     """
     ASSERTED = 'asserted'
+    asserted = MemberAlias('ASSERTED')
     CLEARED = 'cleared'
+    cleared = MemberAlias('CLEARED')
     UPDATED = 'updated'
+    updated = MemberAlias('UPDATED')
     INVALIDATED = 'invalidated'
+    invalidated = MemberAlias('INVALIDATED')
     COVERAGE_CHANGED = 'coverage_changed'
+    coverage_changed = MemberAlias('COVERAGE_CHANGED')
     ASSIGNMENT_REMOVED = 'assignment_removed'
+    assignment_removed = MemberAlias('ASSIGNMENT_REMOVED')
 
 
 class IndicatorsChangedWebhook(AdCPBaseModel):

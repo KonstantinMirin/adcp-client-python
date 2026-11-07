@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/delegation-authority.json', pointer='#')
 
@@ -15,12 +15,17 @@ class DelegationAuthority(StrEnum):
     """Can execute any action within the delegation's budget and market constraints."""
 
 
+    full = MemberAlias('FULL')
     EXECUTE_ONLY = 'execute_only'
     """Can execute pre-approved actions but cannot initiate new campaigns or reallocate budget."""
 
 
+    execute_only = MemberAlias('EXECUTE_ONLY')
     PROPOSE_ONLY = 'propose_only'
     """Can propose actions for governance review but cannot execute without explicit approval."""
+
+
+    propose_only = MemberAlias('PROPOSE_ONLY')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DelegationAuthority", DelegationAuthority)

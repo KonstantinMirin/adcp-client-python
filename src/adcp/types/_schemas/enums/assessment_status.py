@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/assessment-status.json', pointer='#')
 
@@ -15,16 +15,22 @@ class AssessmentStatus(StrEnum):
     """Setup incomplete or event quality too low — optimization cannot run"""
 
 
+    insufficient = MemberAlias('INSUFFICIENT')
     MINIMUM = 'minimum'
     """Functional but data quality limits optimization effectiveness"""
 
 
+    minimum = MemberAlias('MINIMUM')
     GOOD = 'good'
     """Meets quality thresholds for most optimization goals"""
 
 
+    good = MemberAlias('GOOD')
     EXCELLENT = 'excellent'
     """Exceeds quality thresholds across all dimensions"""
+
+
+    excellent = MemberAlias('EXCELLENT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AssessmentStatus", AssessmentStatus)

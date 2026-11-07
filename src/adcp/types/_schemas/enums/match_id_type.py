@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/match-id-type.json', pointer='#')
 
@@ -15,36 +15,47 @@ class MatchIDType(StrEnum):
     """SHA-256 hashed email address (matches audience-member.hashed_email). Pseudonymous PII, not anonymous — unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous."""
 
 
+    hashed_email = MemberAlias('HASHED_EMAIL')
     HASHED_PHONE = 'hashed_phone'
     """SHA-256 hashed phone number in E.164 format (matches audience-member.hashed_phone). Pseudonymous PII, not anonymous — unsalted SHA-256 of the E.164 namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous."""
 
 
+    hashed_phone = MemberAlias('HASHED_PHONE')
     RAMPID = 'rampid'
     """LiveRamp RampID"""
 
 
+    rampid = MemberAlias('RAMPID')
     ID5 = 'id5'
     """ID5 universal ID"""
 
 
+    id5 = MemberAlias('ID5')
     UID2 = 'uid2'
     """Unified ID 2.0"""
 
 
+    uid2 = MemberAlias('UID2')
     EUID = 'euid'
     """European Unified ID"""
 
 
+    euid = MemberAlias('EUID')
     PAIRID = 'pairid'
     """Publisher Addressable Identity via IAB Tech Lab PAIR. The OpenRTB profile uses User.eids[].source pair-protocol.com, EID.mm 3, EID.matcher set to the publisher's canonical ads.txt ownerdomain, and uids[].atype 3. The URL-safe Base64-encoded KsKp Publisher Identifier must be interpreted with that matcher scope. It is stable across a publisher's advertiser matches only within a Ks key epoch; Ks rotates every 30 days, and current and prior Publisher Identifiers can overlap during rollover. TMP identity objects do not carry matcher or ownerdomain, so a bridge requires an authenticated out-of-band binding to preserve PAIR scope."""
 
 
+    pairid = MemberAlias('PAIRID')
     MAID = 'maid'
     """Mobile Advertising ID (IDFA/GAID)"""
 
 
+    maid = MemberAlias('MAID')
     OTHER = 'other'
     """Other identifier type (specify in ext)"""
+
+
+    other = MemberAlias('OTHER')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MatchIDType", MatchIDType)

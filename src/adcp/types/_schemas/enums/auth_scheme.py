@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/auth-scheme.json', pointer='#')
 
@@ -12,6 +12,7 @@ class AuthenticationScheme(StrEnum):
     Legacy authentication schemes for the webhook auth block. Bearer: token sent in Authorization header. HMAC-SHA256: legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit the authentication block and use the RFC 9421 webhook signing profile (applicable on schemas where authentication is optional). Removed in AdCP 4.0.
     """
     BEARER = 'Bearer'
+    Bearer = MemberAlias('BEARER')
     HMAC_SHA256 = 'HMAC-SHA256'
 
 

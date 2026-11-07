@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
 from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMinLen1
 
@@ -44,8 +44,11 @@ class EntityType(StrEnum):
     Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.
     """
     PRODUCT = 'product'
+    product = MemberAlias('PRODUCT')
     SIGNAL = 'signal'
+    signal = MemberAlias('SIGNAL')
     FEED = 'feed'
+    feed = MemberAlias('FEED')
 
 
 class WholesaleFeedEvent(BranchDispatchMixin, AdCPBaseModel):
@@ -186,10 +189,15 @@ class RemovalReason(StrEnum):
     Why the entity was removed. 'withdrawn': seller-initiated, no resubmit path. 'cancellation': resource cancelled, may return. 'expired': time-bounded availability ended (flight ended, seasonal product retired). 'depublication': underlying property depublished (see publisher.adagents_changed in the registry feed). 'policy_takedown': governance-driven removal (AdCP governance agent OR external regulator/legal takedown). In-flight buys honor existing cancellation policy regardless of reason; storefront UX differs.
     """
     WITHDRAWN = 'withdrawn'
+    withdrawn = MemberAlias('WITHDRAWN')
     CANCELLATION = 'cancellation'
+    cancellation = MemberAlias('CANCELLATION')
     EXPIRED = 'expired'
+    expired = MemberAlias('EXPIRED')
     DEPUBLICATION = 'depublication'
+    depublication = MemberAlias('DEPUBLICATION')
     POLICY_TAKEDOWN = 'policy_takedown'
+    policy_takedown = MemberAlias('POLICY_TAKEDOWN')
 
 
 class WholesaleFeedEventProductRemovedProductPayload(AdCPBaseModel):
@@ -345,6 +353,7 @@ class Recommendation(StrEnum):
     Advisory recommendation. Consumers SHOULD repair by re-reading the affected feed named by affected_entity_type; the recommendation is not a synchronized trigger. Modeled as a single-value enum (not a boolean) so future minor versions can extend the recommendation vocabulary without a breaking shape change. Consumers MUST be prepared to ignore unknown recommendation values.
     """
     WHOLESALE_RESYNC = 'wholesale_resync'
+    wholesale_resync = MemberAlias('WHOLESALE_RESYNC')
 
 
 class AffectedEntityType(StrEnum):
@@ -352,7 +361,9 @@ class AffectedEntityType(StrEnum):
     Which wholesale feed this bulk operation touched. A bulk operation that changes both products and signals MUST emit one webhook per feed so each envelope carries the correct post-change wholesale_feed_version.
     """
     PRODUCT = 'product'
+    product = MemberAlias('PRODUCT')
     SIGNAL = 'signal'
+    signal = MemberAlias('SIGNAL')
 
 
 class WholesaleFeedEventWholesaleFeedBulkChangeFeedPayload(AdCPBaseModel):

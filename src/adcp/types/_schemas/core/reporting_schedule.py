@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     PeriodDuration,
@@ -20,9 +20,13 @@ class ReportingScheduleAlignment(StrEnum):
     Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.
     """
     UTC = 'utc'
+    utc = MemberAlias('UTC')
     ACCOUNT_TIMEZONE = 'account_timezone'
+    account_timezone = MemberAlias('ACCOUNT_TIMEZONE')
     SOURCE_TIMEZONE = 'source_timezone'
+    source_timezone = MemberAlias('SOURCE_TIMEZONE')
     BILLING_CYCLE = 'billing_cycle'
+    billing_cycle = MemberAlias('BILLING_CYCLE')
 
 
 class ReportingSchedule(AdCPBaseModel):

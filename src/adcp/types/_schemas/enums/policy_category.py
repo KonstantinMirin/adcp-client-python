@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/policy-category.json', pointer='#')
 
@@ -15,8 +15,12 @@ class PolicyCategory(StrEnum):
     """Legal requirement with jurisdiction scope. Violations have legal consequences. Enforcement is hard (must)."""
 
 
+    regulation = MemberAlias('REGULATION')
     STANDARD = 'standard'
     """Industry best practice, voluntary but recommended. Protects brand value and campaign effectiveness. Enforcement is soft (should)."""
+
+
+    standard = MemberAlias('STANDARD')
 
 
 strict_validate = strict_alias(__adcp_schema__, "PolicyCategory", PolicyCategory)

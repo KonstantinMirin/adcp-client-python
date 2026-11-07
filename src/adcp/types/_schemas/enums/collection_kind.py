@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/collection-kind.json', pointer='#')
 
@@ -15,20 +15,27 @@ class CollectionKind(StrEnum):
     """TV or podcast program; installments are episodes"""
 
 
+    series = MemberAlias('SERIES')
     PUBLICATION = 'publication'
     """Print or newsletter title; installments are issues"""
 
 
+    publication = MemberAlias('PUBLICATION')
     EVENT_SERIES = 'event_series'
     """Live event program; installments are individual event airings"""
 
 
+    event_series = MemberAlias('EVENT_SERIES')
     ROTATION = 'rotation'
     """DOOH scheduling container; installments are scheduling periods"""
 
 
+    rotation = MemberAlias('ROTATION')
     CHANNEL = 'channel'
     """Continuously programmed audio or video stream, regardless of carriage or monetization model; installments are scheduled airings or programming blocks"""
+
+
+    channel = MemberAlias('CHANNEL')
 
 
 strict_validate = strict_alias(__adcp_schema__, "CollectionKind", CollectionKind)

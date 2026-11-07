@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatHostname
 
 
@@ -15,8 +15,11 @@ class ModuleType(StrEnum):
     Required JavaScript module format. 'script' = classic script, 'module' = ES modules, 'iife' = immediately invoked function expression
     """
     SCRIPT = 'script'
+    script = MemberAlias('SCRIPT')
     MODULE = 'module'
+    module = MemberAlias('MODULE')
     IIFE = 'iife'
+    iife = MemberAlias('IIFE')
 
 
 class JavaScriptAssetRequirements(AdCPBaseModel):

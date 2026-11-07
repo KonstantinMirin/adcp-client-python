@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 
 class Severity(StrEnum):
@@ -14,8 +14,11 @@ class Severity(StrEnum):
     'error': blocks optimization until resolved. 'warning': optimization works but effectiveness is reduced. 'info': suggestion for improvement.
     """
     ERROR = 'error'
+    error = MemberAlias('ERROR')
     WARNING = 'warning'
+    warning = MemberAlias('WARNING')
     INFO = 'info'
+    info = MemberAlias('INFO')
 
 
 class DiagnosticIssue(AdCPBaseModel):

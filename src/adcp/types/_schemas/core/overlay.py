@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 from adcp.types.constraints import HttpUrl
 
@@ -32,11 +32,17 @@ class Unit(StrEnum):
     'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left.
     """
     PX = 'px'
+    px = MemberAlias('PX')
     FRACTION = 'fraction'
+    fraction = MemberAlias('FRACTION')
     INCHES = 'inches'
+    inches = MemberAlias('INCHES')
     CM = 'cm'
+    cm = MemberAlias('CM')
     MM = 'mm'
+    mm = MemberAlias('MM')
     PT = 'pt'
+    pt = MemberAlias('PT')
 
 
 class Bounds(AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 
 class Scope(StrEnum):
@@ -14,7 +14,9 @@ class Scope(StrEnum):
     What the limit applies to
     """
     ACCOUNT = 'account'
+    account = MemberAlias('ACCOUNT')
     TOOL = 'tool'
+    tool = MemberAlias('TOOL')
     GLOBAL = 'global'
 
 

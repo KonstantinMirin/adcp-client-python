@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
 
@@ -60,7 +60,9 @@ class Code(StrEnum):
     Closed warning vocabulary for the negotiated AdCP release. A non-blocking condition observed while an operation still succeeded. New values are added through normal protocol releases; buyers validate against the negotiated release.
     """
     INVENTORY_SHORTFALL_FORECAST = 'inventory_shortfall_forecast'
+    inventory_shortfall_forecast = MemberAlias('INVENTORY_SHORTFALL_FORECAST')
     FLIGHT_CHANGE_CREATES_PACING_RISK = 'flight_change_creates_pacing_risk'
+    flight_change_creates_pacing_risk = MemberAlias('FLIGHT_CHANGE_CREATES_PACING_RISK')
 
 
 class WarningsItem(Warning):

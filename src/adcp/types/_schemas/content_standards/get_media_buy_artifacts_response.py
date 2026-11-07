@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
@@ -52,7 +52,9 @@ class LocalVerdict(StrEnum):
     """
     PASS = 'pass'
     FAIL = 'fail'
+    fail = MemberAlias('FAIL')
     UNEVALUATED = 'unevaluated'
+    unevaluated = MemberAlias('UNEVALUATED')
 
 
 class ArtifactsItem(AdCPBaseModel):

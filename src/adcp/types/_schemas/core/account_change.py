@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeChangedPathsItem,
@@ -37,10 +37,15 @@ class Resource(AdCPBaseModel):
 
 class Kind(StrEnum):
     ADCP = 'adcp'
+    adcp = MemberAlias('ADCP')
     SELLER_OPERATOR = 'seller_operator'
+    seller_operator = MemberAlias('SELLER_OPERATOR')
     SELLER_SYSTEM = 'seller_system'
+    seller_system = MemberAlias('SELLER_SYSTEM')
     CONNECTED_PLATFORM = 'connected_platform'
+    connected_platform = MemberAlias('CONNECTED_PLATFORM')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class Origin(AdCPBaseModel):
@@ -60,23 +65,38 @@ class Task(StrEnum):
     Allowlisted authoritative read task. This is a repair hint, never an instruction to dispatch dynamically. The buyer constructs and validates the request locally from the authenticated feed account and resource identity.
     """
     LIST_ACCOUNTS = 'list_accounts'
+    list_accounts = MemberAlias('LIST_ACCOUNTS')
     GET_MEDIA_BUYS = 'get_media_buys'
+    get_media_buys = MemberAlias('GET_MEDIA_BUYS')
     GET_MEDIA_BUY_DELIVERY = 'get_media_buy_delivery'
+    get_media_buy_delivery = MemberAlias('GET_MEDIA_BUY_DELIVERY')
     LIST_CREATIVES = 'list_creatives'
+    list_creatives = MemberAlias('LIST_CREATIVES')
     SYNC_AUDIENCES = 'sync_audiences'
+    sync_audiences = MemberAlias('SYNC_AUDIENCES')
     SYNC_EVENT_SOURCES = 'sync_event_sources'
+    sync_event_sources = MemberAlias('SYNC_EVENT_SOURCES')
     SYNC_CATALOGS = 'sync_catalogs'
+    sync_catalogs = MemberAlias('SYNC_CATALOGS')
     GET_ACCOUNT_FINANCIALS = 'get_account_financials'
+    get_account_financials = MemberAlias('GET_ACCOUNT_FINANCIALS')
     LIST_PRODUCTS = 'list_products'
+    list_products = MemberAlias('LIST_PRODUCTS')
     GET_SIGNALS = 'get_signals'
+    get_signals = MemberAlias('GET_SIGNALS')
 
 
 class UnavailableReason(StrEnum):
     DELETED = 'deleted'
+    deleted = MemberAlias('DELETED')
     PURGED = 'purged'
+    purged = MemberAlias('PURGED')
     LEGAL_ERASURE = 'legal_erasure'
+    legal_erasure = MemberAlias('LEGAL_ERASURE')
     ACCESS_REVOKED = 'access_revoked'
+    access_revoked = MemberAlias('ACCESS_REVOKED')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class Repair(AdCPBaseModel):
@@ -94,10 +114,15 @@ class Repair(AdCPBaseModel):
 
 class ActorType(StrEnum):
     PRINCIPAL = 'principal'
+    principal = MemberAlias('PRINCIPAL')
     OPERATOR = 'operator'
+    operator = MemberAlias('OPERATOR')
     SYSTEM = 'system'
+    system = MemberAlias('SYSTEM')
     PLATFORM = 'platform'
+    platform = MemberAlias('PLATFORM')
     UNKNOWN = 'unknown'
+    unknown = MemberAlias('UNKNOWN')
 
 
 class Actor(AdCPBaseModel):

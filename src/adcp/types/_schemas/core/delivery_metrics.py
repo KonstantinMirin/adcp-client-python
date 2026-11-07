@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule
 from adcp.types.constraints import FloatGt0, FloatMin0Max1, MeasurementSource, OohMetricsIlluminatedHours
 
@@ -38,8 +38,11 @@ class Kind(StrEnum):
     Window semantics. `cumulative` — uniques since campaign start; the value is the total unique count to date and MUST NOT be summed across rows (each later row supersedes the earlier value). `period` — uniques within a single non-overlapping reporting period (e.g., a daily snapshot for a specific calendar day). Adjacent `period` rows do not share audiences by construction, but the same person MAY appear across multiple periods, so MUST NOT be summed across rows to compute campaign reach. `rolling` — uniques within a trailing window ending at the row's reporting timestamp (e.g., trailing-7-day reach). Adjacent rolling rows overlap and MUST NOT be summed; each row's value stands alone.
     """
     CUMULATIVE = 'cumulative'
+    cumulative = MemberAlias('CUMULATIVE')
     PERIOD = 'period'
+    period = MemberAlias('PERIOD')
     ROLLING = 'rolling'
+    rolling = MemberAlias('ROLLING')
 
 
 class Period(Duration):
@@ -123,9 +126,13 @@ class IdType(StrEnum):
     Identifier scheme: geopath (US Geopath Spot ID), route_frame (UK Route frame ID), plant_face (the operator's own panel number — the identifier both sides of a direct contract know), other (markets without a listed scheme). New schemes ship as enum additions in minors.
     """
     GEOPATH = 'geopath'
+    geopath = MemberAlias('GEOPATH')
     ROUTE_FRAME = 'route_frame'
+    route_frame = MemberAlias('ROUTE_FRAME')
     PLANT_FACE = 'plant_face'
+    plant_face = MemberAlias('PLANT_FACE')
     OTHER = 'other'
+    other = MemberAlias('OTHER')
 
 
 class IdentifiersItem(AdCPBaseModel):
@@ -151,7 +158,9 @@ class EstimationBasis(StrEnum):
     Methodology tier of estimated_impressions: currency_measured (an audience measurement currency's estimate for the panel and period — Geopath, Route, MOVE, COMMB — with the provider named in the row-level measurement_source) or seller_modeled (the seller's own model — the honest fallback for markets without a measurement currency). Tier, not provider: currencies change over time, so provider identity is data on measurement_source, not values in this enum.
     """
     CURRENCY_MEASURED = 'currency_measured'
+    currency_measured = MemberAlias('CURRENCY_MEASURED')
     SELLER_MODELED = 'seller_modeled'
+    seller_modeled = MemberAlias('SELLER_MODELED')
 
 
 class PostingsItemEventType(StrEnum):
@@ -159,9 +168,13 @@ class PostingsItemEventType(StrEnum):
     What the record attests: initial posting, rotary rotation to a new face, repair/reposting after damage, or removal at flight end
     """
     POSTED = 'posted'
+    posted = MemberAlias('POSTED')
     ROTATED = 'rotated'
+    rotated = MemberAlias('ROTATED')
     REPAIRED = 'repaired'
+    repaired = MemberAlias('REPAIRED')
     REMOVED = 'removed'
+    removed = MemberAlias('REMOVED')
 
 
 class PostingsItem(AdCPBaseModel):

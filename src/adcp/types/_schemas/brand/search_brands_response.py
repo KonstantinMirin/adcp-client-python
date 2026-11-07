@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import DictMinProperties1, HttpUrl
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -45,11 +45,17 @@ class RelationshipTrust(StrEnum):
     Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution.
     """
     INLINE = 'inline'
+    inline = MemberAlias('INLINE')
     MUTUAL = 'mutual'
+    mutual = MemberAlias('MUTUAL')
     LEAF_ONLY = 'leaf_only'
+    leaf_only = MemberAlias('LEAF_ONLY')
     HOUSE_ONLY = 'house_only'
+    house_only = MemberAlias('HOUSE_ONLY')
     STANDALONE = 'standalone'
+    standalone = MemberAlias('STANDALONE')
     UNVERIFIABLE = 'unverifiable'
+    unverifiable = MemberAlias('UNVERIFIABLE')
 
 
 class LogosItem(AdCPBaseModel):

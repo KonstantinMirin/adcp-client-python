@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/makegood-remedy.json', pointer='#')
 
@@ -15,12 +15,17 @@ class MakegoodRemedy(StrEnum):
     """Seller extends or adds impressions to compensate for the shortfall. Delivery is like-for-like on the same campaign or a subsequent campaign within the same account."""
 
 
+    additional_delivery = MemberAlias('ADDITIONAL_DELIVERY')
     CREDIT = 'credit'
     """Seller issues a credit toward future media buys on the same account."""
 
 
+    credit = MemberAlias('CREDIT')
     INVOICE_ADJUSTMENT = 'invoice_adjustment'
     """Seller reduces the invoice for the current media buy to reflect actual delivered value."""
+
+
+    invoice_adjustment = MemberAlias('INVOICE_ADJUSTMENT')
 
 
 strict_validate = strict_alias(__adcp_schema__, "MakegoodRemedy", MakegoodRemedy)

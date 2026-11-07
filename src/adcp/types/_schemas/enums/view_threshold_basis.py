@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/view-threshold-basis.json', pointer='#')
 
@@ -12,7 +12,9 @@ class ViewThresholdBasis(StrEnum):
     Basis governing when the clock runs for a time-threshold view count. 'play_time' counts continuous playback time as measured by the serving platform's own play definition, with no independent viewability qualification (the platform-counted model behind short-form feed 2-second and 6-second video views; individual platforms may fold additional conditions into their play definition). 'in_view' counts continuous in-view time under an independent viewability standard (the IAB/MRC viewable-video model: 50% of pixels for 2 continuous seconds). Counts under different bases are not comparable and MUST NOT be summed. Extensible: additional bases (e.g., an audible-playback basis for audio verified-listen thresholds) ship explicitly in future minors.
     """
     PLAY_TIME = 'play_time'
+    play_time = MemberAlias('PLAY_TIME')
     IN_VIEW = 'in_view'
+    in_view = MemberAlias('IN_VIEW')
 
 
 strict_validate = strict_alias(__adcp_schema__, "ViewThresholdBasis", ViewThresholdBasis)

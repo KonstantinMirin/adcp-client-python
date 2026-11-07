@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/governance-decision.json', pointer='#')
 
@@ -15,12 +15,17 @@ class GovernanceDecision(StrEnum):
     """Proceed as planned — the action is governance-approved"""
 
 
+    approved = MemberAlias('APPROVED')
     DENIED = 'denied'
     """Do not proceed — the action is blocked by governance policy"""
 
 
+    denied = MemberAlias('DENIED')
     CONDITIONS = 'conditions'
     """Counterproposal only — apply the listed adjustments and re-call check_governance with consultation_context; this verdict does not authorize execution"""
+
+
+    conditions = MemberAlias('CONDITIONS')
 
 
 strict_validate = strict_alias(__adcp_schema__, "GovernanceDecision", GovernanceDecision)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -22,7 +22,9 @@ class MenuPlacement(StrEnum):
     Menu surface variant, mapping to OpenRTB Native `plcmttype` 1 (tile/feed) and 3 (headline banner). Valid only with `ctv_ad_experience: "menu"`.
     """
     TILE = 'tile'
+    tile = MemberAlias('TILE')
     HEADLINE_BANNER = 'headline_banner'
+    headline_banner = MemberAlias('HEADLINE_BANNER')
 
 
 class FocusBehavior(StrEnum):
@@ -30,8 +32,11 @@ class FocusBehavior(StrEnum):
     What happens when the viewer's remote focus lands on the unit. `autoplay_*` requires a `video` asset; playback method maps to AdCOM playbackmethod on OpenRTB bridges. Valid only with `ctv_ad_experience: "menu"`.
     """
     NONE = 'none'
+    none = MemberAlias('NONE')
     AUTOPLAY_MUTED = 'autoplay_muted'
+    autoplay_muted = MemberAlias('AUTOPLAY_MUTED')
     AUTOPLAY_SOUND = 'autoplay_sound'
+    autoplay_sound = MemberAlias('AUTOPLAY_SOUND')
 
 
 class MainImageSizesItem(AdCPBaseModel):
@@ -57,10 +62,15 @@ class IconSize(AdCPBaseModel):
 
 class ImageFormatsItem(StrEnum):
     JPG = 'jpg'
+    jpg = MemberAlias('JPG')
     JPEG = 'jpeg'
+    jpeg = MemberAlias('JPEG')
     PNG = 'png'
+    png = MemberAlias('PNG')
     GIF = 'gif'
+    gif = MemberAlias('GIF')
     WEBP = 'webp'
+    webp = MemberAlias('WEBP')
 
 
 class AssetSource(StrEnum):
@@ -68,10 +78,15 @@ class AssetSource(StrEnum):
     Where the rendered native assets come from. `publisher_host_recorded` is omitted (audio-specific and not meaningful for native). Other values mirror the shared production-source axis used on `image` / `video_hosted`. `buyer_uploaded` (default): buyer ships pre-rendered title/image/body. `seller_pre_rendered_from_brief`: buyer ships a brief, seller renders the native bundle. `agent_synthesized`: AI synthesis pipeline produces title + image + body from a brief; pair with `synthesis_nondeterministic: true` for generative pipelines that can't guarantee in-spec output. `publisher_owned_reference`: buyer ships an existing published post reference; the seller resolves the post into the native presentation after authorization/review.
     """
     BUYER_UPLOADED = 'buyer_uploaded'
+    buyer_uploaded = MemberAlias('BUYER_UPLOADED')
     SELLER_PRE_RENDERED_FROM_BRIEF = 'seller_pre_rendered_from_brief'
+    seller_pre_rendered_from_brief = MemberAlias('SELLER_PRE_RENDERED_FROM_BRIEF')
     SELLER_HUMAN_DESIGNED = 'seller_human_designed'
+    seller_human_designed = MemberAlias('SELLER_HUMAN_DESIGNED')
     AGENT_SYNTHESIZED = 'agent_synthesized'
+    agent_synthesized = MemberAlias('AGENT_SYNTHESIZED')
     PUBLISHER_OWNED_REFERENCE = 'publisher_owned_reference'
+    publisher_owned_reference = MemberAlias('PUBLISHER_OWNED_REFERENCE')
 
 
 class BuyerAssetAcceptance(StrEnum):
@@ -79,7 +94,9 @@ class BuyerAssetAcceptance(StrEnum):
     Whether the product accepts buyer-uploaded native assets. When `rejected`, the buyer cannot ship pre-rendered title/image/body — they must use `build_creative`, `sync_creatives` with brief inputs, or an accepted `published_post` reference so the seller produces or resolves the native bundle.
     """
     ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    accepted = MemberAlias('ACCEPTED')
     REJECTED = _VALUES_ACCEPTED_REJECTED[1]
+    rejected = MemberAlias('REJECTED')
 
 
 class CanonicalFormatNativeInFeed(CanonicalFormatBase):

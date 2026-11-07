@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/age-determination-basis.json', pointer='#')
 
@@ -15,12 +15,17 @@ class AgeDeterminationBasis(StrEnum):
     """The user's applicable age claim was established through an age-assurance or identity-verification method."""
 
 
+    verified = MemberAlias('VERIFIED')
     DECLARED = 'declared'
     """The user supplied an age, date of birth, or threshold affirmation without independent verification."""
 
 
+    declared = MemberAlias('DECLARED')
     INFERRED = 'inferred'
     """The user's age was predicted from behavior, attributes, or another model."""
+
+
+    inferred = MemberAlias('INFERRED')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AgeDeterminationBasis", AgeDeterminationBasis)

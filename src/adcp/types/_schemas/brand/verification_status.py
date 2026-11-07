@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='brand/verification-status.json', pointer='#')
 
@@ -15,36 +15,47 @@ class VerificationStatus(StrEnum):
     """Definitively belongs to this brand, currently."""
 
 
+    owned = MemberAlias('OWNED')
     PENDING_REVIEW = 'pending_review'
     """The brand is aware of this claim and has not yet decided. When returning this status, the agent MUST also return `expected_resolution_window_days` and MUST transition the claim to a terminal status (owned/disputed/not_ours) or flip to `unknown` once the window elapses. Consumers SHOULD NOT extend governance trust through pending claims."""
 
 
+    pending_review = MemberAlias('PENDING_REVIEW')
     TRANSFERRING = 'transferring'
     """Ownership is provably changing — M&A in flight, divestiture closing, or a known imminent transition. Distinct from `pending_review` (under-review-by-us); `transferring` signals 'the answer is known to be becoming something else.' Consumers SHOULD treat as `owned` for stability until the agent moves to the new state, but MAY surface the in-flight state in UIs."""
 
 
+    transferring = MemberAlias('TRANSFERRING')
     DISPUTED = 'disputed'
     """The brand actively rejects this claim. Consumers MUST treat the claim as invalid and SHOULD surface the dispute (e.g., 'X says this is not theirs')."""
 
 
+    disputed = MemberAlias('DISPUTED')
     NOT_OURS = 'not_ours'
     """The brand affirms it is not their property / subsidiary / mark. Equivalent to 'disputed' but used when the brand-agent has no record of an existing claim — a clean 'we do not own this.'"""
 
 
+    not_ours = MemberAlias('NOT_OURS')
     ARCHIVED = 'archived'
     """The brand once held this but no longer does — divested subsidiary, expired/transferred trademark, sold-off property. Distinct from `not_ours` (never owned). Consumers MUST NOT extend present-tense governance trust through archived records, but the historical-record signal is useful for fraud detection, fair-use analysis, and recent-divestiture awareness. `details.context_note` MAY carry disposition (e.g., 'divested to X in 2024')."""
 
 
+    archived = MemberAlias('ARCHIVED')
     LICENSED_IN = 'licensed_in'
     """The brand uses this asset under license from another entity. The response carries `licensor_domain` when this status is returned. Applies to trademarks and (rarely) properties."""
 
 
+    licensed_in = MemberAlias('LICENSED_IN')
     LICENSED_OUT = 'licensed_out'
     """The brand licenses this asset to another entity. Applies to trademarks; rare for properties or subsidiaries."""
 
 
+    licensed_out = MemberAlias('LICENSED_OUT')
     UNKNOWN = 'unknown'
     """The agent has no position. Caller MAY fall back to crawl-based mutual-assertion inference. Returned when the agent cannot classify the input (insufficient context, unrecognized identifier, out-of-scope query)."""
+
+
+    unknown = MemberAlias('UNKNOWN')
 
 
 strict_validate = strict_alias(__adcp_schema__, "VerificationStatus", VerificationStatus)

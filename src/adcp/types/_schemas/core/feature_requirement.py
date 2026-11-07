@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 
 
 class IfNotCovered(StrEnum):
@@ -14,7 +14,9 @@ class IfNotCovered(StrEnum):
     How to handle properties where this feature is not covered. 'exclude' (default): property is removed from the list. 'include': property passes this requirement (fail-open).
     """
     EXCLUDE = 'exclude'
+    exclude = MemberAlias('EXCLUDE')
     INCLUDE = 'include'
+    include = MemberAlias('INCLUDE')
 
 
 class FeatureRequirement(AdCPBaseModel):
