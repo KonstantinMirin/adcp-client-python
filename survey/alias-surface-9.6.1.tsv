@@ -1,6 +1,6 @@
 # The alias surface, upstream adcp 9.6.1 against adcp_emit 0.0.0 (installed wheel).
-# Population: deliberate -- 5299 names over 14737 spellings.
-# ABSENT=2289  ABSENT-SUBJECT-NO-WORD=1212  MEANING-DIFFERS=35  NOT-A-TYPE=685  PRESENT=79  RELOCATED=845  RENAMED=116  UNRESOLVABLE-UPSTREAM=38
+# Population: deliberate -- 5300 names over 14737 spellings.
+# ABSENT=2289  ABSENT-SUBJECT-NO-WORD=1212  MEANING-DIFFERS=35  NOT-A-TYPE=685  PRESENT=79  RELOCATED=845  RENAMED=117  UNRESOLVABLE-UPSTREAM=38  (RENAMED carries one hand-added row, PixelTrackerMethod -- see adcp-client-python-0r46)
 name	bucket	declared_at	ours	key	corroborated	why
 A2UiBoundValue	RENAMED	adcp.types.compat	adcp.types.a2ui.A2UIBoundValue	word-recased	none	ours is A2UIBoundValue
 A2UiBoundValue1	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
@@ -1439,6 +1439,7 @@ PhysicalChecksums	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bun
 PhysicalChecksums1	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 PixelTrackerAsset	RELOCATED	adcp.types.compat	adcp.types.core.PixelTrackerAsset	word	identity	upstream spells it at adcp, adcp.types, adcp.types.aliases
 PixelTrackerEvent	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
+PixelTrackerMethod	RENAMED	adcp.types.compat	adcp.types.core.PixelTrackerAssetMethod	node	identity	PROVISIONAL -- the bundle titles nothing at core/assets/pixel-tracker-asset.json#/properties/method; upstream's own aliases.py writes `Method as PixelTrackerMethod` from that node and declares the word in adcp.types.__all__, so the alias RECORDS their commitment (reading 10). Hand-added by sdk/inner; adcp-client-python-0r46 is the generator change that derives it
 PixelTrackingEvent	RELOCATED	adcp.types.compat	adcp.types.enums.PixelTrackingEvent	word	identity	upstream spells it at adcp.types.domains.core, adcp.types.domains.core.assets.asset_union, adcp.types.domains.enums
 PlaceSupport	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 Placement	MEANING-DIFFERS		adcp.types.core.Placement	word		we carry the word; the identities are not equal, so it is another subject
@@ -2234,7 +2235,7 @@ VendorPricingOption8	ABSENT-SUBJECT-NO-WORD					identity equal under a word the 
 VendorPricingOption9	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 VendorRelationship	RELOCATED	adcp.types.compat	adcp.types.enums.VendorRelationship	word	identity	upstream spells it at adcp.types.domains.enums, adcp.types.domains.enums.vendor_relationship
 VerificationStatus	RELOCATED	adcp.types.compat	adcp.types.brand.VerificationStatus	word	identity	upstream spells it at adcp.types.domains.brand, adcp.types.domains.brand.verification_status
-VerificationTokenGradingProfile	RELOCATED	adcp.types.compat	adcp.types.core.VerificationTokenGradingProfile	word	identity	upstream spells it at adcp.types.domains.core, adcp.types.domains.core.verification_token_claims
+VerificationTokenGradingProfile	RELOCATED	adcp.types.compat	adcp.types.core.RegistryEventAgentVerificationEarnedAgentPayloadGradingProfile	word	identity	upstream spells it at adcp.types.domains.core, adcp.types.domains.core.verification_token_claims
 VerifiedRole	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 VerifyBrandClaimErrorResponse	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 VerifyBrandClaimRequest	RELOCATED	adcp.types.compat	adcp.types.brand.VerifyBrandClaimRequest	word	document	upstream spells it at adcp, adcp.types, adcp.types.domains.brand

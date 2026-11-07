@@ -470,8 +470,17 @@ def _the_domains_exports(
         # record with no document and exports nothing, so it is absent from both sides.
         for document in round_of.emitted:
             held = this_round.setdefault(domain(document), {})
+            # **OVER THE WORDS THE SURFACE PUBLISHES AND NOT OVER THE PRIVATE SYMBOLS**
+            # (:attr:`Emitted.published`, reading 6's inner clause).  What §1 forbids two
+            # of is an ``adcp.types.<domain>.<Name>``, so the census ranges over the NAME
+            # the surface writes -- and for an inner export that is the clause's word and
+            # not the symbol the module declares.  Reading the symbols instead would put
+            # 1,342 private words such as ``Method`` and ``Kind`` into the domain's
+            # collision scope, lengthening sibling declarations against names no public
+            # module carries: the emitted tree would move for a question about the surface.
+            renamed = round_of.published.get(module_path(document), {})
             for symbol in round_of.surface.get(module_path(document), {}):
-                held.setdefault(symbol, set()).add(document)
+                held.setdefault(renamed.get(symbol, symbol), set()).add(document)
         shared = any(
             len(takers) > 1 for held in this_round.values() for takers in held.values()
         )
@@ -1028,6 +1037,19 @@ class Emitted:
     #: (``lower/names.py``'s ``the_surface_exports``), so the rule, the surface and the
     #: check read one record and cannot disagree about what is exported.
     surface: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: **MODULE** -> ``ir.Module.published``: for the symbols :attr:`surface` records under
+    #: reading 6's ``inner`` kind, the word the domain surface publishes each under
+    #: (``lower/names.THE_INNER_EXPORT``).  Keyed on the module for :attr:`surface`'s
+    #: reason and written beside it, so one record answers "which names does this module
+    #: put on the surface" and "under which word", and the two cannot name different sets.
+    #:
+    #: **A reader resolves ``published.get(symbol, symbol)``**: for a ROOT, a BRANCH and an
+    #: ALIAS the word is the symbol, and an entry restating that would be a second
+    #: statement of the identity case.  Both readers do exactly that --
+    #: :func:`domain_modules`, which writes ``<symbol> as <word>``, and
+    #: :func:`domain_exports`, whose census is over the names a domain PUBLISHES and so
+    #: must be over the words rather than over the symbols behind them.
+    published: dict[str, dict[str, str]] = field(default_factory=dict)
     #: **MODULE** -> ``ir.Module.binds``: §1's bindings in it, symbol -> the symbol it
     #: names.  Keyed on the module for :attr:`surface`'s reason and written beside it.
     #:
@@ -2778,6 +2800,7 @@ def emit(
             # walk, the naming pass, the record checks and the refusals, so pass one and
             # pass two range over one document set and agree about every name.
             out.surface[module_path(document)] = dict(bound.exports)
+            out.published[module_path(document)] = dict(bound.published)
             out.emitted[document] = module_name(document)
             continue
         out.files[f"{rel}.py"] = render.module(
@@ -2800,6 +2823,9 @@ def emit(
         # §1's export set, carried through from the naming pass unchanged: this is a
         # record and not a second derivation (:attr:`Emitted.surface`).
         out.surface[module_path(document)] = dict(bound.exports)
+        # Reading 6's inner WORDS beside it, same pass and same reason
+        # (:attr:`Emitted.published`).
+        out.published[module_path(document)] = dict(bound.published)
         # §1's bindings beside it, same pass and same reason, with the DECLARING MODULE
         # resolved: the pass knows the symbol a binding names and not where it lives, and
         # a reader counting declarations needs both or it keys a second path on the module
@@ -2918,7 +2944,7 @@ def emit(
     # export set holds** (:func:`domain_modules`).  Beside the tree rather than inside it
     # because ``_schemas`` is private (P8) and this is the one path a consumer reaches a
     # type at.
-    out.beside.update(domain_modules(out.surface))
+    out.beside.update(domain_modules(out.surface, out.published))
     # **The envelope bases, over the BUNDLE and not over the run** -- which is the one
     # way this artifact differs from the alias module beside it.  ``constraints.py``
     # holds the shapes a run resolved, so it is a function of the run's document set;
@@ -3011,7 +3037,10 @@ def vocabularies_modules(l0: catalogue.Catalogue) -> dict[str, tuple[ir.ValuesDe
     }
 
 
-def domain_modules(surface: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
+def domain_modules(
+    surface: Mapping[str, Mapping[str, str]],
+    published: Mapping[str, Mapping[str, str]] = {},
+) -> dict[str, str]:
     """§1's DOMAIN SURFACE: ``<domain>.py`` per domain plus ``__init__.py``, as text.
 
     §1: "a document compiles to a module at its own path under a private tree ... **and is
@@ -3047,11 +3076,24 @@ def domain_modules(surface: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
     flat ``from adcp.types import PaginationRequest`` would be the second spelling §1
     forbids -- the import is meant to tell a reader which document a class came from.
 
+    **AND READING 6's INNER CLAUSE IS A WORD AND NOT A SECOND PATH** (2026-11-07,
+    ``lower/names.THE_INNER_EXPORT``).  ``published`` is the run's record of the word an
+    inner export is published under, and the statement written for one is
+    ``from ._schemas.<module> import <symbol> as <word>``: the private symbol is what §4
+    decided the module declares, the word is what the clause decides a DOMAIN publishes,
+    and the object is the one the module built.  So the class gains exactly one domain path
+    and keeps the one private path it always had -- which is what §1's two layers are for,
+    "so that a generated class can change without disturbing what an application imports".
+
+    A renaming re-export is an export to a type checker because ``__all__`` carries the
+    word (PEP 484's other arm); the ``X as X`` convention cannot be used here, since the
+    two halves are two different names by construction.
+
     Keyed relative to the package directory, like D5's alias module, so no caller of
     :func:`write` can be handed a path that escapes the directory it passed -- and written
     only on a run that passes ``package``, which is the scope both artifacts need.
     """
-    held: dict[str, dict[str, str]] = {}
+    held: dict[str, dict[str, tuple[str, str]]] = {}
     for module, exported in surface.items():
         if not exported:
             # **A module that exports NOTHING contributes no domain**, which is the one
@@ -3063,13 +3105,16 @@ def domain_modules(surface: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
             # case where the two readings differ.
             continue
         into = held.setdefault(module_domain(module), {})
+        renamed = published.get(module, {})
         for symbol in exported:
-            into[symbol] = module.replace("/", ".")
+            # Keyed on the WORD, which is the thing §1 forbids two of and the thing
+            # ``__all__`` carries; the symbol rides along because the IMPORT needs it.
+            into[renamed.get(symbol, symbol)] = (module.replace("/", "."), symbol)
     out: dict[str, str] = {}
     for known in sorted(held):
-        by_module: dict[str, list[str]] = {}
-        for symbol, module in sorted(held[known].items()):
-            by_module.setdefault(module, []).append(symbol)
+        by_module: dict[str, list[tuple[str, str]]] = {}
+        for word, (module, symbol) in sorted(held[known].items()):
+            by_module.setdefault(module, []).append((symbol, word))
         out[f"{known}.py"] = render.domain_module(known, by_module)
     return out
 

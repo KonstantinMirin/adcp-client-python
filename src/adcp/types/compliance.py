@@ -13,23 +13,55 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
+from ._schemas.compliance.comply_test_controller_request import AdvanceTo as ComplyTestControllerRequestParamsAdvanceTo
+from ._schemas.compliance.comply_test_controller_request import Arm as ComplyTestControllerRequestParamsArm
 from ._schemas.compliance.comply_test_controller_request import (
     ComplyTestControllerRequest as ComplyTestControllerRequest,
 )
 from ._schemas.compliance.comply_test_controller_request import (
+    ComplyTestControllerRequestAccount as ComplyTestControllerRequestAccount,
+)
+from ._schemas.compliance.comply_test_controller_request import (
+    MetricsItem as ComplyTestControllerRequestParamsMetricsItem,
+)
+from ._schemas.compliance.comply_test_controller_request import (
     NotYetMeasurableVendorMetricsByPackageValueItem as NotYetMeasurableVendorMetricsByPackageValueItem,
+)
+from ._schemas.compliance.comply_test_controller_request import Operation as ComplyTestControllerRequestParamsOperation
+from ._schemas.compliance.comply_test_controller_request import Params as ComplyTestControllerRequestParams
+from ._schemas.compliance.comply_test_controller_request import (
+    ParamsDoohMetrics as ComplyTestControllerRequestParamsDoohMetrics,
+)
+from ._schemas.compliance.comply_test_controller_request import (
+    ParamsViewability as ComplyTestControllerRequestParamsViewability,
+)
+from ._schemas.compliance.comply_test_controller_request import PurgeKind as ComplyTestControllerRequestParamsPurgeKind
+from ._schemas.compliance.comply_test_controller_response import (
+    AttestationMode as UpstreamTrafficSuccessRecordedCallsItemAttestationMode,
 )
 from ._schemas.compliance.comply_test_controller_response import (
     ComplyTestControllerResponse as ComplyTestControllerResponse,
 )
 from ._schemas.compliance.comply_test_controller_response import ControllerError as ControllerError
+from ._schemas.compliance.comply_test_controller_response import ControllerErrorError as ControllerErrorError
 from ._schemas.compliance.comply_test_controller_response import DigestAttestation as DigestAttestation
+from ._schemas.compliance.comply_test_controller_response import Forced as ForcedDirectiveSuccessForced
 from ._schemas.compliance.comply_test_controller_response import ForcedDirectiveSuccess as ForcedDirectiveSuccess
+from ._schemas.compliance.comply_test_controller_response import (
+    IdentifierMatchProofsItem as UpstreamTrafficSuccessRecordedCallsItemIdentifierMatchProofsItem,
+)
 from ._schemas.compliance.comply_test_controller_response import ListScenariosSuccess as ListScenariosSuccess
+from ._schemas.compliance.comply_test_controller_response import Method as UpstreamTrafficSuccessRecordedCallsItemMethod
 from ._schemas.compliance.comply_test_controller_response import (
     ProvenanceAuditObservationsSuccess as ProvenanceAuditObservationsSuccess,
 )
+from ._schemas.compliance.comply_test_controller_response import (
+    Purpose as UpstreamTrafficSuccessRecordedCallsItemPurpose,
+)
 from ._schemas.compliance.comply_test_controller_response import RawAttestation as RawAttestation
+from ._schemas.compliance.comply_test_controller_response import (
+    RecordedCallsItem as UpstreamTrafficSuccessRecordedCallsItem,
+)
 from ._schemas.compliance.comply_test_controller_response import SeedSuccess as SeedSuccess
 from ._schemas.compliance.comply_test_controller_response import SimulationSuccess as SimulationSuccess
 from ._schemas.compliance.comply_test_controller_response import StateTransitionSuccess as StateTransitionSuccess
@@ -46,11 +78,22 @@ from ._schemas.compliance.task_completion_data import GetSignalsCompletion as Ge
 __all__ = [
     'ComplianceTaskCompletionData',
     'ComplyTestControllerRequest',
+    'ComplyTestControllerRequestAccount',
+    'ComplyTestControllerRequestParams',
+    'ComplyTestControllerRequestParamsAdvanceTo',
+    'ComplyTestControllerRequestParamsArm',
+    'ComplyTestControllerRequestParamsDoohMetrics',
+    'ComplyTestControllerRequestParamsMetricsItem',
+    'ComplyTestControllerRequestParamsOperation',
+    'ComplyTestControllerRequestParamsPurgeKind',
+    'ComplyTestControllerRequestParamsViewability',
     'ComplyTestControllerResponse',
     'ControllerError',
+    'ControllerErrorError',
     'CreateMediaBuyCompletion',
     'DigestAttestation',
     'ForcedDirectiveSuccess',
+    'ForcedDirectiveSuccessForced',
     'GetCreativeFeaturesCompletion',
     'GetCreativeFeaturesComplianceCompletion',
     'GetProductsCompletion',
@@ -63,4 +106,9 @@ __all__ = [
     'SimulationSuccess',
     'StateTransitionSuccess',
     'UpstreamTrafficSuccess',
+    'UpstreamTrafficSuccessRecordedCallsItem',
+    'UpstreamTrafficSuccessRecordedCallsItemAttestationMode',
+    'UpstreamTrafficSuccessRecordedCallsItemIdentifierMatchProofsItem',
+    'UpstreamTrafficSuccessRecordedCallsItemMethod',
+    'UpstreamTrafficSuccessRecordedCallsItemPurpose',
 ]

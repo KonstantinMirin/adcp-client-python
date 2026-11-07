@@ -21,9 +21,11 @@ from ._schemas.a2ui.bound_value import A2UIBoundValueLiteralStringPath as A2UIBo
 from ._schemas.a2ui.bound_value import A2UIBoundValuePath as A2UIBoundValuePath
 from ._schemas.a2ui.component import A2UIComponent as A2UIComponent
 from ._schemas.a2ui.component import ComponentValue as ComponentValue
+from ._schemas.a2ui.si_catalog import ComponentsItem as SIComponentCatalogComponentsItem
 from ._schemas.a2ui.si_catalog import SIComponentCatalog as SIComponentCatalog
 from ._schemas.a2ui.surface import A2UISurface as A2UISurface
 from ._schemas.a2ui.user_action import A2UIUserAction as A2UIUserAction
+from ._schemas.a2ui.user_action import Action as A2UIUserActionAction
 
 __all__ = [
     'A2UIBoundValue',
@@ -35,6 +37,8 @@ __all__ = [
     'A2UIComponent',
     'A2UISurface',
     'A2UIUserAction',
+    'A2UIUserActionAction',
     'ComponentValue',
     'SIComponentCatalog',
+    'SIComponentCatalogComponentsItem',
 ]

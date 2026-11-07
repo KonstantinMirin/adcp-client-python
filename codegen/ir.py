@@ -780,6 +780,27 @@ class Module:
     #: export is relocated onto the declaring position, because "a position that references
     #: a class does not name it".  :attr:`binds` is the record that reading is made on.
     exports: Mapping[str, str] = field(default_factory=dict)
+    #: **READING 6's INNER WORD**: for a symbol :attr:`exports` records under the ``inner``
+    #: kind, the name the DOMAIN SURFACE publishes it under -- which is not the symbol.
+    #:
+    #: Reading 6 (2026-11-07): "an untitled inner node is exported under its parent's name
+    #: and its key, ALWAYS -- never only when the key collides ... such a name is not
+    #: stable under the bundle's own growth".  ``lower/names.THE_INNER_EXPORT`` carries the
+    #: clause and the measurement that fixes the reading; what is here is the ANSWER, one
+    #: entry per inner export, so the surface writes ``<symbol> as <word>`` from a record
+    #: and derives no name of its own.
+    #:
+    #: **The PRIVATE symbol is untouched and that is the point of a separate field.**  §4
+    #: decides what a module declares a class as and the clause decides what a DOMAIN
+    #: publishes it as; folding the word back onto the declaration would rename 1,342
+    #: classes of the private tree to answer a question about the public one, and §1's
+    #: whole reason for the two layers is "so that a generated class can change without
+    #: disturbing what an application imports".
+    #:
+    #: Empty for the other three kinds, where the surface's word IS the symbol.  So a
+    #: reader resolves ``published.get(symbol, symbol)`` and there is no second statement
+    #: of the identity case to fall out of step.
+    published: Mapping[str, str] = field(default_factory=dict)
     #: **§1's BINDINGS**: every symbol this module binds to a declaration made somewhere
     #: else -> the symbol it names.  ``X = Y`` and nothing more: §4's identity binding at
     #: the second position of one node, and the cross-document ``$ref`` at a named node.

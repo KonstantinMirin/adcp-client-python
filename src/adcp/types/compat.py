@@ -406,6 +406,7 @@ from adcp.types.core import PerformanceFeedbackAssertion as PerformanceFeedbackA
 from adcp.types.core import PerformanceFeedbackMetric as PerformanceFeedbackMetric
 from adcp.types.core import PerformanceStandard as PerformanceStandard
 from adcp.types.core import PixelTrackerAsset as PixelTrackerAsset
+from adcp.types.core import PixelTrackerAssetMethod as PixelTrackerMethod
 from adcp.types.core import PlacementDefinition as PlacementDefinition
 from adcp.types.core import PlacementDeliveryMetrics as PlacementDeliveryMetrics
 from adcp.types.core import PlacementEvidence as PlacementEvidence
@@ -458,6 +459,7 @@ from adcp.types.core import PushNotificationConfig as PushNotificationConfig
 from adcp.types.core import RealEstateItem as RealEstateItem
 from adcp.types.core import ReferenceRenderer as ReferenceRenderer
 from adcp.types.core import RegistryEvent as RegistryEvent
+from adcp.types.core import RegistryEventAgentVerificationEarnedAgentPayloadGradingProfile as VerificationTokenGradingProfile
 from adcp.types.core import RegistryFeedResponse as RegistryFeedResponse
 from adcp.types.core import ReportingAdjustment as ReportingAdjustment
 from adcp.types.core import ReportingAdjustmentReceipt as ReportingAdjustmentReceipt
@@ -559,7 +561,6 @@ from adcp.types.core import VendorMetricOptimizationSupportedMetric as VendorMet
 from adcp.types.core import VendorMetricValue as VendorMetricValue
 from adcp.types.core import VendorPricing as VendorPricing
 from adcp.types.core import VendorPricingOption as VendorPricingOption
-from adcp.types.core import VerificationTokenGradingProfile as VerificationTokenGradingProfile
 from adcp.types.core import VideoAssetRequirements as VideoAssetRequirements
 from adcp.types.core import Warning as Warning
 from adcp.types.core import WarningAffectedResource as WarningAffectedResource
@@ -1610,6 +1611,7 @@ __all__ = [
     "PerformanceStandard",
     "PerformanceStandardMetric",
     "PixelTrackerAsset",
+    "PixelTrackerMethod",
     "PixelTrackingEvent",
     "PlacementDefinition",
     "PlacementDeliveryMetrics",
@@ -2062,4 +2064,41 @@ __adcp_flat_only__ = {
     "UpdateMediaBuyResponse": "adcp.types.media_buy",
     "VendorErrorCodeRegistry": "adcp.types.error_details",
     "VersionUnsupportedDetails": "adcp.types.error_details",
+}
+
+#: **THE PROVISIONAL WORDS: an alias that RECORDS upstream's spelling of a node the bundle
+#: gives no title, mapped to that node by POINTER.**
+#:
+#: `docs/plan/final-state.md` reading 10: "**NO ALIAS POINTS AT A NAME THIS COMPILER MINTED
+#: FROM STRUCTURE** ... such a name is *pending* an upstream title.  Publishing an alias onto
+#: it makes a placeholder permanent and public" -- **"UNLESS THE ALIAS IS UPSTREAM'S OWN
+#: PUBLISHED WORD, DECLARED DEPRECATED AND PENDING.  Where upstream's wheel already ships
+#: that spelling, the commitment exists and is theirs; an alias RECORDS it rather than
+#: minting it ... So the alias is admissible and the migration entry must say the word is
+#: PROVISIONAL -- naming the untitled node by pointer and the upstream ask that would title
+#: it."**
+#:
+#: So every entry here is HALF A PAIR and is not admissible on its own.  The other half is
+#: §9 of `docs/migration-from-upstream.md`, which must name the word, this pointer and the
+#: ask; `tests/test_the_alias_layer_is_names.py` grades the PAIR and reddens on an alias
+#: whose entry is missing.  "A deprecated alias is the one kind of public name an application
+#: can be told to stop depending on, which is exactly what a placeholder needs and what a
+#: surface name cannot offer" -- and a mapping to the node is what lets a caller, a guide and
+#: a check all name the same subject.
+#:
+#: The VALUE is the node, not the word of ours it resolves to: the word of ours is reading
+#: 6's and moves if that reading's clause is amended, while the pointer is the document's and
+#: is the thing the upstream ask is about.  `__all__` above carries the word, so the alias is
+#: a public name exactly like every other row of this module.
+#:
+#: **`survey/alias_surface.py` DOES NOT WRITE THIS MAPPING YET, AND A REGENERATION WOULD DROP
+#: IT** (`adcp-client-python-ia3x`'s follow-up).  The generator derives its rows from the two
+#: dumps and neither carries reading 6's export KIND, so it cannot yet tell a word that
+#: records a provisional spelling from one that records a titled subject.  Until it can, this
+#: mapping and the import statement above are the one hand-written part of a generated module,
+#: and a lane re-running phase 3 must carry them across.  The bead names the exact change: the
+#: `--dump-ours` view records `emit.published`, and a row whose target is an `inner` export
+#: becomes a `PROVISIONAL` bucket with the node as its key.
+__adcp_provisional__ = {
+    "PixelTrackerMethod": "core/assets/pixel-tracker-asset.json#/properties/method",
 }

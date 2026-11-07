@@ -681,6 +681,62 @@ reddens if a fifth reason is added to the compiler and not to this document.
 
 ---
 
+## §9. Provisional words — an alias that RECORDS upstream's spelling of an untitled node
+
+**Every name in this section is PROVISIONAL and an application should expect to stop using
+it.** It is a word upstream's wheel publishes for a node the AdCP bundle gives *no title*,
+and the only reason it is bound here at all is that upstream already shipped the commitment.
+
+`docs/plan/final-state.md` reading 10 states both halves:
+
+> **NO ALIAS POINTS AT A NAME THIS COMPILER MINTED FROM STRUCTURE.** … such a name is
+> *pending* an upstream title. Publishing an alias onto it makes a placeholder permanent and
+> public …
+>
+> **UNLESS THE ALIAS IS UPSTREAM'S OWN PUBLISHED WORD, DECLARED DEPRECATED AND PENDING.**
+> Where upstream's wheel already ships that spelling, the commitment exists and is theirs;
+> an alias **records** it rather than minting it … So the alias is admissible **and the
+> migration entry must say the word is PROVISIONAL** — naming the untitled node by pointer
+> and the upstream ask that would title it.
+
+**AND THE EXPORT CAME FIRST, which is reading 6's clause of 2026-11-07.** Until that clause
+landed the class behind each of these words was declared privately and reachable at no public
+path at all, so the alias had nothing to bind: "an EXPORT or a NAME, never a split. The alias
+layer cannot reach a private name." Reading 6 now exports **an untitled inner node under its
+parent's name and its key, always** — read transitively, the node's whole chain through the
+document — so each word below has a surface name of ours to record itself onto. **That word
+of ours is itself pending the same upstream title**; it is derived from the document's own
+path and is stable under the bundle's growth, which is the property a placeholder needs, but
+it is not a name the protocol chose.
+
+| upstream's word | the untitled node | our surface name | the ask that would retire both |
+|---|---|---|---|
+| `PixelTrackerMethod` | `core/assets/pixel-tracker-asset.json#/properties/method` | `adcp.types.core.PixelTrackerAssetMethod` | give the enumeration at that pointer a `title` — upstream's own generator derives `PixelTrackerMethod` from the parent and the key exactly as this package does, so neither side is choosing the word and only the bundle can settle it |
+
+```python
+from adcp.types import PixelTrackerMethod          # upstream's word — PROVISIONAL
+from adcp.types.core import PixelTrackerAssetMethod  # ours — also pending the title
+
+PixelTrackerMethod is PixelTrackerAssetMethod       # True: one object, two names
+```
+
+**THE PAIR IS THE UNIT AND NEITHER HALF IS ADMISSIBLE ALONE.** The alias is declared in
+`src/adcp/types/compat.py`'s `__adcp_provisional__`, which maps each word to the pointer
+above, and `tests/test_the_alias_layer_is_names.py::test_every_provisional_alias_is_paired_with_its_migration_entry`
+requires every entry of that mapping to appear here with its pointer and the word
+`PROVISIONAL`. An alias added without an entry is a red run, not an undocumented name.
+
+**WHAT IS NOT HERE YET, measured.** Reading 6's clause puts **1,343 inner words** on the
+domain surface, and the set of upstream spellings that are now recordable against one of
+them is larger than this table: **58 names** of the drop-in census (`survey/dropin_blocking.py`
+on `dropin/9.6-b`) and at least **26** of upstream's flat `adcp.types.__all__` have a class
+of ours at the right node and a word of ours that differs from upstream's. Deciding each of
+those is the alias layer's own re-derivation — `survey/alias_surface.py`, whose committed
+table was built when those rows were invisible to its join — and it is tracked rather than
+guessed at here.
+
+---
+
 ## Re-deriving this document, and the gate that keeps it true
 
 Two interpreters, because the two trees cannot be imported into one — the table at the top

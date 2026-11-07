@@ -15,9 +15,13 @@ from __future__ import annotations
 
 from ._schemas.collection.base_collection_source import BaseCollectionSource as BaseCollectionSource
 from ._schemas.collection.base_collection_source import DistributionIDsSource as DistributionIDsSource
+from ._schemas.collection.base_collection_source import IdentifiersItem as DistributionIDsSourceIdentifiersItem
 from ._schemas.collection.base_collection_source import PublisherCollectionsSource as PublisherCollectionsSource
 from ._schemas.collection.base_collection_source import PublisherGenresSource as PublisherGenresSource
 from ._schemas.collection.collection_list import CollectionList as CollectionList
+from ._schemas.collection.collection_list_changed_webhook import (
+    ChangeSummary as CollectionListChangedWebhookChangeSummary,
+)
 from ._schemas.collection.collection_list_changed_webhook import (
     CollectionListChangedWebhook as CollectionListChangedWebhook,
 )
@@ -35,6 +39,10 @@ from ._schemas.collection.delete_collection_list_response import (
     DeleteCollectionListResponse as DeleteCollectionListResponse,
 )
 from ._schemas.collection.get_collection_list_request import GetCollectionListRequest as GetCollectionListRequest
+from ._schemas.collection.get_collection_list_request import ObjMaxResultsCursor as GetCollectionListRequestPagination
+from ._schemas.collection.get_collection_list_response import (
+    CollectionsItem as GetCollectionListResponseCollectionsItem,
+)
 from ._schemas.collection.get_collection_list_response import GetCollectionListResponse as GetCollectionListResponse
 from ._schemas.collection.list_collection_lists_request import ListCollectionListsRequest as ListCollectionListsRequest
 from ._schemas.collection.list_collection_lists_response import (
@@ -51,14 +59,18 @@ __all__ = [
     'BaseCollectionSource',
     'CollectionList',
     'CollectionListChangedWebhook',
+    'CollectionListChangedWebhookChangeSummary',
     'CollectionListFilters',
     'CreateCollectionListRequest',
     'CreateCollectionListResponse',
     'DeleteCollectionListRequest',
     'DeleteCollectionListResponse',
     'DistributionIDsSource',
+    'DistributionIDsSourceIdentifiersItem',
     'GetCollectionListRequest',
+    'GetCollectionListRequestPagination',
     'GetCollectionListResponse',
+    'GetCollectionListResponseCollectionsItem',
     'ListCollectionListsRequest',
     'ListCollectionListsResponse',
     'PublisherCollectionsSource',

@@ -14,19 +14,48 @@ document added upstream appears here with nothing edited.
 from __future__ import annotations
 
 from ._schemas.trusted_match.available_package import AvailablePackage as AvailablePackage
+from ._schemas.trusted_match.context_match_request import ArtifactRefsItem as ContextMatchRequestArtifactRefsItem
+from ._schemas.trusted_match.context_match_request import (
+    ArtifactRefsItemType as ContextMatchRequestArtifactRefsItemType,
+)
 from ._schemas.trusted_match.context_match_request import ContextMatchRequest as ContextMatchRequest
+from ._schemas.trusted_match.context_match_request import ContextSignals as ContextMatchRequestContextSignals
+from ._schemas.trusted_match.context_match_request import Geo as ContextMatchRequestGeo
+from ._schemas.trusted_match.context_match_request import Metro as ContextMatchRequestGeoMetro
+from ._schemas.trusted_match.context_match_request import Sentiment as ContextMatchRequestContextSignalsSentiment
 from ._schemas.trusted_match.context_match_response import (
     ContextMatchResponseRouterPublisher as ContextMatchResponseRouterPublisher,
 )
 from ._schemas.trusted_match.context_match_response import (
     ContextMatchResponseRouterPublisherTargetingKvs as ContextMatchResponseRouterPublisherTargetingKvs,
 )
+from ._schemas.trusted_match.context_match_response import (
+    ObjKeyValue as ContextMatchResponseRouterPublisherTargetingKvsItem,
+)
+from ._schemas.trusted_match.context_match_response import Signals as ContextMatchResponseRouterPublisherSignals
+from ._schemas.trusted_match.context_match_response import (
+    SignalsByProviderValue as ContextMatchResponseRouterPublisherSignalsByProviderValue,
+)
+from ._schemas.trusted_match.error import Code as TMPErrorCode
 from ._schemas.trusted_match.error import TMPError as TMPError
+from ._schemas.trusted_match.identity_match_request import Attestation as IdentityMatchRequestIdentitiesItemAttestation
+from ._schemas.trusted_match.identity_match_request import Consent as IdentityMatchRequestConsent
+from ._schemas.trusted_match.identity_match_request import IdentitiesItem as IdentityMatchRequestIdentitiesItem
 from ._schemas.trusted_match.identity_match_request import IdentityMatchRequest as IdentityMatchRequest
+from ._schemas.trusted_match.identity_match_request import (
+    SealedCredentialsItem as IdentityMatchRequestSealedCredentialsItem,
+)
+from ._schemas.trusted_match.identity_match_request import (
+    VerificationLevel as IdentityMatchRequestIdentitiesItemAttestationVerificationLevel,
+)
 from ._schemas.trusted_match.identity_match_response import (
     IdentityMatchResponseRouterPublisher as IdentityMatchResponseRouterPublisher,
 )
+from ._schemas.trusted_match.identity_match_response import (
+    TmpxProvidersValue as IdentityMatchResponseRouterPublisherTmpxProvidersValue,
+)
 from ._schemas.trusted_match.offer import Offer as Offer
+from ._schemas.trusted_match.offer_price import Model as OfferPriceModel
 from ._schemas.trusted_match.offer_price import OfferPrice as OfferPrice
 from ._schemas.trusted_match.provider_context_match_response import (
     ContextMatchResponseProviderRouter as ContextMatchResponseProviderRouter,
@@ -34,9 +63,11 @@ from ._schemas.trusted_match.provider_context_match_response import (
 from ._schemas.trusted_match.provider_context_match_response import (
     ContextMatchResponseProviderRouterTargetingKvs as ContextMatchResponseProviderRouterTargetingKvs,
 )
+from ._schemas.trusted_match.provider_context_match_response import Signals as ContextMatchResponseProviderRouterSignals
 from ._schemas.trusted_match.provider_identity_match_response import (
     IdentityMatchResponseProviderRouter as IdentityMatchResponseProviderRouter,
 )
+from ._schemas.trusted_match.provider_registration import Status as TMPProviderRegistrationStatus
 from ._schemas.trusted_match.provider_registration import TMPProviderRegistration as TMPProviderRegistration
 from ._schemas.trusted_match.provider_registration import (
     TMPProviderRegistrationContextMatch as TMPProviderRegistrationContextMatch,
@@ -55,21 +86,40 @@ from ._schemas.trusted_match.tmpx_chunk import TMPXChunk as TMPXChunk
 __all__ = [
     'AvailablePackage',
     'ContextMatchRequest',
+    'ContextMatchRequestArtifactRefsItem',
+    'ContextMatchRequestArtifactRefsItemType',
+    'ContextMatchRequestContextSignals',
+    'ContextMatchRequestContextSignalsSentiment',
+    'ContextMatchRequestGeo',
+    'ContextMatchRequestGeoMetro',
     'ContextMatchResponseProviderRouter',
+    'ContextMatchResponseProviderRouterSignals',
     'ContextMatchResponseProviderRouterTargetingKvs',
     'ContextMatchResponseRouterPublisher',
+    'ContextMatchResponseRouterPublisherSignals',
+    'ContextMatchResponseRouterPublisherSignalsByProviderValue',
     'ContextMatchResponseRouterPublisherTargetingKvs',
+    'ContextMatchResponseRouterPublisherTargetingKvsItem',
     'IdentityMatchRequest',
+    'IdentityMatchRequestConsent',
+    'IdentityMatchRequestIdentitiesItem',
+    'IdentityMatchRequestIdentitiesItemAttestation',
+    'IdentityMatchRequestIdentitiesItemAttestationVerificationLevel',
+    'IdentityMatchRequestSealedCredentialsItem',
     'IdentityMatchResponseProviderRouter',
     'IdentityMatchResponseRouterPublisher',
+    'IdentityMatchResponseRouterPublisherTmpxProvidersValue',
     'Offer',
     'OfferPrice',
+    'OfferPriceModel',
     'PublisherTMPXMacroMapping',
     'PublisherTargetingKVMapping',
     'TMPError',
+    'TMPErrorCode',
     'TMPProviderRegistration',
     'TMPProviderRegistrationContextMatch',
     'TMPProviderRegistrationIdentityMatch',
+    'TMPProviderRegistrationStatus',
     'TMPXChunk',
     'TargetingKvMappingValue',
     'TmpxMacroMappingValue',

@@ -13,6 +13,20 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
+from ._schemas.registries.v1_canonical_mapping import V2 as V1V2CanonicalFormatMappingRegistryMappingsItemV2
+from ._schemas.registries.v1_canonical_mapping import (
+    Dimensions as V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructuralDimensions,
+)
+from ._schemas.registries.v1_canonical_mapping import MappingsItem as V1V2CanonicalFormatMappingRegistryMappingsItem
+from ._schemas.registries.v1_canonical_mapping import (
+    ParameterMappingsItem as V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItem,
+)
+from ._schemas.registries.v1_canonical_mapping import (
+    Structural as V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructural,
+)
+from ._schemas.registries.v1_canonical_mapping import (
+    Transform as V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItemTransform,
+)
 from ._schemas.registries.v1_canonical_mapping import V1PatternFormatIdGlob as V1PatternFormatIdGlob
 from ._schemas.registries.v1_canonical_mapping import V1PatternStructural as V1PatternStructural
 from ._schemas.registries.v1_canonical_mapping import (
@@ -23,4 +37,10 @@ __all__ = [
     'V1PatternFormatIdGlob',
     'V1PatternStructural',
     'V1V2CanonicalFormatMappingRegistry',
+    'V1V2CanonicalFormatMappingRegistryMappingsItem',
+    'V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructural',
+    'V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructuralDimensions',
+    'V1V2CanonicalFormatMappingRegistryMappingsItemV2',
+    'V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItem',
+    'V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItemTransform',
 ]
