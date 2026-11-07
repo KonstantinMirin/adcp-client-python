@@ -15,12 +15,28 @@ declaring module's name, because it carries the declaring class's.  A predicate 
 counts one class once per NAME bound to it, and reading 6's clause is the reason that is
 wrong rather than conservative.
 
-Measured on this tree: 2,370 such bindings over 2,352 class objects.  The 18-binding
+Measured on this tree: 2,358 such bindings over 2,340 class objects.  The 18-binding
 difference was reported as *"17 types, 35 declarations, one schema node emitting several
 classes"*; every one of the 17 groups is ONE class object under two or three names.
 :func:`declarations_in` counts objects, :func:`bindings_in` counts names, and the first
 test below is the equality that says where the 18 come from -- not as a literal, but as
 the run's own record of its content dedup.
+
+**AND THE SAME 18 WERE RE-REPORTED AS A DEFECT, which is why the counting rule is now a
+GATE and not only a predicate** (``adcp-client-python-qpzf``, reading 4 at the object
+layer).  The second report walked ``__adcp_schema__`` instead of the module bindings and
+found *"17 ``(document, pointer)`` pairs carrying MORE THAN ONE class, involving 35
+classes"* -- six ``oneOf`` branches of ``adagents.json``'s authorized-agent item plus
+``tags/additionalProperties``, and ten others.  It is the same 17 nodes and the same 35
+NAMES, and ``nodes with more than one CLASS OBJECT`` is **0** at every one of them: the
+pair at ``#/oneOf/1/properties/tags/additionalProperties`` is ``SignalTagsValue =
+TagsValue``, one object read through two names, which is ``lower/names.adopt``'s own
+clause -- *"one class, as many names as the node has positions"* -- working.  A measurement
+that cannot tell an alias from a declaration says nothing about reading 4 either way, and
+the answer to that is a clause stated where it can go red:
+:func:`test_one_schema_node_is_declared_by_at_most_one_class` ranges over the nodes, counts
+OBJECTS, and is handed the 35-name population beside the 2,340-object one so that the
+alias-blindness is asserted and not argued.
 
 **THE FIVE-PART KEY, which is what makes this a guard on the object layer rather than on
 a field set.**  A type is what it admits and what it does with what it admits, so two
@@ -62,6 +78,17 @@ verdict from ``model_validate`` and from ``strict_validate`` -- the second being
 the key does not carry, since it reads the member's own DOCUMENT.  A group whose members
 disagree refutes the key and is a finding about the instrument.  Its red direction
 constructs such a pair.
+
+**AND ONE CLAUSE THAT IS NOT ABOUT GROUPS AT ALL, because the five-part key cannot state
+it.**  Both populations below are groups the KEY forms, so both are silent wherever the key
+SEPARATES two declarations -- and two classes at ONE schema node differing in part 1 are
+separated by it.  ``test_one_document_declaring_two_classes_for_one_type_reddens_the_gate``
+writes that out already: its ``split`` pair sits at one pointer, states different content,
+and ``restated_within_one_document`` returns ``{}`` for it, correctly, because they are not
+one TYPE.  They are still two classes at one NODE, which no row of ``tests/duplicates.py``
+and no group of this file can see.  :func:`two_classes_at_one_node` is keyed on the node and
+on nothing else, and it is the clause reading 4 states literally: a node is one node, so it
+gets one class.
 
 **WHAT THIS FILE ASSERTS, IN TWO POPULATIONS THAT PARTITION THE GROUPS.**  Two declarations
 of ONE document that are one type are the first: a document is one subject, its node is one
@@ -121,8 +148,8 @@ def bindings_in(module: Any) -> list[tuple[str, type[BaseModel]]]:
     """Every NAME in ``module`` bound to a class whose ``__module__`` is ``module``.
 
     **Kept because it is the red direction's instrument and not because anything grades
-    it.**  This is the predicate that read 2,370 declarations where the tree declares
-    2,352, and :func:`test_a_declaration_is_a_class_object_and_never_a_name` is what says
+    it.**  This is the predicate that read 2,358 declarations where the tree declares
+    2,340, and :func:`test_a_declaration_is_a_class_object_and_never_a_name` is what says
     so by construction.  A reader reaching for a declaration set wants
     :func:`declarations_in`.
     """
@@ -248,6 +275,37 @@ def restated_within_one_document(
     for cls in declarations:
         out[(document_of(cls), key_of(cls))].append(cls)
     return {where: members for where, members in out.items() if len(members) > 1}
+
+
+def two_classes_at_one_node(
+    declarations: list[type[BaseModel]],
+) -> dict[tuple[str, str], list[type[BaseModel]]]:
+    """``(document, pointer)`` -> the two or more CLASS OBJECTS that name it.
+
+    Keyed on the schema NODE and on nothing else -- not on the five-part key, not on a
+    name, not on a module -- which is what makes it the one reading of reading 4 that holds
+    where the key separates the pair.  ``{}`` is the invariant.
+
+    **COUNTING OBJECTS, and the ``id`` dict is the whole of why this is a gate rather than
+    the figure that was mistaken for one.**  ``adcp-client-python-qpzf`` read 35 classes at
+    17 nodes off ``__adcp_schema__`` and every pair is one object under two names: an alias
+    is a Python assignment, so ``SignalTagsValue.__adcp_schema__`` IS ``TagsValue``'s and a
+    reader keying on the pair counts the class once per name bound to it.  Reading 6's
+    clause -- *"counting OBJECTS, not names"* -- is therefore load-bearing HERE and not only
+    in :func:`declarations_in`, because this function is the one a reader will hand a
+    binding list to.  Handed :func:`bindings_in`'s 2,358 names it must still answer ``{}``,
+    and :func:`test_one_schema_node_is_declared_by_at_most_one_class` hands it exactly that.
+
+    A declaration with no ``__adcp_schema__`` is not at a node and is not in the population:
+    ``lower/envelope.py``'s synthesised base carries no reference on purpose and
+    ``ir.ClassDecl``'s own docstring says what that means -- *"a class with no reference is
+    not in the pairing at all"*.
+    """
+    out: dict[tuple[str, str], dict[int, type[BaseModel]]] = collections.defaultdict(dict)
+    for cls in declarations:
+        if (at := ref_of(cls)) is not None:
+            out[at][id(cls)] = cls
+    return {at: list(members.values()) for at, members in out.items() if len(members) > 1}
 
 
 # --------------------------------------------------------------------------- #
@@ -601,6 +659,150 @@ def test_no_two_declarations_of_one_document_are_one_type() -> None:
         document: [{"class": f"{cls.__module__}.{cls.__name__}", "names": ref_of(cls)} for cls in members]
         for (document, _), members in restated.items()
     }
+
+
+def test_one_schema_node_is_declared_by_at_most_one_class() -> None:
+    """**A NODE IS ONE NODE, SO IT GETS ONE CLASS**, and the key is the node alone.
+
+    ``docs/plan/final-state.md`` reading 4: *"a type stated at more than one position is
+    written once and referenced, never restated"*.  The two gates beside this one read that
+    through the five-part KEY, so each is silent wherever the key separates two declarations
+    -- and two classes at ONE node that state different content ARE separated by it, which
+    ``test_one_document_declaring_two_classes_for_one_type_reddens_the_gate``'s ``split``
+    pair asserts from the other side.  This is the clause that has no key but the node, so
+    nothing a declaration says about itself can hide a second declaration of it.
+
+    **TWO readings, and they are a BIJECTION rather than a one-way count.**  No node carries
+    two class objects, and no declaration is without a node -- so ``declarations``, ``nodes``
+    and ``distinct nodes`` are one number, and a class that lost its reference cannot pay for
+    a node that gained one.
+
+    **The NAME population is :func:`test_a_second_name_at_a_node_is_not_a_second_declaration`
+    and is deliberately not here**, because it is a different obligation with a different red
+    direction: this one fails when the EMITTER declares twice, that one also fails when the
+    emitter stops aliasing at all, and a single test holding both reddens on either without
+    saying which.  Measured: §4's content dedup switched off reddens the name reading on an
+    empty population and leaves this gate GREEN, because a second class at a second node is
+    not a second class at one node.
+
+    Its red direction is :func:`test_two_classes_at_one_schema_node_redden_the_gate`, and the
+    EMITTER's is ``./perturb_two_classes_at_one_node.sh``, which runs every gate under every
+    case because a clause that reddens where an existing one also reddens is a second
+    spelling of it: ``declare_object`` made to hand the adagents ``oneOf/1`` branch its
+    ``oneOf/0`` sibling's reference reddens THIS and leaves
+    ``test_no_two_declarations_of_one_document_are_one_type`` green, which is the measurement
+    that says the clause was missing rather than unexercised.
+    """
+    tree = the_tree()
+    declarations = [cls for members in tree.values() for cls in members]
+    claimed("declarations of the emitted tree", declarations)
+    nodes = [at for cls in declarations if (at := ref_of(cls)) is not None]
+    claimed("schema nodes the tree declares a class for", nodes)
+
+    twice = two_classes_at_one_node(declarations)
+    assert twice == {}, {
+        f"{document} {pointer}": sorted(f"{cls.__module__}.{cls.__name__}" for cls in members)
+        for (document, pointer), members in twice.items()
+    }
+    # The same fact from the other side: every declaration names a node and no two name one,
+    # so the two sets are one bijection and nothing is left over in either direction.
+    assert len(set(nodes)) == len(nodes) == len(declarations), {
+        "declarations": len(declarations),
+        "nodes": len(nodes),
+        "distinct nodes": len(set(nodes)),
+    }
+
+
+def test_a_second_name_at_a_node_is_not_a_second_declaration() -> None:
+    """The 35 names at 17 nodes, through the SAME function, and still ``{}``.
+
+    **This is the sentence ``adcp-client-python-qpzf`` needed and could not get from a
+    count.**  That report walked ``__adcp_schema__`` and found *"17 ``(document, pointer)``
+    pairs carrying MORE THAN ONE class, involving 35 classes"*; the pairs are real and the
+    classes are not -- ``SignalTagsValue = TagsValue`` is one object at one node under two
+    names, and a Python assignment carries the aliased class's ``__adcp_schema__`` because it
+    carries the aliased class.  So the measurement cannot tell §4's dedup WORKING from
+    reading 4 broken, and the answer is to hand the name population to the gate and assert
+    the verdict rather than to argue it.
+
+    ``claimed`` is what makes it an assertion: the 17 nodes are a LIVE population read off
+    this run's tree, so if the emitter ever stops aliasing, this reddens on an empty
+    population instead of passing vacuously -- which is exactly what §4's content dedup
+    switched off does, and it leaves
+    :func:`test_one_schema_node_is_declared_by_at_most_one_class` green while doing it.
+
+    The BINDING and never ``cls.__name__``: an alias's ``__name__`` is the DECLARING name at
+    both of its bindings, which is the same reason ``ref_of`` reads the same pair twice and is
+    the whole reason this population exists.
+    """
+    import adcp.types._schemas as pkg
+
+    every_binding = [
+        (binding, cls) for name in modules_of(pkg) for binding, cls in bindings_in(importlib.import_module(name))
+    ]
+    bound = [cls for _, cls in every_binding]
+    several: dict[tuple[str, str], set[str]] = collections.defaultdict(set)
+    for binding, cls in every_binding:
+        if (at := ref_of(cls)) is not None:
+            several[at].add(binding)
+    at_several_names = {at for at, names in several.items() if len(names) > 1}
+    claimed("schema nodes the tree binds more than one NAME at", at_several_names)
+
+    declarations = [cls for members in the_tree().values() for cls in members]
+    assert len(bound) > len(declarations), (len(bound), len(declarations))
+    assert two_classes_at_one_node(bound) == {}, two_classes_at_one_node(bound)
+    # And the names beyond the declarations are exactly the second and later names at those
+    # nodes, so the surplus is accounted for by this population and not by something else.
+    assert len(bound) - len(declarations) == sum(len(several[at]) - 1 for at in at_several_names)
+
+
+def test_two_classes_at_one_schema_node_redden_the_gate() -> None:
+    """The gate's own reading, over a pair built to hold the defect -- and the GAP, measured.
+
+    :func:`test_one_schema_node_is_declared_by_at_most_one_class` is the green direction and
+    ``assert {} == {}`` passes it.  This calls the SAME function over two classes that name
+    one ``(document, pointer)`` and state DIFFERENT content, which is the shape a mis-derived
+    home or a reference handed to the wrong declaration produces.
+
+    **The second assertion is the clause's whole justification and is not a restatement of
+    the first.**  ``restated_within_one_document`` is GREEN on that very pair, correctly: the
+    two differ in part 1 of the five-part key, so they are not one type and the group never
+    forms.  Part 1 is therefore the part that separates them, and a guard spelled on the key
+    is blind in exactly this difference -- the same sentence
+    :func:`test_the_schema_half_of_the_key_would_otherwise_carry_the_name` makes about the
+    title, read at the node layer.
+
+    And the two states that must NOT redden it: one class under a second NAME, which is the
+    35-name population the tree actually carries, and two classes at two different nodes,
+    which is the group the gates beside this one own.
+    """
+    document = "one/document.json"
+    pointer = "#/oneOf/1/properties/d"
+    one = _a_class("AtOne", "one.module", SchemaRef(document=document, pointer=pointer))
+    other = _a_class(
+        "AlsoAtOne",
+        "one.module",
+        SchemaRef(document=document, pointer=pointer),
+        __annotations__={"size": str},
+        size="x",
+    )
+    pair = [one, other]
+    found = two_classes_at_one_node(pair)
+    assert list(found) == [(document, pointer)], found
+    assert found[(document, pointer)] == pair
+
+    # THE GAP: the five-part key separates them on part 1, so the gate beside this one is
+    # green on the same pair and the clause above is not a second spelling of it.
+    assert restated_within_one_document(pair) == {}, restated_within_one_document(pair)
+    assert key_of(one) != key_of(other)
+    assert key_of(one)[1:] == key_of(other)[1:]  # parts 2-5 agree; part 1 is what differs
+
+    # One class under a second name is ONE declaration.
+    assert two_classes_at_one_node([one, one]) == {}
+    # And two classes at two nodes are the neighbouring defect, not this one.
+    elsewhere = _a_class("Elsewhere", "one.module", SchemaRef(document=document, pointer="#/oneOf/0/properties/d"))
+    assert two_classes_at_one_node([one, elsewhere]) == {}
+    assert len(restated_within_one_document([one, elsewhere])) == 1
 
 
 def named_at_every_position(bundle_dir: Path) -> dict[str, tuple[str, frozenset[tuple[str, str]]]]:
