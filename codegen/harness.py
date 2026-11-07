@@ -3051,11 +3051,11 @@ def matching_a_pattern(pattern: str, examples: int = 2) -> tuple[str, ...]:
     already inside the narrow type and stays inside it under perturbation, no instance
     witness reaches the narrowing.  Measured at ``core/https-url.json#``, whose document is
     ``{"type": "string", "format": "uri", "pattern": "^https://"}``: the held value is
-    ``'https://A.COM'``, the trailing-newline witness is ``'https://A.COM\\n'``, and
-    pydantic NORMALISES and admits it.  Drawn from the pattern instead, the value is
-    ``'https://'`` -- a string the pattern matches, the document admits and the alias
-    refuses with ``url_parsing``, "empty host".  So the two derivations are complements:
-    the family sized by instance witnesses alone was a LOWER bound.
+    ``'https://A.COM'`` and no perturbation of it leaves the narrow type.  Drawn from the
+    pattern instead, the value is ``'https://'`` -- a string the pattern matches, the
+    document admits and the alias refuses with ``url_parsing``, "empty host".  So the draw
+    reaches positions the instance cannot: the family sized by instance witnesses alone was
+    a LOWER bound.
 
     Cached on the pattern, because the graded population states each pattern at many
     positions and a draw per position would pay ``from_regex`` thousands of times for an
@@ -3111,19 +3111,14 @@ def admitted_witnesses(
     newline; for uri, try 2084 characters" -- would be a frozen census of pydantic's
     internals in a file, stale the first time either side moved, and this epic has repaired
     four of those in two days.  So: the LEAF comes from an instance the document has
-    already admitted, the perturbation is one universal string operation, the length is
+    already admitted, the filler is the leaf's own last character, the length is
     :data:`WITNESS_LENGTH` (the instrument's budget), the pattern is the document's own
-    keyword, and **the claim that the document admits the result is the DOCUMENT's**.
+    keyword, and **the claim that the document admits the result is the DOCUMENT's** -- as
+    far as the screen below can carry that claim, which the paragraph after the derivations
+    measures the limit of.
 
-    Three derivations, each at every string leaf of ``instance``:
+    Two derivations, each at every string leaf of ``instance``:
 
-    * **a trailing newline** -- ``leaf.rstrip("\\n") + "\\n"``.  One character, the same
-      universal perturbation :func:`_far_side` makes with ``"x"``.  It reaches the 164
-      ``date-time`` pairs, where ``rfc3339-validator``'s regex is ``$``-anchored and
-      Python's ``$`` matches before a trailing newline -- the same defect
-      ``test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class`` exists for,
-      which the project fixed in the CLASS (``regex_engine="python-re"``) rather than
-      calling the document's own admission an instrument defect.
     * **an unbounded length** -- the leaf grown with its OWN last character to
       :data:`WITNESS_LENGTH`.  The filler is the instance's and not a letter chosen here,
       and a leaf whose format refuses the repetition is screened out and contributes
@@ -3136,8 +3131,34 @@ def admitted_witnesses(
     ``True`` before a candidate is yielded, which is :func:`refused_witnesses`' rule with
     the sign flipped and buys the same thing: the derivations may be simple and wrong in
     the safe direction, because a candidate the document does not admit says nothing about
-    the class and is never offered to it.  So this cannot manufacture a failure; it can
-    only miss one.
+    the class and is never offered to it.
+
+    **AND THE SCREEN IS NOT A PROOF, WHICH IS WHY THERE WERE THREE DERIVATIONS AND THERE
+    ARE NOW TWO.**  "This cannot manufacture a failure" stood here, and a TRAILING NEWLINE
+    is the perturbation that falsified it.  ``leaf.rstrip("\\n") + "\\n"`` was offered as a
+    third derivation on the argument that the document admits it, and the authority for
+    that was :func:`conforms` -- ``jsonschema``, which compiles every ``pattern`` with
+    Python ``re``, and ``rfc3339-validator``, whose ``date-time`` regex is ``$``-anchored
+    and read by the same engine.  Python's ``$`` matches at the end of the string OR just
+    before a final newline; **draft-07 mandates ECMA-262, where it does not**, and RFC
+    3339's ABNF has no production for a character past the end.  So the screen said "the
+    document admits it" about a value the DOCUMENT does not admit, and every failure the
+    derivation produced was a phantom.
+
+    Measured over the graded population of ``schemas/cache/3.2``, 2,586 pairs: the
+    derivation was the whole of the ``datetime_from_date_parsing`` family, 185 of the
+    ``admits`` column's 444 failures, and removing it leaves the other two derivations'
+    findings untouched.  The witness is shown inadmissible by node v24.18.1's own
+    ``RegExp`` -- ``^[a-z0-9_]+$`` against ``'abc\\n'`` is ``false`` there and a match in
+    Python ``re`` -- so this is a derivation deleted for being unsound and not a check
+    narrowed to make a green.  **A regex-dialect engine is NOT the repair**: the SDK does
+    not own either dialect, and a translation layer would put a second reading of every
+    pattern in the tree to buy back one perturbation.
+
+    What survives is the half of the old claim that is true: a candidate the screen REJECTS
+    is never offered, so a derivation can still only lose a finding by being too timid.  A
+    derivation whose candidate the screen ADMITS for a reason the document does not share
+    is a defect in the derivation, and the answer is to delete it.
 
     Yields ``(the candidate, the kind of witness, how it was derived)``.
     """
@@ -3147,11 +3168,6 @@ def admitted_witnesses(
         if not old:
             continue
         candidates: list[tuple[Any, str, str]] = []
-        newline = old.rstrip("\n") + "\n"
-        if newline != old:
-            candidates.append(
-                (newline, "trailing_newline", "the leaf's own value with a trailing newline")
-            )
         if len(old) < length:
             candidates.append(
                 (
