@@ -164,7 +164,9 @@ def decide() -> dict[str, object]:
                 **entry,
                 "name": name,
                 "verdict": "TITLED" if titled else "PROVISIONAL",
-                "node": f"{entry['document']}#{entry['pointer']}" if entry["document"] else "",
+                # the pointer our record carries already begins with `#`, so the node is the
+                # document and the pointer concatenated and never with a `#` added
+                "node": (entry["document"] + entry["pointer"]) if entry["document"] else "",
             }
         )
     return {
