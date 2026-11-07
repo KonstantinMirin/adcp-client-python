@@ -33,25 +33,45 @@ class RegistryEventEventType(StrEnum):
     Discriminator. Determines the shape of payload.
     """
     PROPERTY_CREATED = 'property.created'
+    property_created = MemberAlias('PROPERTY_CREATED')
     PROPERTY_UPDATED = 'property.updated'
+    property_updated = MemberAlias('PROPERTY_UPDATED')
     PROPERTY_MERGED = 'property.merged'
+    property_merged = MemberAlias('PROPERTY_MERGED')
     PROPERTY_STALE = 'property.stale'
+    property_stale = MemberAlias('PROPERTY_STALE')
     PROPERTY_REACTIVATED = 'property.reactivated'
+    property_reactivated = MemberAlias('PROPERTY_REACTIVATED')
     COLLECTION_CREATED = 'collection.created'
+    collection_created = MemberAlias('COLLECTION_CREATED')
     COLLECTION_UPDATED = 'collection.updated'
+    collection_updated = MemberAlias('COLLECTION_UPDATED')
     COLLECTION_MERGED = 'collection.merged'
+    collection_merged = MemberAlias('COLLECTION_MERGED')
     COLLECTION_REMOVED = 'collection.removed'
+    collection_removed = MemberAlias('COLLECTION_REMOVED')
     AGENT_DISCOVERED = 'agent.discovered'
+    agent_discovered = MemberAlias('AGENT_DISCOVERED')
     AGENT_REMOVED = 'agent.removed'
+    agent_removed = MemberAlias('AGENT_REMOVED')
     AGENT_PROFILE_UPDATED = 'agent.profile_updated'
+    agent_profile_updated = MemberAlias('AGENT_PROFILE_UPDATED')
     AGENT_COMPLIANCE_CHANGED = 'agent.compliance_changed'
+    agent_compliance_changed = MemberAlias('AGENT_COMPLIANCE_CHANGED')
     AGENT_VERIFICATION_EARNED = 'agent.verification_earned'
+    agent_verification_earned = MemberAlias('AGENT_VERIFICATION_EARNED')
     AGENT_VERIFICATION_LOST = 'agent.verification_lost'
+    agent_verification_lost = MemberAlias('AGENT_VERIFICATION_LOST')
     PUBLISHER_ADAGENTS_DISCOVERED = 'publisher.adagents_discovered'
+    publisher_adagents_discovered = MemberAlias('PUBLISHER_ADAGENTS_DISCOVERED')
     PUBLISHER_ADAGENTS_CHANGED = 'publisher.adagents_changed'
+    publisher_adagents_changed = MemberAlias('PUBLISHER_ADAGENTS_CHANGED')
     AUTHORIZATION_GRANTED = 'authorization.granted'
+    authorization_granted = MemberAlias('AUTHORIZATION_GRANTED')
     AUTHORIZATION_REVOKED = 'authorization.revoked'
+    authorization_revoked = MemberAlias('AUTHORIZATION_REVOKED')
     AUTHORIZATION_MODIFIED = 'authorization.modified'
+    authorization_modified = MemberAlias('AUTHORIZATION_MODIFIED')
 
 
 class EntityType(StrEnum):
@@ -491,6 +511,7 @@ class ComplianceStatus(StrEnum):
 
 class TracksValue(StrEnum):
     PASS = 'pass'
+    pass_ = MemberAlias('PASS')
     FAIL = 'fail'
     fail = MemberAlias('FAIL')
     PARTIAL = 'partial'

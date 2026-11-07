@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import ReplaceTargetingValuePath, StrMinLen1
 
@@ -44,20 +44,35 @@ class RemoveTargetingSetValuesPath(StrEnum):
     Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.
     """
     GEO_COUNTRIES = '/geo_countries'
+    field_geo_countries = MemberAlias('GEO_COUNTRIES')
     GEO_COUNTRIES_EXCLUDE = '/geo_countries_exclude'
+    field_geo_countries_exclude = MemberAlias('GEO_COUNTRIES_EXCLUDE')
     GEO_REGIONS = '/geo_regions'
+    field_geo_regions = MemberAlias('GEO_REGIONS')
     GEO_REGIONS_EXCLUDE = '/geo_regions_exclude'
+    field_geo_regions_exclude = MemberAlias('GEO_REGIONS_EXCLUDE')
     GEO_POSTAL_AREAS = '/geo_postal_areas'
+    field_geo_postal_areas = MemberAlias('GEO_POSTAL_AREAS')
     GEO_POSTAL_AREAS_EXCLUDE = '/geo_postal_areas_exclude'
+    field_geo_postal_areas_exclude = MemberAlias('GEO_POSTAL_AREAS_EXCLUDE')
     AUDIENCE_INCLUDE = '/audience_include'
+    field_audience_include = MemberAlias('AUDIENCE_INCLUDE')
     AUDIENCE_EXCLUDE = '/audience_exclude'
+    field_audience_exclude = MemberAlias('AUDIENCE_EXCLUDE')
     DEVICE_PLATFORM = '/device_platform'
+    field_device_platform = MemberAlias('DEVICE_PLATFORM')
     DEVICE_PLATFORM_EXCLUDE = '/device_platform_exclude'
+    field_device_platform_exclude = MemberAlias('DEVICE_PLATFORM_EXCLUDE')
     DEVICE_TYPE = '/device_type'
+    field_device_type = MemberAlias('DEVICE_TYPE')
     DEVICE_TYPE_EXCLUDE = '/device_type_exclude'
+    field_device_type_exclude = MemberAlias('DEVICE_TYPE_EXCLUDE')
     BROWSER = '/browser'
+    field_browser = MemberAlias('BROWSER')
     BROWSER_EXCLUDE = '/browser_exclude'
+    field_browser_exclude = MemberAlias('BROWSER_EXCLUDE')
     LANGUAGE = '/language'
+    field_language = MemberAlias('LANGUAGE')
 
 
 class Selector(AdCPBaseModel):

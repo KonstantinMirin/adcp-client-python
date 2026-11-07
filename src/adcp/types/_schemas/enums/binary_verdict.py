@@ -15,6 +15,7 @@ class BinaryVerdict(StrEnum):
     """The evaluated record meets all applicable content standards"""
 
 
+    pass_ = MemberAlias('PASS')
     FAIL = 'fail'
     """The evaluated record failed one or more content standard checks"""
 

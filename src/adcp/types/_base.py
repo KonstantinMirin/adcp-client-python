@@ -265,8 +265,9 @@ def _resolves_on(base: type) -> set[str]:
 #: whose ``EnumType.__dir__`` reports members rather than inherited machinery.
 #:
 #: **Both bases, unioned**, so no caller maps a member type to a reserved set: the str half
-#: is the only one that can ever fire, because an integer value is not an identifier and is
-#: refused as :data:`codegen.lower.enum.NOT_AN_IDENTIFIER` before this set is consulted.
+#: is the only one that can ever fire, because an integer value reaches no derived spelling
+#: at all and is refused as :data:`codegen.lower.enum.NO_SPELLING_DERIVES` before this set is
+#: consulted.
 #: Unioning therefore costs nothing measurable and removes a mapping that could disagree
 #: with ``codegen.render._ENUM_BASES``.
 MEMBER_NAMES_TAKEN: frozenset[str] = frozenset(

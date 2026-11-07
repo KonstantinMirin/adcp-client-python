@@ -38,9 +38,13 @@ class ContentFormat(StrEnum):
     MIME type indicating how to parse the content field. Default: text/plain.
     """
     TEXT_PLAIN = 'text/plain'
+    text_plain = MemberAlias('TEXT_PLAIN')
     TEXT_MARKDOWN = 'text/markdown'
+    text_markdown = MemberAlias('TEXT_MARKDOWN')
     TEXT_HTML = 'text/html'
+    text_html = MemberAlias('TEXT_HTML')
     APPLICATION_JSON = 'application/json'
+    application_json = MemberAlias('APPLICATION_JSON')
 
 
 class AssetsItemText(AdCPBaseModel):
@@ -117,8 +121,11 @@ class AssetsItemVideoTranscriptFormat(StrEnum):
     MIME type indicating how to parse the transcript field. Default: text/plain.
     """
     TEXT_PLAIN = 'text/plain'
+    text_plain = MemberAlias('TEXT_PLAIN')
     TEXT_MARKDOWN = 'text/markdown'
+    text_markdown = MemberAlias('TEXT_MARKDOWN')
     APPLICATION_JSON = 'application/json'
+    application_json = MemberAlias('APPLICATION_JSON')
 
 
 class AssetsItemVideoTranscriptSource(StrEnum):

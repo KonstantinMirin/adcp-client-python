@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/c2pa-watermark-action.json', pointer='#')
 
@@ -15,8 +15,12 @@ class C2PAWatermarkAction(StrEnum):
     """Watermark linked to a C2PA manifest for this asset. The watermark and manifest are mutually reinforcing: the manifest references the watermark, and the watermark can be used to locate the manifest."""
 
 
+    c2pa_watermarked_bound = MemberAlias('C2PA_WATERMARKED_BOUND')
     C2PA_WATERMARKED_UNBOUND = 'c2pa.watermarked.unbound'
     """Watermark independent of any C2PA manifest. Applied before any provenance signing event (e.g., by the AI generator at creation time) or in pipelines where no manifest is present."""
+
+
+    c2pa_watermarked_unbound = MemberAlias('C2PA_WATERMARKED_UNBOUND')
 
 
 strict_validate = strict_alias(__adcp_schema__, "C2PAWatermarkAction", C2PAWatermarkAction)

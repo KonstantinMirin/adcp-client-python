@@ -16,7 +16,9 @@ class AudioChannelLayout(StrEnum):
     STEREO = 'stereo'
     stereo = MemberAlias('STEREO')
     V_5_1 = '5.1'
+    field_5_1 = MemberAlias('V_5_1')
     V_7_1 = '7.1'
+    field_7_1 = MemberAlias('V_7_1')
 
 
 strict_validate = strict_alias(__adcp_schema__, "AudioChannelLayout", AudioChannelLayout)

@@ -16,23 +16,41 @@ from .ext import ExtensionObject
 
 class EventTypesItem(StrEnum):
     CREATIVE_STATUS_CHANGED = 'creative.status_changed'
+    creative_status_changed = MemberAlias('CREATIVE_STATUS_CHANGED')
     CREATIVE_ASSIGNMENT_CHANGED = 'creative.assignment_changed'
+    creative_assignment_changed = MemberAlias('CREATIVE_ASSIGNMENT_CHANGED')
     INDICATORS_CHANGED = 'indicators.changed'
+    indicators_changed = MemberAlias('INDICATORS_CHANGED')
     CREATIVE_PURGED = 'creative.purged'
+    creative_purged = MemberAlias('CREATIVE_PURGED')
     ACCOUNT_STATUS_CHANGED = 'account.status_changed'
+    account_status_changed = MemberAlias('ACCOUNT_STATUS_CHANGED')
     ACCOUNT_CHANGE_RECORDED = 'account.change_recorded'
+    account_change_recorded = MemberAlias('ACCOUNT_CHANGE_RECORDED')
     PRODUCT_CREATED = 'product.created'
+    product_created = MemberAlias('PRODUCT_CREATED')
     PRODUCT_UPDATED = 'product.updated'
+    product_updated = MemberAlias('PRODUCT_UPDATED')
     PRODUCT_PRICED = 'product.priced'
+    product_priced = MemberAlias('PRODUCT_PRICED')
     PRODUCT_REMOVED = 'product.removed'
+    product_removed = MemberAlias('PRODUCT_REMOVED')
     SIGNAL_CREATED = 'signal.created'
+    signal_created = MemberAlias('SIGNAL_CREATED')
     SIGNAL_UPDATED = 'signal.updated'
+    signal_updated = MemberAlias('SIGNAL_UPDATED')
     SIGNAL_PRICED = 'signal.priced'
+    signal_priced = MemberAlias('SIGNAL_PRICED')
     SIGNAL_REMOVED = 'signal.removed'
+    signal_removed = MemberAlias('SIGNAL_REMOVED')
     WHOLESALE_FEED_BULK_CHANGE = 'wholesale_feed.bulk_change'
+    wholesale_feed_bulk_change = MemberAlias('WHOLESALE_FEED_BULK_CHANGE')
     REPORTING_DELIVERY_READY = 'reporting.delivery_ready'
+    reporting_delivery_ready = MemberAlias('REPORTING_DELIVERY_READY')
     REPORTING_STATUS_CHANGED = 'reporting.status_changed'
+    reporting_status_changed = MemberAlias('REPORTING_STATUS_CHANGED')
     REPORTING_LEDGER_CHANGED = 'reporting.ledger_changed'
+    reporting_ledger_changed = MemberAlias('REPORTING_LEDGER_CHANGED')
 
 
 class ProductPayloadView(StrEnum):

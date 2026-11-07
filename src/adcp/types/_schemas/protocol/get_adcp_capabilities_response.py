@@ -199,6 +199,7 @@ class RegistrationTask(StrEnum):
 
 class CapabilityChangeNotificationsSupportedEventTypesItem(StrEnum):
     CAPABILITIES_CHANGED = _VALUES_CAPABILITIES_CHANGED[0]
+    capabilities_changed = MemberAlias('CAPABILITIES_CHANGED')
 
 
 class CapabilityChangeNotificationsSupported(AdCPBaseModel):
@@ -423,6 +424,7 @@ class SupportedProtocolsItem(StrEnum):
 
 class AccountNotificationsSupportedEventTypesItem(StrEnum):
     ACCOUNT_STATUS_CHANGED = 'account.status_changed'
+    account_status_changed = MemberAlias('ACCOUNT_STATUS_CHANGED')
 
 
 class AccountNotificationsSupported(AdCPBaseModel):
@@ -638,7 +640,9 @@ class CreativeApprovalMode(StrEnum):
 
 class RelationshipNotificationsEventTypesItem(StrEnum):
     INDICATORS_CHANGED = 'indicators.changed'
+    indicators_changed = MemberAlias('INDICATORS_CHANGED')
     CREATIVE_ASSIGNMENT_CHANGED = 'creative.assignment_changed'
+    creative_assignment_changed = MemberAlias('CREATIVE_ASSIGNMENT_CHANGED')
 
 
 class RelationshipNotifications(AdCPBaseModel):
@@ -1463,6 +1467,7 @@ class Profile(StrEnum):
     Identifier of the webhook-signing profile version the agent emits. Value MUST match the `tag=` parameter emitted in the RFC 9421 `Signature-Input` header (see docs/building/implementation/webhooks.mdx) so receivers can statically validate the declared profile against the on-wire tag. Closed enum; future profile revisions will extend this enum in a follow-up schema bump.
     """
     ADCP_WEBHOOK_SIGNING_V1 = 'adcp/webhook-signing/v1'
+    adcp_webhook_signing_v1 = MemberAlias('ADCP_WEBHOOK_SIGNING_V1')
 
 
 class WebhookSigning(AdCPBaseModel):

@@ -64,6 +64,7 @@ class Domain(StrEnum):
     AdCP domain this task belongs to
     """
     MEDIA_BUY = 'media-buy'
+    media_buy = MemberAlias('MEDIA_BUY')
     SIGNALS = 'signals'
     signals = MemberAlias('SIGNALS')
     CREATIVE = 'creative'

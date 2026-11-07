@@ -21,7 +21,9 @@ from .video_hosted import Orientation
 
 class VpaidVersion(StrEnum):
     V_1_0 = '1.0'
+    field_1_0 = MemberAlias('V_1_0')
     V_2_0 = '2.0'
+    field_2_0 = MemberAlias('V_2_0')
 
 
 class CreativeType(StrEnum):

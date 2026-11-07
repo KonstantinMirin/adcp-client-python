@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import MemberAlias, SchemaRef, strict_alias
 
 __adcp_schema__ = SchemaRef(document='enums/daast-version.json', pointer='#')
 
@@ -12,7 +12,9 @@ class DAASTVersion(StrEnum):
     Supported DAAST (Digital Audio Ad Serving Template) specification versions
     """
     V_1_0 = '1.0'
+    field_1_0 = MemberAlias('V_1_0')
     V_1_1 = '1.1'
+    field_1_1 = MemberAlias('V_1_1')
 
 
 strict_validate = strict_alias(__adcp_schema__, "DAASTVersion", DAASTVersion)

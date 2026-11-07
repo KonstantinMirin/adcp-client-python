@@ -142,6 +142,7 @@ class Arm(StrEnum):
     COMPLETED = 'completed'
     completed = MemberAlias('COMPLETED')
     INPUT_REQUIRED = 'input-required'
+    input_required = MemberAlias('INPUT_REQUIRED')
     REJECTED = 'rejected'
     rejected = MemberAlias('REJECTED')
 

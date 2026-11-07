@@ -17,6 +17,7 @@ class WebhookSigningAlgorithm(StrEnum):
     ED25519 = 'ed25519'
     ed25519 = MemberAlias('ED25519')
     ECDSA_P256_SHA256 = 'ecdsa-p256-sha256'
+    ecdsa_p256_sha256 = MemberAlias('ECDSA_P256_SHA256')
 
 
 class AgentDeclarations(AdCPBaseModel):

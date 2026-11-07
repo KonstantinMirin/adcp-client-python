@@ -47,6 +47,7 @@ class ObjModeCredentialFingerprint(AdCPBaseModel):
 
 class EventTypesItem(StrEnum):
     CAPABILITIES_CHANGED = _VALUES_CAPABILITIES_CHANGED[0]
+    capabilities_changed = MemberAlias('CAPABILITIES_CHANGED')
 
 
 class AgentWebhookChallenge(AdCPBaseModel):

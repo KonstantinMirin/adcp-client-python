@@ -18,6 +18,7 @@ class Scope(StrEnum):
     TOOL = 'tool'
     tool = MemberAlias('TOOL')
     GLOBAL = 'global'
+    global_ = MemberAlias('GLOBAL')
 
 
 class RateLimitedDetails(AdCPBaseModel):

@@ -24,6 +24,7 @@ class Severity(StrEnum):
     Routing severity. `audit-worthy` means the observation should be retained and may be routed to human or downstream audit review, but it is not a protocol rejection signal.
     """
     AUDIT_WORTHY = 'audit-worthy'
+    audit_worthy = MemberAlias('AUDIT_WORTHY')
 
 
 class Recovery(StrEnum):

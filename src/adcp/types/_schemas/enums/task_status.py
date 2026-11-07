@@ -25,6 +25,7 @@ class TaskStatus(StrEnum):
     """Task is paused and waiting for input from the user (e.g., clarification, approval)"""
 
 
+    input_required = MemberAlias('INPUT_REQUIRED')
     COMPLETED = 'completed'
     """Task has been successfully completed"""
 
@@ -49,6 +50,7 @@ class TaskStatus(StrEnum):
     """Task requires authentication to proceed"""
 
 
+    auth_required = MemberAlias('AUTH_REQUIRED')
     UNKNOWN = 'unknown'
     """Task is in an unknown or indeterminate state"""
 
