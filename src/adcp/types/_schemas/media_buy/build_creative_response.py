@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
@@ -60,8 +60,8 @@ class BuildCreativeSuccessPreviewPreviewsItemInput(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/0/properties/preview/properties/previews/items/properties/input')
     name: Annotated[str, Field(description='Human-readable name for this variant')]
-    macros: Annotated[dict[str, str] | None, Field(description='Macro values applied to this variant')] = None
-    context_description: Annotated[str | None, Field(description='Context description applied to this variant')] = None
+    macros: Annotated[dict[str, str] | None, Field(description='Macro values applied to this variant'), OmittedNotNull] = None
+    context_description: Annotated[str | None, Field(description='Context description applied to this variant'), OmittedNotNull] = None
 
 
 class BuildCreativeSuccessPreviewPreviewsItem(AdCPBaseModel):
@@ -77,7 +77,7 @@ class BuildCreativeSuccessPreview(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/0/properties/preview')
     previews: Annotated[list[BuildCreativeSuccessPreviewPreviewsItem], Field(description='Array of preview variants. Each preview corresponds to an input set from preview_inputs, or a single default preview if no inputs were provided.', min_length=1)]
-    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them.')] = None
+    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them.'), OmittedNotNull] = None
     expires_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when preview URLs expire. May differ from the manifest's expires_at.")]
 
 
@@ -90,18 +90,18 @@ class BuildCreativeSuccess(BuildCreativeResponse):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/0')
     creative_manifest: Annotated[CreativeManifest, Field(description='The generated, transformed, retrieved, or deterministically selected creative manifest. For creative_representation_set input it MUST carry exact representation_selection lineage.')]
-    build_variant_id: Annotated[str | None, Field(description='Leaf handle for this produced creative — present when the agent supports refinement (creative.supports_refinement). Pass it as refine_from_build_variant_id to refine this build. Same namespace as BuildCreativeVariantSuccess leaves; distinct from served variant_id / preview_id. On the canonical promotion path, this value becomes the creative_id when the produced leaf is trafficked or added to the library.')] = None
-    recipe_hash: Annotated[str | None, Field(description='Optional agent-computed, opaque, agent-scoped identity for the build-determining inputs that produced this creative. Stable for identical inputs as defined by the agent, and comparable only within the same agent. ETag-style semantics: the protocol defines the field and contract, not the hash algorithm or canonical input set. Identifies generative-input identity, not output equality, legal/disclosure equivalence, or the build-to-delivery join.')] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when generated asset URLs in the manifest expire. Set to the earliest expiration across all generated assets. Re-build the creative after this time to get fresh URLs.')] = None
-    preview: Annotated[BuildCreativeSuccessPreview | None, Field(description='Preview renders included when the request set include_preview to true and the agent supports it. Contains the same content fields as a preview_creative single response (previews, interactive_url, expires_at) minus the response_type discriminator, so clients can reuse the same preview rendering logic.')] = None
-    preview_error: Annotated[Error | None, Field(description="When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Distinguishes 'agent does not support inline preview' (preview and preview_error both absent) from 'preview generation failed' (preview absent, preview_error present). Omitted when preview succeeded or was not requested.")] = None
-    pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this build. Present when the creative agent charges for its services. Pass this in report_usage to identify which pricing option was applied.')] = None
-    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this build, denominated in currency. May be 0 for CPM-priced creatives where cost accrues at serve time rather than build time.')] = None
-    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for vendor_cost.')] = None
-    consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption details for this build. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    build_variant_id: Annotated[str | None, Field(description='Leaf handle for this produced creative — present when the agent supports refinement (creative.supports_refinement). Pass it as refine_from_build_variant_id to refine this build. Same namespace as BuildCreativeVariantSuccess leaves; distinct from served variant_id / preview_id. On the canonical promotion path, this value becomes the creative_id when the produced leaf is trafficked or added to the library.'), OmittedNotNull] = None
+    recipe_hash: Annotated[str | None, Field(description='Optional agent-computed, opaque, agent-scoped identity for the build-determining inputs that produced this creative. Stable for identical inputs as defined by the agent, and comparable only within the same agent. ETag-style semantics: the protocol defines the field and contract, not the hash algorithm or canonical input set. Identifies generative-input identity, not output equality, legal/disclosure equivalence, or the build-to-delivery join.'), OmittedNotNull] = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when generated asset URLs in the manifest expire. Set to the earliest expiration across all generated assets. Re-build the creative after this time to get fresh URLs.'), OmittedNotNull] = None
+    preview: Annotated[BuildCreativeSuccessPreview | None, Field(description='Preview renders included when the request set include_preview to true and the agent supports it. Contains the same content fields as a preview_creative single response (previews, interactive_url, expires_at) minus the response_type discriminator, so clients can reuse the same preview rendering logic.'), OmittedNotNull] = None
+    preview_error: Annotated[Error | None, Field(description="When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Distinguishes 'agent does not support inline preview' (preview and preview_error both absent) from 'preview generation failed' (preview absent, preview_error present). Omitted when preview succeeded or was not requested."), OmittedNotNull] = None
+    pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this build. Present when the creative agent charges for its services. Pass this in report_usage to identify which pricing option was applied.'), OmittedNotNull] = None
+    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this build, denominated in currency. May be 0 for CPM-priced creatives where cost accrues at serve time rather than build time.'), OmittedNotNull] = None
+    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for vendor_cost.'), OmittedNotNull] = None
+    consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption details for this build. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class BuildCreativeMultiSuccessPreviewPreviewsItemInput(AdCPBaseModel):
@@ -113,8 +113,8 @@ class BuildCreativeMultiSuccessPreviewPreviewsItemInput(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/1/properties/preview/properties/previews/items/properties/input')
     name: Annotated[str, Field(description='Human-readable name for this preview')]
-    macros: Annotated[dict[str, str] | None, Field(description='Macro values applied to this preview')] = None
-    context_description: Annotated[str | None, Field(description='Context description applied to this preview')] = None
+    macros: Annotated[dict[str, str] | None, Field(description='Macro values applied to this preview'), OmittedNotNull] = None
+    context_description: Annotated[str | None, Field(description='Context description applied to this preview'), OmittedNotNull] = None
 
 
 class BuildCreativeMultiSuccessPreviewPreviewsItem(AdCPBaseModel):
@@ -123,8 +123,8 @@ class BuildCreativeMultiSuccessPreviewPreviewsItem(AdCPBaseModel):
         RequiredGroups((('capability_id',), ('format_id',)), 'anyOf'),
     )
     preview_id: Annotated[str, Field(description='Unique identifier for this preview')]
-    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='Deprecated named-format correlation for a legacy target_format_ids request.')] = None
-    capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Canonical creative capability this preview was generated through. Matches one requested target_capability_ids entry.')] = None
+    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='Deprecated named-format correlation for a legacy target_format_ids request.'), OmittedNotNull] = None
+    capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Canonical creative capability this preview was generated through. Matches one requested target_capability_ids entry.'), OmittedNotNull] = None
     renders: Annotated[list[PreviewRender], Field(description="Array of rendered pieces for this format's preview. Most formats render as a single piece. Companion ad formats render as multiple pieces.", min_length=1)]
     input: Annotated[BuildCreativeMultiSuccessPreviewPreviewsItemInput, Field(description='The input parameters that generated this preview. For multi-format responses, this is always a default input.')]
 
@@ -135,7 +135,7 @@ class BuildCreativeMultiSuccessPreview(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/1/properties/preview')
     previews: Annotated[list[BuildCreativeMultiSuccessPreviewPreviewsItem], Field(description='Array of preview entries, one per requested capability. Array order matches creative_manifests. Canonical responses use capability_id for explicit correlation.', min_length=1)]
-    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all format previews with controls to switch between them.')] = None
+    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all format previews with controls to switch between them.'), OmittedNotNull] = None
     expires_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when preview URLs expire. May differ from the manifest's expires_at.")]
 
 
@@ -148,16 +148,16 @@ class BuildCreativeMultiSuccess(BuildCreativeResponse):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/1')
     creative_manifests: Annotated[list[CreativeManifest], Field(description='Array of generated canonical creative manifests, one per requested capability. Each manifest carries format_kind and any applicable format_option_ref.', min_length=1)]
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the earliest generated asset URL expires across all manifests. Re-build after this time to get fresh URLs.')] = None
-    preview: Annotated[BuildCreativeMultiSuccessPreview | None, Field(description='Preview renders included when the request set include_preview to true and the agent supports it. Contains one default preview per requested format. preview_inputs is ignored for multi-format requests.')] = None
-    preview_error: Annotated[Error | None, Field(description='When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Omitted when preview succeeded or was not requested.')] = None
-    pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this build. Represents the total cost of the entire multi-format build call. Present when the creative agent charges for its services.')] = None
-    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Total cost incurred for this multi-format build, denominated in currency. May be 0 for CPM-priced creatives where cost accrues at serve time.')] = None
-    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for vendor_cost.')] = None
-    consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption details for this build. Informational — lets the buyer verify that vendor_cost is consistent with the rate card.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the earliest generated asset URL expires across all manifests. Re-build after this time to get fresh URLs.'), OmittedNotNull] = None
+    preview: Annotated[BuildCreativeMultiSuccessPreview | None, Field(description='Preview renders included when the request set include_preview to true and the agent supports it. Contains one default preview per requested format. preview_inputs is ignored for multi-format requests.'), OmittedNotNull] = None
+    preview_error: Annotated[Error | None, Field(description='When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Omitted when preview succeeded or was not requested.'), OmittedNotNull] = None
+    pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this build. Represents the total cost of the entire multi-format build call. Present when the creative agent charges for its services.'), OmittedNotNull] = None
+    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Total cost incurred for this multi-format build, denominated in currency. May be 0 for CPM-priced creatives where cost accrues at serve time.'), OmittedNotNull] = None
+    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for vendor_cost.'), OmittedNotNull] = None
+    consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption details for this build. Informational — lets the buyer verify that vendor_cost is consistent with the rate card.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class CatalogItemRef(AdCPBaseModel):
@@ -168,7 +168,7 @@ class CatalogItemRef(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/2/properties/creatives/items/properties/catalog_item_ref')
-    catalog_type: Annotated[str | None, Field(description='The catalog type the item came from.')] = None
+    catalog_type: Annotated[str | None, Field(description='The catalog type the item came from.'), OmittedNotNull] = None
     item_id: Annotated[str, Field(description='Identifier of the catalog item this creative was built for.')]
 
 
@@ -180,11 +180,11 @@ class Eval(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/2/properties/creatives/items/properties/variants/items/properties/eval')
-    features: Annotated[list[CreativeFeatureResult] | None, Field(description='Creative-feature values the evaluator measured for this leaf — `creative-feature-result[]` (e.g., a `creative_quality_score` number, an `on_brief` categorical, a calibrated `predicted_performance` in [0,1] from the exemplars form). The gate (evaluator.feature_requirement[]) and ranking (evaluator.rank_by) are evaluated over these values. Same shape get_creative_features returns.')] = None
-    ranked_against: Annotated[IntMin1 | None, Field(description='Number of leaves this leaf was scored against (the best-of-N N). Lets the buyer interpret rank in context.')] = None
-    calls_used: Annotated[NonNegativeInt | None, Field(description='Number of judge calls made during evaluation. Sellers SHOULD populate when agent_url was used and an eval_budget was supplied, giving buyers visibility into external call usage. No billing coupling in v1.')] = None
-    seconds_used: Annotated[NonNegativeFloat | None, Field(description='Wall-clock seconds consumed during evaluation. Sellers SHOULD populate when agent_url was used and an eval_budget was supplied, giving buyers visibility into external call usage. No billing coupling in v1.')] = None
-    ext: ExtensionObject | None = None
+    features: Annotated[list[CreativeFeatureResult] | None, Field(description='Creative-feature values the evaluator measured for this leaf — `creative-feature-result[]` (e.g., a `creative_quality_score` number, an `on_brief` categorical, a calibrated `predicted_performance` in [0,1] from the exemplars form). The gate (evaluator.feature_requirement[]) and ranking (evaluator.rank_by) are evaluated over these values. Same shape get_creative_features returns.'), OmittedNotNull] = None
+    ranked_against: Annotated[IntMin1 | None, Field(description='Number of leaves this leaf was scored against (the best-of-N N). Lets the buyer interpret rank in context.'), OmittedNotNull] = None
+    calls_used: Annotated[NonNegativeInt | None, Field(description='Number of judge calls made during evaluation. Sellers SHOULD populate when agent_url was used and an eval_budget was supplied, giving buyers visibility into external call usage. No billing coupling in v1.'), OmittedNotNull] = None
+    seconds_used: Annotated[NonNegativeFloat | None, Field(description='Wall-clock seconds consumed during evaluation. Sellers SHOULD populate when agent_url was used and an eval_budget was supplied, giving buyers visibility into external call usage. No billing coupling in v1.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class VariantsItem(AdCPBaseModel):
@@ -198,17 +198,17 @@ class VariantsItem(AdCPBaseModel):
         Dependencies('vendor_cost', ('currency',)),
     )
     build_variant_id: Annotated[str, Field(description='Build-time handle for this produced variant — the leaf-level lineage anchor for the creative. Minted per produced variant. Its OWN namespace — MUST NOT reuse a `preview_id` (preview renders) or a served `variant_id` (delivery). Refinement parentage and build-time QA re-rolls anchor on this leaf id, NOT on the call-level `build_creative_id`. On the canonical promotion path, this value becomes the durable `creative_id` when the leaf is trafficked / added to the library; delivery outcomes and `report_usage` then join by `creative_id`. An untrafficked leaf has no `report_usage` key — it is billed via the inline per-leaf `vendor_cost` only, and `report_usage` reconciliation applies once the leaf earns a `creative_id`.')]
-    recipe_hash: Annotated[str | None, Field(description='Optional agent-computed, opaque, agent-scoped identity for the build-determining inputs that produced this variant leaf. Stable for identical inputs as defined by the agent, and comparable only within the same agent. Multiple leaves from the same best-of-N recipe SHOULD carry the same value so clients can group alternative outputs by their shared source recipe. ETag-style semantics: the protocol defines the field and contract, not the hash algorithm or canonical input set. Identifies generative-input identity, not output equality, legal/disclosure equivalence, or the build-to-delivery join.')] = None
-    parent_build_variant_id: Annotated[str | None, Field(description="When this variant was produced by refining a prior build (request `refine_from_build_variant_id`), the source leaf's `build_variant_id` — establishing refinement lineage (a leaf may itself be refined, forming a chain). Absent for first-generation builds. AI-derivative attribution rides the manifest's existing `provenance`; this field carries only the lineage edge.")] = None
+    recipe_hash: Annotated[str | None, Field(description='Optional agent-computed, opaque, agent-scoped identity for the build-determining inputs that produced this variant leaf. Stable for identical inputs as defined by the agent, and comparable only within the same agent. Multiple leaves from the same best-of-N recipe SHOULD carry the same value so clients can group alternative outputs by their shared source recipe. ETag-style semantics: the protocol defines the field and contract, not the hash algorithm or canonical input set. Identifies generative-input identity, not output equality, legal/disclosure equivalence, or the build-to-delivery join.'), OmittedNotNull] = None
+    parent_build_variant_id: Annotated[str | None, Field(description="When this variant was produced by refining a prior build (request `refine_from_build_variant_id`), the source leaf's `build_variant_id` — establishing refinement lineage (a leaf may itself be refined, forming a chain). Absent for first-generation builds. AI-derivative attribution rides the manifest's existing `provenance`; this field carries only the lineage edge."), OmittedNotNull] = None
     creative_manifest: Annotated[CreativeManifest, Field(description='The generated creative for this variant. Carries its own format_id.')]
     variant_axis_value: Annotated[Any | None, Field(description='The value of the variant axis that produced this variant (e.g. the voice id, theme name, or config value). Lets the buyer correlate the variant to its A/B cell.')] = None
-    recommended: Annotated[bool | None, Field(description="Set when keep_mode was keep_one/keep_some — flags the agent's recommended pick(s). Advisory.")] = None
-    rank: Annotated[IntMin1 | None, Field(description="Agent's ranking of this variant (1 = best) when it scored alternatives (best-of-N). Advisory.")] = None
-    eval: Annotated[Eval | None, Field(description="Optional per-leaf evaluation block populated when the request supplied an `evaluator` and the agent advertises creative.supports_evaluator. Experimental (x-status: experimental) — part of the evaluator surface; sellers populating it MUST list `creative.evaluator` in experimental_features. The rank-side of the get_creative_features feature oracle: it carries the creative-feature values this leaf was scored on, which is what the gate-then-rank pipeline (evaluator.feature_requirement[] gate → evaluator.rank_by ordering) and `recommended`/`rank` are computed over. `eval.features[]` is `creative/creative-feature-result.json[]` — the same shape get_creative_features.results[] returns; the wrapper is open (additionalProperties:true) while each feature item is closed. A leaf's eval is a feature measurement, not a pass/fail verdict (a verdict is a categorical string feature value gated via feature_requirement.allowed_values). Leaves the agent dropped via the gate are not present; this block appears only on returned (recommended/billed) leaves. Advisory; does not change what is produced or billed.")] = None
-    pricing_option_id: Annotated[str | None, Field(description='Which rate-card pricing option was applied for THIS variant leaf. Pass in report_usage after promotion.')] = None
-    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this variant leaf, denominated in currency. REQUIRED on every produced leaf whenever the build reports cost (the top-level aggregate `vendor_cost` is present) — leaves are the billing source of truth, and an untrafficked leaf is reconciled from this field alone (it never earns a `creative_id` / `report_usage` entry). A CPM-deferred leaf reports 0 here (a value, not an omission).')] = None
-    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for vendor_cost. Co-required with vendor_cost.')] = None
-    consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption for this variant leaf. Informational; vendor_cost is the billing source of truth.')] = None
+    recommended: Annotated[bool | None, Field(description="Set when keep_mode was keep_one/keep_some — flags the agent's recommended pick(s). Advisory."), OmittedNotNull] = None
+    rank: Annotated[IntMin1 | None, Field(description="Agent's ranking of this variant (1 = best) when it scored alternatives (best-of-N). Advisory."), OmittedNotNull] = None
+    eval: Annotated[Eval | None, Field(description="Optional per-leaf evaluation block populated when the request supplied an `evaluator` and the agent advertises creative.supports_evaluator. Experimental (x-status: experimental) — part of the evaluator surface; sellers populating it MUST list `creative.evaluator` in experimental_features. The rank-side of the get_creative_features feature oracle: it carries the creative-feature values this leaf was scored on, which is what the gate-then-rank pipeline (evaluator.feature_requirement[] gate → evaluator.rank_by ordering) and `recommended`/`rank` are computed over. `eval.features[]` is `creative/creative-feature-result.json[]` — the same shape get_creative_features.results[] returns; the wrapper is open (additionalProperties:true) while each feature item is closed. A leaf's eval is a feature measurement, not a pass/fail verdict (a verdict is a categorical string feature value gated via feature_requirement.allowed_values). Leaves the agent dropped via the gate are not present; this block appears only on returned (recommended/billed) leaves. Advisory; does not change what is produced or billed."), OmittedNotNull] = None
+    pricing_option_id: Annotated[str | None, Field(description='Which rate-card pricing option was applied for THIS variant leaf. Pass in report_usage after promotion.'), OmittedNotNull] = None
+    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this variant leaf, denominated in currency. REQUIRED on every produced leaf whenever the build reports cost (the top-level aggregate `vendor_cost` is present) — leaves are the billing source of truth, and an untrafficked leaf is reconciled from this field alone (it never earns a `creative_id` / `report_usage` entry). A CPM-deferred leaf reports 0 here (a value, not an omission).'), OmittedNotNull] = None
+    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for vendor_cost. Co-required with vendor_cost.'), OmittedNotNull] = None
+    consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption for this variant leaf. Informational; vendor_cost is the billing source of truth.'), OmittedNotNull] = None
 
 
 class CreativesItem(AdCPBaseModel):
@@ -219,11 +219,11 @@ class CreativesItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('variants',), ('errors',)), 'anyOf'),
     )
-    build_creative_id: Annotated[str | None, Field(description='Build-time handle for this produced creative within this response. Distinct from a library creative_id — a build_creative_id is not yet persisted/servable; it acquires a creative_id when a chosen variant is trafficked or added to the library (lazy promotion).')] = None
-    catalog_item_ref: Annotated[CatalogItemRef | None, Field(description='When this creative was produced by fanning out over a catalog, identifies the source item.')] = None
-    signal_condition: Annotated[SignalTargeting | None, Field(description='When this creative group was produced by fanning out over signal_conditions, the SignalTargeting condition this group is FOR (e.g. weather=rain). Sibling to catalog_item_ref. Carries the SAME signal_ref identity the sales-side package targeting uses, so a sales agent can structurally match condition identity and reject-at-trafficking (SIGNAL_TARGETING_INCOMPATIBLE) when a creative is assigned to an incompatible package.')] = None
-    variants: Annotated[list[VariantsItem] | None, Field(description='Choose-among alternatives produced for this creative group (voices, themes, best-of-N, etc.). At least one. Each is an independently-tagged, independently-billed build.', min_length=1)] = None
-    errors: Annotated[list[Error] | None, Field(description='Per-creative errors when this catalog item failed to build. Present only on failed items; does not fail the batch (per-item non-atomic). A failed entry carries errors[] and no variants[]; a successful entry carries variants[] and SHOULD NOT carry errors.', min_length=1)] = None
+    build_creative_id: Annotated[str | None, Field(description='Build-time handle for this produced creative within this response. Distinct from a library creative_id — a build_creative_id is not yet persisted/servable; it acquires a creative_id when a chosen variant is trafficked or added to the library (lazy promotion).'), OmittedNotNull] = None
+    catalog_item_ref: Annotated[CatalogItemRef | None, Field(description='When this creative was produced by fanning out over a catalog, identifies the source item.'), OmittedNotNull] = None
+    signal_condition: Annotated[SignalTargeting | None, Field(description='When this creative group was produced by fanning out over signal_conditions, the SignalTargeting condition this group is FOR (e.g. weather=rain). Sibling to catalog_item_ref. Carries the SAME signal_ref identity the sales-side package targeting uses, so a sales agent can structurally match condition identity and reject-at-trafficking (SIGNAL_TARGETING_INCOMPATIBLE) when a creative is assigned to an incompatible package.'), OmittedNotNull] = None
+    variants: Annotated[list[VariantsItem] | None, Field(description='Choose-among alternatives produced for this creative group (voices, themes, best-of-N, etc.). At least one. Each is an independently-tagged, independently-billed build.', min_length=1), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Per-creative errors when this catalog item failed to build. Present only on failed items; does not fail the batch (per-item non-atomic). A failed entry carries errors[] and no variants[]; a successful entry carries variants[] and SHOULD NOT carry errors.', min_length=1), OmittedNotNull] = None
 
 
 class KeepMode(StrEnum):
@@ -263,20 +263,20 @@ class BuildCreativeVariantSuccess(BuildCreativeResponse):
         Approximation(document='media-buy/build-creative-response.json', pointer='#/oneOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['vendor_cost']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     creatives: Annotated[list[CreativesItem], Field(description='One entry per produced creative group. With catalog fan-out, one entry per catalog item (bounded/sampled by max_creatives). This array is the produced group set; use variants[] inside each group for choose-among alternatives.', min_length=1)]
-    items_total: Annotated[NonNegativeInt | None, Field(description='Total catalog items eligible for the build (before max_creatives sampling). Lets the buyer see that creatives[] is a sample of a larger set.')] = None
-    items_returned: Annotated[NonNegativeInt | None, Field(description='Number of creatives returned in creatives[] (after max_creatives sampling).')] = None
-    leaves_total: Annotated[NonNegativeInt | None, Field(description='Total leaves the request would have produced (≈ items_to_produce × variants_per_item, × conditions_total when signal_conditions was sent). Present when a max_spend cap may have stopped production short. Counts LEAVES, not catalog items — so it expresses a shortfall even for a variant-only fan-out with no catalog.')] = None
-    leaves_returned: Annotated[NonNegativeInt | None, Field(description="Number of leaves actually produced and billed across creatives[].variants[]. When budget_status is 'capped', leaves_returned < leaves_total is the leaf-granular shortfall signal (items_returned/items_total are catalog-item counts and do not capture a mid-item or variant-only cap).")] = None
-    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Aggregate cost across all variant leaves, denominated in currency. MUST equal the sum of the per-leaf vendor_cost values (leaves are the source of truth). When present, every produced leaf MUST carry its own vendor_cost + currency (enforced) so the sum invariant is checkable; omit this aggregate only for a genuinely free build.')] = None
-    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for the aggregate vendor_cost.')] = None
-    keep_mode_applied: Annotated[KeepMode | None, Field(description="Echoes the `keep_mode` the agent applied (mirrors the request hint). Present when the request set `keep_mode`. `keep_mode` is advisory — it does not change what is produced or billed (you pay for every leaf in `variants[]`) — so this echo is the buyer's confirmation that the hint was received, the audit paper trail for a 'I asked for keep_one but was billed for N' dispute. Whether the agent acted on it shows in the `recommended`/`rank` it set on the leaves.")] = None
-    selection_strategy_applied: Annotated[CreativeSelectionStrategy | None, Field(description='Echoes the selection_strategy the agent applied when max_creatives sampling occurred (mirrors keep_mode_applied). Present when the request set selection_strategy. The ranking itself shows in the rank/recommended on creatives[].variants[].')] = None
-    budget_status: Annotated[BudgetStatus | None, Field(description='`complete` (default; absent == complete for back-compat) means the agent produced everything requested. `capped` means a `max_spend` ceiling stopped production early: every returned leaf is real/billed, and an advisory `BUDGET_CAP_REACHED` entry in `errors[]` is the authoritative cap signal. The leaf-granular shortfall is `leaves_returned` < `leaves_total` (do NOT rely on items_returned < items_total — that is also the normal max_creatives-sampling signal and does not capture a mid-item or variant-only cap). This is a successful partial build, not a failure.', json_schema_extra={'default': 'complete'})] = Field(default_factory=lambda: TypeAdapter(BudgetStatus).validate_python('complete'))
-    errors: Annotated[list[Error] | None, Field(description='Advisory (non-terminal) entries on an otherwise-successful build — e.g. a `BUDGET_CAP_REACHED` notice when `budget_status` is `capped`. Terminal failures use the BuildCreativeError shape, not this field.')] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the earliest generated asset URL expires across all variants. Re-build after this time to get fresh URLs.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    items_total: Annotated[NonNegativeInt | None, Field(description='Total catalog items eligible for the build (before max_creatives sampling). Lets the buyer see that creatives[] is a sample of a larger set.'), OmittedNotNull] = None
+    items_returned: Annotated[NonNegativeInt | None, Field(description='Number of creatives returned in creatives[] (after max_creatives sampling).'), OmittedNotNull] = None
+    leaves_total: Annotated[NonNegativeInt | None, Field(description='Total leaves the request would have produced (≈ items_to_produce × variants_per_item, × conditions_total when signal_conditions was sent). Present when a max_spend cap may have stopped production short. Counts LEAVES, not catalog items — so it expresses a shortfall even for a variant-only fan-out with no catalog.'), OmittedNotNull] = None
+    leaves_returned: Annotated[NonNegativeInt | None, Field(description="Number of leaves actually produced and billed across creatives[].variants[]. When budget_status is 'capped', leaves_returned < leaves_total is the leaf-granular shortfall signal (items_returned/items_total are catalog-item counts and do not capture a mid-item or variant-only cap)."), OmittedNotNull] = None
+    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Aggregate cost across all variant leaves, denominated in currency. MUST equal the sum of the per-leaf vendor_cost values (leaves are the source of truth). When present, every produced leaf MUST carry its own vendor_cost + currency (enforced) so the sum invariant is checkable; omit this aggregate only for a genuinely free build.'), OmittedNotNull] = None
+    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for the aggregate vendor_cost.'), OmittedNotNull] = None
+    keep_mode_applied: Annotated[KeepMode | None, Field(description="Echoes the `keep_mode` the agent applied (mirrors the request hint). Present when the request set `keep_mode`. `keep_mode` is advisory — it does not change what is produced or billed (you pay for every leaf in `variants[]`) — so this echo is the buyer's confirmation that the hint was received, the audit paper trail for a 'I asked for keep_one but was billed for N' dispute. Whether the agent acted on it shows in the `recommended`/`rank` it set on the leaves."), OmittedNotNull] = None
+    selection_strategy_applied: Annotated[CreativeSelectionStrategy | None, Field(description='Echoes the selection_strategy the agent applied when max_creatives sampling occurred (mirrors keep_mode_applied). Present when the request set selection_strategy. The ranking itself shows in the rank/recommended on creatives[].variants[].'), OmittedNotNull] = None
+    budget_status: Annotated[BudgetStatus | None, Field(description='`complete` (default; absent == complete for back-compat) means the agent produced everything requested. `capped` means a `max_spend` ceiling stopped production early: every returned leaf is real/billed, and an advisory `BUDGET_CAP_REACHED` entry in `errors[]` is the authoritative cap signal. The leaf-granular shortfall is `leaves_returned` < `leaves_total` (do NOT rely on items_returned < items_total — that is also the normal max_creatives-sampling signal and does not capture a mid-item or variant-only cap). This is a successful partial build, not a failure.', json_schema_extra={'default': 'complete'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(BudgetStatus).validate_python('complete'))
+    errors: Annotated[list[Error] | None, Field(description='Advisory (non-terminal) entries on an otherwise-successful build — e.g. a `BUDGET_CAP_REACHED` notice when `budget_status` is `capped`. Terminal failures use the BuildCreativeError shape, not this field.'), OmittedNotNull] = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the earliest generated asset URL expires across all variants. Re-build after this time to get fresh URLs.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class Basis(StrEnum):
@@ -296,12 +296,12 @@ class PerLeafItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/3/properties/estimate/properties/per_leaf/items')
-    catalog_item_ref: dict[str, Any] | None = None
+    catalog_item_ref: Annotated[dict[str, Any] | None, OmittedNotNull] = None
     variant_axis_value: Any | None = None
-    pricing_option_id: str | None = None
-    cost_low: NonNegativeFloat | None = None
-    cost_high: NonNegativeFloat | None = None
-    consumption_estimate: CreativeConsumption | None = None
+    pricing_option_id: Annotated[str | None, OmittedNotNull] = None
+    cost_low: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    cost_high: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    consumption_estimate: Annotated[CreativeConsumption | None, OmittedNotNull] = None
 
 
 class Estimate(AdCPBaseModel):
@@ -312,17 +312,17 @@ class Estimate(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/3/properties/estimate')
-    items_total: Annotated[NonNegativeInt | None, Field(description='Catalog items eligible (before max_creatives sampling).')] = None
-    items_to_produce: Annotated[NonNegativeInt | None, Field(description='Distinct creatives that would be produced (after max_creatives).')] = None
-    conditions_total: Annotated[IntMin1 | None, Field(description='Signal-fan-out conditions axis count (len(signal_conditions)). Present when signal_conditions was sent so leaves_total = items_to_produce × conditions_total × variants_per_item is legible before spend.')] = None
-    variants_per_item: Annotated[IntMin1 | None, Field(description='Alternatives per creative (max_variants).')] = None
-    leaves_total: Annotated[NonNegativeInt | None, Field(description='Total billable leaves = items_to_produce × variants_per_item (× conditions_total when signal_conditions was sent — see conditions_total).')] = None
+    items_total: Annotated[NonNegativeInt | None, Field(description='Catalog items eligible (before max_creatives sampling).'), OmittedNotNull] = None
+    items_to_produce: Annotated[NonNegativeInt | None, Field(description='Distinct creatives that would be produced (after max_creatives).'), OmittedNotNull] = None
+    conditions_total: Annotated[IntMin1 | None, Field(description='Signal-fan-out conditions axis count (len(signal_conditions)). Present when signal_conditions was sent so leaves_total = items_to_produce × conditions_total × variants_per_item is legible before spend.'), OmittedNotNull] = None
+    variants_per_item: Annotated[IntMin1 | None, Field(description='Alternatives per creative (max_variants).'), OmittedNotNull] = None
+    leaves_total: Annotated[NonNegativeInt | None, Field(description='Total billable leaves = items_to_produce × variants_per_item (× conditions_total when signal_conditions was sent — see conditions_total).'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency for the cost band.')]
     cost_low: Annotated[NonNegativeFloat, Field(description='Low end of the projected aggregate vendor_cost.')]
     cost_high: Annotated[NonNegativeFloat, Field(description='High end. For basis "fixed" this equals cost_low (exact).')]
-    cost_expected: Annotated[NonNegativeFloat | None, Field(description='Optional point estimate within the band.')] = None
+    cost_expected: Annotated[NonNegativeFloat | None, Field(description='Optional point estimate within the band.'), OmittedNotNull] = None
     basis: Annotated[Basis, Field(description='`fixed` = per-format flat pricing (cost_low == cost_high, exact). `estimated_units` = generative per_unit where the seller projects a unit range (band reflects the uncertainty in seconds/images/tokens). `cpm_deferred` = CPM-priced; build-time cost is 0 and cost accrues at serve time (mirrors the vendor_cost:0 CPM convention).')]
-    per_leaf: Annotated[list[PerLeafItem] | None, Field(description='Optional per-leaf breakdown of the estimate.')] = None
+    per_leaf: Annotated[list[PerLeafItem] | None, Field(description='Optional per-leaf breakdown of the estimate.'), OmittedNotNull] = None
 
 
 class BuildCreativeEstimate(BuildCreativeResponse):
@@ -335,9 +335,9 @@ class BuildCreativeEstimate(BuildCreativeResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/3')
     mode: Annotated[Literal['estimate'], Field(description='Echoes the request mode; discriminates this dry-run envelope from the producing shapes.')]
     estimate: Annotated[Estimate, Field(description='Projected cost for what mode:"execute" would have produced.')]
-    expires_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp after which this estimate's inputs/prices may no longer hold.")] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    expires_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp after which this estimate's inputs/prices may no longer hold."), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class BuildCreativeError(BuildCreativeResponse, FailedResponse):
@@ -352,8 +352,8 @@ class BuildCreativeError(BuildCreativeResponse, FailedResponse):
         ForbiddenGroups((('creative_manifest',), ('creative_manifests',), ('creatives',), ('estimate',))),
     )
     errors: Annotated[list[Error], Field(description='Array of errors explaining why creative generation failed. For a canonical multi-output request, an output-scoped failure MUST set `error.field` to `target_capability_ids[N]` and SHOULD include the rejected value in `error.details.capability_id`. Whole-batch failures may omit output attribution. Deprecated target_format_ids requests retain legacy attribution during the 3.x compatibility window.', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class BuildCreativeResponseSubmitted(BuildCreativeResponse):
@@ -369,10 +369,10 @@ class BuildCreativeResponseSubmitted(BuildCreativeResponse):
     )
     status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shapes, whose creative_manifest or creative_manifests are issued in-line. See task-status.json for the full task-status enum.')]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
-    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Generative build queued; typical turnaround 3–5 minutes.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent.")] = None
-    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Generative build queued; typical turnaround 3–5 minutes.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent."), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 BuildCreativeResponse._branch_models = (BuildCreativeSuccess, BuildCreativeMultiSuccess, BuildCreativeVariantSuccess, BuildCreativeEstimate, BuildCreativeError, BuildCreativeResponseSubmitted,)

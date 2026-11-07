@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, StrMinLen1MaxLen255
 
@@ -24,7 +24,7 @@ class RetiredDestinationsItem(AdCPBaseModel):
     )
     destination_id: AccountChangeRecordedWebhookSubscriberId
     destination_refs: Annotated[list[StrMinLen1MaxLen255], Field(description='Retained generation references of the revoked destination, newest first, still resolvable for retained reporting history but ineligible for delivery and for new bindings.', json_schema_extra={'uniqueItems': True}, max_length=32, min_length=1)]
-    revoked_at: AwareDatetime | None = None
+    revoked_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 class PrincipalState(AdCPBaseModel):
@@ -38,10 +38,10 @@ class PrincipalState(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    notification_configs: Annotated[list[AgentNotificationConfigState] | None, Field(description='Current agent-level webhook subscribers. authentication.credentials is always omitted because it is write-only.', max_length=16)] = None
-    reporting_destinations: Annotated[list[AgentReportingDestinationState] | None, Field(description='Current reusable reporting destination bindings and setup states. destination_id and destination_ref values MUST each be unique within this caller-scoped array; superseded generations of a current destination appear in its prior_destination_refs.', max_length=64)] = None
-    declarations: Annotated[PrincipalDeclarationsState | None, Field(description='Declared consumption facts and the seller-computed accepted intersection. Present when and only when the seller supports the declarations section.')] = None
-    retired_destinations: Annotated[list[RetiredDestinationsItem] | None, Field(description='Destinations the caller revoked by omitting them from a submitted reporting_destinations section, retained while any generation remains resolvable for reporting history. Enumerable only by the owning principal. Reusing a retired destination_id requires fresh registration and proof and produces a new generation.', max_length=64)] = None
+    notification_configs: Annotated[list[AgentNotificationConfigState] | None, Field(description='Current agent-level webhook subscribers. authentication.credentials is always omitted because it is write-only.', max_length=16), OmittedNotNull] = None
+    reporting_destinations: Annotated[list[AgentReportingDestinationState] | None, Field(description='Current reusable reporting destination bindings and setup states. destination_id and destination_ref values MUST each be unique within this caller-scoped array; superseded generations of a current destination appear in its prior_destination_refs.', max_length=64), OmittedNotNull] = None
+    declarations: Annotated[PrincipalDeclarationsState | None, Field(description='Declared consumption facts and the seller-computed accepted intersection. Present when and only when the seller supports the declarations section.'), OmittedNotNull] = None
+    retired_destinations: Annotated[list[RetiredDestinationsItem] | None, Field(description='Destinations the caller revoked by omitting them from a submitted reporting_destinations section, retained while any generation remains resolvable for reporting history. Enumerable only by the owning principal. Reusing a retired destination_id requires fresh registration and proof and produces a new generation.', max_length=64), OmittedNotNull] = None
 
 
 __all__ = ["PrincipalState"]

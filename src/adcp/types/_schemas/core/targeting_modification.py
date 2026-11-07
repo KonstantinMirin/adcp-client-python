@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import ReplaceTargetingValuePath, StrMinLen1
 
@@ -36,7 +36,7 @@ class ReplaceTargetingValue(TargetingModification):
     path: Annotated[ReplaceTargetingValuePath, Field(description='RFC 6901 JSON Pointer to one complete targeting value relative to targeting_overlay, for example /demographics/age. Array indexes are forbidden by protocol semantics even if syntactically valid JSON Pointer; target a stable whole dimension instead.')]
     applied: Annotated[Any, Field(description='Complete replacement value. It MUST validate against targeting.json at path; the seller then validates the complete effective overlay. This operation may narrow or broaden only as an explicit buyer-visible proposal.')]
     reason: StrMinLen1
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class RemoveTargetingSetValuesPath(StrEnum):
@@ -44,35 +44,20 @@ class RemoveTargetingSetValuesPath(StrEnum):
     Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.
     """
     GEO_COUNTRIES = '/geo_countries'
-    field_geo_countries = MemberAlias('GEO_COUNTRIES')
     GEO_COUNTRIES_EXCLUDE = '/geo_countries_exclude'
-    field_geo_countries_exclude = MemberAlias('GEO_COUNTRIES_EXCLUDE')
     GEO_REGIONS = '/geo_regions'
-    field_geo_regions = MemberAlias('GEO_REGIONS')
     GEO_REGIONS_EXCLUDE = '/geo_regions_exclude'
-    field_geo_regions_exclude = MemberAlias('GEO_REGIONS_EXCLUDE')
     GEO_POSTAL_AREAS = '/geo_postal_areas'
-    field_geo_postal_areas = MemberAlias('GEO_POSTAL_AREAS')
     GEO_POSTAL_AREAS_EXCLUDE = '/geo_postal_areas_exclude'
-    field_geo_postal_areas_exclude = MemberAlias('GEO_POSTAL_AREAS_EXCLUDE')
     AUDIENCE_INCLUDE = '/audience_include'
-    field_audience_include = MemberAlias('AUDIENCE_INCLUDE')
     AUDIENCE_EXCLUDE = '/audience_exclude'
-    field_audience_exclude = MemberAlias('AUDIENCE_EXCLUDE')
     DEVICE_PLATFORM = '/device_platform'
-    field_device_platform = MemberAlias('DEVICE_PLATFORM')
     DEVICE_PLATFORM_EXCLUDE = '/device_platform_exclude'
-    field_device_platform_exclude = MemberAlias('DEVICE_PLATFORM_EXCLUDE')
     DEVICE_TYPE = '/device_type'
-    field_device_type = MemberAlias('DEVICE_TYPE')
     DEVICE_TYPE_EXCLUDE = '/device_type_exclude'
-    field_device_type_exclude = MemberAlias('DEVICE_TYPE_EXCLUDE')
     BROWSER = '/browser'
-    field_browser = MemberAlias('BROWSER')
     BROWSER_EXCLUDE = '/browser_exclude'
-    field_browser_exclude = MemberAlias('BROWSER_EXCLUDE')
     LANGUAGE = '/language'
-    field_language = MemberAlias('LANGUAGE')
 
 
 class Selector(AdCPBaseModel):
@@ -99,10 +84,10 @@ class RemoveTargetingSetValues(TargetingModification):
     )
     operation: Literal['remove_values']
     path: Annotated[RemoveTargetingSetValuesPath, Field(description='Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.')]
-    selector: Annotated[Selector | None, Field(description='Stable identity of exactly one postal-area group in the requested array. Required only for postal-area paths. Zero or multiple matches make the modification invalid.')] = None
+    selector: Annotated[Selector | None, Field(description='Stable identity of exactly one postal-area group in the requested array. Required only for postal-area paths. Zero or multiple matches make the modification invalid.'), OmittedNotNull] = None
     values: Annotated[list[str], Field(description='Values removed from the requested set. Values absent from that set are invalid rather than no-ops.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     reason: StrMinLen1
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 TargetingModification._branch_models = (ReplaceTargetingValue, RemoveTargetingSetValues,)

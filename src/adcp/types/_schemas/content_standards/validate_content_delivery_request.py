@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -18,12 +18,12 @@ from .get_media_buy_artifacts_response import ObjBrandIdSkuId
 class RecordsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-request.json', pointer='#/properties/records/items')
     record_id: Annotated[str, Field(description='Unique identifier for this delivery record')]
-    media_buy_id: Annotated[str | None, Field(description='Media buy this record belongs to (when batching across multiple buys)')] = None
-    timestamp: Annotated[AwareDatetime | None, Field(description='When the delivery occurred')] = None
+    media_buy_id: Annotated[str | None, Field(description='Media buy this record belongs to (when batching across multiple buys)'), OmittedNotNull] = None
+    timestamp: Annotated[AwareDatetime | None, Field(description='When the delivery occurred'), OmittedNotNull] = None
     artifact: Annotated[Artifact, Field(description='Artifact where ad was delivered')]
-    country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred')] = None
-    channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)')] = None
-    brand_context: Annotated[ObjBrandIdSkuId | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
+    country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred'), OmittedNotNull] = None
+    channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)'), OmittedNotNull] = None
+    brand_context: Annotated[ObjBrandIdSkuId | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.'), OmittedNotNull] = None
 
 
 class ValidateContentDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -33,10 +33,10 @@ class ValidateContentDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-request.json', pointer='#')
     standards_id: Annotated[str, Field(description='Standards configuration to validate against')]
     records: Annotated[list[RecordsItem], Field(description='Delivery records to validate (max 10,000)', max_length=10000, min_length=1)]
-    feature_ids: Annotated[list[str] | None, Field(description='Specific features to evaluate (defaults to all)', min_length=1)] = None
-    include_passed: Annotated[bool | None, Field(description='Include passed records in results')] = True
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    feature_ids: Annotated[list[str] | None, Field(description='Specific features to evaluate (defaults to all)', min_length=1), OmittedNotNull] = None
+    include_passed: Annotated[bool | None, Field(description='Include passed records in results'), OmittedNotNull] = True
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ValidateContentDeliveryRequest"]

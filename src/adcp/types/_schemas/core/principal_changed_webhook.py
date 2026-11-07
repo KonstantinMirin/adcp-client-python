@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -51,8 +51,8 @@ class PrincipalChangedWebhook(AdCPBaseModel):
     agent_url: Annotated[HttpUrl, Field(description='Canonical seller agent URL whose principal state changed. Receivers connected to multiple agents use this to select which principal record to re-read.')]
     changed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller recorded the principal-state transition.')]
     reason: Annotated[Reason, Field(description='Coarse reason for the invalidation. Advisory routing/debug metadata; receivers MUST re-read get_principal rather than inferring the new state from the reason.')]
-    destination_id: Annotated[AccountChangeRecordedWebhookSubscriberId | None, Field(description='Optional advisory hint naming the affected reporting destination for destination-scoped reasons. Receivers MAY use it for selective handling but MUST still treat the get_principal read as authoritative.')] = None
-    ext: ExtensionObject | None = None
+    destination_id: Annotated[AccountChangeRecordedWebhookSubscriberId | None, Field(description='Optional advisory hint naming the affected reporting destination for destination-scoped reasons. Receivers MAY use it for selective handling but MUST still treat the get_principal read as authoritative.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["PrincipalChangedWebhook"]

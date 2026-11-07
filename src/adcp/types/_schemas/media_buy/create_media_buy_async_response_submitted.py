@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMaxLen2000
 
 from ..core.context import ContextObject
@@ -23,10 +23,10 @@ class CreateMediaBuySubmitted(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-async-response-submitted.json', pointer='#')
     status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, which carries media-buy lifecycle state in `media_buy_status`. See task-status.json for the full task-status enum.')]
     task_id: Annotated[str, Field(description='Task handle the buyer uses with get_task_status (or the legacy AdCP tasks/get alias), and that the seller references on push-notification callbacks. The media_buy_id is issued on the completion artifact, not here. This AdCP application-layer handle remains the snake_case task_id in every transport payload and is distinct from any transport-native A2A Task id.')]
-    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Awaiting IO signature from sales team; typical turnaround 2–4 hours.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent.")] = None
-    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Awaiting IO signature from sales team; typical turnaround 2–4 hours.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent."), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CreateMediaBuySubmitted"]

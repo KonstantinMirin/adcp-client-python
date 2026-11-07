@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, GeoForecastDimensionCode, IntMin1
 
@@ -66,7 +66,7 @@ class RequiredPerformanceStandardsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/required_performance_standards/items')
     metric: PerformanceStandardMetric
     threshold: FloatMin0Max1
-    standard: ViewabilityStandard | None = None
+    standard: Annotated[ViewabilityStandard | None, OmittedNotNull] = None
     vendor: BrandKey
 
 
@@ -78,8 +78,8 @@ class RequiredVendorMetricsItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('vendor',), ('metric_id',)), 'anyOf'),
     )
-    vendor: BrandKey | None = None
-    metric_id: VendorMetricID | None = None
+    vendor: Annotated[BrandKey | None, OmittedNotNull] = None
+    metric_id: Annotated[VendorMetricID | None, OmittedNotNull] = None
 
 
 class ProductOfferFilters(AdCPBaseModel):
@@ -102,37 +102,37 @@ class ProductOfferFilters(AdCPBaseModel):
         UniqueItems('required_metrics'),
         ForbiddenGroups((('availability_horizon', 'start_date'), ('availability_horizon', 'end_date'))),
     )
-    delivery_type: DeliveryType | None = None
-    exclusivity: Exclusivity | None = None
-    is_fixed_price: Annotated[bool | None, Field(description='Filter fixed-price versus auction offers. Contingent pricing matches neither value.')] = None
-    pricing_structures: Annotated[list[PricingStructure] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    pricing_currencies: Annotated[list[CurrencyCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    format_option_refs: Annotated[list[FormatOptionReference] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    standard_formats_only: bool | None = None
-    min_exposures: IntMin1 | None = None
-    start_date: Annotated[date | None, Field(description='Fixed-flight availability filter: with end_date, declares the exact flight the buyer intends to run. Returned products MUST be able to serve that flight, and pricing and forecasts are scoped to it. Mutually exclusive with availability_horizon.')] = None
-    end_date: Annotated[date | None, Field(description='Fixed-flight availability filter end. See start_date. Mutually exclusive with availability_horizon.')] = None
-    availability_horizon: Annotated[AvailabilityHorizon | None, Field(description="Flexible-window availability discovery: the buyer is open to any bookable window inside [start_time, end_time) and asks the seller to describe when the returned inventory can run, instead of filtering to one exact flight. Sellers that support this field partition the horizon into time-dimensioned forecast rows (forecast-dimension-time) carrying availability_status; sellers that cannot cover the full horizon signal the gap via the response's incomplete[] mechanism. Unlike start_date/end_date this is not an eligibility filter — products remain returnable when only part of the horizon is open. The resulting availability is a snapshot bounded by the forecast's valid_until, never a hold. Mutually exclusive with start_date and end_date, which declare a fixed flight; buyers that already know their dates use those instead.")] = None
-    budget_range: BudgetRange | None = None
-    countries: Annotated[list[CountryCode] | None, Field(description="Filter by country coverage using ISO 3166-1 alpha-2 codes (e.g., ['US', 'CA', 'GB']). Returns products whose geographic coverage includes at least one of the specified countries. This is a product attribute filter, not a delivery-targeting instruction.", min_length=1)] = None
-    regions: Annotated[list[GeoForecastDimensionCode] | None, Field(description='Inventory coverage in the specified ISO 3166-2 subdivisions: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
-    metros: Annotated[list[ObjSystemCode] | None, Field(description='Inventory coverage in the specified metro areas (system and code): OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
-    postal_areas: Annotated[list[PostalArea] | None, Field(description='Inventory coverage in the specified postal areas: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
-    geo_proximity: Annotated[TargetingOverlayGeoProximity | None, Field(description='Inventory coverage in the specified proximity boundaries: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.')] = None
-    property_list: Annotated[PropertyListReference | None, Field(description='Reference to an externally managed property list. When provided, the seller filters products to only those available on properties in the list. This narrows which publisher inventory is returned; it is a product attribute filter, not a delivery-targeting instruction.')] = None
-    channels: Annotated[list[MediaChannel] | None, Field(min_length=1)] = None
-    video_placement_types: Annotated[list[VideoPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    trusted_match: ObjProvidersResponseTypes | None = None
-    required_features: Annotated[RequiredFeatures | None, Field(description='Canonical protocol features the seller must support.')] = None
-    required_performance_standards: Annotated[list[RequiredPerformanceStandardsItem] | None, Field(min_length=1)] = None
-    required_metrics: Annotated[list[AvailableMetric] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    required_vendor_metrics: Annotated[list[RequiredVendorMetricsItem] | None, Field(min_length=1)] = None
-    audience_evidence_requirements: ProductAudienceEvidenceRequirements | None = None
-    ext: ExtensionObject | None = None
+    delivery_type: Annotated[DeliveryType | None, OmittedNotNull] = None
+    exclusivity: Annotated[Exclusivity | None, OmittedNotNull] = None
+    is_fixed_price: Annotated[bool | None, Field(description='Filter fixed-price versus auction offers. Contingent pricing matches neither value.'), OmittedNotNull] = None
+    pricing_structures: Annotated[list[PricingStructure] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    pricing_currencies: Annotated[list[CurrencyCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    format_option_refs: Annotated[list[FormatOptionReference] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    standard_formats_only: Annotated[bool | None, OmittedNotNull] = None
+    min_exposures: Annotated[IntMin1 | None, OmittedNotNull] = None
+    start_date: Annotated[date | None, Field(description='Fixed-flight availability filter: with end_date, declares the exact flight the buyer intends to run. Returned products MUST be able to serve that flight, and pricing and forecasts are scoped to it. Mutually exclusive with availability_horizon.'), OmittedNotNull] = None
+    end_date: Annotated[date | None, Field(description='Fixed-flight availability filter end. See start_date. Mutually exclusive with availability_horizon.'), OmittedNotNull] = None
+    availability_horizon: Annotated[AvailabilityHorizon | None, Field(description="Flexible-window availability discovery: the buyer is open to any bookable window inside [start_time, end_time) and asks the seller to describe when the returned inventory can run, instead of filtering to one exact flight. Sellers that support this field partition the horizon into time-dimensioned forecast rows (forecast-dimension-time) carrying availability_status; sellers that cannot cover the full horizon signal the gap via the response's incomplete[] mechanism. Unlike start_date/end_date this is not an eligibility filter — products remain returnable when only part of the horizon is open. The resulting availability is a snapshot bounded by the forecast's valid_until, never a hold. Mutually exclusive with start_date and end_date, which declare a fixed flight; buyers that already know their dates use those instead."), OmittedNotNull] = None
+    budget_range: Annotated[BudgetRange | None, OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, Field(description="Filter by country coverage using ISO 3166-1 alpha-2 codes (e.g., ['US', 'CA', 'GB']). Returns products whose geographic coverage includes at least one of the specified countries. This is a product attribute filter, not a delivery-targeting instruction.", min_length=1), OmittedNotNull] = None
+    regions: Annotated[list[GeoForecastDimensionCode] | None, Field(description='Inventory coverage in the specified ISO 3166-2 subdivisions: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1), OmittedNotNull] = None
+    metros: Annotated[list[ObjSystemCode] | None, Field(description='Inventory coverage in the specified metro areas (system and code): OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1), OmittedNotNull] = None
+    postal_areas: Annotated[list[PostalArea] | None, Field(description='Inventory coverage in the specified postal areas: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1), OmittedNotNull] = None
+    geo_proximity: Annotated[TargetingOverlayGeoProximity | None, Field(description='Inventory coverage in the specified proximity boundaries: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.'), OmittedNotNull] = None
+    property_list: Annotated[PropertyListReference | None, Field(description='Reference to an externally managed property list. When provided, the seller filters products to only those available on properties in the list. This narrows which publisher inventory is returned; it is a product attribute filter, not a delivery-targeting instruction.'), OmittedNotNull] = None
+    channels: Annotated[list[MediaChannel] | None, Field(min_length=1), OmittedNotNull] = None
+    video_placement_types: Annotated[list[VideoPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    trusted_match: Annotated[ObjProvidersResponseTypes | None, OmittedNotNull] = None
+    required_features: Annotated[RequiredFeatures | None, Field(description='Canonical protocol features the seller must support.'), OmittedNotNull] = None
+    required_performance_standards: Annotated[list[RequiredPerformanceStandardsItem] | None, Field(min_length=1), OmittedNotNull] = None
+    required_metrics: Annotated[list[AvailableMetric] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    required_vendor_metrics: Annotated[list[RequiredVendorMetricsItem] | None, Field(min_length=1), OmittedNotNull] = None
+    audience_evidence_requirements: Annotated[ProductAudienceEvidenceRequirements | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ProductOfferFilters"]

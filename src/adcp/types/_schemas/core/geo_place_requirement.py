@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Distinct, Rule, UniqueItems
 from adcp.types.constraints import NonEmptyList, StrCountryCode, StrMinLen1
 
@@ -25,7 +25,7 @@ class CatalogRequirement(AdCPBaseModel):
         UniqueItems('system_versions'),
     )
     countries: Annotated[dict[StrCountryCode, Annotated[NonEmptyList[GeographicPlaceType], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]], Field(min_length=1)]
-    system_versions: Annotated[list[StrMinLen1] | None, Field(description='Optional exact catalog versions that must remain selectable. Versions are opaque strings, not ordered ranges.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    system_versions: Annotated[list[StrMinLen1] | None, Field(description='Optional exact catalog versions that must remain selectable. Versions are opaque strings, not ordered ranges.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 class GeographicPlaceRequirement(AdCPBaseModel):

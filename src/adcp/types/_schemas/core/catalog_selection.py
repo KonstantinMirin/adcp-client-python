@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -27,12 +27,12 @@ class CatalogSelection(AdCPBaseModel):
         UniqueItems('tags'),
     )
     catalog_id: Annotated[StrMinLen1, Field(description='Seller-known catalog identifier returned by sync_catalogs.')]
-    type: Annotated[CatalogType | None, Field(description="Catalog type. Structural types: 'offering' (AdCP Offering objects), 'product' (ecommerce entries), 'inventory' (stock per location), 'store' (physical locations), 'promotion' (deals and pricing). Vertical types: 'hotel', 'flight', 'job', 'vehicle', 'real_estate', 'education', 'destination', 'app' — each with an industry-specific item schema.")] = None
-    ids: Annotated[Ids | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    gtins: Annotated[Gtins | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    tags: Annotated[Tags | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    category: Category | None = None
-    query: Annotated[Query | None, Field(min_length=1)] = None
+    type: Annotated[CatalogType | None, Field(description="Catalog type. Structural types: 'offering' (AdCP Offering objects), 'product' (ecommerce entries), 'inventory' (stock per location), 'store' (physical locations), 'promotion' (deals and pricing). Vertical types: 'hotel', 'flight', 'job', 'vehicle', 'real_estate', 'education', 'destination', 'app' — each with an industry-specific item schema."), OmittedNotNull] = None
+    ids: Annotated[Ids | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    gtins: Annotated[Gtins | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    tags: Annotated[Tags | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    category: Annotated[Category | None, OmittedNotNull] = None
+    query: Annotated[Query | None, Field(min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["CatalogSelection"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 
 from .delivery_metrics import DeliveryMetrics
 from .domain_name import DomainName
@@ -20,10 +20,10 @@ class PlacementDeliveryMetrics(DeliveryMetrics):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-delivery-metrics.json', pointer='#')
-    placement_identity: Annotated[PlacementIdentity | None, Field(description='Self-contained identity. publisher_ref resolves in adagents.json; seller_inline is scoped by seller_agent.')] = None
-    placement_name: Annotated[str | None, Field(description='Current human-readable placement name. Convenience metadata only; placement_identity is stable identity.')] = None
+    placement_identity: Annotated[PlacementIdentity | None, Field(description='Self-contained identity. publisher_ref resolves in adagents.json; seller_inline is scoped by seller_agent.'), OmittedNotNull] = None
+    placement_name: Annotated[str | None, Field(description='Current human-readable placement name. Convenience metadata only; placement_identity is stable identity.'), OmittedNotNull] = None
     placement_id: Annotated[str, Field(description='Required flat compatibility identity. It MUST equal placement_identity.placement_id when placement_identity is present.')]
-    publisher_domain: Annotated[DomainName | None, Field(description='Legacy publisher attribution. For publisher_ref identity it MUST equal placement_identity.publisher_domain. For seller_inline it identifies inventory context only and is not identity authority.')] = None
+    publisher_domain: Annotated[DomainName | None, Field(description='Legacy publisher attribution. For publisher_ref identity it MUST equal placement_identity.publisher_domain. For seller_inline it identifies inventory context only and is not identity authority.'), OmittedNotNull] = None
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 

@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, RequiredGroups, Rule
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
@@ -28,7 +28,7 @@ class AttestationCredentialUriLocator(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/locator/oneOf/0')
     type: Literal['credential_uri']
     credential_uri: Annotated[HttpUrl, Field(description='HTTPS URI of the credential. Before any fetch, evaluators MUST match its canonical origin to credential_origins on the accepted issuer capability and then apply the attestation fetch contract.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AttestationIssuerCredentialIdLocator(AdCPBaseModel):
@@ -39,7 +39,7 @@ class AttestationIssuerCredentialIdLocator(AdCPBaseModel):
     type: Literal['issuer_credential_id']
     credential_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable credential identifier in the issuer's namespace. It is meaningful only together with issuer and resolver_id.")]
     resolver_id: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId, Field(description='Identifier of a resolver already published in the matched accepted_issuers[].resolvers[] capability. A presenter cannot supply or override its URL.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class EmbeddedCredential(AdCPBaseModel):
@@ -52,7 +52,7 @@ class EmbeddedCredential(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/embedded_credential')
     format: Annotated[HttpUrl, Field(description='Open, absolute URI identifying the credential/proof format. AdCP does not impose a universal issuer payload schema.')]
     value: Annotated[dict[str, Any] | StrMinLen1, Field(description='Credential encoded as a JSON object or a compact string, according to format.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ValidityHint(AdCPBaseModel):
@@ -66,8 +66,8 @@ class ValidityHint(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    not_before: AwareDatetime | None = None
-    expires_at: AwareDatetime | None = None
+    not_before: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 class VerifyAgent(AdCPBaseModel):
@@ -96,13 +96,13 @@ class AttestationReference(AdCPBaseModel):
     issuer: AttestationIssuer
     claim_type: Annotated[HttpUrl, Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.')]
     subject: AttestationSubject
-    locator: Annotated[AttestationCredentialUriLocator | AttestationIssuerCredentialIdLocator | None, Field(description='Stable locator for resolving the credential. Credential URLs are permitted only when their canonical origin is allowlisted for the matched issuer. Issuer-scoped IDs name a resolver_id already published by the evaluator; the presentation cannot introduce a resolver URL.')] = None
-    embedded_credential: Annotated[EmbeddedCredential | None, Field(description='Optional inline credential for private, authenticated, or offline delivery. It may accompany locator or be the only delivery path. Its format must be supported by the evaluator, and the evaluator MUST verify the credential exactly as it would a resolved credential.')] = None
-    content_digest: Annotated[ZipAssetDigest | None, Field(description='Optional SHA-256 digest pin for the exact credential bytes, formatted as sha256:<lowercase hex>. The credential format defines its canonical byte representation. A mismatch is invalid and MUST NOT fall back to the unpinned credential. REQUIRED when both locator and embedded_credential are present; both byte representations MUST match this digest.')] = None
-    credential_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional issuer-defined credential version hint. It is advisory; the resolved credential is authoritative.')] = None
-    validity_hint: Annotated[ValidityHint | None, Field(description="Optional planning-time validity hint copied from issuer metadata. Evaluators MUST use the resolved or embedded credential's signed validity and revocation state as authoritative.")] = None
-    verify_agent: Annotated[VerifyAgent | None, Field(description='Optional presenter nomination of a verifier already published by the evaluator. This is a representation, not routing authority: agent_url MUST match an accepted_verifiers[] entry after canonicalization, and the evaluator may choose another accepted verifier or verify locally.')] = None
-    ext: ExtensionObject | None = None
+    locator: Annotated[AttestationCredentialUriLocator | AttestationIssuerCredentialIdLocator | None, Field(description='Stable locator for resolving the credential. Credential URLs are permitted only when their canonical origin is allowlisted for the matched issuer. Issuer-scoped IDs name a resolver_id already published by the evaluator; the presentation cannot introduce a resolver URL.'), OmittedNotNull] = None
+    embedded_credential: Annotated[EmbeddedCredential | None, Field(description='Optional inline credential for private, authenticated, or offline delivery. It may accompany locator or be the only delivery path. Its format must be supported by the evaluator, and the evaluator MUST verify the credential exactly as it would a resolved credential.'), OmittedNotNull] = None
+    content_digest: Annotated[ZipAssetDigest | None, Field(description='Optional SHA-256 digest pin for the exact credential bytes, formatted as sha256:<lowercase hex>. The credential format defines its canonical byte representation. A mismatch is invalid and MUST NOT fall back to the unpinned credential. REQUIRED when both locator and embedded_credential are present; both byte representations MUST match this digest.'), OmittedNotNull] = None
+    credential_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional issuer-defined credential version hint. It is advisory; the resolved credential is authoritative.'), OmittedNotNull] = None
+    validity_hint: Annotated[ValidityHint | None, Field(description="Optional planning-time validity hint copied from issuer metadata. Evaluators MUST use the resolved or embedded credential's signed validity and revocation state as authoritative."), OmittedNotNull] = None
+    verify_agent: Annotated[VerifyAgent | None, Field(description='Optional presenter nomination of a verifier already published by the evaluator. This is a representation, not routing authority: agent_url MUST match an accepted_verifiers[] entry after canonicalization, and the evaluator may choose another accepted verifier or verify locally.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AttestationReference"]

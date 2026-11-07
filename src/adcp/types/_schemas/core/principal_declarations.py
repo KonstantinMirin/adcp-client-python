@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import PrincipalDeclarationsStateSelectedAsyncAdcpVersion
 
@@ -33,9 +33,9 @@ class AgentDeclarations(AdCPBaseModel):
         UniqueItems('webhook_signing_algorithms'),
         UniqueItems('experimental_features'),
     )
-    async_adcp_versions: Annotated[list[PrincipalDeclarationsStateSelectedAsyncAdcpVersion] | None, Field(description='AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.', json_schema_extra={'uniqueItems': True}, max_length=8, min_length=1)] = None
-    webhook_signing_algorithms: Annotated[list[WebhookSigningAlgorithm] | None, Field(description="RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    experimental_features: Annotated[list[ExperimentalFeatureID] | None, Field(description="Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.", json_schema_extra={'uniqueItems': True}, max_length=32, min_length=1)] = None
+    async_adcp_versions: Annotated[list[PrincipalDeclarationsStateSelectedAsyncAdcpVersion] | None, Field(description='AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.', json_schema_extra={'uniqueItems': True}, max_length=8, min_length=1), OmittedNotNull] = None
+    webhook_signing_algorithms: Annotated[list[WebhookSigningAlgorithm] | None, Field(description="RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    experimental_features: Annotated[list[ExperimentalFeatureID] | None, Field(description="Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.", json_schema_extra={'uniqueItems': True}, max_length=32, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["AgentDeclarations"]

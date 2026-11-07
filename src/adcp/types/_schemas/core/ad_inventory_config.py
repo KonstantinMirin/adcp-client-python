@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 
@@ -18,10 +18,10 @@ class AdInventoryConfiguration(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/ad-inventory-config.json', pointer='#')
     expected_breaks: Annotated[NonNegativeInt, Field(description='Number of planned ad breaks in the installment')]
-    total_ad_seconds: Annotated[NonNegativeInt | None, Field(description='Total seconds of ad time across all breaks')] = None
-    max_ad_duration_seconds: Annotated[IntMin1 | None, Field(description='Maximum duration in seconds for a single ad within a break. Buyers need this to know whether their creative fits.')] = None
-    unplanned_breaks: Annotated[bool | None, Field(description='Whether ad breaks are dynamic and driven by live conditions (sports timeouts, election coverage). When false, all breaks are pre-defined.')] = None
-    supported_formats: Annotated[list[str] | None, Field(description="Ad format types supported in breaks (e.g., 'video', 'audio', 'display')")] = None
+    total_ad_seconds: Annotated[NonNegativeInt | None, Field(description='Total seconds of ad time across all breaks'), OmittedNotNull] = None
+    max_ad_duration_seconds: Annotated[IntMin1 | None, Field(description='Maximum duration in seconds for a single ad within a break. Buyers need this to know whether their creative fits.'), OmittedNotNull] = None
+    unplanned_breaks: Annotated[bool | None, Field(description='Whether ad breaks are dynamic and driven by live conditions (sports timeouts, election coverage). When false, all breaks are pre-defined.'), OmittedNotNull] = None
+    supported_formats: Annotated[list[str] | None, Field(description="Ad format types supported in breaks (e.g., 'video', 'audio', 'display')"), OmittedNotNull] = None
 
 
 __all__ = ["AdInventoryConfiguration"]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, HttpUrl, StrMinLen1
 
 
@@ -30,12 +30,12 @@ class PolicyViolationDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/policy-violation.json', pointer='#')
-    origin: Annotated[Origin | None, Field(description='Whose policy produced the rejection. Optional so undisclosed seller policies can return only the typed POLICY_VIOLATION code if even origin would reveal sensitive information.')] = None
-    policy_id: Annotated[str | None, Field(description='Shared policy-registry identifier for the violated policy. Use seller_policy_ref instead when the seller is not disclosing a registry policy.')] = None
-    seller_policy_ref: Annotated[StrMinLen1 | None, Field(description='Opaque seller-scoped reference that lets support and audit records correlate an undisclosed policy without publishing its rules. This is not a shared policy-registry ID.')] = None
-    policy_url: Annotated[HttpUrl | None, Field(description='URL where the full policy can be reviewed')] = None
-    violated_rules: Annotated[list[str] | None, Field(description='Specific rules that were violated')] = None
-    category: Annotated[AccountAuthorizationAllowedTasksItem | None, Field(description="Optional coarse policy category disclosed at the seller's discretion.")] = None
+    origin: Annotated[Origin | None, Field(description='Whose policy produced the rejection. Optional so undisclosed seller policies can return only the typed POLICY_VIOLATION code if even origin would reveal sensitive information.'), OmittedNotNull] = None
+    policy_id: Annotated[str | None, Field(description='Shared policy-registry identifier for the violated policy. Use seller_policy_ref instead when the seller is not disclosing a registry policy.'), OmittedNotNull] = None
+    seller_policy_ref: Annotated[StrMinLen1 | None, Field(description='Opaque seller-scoped reference that lets support and audit records correlate an undisclosed policy without publishing its rules. This is not a shared policy-registry ID.'), OmittedNotNull] = None
+    policy_url: Annotated[HttpUrl | None, Field(description='URL where the full policy can be reviewed'), OmittedNotNull] = None
+    violated_rules: Annotated[list[str] | None, Field(description='Specific rules that were violated'), OmittedNotNull] = None
+    category: Annotated[AccountAuthorizationAllowedTasksItem | None, Field(description="Optional coarse policy category disclosed at the seller's discretion."), OmittedNotNull] = None
 
 
 __all__ = ["PolicyViolationDetails"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.account_with_authorization import AccountWithAuthorization
@@ -26,10 +26,10 @@ class ListAccountsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/list-accounts-response.json', pointer='#')
     accounts: Annotated[list[AccountWithAuthorization], Field(description='Array of accounts accessible to the authenticated agent. Each entry is the full Account object plus optional authorization. Buyer-declared entries include brand, operator, and any operator_unit, fixed currency, buyer-selected account timezone, and sandbox qualifiers so the natural AccountRef round-trips after a cold start.')]
-    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings')] = None
-    pagination: PaginationResponse | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings'), OmittedNotNull] = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListAccountsResponse"]

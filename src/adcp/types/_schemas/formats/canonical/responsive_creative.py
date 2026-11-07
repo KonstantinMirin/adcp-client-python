@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ._base import CanonicalFormatBase, SlotsItem
@@ -19,35 +19,35 @@ class CanonicalFormatResponsiveCreative(CanonicalFormatBase):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/responsive_creative.json', pointer='#')
-    experimental: Annotated[bool | None, Field(description="Marked experimental at 3.1 GA: composition is algorithmic (the surface picks combinations and reports per-asset breakdowns), and there's no clean v1-translatable equivalent. Buyers ship asset pools rather than rendered creatives; the surface's per-impression composition cannot be predicted by `validate_input`. Adopters SHOULD validate behavior per surface (Google PMax vs Meta Advantage+ creative differ meaningfully).")] = True
-    v1_translatable: Annotated[bool | None, Field(description="Inherently new in v2 — algorithmic asset-pool composition (Google PMax / Meta Advantage+ creative) wasn't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural.")] = False
-    slots: Annotated[list[SlotsItem] | None, Field(description="Programmatic declaration of which canonical asset_group_id slots a manifest targeting this format must (or may) populate. Lets SDK codegen and validators enumerate expected slots without parsing the format's prose description. Each entry references an asset_group_id from the canonical vocabulary registry, paired with an `asset_type` so the validator knows which asset schema to apply. Format-level narrowing parameters that apply across all slots (e.g., flat `headline_max_chars` on responsive_creative) may also live on the format declaration; per-slot constraints (a specific slot's `max_chars` or `max_size_kb`) live on the slot entry.", json_schema_extra={'default': [{'asset_group_id': 'headlines', 'asset_type': 'text', 'required': True, 'min': 3, 'max': 15}, {'asset_group_id': 'long_headlines', 'asset_type': 'text', 'required': False, 'min': 1, 'max': 5}, {'asset_group_id': 'descriptions', 'asset_type': 'text', 'required': True, 'min': 2, 'max': 5}, {'asset_group_id': 'images_landscape', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'images_square', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'images_vertical', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'video', 'asset_type': 'video', 'required': False, 'min': 0, 'max': 5}, {'asset_group_id': 'logo', 'asset_type': 'image', 'required': True, 'min': 1, 'max': 5, 'logo_slots': ['logo_card_light', 'logo_card_dark', 'marketplace_listing', 'ad_end_card'], 'required_logo_slots': ['logo_card_light', 'logo_card_dark']}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': True, 'min': 1, 'max': 1}]})] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'headlines', 'asset_type': 'text', 'required': True, 'min': 3, 'max': 15}, {'asset_group_id': 'long_headlines', 'asset_type': 'text', 'required': False, 'min': 1, 'max': 5}, {'asset_group_id': 'descriptions', 'asset_type': 'text', 'required': True, 'min': 2, 'max': 5}, {'asset_group_id': 'images_landscape', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'images_square', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'images_vertical', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'video', 'asset_type': 'video', 'required': False, 'min': 0, 'max': 5}, {'asset_group_id': 'logo', 'asset_type': 'image', 'required': True, 'min': 1, 'max': 5, 'logo_slots': ['logo_card_light', 'logo_card_dark', 'marketplace_listing', 'ad_end_card'], 'required_logo_slots': ['logo_card_light', 'logo_card_dark']}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': True, 'min': 1, 'max': 1}]))
-    headlines_min: NonNegativeInt | None = None
-    headlines_max: NonNegativeInt | None = None
-    headline_max_chars: IntMin1 | None = None
-    long_headlines_min: NonNegativeInt | None = None
-    long_headlines_max: NonNegativeInt | None = None
-    long_headline_max_chars: IntMin1 | None = None
-    descriptions_min: NonNegativeInt | None = None
-    descriptions_max: NonNegativeInt | None = None
-    description_max_chars: IntMin1 | None = None
-    images_landscape_min: NonNegativeInt | None = None
-    images_landscape_max: NonNegativeInt | None = None
-    images_landscape_aspect_ratio: str | None = None
-    images_square_min: NonNegativeInt | None = None
-    images_square_max: NonNegativeInt | None = None
-    images_vertical_min: NonNegativeInt | None = None
-    images_vertical_max: NonNegativeInt | None = None
-    videos_min: NonNegativeInt | None = None
-    videos_max: NonNegativeInt | None = None
-    video_min_duration_ms: IntMin1 | None = None
-    video_max_duration_ms: IntMin1 | None = None
-    logo_min: NonNegativeInt | None = None
-    logo_max: NonNegativeInt | None = None
-    logo_aspect_ratios: list[str] | None = None
-    business_name_max_chars: IntMin1 | None = None
-    asset_image_max_file_size_kb: IntMin1 | None = None
-    supports_catalog_input: Annotated[bool | None, Field(description='Whether the product can additionally consume a catalog reference (e.g., PMax with product feed).')] = None
+    experimental: Annotated[bool | None, Field(description="Marked experimental at 3.1 GA: composition is algorithmic (the surface picks combinations and reports per-asset breakdowns), and there's no clean v1-translatable equivalent. Buyers ship asset pools rather than rendered creatives; the surface's per-impression composition cannot be predicted by `validate_input`. Adopters SHOULD validate behavior per surface (Google PMax vs Meta Advantage+ creative differ meaningfully)."), OmittedNotNull] = True
+    v1_translatable: Annotated[bool | None, Field(description="Inherently new in v2 — algorithmic asset-pool composition (Google PMax / Meta Advantage+ creative) wasn't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural."), OmittedNotNull] = False
+    slots: Annotated[list[SlotsItem] | None, Field(description="Programmatic declaration of which canonical asset_group_id slots a manifest targeting this format must (or may) populate. Lets SDK codegen and validators enumerate expected slots without parsing the format's prose description. Each entry references an asset_group_id from the canonical vocabulary registry, paired with an `asset_type` so the validator knows which asset schema to apply. Format-level narrowing parameters that apply across all slots (e.g., flat `headline_max_chars` on responsive_creative) may also live on the format declaration; per-slot constraints (a specific slot's `max_chars` or `max_size_kb`) live on the slot entry.", json_schema_extra={'default': [{'asset_group_id': 'headlines', 'asset_type': 'text', 'required': True, 'min': 3, 'max': 15}, {'asset_group_id': 'long_headlines', 'asset_type': 'text', 'required': False, 'min': 1, 'max': 5}, {'asset_group_id': 'descriptions', 'asset_type': 'text', 'required': True, 'min': 2, 'max': 5}, {'asset_group_id': 'images_landscape', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'images_square', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'images_vertical', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'video', 'asset_type': 'video', 'required': False, 'min': 0, 'max': 5}, {'asset_group_id': 'logo', 'asset_type': 'image', 'required': True, 'min': 1, 'max': 5, 'logo_slots': ['logo_card_light', 'logo_card_dark', 'marketplace_listing', 'ad_end_card'], 'required_logo_slots': ['logo_card_light', 'logo_card_dark']}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': True, 'min': 1, 'max': 1}]}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'headlines', 'asset_type': 'text', 'required': True, 'min': 3, 'max': 15}, {'asset_group_id': 'long_headlines', 'asset_type': 'text', 'required': False, 'min': 1, 'max': 5}, {'asset_group_id': 'descriptions', 'asset_type': 'text', 'required': True, 'min': 2, 'max': 5}, {'asset_group_id': 'images_landscape', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'images_square', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'images_vertical', 'asset_type': 'image', 'required': False, 'min': 1, 'max': 20}, {'asset_group_id': 'video', 'asset_type': 'video', 'required': False, 'min': 0, 'max': 5}, {'asset_group_id': 'logo', 'asset_type': 'image', 'required': True, 'min': 1, 'max': 5, 'logo_slots': ['logo_card_light', 'logo_card_dark', 'marketplace_listing', 'ad_end_card'], 'required_logo_slots': ['logo_card_light', 'logo_card_dark']}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': True, 'min': 1, 'max': 1}]))
+    headlines_min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    headlines_max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    headline_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
+    long_headlines_min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    long_headlines_max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    long_headline_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
+    descriptions_min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    descriptions_max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    description_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
+    images_landscape_min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    images_landscape_max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    images_landscape_aspect_ratio: Annotated[str | None, OmittedNotNull] = None
+    images_square_min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    images_square_max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    images_vertical_min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    images_vertical_max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    videos_min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    videos_max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    video_min_duration_ms: Annotated[IntMin1 | None, OmittedNotNull] = None
+    video_max_duration_ms: Annotated[IntMin1 | None, OmittedNotNull] = None
+    logo_min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    logo_max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    logo_aspect_ratios: Annotated[list[str] | None, OmittedNotNull] = None
+    business_name_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
+    asset_image_max_file_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
+    supports_catalog_input: Annotated[bool | None, Field(description='Whether the product can additionally consume a catalog reference (e.g., PMax with product feed).'), OmittedNotNull] = None
 
 
 __all__ = ["CanonicalFormatResponsiveCreative"]

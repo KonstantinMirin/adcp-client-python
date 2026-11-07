@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, NotValue, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMinLen1
 
@@ -58,16 +58,16 @@ class MacroProcessingCapability(AdCPBaseModel):
         Approximation(document='core/macro-resolution-capability.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'enum': ['iab_vast', 'iab_daast']}, 'operation': {'const': 'resolve_value'}}, 'required': ['dialect', 'operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     dialect: MacroDialectFamily
-    dialect_namespace: HttpUrl | None = None
-    dialect_revision: StrMinLen1 | None = None
+    dialect_namespace: Annotated[HttpUrl | None, OmittedNotNull] = None
+    dialect_revision: Annotated[StrMinLen1 | None, OmittedNotNull] = None
     dialect_semantic: StrMinLen1
     mapping_status: MappingStatus
-    universal_semantic: UniversalMacro | None = None
+    universal_semantic: Annotated[UniversalMacro | None, OmittedNotNull] = None
     operation: Operation
     performed_by: MacroProcessingActor
     supported_contexts: Annotated[list[Annotated[MacroValueContext, AfterValidator(NotValue(('opaque',)))]], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    supported_encodings: Annotated[list[MacroEncoding] | None, Field(description='Exact supported encoding profiles, not a maximum depth. Required for value resolution.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    translation_target: MacroTranslationTarget | None = None
+    supported_encodings: Annotated[list[MacroEncoding] | None, Field(description='Exact supported encoding profiles, not a maximum depth. Required for value resolution.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    translation_target: Annotated[MacroTranslationTarget | None, OmittedNotNull] = None
 
 
 __all__ = ["MacroProcessingCapability"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatGt0, FloatMin0Max1, HttpUrl, IntMin1
 
 from ..provenance import Provenance
@@ -23,14 +23,14 @@ class ImageAsset(AdCPBaseModel):
     url: Annotated[HttpUrl, Field(description='URL to the image asset')]
     width: Annotated[IntMin1, Field(description='Width in pixels')]
     height: Annotated[IntMin1, Field(description='Height in pixels')]
-    file_size_bytes: Annotated[IntMin1 | None, Field(description='Image file size in bytes. Required by agents that advertise a max_file_size_kb constraint.')] = None
-    pixel_ratio: Annotated[FloatGt0 | None, Field(description='Intrinsic pixels per logical render pixel (for example `2` for a 600×500 image intended to render at 300×250). Optional because a validator can infer the ratio when the target format declares logical dimensions. When supplied, it MUST agree with both `width / logical_width` and `height / logical_height`; it is never a substitute for the intrinsic `width` and `height` fields.')] = None
-    state_id: Annotated[str | None, Field(description='Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it). Omit for ordinary image slots.')] = None
-    breakpoint_id: Annotated[str | None, Field(description='Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one breakpoint declared on the selected state (semantic validators resolve it). Omit for ordinary image slots.')] = None
-    focal_point: Annotated[list[FloatMin0Max1] | None, Field(description="Normalized `[x, y]` coordinates (0–1 from top-left) of the image's visual anchor. Seller-side renderers crop toward the focal point when deriving renditions across breakpoints and aspect ratios; absent, cropping falls back to center-weighted defaults.", max_length=2, min_length=2)] = None
-    format: Annotated[str | None, Field(description='Image file format (jpg, png, gif, webp, etc.)')] = None
-    alt_text: Annotated[str | None, Field(description='Alternative text for accessibility')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    file_size_bytes: Annotated[IntMin1 | None, Field(description='Image file size in bytes. Required by agents that advertise a max_file_size_kb constraint.'), OmittedNotNull] = None
+    pixel_ratio: Annotated[FloatGt0 | None, Field(description='Intrinsic pixels per logical render pixel (for example `2` for a 600×500 image intended to render at 300×250). Optional because a validator can infer the ratio when the target format declares logical dimensions. When supplied, it MUST agree with both `width / logical_width` and `height / logical_height`; it is never a substitute for the intrinsic `width` and `height` fields.'), OmittedNotNull] = None
+    state_id: Annotated[str | None, Field(description='Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it). Omit for ordinary image slots.'), OmittedNotNull] = None
+    breakpoint_id: Annotated[str | None, Field(description='Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one breakpoint declared on the selected state (semantic validators resolve it). Omit for ordinary image slots.'), OmittedNotNull] = None
+    focal_point: Annotated[list[FloatMin0Max1] | None, Field(description="Normalized `[x, y]` coordinates (0–1 from top-left) of the image's visual anchor. Seller-side renderers crop toward the focal point when deriving renditions across breakpoints and aspect ratios; absent, cropping falls back to center-weighted defaults.", max_length=2, min_length=2), OmittedNotNull] = None
+    format: Annotated[str | None, Field(description='Image file format (jpg, png, gif, webp, etc.)'), OmittedNotNull] = None
+    alt_text: Annotated[str | None, Field(description='Alternative text for accessibility'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["ImageAsset"]

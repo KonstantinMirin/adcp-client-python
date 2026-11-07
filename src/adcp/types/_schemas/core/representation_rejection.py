@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 
@@ -40,7 +40,7 @@ class RepresentationRejection(AdCPBaseModel):
     representation_id: StrMinLen1
     code: Code
     message: StrMinLen1
-    details: dict[str, Any] | None = None
+    details: Annotated[dict[str, Any] | None, OmittedNotNull] = None
 
 
 __all__ = ["RepresentationRejection"]

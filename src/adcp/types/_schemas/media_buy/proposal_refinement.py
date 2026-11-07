@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin2Max10, StrMinLen1
 
@@ -70,8 +70,8 @@ class Flight(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('start_no_later_than',), ('end_no_earlier_than',)), 'anyOf'),
     )
-    start_no_later_than: AwareDatetime | None = None
-    end_no_earlier_than: AwareDatetime | None = None
+    start_no_later_than: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    end_no_earlier_than: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 class Constraints(AdCPBaseModel):
@@ -85,10 +85,10 @@ class Constraints(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    total_budget: Annotated[ProposalBudgetConstraint | None, Field(description='Inclusive bounds checked against commercial_terms.total_budget. Satisfied only when commercial_terms.total_budget is present, its currency matches, and its amount falls within every supplied bound.')] = None
-    cpm: Annotated[Cpm | None, Field(description='Hard ceiling on fixed CPM rates. Satisfied only when every entry of commercial_terms.purchases carries pricing with pricing_model cpm or vcpm, a matching currency, and a fixed_price no greater than max. Auction-priced, missing, or non-CPM pricing on any purchase leaves the constraint unsatisfied.')] = None
-    impressions: Annotated[Impressions | None, Field(description='Hard minimum contracted impression volume. Satisfied only when every entry of commercial_terms.purchases carries impressions and their sum is at least min.')] = None
-    flight: Annotated[Flight | None, Field(description='Hard flight-window bounds checked against commercial_terms.start_time and end_time. start_no_later_than is satisfied only by a concrete start_time at or before the bound; an asap start is unverifiable and therefore unsatisfied. end_no_earlier_than is satisfied only by an end_time at or after the bound.')] = None
+    total_budget: Annotated[ProposalBudgetConstraint | None, Field(description='Inclusive bounds checked against commercial_terms.total_budget. Satisfied only when commercial_terms.total_budget is present, its currency matches, and its amount falls within every supplied bound.'), OmittedNotNull] = None
+    cpm: Annotated[Cpm | None, Field(description='Hard ceiling on fixed CPM rates. Satisfied only when every entry of commercial_terms.purchases carries pricing with pricing_model cpm or vcpm, a matching currency, and a fixed_price no greater than max. Auction-priced, missing, or non-CPM pricing on any purchase leaves the constraint unsatisfied.'), OmittedNotNull] = None
+    impressions: Annotated[Impressions | None, Field(description='Hard minimum contracted impression volume. Satisfied only when every entry of commercial_terms.purchases carries impressions and their sum is at least min.'), OmittedNotNull] = None
+    flight: Annotated[Flight | None, Field(description='Hard flight-window bounds checked against commercial_terms.start_time and end_time. start_no_later_than is satisfied only by a concrete start_time at or before the bound; an asap start is unverifiable and therefore unsatisfied. end_no_earlier_than is satisfied only by an end_time at or after the bound.'), OmittedNotNull] = None
 
 
 class Alternatives(AdCPBaseModel):
@@ -120,14 +120,14 @@ class ProposalRefinement(BranchDispatchMixin, AdCPBaseModel):
         Approximation(document='media-buy/proposal-refinement.json', pointer='#/oneOf/1/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['constraints']}, {'required': ['product_changes']}, {'required': ['alternatives']}, {'required': ['ask']}, {'required': ['criteria']}, {'required': ['remove_media_buy_frequency_cap']}, {'properties': {'change_kind': {'type': 'string', 'const': 'cancellation'}}, 'required': ['change_kind']}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
     proposal_id: StrMinLen1
-    action: Annotated[Action | None, Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.')] = None
-    change_kind: Annotated[ChangeKind | None, Field(description='Desired successor proposal. cancellation is valid only when the source proposal is accepted and attached to a non-terminal MediaBuy.', json_schema_extra={'default': 'amendment'})] = Field(default_factory=lambda: TypeAdapter(ChangeKind).validate_python('amendment'))
-    constraints: Annotated[Constraints | None, Field(description='Hard requirements for every revised proposal. Keys are echoed in unsatisfied_constraints on partial or unable results. A draft that fails any present constraint MUST NOT be returned as revised: the result is partial or unable with reason_code constraint_unsatisfiable — which takes precedence over every other reason code — and the failing keys in unsatisfied_constraints.')] = None
-    product_changes: Annotated[ProductChangeMap | None, Field(description='Product IDs mapped to membership actions checked against commercial_terms.purchases. include requires presence; omit requires absence. The verbs match legacy get_products refinement.')] = None
-    alternatives: Annotated[Alternatives | None, Field(description='Request drafts with distinct commercial terms by count. Every returned alternative MUST carry distinct commercial_terms and therefore a unique terms_digest; diversity preferences remain in ask.')] = None
-    ask: Annotated[StrMinLen1 | None, Field(description='What the buyer is asking for on this proposal, or the cancellation reason for action revise. The seller returns a new draft proposal snapshot; this text never directly mutates the source proposal or MediaBuy.')] = None
-    criteria: Annotated[ProductDiscoveryCriteria | None, Field(description='Structured discovery changes for action revise. Each present field replaces that criterion from the source proposal; omitted fields inherit. Concrete targeting, future targeting support, and offer filters belong here rather than being repeated in ask.')] = None
-    remove_media_buy_frequency_cap: Annotated[Literal[True] | None, Field(description='Request a revised draft whose commercial terms omit the existing MediaBuy frequency cap. Omission inherits it. To replace it, provide criteria.media_buy_frequency_cap instead.')] = None
+    action: Annotated[Action | None, Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.'), OmittedNotNull] = None
+    change_kind: Annotated[ChangeKind | None, Field(description='Desired successor proposal. cancellation is valid only when the source proposal is accepted and attached to a non-terminal MediaBuy.', json_schema_extra={'default': 'amendment'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(ChangeKind).validate_python('amendment'))
+    constraints: Annotated[Constraints | None, Field(description='Hard requirements for every revised proposal. Keys are echoed in unsatisfied_constraints on partial or unable results. A draft that fails any present constraint MUST NOT be returned as revised: the result is partial or unable with reason_code constraint_unsatisfiable — which takes precedence over every other reason code — and the failing keys in unsatisfied_constraints.'), OmittedNotNull] = None
+    product_changes: Annotated[ProductChangeMap | None, Field(description='Product IDs mapped to membership actions checked against commercial_terms.purchases. include requires presence; omit requires absence. The verbs match legacy get_products refinement.'), OmittedNotNull] = None
+    alternatives: Annotated[Alternatives | None, Field(description='Request drafts with distinct commercial terms by count. Every returned alternative MUST carry distinct commercial_terms and therefore a unique terms_digest; diversity preferences remain in ask.'), OmittedNotNull] = None
+    ask: Annotated[StrMinLen1 | None, Field(description='What the buyer is asking for on this proposal, or the cancellation reason for action revise. The seller returns a new draft proposal snapshot; this text never directly mutates the source proposal or MediaBuy.'), OmittedNotNull] = None
+    criteria: Annotated[ProductDiscoveryCriteria | None, Field(description='Structured discovery changes for action revise. Each present field replaces that criterion from the source proposal; omitted fields inherit. Concrete targeting, future targeting support, and offer filters belong here rather than being repeated in ask.'), OmittedNotNull] = None
+    remove_media_buy_frequency_cap: Annotated[Literal[True] | None, Field(description='Request a revised draft whose commercial terms omit the existing MediaBuy frequency cap. Omission inherits it. To replace it, provide criteria.media_buy_frequency_cap instead.'), OmittedNotNull] = None
 
 
 class ProposalRefinementFinalize(ProposalRefinement):

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen16
 from adcp.types.envelopes import AdcpResponse
@@ -52,7 +52,7 @@ class IncompleteItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/properties/incomplete/items')
     scope: Scope
     description: StrMinLen1
-    estimated_wait: Duration | None = None
+    estimated_wait: Annotated[Duration | None, OmittedNotNull] = None
 
 
 class PurchaseContinuationListedPurchaseAccount(AdCPBaseModel):
@@ -67,7 +67,7 @@ class PurchaseContinuationListedPurchaseAccount(AdCPBaseModel):
     product_ids: Annotated[list[StrMinLen1], Field(description='Exact products the coordinator promoted and re-read through account-scoped list_products before returning this result. The set MUST match products[].product_id.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     cache_scope: Literal['account']
     feed_version: Annotated[StrMinLen1, Field(description='Real seller-issued account-scoped feed fence obtained by re-reading the promoted products through list_products.')]
-    pricing_version: Annotated[StrMinLen1 | None, Field(description='Real seller-issued pricing fence from the same account-scoped list_products response, when the seller versions pricing independently.')] = None
+    pricing_version: Annotated[StrMinLen1 | None, Field(description='Real seller-issued pricing fence from the same account-scoped list_products response, when the seller versions pricing independently.'), OmittedNotNull] = None
 
 
 class SourceAdcpVersion(StrEnum):
@@ -133,22 +133,22 @@ class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse)
         Approximation(document='media-buy/request-proposals-response.json', pointer='#/properties/purchase_continuation/oneOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'source_adcp_version': {'const': '2.5'}}, 'required': ['source_adcp_version']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='media-buy/request-proposals-response.json', pointer='#/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'purchase_continuation': {'properties': {'kind': {'const': 'listed_purchase'}}, 'required': ['kind']}}, 'required': ['purchase_continuation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    adcp_version: AdcpVersion | None = None
-    outcome: Outcome | None = None
-    reason: StrMinLen1 | None = None
-    suggestions: Annotated[list[StrMinLen1] | None, Field(min_length=1)] = None
-    proposals: Annotated[list[ProposalsItem] | None, Field(min_length=1)] = None
-    products: Annotated[list[CanonicalProduct] | None, Field(min_length=1)] = None
-    incomplete: Annotated[list[IncompleteItem] | None, Field(description='Usable partial discovery result retained from the established get_products response. Absence means the source response did not declare an incomplete scope; it does not authorize an adapter to infer missing proposal terms.', min_length=1)] = None
-    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate | None, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')] = None
-    targeting_resolution: Annotated[ProductDiscoveryTargetingResolution | None, Field(description='Response-level confirmation of structured targeting interpreted from explicit hard requirements in the brief. Sellers MUST emit this when that interpretation materially affects eligibility, pricing, or forecasting; otherwise it remains a best practice. Product-specific changes to explicit criteria.targeting_overlay values remain on Product.targeting_resolution.')] = None
-    status: Status | None = None
-    task_id: StrMinLen1 | None = None
-    message: StrMaxLen2000 | None = None
-    errors: list[Error] | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
-    replayed: Literal[True] | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    outcome: Annotated[Outcome | None, OmittedNotNull] = None
+    reason: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    suggestions: Annotated[list[StrMinLen1] | None, Field(min_length=1), OmittedNotNull] = None
+    proposals: Annotated[list[ProposalsItem] | None, Field(min_length=1), OmittedNotNull] = None
+    products: Annotated[list[CanonicalProduct] | None, Field(min_length=1), OmittedNotNull] = None
+    incomplete: Annotated[list[IncompleteItem] | None, Field(description='Usable partial discovery result retained from the established get_products response. Absence means the source response did not declare an incomplete scope; it does not authorize an adapter to infer missing proposal terms.', min_length=1), OmittedNotNull] = None
+    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate | None, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.'), OmittedNotNull] = None
+    targeting_resolution: Annotated[ProductDiscoveryTargetingResolution | None, Field(description='Response-level confirmation of structured targeting interpreted from explicit hard requirements in the brief. Sellers MUST emit this when that interpretation materially affects eligibility, pricing, or forecasting; otherwise it remains a best practice. Product-specific changes to explicit criteria.targeting_overlay values remain on Product.targeting_resolution.'), OmittedNotNull] = None
+    status: Annotated[Status | None, OmittedNotNull] = None
+    task_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    message: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+    replayed: Annotated[Literal[True] | None, OmittedNotNull] = None
 
 
 class RequestProposalsResponseProposedCompleted(RequestProposalsResponse):
@@ -160,7 +160,7 @@ class RequestProposalsResponseProposedCompleted(RequestProposalsResponse):
         ForbiddenGroups((('reason',), ('suggestions',), ('purchase_continuation',), ('task_id',))),
     )
     outcome: Literal[Outcome.PROPOSED]
-    status: Literal['completed'] | None = None
+    status: Annotated[Literal['completed'] | None, OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
     proposals: Annotated[list[ProposalsItem], Field(min_length=1)]
 
@@ -177,7 +177,7 @@ class RequestProposalsResponseProductsAvailableCompleted(RequestProposalsRespons
         Approximation(document='media-buy/request-proposals-response.json', pointer='#/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'purchase_continuation': {'properties': {'kind': {'const': 'listed_purchase'}}, 'required': ['kind']}}, 'required': ['purchase_continuation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     outcome: Literal[Outcome.PRODUCTS_AVAILABLE]
-    status: Literal['completed'] | None = None
+    status: Annotated[Literal['completed'] | None, OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
     purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
 
@@ -191,7 +191,7 @@ class RequestProposalsResponseRejectedCompleted(RequestProposalsResponse):
         ForbiddenGroups((('proposals',), ('products',), ('incomplete',), ('purchase_continuation',), ('task_id',))),
     )
     outcome: Literal[Outcome.REJECTED]
-    status: Literal['completed'] | None = None
+    status: Annotated[Literal['completed'] | None, OmittedNotNull] = None
     reason: StrMinLen1
 
 

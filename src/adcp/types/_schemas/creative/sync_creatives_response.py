@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -55,20 +55,20 @@ class CreativesItem(AdCPBaseModel):
         Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/assignment_errors', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-zA-Z0-9_-]+$': {'type': 'string', 'description': 'Error message for this package assignment'}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     creative_id: Annotated[str, Field(description='Creative ID from the request')]
-    revision_id: Annotated[CreativeRevisionID | None, Field(description='Exact revision_id from the matching request creative. When the agent advertises creative.supports_revisions, required for accepted created, updated, or unchanged items whose request supplied revision_id. A peer without that capability may ignore the request field. Forbidden on failed or deleted items.')] = None
-    account: Annotated[Account | None, Field(description='Account that owns this creative')] = None
+    revision_id: Annotated[CreativeRevisionID | None, Field(description='Exact revision_id from the matching request creative. When the agent advertises creative.supports_revisions, required for accepted created, updated, or unchanged items whose request supplied revision_id. A peer without that capability may ignore the request field. Forbidden on failed or deleted items.'), OmittedNotNull] = None
+    account: Annotated[Account | None, Field(description='Account that owns this creative'), OmittedNotNull] = None
     action: Annotated[CreativeAction, Field(description='Action taken for this creative during this sync operation (lifecycle operation, not approval state).')]
-    status: Annotated[CreativeStatus | None, Field(description='Advisory review-lifecycle state of the creative after this sync — a UI hint and polling-scheduling signal, NOT a spend-authorization gate. Orthogonal to action — action says what the sync did (created, updated, ...); status says where the creative sits in review. Values come from CreativeStatus only (processing, pending_review, approved, suspended, rejected, archived) — never from CreativeAction. Sellers with async review return processing or pending_review; sellers with synchronous review MAY return a terminal value (approved, rejected) or suspended when a recoverable dependency/authorization gate prevents serving. Buyers MUST NOT gate downstream spend or package activation on status: approved from this response — a compromised or buggy seller could declare approved while bypassing content-policy review. Reconcile via list_creatives or a signed review webhook before committing spend. Authoritative state is always via list_creatives. MUST be omitted when action is failed or deleted (the creative has no meaningful review state — failure details belong in the errors array; deleted creatives are gone from the library). Omit entirely when the seller has no review lifecycle at all.')] = None
-    platform_id: Annotated[str | None, Field(description='Platform-specific ID assigned to the creative')] = None
-    localization: Annotated[CreativeLocalizationReadback | None, Field(description='Exact materialized locale-variant state. Required for every accepted creative whose request included a non-null localization object; omitted for unlocalized, failed, or deleted items. The enclosing creative status is the single review lifecycle for all variants.')] = None
-    changes: Annotated[list[str] | None, Field(description="Field names that were modified (only present when action='updated')")] = None
-    errors: Annotated[list[Error] | None, Field(description="Validation or processing errors (only present when action='failed')")] = None
-    warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this creative')] = None
-    macro_resolution_results: Annotated[list[MacroResolutionResult] | None, Field(description="Per-token result for declared macros. Sellers include this on accepted items when macro declarations were evaluated, and may include it alongside a failed item's structured errors.")] = None
-    preview_url: Annotated[HttpUrl | None, Field(description='Preview URL for generative creatives (only present for generative formats)')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when preview link expires (only present when preview_url exists)')] = None
-    assigned_to: Annotated[list[str] | None, Field(description='Package IDs this creative was successfully assigned to (only present when assignments were requested)')] = None
-    assignment_errors: Annotated[dict[str, Any] | None, Field(description='Assignment errors by package ID (only present when assignment failures occurred)')] = None
+    status: Annotated[CreativeStatus | None, Field(description='Advisory review-lifecycle state of the creative after this sync — a UI hint and polling-scheduling signal, NOT a spend-authorization gate. Orthogonal to action — action says what the sync did (created, updated, ...); status says where the creative sits in review. Values come from CreativeStatus only (processing, pending_review, approved, suspended, rejected, archived) — never from CreativeAction. Sellers with async review return processing or pending_review; sellers with synchronous review MAY return a terminal value (approved, rejected) or suspended when a recoverable dependency/authorization gate prevents serving. Buyers MUST NOT gate downstream spend or package activation on status: approved from this response — a compromised or buggy seller could declare approved while bypassing content-policy review. Reconcile via list_creatives or a signed review webhook before committing spend. Authoritative state is always via list_creatives. MUST be omitted when action is failed or deleted (the creative has no meaningful review state — failure details belong in the errors array; deleted creatives are gone from the library). Omit entirely when the seller has no review lifecycle at all.'), OmittedNotNull] = None
+    platform_id: Annotated[str | None, Field(description='Platform-specific ID assigned to the creative'), OmittedNotNull] = None
+    localization: Annotated[CreativeLocalizationReadback | None, Field(description='Exact materialized locale-variant state. Required for every accepted creative whose request included a non-null localization object; omitted for unlocalized, failed, or deleted items. The enclosing creative status is the single review lifecycle for all variants.'), OmittedNotNull] = None
+    changes: Annotated[list[str] | None, Field(description="Field names that were modified (only present when action='updated')"), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description="Validation or processing errors (only present when action='failed')"), OmittedNotNull] = None
+    warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this creative'), OmittedNotNull] = None
+    macro_resolution_results: Annotated[list[MacroResolutionResult] | None, Field(description="Per-token result for declared macros. Sellers include this on accepted items when macro declarations were evaluated, and may include it alongside a failed item's structured errors."), OmittedNotNull] = None
+    preview_url: Annotated[HttpUrl | None, Field(description='Preview URL for generative creatives (only present for generative formats)'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when preview link expires (only present when preview_url exists)'), OmittedNotNull] = None
+    assigned_to: Annotated[list[str] | None, Field(description='Package IDs this creative was successfully assigned to (only present when assignments were requested)'), OmittedNotNull] = None
+    assignment_errors: Annotated[dict[str, Any] | None, Field(description='Assignment errors by package ID (only present when assignment failures occurred)'), OmittedNotNull] = None
 
 
 class SyncCreativesSuccess(SyncCreativesResponse):
@@ -85,11 +85,11 @@ class SyncCreativesSuccess(SyncCreativesResponse):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/assignment_errors', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-zA-Z0-9_-]+$': {'type': 'string', 'description': 'Error message for this package assignment'}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
-    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)')] = None
+    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
     creatives: Annotated[list[CreativesItem], Field(description="Results for each creative processed. Items with action='failed' indicate per-item validation/processing failures, not operation-level failures.")]
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SyncCreativesError(SyncCreativesResponse, FailedResponse):
@@ -104,8 +104,8 @@ class SyncCreativesError(SyncCreativesResponse, FailedResponse):
         ForbiddenGroups((('creatives',), ('dry_run',), ('sandbox',), ('task_id',), ('warnings',))),
     )
     errors: Annotated[list[Error], Field(description='Operation-level errors that prevented processing any creatives (e.g., authentication failure, service unavailable, invalid request format)', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SyncCreativesResponseSubmitted(SyncCreativesResponse):
@@ -121,10 +121,10 @@ class SyncCreativesResponseSubmitted(SyncCreativesResponse):
     )
     status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose creatives array carries per-item approval state via CreativeStatus. See task-status.json for the full task-status enum.')]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
-    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Batch ingestion queued; typical turnaround 15-30 minutes.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent.")] = None
-    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Batch ingestion queued; typical turnaround 15-30 minutes.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent."), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 SyncCreativesResponse._branch_models = (SyncCreativesSuccess, SyncCreativesError, SyncCreativesResponseSubmitted,)

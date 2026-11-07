@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule, UniqueItems
 
 from ..enums.frequency_cap_control_mode import FrequencyCapControlMode
@@ -32,13 +32,13 @@ class FrequencyCapConstraints(AdCPBaseModel):
         UniqueItems('window_constraints'),
         UniqueItems('suppression_constraints'),
     )
-    mutable_fields: Annotated[list[FrequencyCapMutableField] | None, Field(description='Logical cap fields that can change after creation. An empty array means create-only. For example, [max_impressions] permits changing the count while keeping per and window fixed. Omission means update support is undeclared and the legacy broad meaning applies.', json_schema_extra={'uniqueItems': True})] = None
-    supported_control_modes: Annotated[list[FrequencyCapControlMode] | None, Field(description='FrequencyCap shapes accepted by the product. max_impressions_and_suppress means both controls may appear together and are enforced with AND semantics.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    supported_per_units: Annotated[list[ReachUnit] | None, Field(description='Entity granularities accepted by max_impressions caps.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    max_impressions_constraints: Annotated[FrequencyCapImpressionConstraints | None, Field(description='Exact supported max_impressions presets or range.')] = None
-    window_constraints: Annotated[list[FrequencyCapIntervalConstraints] | None, Field(description='Exact supported max_impressions.window intervals, one entry per duration unit.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    suppression_constraints: Annotated[list[FrequencyCapIntervalConstraints] | None, Field(description='Exact supported suppress cooldown intervals, one entry per duration unit.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    mutable_fields: Annotated[list[FrequencyCapMutableField] | None, Field(description='Logical cap fields that can change after creation. An empty array means create-only. For example, [max_impressions] permits changing the count while keeping per and window fixed. Omission means update support is undeclared and the legacy broad meaning applies.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    supported_control_modes: Annotated[list[FrequencyCapControlMode] | None, Field(description='FrequencyCap shapes accepted by the product. max_impressions_and_suppress means both controls may appear together and are enforced with AND semantics.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    supported_per_units: Annotated[list[ReachUnit] | None, Field(description='Entity granularities accepted by max_impressions caps.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    max_impressions_constraints: Annotated[FrequencyCapImpressionConstraints | None, Field(description='Exact supported max_impressions presets or range.'), OmittedNotNull] = None
+    window_constraints: Annotated[list[FrequencyCapIntervalConstraints] | None, Field(description='Exact supported max_impressions.window intervals, one entry per duration unit.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    suppression_constraints: Annotated[list[FrequencyCapIntervalConstraints] | None, Field(description='Exact supported suppress cooldown intervals, one entry per duration unit.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["FrequencyCapConstraints"]

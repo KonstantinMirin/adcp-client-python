@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -45,9 +45,9 @@ class ActivateSignalSuccess(ActivateSignalResponse):
         ForbiddenGroups((('errors',),)),
     )
     deployments: Annotated[list[Deployment], Field(description='Array of deployment results for each deployment target')]
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ActivateSignalError(ActivateSignalResponse, FailedResponse):
@@ -62,8 +62,8 @@ class ActivateSignalError(ActivateSignalResponse, FailedResponse):
         ForbiddenGroups((('deployments',), ('sandbox',))),
     )
     errors: Annotated[list[Error], Field(description='Array of errors explaining why activation failed (e.g., platform connectivity issues, signal definition problems, authentication failures)', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 ActivateSignalResponse._branch_models = (ActivateSignalSuccess, ActivateSignalError,)

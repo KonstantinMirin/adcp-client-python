@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
 
 from ..enums.performance_standard_metric import PerformanceStandardMetric
@@ -23,7 +23,7 @@ class PerformanceStandard(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-standard.json', pointer='#')
     metric: Annotated[PerformanceStandardMetric, Field(description='The performance metric this standard applies to.')]
     threshold: Annotated[FloatMin0Max1, Field(description='Rate threshold as a decimal (e.g., 0.70 for 70%). Whether this is a floor or ceiling depends on the metric: for viewability, completion_rate, brand_safety, attention_score the actual rate must be >= threshold; for ivt the actual rate must be <= threshold.')]
-    standard: Annotated[ViewabilityStandard | None, Field(description="Measurement standard. Required when metric is 'viewability' (MRC and GroupM define materially different thresholds). Omit for other metrics.")] = None
+    standard: Annotated[ViewabilityStandard | None, Field(description="Measurement standard. Required when metric is 'viewability' (MRC and GroupM define materially different thresholds). Omit for other metrics."), OmittedNotNull] = None
     vendor: Annotated[BrandReference, Field(description="Vendor measuring this metric (e.g., { domain: 'doubleverify.com' }). The vendor's brand.json agents array (type: 'measurement') is the discovery point for their measurement agent. When specified on a confirmed package, creatives MUST include tracker_script or tracker_pixel assets from this vendor.")]
 
 

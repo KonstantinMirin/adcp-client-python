@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from .assets.image_asset import ImageAsset
@@ -45,9 +45,9 @@ class ProductCardReferenceAsset(AdCPBaseModel):
         ConditionalRequired((Match('role', True, ('other',)),), require=('role_label',), forbid=()),
     )
     role: Annotated[Role, Field(description='Semantic role of this asset. coverage_map: geographic or audience reach visualization; sample_render: mockup of ad placement in context; environment_photo: photo of the physical or digital environment; media_kit: downloadable media kit or spec sheet; logo: seller or property logo; other: seller-defined role (provide role_label).')]
-    role_label: Annotated[str | None, Field(description="Human-readable label for the asset role. Required when role is 'other'; optional otherwise.")] = None
+    role_label: Annotated[str | None, Field(description="Human-readable label for the asset role. Required when role is 'other'; optional otherwise."), OmittedNotNull] = None
     asset: Annotated[ImageAsset | VideoAsset | MarkdownAsset | URLAsset, Field(description='The asset payload, discriminated on asset_type (image, video, markdown, url).')]
-    description: Annotated[str | None, Field(description='Optional human-readable context about this asset.')] = None
+    description: Annotated[str | None, Field(description='Optional human-readable context about this asset.'), OmittedNotNull] = None
 
 
 __all__ = ["ProductCardReferenceAsset"]

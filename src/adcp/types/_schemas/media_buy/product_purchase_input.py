@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 
 from ..core.bidding_policy import BiddingPolicy
@@ -46,26 +46,26 @@ class ProductPurchaseInput(AdCPBaseModel):
     )
     product_id: ProductId
     pricing_option_id: PricingOptionId
-    pricing: Annotated[CanonicalPricingOption | None, Field(description='Resolved selected pricing terms. Optional on buy_products input, where pricing_option_id plus the versioned feed identifies the offer; required inside accepted commercial_terms. Its pricing_option_id MUST match the sibling field.')] = None
-    format_option_refs: FormatOptionRefs | None = None
-    catalog_ids: CatalogIds | None = None
-    budget: Budget | None = None
-    daily_budget_cap: DailyBudgetCap | None = None
-    min_spend_target: MinSpendTarget | None = None
-    impressions: NonNegativeFloat | None = None
-    start_time: StartTime | None = None
-    end_time: EndTime | None = None
-    pacing: Annotated[Pacing | None, Field(description='Purchase pacing, subordinate to media-buy pacing. In seller-optimized allocation, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.')] = None
-    bidding: BiddingPolicy | None = None
-    targeting_overlay: Annotated[TargetingOverlayInput | None, Field(description="Per-dimension targeting input. Omission inherits the selected product's configured/default dimension, a non-null value replaces it, and null explicitly suppresses it. A clear cannot remove inherent product scope.")] = None
-    optimization_goals: OptimizationGoals | None = None
-    audience_evidence_requirements: Annotated[ProductAudienceEvidenceRequirements | None, Field(description='Buyer evidence-admissibility policy carried into the accepted purchase snapshot.')] = None
-    audience_evidence_pins: AudienceEvidencePins | None = None
-    agency_estimate_number: AgencyEstimateNumber | None = None
-    context: Annotated[ContextObject | None, Field(description='Opaque buyer package correlation preserved in the accepted snapshot and readback.')] = None
-    ext: ExtensionObject | None = None
-    measurement_terms: Annotated[CanonicalMeasurementTerms | None, Field(description='Published or negotiated billing-measurement and makegood terms for this purchase. Direct buyers may omit this to inherit the product default; accepted proposal snapshots preserve the resolved terms.')] = None
-    performance_standards: PerformanceStandards | None = None
+    pricing: Annotated[CanonicalPricingOption | None, Field(description='Resolved selected pricing terms. Optional on buy_products input, where pricing_option_id plus the versioned feed identifies the offer; required inside accepted commercial_terms. Its pricing_option_id MUST match the sibling field.'), OmittedNotNull] = None
+    format_option_refs: Annotated[FormatOptionRefs | None, OmittedNotNull] = None
+    catalog_ids: Annotated[CatalogIds | None, OmittedNotNull] = None
+    budget: Annotated[Budget | None, OmittedNotNull] = None
+    daily_budget_cap: Annotated[DailyBudgetCap | None, OmittedNotNull] = None
+    min_spend_target: Annotated[MinSpendTarget | None, OmittedNotNull] = None
+    impressions: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    start_time: Annotated[StartTime | None, OmittedNotNull] = None
+    end_time: Annotated[EndTime | None, OmittedNotNull] = None
+    pacing: Annotated[Pacing | None, Field(description='Purchase pacing, subordinate to media-buy pacing. In seller-optimized allocation, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, OmittedNotNull] = None
+    targeting_overlay: Annotated[TargetingOverlayInput | None, Field(description="Per-dimension targeting input. Omission inherits the selected product's configured/default dimension, a non-null value replaces it, and null explicitly suppresses it. A clear cannot remove inherent product scope."), OmittedNotNull] = None
+    optimization_goals: Annotated[OptimizationGoals | None, OmittedNotNull] = None
+    audience_evidence_requirements: Annotated[ProductAudienceEvidenceRequirements | None, Field(description='Buyer evidence-admissibility policy carried into the accepted purchase snapshot.'), OmittedNotNull] = None
+    audience_evidence_pins: Annotated[AudienceEvidencePins | None, OmittedNotNull] = None
+    agency_estimate_number: Annotated[AgencyEstimateNumber | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, Field(description='Opaque buyer package correlation preserved in the accepted snapshot and readback.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+    measurement_terms: Annotated[CanonicalMeasurementTerms | None, Field(description='Published or negotiated billing-measurement and makegood terms for this purchase. Direct buyers may omit this to inherit the product default; accepted proposal snapshots preserve the resolved terms.'), OmittedNotNull] = None
+    performance_standards: Annotated[PerformanceStandards | None, OmittedNotNull] = None
 
 
 __all__ = ["ProductPurchaseInput"]

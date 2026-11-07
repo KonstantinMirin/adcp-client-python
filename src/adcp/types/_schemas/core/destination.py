@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
@@ -29,7 +29,7 @@ class DestinationPlatform(Destination):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/destination.json', pointer='#/oneOf/0')
     type: Annotated[Literal['platform'], Field(description='Discriminator indicating this is a platform-based deployment')]
     platform: Annotated[str, Field(description="Platform identifier for DSPs (e.g., 'the-trade-desk', 'amazon-dsp')")]
-    account: Annotated[str | None, Field(description='Optional account identifier on the platform')] = None
+    account: Annotated[str | None, Field(description='Optional account identifier on the platform'), OmittedNotNull] = None
 
 
 class DestinationAgent(Destination):
@@ -39,7 +39,7 @@ class DestinationAgent(Destination):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/destination.json', pointer='#/oneOf/1')
     type: Annotated[Literal['agent'], Field(description='Discriminator indicating this is an agent URL-based deployment')]
     agent_url: Annotated[HttpUrl, Field(description='URL identifying the deployment agent (for sales agents, etc.)')]
-    account: Annotated[str | None, Field(description='Optional account identifier on the agent')] = None
+    account: Annotated[str | None, Field(description='Optional account identifier on the agent'), OmittedNotNull] = None
 
 
 Destination._branch_models = (DestinationPlatform, DestinationAgent,)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -50,18 +50,18 @@ class ReportingReceipt(AdCPBaseModel):
     reporting_obligation_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    supersedes_reporting_receipt_id: Annotated[StrIdempotencyKey | None, Field(description="Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal.")] = None
+    supersedes_reporting_receipt_id: Annotated[StrIdempotencyKey | None, Field(description="Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal."), OmittedNotNull] = None
     status: Status
     verification_profile: ReportingVerificationProfile
     observed_row_count: NonNegativeInt
     observed_control_totals: Annotated[list[ReportingControlTotal], Field(json_schema_extra={'uniqueItems': True})]
-    observed_canonical_content_digest: ReportingCanonicalContentDigest | None = None
-    observed_manifest_sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256 | None = None
-    observed_native_version_ref: ReportingNativeVersionReference | None = None
-    consumer_commit_ref: Annotated[StrMinLen1MaxLen512 | None, Field(description='Optional non-secret consumer checkpoint, transaction, or load identifier. It is evidence for operations, not authorization or a credential.')] = None
-    rejection_codes: Annotated[list[ReportingAdjustmentReceiptRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    observed_canonical_content_digest: Annotated[ReportingCanonicalContentDigest | None, OmittedNotNull] = None
+    observed_manifest_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, OmittedNotNull] = None
+    observed_native_version_ref: Annotated[ReportingNativeVersionReference | None, OmittedNotNull] = None
+    consumer_commit_ref: Annotated[StrMinLen1MaxLen512 | None, Field(description='Optional non-secret consumer checkpoint, transaction, or load identifier. It is evidence for operations, not authorization or a credential.'), OmittedNotNull] = None
+    rejection_codes: Annotated[list[ReportingAdjustmentReceiptRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     observed_at: AwareDatetime
-    received_at: AwareDatetime | None = None
+    received_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 __all__ = ["ReportingReceipt"]

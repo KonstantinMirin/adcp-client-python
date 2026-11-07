@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -26,9 +26,9 @@ class RevocationNotification(AdCPBaseModel):
     brand_id: Annotated[str, Field(description='Brand identifier of the rights subject')]
     reason: Annotated[str, Field(description='Human-readable reason for revocation')]
     effective_at: Annotated[AwareDatetime, Field(description='When the revocation takes effect. Immediate revocations use current time. Grace periods use a future time. The buyer must stop serving creative using these rights by this time.')]
-    revoked_uses: Annotated[list[RightUse] | None, Field(description='If present, only these uses are revoked (partial revocation). If absent, all uses under the grant are revoked.', min_length=1)] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    revoked_uses: Annotated[list[RightUse] | None, Field(description='If present, only these uses are revoked (partial revocation). If absent, all uses under the grant are revoked.', min_length=1), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["RevocationNotification"]

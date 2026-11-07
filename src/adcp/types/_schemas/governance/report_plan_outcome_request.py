@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import GovernanceContext, StrMaxLen255, StrMinLen1MaxLen255, ZipAssetDigest
 from adcp.types.envelopes import AdcpRequest
@@ -28,7 +28,7 @@ class PackagesItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-outcome-request.json', pointer='#/properties/seller_response/properties/packages/items')
-    budget: NonNegativeFloat | None = None
+    budget: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
 
 
 class SellerResponse(AdCPBaseModel):
@@ -39,11 +39,11 @@ class SellerResponse(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-outcome-request.json', pointer='#/properties/seller_response')
-    seller_reference: Annotated[StrMaxLen255 | None, Field(description="The seller's identifier for the created resource (e.g., media_buy_id, rights_grant_id, deployment_id). Not interpreted by the governance agent — included in audit logs for human-readable traceability alongside the opaque governance_context.")] = None
-    committed_budget: Annotated[NonNegativeFloat | None, Field(description='Buyer-reported seller amount retained for reconciliation and audit. It is never ledger authority: the governance agent derives the reserved commitment from its own approved intent check, or from the matching purchase execution check when one exists. A report above that authorized amount is rejected; a lower report does not restore headroom.')] = None
-    packages: Annotated[list[PackagesItem] | None, Field(description='Confirmed packages with actual budget and targeting.')] = None
-    planned_delivery: Annotated[PlannedDelivery | None, Field(description="What the seller said it will deliver. When seller-side governance is not configured, this is the governance agent's only view of the seller's delivery parameters.")] = None
-    creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 deadline for creative submission.')] = None
+    seller_reference: Annotated[StrMaxLen255 | None, Field(description="The seller's identifier for the created resource (e.g., media_buy_id, rights_grant_id, deployment_id). Not interpreted by the governance agent — included in audit logs for human-readable traceability alongside the opaque governance_context."), OmittedNotNull] = None
+    committed_budget: Annotated[NonNegativeFloat | None, Field(description='Buyer-reported seller amount retained for reconciliation and audit. It is never ledger authority: the governance agent derives the reserved commitment from its own approved intent check, or from the matching purchase execution check when one exists. A report above that authorized amount is rejected; a lower report does not restore headroom.'), OmittedNotNull] = None
+    packages: Annotated[list[PackagesItem] | None, Field(description='Confirmed packages with actual budget and targeting.'), OmittedNotNull] = None
+    planned_delivery: Annotated[PlannedDelivery | None, Field(description="What the seller said it will deliver. When seller-side governance is not configured, this is the governance agent's only view of the seller's delivery parameters."), OmittedNotNull] = None
+    creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 deadline for creative submission.'), OmittedNotNull] = None
 
 
 class Delivery(AdCPBaseModel):
@@ -60,13 +60,13 @@ class Delivery(AdCPBaseModel):
     observation_id: Annotated[StrMinLen1MaxLen255, Field(description='Stable buyer-issued identifier for this observation.')]
     source: Annotated[Source, Field(description='Whether the buyer is forwarding the seller statement it received or reporting an independently measured observation. A forwarded seller statement is not independent evidence.')]
     observed_at: AwareDatetime
-    seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.')] = None
-    seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.')] = None
+    seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.'), OmittedNotNull] = None
+    seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEnd, Field(description='Start and end timestamps for the reporting window.')]
     cumulative_spend: Annotated[NonNegativeFloat, Field(description='Buyer-attributed cumulative spend for the governed action.')]
     currency: CurrencyCode
-    period_closed: Annotated[bool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement. Only the authenticated plan owner may set this to true; the governance agent MUST reject it from any other authenticated reporter.')] = False
-    impressions: NonNegativeInt | None = None
+    period_closed: Annotated[bool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement. Only the authenticated plan owner may set this to true; the governance agent MUST reject it from any other authenticated reporter.'), OmittedNotNull] = False
+    impressions: Annotated[NonNegativeInt | None, OmittedNotNull] = None
 
 
 class ReportPlanOutcomeRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -83,16 +83,16 @@ class ReportPlanOutcomeRequest(AdCPVersionEnvelope, AdcpRequest):
         ConditionalRequired((Match('outcome', True, ('delivery',)),), require=('check_id', 'governance_context', 'delivery'), forbid=()),
     )
     plan_id: Annotated[str, Field(description='The plan this outcome is for. The plan is owned by the authenticated buyer that synchronized it; plan_id is an identifier, not an account credential. Completed and failed settlements inherit their commercial binding from the exact approved check tuple.')]
-    check_id: Annotated[str | None, Field(description='The check_id from check_governance. Required for completed and failed outcomes and for buyer delivery observations. A delivery observation names the exact seller delivery check whose canonical statement is being compared.')] = None
+    check_id: Annotated[str | None, Field(description='The check_id from check_governance. Required for completed and failed outcomes and for buyer delivery observations. A delivery observation names the exact seller delivery check whose canonical statement is being compared.'), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Buyer-generated unique key for this outcome report. An identical retry returns the cached response without another settlement; reuse with a different canonical payload returns IDEMPOTENCY_CONFLICT. Use a fresh UUID v4 for each distinct report.')]
-    purchase_type: Annotated[PurchaseType | None, Field(description="The type of financial commitment this outcome is for. Must equal the original approved intent's purchase_type. Determines which budget allocation (if any) to charge against. Defaults to 'media_buy' when omitted.", json_schema_extra={'default': 'media_buy'})] = Field(default_factory=lambda: TypeAdapter(PurchaseType).validate_python('media_buy'))
+    purchase_type: Annotated[PurchaseType | None, Field(description="The type of financial commitment this outcome is for. Must equal the original approved intent's purchase_type. Determines which budget allocation (if any) to charge against. Defaults to 'media_buy' when omitted.", json_schema_extra={'default': 'media_buy'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(PurchaseType).validate_python('media_buy'))
     outcome: Annotated[OutcomeType, Field(description='Outcome type.')]
-    seller_response: Annotated[SellerResponse | None, Field(description="The seller's full response. Required when outcome is 'completed'.")] = None
-    delivery: Annotated[Delivery | None, Field(description='Buyer-attributed observation compared with the canonical seller delivery statement identified by check_id. This evidence never overwrites seller evidence or creates a second commitment. A conflict produces an explicit disputed reconciliation state while the operational period is open; the plan owner may close it without asserting final billing truth.')] = None
-    error: Annotated[ReportedOutcomeError | None, Field(description='Buyer-attributed error associated with a failed seller interaction. Required when outcome is failed; classification_source=seller_response_copy preserves what the buyer received without claiming seller-attested provenance.')] = None
-    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque governance context from the check_governance response. Required with check_id for completed and failed outcomes and buyer delivery observations.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    seller_response: Annotated[SellerResponse | None, Field(description="The seller's full response. Required when outcome is 'completed'."), OmittedNotNull] = None
+    delivery: Annotated[Delivery | None, Field(description='Buyer-attributed observation compared with the canonical seller delivery statement identified by check_id. This evidence never overwrites seller evidence or creates a second commitment. A conflict produces an explicit disputed reconciliation state while the operational period is open; the plan owner may close it without asserting final billing truth.'), OmittedNotNull] = None
+    error: Annotated[ReportedOutcomeError | None, Field(description='Buyer-attributed error associated with a failed seller interaction. Required when outcome is failed; classification_source=seller_response_copy preserves what the buyer received without claiming seller-attested provenance.'), OmittedNotNull] = None
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque governance context from the check_governance response. Required with check_id for completed and failed outcomes and buyer delivery observations.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ReportPlanOutcomeRequest"]

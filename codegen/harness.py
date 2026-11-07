@@ -2457,8 +2457,30 @@ def _wire_dump(value: Any) -> Any:
     ``mode="json"`` so a ``datetime`` and a URL come back as the strings their
     documents declare; ``by_alias`` because a document's key is the alias wherever
     the two differ; and ``exclude_unset`` because a key the payload never carried
-    is not a fact the document stated about it -- dumping the model's rendering of
-    absence instead would charge the class for a ``null`` the instance never had.
+    is not a fact the document stated about it.
+
+    **THE ``null`` HALF OF THAT SENTENCE IS NO LONGER LOAD-BEARING, AND THE REMAINING HALF
+    IS MEASURED** (``adcp-client-python-4yhb``).  It used to end "dumping the model's
+    rendering of absence instead would charge the class for a ``null`` the instance never
+    had", and that was true: before :data:`adcp.types._base.OmittedNotNull`, a plain
+    ``model_dump`` of ``AdjustmentsItem`` wrote four explicit nulls its own document
+    refuses on ``type``, so the dump check passed only because this call is narrowed.  The
+    marker's serialisation half now leaves every such ``None`` off the output BY THE FIELD,
+    in pydantic-core, whoever drives the dump -- asserted on an UNNARROWED
+    ``model_dump(mode="json", by_alias=True)`` at all 2,327 class pairs by
+    ``tests/test_emit.py``'s reading-1 clause.
+
+    What ``exclude_unset`` still buys is the DEFAULT half, and it is 14 pairs of the graded
+    population measured with the flag removed (``dump`` goes 0 fail to 14):
+    **10 of them are the document's own ``default`` materialised into the dump** and then
+    refused by a keyword elsewhere in the same document -- ``core/notification-config.json#``
+    dumps ``product_payload_view: "legacy"`` and ``active: true`` from a payload carrying
+    neither and the root's ``contains`` refuses the result;
+    ``media-buy/get-media-buy-delivery-request.json#`` dumps two ``false``\ s into a ``not``.
+    **The other 4 are a ``null`` the marker correctly does not strike**, at
+    ``media-buy/get-reporting-status-response.json``'s ``data_through``, whose own
+    declaration is ``type: ["string", "null"]`` -- the node's conditional refuses it and no
+    rule carries that, which is ``adcp-client-python-5l3g``.
 
     A scalar root is an ``Annotated`` ALIAS and not a class (D2), so there is no
     ``model_dump`` to call and the adapter for the value's own type is the dump:
@@ -2603,6 +2625,103 @@ def conditionals(schema: Any, depth: int = 0) -> tuple[dict[str, Any], ...]:
         for conjunct in conjuncts:
             out.extend(conditionals(conjunct, depth + 1))
     return tuple(out)
+
+
+def declared_keys(schema: Any, depth: int = 0) -> tuple[str, ...]:
+    """Every property key this node DECLARES about its own instance, in document order.
+
+    **The KEY SET and not the declarations, which is why this is a union where
+    :func:`own_facts` declines to merge ``properties`` at all.**  That function's reason is
+    about a DECLARATION -- "a key two views declare is one key whose declarations compose,
+    and composing them needs the pointer each view's ``$ref`` is read against" -- and the
+    one caller here needs no declaration: it places an explicit ``null`` at the key and
+    lets :func:`conforms` answer, so what it wants is the names, and two views of one key
+    are one name.
+
+    Node's own first, then each ``allOf`` conjunct's, depth-first, deduplicated: draft-07
+    applies every conjunct to the same instance, so a key a conjunct declares is a key of
+    this node's instance.  ``oneOf``/``anyOf`` branches are NOT read, and that is the one
+    boundary this function has: a branch's property is declared about an instance only if
+    that branch is the one in force, so a witness at a key only one branch names would be
+    screened out at best and attributed to the wrong node at worst -- and the branch is a
+    pair of its own, graded at its own pointer.
+
+    Bounded by :data:`_OWN_DEPTH` for that constant's reason: a composed class is one
+    class over its whole conjunct list at any depth, so the fold reaches the same depth,
+    and a walk with no base case is a crash rather than an outcome.
+    """
+    return tuple(property_declarations(schema, depth))
+
+
+def property_declarations(
+    schema: Any, depth: int = 0, *, branches: bool = False
+) -> dict[str, tuple[Any, ...]]:
+    """``key -> every subschema this node states about the value at that key``.
+
+    **THE WALK, of which :func:`declared_keys` is a projection**, so the two readers
+    cannot range over two key sets: ``docs/plan/final-state.md``'s invariant is that "a
+    derived reading has one owner", and a key set read by one walk beside a declaration
+    map read by another is exactly the divergence it names.  The keys are in document
+    order and each value is in outer-to-inner order -- the node's own declaration first,
+    then each ``allOf`` conjunct's -- which is the order §2's intersection reads them in.
+
+    A key TWO views declare has two entries in its tuple, and they are left apart: the
+    caller conjoins them as draft-07 spells a conjunction (an ``allOf``), which is
+    :func:`adcp.types._base._conjunction`'s own argument for not merging keyword by
+    keyword -- a merge needs a rule per keyword and every one of those rules would be a
+    second copy of §2's intersection.
+
+    **``branches`` IS THE FLAG AND NOT A SECOND WALK, and it names which reading the
+    caller wants**: a key declared inside a ``oneOf``/``anyOf`` branch is declared about
+    the instance only WHERE THAT BRANCH IS IN FORCE, so the two callers want different
+    answers and neither is the other's default.
+
+    * :func:`refused_witnesses` wants the keys declared UNCONDITIONALLY (``branches``
+      false): a witness built at a key only one branch names would be attributed to this
+      node while the fact belongs to the branch, which is a pair of its own.
+    * a reader asking "does the document admit a ``null`` at this key" wants them
+      (``branches`` true), because §2's intersection composes a class out of a
+      restatement and a ``$ref`` conjunct whose target root is a UNION -- and then the
+      class's own fields are declared inside one of those branches while the pointer it
+      is stamped at is the restatement's.  Four pairs of this tree are in that case,
+      every one a ``subject`` composed over ``core/attestation-subject.json``.
+
+    The branch declarations arrive as ONE entry spelled ``{"anyOf": [...]}``, which is
+    what makes the reading SOUND rather than a guess at which branch applies: the
+    document says "one of these holds", so a value the conjunction refuses is one EVERY
+    branch refuses, and a key some branch admits a ``null`` at is reported as admitting
+    one.  Conjoining the branches instead would demand a value satisfy all of them at
+    once, which no instance of a disjoint union does.
+    """
+    if not isinstance(schema, dict) or depth > _OWN_DEPTH:
+        return {}
+    out: dict[str, tuple[Any, ...]] = {}
+    declared = schema.get("properties")
+    if isinstance(declared, dict):
+        for key, sub in declared.items():
+            if isinstance(key, str):
+                out[key] = (sub,)
+    conjuncts = schema.get("allOf")
+    if isinstance(conjuncts, list):
+        for conjunct in conjuncts:
+            for key, subs in property_declarations(conjunct, depth + 1, branches=branches).items():
+                out[key] = (*out.get(key, ()), *subs)
+    if not branches:
+        return out
+    for combinator in ("oneOf", "anyOf"):
+        arms = schema.get(combinator)
+        if not isinstance(arms, list):
+            continue
+        per_arm = [property_declarations(arm, depth + 1, branches=True) for arm in arms]
+        for key in dict.fromkeys(k for one in per_arm for k in one):
+            stated = [one[key] for one in per_arm if key in one]
+            disjunction = {
+                "anyOf": [
+                    arm[0] if len(arm) == 1 else {"allOf": list(arm)} for arm in stated
+                ]
+            }
+            out[key] = (*out.get(key, ()), disjunction)
+    return out
 
 
 def _far_side(facts: Mapping[str, Any], instance: Any) -> Iterator[tuple[Any, str, str]]:
@@ -2934,6 +3053,47 @@ def refused_witnesses(
             #: against ``declared`` has to be made on the same name.  The arm's own keyword
             #: travels in ``how``, where a reader of a failure needs it.
             take(candidate, "if", f"satisfies the if, and the {which} refuses it: {how}")
+    #: **AN EXPLICIT ``null`` AT EACH DECLARED PROPERTY, and it is LAST for the reason the
+    #: conditional arm is: the dedup below keeps the FIRST keyword that aimed at a
+    #: candidate, so a derivation placed earlier would relabel witnesses the 15-pair gate
+    #: already reads.**
+    #:
+    #: ``adcp-client-python-4yhb`` is what its absence cost, and the cost was the whole
+    #: model half of this tree: every optional property was emitted ``T | None = None``,
+    #: pydantic reads that as a type that also admits an explicit ``null``, and **no
+    #: derivation here ever offered one** -- not :func:`_far_side`, whose ``type`` arm
+    #: replaces the WHOLE instance with an alien value and never a property's value, and
+    #: not :func:`refusing_payload`, whose three perturbations are a dropped required key,
+    #: an alien whole instance and an alien key.  So the two columns that read this
+    #: function were green over 13,790 fields in 1,819 classes at which the class admitted
+    #: a value its document refuses, undeclared, and **a column that cannot fail is not a
+    #: column**.
+    #:
+    #: The keys are the node's OWN and its ``allOf`` conjuncts' (:func:`declared_keys`),
+    #: which is the same same-instance fold :func:`own_facts` makes, and a key the instance
+    #: already carries is REPLACED rather than added -- the witness is "this property is
+    #: an explicit null", not "this property is present twice".
+    #:
+    #: **``properties`` IS THE KEYWORD IT IS AIMED AT**, and the document's own refusal is
+    #: usually on the property's ``type`` one level down -- which :func:`violated_keywords`
+    #: reports beside it, exactly as it does for every other witness here.  The AIM is the
+    #: node's own keyword because that is the name §2's declaration would carry and the
+    #: name ``check_refuses`` compares against ``declared``; measured over the emitted
+    #: tree, 0 of its 488 declarations name ``properties``, so no existing declaration can
+    #: exempt one of these by accident.
+    #:
+    #: Screened like everything else, which is what makes the derivation cheap AND exact:
+    #: a property whose document DOES admit ``null`` -- ``type: [..., "null"]``, 171 fields
+    #: of this tree -- yields no witness at all, so this offers the class exactly the
+    #: fields whose document refuses one and never asks it to refuse a value the document
+    #: takes.
+    if isinstance(instance, dict):
+        for key in declared_keys(schema):
+            take(
+                {**instance, key: None},
+                "properties",
+                f"an explicit null at the property {key!r}",
+            )
     #: Deduplicated by the candidate's JSON text, keeping the FIRST keyword that aimed at
     #: it: two keywords can name one value (a ``const`` and the ``type`` beside it), and
     #: offering it twice would report one disagreement twice.

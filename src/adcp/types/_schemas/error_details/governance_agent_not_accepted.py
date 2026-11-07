@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import AttemptedAgentOrigin, RejectionRef
 
 from ..governance.accepted_governance_agents import AcceptedGovernanceAgents
@@ -40,7 +40,7 @@ class GovernanceAgentNotAcceptedDetailsOpaque(GovernanceAgentNotAcceptedDetails)
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/governance-agent-not-accepted.json', pointer='#/oneOf/1')
     disclosure: Literal['opaque']
-    rejection_ref: Annotated[RejectionRef | None, Field(description='Optional seller-local correlation reference. It does not identify or reveal an acceptance rule.')] = None
+    rejection_ref: Annotated[RejectionRef | None, Field(description='Optional seller-local correlation reference. It does not identify or reveal an acceptance rule.'), OmittedNotNull] = None
 
 
 GovernanceAgentNotAcceptedDetails._branch_models = (GovernanceAgentNotAcceptedDetailsDisclosed, GovernanceAgentNotAcceptedDetailsOpaque,)

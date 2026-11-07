@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
 from adcp.types.constraints import AgentWebhookChallengeChallenge
 
@@ -22,8 +22,8 @@ class WebhookChallengeResponse(AdCPBaseModel):
         ForbiddenGroups((('challenge', 'token'),)),
         RequiredGroups((('challenge',), ('token',)), 'anyOf'),
     )
-    challenge: Annotated[AgentWebhookChallengeChallenge | None, Field(description='Echo of the challenge value supplied by the seller.')] = None
-    token: Annotated[AgentWebhookChallengeChallenge | None, Field(description='Backward-compatible alias for `challenge`. Receivers SHOULD prefer `challenge`; sellers MUST accept either field.')] = None
+    challenge: Annotated[AgentWebhookChallengeChallenge | None, Field(description='Echo of the challenge value supplied by the seller.'), OmittedNotNull] = None
+    token: Annotated[AgentWebhookChallengeChallenge | None, Field(description='Backward-compatible alias for `challenge`. Receivers SHOULD prefer `challenge`; sellers MUST accept either field.'), OmittedNotNull] = None
 
 
 __all__ = ["WebhookChallengeResponse"]

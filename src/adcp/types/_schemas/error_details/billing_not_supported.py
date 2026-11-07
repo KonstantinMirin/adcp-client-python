@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
 from ..enums.billing_party import BillingParty
 
@@ -29,8 +29,8 @@ class BillingNotSupportedDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/billing-not-supported.json', pointer='#')
-    scope: Annotated[Scope | None, Field(description='Which gate fired. `"capability"` — the seller\'s `supported_billing` capability does not include the requested value (advice: choose from `supported_billing` and retry). `"account"` — the seller\'s capability accepts the value generally but not for the specific operator on this account (advice: try the next-most-permissive value the capability allows). Registered subset of the shared discriminator vocabulary in `enums/error-scope.json` — the per-agent scope is reserved for `BILLING_NOT_PERMITTED_FOR_AGENT` (which carries no explicit `scope` field) and for `PERMISSION_DENIED` with `error-details/agent-permission-denied.json`. Sellers MUST omit this field when the response is being returned to a caller whose agent identity has not been established (signed-request derivation or credential-to-agent mapping); see the uniform-response requirement in error-handling.mdx Billing and Account Setup.')] = None
-    supported_billing: Annotated[list[BillingParty] | None, Field(description='Echoed copy of the seller\'s `supported_billing` capability for the caller\'s convenience — saves a `get_adcp_capabilities` round-trip when `scope` is `"capability"`. Sellers MAY omit this field; callers MUST treat absence as "call `get_adcp_capabilities`" rather than "any value is permitted."', min_length=1)] = None
+    scope: Annotated[Scope | None, Field(description='Which gate fired. `"capability"` — the seller\'s `supported_billing` capability does not include the requested value (advice: choose from `supported_billing` and retry). `"account"` — the seller\'s capability accepts the value generally but not for the specific operator on this account (advice: try the next-most-permissive value the capability allows). Registered subset of the shared discriminator vocabulary in `enums/error-scope.json` — the per-agent scope is reserved for `BILLING_NOT_PERMITTED_FOR_AGENT` (which carries no explicit `scope` field) and for `PERMISSION_DENIED` with `error-details/agent-permission-denied.json`. Sellers MUST omit this field when the response is being returned to a caller whose agent identity has not been established (signed-request derivation or credential-to-agent mapping); see the uniform-response requirement in error-handling.mdx Billing and Account Setup.'), OmittedNotNull] = None
+    supported_billing: Annotated[list[BillingParty] | None, Field(description='Echoed copy of the seller\'s `supported_billing` capability for the caller\'s convenience — saves a `get_adcp_capabilities` round-trip when `scope` is `"capability"`. Sellers MAY omit this field; callers MUST treat absence as "call `get_adcp_capabilities`" rather than "any value is permitted."', min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["BillingNotSupportedDetails"]

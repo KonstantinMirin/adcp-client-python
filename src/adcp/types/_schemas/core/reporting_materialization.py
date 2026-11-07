@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -62,14 +62,14 @@ class ReportingMaterialization(AdCPBaseModel):
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Immutable caller-owned destination generation selected by the account-authorized obligation. It may be reused by the same caller across other independently authorized accounts.')]
     feed_purpose: ReportingFeedPurpose
     method: ReportingDeliveryPattern
-    transport: AgentReportingDestinationFileTransferDestinationTransport | None = None
+    transport: Annotated[AgentReportingDestinationFileTransferDestinationTransport | None, OmittedNotNull] = None
     attempt: IntMin1
     status: Annotated[Status, Field(description='Lifecycle of this attempt. pending may transition once to available, delivered, or failed; terminal evidence is immutable. Staleness is evaluated in get_reporting_status health, not stored as a materialization state.')]
-    ready_at: Annotated[AwareDatetime | None, Field(description='When consumer-path or destination verification completed.')] = None
-    failed_at: AwareDatetime | None = None
-    failure_code: Annotated[ReportingAdjustmentReceiptRejectionCode | None, Field(description='Stable safe failure classification. MUST NOT include credentials or provider response bodies.')] = None
-    resource: ReportingResource | None = None
-    verification: ReportingVerification | None = None
+    ready_at: Annotated[AwareDatetime | None, Field(description='When consumer-path or destination verification completed.'), OmittedNotNull] = None
+    failed_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    failure_code: Annotated[ReportingAdjustmentReceiptRejectionCode | None, Field(description='Stable safe failure classification. MUST NOT include credentials or provider response bodies.'), OmittedNotNull] = None
+    resource: Annotated[ReportingResource | None, OmittedNotNull] = None
+    verification: Annotated[ReportingVerification | None, OmittedNotNull] = None
     created_at: AwareDatetime
 
 

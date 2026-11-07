@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..common._vocabularies import _VALUES_OPEN_CLOSED
@@ -45,7 +45,7 @@ class FindingsItem(AdCPBaseModel):
     category_id: Annotated[str, Field(description='Which validation category flagged the issue.')]
     severity: Annotated[EscalationSeverity, Field(description='Finding severity.')]
     explanation: Annotated[str, Field(description='Human-readable description of the issue.')]
-    details: Annotated[dict[str, Any] | None, Field(description='Structured details for programmatic consumption.')] = None
+    details: Annotated[dict[str, Any] | None, Field(description='Structured details for programmatic consumption.'), OmittedNotNull] = None
 
 
 class PlanSummary(AdCPBaseModel):
@@ -56,8 +56,8 @@ class PlanSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-outcome-response.json', pointer='#/properties/plan_summary')
-    total_committed: Annotated[float | None, Field(description='Total budget committed across all campaigns in the plan.')] = None
-    budget_remaining: Annotated[float | None, Field(description='Authorized budget minus total committed.')] = None
+    total_committed: Annotated[float | None, Field(description='Total budget committed across all campaigns in the plan.'), OmittedNotNull] = None
+    budget_remaining: Annotated[float | None, Field(description='Authorized budget minus total committed.'), OmittedNotNull] = None
 
 
 class ReportPlanOutcomeResponse(AdCPVersionEnvelope, AdcpResponse):
@@ -70,14 +70,14 @@ class ReportPlanOutcomeResponse(AdCPVersionEnvelope, AdcpResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-outcome-response.json', pointer='#')
     outcome_id: Annotated[str, Field(description='Unique identifier for this outcome record.')]
     outcome_state: Annotated[OutcomeState, Field(description="Outcome state. 'accepted' means state updated with no issues. 'findings' means issues were detected. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization.")]
-    committed_budget: Annotated[float | None, Field(description="Budget committed from this outcome. Present for 'completed' and 'failed' outcomes.")] = None
-    delivery_reconciliation_status: Annotated[DeliveryReconciliationStatus | None, Field(description='Comparison state between the buyer-attributed observation and canonical seller statement. Present for delivery outcomes. A disputed state blocks adjustment verification while the period is open. measurement_variance records a buyer-measured cumulative_spend that differs from the seller statement; it never blocks verification — the higher amount bounds conservative exposure and decommitments instead. closed_unresolved preserves the discrepancy after operational closure without claiming a final billing result.')] = None
-    delivery_period_state: Annotated[DeliveryPeriodState | None, Field(description='Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.')] = None
-    findings: Annotated[list[FindingsItem] | None, Field(description="Issues detected. Present only when outcome_state is 'findings'.")] = None
-    plan_summary: Annotated[PlanSummary | None, Field(description="Updated plan budget state. Present for 'completed' and 'failed' outcomes.")] = None
-    replayed: Annotated[bool | None, Field(description="Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions — matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state — re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract.")] = False
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    committed_budget: Annotated[float | None, Field(description="Budget committed from this outcome. Present for 'completed' and 'failed' outcomes."), OmittedNotNull] = None
+    delivery_reconciliation_status: Annotated[DeliveryReconciliationStatus | None, Field(description='Comparison state between the buyer-attributed observation and canonical seller statement. Present for delivery outcomes. A disputed state blocks adjustment verification while the period is open. measurement_variance records a buyer-measured cumulative_spend that differs from the seller statement; it never blocks verification — the higher amount bounds conservative exposure and decommitments instead. closed_unresolved preserves the discrepancy after operational closure without claiming a final billing result.'), OmittedNotNull] = None
+    delivery_period_state: Annotated[DeliveryPeriodState | None, Field(description='Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.'), OmittedNotNull] = None
+    findings: Annotated[list[FindingsItem] | None, Field(description="Issues detected. Present only when outcome_state is 'findings'."), OmittedNotNull] = None
+    plan_summary: Annotated[PlanSummary | None, Field(description="Updated plan budget state. Present for 'completed' and 'failed' outcomes."), OmittedNotNull] = None
+    replayed: Annotated[bool | None, Field(description="Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions — matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state — re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract."), OmittedNotNull] = False
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ReportPlanOutcomeResponse"]

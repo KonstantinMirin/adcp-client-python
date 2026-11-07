@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -25,13 +25,13 @@ class GetCreativeFeaturesRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-features-request.json', pointer='#')
-    idempotency_key: Annotated[IdempotencyKey | None, Field(description='Optional in AdCP 3.x for wire compatibility; clients SHOULD send a unique key for every logical evaluation. When supplied to a provider that advertises adcp.idempotency.supported: true, exact retries with the same canonical payload MUST return the cached initial response with replayed: true and MUST NOT dispatch a second provider evaluation or record a second consumption or cost event. Reusing the key with a different creative_manifest, account, or feature_ids payload returns IDEMPOTENCY_CONFLICT. The provider MUST retain the replay record for at least 24 hours. Keys MUST be unique per (provider, request) pair to prevent cross-provider correlation. This field becomes required in AdCP 4.0; use a fresh UUID v4 for each logical evaluation.')] = None
+    idempotency_key: Annotated[IdempotencyKey | None, Field(description='Optional in AdCP 3.x for wire compatibility; clients SHOULD send a unique key for every logical evaluation. When supplied to a provider that advertises adcp.idempotency.supported: true, exact retries with the same canonical payload MUST return the cached initial response with replayed: true and MUST NOT dispatch a second provider evaluation or record a second consumption or cost event. Reusing the key with a different creative_manifest, account, or feature_ids payload returns IDEMPOTENCY_CONFLICT. The provider MUST retain the replay record for at least 24 hours. Keys MUST be unique per (provider, request) pair to prevent cross-provider correlation. This field becomes required in AdCP 4.0; use a fresh UUID v4 for each logical evaluation.'), OmittedNotNull] = None
     creative_manifest: Annotated[CreativeManifest, Field(description='The canonical creative manifest to evaluate. In 3.2 it contains `format_kind`, optional `format_option_ref`, and typed assets. The deprecated named `format_id` branch remains available only for older 3.x peers.')]
-    feature_ids: Annotated[list[str] | None, Field(description='Optional filter to specific features. If omitted, returns all available features.', min_length=1)] = None
-    account: Annotated[AccountReference | None, Field(description='Account for billing this evaluation. Required when the governance agent charges per evaluation.')] = None
-    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async terminal completion/failure notifications. A submitted acknowledgement remains pollable through get_task_status whether or not this field is present. If the provider accepts this field and returns status: submitted, it MUST deliver at least the terminal completion or failure notification to the configured URL. If it cannot honor the webhook channel, it MUST reject the request instead of silently downgrading delivery.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    feature_ids: Annotated[list[str] | None, Field(description='Optional filter to specific features. If omitted, returns all available features.', min_length=1), OmittedNotNull] = None
+    account: Annotated[AccountReference | None, Field(description='Account for billing this evaluation. Required when the governance agent charges per evaluation.'), OmittedNotNull] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async terminal completion/failure notifications. A submitted acknowledgement remains pollable through get_task_status whether or not this field is present. If the provider accepts this field and returns status: submitted, it MUST deliver at least the terminal completion or failure notification to the configured URL. If it cannot honor the webhook channel, it MUST reject the request instead of silently downgrading delivery.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetCreativeFeaturesRequest"]

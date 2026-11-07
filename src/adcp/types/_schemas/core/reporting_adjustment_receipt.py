@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -44,12 +44,12 @@ class ReportingAdjustmentReceipt(AdCPBaseModel):
     reporting_receipt_id: StrIdempotencyKey
     reporting_adjustment_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     adjusts_reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    supersedes_reporting_receipt_id: Annotated[StrIdempotencyKey | None, Field(description='Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.')] = None
+    supersedes_reporting_receipt_id: Annotated[StrIdempotencyKey | None, Field(description='Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.'), OmittedNotNull] = None
     status: Status
     observed_adjustment_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest recomputed from the adjustment using its canonical evidence rule.')]
-    rejection_codes: Annotated[list[ReportingAdjustmentRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    rejection_codes: Annotated[list[ReportingAdjustmentRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     observed_at: AwareDatetime
-    received_at: AwareDatetime | None = None
+    received_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 __all__ = ["ReportingAdjustmentReceipt", "ReportingAdjustmentRejectionCode"]

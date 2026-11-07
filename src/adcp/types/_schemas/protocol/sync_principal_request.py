@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpRequest
@@ -47,9 +47,9 @@ class Configuration(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='protocol/sync-principal-request.json', pointer='#/properties/configuration/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    notification_configs: Annotated[list[NotificationConfigsItem] | None, Field(description='Complete desired agent-level subscriber set. The same caller-scoping, proof-of-control, secret handling, and replacement rules as sync_agent_notification_configs apply.', max_length=16)] = None
-    reporting_destinations: Annotated[list[AgentReportingDestination] | None, Field(description='Complete desired reusable reporting destination set. Omitting a previously present destination_id revokes it, and [] revokes every destination: the seller halts new deliveries to all of its generations within the advertised suspension_interval_seconds and retains it as a retired generation for reporting history. Revocation does not delete caller-owned data already delivered. destination_id values MUST be unique.', max_length=64)] = None
-    declarations: Annotated[AgentDeclarations | None, Field(description='Complete declared consumption facts for this principal record. A present object replaces the declared set wholesale; {} clears it; omission leaves it unchanged. The seller computes and returns the accepted intersection in state.')] = None
+    notification_configs: Annotated[list[NotificationConfigsItem] | None, Field(description='Complete desired agent-level subscriber set. The same caller-scoping, proof-of-control, secret handling, and replacement rules as sync_agent_notification_configs apply.', max_length=16), OmittedNotNull] = None
+    reporting_destinations: Annotated[list[AgentReportingDestination] | None, Field(description='Complete desired reusable reporting destination set. Omitting a previously present destination_id revokes it, and [] revokes every destination: the seller halts new deliveries to all of its generations within the advertised suspension_interval_seconds and retains it as a retired generation for reporting history. Revocation does not delete caller-owned data already delivered. destination_id values MUST be unique.', max_length=64), OmittedNotNull] = None
+    declarations: Annotated[AgentDeclarations | None, Field(description='Complete declared consumption facts for this principal record. A present object replaces the declared set wholesale; {} clears it; omission leaves it unchanged. The seller computes and returns the accepted intersection in state.'), OmittedNotNull] = None
 
 
 class SyncPrincipalRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -67,12 +67,12 @@ class SyncPrincipalRequest(AdCPVersionEnvelope, AdcpRequest):
         Approximation(document='protocol/sync-principal-request.json', pointer='#/properties/configuration/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key for at-most-once execution, at least 16 characters; a fresh UUID v4 per logical operation is recommended. Retries MUST reuse the same key with the same body.')]
-    expected_configuration_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional optimistic-concurrency fence returned by a previous successful sync. When present and stale, the seller rejects the whole request without mutation. Compare only for equality.')] = None
-    expected_principal_kind: Annotated[PrincipalKind | None, Field(description='Optional assertion fence, not identity input: the caller states which party kind it believes it is authenticating as. When present and different from the seller-resolved principal_kind, the seller rejects the whole request with CONFLICT before mutation. The field never influences resolution.')] = None
+    expected_configuration_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional optimistic-concurrency fence returned by a previous successful sync. When present and stale, the seller rejects the whole request without mutation. Compare only for equality.'), OmittedNotNull] = None
+    expected_principal_kind: Annotated[PrincipalKind | None, Field(description='Optional assertion fence, not identity input: the caller states which party kind it believes it is authenticating as. When present and different from the seller-resolved principal_kind, the seller rejects the whole request with CONFLICT before mutation. The field never influences resolution.'), OmittedNotNull] = None
     configuration: Annotated[Configuration, Field(description='Sections to replace atomically. At least one section is required. A present array is complete desired state for that section; [] clears it; omission leaves it unchanged.')]
-    dry_run: Annotated[bool | None, Field(description='Validate the proposed replacements and report the would-be action without persisting them, issuing durable identifiers or grants, or sending endpoint proof challenges.')] = False
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    dry_run: Annotated[bool | None, Field(description='Validate the proposed replacements and report the would-be action without persisting them, issuing durable identifiers or grants, or sending endpoint proof challenges.'), OmittedNotNull] = False
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SyncPrincipalRequest"]

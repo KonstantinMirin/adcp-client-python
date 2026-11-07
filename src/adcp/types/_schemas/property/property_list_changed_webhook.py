@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.ext import ExtensionObject
 from ..core.idempotency_key import IdempotencyKey
@@ -19,9 +19,9 @@ class ChangeSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-list-changed-webhook.json', pointer='#/properties/change_summary')
-    properties_added: Annotated[int | None, Field(description='Number of properties added since last resolution')] = None
-    properties_removed: Annotated[int | None, Field(description='Number of properties removed since last resolution')] = None
-    total_properties: Annotated[int | None, Field(description='Total properties in the resolved list')] = None
+    properties_added: Annotated[int | None, Field(description='Number of properties added since last resolution'), OmittedNotNull] = None
+    properties_removed: Annotated[int | None, Field(description='Number of properties removed since last resolution'), OmittedNotNull] = None
+    total_properties: Annotated[int | None, Field(description='Total properties in the resolved list'), OmittedNotNull] = None
 
 
 class PropertyListChangedWebhook(AdCPBaseModel):
@@ -35,12 +35,12 @@ class PropertyListChangedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook event. Governance agents MUST generate a cryptographically random value (UUID v4 recommended) per distinct list-change event and reuse the same key on every retry. Recipients MUST dedupe by this key, scoped to the authenticated sender identity established by the RFC 9421 signing key — keys from different governance agents are independent.')]
     event: Annotated[Literal['property_list_changed'], Field(description='The event type')]
     list_id: Annotated[str, Field(description='ID of the property list that changed')]
-    list_name: Annotated[str | None, Field(description='Name of the property list')] = None
-    change_summary: Annotated[ChangeSummary | None, Field(description='Summary of changes to the resolved list')] = None
+    list_name: Annotated[str | None, Field(description='Name of the property list'), OmittedNotNull] = None
+    change_summary: Annotated[ChangeSummary | None, Field(description='Summary of changes to the resolved list'), OmittedNotNull] = None
     resolved_at: Annotated[AwareDatetime, Field(description='When the list was re-resolved')]
-    cache_valid_until: Annotated[AwareDatetime | None, Field(description='When the consumer should refresh from the governance agent')] = None
+    cache_valid_until: Annotated[AwareDatetime | None, Field(description='When the consumer should refresh from the governance agent'), OmittedNotNull] = None
     signature: Annotated[str, Field(description='Deprecated 3.x compatibility marker. Property-list webhooks previously required this field but did not define an implementable signature algorithm, signed bytes, or key-discovery contract. RFC 9421 signatures are carried in the Signature and Signature-Input HTTP headers and bind the complete payload through Content-Digest. New 3.2 senders MUST set this field to the literal value `rfc9421`; receivers MUST accept any string from an older 3.x sender and MUST ignore it when authenticating a delivery. The field remains required through 3.x for schema compatibility and is removed in 4.0.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["PropertyListChangedWebhook"]

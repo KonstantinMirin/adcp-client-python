@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -69,12 +69,12 @@ class IndicatorsChangedWebhook(AdCPBaseModel):
     account_id: str
     relationship_kind: Annotated[RelationshipKind, Field(description='Identifies which indicator-bearing snapshot changed.')]
     media_buy_id: str
-    package_id: str | None = None
-    creative_id: str | None = None
+    package_id: Annotated[str | None, OmittedNotNull] = None
+    creative_id: Annotated[str | None, OmittedNotNull] = None
     change_kind: Annotated[ChangeKind, Field(description='Coarse invalidation reason. Buyers MUST reread rather than applying this value as state. invalidated is emitted when a material creative-content update retires the prior evaluation and the relationship becomes unknown until reevaluated. assignment_removed is emitted to indicator subscribers when deletion retires keys for a package–creative relationship.')]
     changed_indicator_types: Annotated[list[IndicatorType], Field(description='Types known to be affected. This is a reread hint, not a complete current set.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     observed_at: Annotated[AwareDatetime, Field(description='When the seller observed the semantic snapshot change.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["IndicatorsChangedWebhook"]

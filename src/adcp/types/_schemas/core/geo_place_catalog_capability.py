@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -24,7 +24,7 @@ class GeographicPlaceCatalogCapability(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('supported_versions'),
     )
-    source: Annotated[HTTPSURL | None, Field(description='Optional catalog dataset or derivative-source identifier. This records provenance/coverage and does not change the identifier namespace in system.')] = None
+    source: Annotated[HTTPSURL | None, Field(description='Optional catalog dataset or derivative-source identifier. This records provenance/coverage and does not change the identifier namespace in system.'), OmittedNotNull] = None
     current_version: Annotated[StrMinLen1, Field(description='Version applied when a buyer omits system_version. Sellers MUST echo this version on persisted package state.')]
     supported_versions: Annotated[list[StrMinLen1], Field(description='Exact catalog versions accepted for new targeting or target-changing updates. Must include current_version. Removing a version does not mutate or silently invalidate targets already pinned to it.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     resolver: GeographicPlaceResolver

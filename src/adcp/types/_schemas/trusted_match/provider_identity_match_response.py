@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import ServeWindowSec
 
@@ -29,7 +29,7 @@ class IdentityMatchResponseProviderRouter(AdCPVersionEnvelope, ProtocolEnvelope)
     request_id: Annotated[str, Field(description='Echoed request identifier from the identity match request.')]
     eligible_package_ids: Annotated[list[str], Field(description='Package IDs the user is eligible for. Packages not listed are ineligible.')]
     serve_window_sec: Annotated[ServeWindowSec, Field(description="Per-package single-shot fcap window, in seconds. After serving the user one impression on each eligible package within this window, the publisher MUST re-query Identity Match before serving from those packages again. Not a router response cache TTL — it is a buyer-asserted serve throttle. Multi-impression frequency caps are handled separately by the buyer's impression tracker. Maximum 300.")]
-    tmpx_chunks: Annotated[list[TMPXChunk] | None, Field(description="Ordered TMPX chunk/value pairs this identity agent mints. Each entry names the provider-local `slot_id` the value fills (from the provider's registered `tmpx_slots` in provider-registration.json). Ordered-prefix invariant: a response that carries fewer chunks than the provider registered MUST emit an ordered prefix of the registered `tmpx_slots` — routers MUST NOT reorder or fill gaps. The router MUST validate this contract before forwarding: if the provider has no `tmpx_slots` registration, or if the chunk `slot_id` sequence is not an exact non-empty ordered prefix of the registered list (duplicate, reordered, sparse, or unregistered slot IDs), the router MUST drop that provider's chunks atomically and MUST NOT forward them into `tmpx_providers`. Cap of 2 chunks in v1 aligned with the GAM macro-slot budget; the cap MAY rise without a shape change. Omitted when this provider mints no TMPX (e.g. no eligible packages).", max_length=2, min_length=1)] = None
+    tmpx_chunks: Annotated[list[TMPXChunk] | None, Field(description="Ordered TMPX chunk/value pairs this identity agent mints. Each entry names the provider-local `slot_id` the value fills (from the provider's registered `tmpx_slots` in provider-registration.json). Ordered-prefix invariant: a response that carries fewer chunks than the provider registered MUST emit an ordered prefix of the registered `tmpx_slots` — routers MUST NOT reorder or fill gaps. The router MUST validate this contract before forwarding: if the provider has no `tmpx_slots` registration, or if the chunk `slot_id` sequence is not an exact non-empty ordered prefix of the registered list (duplicate, reordered, sparse, or unregistered slot IDs), the router MUST drop that provider's chunks atomically and MUST NOT forward them into `tmpx_providers`. Cap of 2 chunks in v1 aligned with the GAM macro-slot budget; the cap MAY rise without a shape change. Omitted when this provider mints no TMPX (e.g. no eligible packages).", max_length=2, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["IdentityMatchResponseProviderRouter"]

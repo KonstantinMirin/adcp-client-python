@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
 from adcp.types.envelopes import AdcpRequest
 
@@ -55,14 +55,14 @@ class SyncReportingReceiptsRequest(AdCPVersionEnvelope, AdcpRequest):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('receipts',), ('adjustment_receipts',)), 'anyOf'),
     )
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
     account: CanonicalAccountReference
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated batch key. Exact retries reuse the key and body.')]
-    receipts: Annotated[list[ReceiptsItem] | None, Field(max_length=100, min_length=1)] = None
-    adjustment_receipts: Annotated[list[AdjustmentReceiptsItem] | None, Field(description='Consumer acceptance or rejection of exact post-official adjustments.', max_length=100, min_length=1)] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    receipts: Annotated[list[ReceiptsItem] | None, Field(max_length=100, min_length=1), OmittedNotNull] = None
+    adjustment_receipts: Annotated[list[AdjustmentReceiptsItem] | None, Field(description='Consumer acceptance or rejection of exact post-official adjustments.', max_length=100, min_length=1), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SyncReportingReceiptsRequest"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, FloatGt0Lt1, StrMaxLen64, StrMaxLen256
 
@@ -22,10 +22,10 @@ class AdjustmentsItem(AdCPBaseModel):
     )
     kind: PriceAdjustmentKind
     name: Annotated[StrMaxLen64, Field(description='Specific adjustment name. Use well-known values where applicable for interoperability.')]
-    rate: Annotated[FloatGt0Lt1 | None, Field(description='Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive — kind determines the economic effect. Mutually exclusive with amount.')] = None
-    amount: Annotated[FloatGt0 | None, Field(description="Adjustment as a fixed monetary amount in the pricing option's currency. Always positive — kind determines the economic effect. Mutually exclusive with rate.")] = None
-    description: Annotated[StrMaxLen256 | None, Field(description="Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')")] = None
-    beneficiary: Annotated[StrMaxLen256 | None, Field(description="Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.")] = None
+    rate: Annotated[FloatGt0Lt1 | None, Field(description='Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive — kind determines the economic effect. Mutually exclusive with amount.'), OmittedNotNull] = None
+    amount: Annotated[FloatGt0 | None, Field(description="Adjustment as a fixed monetary amount in the pricing option's currency. Always positive — kind determines the economic effect. Mutually exclusive with rate."), OmittedNotNull] = None
+    description: Annotated[StrMaxLen256 | None, Field(description="Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')"), OmittedNotNull] = None
+    beneficiary: Annotated[StrMaxLen256 | None, Field(description="Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency."), OmittedNotNull] = None
 
 
 class PriceBreakdown(AdCPBaseModel):

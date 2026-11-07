@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import FloatGt0Lt1, HttpUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen100, StrMinLen1MaxLen255
 
@@ -38,8 +38,8 @@ class Evidence(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-feedback-assertion.json', pointer='#/properties/evidence')
-    sample_size: IntMin1 | None = None
-    confidence_interval: Annotated[ConfidenceInterval | None, Field(description='Confidence interval on the performance_index scale. sample_size may be omitted when the producer cannot disclose it.')] = None
+    sample_size: Annotated[IntMin1 | None, OmittedNotNull] = None
+    confidence_interval: Annotated[ConfidenceInterval | None, Field(description='Confidence interval on the performance_index scale. sample_size may be omitted when the producer cannot disclose it.'), OmittedNotNull] = None
 
 
 class PerformanceFeedbackAssertion(AdCPBaseModel):
@@ -55,24 +55,24 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
         Dependencies('methodology_version', ('producer',)),
     )
     media_buy_id: Annotated[StrMinLen1, Field(description="Receiver-scoped media buy identifier. On the provider-to-orchestrator hop this is the orchestrator's measurement-facing identifier; on the orchestrator-to-seller hop it is the seller-assigned media buy identifier.")]
-    package_id: Annotated[StrMinLen1 | None, Field(description='Receiver-scoped package identifier when the assertion is package-specific. The orchestrator maps its measurement-facing identifier to seller-local identifiers during fan-out.')] = None
-    creative_id: Annotated[StrMinLen1 | None, Field(description='Receiver-scoped creative identifier when the assertion is creative-specific. The orchestrator maps its measurement-facing identifier to seller-local identifiers during fan-out.')] = None
+    package_id: Annotated[StrMinLen1 | None, Field(description='Receiver-scoped package identifier when the assertion is package-specific. The orchestrator maps its measurement-facing identifier to seller-local identifiers during fan-out.'), OmittedNotNull] = None
+    creative_id: Annotated[StrMinLen1 | None, Field(description='Receiver-scoped creative identifier when the assertion is creative-specific. The orchestrator maps its measurement-facing identifier to seller-local identifiers during fan-out.'), OmittedNotNull] = None
     measurement_period: Annotated[DatetimeRange, Field(description='Period whose performance is summarized by this assertion.')]
     performance_index: Annotated[NonNegativeFloat, Field(description='Normalized decision signal where 1.0 equals the named baseline, values below 1.0 underperform it, and values above 1.0 outperform it. Compact-contract producers (baseline present) MUST use observed divided by baseline for higher-is-better ratio metrics and baseline divided by observed for lower-is-better ratio metrics such as cost per acquisition.')]
-    baseline: Annotated[PerformanceBaseline | None, Field(description='Expectation represented by performance_index = 1.0. Compact-contract producers MUST populate this field; it remains optional in the schema so existing 3.x request payloads remain valid.')] = None
-    metric: Annotated[PerformanceFeedbackMetric | None, Field(description='Metric this assertion describes. Omit only for holistic feedback that is not attributable to one metric.')] = None
-    metric_type: Annotated[MetricType | None, Field(description='Deprecated legacy metric classification retained for existing request payloads. New implementations SHOULD use metric; when both are present consumers MUST use metric for dispatch.')] = None
-    producer: Annotated[BrandReference | None, Field(description='Brand that produced the analysis. The receiving orchestrator gateway verifies this reference against authenticated caller identity and preserves it during seller fan-out.')] = None
-    vendor: Annotated[BrandReference | None, Field(description='Deprecated alias for producer retained for previously documented request payloads. When both are present consumers use producer.')] = None
-    feedback_source: Annotated[FeedbackSource | None, Field(description='Legacy categorical source hint retained for existing request payloads.')] = None
-    methodology: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-scoped methodology identifier such as geo_incrementality, media_mix_model, or deterministic_attribution.')] = None
-    methodology_version: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-defined version of the methodology used for this assertion.')] = None
-    study_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque producer-assigned study or model-run reference. Receivers use it for correlation only and MUST NOT interpret it as an experiment-execution instruction.')] = None
-    evidence: Annotated[Evidence | None, Field(description='Small inline evidence summary used to weight the assertion without transporting the full study.')] = None
-    evidence_ref: Annotated[HttpUrl | None, Field(description='Provider-hosted evidence or result reference for parties authorized to inspect the full study.')] = None
-    as_of: Annotated[AwareDatetime | None, Field(description='When the producer computed this assertion.')] = None
-    final: Annotated[bool | None, Field(description='Whether the producer expects this assertion to be revised as data matures.')] = None
-    supersedes_feedback_id: Annotated[StrMinLen1 | None, Field(description='Receiver-issued feedback_id of the earlier assertion this one replaces at the same hop.')] = None
+    baseline: Annotated[PerformanceBaseline | None, Field(description='Expectation represented by performance_index = 1.0. Compact-contract producers MUST populate this field; it remains optional in the schema so existing 3.x request payloads remain valid.'), OmittedNotNull] = None
+    metric: Annotated[PerformanceFeedbackMetric | None, Field(description='Metric this assertion describes. Omit only for holistic feedback that is not attributable to one metric.'), OmittedNotNull] = None
+    metric_type: Annotated[MetricType | None, Field(description='Deprecated legacy metric classification retained for existing request payloads. New implementations SHOULD use metric; when both are present consumers MUST use metric for dispatch.'), OmittedNotNull] = None
+    producer: Annotated[BrandReference | None, Field(description='Brand that produced the analysis. The receiving orchestrator gateway verifies this reference against authenticated caller identity and preserves it during seller fan-out.'), OmittedNotNull] = None
+    vendor: Annotated[BrandReference | None, Field(description='Deprecated alias for producer retained for previously documented request payloads. When both are present consumers use producer.'), OmittedNotNull] = None
+    feedback_source: Annotated[FeedbackSource | None, Field(description='Legacy categorical source hint retained for existing request payloads.'), OmittedNotNull] = None
+    methodology: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-scoped methodology identifier such as geo_incrementality, media_mix_model, or deterministic_attribution.'), OmittedNotNull] = None
+    methodology_version: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-defined version of the methodology used for this assertion.'), OmittedNotNull] = None
+    study_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque producer-assigned study or model-run reference. Receivers use it for correlation only and MUST NOT interpret it as an experiment-execution instruction.'), OmittedNotNull] = None
+    evidence: Annotated[Evidence | None, Field(description='Small inline evidence summary used to weight the assertion without transporting the full study.'), OmittedNotNull] = None
+    evidence_ref: Annotated[HttpUrl | None, Field(description='Provider-hosted evidence or result reference for parties authorized to inspect the full study.'), OmittedNotNull] = None
+    as_of: Annotated[AwareDatetime | None, Field(description='When the producer computed this assertion.'), OmittedNotNull] = None
+    final: Annotated[bool | None, Field(description='Whether the producer expects this assertion to be revised as data matures.'), OmittedNotNull] = None
+    supersedes_feedback_id: Annotated[StrMinLen1 | None, Field(description='Receiver-issued feedback_id of the earlier assertion this one replaces at the same hop.'), OmittedNotNull] = None
 
 
 __all__ = ["Evidence", "PerformanceFeedbackAssertion"]

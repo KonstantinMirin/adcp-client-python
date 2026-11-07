@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
@@ -45,9 +45,9 @@ class TotalBudgetGuidance(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('recommended',), ('min',), ('max',)), 'anyOf'),
     )
-    min: NonNegativeFloat | None = None
-    recommended: NonNegativeFloat | None = None
-    max: NonNegativeFloat | None = None
+    min: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    recommended: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    max: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     currency: CurrencyCode
 
 
@@ -79,21 +79,21 @@ class CanonicalProposal(AdCPBaseModel):
     )
     proposal_id: StrMinLen1MaxLen255
     proposal_kind: ProposalKind
-    parent_proposal_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Immediate predecessor this snapshot was forked from. Every proposal produced by refine_proposals carries it, equal to the request's source proposal_id, so negotiation lineage is reconstructible from proposals alone.")] = None
-    media_buy_id: StrMinLen1 | None = None
-    opportunity_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Buyer planning cycle associated with this proposal. Revisions inherit it; it does not participate in proposal identity.')] = None
-    base_media_buy_revision: IntMin1 | None = None
+    parent_proposal_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Immediate predecessor this snapshot was forked from. Every proposal produced by refine_proposals carries it, equal to the request's source proposal_id, so negotiation lineage is reconstructible from proposals alone."), OmittedNotNull] = None
+    media_buy_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    opportunity_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Buyer planning cycle associated with this proposal. Revisions inherit it; it does not participate in proposal identity.'), OmittedNotNull] = None
+    base_media_buy_revision: Annotated[IntMin1 | None, OmittedNotNull] = None
     proposal_status: Annotated[ProposalStatus, Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
-    accepted_at: AwareDatetime | None = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')] = None
+    accepted_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.'), OmittedNotNull] = None
     name: StrMinLen1MaxLen500
-    description: StrMaxLen2000 | None = None
-    brief_alignment: StrMaxLen2000 | None = None
+    description: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
+    brief_alignment: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
     commercial_terms: CommercialTerms
     terms_digest: Annotated[CanonicalProposalTermsDigest, Field(description='Base64url SHA-256 digest of the RFC 8785 JCS serialization of commercial_terms, prefixed with sha256:.')]
-    insertion_order: InsertionOrder | None = None
-    total_budget_guidance: Annotated[TotalBudgetGuidance | None, Field(description="Optional budget guidance for this proposal — the planning answer to criteria.outcome_target and to open-budget briefs. commercial_terms.total_budget remains the concrete figure the plan is priced at; this band expresses the seller's recommended range around it. When criteria.outcome_target carries cost_per, the cost answer is commercial_terms.bidding.cost_per and this band's currency equals cost_per.currency.")] = None
-    forecast: Annotated[Forecast | None, Field(description="Aggregate forecasted delivery for the proposal. For outcome_target requests, points carry the goal's metric or event key in metrics; with cost_per, that is the goal volume planned under the commercial_terms.bidding policy, and currency equals cost_per.currency.")] = None
+    insertion_order: Annotated[InsertionOrder | None, OmittedNotNull] = None
+    total_budget_guidance: Annotated[TotalBudgetGuidance | None, Field(description="Optional budget guidance for this proposal — the planning answer to criteria.outcome_target and to open-budget briefs. commercial_terms.total_budget remains the concrete figure the plan is priced at; this band expresses the seller's recommended range around it. When criteria.outcome_target carries cost_per, the cost answer is commercial_terms.bidding.cost_per and this band's currency equals cost_per.currency."), OmittedNotNull] = None
+    forecast: Annotated[Forecast | None, Field(description="Aggregate forecasted delivery for the proposal. For outcome_target requests, points carry the goal's metric or event key in metrics; with cost_per, that is the goal volume planned under the commercial_terms.bidding policy, and currency equals cost_per.currency."), OmittedNotNull] = None
 
 
 __all__ = ["CanonicalProposal"]

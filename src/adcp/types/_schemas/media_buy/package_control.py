@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen500
 
@@ -36,19 +36,19 @@ class PackageControl(AdCPBaseModel):
     budget: Annotated[NonNegativeFloat | None, Field(description="Replace this package's hard lifetime spend cap. A number in a resulting seller-optimized buy requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.")] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Replace this package's subordinate hard daily cap; null removes it. Numeric changes apply immediately with package spend already incurred in the shared current cap day counted.")] = None
     min_spend_target: Annotated[NonNegativeFloat | None, Field(description="Replace this package's soft minimum-spend target. A number is valid only for seller-optimized allocation and requires advertised media_buy.features.seller_optimized_min_spend_targets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.")] = None
-    impressions: NonNegativeFloat | None = None
-    pacing: Annotated[Pacing | None, Field(description='Replace package pacing, subordinate to media-buy pacing. In a resulting seller-optimized buy, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.')] = None
+    impressions: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    pacing: Annotated[Pacing | None, Field(description='Replace package pacing, subordinate to media-buy pacing. In a resulting seller-optimized buy, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None
     bidding: BiddingPolicy | None = None
-    paused: bool | None = None
-    canceled: Annotated[Literal[True] | None, Field(description='Exercise an already-accepted unilateral package cancellation right. If seller agreement is required, refine the accepted proposal with change_kind amendment; cancellation proposals terminate the whole MediaBuy.')] = None
-    cancellation_reason: StrMinLen1MaxLen500 | None = None
-    targeting_overlay: Annotated[TargetingOverlayInput | None, Field(description='Per-dimension targeting patch. Omission preserves the current dimension, a non-null value replaces it, and null clears it. The resulting effective targeting must remain within the accepted commercial envelope and is read back without null dimensions.')] = None
-    catalog_ids: Annotated[list[StrMinLen1] | None, Field(description="Replace the package's promoted catalogs with references previously managed through sync_catalogs.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    keyword_targets_add: Annotated[list[KeywordTarget] | None, Field(min_length=1)] = None
-    keyword_targets_remove: Annotated[list[KeywordTarget] | None, Field(min_length=1)] = None
-    negative_keywords_add: Annotated[list[KeywordTarget] | None, Field(min_length=1)] = None
-    negative_keywords_remove: Annotated[list[KeywordTarget] | None, Field(min_length=1)] = None
-    optimization_goals: Annotated[list[CanonicalOptimizationGoal] | None, Field(min_length=1)] = None
+    paused: Annotated[bool | None, OmittedNotNull] = None
+    canceled: Annotated[Literal[True] | None, Field(description='Exercise an already-accepted unilateral package cancellation right. If seller agreement is required, refine the accepted proposal with change_kind amendment; cancellation proposals terminate the whole MediaBuy.'), OmittedNotNull] = None
+    cancellation_reason: Annotated[StrMinLen1MaxLen500 | None, OmittedNotNull] = None
+    targeting_overlay: Annotated[TargetingOverlayInput | None, Field(description='Per-dimension targeting patch. Omission preserves the current dimension, a non-null value replaces it, and null clears it. The resulting effective targeting must remain within the accepted commercial envelope and is read back without null dimensions.'), OmittedNotNull] = None
+    catalog_ids: Annotated[list[StrMinLen1] | None, Field(description="Replace the package's promoted catalogs with references previously managed through sync_catalogs.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    keyword_targets_add: Annotated[list[KeywordTarget] | None, Field(min_length=1), OmittedNotNull] = None
+    keyword_targets_remove: Annotated[list[KeywordTarget] | None, Field(min_length=1), OmittedNotNull] = None
+    negative_keywords_add: Annotated[list[KeywordTarget] | None, Field(min_length=1), OmittedNotNull] = None
+    negative_keywords_remove: Annotated[list[KeywordTarget] | None, Field(min_length=1), OmittedNotNull] = None
+    optimization_goals: Annotated[list[CanonicalOptimizationGoal] | None, Field(min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["PackageControl"]

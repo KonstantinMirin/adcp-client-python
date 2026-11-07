@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..core.macro_resolution_result import MacroResolutionResult
@@ -56,7 +56,7 @@ class ViolationsItem(AdCPBaseModel):
     expected: Annotated[Any | None, Field(description="Expected value or range (e.g., '28000-32000', '9:16', 200).")] = None
     predicted: Annotated[Any | None, Field(description="Platform's pre-flight estimate for this field (NOT the actual output — there is no protocol state for orphaned out-of-spec artifacts). For TTS, this might be the predicted audio duration from text-length analysis. Helps the buyer fix the input before committing to a build.")] = None
     field: Annotated[str, Field(description="Path to the violating field (e.g., 'assets.video_main.duration_ms').")]
-    retry_with: Annotated[dict[str, Any] | None, Field(description='Optional advisory adjustment hint. Platforms MAY suggest a corrected input shape; buyers MUST treat this as advisory, not authoritative.')] = None
+    retry_with: Annotated[dict[str, Any] | None, Field(description='Optional advisory adjustment hint. Platforms MAY suggest a corrected input shape; buyers MUST treat this as advisory, not authoritative.'), OmittedNotNull] = None
 
 
 class WarningsItem(AdCPBaseModel):
@@ -95,9 +95,9 @@ class ValidateInputResult(AdCPBaseModel):
     )
     target: Target
     result_kind: Annotated[ResultKind, Field(description="Discriminator for the validation outcome. See schema description for the three states. Replaces the earlier boolean `ok` to distinguish 'failed validation' from 'platform is nondeterministic, can't pre-validate'.")]
-    violations: Annotated[list[ViolationsItem] | None, Field(description="When `result_kind` is `validated_fail`, the specific constraints the manifest fails to meet. MUST be absent (or empty) for `validated_pass` and `unvalidatable_nondeterministic` — neither has constraint violations to enumerate (`unvalidatable_nondeterministic` doesn't validate at all; `validated_pass` has nothing to fail).")] = None
-    warnings: Annotated[list[WarningsItem] | None, Field(description='Non-blocking observations (e.g. LEAN policy advisories such as hover-triggered expansion or non-user-initiated entry into overlay anchoring) that do not affect `result_kind`. MAY be present alongside `validated_pass`, `validated_fail`, or `unvalidatable_nondeterministic`. Same item shape as `violations`.')] = None
-    macro_resolution_results: Annotated[list[MacroResolutionResult] | None, Field(description='Per-token compatibility against the selected target. Required or unsafe `unsupported`/`ambiguous` results make the target `validated_fail`; deliberate preservation for the declared downstream resolver may still pass.')] = None
+    violations: Annotated[list[ViolationsItem] | None, Field(description="When `result_kind` is `validated_fail`, the specific constraints the manifest fails to meet. MUST be absent (or empty) for `validated_pass` and `unvalidatable_nondeterministic` — neither has constraint violations to enumerate (`unvalidatable_nondeterministic` doesn't validate at all; `validated_pass` has nothing to fail)."), OmittedNotNull] = None
+    warnings: Annotated[list[WarningsItem] | None, Field(description='Non-blocking observations (e.g. LEAN policy advisories such as hover-triggered expansion or non-user-initiated entry into overlay anchoring) that do not affect `result_kind`. MAY be present alongside `validated_pass`, `validated_fail`, or `unvalidatable_nondeterministic`. Same item shape as `violations`.'), OmittedNotNull] = None
+    macro_resolution_results: Annotated[list[MacroResolutionResult] | None, Field(description='Per-token compatibility against the selected target. Required or unsafe `unsupported`/`ambiguous` results make the target `validated_fail`; deliberate preservation for the declared downstream resolver may still pass.'), OmittedNotNull] = None
 
 
 __all__ = ["ValidateInputResult"]

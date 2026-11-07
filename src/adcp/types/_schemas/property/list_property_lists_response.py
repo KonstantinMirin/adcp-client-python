@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -25,9 +25,9 @@ class ListPropertyListsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRespo
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/list-property-lists-response.json', pointer='#')
     lists: Annotated[list[PropertyList], Field(description='Array of property lists (metadata only, not resolved properties)')]
-    pagination: PaginationResponse | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListPropertyListsResponse"]

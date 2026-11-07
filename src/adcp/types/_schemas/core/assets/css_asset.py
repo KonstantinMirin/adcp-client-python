@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..provenance import Provenance
 
@@ -20,8 +20,8 @@ class CSSAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/css-asset.json', pointer='#')
     asset_type: Annotated[Literal['css'], Field(description='Discriminator identifying this as a CSS asset. See /schemas/creative/asset-types for the registry.')]
     content: Annotated[str, Field(description='CSS content')]
-    media: Annotated[str | None, Field(description="CSS media query context (e.g., 'screen', 'print')")] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    media: Annotated[str | None, Field(description="CSS media query context (e.g., 'screen', 'print')"), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["CSSAsset"]

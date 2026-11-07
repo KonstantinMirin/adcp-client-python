@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     PhysicalChecksumsItemSHA512PhysicalChecksumValue,
@@ -90,9 +90,9 @@ class ReportingVerification(AdCPBaseModel):
     verification_profile: ReportingVerificationProfile
     row_count: Annotated[NonNegativeInt, Field(description='Verified row count. Zero explicitly distinguishes an empty committed revision from a missing revision.')]
     control_totals: Annotated[list[ReportingControlTotal], Field(description='Profile-defined totals recomputed through verification_path. Names MUST be unique.', json_schema_extra={'uniqueItems': True})]
-    canonical_content_digest: ReportingCanonicalContentDigest | None = None
-    physical_checksums: Annotated[list[SHA256PhysicalChecksum | SHA512PhysicalChecksum] | None, Field(description='Method-specific byte/object checksums. Different encodings of the same logical revision normally have different values.', min_length=1)] = None
-    native_commit_evidence: Annotated[NativeCommitEvidence | None, Field(description='Provider-native immutable version evidence observed through the named consumer or destination path.')] = None
+    canonical_content_digest: Annotated[ReportingCanonicalContentDigest | None, OmittedNotNull] = None
+    physical_checksums: Annotated[list[SHA256PhysicalChecksum | SHA512PhysicalChecksum] | None, Field(description='Method-specific byte/object checksums. Different encodings of the same logical revision normally have different values.', min_length=1), OmittedNotNull] = None
+    native_commit_evidence: Annotated[NativeCommitEvidence | None, Field(description='Provider-native immutable version evidence observed through the named consumer or destination path.'), OmittedNotNull] = None
 
 
 __all__ = ["ReportingVerification"]

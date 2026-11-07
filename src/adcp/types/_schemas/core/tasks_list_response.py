@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
 from ..enums.sort_direction import SortDirection
 from ..enums.task_status import TaskStatus
@@ -26,9 +26,9 @@ class ObjMediaBuySignalsCreative(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-response.json', pointer='#/properties/query_summary/properties/domain_breakdown')
-    media_buy: Annotated[NonNegativeInt | None, Field(alias='media-buy', description='Number of media-buy tasks in results')] = None
-    signals: Annotated[NonNegativeInt | None, Field(description='Number of signals tasks in results')] = None
-    creative: Annotated[NonNegativeInt | None, Field(description='Number of creative tasks in results')] = None
+    media_buy: Annotated[NonNegativeInt | None, Field(alias='media-buy', description='Number of media-buy tasks in results'), OmittedNotNull] = None
+    signals: Annotated[NonNegativeInt | None, Field(description='Number of signals tasks in results'), OmittedNotNull] = None
+    creative: Annotated[NonNegativeInt | None, Field(description='Number of creative tasks in results'), OmittedNotNull] = None
 
 
 class SortApplied(AdCPBaseModel):
@@ -51,12 +51,12 @@ class QuerySummary(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-response.json', pointer='#/properties/query_summary')
-    total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of tasks matching filters (across all pages)')] = None
-    returned: Annotated[NonNegativeInt | None, Field(description='Number of tasks returned in this response')] = None
-    domain_breakdown: Annotated[ObjMediaBuySignalsCreative | None, Field(description='Count of tasks by domain')] = None
-    status_breakdown: Annotated[dict[str, NonNegativeInt] | None, Field(description='Count of tasks by status')] = None
-    filters_applied: Annotated[list[str] | None, Field(description='List of filters that were applied to the query')] = None
-    sort_applied: Annotated[SortApplied | None, Field(description='Sort order that was applied')] = None
+    total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of tasks matching filters (across all pages)'), OmittedNotNull] = None
+    returned: Annotated[NonNegativeInt | None, Field(description='Number of tasks returned in this response'), OmittedNotNull] = None
+    domain_breakdown: Annotated[ObjMediaBuySignalsCreative | None, Field(description='Count of tasks by domain'), OmittedNotNull] = None
+    status_breakdown: Annotated[dict[str, NonNegativeInt] | None, Field(description='Count of tasks by status'), OmittedNotNull] = None
+    filters_applied: Annotated[list[str] | None, Field(description='List of filters that were applied to the query'), OmittedNotNull] = None
+    sort_applied: Annotated[SortApplied | None, Field(description='Sort order that was applied'), OmittedNotNull] = None
 
 
 class Domain(StrEnum):
@@ -82,8 +82,8 @@ class TasksItem(AdCPBaseModel):
     status: Annotated[TaskStatus, Field(description='Current task status')]
     created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
     updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
-    completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)')] = None
-    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration')] = None
+    completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)'), OmittedNotNull] = None
+    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration'), OmittedNotNull] = None
 
 
 class TasksListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -97,8 +97,8 @@ class TasksListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     query_summary: Annotated[QuerySummary, Field(description='Summary of the query that was executed')]
     tasks: Annotated[list[TasksItem], Field(description='Array of tasks matching the query criteria')]
     pagination: PaginationResponse
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["TasksListResponse"]

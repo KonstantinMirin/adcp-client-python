@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ...enums.macro_value_context import MacroValueContext
 from ...enums.url_asset_type import URLAssetType
@@ -45,11 +45,11 @@ class URLAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/url-asset.json', pointer='#')
     asset_type: Annotated[Literal['url'], Field(description='Discriminator identifying this as a URL asset. See /schemas/creative/asset-types for the registry.')]
     url: Annotated[MacroBearingURL, Field(description='URL reference carrying plain, AdCP, IAB, or declared vendor macro syntax. Buyers preserve token delimiters; the authoritative declaration determines the processing operation and encoding.')]
-    url_type: Annotated[URLAssetType | None, Field(description='Mechanism a receiver uses to invoke this URL: `clickthrough` for a user destination, `ad_request` for a third-party display creative request, `tracker_pixel` for an event HTTP request, or `tracker_script` for a script include. SHOULD be present on every URL asset.')] = None
-    macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='One declaration per token occurrence in `url`; declaration_id values MUST be unique and every location MUST identify an existing occurrence. Absence retains legacy opaque transport behavior.', min_length=1)] = None
-    description: Annotated[str | None, Field(description='Description of what this URL points to')] = None
-    state_id: Annotated[str | None, Field(description='Binding used only when this URL populates a `seller_rendered_stateful_display` `state_click_urls` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it); at most one entry per state. Omit for ordinary URL slots.')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    url_type: Annotated[URLAssetType | None, Field(description='Mechanism a receiver uses to invoke this URL: `clickthrough` for a user destination, `ad_request` for a third-party display creative request, `tracker_pixel` for an event HTTP request, or `tracker_script` for a script include. SHOULD be present on every URL asset.'), OmittedNotNull] = None
+    macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='One declaration per token occurrence in `url`; declaration_id values MUST be unique and every location MUST identify an existing occurrence. Absence retains legacy opaque transport behavior.', min_length=1), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Description of what this URL points to'), OmittedNotNull] = None
+    state_id: Annotated[str | None, Field(description='Binding used only when this URL populates a `seller_rendered_stateful_display` `state_click_urls` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it); at most one entry per state. Omit for ordinary URL slots.'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["URLAsset"]

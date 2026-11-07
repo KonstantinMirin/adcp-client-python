@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
 
 from ..enums.channels import MediaChannel
@@ -37,20 +37,20 @@ class CreativeOperationFormatDeclaration(AdCPBaseModel):
         Approximation(document='core/creative-operation-format-declaration.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'format_kind': {'const': 'custom'}}, 'required': ['format_kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/creative-operation-format-declaration.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['locale_policy']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    format_option_id: Annotated[str | None, Field(description='Stable publisher- or product-declaration identity that this creative operation can satisfy. When publisher_domain is present, this field is required.')] = None
-    publisher_domain: Annotated[DomainName | None, Field(description='Publisher namespace for format_option_id when this operation claims compatibility with a publisher declaration.')] = None
-    macro_resolution_capabilities: Annotated[list[MacroProcessingCapability] | None, Field(description='Creative-route processing capabilities for exact macro dialect identities, semantics, operations, actors, contexts, and encodings. These capabilities describe build, validation, or preview processing and do not grant seller production authority.', min_length=1)] = None
-    technical_requirements_complete: bool | None = None
-    display_name: str | None = None
-    sample_render_url: HTTPSURL | None = None
-    applies_to_channels: Annotated[list[MediaChannel] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    seller_preference: SellerPreference | None = None
-    locale_policy: CreativeLocalePolicy | None = None
-    canonical_formats_only: bool | None = False
-    experimental: bool | None = False
-    format_shape: str | None = None
-    v1_format_ref: Annotated[list[FormatReferenceStructuredObject] | None, Field(min_length=1)] = None
-    format_schema: PlatformExtensionReference | None = None
+    format_option_id: Annotated[str | None, Field(description='Stable publisher- or product-declaration identity that this creative operation can satisfy. When publisher_domain is present, this field is required.'), OmittedNotNull] = None
+    publisher_domain: Annotated[DomainName | None, Field(description='Publisher namespace for format_option_id when this operation claims compatibility with a publisher declaration.'), OmittedNotNull] = None
+    macro_resolution_capabilities: Annotated[list[MacroProcessingCapability] | None, Field(description='Creative-route processing capabilities for exact macro dialect identities, semantics, operations, actors, contexts, and encodings. These capabilities describe build, validation, or preview processing and do not grant seller production authority.', min_length=1), OmittedNotNull] = None
+    technical_requirements_complete: Annotated[bool | None, OmittedNotNull] = None
+    display_name: Annotated[str | None, OmittedNotNull] = None
+    sample_render_url: Annotated[HTTPSURL | None, OmittedNotNull] = None
+    applies_to_channels: Annotated[list[MediaChannel] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    seller_preference: Annotated[SellerPreference | None, OmittedNotNull] = None
+    locale_policy: Annotated[CreativeLocalePolicy | None, OmittedNotNull] = None
+    canonical_formats_only: Annotated[bool | None, OmittedNotNull] = False
+    experimental: Annotated[bool | None, OmittedNotNull] = False
+    format_shape: Annotated[str | None, OmittedNotNull] = None
+    v1_format_ref: Annotated[list[FormatReferenceStructuredObject] | None, Field(min_length=1), OmittedNotNull] = None
+    format_schema: Annotated[PlatformExtensionReference | None, OmittedNotNull] = None
     format_kind: CanonicalFormatKind
     params: Annotated[dict[str, Any], Field(description='Canonical creative-shape parameters. Validate against the schema selected by format_kind; custom params validate against the fetched format_schema.')]
 

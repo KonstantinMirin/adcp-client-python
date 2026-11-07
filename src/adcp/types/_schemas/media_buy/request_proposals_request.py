@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
 
@@ -31,7 +31,7 @@ class Opportunity(OpportunityContext):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/properties/opportunity')
-    status: Annotated[Literal['open'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
+    status: Annotated[Literal['open'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.'), OmittedNotNull] = None
 
 
 class RequestProposalsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
@@ -51,18 +51,18 @@ class RequestProposalsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequ
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/request-proposals-request.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['brand']}, {'properties': {'account': {'required': ['brand', 'operator']}}, 'required': ['account']}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
-    context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.')] = None
-    context: ContextObject | None = None
-    governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: PushNotificationConfig | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
+    context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    governance_context: Annotated[StrMinLen1MaxLen4096 | None, OmittedNotNull] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key required for retry-safe proposal creation.')]
-    account: Annotated[CanonicalAccountReference | None, Field(description='Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.')] = None
-    brand: Annotated[BrandKey | None, Field(description='Alternative brand source for proposal terms. Provide either top-level brand or a natural-key account containing brand and operator, not both.')] = None
+    account: Annotated[CanonicalAccountReference | None, Field(description='Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.'), OmittedNotNull] = None
+    brand: Annotated[BrandKey | None, Field(description='Alternative brand source for proposal terms. Provide either top-level brand or a natural-key account containing brand and operator, not both.'), OmittedNotNull] = None
     brief: Annotated[StrMinLen1, Field(description='Campaign goal, strategy, and requirements that are not represented in structured criteria.')]
-    criteria: ProductDiscoveryCriteria | None = None
-    opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle context that the seller associates with every proposal created by this request.')] = None
+    criteria: Annotated[ProductDiscoveryCriteria | None, OmittedNotNull] = None
+    opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle context that the seller associates with every proposal created by this request.'), OmittedNotNull] = None
 
 
 class RequestProposalsRequestBrand(RequestProposalsRequest):

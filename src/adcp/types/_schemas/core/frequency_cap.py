@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, RequiredGroups, Rule
 from adcp.types.constraints import IntMin1
 
@@ -47,11 +47,11 @@ class FrequencyCap(AdCPBaseModel):
         Dependencies('window', ('max_impressions',)),
         RequiredGroups((('suppress',), ('suppress_minutes',), ('max_impressions',)), 'anyOf'),
     )
-    suppress: Annotated[Suppress | None, Field(description='Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {"interval": 60, "unit": "minutes"} for a 1-hour cooldown). Preferred over suppress_minutes.')] = None
-    suppress_minutes: Annotated[NonNegativeFloat | None, Field(description='Deprecated — use suppress instead. Cooldown period in minutes between consecutive exposures to the same entity (e.g. 60 for a 1-hour cooldown).')] = None
-    max_impressions: Annotated[IntMin1 | None, Field(description="Maximum number of impressions per entity per window. For duration windows, implementations typically use a rolling window. campaign applies across the owning field's full flight: the package flight for a targeting overlay, or the MediaBuy flight for a root cap.")] = None
-    per: Annotated[ReachUnit | None, Field(description='Entity granularity for impression counting. Required when max_impressions is set.')] = None
-    window: Annotated[Window | None, Field(description='Time window for the max_impressions cap (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Required when max_impressions is set.')] = None
+    suppress: Annotated[Suppress | None, Field(description='Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {"interval": 60, "unit": "minutes"} for a 1-hour cooldown). Preferred over suppress_minutes.'), OmittedNotNull] = None
+    suppress_minutes: Annotated[NonNegativeFloat | None, Field(description='Deprecated — use suppress instead. Cooldown period in minutes between consecutive exposures to the same entity (e.g. 60 for a 1-hour cooldown).'), OmittedNotNull] = None
+    max_impressions: Annotated[IntMin1 | None, Field(description="Maximum number of impressions per entity per window. For duration windows, implementations typically use a rolling window. campaign applies across the owning field's full flight: the package flight for a targeting overlay, or the MediaBuy flight for a root cap."), OmittedNotNull] = None
+    per: Annotated[ReachUnit | None, Field(description='Entity granularity for impression counting. Required when max_impressions is set.'), OmittedNotNull] = None
+    window: Annotated[Window | None, Field(description='Time window for the max_impressions cap (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Required when max_impressions is set.'), OmittedNotNull] = None
 
 
 __all__ = ["FrequencyCap", "Suppress", "Window"]

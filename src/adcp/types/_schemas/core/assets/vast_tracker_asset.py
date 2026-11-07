@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NotValue, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
@@ -43,10 +43,10 @@ class VASTTrackerAsset(AdCPBaseModel):
     asset_type: Annotated[Literal['vast_tracker'], Field(description='Discriminator identifying this as a VAST tracker asset. See /schemas/creative/asset-types for the registry.')]
     vast_event: Annotated[Annotated[VASTTrackingEvent, AfterValidator(NotValue(('impression', 'clickTracking', 'customClick', 'error', 'viewable', 'notViewable', 'viewUndetermined', 'measurableImpression', 'viewableImpression')))], Field(description='The VAST tracking event this URL fires on. Maps 1:1 to the VAST `Tracking event="..."` attribute inside `TrackingEvents`. MUST NOT be `impression` (belongs in the VAST `Impression` element — model as a `url` asset with `url_type: "tracker_pixel"`), `clickTracking` / `customClick` (belong in `VideoClicks`), `error` (VAST `Error` element), or any of `viewable` / `notViewable` / `viewUndetermined` / `measurableImpression` / `viewableImpression` (children of the VAST `ViewableImpression` element, not `TrackingEvents`).')]
     url: Annotated[MacroBearingURL, Field(description='Tracker URL fired for the VAST event. Attached declarations identify each macro occurrence, registry revision, processing actor, and exact encoding profile.')]
-    macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='Exact tokens in `url` and their resolver/encoding contracts.', min_length=1)] = None
-    offset: Annotated[DAASTTrackerAssetOffset | None, Field(description='VAST `offset` attribute. Required when `vast_event` is `progress`; ignored otherwise for compatibility with existing 3.x manifests. Format matches the VAST 4.2 XSD `Tracking@offset` pattern: `HH:MM:SS` or `HH:MM:SS.mmm` for absolute time (two-digit hours, minutes 00–59, seconds 00–59), or an integer percentage 0–100 suffixed with `%`. Negative offsets are NOT permitted — the VAST 4.2 XSD pattern does not allow a leading minus.')] = None
-    target: Annotated[Target | None, Field(description='Which VAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>`, `non_linear` for `<NonLinearAds>/<TrackingEvents>`, `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>`. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.', json_schema_extra={'default': 'linear'})] = Field(default_factory=lambda: TypeAdapter(Target).validate_python('linear'))
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance.')] = None
+    macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='Exact tokens in `url` and their resolver/encoding contracts.', min_length=1), OmittedNotNull] = None
+    offset: Annotated[DAASTTrackerAssetOffset | None, Field(description='VAST `offset` attribute. Required when `vast_event` is `progress`; ignored otherwise for compatibility with existing 3.x manifests. Format matches the VAST 4.2 XSD `Tracking@offset` pattern: `HH:MM:SS` or `HH:MM:SS.mmm` for absolute time (two-digit hours, minutes 00–59, seconds 00–59), or an integer percentage 0–100 suffixed with `%`. Negative offsets are NOT permitted — the VAST 4.2 XSD pattern does not allow a leading minus.'), OmittedNotNull] = None
+    target: Annotated[Target | None, Field(description='Which VAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>`, `non_linear` for `<NonLinearAds>/<TrackingEvents>`, `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>`. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.', json_schema_extra={'default': 'linear'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Target).validate_python('linear'))
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance.'), OmittedNotNull] = None
 
 
 __all__ = ["VASTTrackerAsset"]

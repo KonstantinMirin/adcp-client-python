@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -43,7 +43,7 @@ class TrackerExecutionSelectorPixelTrackerImg(TrackerExecutionSelector):
     asset_type: Literal['pixel_tracker']
     event: PixelTrackingEvent
     method: Annotated[Literal['img'], Field(description='AdCP 3.2 execution contracts cover image-pixel initiation only; JavaScript response evaluation is outside this contract version.')]
-    custom_event_name: Annotated[StrMinLen1 | None, Field(description='Required only when event is custom.')] = None
+    custom_event_name: Annotated[StrMinLen1 | None, Field(description='Required only when event is custom.'), OmittedNotNull] = None
     execution_actor: TrackerExecutionActor
     firing_paths: Annotated[list[TrackerFiringPath], Field(description='Complete set of permitted initiation environments. Exactly one path is selected for each logical event occurrence.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 

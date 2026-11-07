@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -26,15 +26,15 @@ class CreatePropertyListRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/create-property-list-request.json', pointer='#')
-    account: Annotated[AccountReference | None, Field(description='Account that will own the list. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. When omitted, this task applies its task-local single-account shortcut: if exactly one account is accessible to the authenticated caller, the seller may assign the list to that account; otherwise it MUST return an account-required or ambiguous-account error. Omission MUST NOT mean an undocumented credential-local default account.')] = None
+    account: Annotated[AccountReference | None, Field(description='Account that will own the list. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. When omitted, this task applies its task-local single-account shortcut: if exactly one account is accessible to the authenticated caller, the seller may assign the list to that account; otherwise it MUST return an account-required or ambiguous-account error. Omission MUST NOT mean an undocumented credential-local default account.'), OmittedNotNull] = None
     name: Annotated[str, Field(description='Human-readable name for the list')]
-    description: Annotated[str | None, Field(description="Description of the list's purpose")] = None
-    base_properties: Annotated[list[BasePropertySource] | None, Field(description="Array of property sources to evaluate. Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers). If omitted, queries the agent's entire property database.", min_length=1)] = None
-    filters: Annotated[PropertyListFilters | None, Field(description='Dynamic filters to apply when resolving the list')] = None
-    brand: Annotated[BrandReference | None, Field(description='Brand reference. When provided, the agent automatically applies appropriate rules based on brand characteristics (industry, target_audience, etc.). Resolved at execution time.')] = None
+    description: Annotated[str | None, Field(description="Description of the list's purpose"), OmittedNotNull] = None
+    base_properties: Annotated[list[BasePropertySource] | None, Field(description="Array of property sources to evaluate. Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers). If omitted, queries the agent's entire property database.", min_length=1), OmittedNotNull] = None
+    filters: Annotated[PropertyListFilters | None, Field(description='Dynamic filters to apply when resolving the list'), OmittedNotNull] = None
+    brand: Annotated[BrandReference | None, Field(description='Brand reference. When provided, the agent automatically applies appropriate rules based on brand characteristics (industry, target_audience, etc.). Resolved at execution time.'), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate property list creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CreatePropertyListRequest"]

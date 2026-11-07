@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from ..core.context import ContextObject
@@ -24,14 +24,14 @@ class CreativeApprovalRequest(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/creative-approval-request.json', pointer='#')
     rights_id: Annotated[str, Field(description='Rights grant this creative was produced under')]
-    creative_id: Annotated[str | None, Field(description='Buyer-assigned creative identifier. Equivalent to OpenRTB crid. Used to track approval status across resubmissions.')] = None
+    creative_id: Annotated[str | None, Field(description='Buyer-assigned creative identifier. Equivalent to OpenRTB crid. Used to track approval status across resubmissions.'), OmittedNotNull] = None
     creative_url: Annotated[HttpUrl, Field(description='URL where the creative asset can be retrieved for review')]
-    creative_format: Annotated[FormatReferenceStructuredObject | None, Field(description='Format of the creative being submitted')] = None
-    description: Annotated[str | None, Field(description='Description of the creative for reviewer context')] = None
-    metadata: Annotated[dict[str, Any] | None, Field(description='Additional creative metadata (duration, dimensions, target audience, etc.)')] = None
+    creative_format: Annotated[FormatReferenceStructuredObject | None, Field(description='Format of the creative being submitted'), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Description of the creative for reviewer context'), OmittedNotNull] = None
+    metadata: Annotated[dict[str, Any] | None, Field(description='Additional creative metadata (duration, dimensions, target audience, etc.)'), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CreativeApprovalRequest"]

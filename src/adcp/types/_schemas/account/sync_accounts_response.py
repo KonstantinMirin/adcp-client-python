@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types.constraints import IntMin1, StrMinLen1
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -80,32 +80,32 @@ class AccountsItem(AdCPBaseModel):
         ConditionalRequired((Match('action', True, ('failed',)),), require=('errors',), forbid=()),
         NegatedConditional((Match('action', True, ('failed',)),), require=('status',), forbid=()),
     )
-    account_id: Annotated[str | None, Field(description="Seller-assigned account identifier. Use this in subsequent create_media_buy and other account-scoped operations when the seller's account model uses account_id references. For buyer-declared accounts, this may be echoed as the seller's internal handle for correlation and support, but the seller MUST continue accepting the natural-key AccountRef for subsequent calls. Buyers keep sending the natural key and MUST NOT assume the seller accepts the echoed account_id as an AccountRef.")] = None
-    account: Annotated[AccountReference | None, Field(description='Account reference, echoed from the request\'s settings-update-mode entry. Present only for settings-update-mode results (an account-id-namespace or previously-provisioned natural-key account targeted via the request\'s `account` field, per sync_accounts request schema) — not for provisioning-mode results, which use the flat `brand` + `operator` fields instead. When present, this is the row\'s identity anchor in place of brand/operator, including on action: "failed" rows where the account cannot be resolved to a brand/operator tuple at all (e.g. an unreachable account_id in an upstream-managed namespace).')] = None
-    brand: Annotated[BrandReference | None, Field(description='Current canonical brand reference for the account.')] = None
-    operator: Annotated[str | None, Field(description='Current canonical operator domain. When an identity change is pending or rejected, this remains the current value rather than echoing the requested value.')] = None
-    operator_unit: Annotated[OperatorUnit | None, Field(description='Current canonical operator-owned business unit, agency seat, or platform account. The stable id participates in the natural key; name is mutable display metadata. This is distinct from the seller/storefront account_id. When an identity change is pending or rejected, this remains the current value rather than echoing the requested value.')] = None
-    revision: Annotated[IntMin1 | None, Field(description='Current account revision after this operation. Incremented by each persisted settings change, identity-change request, or identity-change disposition; not incremented by dry runs, validation failures, or exact idempotency replays. Pass this value in the next settings-update entry to prevent lost updates.')] = None
-    identity_change: Annotated[AccountIdentityChange | None, Field(description='Pending or rejected desired operator identity. The top-level operator and operator_unit remain canonical until an approved change is applied.')] = None
-    identity_change_preview: Annotated[AccountIdentityChangePreview | None, Field(description='Dry-run-only preview of whether the requested identity would apply, require approval, or be blocked, plus evaluated resource impacts. This value is not persisted; canonical fields and revision remain current.')] = None
-    currency: Annotated[CurrencyCode | None, Field(description='Immutable account currency, echoed when the advertiser object is currency-bound.')] = None
-    timezone: Annotated[StrMinLen1 | None, Field(description='Immutable operational timezone for this account. AdCP 3.2 sellers echo it on created, updated, and unchanged results. For buyer-selected account_fixed provisioning it participates in the natural key.')] = None
-    name: Annotated[str | None, Field(description='Human-readable account name assigned by the seller')] = None
+    account_id: Annotated[str | None, Field(description="Seller-assigned account identifier. Use this in subsequent create_media_buy and other account-scoped operations when the seller's account model uses account_id references. For buyer-declared accounts, this may be echoed as the seller's internal handle for correlation and support, but the seller MUST continue accepting the natural-key AccountRef for subsequent calls. Buyers keep sending the natural key and MUST NOT assume the seller accepts the echoed account_id as an AccountRef."), OmittedNotNull] = None
+    account: Annotated[AccountReference | None, Field(description='Account reference, echoed from the request\'s settings-update-mode entry. Present only for settings-update-mode results (an account-id-namespace or previously-provisioned natural-key account targeted via the request\'s `account` field, per sync_accounts request schema) — not for provisioning-mode results, which use the flat `brand` + `operator` fields instead. When present, this is the row\'s identity anchor in place of brand/operator, including on action: "failed" rows where the account cannot be resolved to a brand/operator tuple at all (e.g. an unreachable account_id in an upstream-managed namespace).'), OmittedNotNull] = None
+    brand: Annotated[BrandReference | None, Field(description='Current canonical brand reference for the account.'), OmittedNotNull] = None
+    operator: Annotated[str | None, Field(description='Current canonical operator domain. When an identity change is pending or rejected, this remains the current value rather than echoing the requested value.'), OmittedNotNull] = None
+    operator_unit: Annotated[OperatorUnit | None, Field(description='Current canonical operator-owned business unit, agency seat, or platform account. The stable id participates in the natural key; name is mutable display metadata. This is distinct from the seller/storefront account_id. When an identity change is pending or rejected, this remains the current value rather than echoing the requested value.'), OmittedNotNull] = None
+    revision: Annotated[IntMin1 | None, Field(description='Current account revision after this operation. Incremented by each persisted settings change, identity-change request, or identity-change disposition; not incremented by dry runs, validation failures, or exact idempotency replays. Pass this value in the next settings-update entry to prevent lost updates.'), OmittedNotNull] = None
+    identity_change: Annotated[AccountIdentityChange | None, Field(description='Pending or rejected desired operator identity. The top-level operator and operator_unit remain canonical until an approved change is applied.'), OmittedNotNull] = None
+    identity_change_preview: Annotated[AccountIdentityChangePreview | None, Field(description='Dry-run-only preview of whether the requested identity would apply, require approval, or be blocked, plus evaluated resource impacts. This value is not persisted; canonical fields and revision remain current.'), OmittedNotNull] = None
+    currency: Annotated[CurrencyCode | None, Field(description='Immutable account currency, echoed when the advertiser object is currency-bound.'), OmittedNotNull] = None
+    timezone: Annotated[StrMinLen1 | None, Field(description='Immutable operational timezone for this account. AdCP 3.2 sellers echo it on created, updated, and unchanged results. For buyer-selected account_fixed provisioning it participates in the natural key.'), OmittedNotNull] = None
+    name: Annotated[str | None, Field(description='Human-readable account name assigned by the seller'), OmittedNotNull] = None
     action: Annotated[Action, Field(description='Action taken for this account. created: new account provisioned. updated: existing account modified. unchanged: no changes needed. failed: could not process (see errors).')]
-    status: Annotated[AccountStatus | None, Field(description='Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated. Required for every non-failed action; omitted on failed results where the seller could not reach or resolve the account far enough to know a lifecycle state (see errors).')] = None
-    billing: Annotated[BillingParty | None, Field(description='Who is invoiced on this account. Matches the requested billing model.')] = None
-    billing_entity: Annotated[BusinessEntity | None, Field(description='Current canonical business entity for the party responsible for payment. Sellers MAY add verified fields, but MUST NOT return data from a different entity. During an operator-domain handoff this remains the current entity until approval applies atomically; destination_billing_entity is staged and write-only. Bank details are omitted (write-only).')] = None
-    account_scope: AccountScope | None = None
-    setup: Annotated[ObjUrlMessageExpiresAt | None, Field(description='Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.')] = None
-    rate_card: Annotated[str | None, Field(description='Rate card applied to this account')] = None
-    payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms agreed for this account. When the account is active, these are the binding terms for all invoices on this account.')] = None
-    credit_limit: CreditLimit | None = None
-    errors: Annotated[list[Error] | None, Field(description="Per-account errors. Required and non-empty when action is 'failed'; absent otherwise.", min_length=1)] = None
-    warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this account')] = None
-    sandbox: Annotated[bool | None, Field(description='Whether this is a sandbox account, echoed from the request. Only present for buyer-declared accounts.')] = None
-    notification_configs: Annotated[list[NotificationConfig] | None, Field(description="Applied notification subscribers for this account after declarative replacement and activation-proof checks. Present on `created`, `updated`, and `unchanged` results when the buyer included `notification_configs` in the request or any persisted entries exist on the account. Entries are keyed by account-scoped `subscriber_id`; re-sending an existing `subscriber_id` replaces that subscriber's config rather than creating a duplicate. Only configs that the seller has persisted are echoed. `authentication.credentials` is omitted on every entry (write-only).", max_length=16)] = None
-    reporting_delivery_configs: Annotated[list[ReportingDeliveryConfigurationState] | None, Field(description='Resolved caller-owned durable reporting delivery configurations after declarative replacement. Each item echoes desired state and reports validation/setup state plus the seller-issued destination_ref when resolved. A setup action may direct an authenticated user to complete a provider grant or Open Sharing activation, but MUST NOT carry credentials or a bearer URL.', max_length=16)] = None
-    authorization: Annotated[AccountAuthorization | None, Field(description="Optional. The caller's scope grant against this account after the sync operation. Vendor agents of any type (media-buy, signals, governance, creative, brand) that support scope introspection SHOULD populate this so callers can preempt RBAC errors rather than discovering scope by trial and error. Media-buy sales agents claiming the `attestation_verifier` standard scope MUST populate it. Present on `created`, `updated`, and `unchanged` results; omitted on `failed` results (where the account did not reach a usable state). Absence means the vendor agent does not advertise introspectable scope — callers MUST NOT infer access from absence.")] = None
+    status: Annotated[AccountStatus | None, Field(description='Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated. Required for every non-failed action; omitted on failed results where the seller could not reach or resolve the account far enough to know a lifecycle state (see errors).'), OmittedNotNull] = None
+    billing: Annotated[BillingParty | None, Field(description='Who is invoiced on this account. Matches the requested billing model.'), OmittedNotNull] = None
+    billing_entity: Annotated[BusinessEntity | None, Field(description='Current canonical business entity for the party responsible for payment. Sellers MAY add verified fields, but MUST NOT return data from a different entity. During an operator-domain handoff this remains the current entity until approval applies atomically; destination_billing_entity is staged and write-only. Bank details are omitted (write-only).'), OmittedNotNull] = None
+    account_scope: Annotated[AccountScope | None, OmittedNotNull] = None
+    setup: Annotated[ObjUrlMessageExpiresAt | None, Field(description='Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.'), OmittedNotNull] = None
+    rate_card: Annotated[str | None, Field(description='Rate card applied to this account'), OmittedNotNull] = None
+    payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms agreed for this account. When the account is active, these are the binding terms for all invoices on this account.'), OmittedNotNull] = None
+    credit_limit: Annotated[CreditLimit | None, OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description="Per-account errors. Required and non-empty when action is 'failed'; absent otherwise.", min_length=1), OmittedNotNull] = None
+    warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this account'), OmittedNotNull] = None
+    sandbox: Annotated[bool | None, Field(description='Whether this is a sandbox account, echoed from the request. Only present for buyer-declared accounts.'), OmittedNotNull] = None
+    notification_configs: Annotated[list[NotificationConfig] | None, Field(description="Applied notification subscribers for this account after declarative replacement and activation-proof checks. Present on `created`, `updated`, and `unchanged` results when the buyer included `notification_configs` in the request or any persisted entries exist on the account. Entries are keyed by account-scoped `subscriber_id`; re-sending an existing `subscriber_id` replaces that subscriber's config rather than creating a duplicate. Only configs that the seller has persisted are echoed. `authentication.credentials` is omitted on every entry (write-only).", max_length=16), OmittedNotNull] = None
+    reporting_delivery_configs: Annotated[list[ReportingDeliveryConfigurationState] | None, Field(description='Resolved caller-owned durable reporting delivery configurations after declarative replacement. Each item echoes desired state and reports validation/setup state plus the seller-issued destination_ref when resolved. A setup action may direct an authenticated user to complete a provider grant or Open Sharing activation, but MUST NOT carry credentials or a bearer URL.', max_length=16), OmittedNotNull] = None
+    authorization: Annotated[AccountAuthorization | None, Field(description="Optional. The caller's scope grant against this account after the sync operation. Vendor agents of any type (media-buy, signals, governance, creative, brand) that support scope introspection SHOULD populate this so callers can preempt RBAC errors rather than discovering scope by trial and error. Media-buy sales agents claiming the `attestation_verifier` standard scope MUST populate it. Present on `created`, `updated`, and `unchanged` results; omitted on `failed` results (where the account did not reach a usable state). Absence means the vendor agent does not advertise introspectable scope — callers MUST NOT infer access from absence."), OmittedNotNull] = None
 
 
 class SyncAccountsSuccess(SyncAccountsResponse):
@@ -122,10 +122,10 @@ class SyncAccountsSuccess(SyncAccountsResponse):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dry_run': {'const': True}}, 'required': ['dry_run']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)')] = None
+    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
     accounts: Annotated[list[AccountsItem], Field(description='Results for each account processed')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SyncAccountsError(SyncAccountsResponse, FailedResponse):
@@ -140,8 +140,8 @@ class SyncAccountsError(SyncAccountsResponse, FailedResponse):
         ForbiddenGroups((('accounts',), ('dry_run',))),
     )
     errors: Annotated[list[Error], Field(description='Operation-level errors (e.g., authentication failure, service unavailable)', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 SyncAccountsResponse._branch_models = (SyncAccountsSuccess, SyncAccountsError,)

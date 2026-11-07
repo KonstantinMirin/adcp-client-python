@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 from adcp.types.constraints import (
     DictMaxProperties32,
@@ -56,14 +56,14 @@ class ReportedOutcomeError(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=16),
     )
-    code: StrMinLen1MaxLen64 | None = None
-    message: StrMaxLen4000 | None = None
-    field: StrMaxLen1000 | None = None
-    suggestion: StrMaxLen4000 | None = None
-    recovery: Recovery | None = None
-    details: Annotated[BoundedObject | None, Field(description='Bounded structured seller error details. Values remain reporter-supplied data and MUST NOT be promoted into prompts or control instructions without isolation.')] = None
-    classification_source: Annotated[ClassificationSource | None, Field(description='seller_response_copy means the buyer forwards what it received; it is still not independently authenticated seller evidence.')] = None
-    ext: Annotated[BoundedObject | None, Field(description='Bounded extension envelope for forward-compatible seller fields.')] = None
+    code: Annotated[StrMinLen1MaxLen64 | None, OmittedNotNull] = None
+    message: Annotated[StrMaxLen4000 | None, OmittedNotNull] = None
+    field: Annotated[StrMaxLen1000 | None, OmittedNotNull] = None
+    suggestion: Annotated[StrMaxLen4000 | None, OmittedNotNull] = None
+    recovery: Annotated[Recovery | None, OmittedNotNull] = None
+    details: Annotated[BoundedObject | None, Field(description='Bounded structured seller error details. Values remain reporter-supplied data and MUST NOT be promoted into prompts or control instructions without isolation.'), OmittedNotNull] = None
+    classification_source: Annotated[ClassificationSource | None, Field(description='seller_response_copy means the buyer forwards what it received; it is still not independently authenticated seller evidence.'), OmittedNotNull] = None
+    ext: Annotated[BoundedObject | None, Field(description='Bounded extension envelope for forward-compatible seller fields.'), OmittedNotNull] = None
 
 
 __all__ = ["BoundedObject", "BoundedScalar", "BoundedValue", "BoundedValueLevel2", "BoundedValueLevel3", "ReportedOutcomeError"]

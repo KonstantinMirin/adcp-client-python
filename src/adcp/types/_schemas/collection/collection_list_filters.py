@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.content_rating import ContentRating
 from ..enums.collection_kind import CollectionKind
@@ -22,14 +22,14 @@ class CollectionListFilters(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/collection-list-filters.json', pointer='#')
-    content_ratings_exclude: Annotated[list[ContentRating] | None, Field(description="Exclude collections with any of these content ratings (OR logic). This is a metadata filter on the collection's declared content_rating field — it does not evaluate episode content.", min_length=1)] = None
-    content_ratings_include: Annotated[list[ContentRating] | None, Field(description='Include only collections with any of these content ratings (OR logic). Collections without a declared content_rating are excluded.', min_length=1)] = None
-    genres_exclude: Annotated[list[str] | None, Field(description='Exclude collections tagged with any of these genres (OR logic). Values are interpreted against genre_taxonomy when present.', min_length=1)] = None
-    genres_include: Annotated[list[str] | None, Field(description='Include only collections with any of these genres (OR logic). Collections without genre metadata are excluded. Values are interpreted against genre_taxonomy when present.', min_length=1)] = None
-    genre_taxonomy: Annotated[GenreTaxonomy | None, Field(description='Taxonomy for genre filter values. When present, genres_include and genres_exclude values are interpreted as taxonomy IDs.')] = None
-    kinds: Annotated[list[CollectionKind] | None, Field(description='Filter to these collection kinds', min_length=1)] = None
-    exclude_distribution_ids: Annotated[list[IdentifiersItem] | None, Field(description='Always exclude collections with these distribution identifiers', min_length=1)] = None
-    production_quality: Annotated[list[ProductionQuality] | None, Field(description='Filter by production quality tier', min_length=1)] = None
+    content_ratings_exclude: Annotated[list[ContentRating] | None, Field(description="Exclude collections with any of these content ratings (OR logic). This is a metadata filter on the collection's declared content_rating field — it does not evaluate episode content.", min_length=1), OmittedNotNull] = None
+    content_ratings_include: Annotated[list[ContentRating] | None, Field(description='Include only collections with any of these content ratings (OR logic). Collections without a declared content_rating are excluded.', min_length=1), OmittedNotNull] = None
+    genres_exclude: Annotated[list[str] | None, Field(description='Exclude collections tagged with any of these genres (OR logic). Values are interpreted against genre_taxonomy when present.', min_length=1), OmittedNotNull] = None
+    genres_include: Annotated[list[str] | None, Field(description='Include only collections with any of these genres (OR logic). Collections without genre metadata are excluded. Values are interpreted against genre_taxonomy when present.', min_length=1), OmittedNotNull] = None
+    genre_taxonomy: Annotated[GenreTaxonomy | None, Field(description='Taxonomy for genre filter values. When present, genres_include and genres_exclude values are interpreted as taxonomy IDs.'), OmittedNotNull] = None
+    kinds: Annotated[list[CollectionKind] | None, Field(description='Filter to these collection kinds', min_length=1), OmittedNotNull] = None
+    exclude_distribution_ids: Annotated[list[IdentifiersItem] | None, Field(description='Always exclude collections with these distribution identifiers', min_length=1), OmittedNotNull] = None
+    production_quality: Annotated[list[ProductionQuality] | None, Field(description='Filter by production quality tier', min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["CollectionListFilters"]

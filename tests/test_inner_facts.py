@@ -406,12 +406,19 @@ def test_a_format_inside_a_container_reaches_the_models_own_schema() -> None:
 
     Asserted against the emitted CLASS and not against the module text: a name in the
     text proves the alias was referenced, and this proves the alias carries the fact.
+
+    **AND THE FIELD'S SCHEMA IS THE ARRAY, NOT AN ``anyOf`` OVER IT AND ``null``**, which
+    is :data:`adcp.types._base.OmittedNotNull`'s other visible half: the document declares
+    ``allowed_domains`` outside ``required`` with ``{"type": "array", …}`` and says nothing
+    about ``null``, so a published ``anyOf`` with a null arm was the model stating a fact
+    its document does not (``adcp-client-python-4yhb``).  The navigation through that arm
+    is gone with it, and what replaces it is stronger: the arm is asserted ABSENT.
     """
     from adcp.types._schemas.core.requirements import url_asset_requirements as mod
 
-    rendered = mod.URLAssetRequirements.model_json_schema()["properties"]["allowed_domains"]
-    array = next(b for b in rendered["anyOf"] if b.get("type") == "array")
-    assert array["items"] == {"type": "string", "format": "hostname"}, rendered
+    array = mod.URLAssetRequirements.model_json_schema()["properties"]["allowed_domains"]
+    assert "anyOf" not in array and array["type"] == "array", array
+    assert array["items"] == {"type": "string", "format": "hostname"}, array
     assert mod.URLAssetRequirements.model_validate({"allowed_domains": ["a.example.com"]})
 
 

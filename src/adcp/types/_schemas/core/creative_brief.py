@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import ComplianceRequiredDisclosuresItemJurisdictionsItem, IntMin1
 
 from ..enums.disclosure_persistence import DisclosurePersistence
@@ -38,10 +38,10 @@ class Messaging(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-brief.json', pointer='#/properties/messaging')
-    headline: Annotated[str | None, Field(description='Primary headline')] = None
-    tagline: Annotated[str | None, Field(description='Supporting tagline or sub-headline')] = None
-    cta: Annotated[str | None, Field(description='Call-to-action text')] = None
-    key_messages: Annotated[list[str] | None, Field(description='Key messages to communicate in priority order')] = None
+    headline: Annotated[str | None, Field(description='Primary headline'), OmittedNotNull] = None
+    tagline: Annotated[str | None, Field(description='Supporting tagline or sub-headline'), OmittedNotNull] = None
+    cta: Annotated[str | None, Field(description='Call-to-action text'), OmittedNotNull] = None
+    key_messages: Annotated[list[str] | None, Field(description='Key messages to communicate in priority order'), OmittedNotNull] = None
 
 
 class RequiredDisclosuresItem(AdCPBaseModel):
@@ -50,12 +50,12 @@ class RequiredDisclosuresItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-brief.json', pointer='#/properties/compliance/properties/required_disclosures/items')
     text: Annotated[str, Field(description='The disclosure text that must appear in the creative')]
-    position: Annotated[DisclosurePosition | None, Field(description='Where the disclosure should appear within the creative. prominent: clearly visible in the main creative area; footer: at the bottom of visual creatives; audio: spoken in audio/video creatives; subtitle: displayed in the subtitle or closed-caption track; overlay: superimposed on video content; end_card: displayed on video end card; pre_roll: spoken or displayed before main content; companion: in companion ad unit alongside primary creative')] = None
-    jurisdictions: Annotated[list[ComplianceRequiredDisclosuresItemJurisdictionsItem] | None, Field(description="Jurisdictions where this disclosure is required. ISO 3166-1 alpha-2 country codes or ISO 3166-2 subdivision codes (e.g., 'US', 'GB', 'US-NJ', 'CA-QC'). If omitted, the disclosure applies to all jurisdictions in the campaign.", min_length=1)] = None
-    regulation: Annotated[str | None, Field(description="The regulation or legal authority requiring this disclosure (e.g., 'SEC Rule 156', 'FCA COBS 4.5', 'FDA 21 CFR 202')")] = None
-    min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum display duration in milliseconds. For video/audio disclosures, how long the disclosure must be visible or audible. For static formats, how long the disclosure must remain on screen before any auto-advance.')] = None
-    language: Annotated[str | None, Field(description="Language of the disclosure text as a BCP 47 language tag (e.g., 'en', 'fr-CA', 'es'). When omitted, the disclosure is assumed to match the creative's language.")] = None
-    persistence: Annotated[DisclosurePersistence | None, Field(description='How long the disclosure must persist during content playback or display. When omitted, the creative agent should use the most restrictive persistence mode supported by the target format.')] = None
+    position: Annotated[DisclosurePosition | None, Field(description='Where the disclosure should appear within the creative. prominent: clearly visible in the main creative area; footer: at the bottom of visual creatives; audio: spoken in audio/video creatives; subtitle: displayed in the subtitle or closed-caption track; overlay: superimposed on video content; end_card: displayed on video end card; pre_roll: spoken or displayed before main content; companion: in companion ad unit alongside primary creative'), OmittedNotNull] = None
+    jurisdictions: Annotated[list[ComplianceRequiredDisclosuresItemJurisdictionsItem] | None, Field(description="Jurisdictions where this disclosure is required. ISO 3166-1 alpha-2 country codes or ISO 3166-2 subdivision codes (e.g., 'US', 'GB', 'US-NJ', 'CA-QC'). If omitted, the disclosure applies to all jurisdictions in the campaign.", min_length=1), OmittedNotNull] = None
+    regulation: Annotated[str | None, Field(description="The regulation or legal authority requiring this disclosure (e.g., 'SEC Rule 156', 'FCA COBS 4.5', 'FDA 21 CFR 202')"), OmittedNotNull] = None
+    min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum display duration in milliseconds. For video/audio disclosures, how long the disclosure must be visible or audible. For static formats, how long the disclosure must remain on screen before any auto-advance.'), OmittedNotNull] = None
+    language: Annotated[str | None, Field(description="Language of the disclosure text as a BCP 47 language tag (e.g., 'en', 'fr-CA', 'es'). When omitted, the disclosure is assumed to match the creative's language."), OmittedNotNull] = None
+    persistence: Annotated[DisclosurePersistence | None, Field(description='How long the disclosure must persist during content playback or display. When omitted, the creative agent should use the most restrictive persistence mode supported by the target format.'), OmittedNotNull] = None
 
 
 class Compliance(AdCPBaseModel):
@@ -66,8 +66,8 @@ class Compliance(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-brief.json', pointer='#/properties/compliance')
-    required_disclosures: Annotated[list[RequiredDisclosuresItem] | None, Field(description='Disclosures that must appear in creatives for this campaign. Each disclosure specifies the text, where it should appear, and which jurisdictions require it.', min_length=1)] = None
-    prohibited_claims: Annotated[list[str] | None, Field(description='Claims that must not appear in creatives for this campaign. Creative agents should ensure generated content avoids these claims.', min_length=1)] = None
+    required_disclosures: Annotated[list[RequiredDisclosuresItem] | None, Field(description='Disclosures that must appear in creatives for this campaign. Each disclosure specifies the text, where it should appear, and which jurisdictions require it.', min_length=1), OmittedNotNull] = None
+    prohibited_claims: Annotated[list[str] | None, Field(description='Claims that must not appear in creatives for this campaign. Creative agents should ensure generated content avoids these claims.', min_length=1), OmittedNotNull] = None
 
 
 class CreativeBrief(AdCPBaseModel):
@@ -79,13 +79,13 @@ class CreativeBrief(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-brief.json', pointer='#')
     name: Annotated[str, Field(description='Campaign or flight name for identification')]
-    objective: Annotated[Objective | None, Field(description='Campaign objective that guides creative tone and call-to-action strategy')] = None
-    tone: Annotated[str | None, Field(description="Desired tone for this campaign, modulating the brand's base tone (e.g., 'playful and festive', 'premium and aspirational')")] = None
-    audience: Annotated[str | None, Field(description='Target audience description for this campaign')] = None
-    territory: Annotated[str | None, Field(description='Creative territory or positioning the campaign should occupy')] = None
-    messaging: Annotated[Messaging | None, Field(description='Messaging framework for the campaign')] = None
-    reference_assets: Annotated[list[ReferenceAsset] | None, Field(description='Visual and strategic reference materials such as mood boards, product shots, example creatives, and strategy documents')] = None
-    compliance: Annotated[Compliance | None, Field(description='Regulatory and legal compliance requirements for this campaign. Campaign-specific, regional, and product-based — distinct from brand-level disclaimers in brand.json.')] = None
+    objective: Annotated[Objective | None, Field(description='Campaign objective that guides creative tone and call-to-action strategy'), OmittedNotNull] = None
+    tone: Annotated[str | None, Field(description="Desired tone for this campaign, modulating the brand's base tone (e.g., 'playful and festive', 'premium and aspirational')"), OmittedNotNull] = None
+    audience: Annotated[str | None, Field(description='Target audience description for this campaign'), OmittedNotNull] = None
+    territory: Annotated[str | None, Field(description='Creative territory or positioning the campaign should occupy'), OmittedNotNull] = None
+    messaging: Annotated[Messaging | None, Field(description='Messaging framework for the campaign'), OmittedNotNull] = None
+    reference_assets: Annotated[list[ReferenceAsset] | None, Field(description='Visual and strategic reference materials such as mood boards, product shots, example creatives, and strategy documents'), OmittedNotNull] = None
+    compliance: Annotated[Compliance | None, Field(description='Regulatory and legal compliance requirements for this campaign. Campaign-specific, regional, and product-based — distinct from brand-level disclaimers in brand.json.'), OmittedNotNull] = None
 
 
 __all__ = ["Compliance", "CreativeBrief", "Messaging", "Objective"]

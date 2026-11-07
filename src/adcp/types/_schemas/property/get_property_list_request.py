@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..collection.get_collection_list_request import ObjMaxResultsCursor
@@ -24,11 +24,11 @@ class GetPropertyListRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/get-property-list-request.json', pointer='#')
     list_id: Annotated[str, Field(description='ID of the property list to retrieve')]
-    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise.')] = None
-    resolve: Annotated[bool | None, Field(description='Whether to apply filters and return resolved identifiers (default: true)')] = True
-    pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because property lists can contain tens of thousands of identifiers.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise.'), OmittedNotNull] = None
+    resolve: Annotated[bool | None, Field(description='Whether to apply filters and return resolved identifiers (default: true)'), OmittedNotNull] = True
+    pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because property lists can contain tens of thousands of identifiers.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetPropertyListRequest"]

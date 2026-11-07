@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
@@ -43,10 +43,10 @@ class SignalSelectionGroupRule(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-selection-group-rule.json', pointer='#')
     selection_group: Annotated[str, Field(description='ProductSignalTargetingOption.selection_group value this rule applies to.')]
-    targeting_mode: Annotated[TargetingMode | None, Field(description="How options in this selection_group are intended to be used in signal_targeting_groups. 'include' maps to child groups with operator 'any'. 'exclude' maps to child groups with operator 'none'. Omit when options in the group may be used according to each option's allowed_targeting_modes.")] = None
-    selection_mode: Annotated[SelectionMode | None, Field(description="Selection behavior for this selection_group. 'required' means at least min_selected_signals, or 1 when omitted. 'fixed' means default_selected options in this group are seller-applied and read-only.")] = None
-    min_selected_signals: Annotated[NonNegativeInt | None, Field(description="Minimum selected options from this selection_group. If selection_mode is 'required' and omitted, sellers MUST treat the minimum as 1.")] = None
-    max_selected_signals: Annotated[IntMin1 | None, Field(description='Maximum selected options from this selection_group.')] = None
+    targeting_mode: Annotated[TargetingMode | None, Field(description="How options in this selection_group are intended to be used in signal_targeting_groups. 'include' maps to child groups with operator 'any'. 'exclude' maps to child groups with operator 'none'. Omit when options in the group may be used according to each option's allowed_targeting_modes."), OmittedNotNull] = None
+    selection_mode: Annotated[SelectionMode | None, Field(description="Selection behavior for this selection_group. 'required' means at least min_selected_signals, or 1 when omitted. 'fixed' means default_selected options in this group are seller-applied and read-only."), OmittedNotNull] = None
+    min_selected_signals: Annotated[NonNegativeInt | None, Field(description="Minimum selected options from this selection_group. If selection_mode is 'required' and omitted, sellers MUST treat the minimum as 1."), OmittedNotNull] = None
+    max_selected_signals: Annotated[IntMin1 | None, Field(description='Maximum selected options from this selection_group.'), OmittedNotNull] = None
 
 
 __all__ = ["SignalSelectionGroupRule"]

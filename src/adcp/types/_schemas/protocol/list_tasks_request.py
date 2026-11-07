@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -24,13 +24,13 @@ class ListTasksRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-request.json', pointer='#')
-    account: Annotated[AccountReference | None, Field(description="Account scope for task reconciliation. Sellers MUST only return tasks created for the caller's authenticated account + principal pair. When omitted, the seller MAY use the credential-bound singleton account, but multi-account credentials SHOULD require an explicit account.")] = None
-    filters: Annotated[Filters | None, Field(description='Filter criteria for querying tasks')] = None
-    sort: Annotated[Sort | None, Field(description='Sorting parameters')] = None
-    pagination: PaginationRequest | None = None
-    include_history: Annotated[bool | None, Field(description='Include full conversation history for each task (may significantly increase response size)')] = False
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description="Account scope for task reconciliation. Sellers MUST only return tasks created for the caller's authenticated account + principal pair. When omitted, the seller MAY use the credential-bound singleton account, but multi-account credentials SHOULD require an explicit account."), OmittedNotNull] = None
+    filters: Annotated[Filters | None, Field(description='Filter criteria for querying tasks'), OmittedNotNull] = None
+    sort: Annotated[Sort | None, Field(description='Sorting parameters'), OmittedNotNull] = None
+    pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
+    include_history: Annotated[bool | None, Field(description='Include full conversation history for each task (may significantly increase response size)'), OmittedNotNull] = False
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListTasksRequest"]

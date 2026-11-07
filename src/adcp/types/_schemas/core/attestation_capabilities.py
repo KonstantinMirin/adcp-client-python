@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
@@ -58,11 +58,11 @@ class AcceptedIssuersItem(AdCPBaseModel):
         UniqueItems('credential_origins'),
     )
     issuer: AttestationIssuer
-    claim_types: Annotated[list[HttpUrl] | None, Field(description='Optional subset of accepted_claim_types this issuer may assert. Omit to allow any globally accepted claim type for this issuer.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    proof_formats: Annotated[list[HttpUrl] | None, Field(description='Optional subset of accepted_proof_formats allowed for this issuer. Omit to allow any globally accepted proof format for this issuer.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    credential_origins: Annotated[list[HttpUrl] | None, Field(description='Canonical HTTPS origins from which credential_uri locators may be fetched for this issuer. Exact origin matching happens after URL canonicalization and before DNS resolution. Paths in the credential URI may vary; userinfo is forbidden.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    resolvers: Annotated[list[ResolversItem] | None, Field(description='Evaluator-approved resolver endpoints for issuer_credential_id delivery. Presentations carry only resolver_id; they cannot replace url or authentication policy.', min_length=1)] = None
-    ext: ExtensionObject | None = None
+    claim_types: Annotated[list[HttpUrl] | None, Field(description='Optional subset of accepted_claim_types this issuer may assert. Omit to allow any globally accepted claim type for this issuer.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    proof_formats: Annotated[list[HttpUrl] | None, Field(description='Optional subset of accepted_proof_formats allowed for this issuer. Omit to allow any globally accepted proof format for this issuer.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    credential_origins: Annotated[list[HttpUrl] | None, Field(description='Canonical HTTPS origins from which credential_uri locators may be fetched for this issuer. Exact origin matching happens after URL canonicalization and before DNS resolution. Paths in the credential URI may vary; userinfo is forbidden.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    resolvers: Annotated[list[ResolversItem] | None, Field(description='Evaluator-approved resolver endpoints for issuer_credential_id delivery. Presentations carry only resolver_id; they cannot replace url or authentication policy.', min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AcceptedVerifiersItem(AdCPBaseModel):
@@ -75,9 +75,9 @@ class AcceptedVerifiersItem(AdCPBaseModel):
         UniqueItems('proof_formats'),
     )
     agent_url: HttpUrl
-    claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    proof_formats: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    proof_formats: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class AttestationCapabilities(AdCPBaseModel):
@@ -100,9 +100,9 @@ class AttestationCapabilities(AdCPBaseModel):
     accepted_proof_formats: Annotated[list[HttpUrl], Field(description='Open credential/proof format identifiers the evaluator can verify. Values are absolute URIs rather than a protocol enum so issuers can adopt new formats without AdCP endorsement.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     supported_delivery_methods: Annotated[list[SupportedDeliveryMethodsItem], Field(description='Credential delivery paths this evaluator supports. credential_uri resolves an HTTPS credential URI from the presentation; issuer_credential_id combines issuer, credential_id, and an evaluator-published resolver_id; embedded accepts an inline credential.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     accepted_issuers: Annotated[list[AcceptedIssuersItem], Field(description='Issuer allowlist and resolver policy. Matching is on the canonical AttestationIssuer identity. A presenter-supplied issuer or credential URI that does not match this policy is rejected without an outbound request.', min_length=1)]
-    accepted_verifiers: Annotated[list[AcceptedVerifiersItem] | None, Field(description="Verifier agents the evaluator may call. A presenter's verify_agent nomination must match one of these canonicalized URLs, but the evaluator remains verifier-of-record and chooses whether to use the nominated agent, another accepted agent, or local verification.", min_length=1)] = None
-    max_embedded_credential_bytes: Annotated[MaxEmbeddedCredentialBytes | None, Field(description='Maximum UTF-8 byte size accepted for one embedded credential. Evaluators MUST enforce this limit before parsing the credential. The protocol ceiling is 1 MiB.')] = None
-    ext: ExtensionObject | None = None
+    accepted_verifiers: Annotated[list[AcceptedVerifiersItem] | None, Field(description="Verifier agents the evaluator may call. A presenter's verify_agent nomination must match one of these canonicalized URLs, but the evaluator remains verifier-of-record and chooses whether to use the nominated agent, another accepted agent, or local verification.", min_length=1), OmittedNotNull] = None
+    max_embedded_credential_bytes: Annotated[MaxEmbeddedCredentialBytes | None, Field(description='Maximum UTF-8 byte size accepted for one embedded credential. Evaluators MUST enforce this limit before parsing the credential. The protocol ceiling is 1 MiB.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AttestationCapabilities"]

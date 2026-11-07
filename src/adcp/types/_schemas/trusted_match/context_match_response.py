@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import ContextMatchResponseRouterPublisherSignalsByProvider
 
@@ -22,7 +22,7 @@ class Signals(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-response.json', pointer='#/properties/signals')
-    segments: Annotated[list[str] | None, Field(description='Contextual segment identifiers combined across provider responses.')] = None
+    segments: Annotated[list[str] | None, Field(description='Contextual segment identifiers combined across provider responses.'), OmittedNotNull] = None
 
 
 class ObjKeyValue(AdCPBaseModel):
@@ -59,8 +59,8 @@ class ContextMatchResponseRouterPublisher(AdCPVersionEnvelope, ProtocolEnvelope)
     type: Annotated[Literal['context_match_response'], Field(description='Message type discriminator for deserialization.')]
     request_id: Annotated[str, Field(description='Echoed request identifier from the context match request.')]
     offers: Annotated[list[Offer], Field(description='Offers collected across the provider fan-out, one per activated package. An empty array means no packages matched. For simple activation, each offer has just package_id. For richer responses, offers include brand, price, summary, and creative manifest.')]
-    signals: Annotated[Signals | None, Field(description='Merged non-keyed response-level signals. Provider-local targeting pairs do not pass through this object; the router emits them only in signals_by_provider.')] = None
-    signals_by_provider: Annotated[dict[ContextMatchResponseRouterPublisherSignalsByProvider, SignalsByProviderValue] | None, Field(description="Router-authored map of provider targeting pairs, keyed by the publisher-assigned provider_id from provider registration. For every provider response containing a non-empty signals.targeting_kvs list, the router copies the complete list unchanged into that provider's bucket. The router derives the map key from its registration and MUST ignore or reject provider-supplied signals_by_provider data. A provider with no targeting pairs is omitted. Publishers resolve each (provider_id, key) tuple to a local ad-server destination and drop tuples that have no local mapping.", min_length=1)] = None
+    signals: Annotated[Signals | None, Field(description='Merged non-keyed response-level signals. Provider-local targeting pairs do not pass through this object; the router emits them only in signals_by_provider.'), OmittedNotNull] = None
+    signals_by_provider: Annotated[dict[ContextMatchResponseRouterPublisherSignalsByProvider, SignalsByProviderValue] | None, Field(description="Router-authored map of provider targeting pairs, keyed by the publisher-assigned provider_id from provider registration. For every provider response containing a non-empty signals.targeting_kvs list, the router copies the complete list unchanged into that provider's bucket. The router derives the map key from its registration and MUST ignore or reject provider-supplied signals_by_provider data. A provider with no targeting pairs is omitted. Publishers resolve each (provider_id, key) tuple to a local ad-server destination and drop tuples that have no local mapping.", min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["ContextMatchResponseRouterPublisher", "ContextMatchResponseRouterPublisherTargetingKvs"]

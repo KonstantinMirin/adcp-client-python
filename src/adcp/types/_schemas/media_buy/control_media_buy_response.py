@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import AdcpResponse
@@ -55,14 +55,14 @@ class ControlApplied(ControlMediaBuyResponse):
     status: Literal['completed']
     media_buy_id: StrMinLen1
     revision: IntMin1
-    media_buy_status: MediaBuyStatus | None = None
+    media_buy_status: Annotated[MediaBuyStatus | None, OmittedNotNull] = None
     implementation_date: AwareDatetime | None = None
-    affected_package_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    available_actions: Annotated[list[CanonicalMediaBuyAction] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    warnings: Annotated[list[WarningsItem] | None, Field(description='Non-blocking observations about this completed control. The control was still applied exactly as represented. Continuing conditions also appear as indicators on get_media_buys.', min_length=1)] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
-    replayed: Literal[True] | None = None
+    affected_package_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    available_actions: Annotated[list[CanonicalMediaBuyAction] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    warnings: Annotated[list[WarningsItem] | None, Field(description='Non-blocking observations about this completed control. The control was still applied exactly as represented. Continuing conditions also appear as indicators on get_media_buys.', min_length=1), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+    replayed: Annotated[Literal[True] | None, OmittedNotNull] = None
 
 
 class ControlError(ControlMediaBuyResponse):
@@ -75,9 +75,9 @@ class ControlError(ControlMediaBuyResponse):
     )
     status: Literal['failed']
     errors: Annotated[list[Error], Field(min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
-    replayed: Literal[True] | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+    replayed: Annotated[Literal[True] | None, OmittedNotNull] = None
 
 
 class ControlSubmitted(ControlMediaBuyResponse):
@@ -90,11 +90,11 @@ class ControlSubmitted(ControlMediaBuyResponse):
     )
     status: Literal['submitted']
     task_id: StrMinLen1
-    message: StrMaxLen2000 | None = None
-    errors: list[Error] | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
-    replayed: Literal[True] | None = None
+    message: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+    replayed: Annotated[Literal[True] | None, OmittedNotNull] = None
 
 
 ControlMediaBuyResponse._branch_models = (ControlApplied, ControlError, ControlSubmitted,)

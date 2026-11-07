@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import MeasurementSource
 
 from ..enums.demographic_system import DemographicSystem
@@ -25,16 +25,16 @@ class DeliveryForecast(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-forecast.json', pointer='#')
     points: Annotated[list[ForecastPoint], Field(description='Forecasted delivery data points. For spend curves (default), points at ascending budget levels show how metrics scale with spend. For availability forecasts, points represent total available inventory independent of budget. See forecast_range_unit for interpretation.', min_length=1)]
-    forecast_range_unit: Annotated[ForecastRangeUnit | None, Field(description="How to interpret the points array. 'spend' (default when omitted): points at ascending budget levels. 'availability': total available inventory, budget omitted. 'reach_freq': points at ascending reach/frequency targets. 'weekly'/'daily': metrics are per-period values. 'clicks'/'conversions': points at ascending outcome targets. 'package': each point is a distinct inventory package.")] = None
+    forecast_range_unit: Annotated[ForecastRangeUnit | None, Field(description="How to interpret the points array. 'spend' (default when omitted): points at ascending budget levels. 'availability': total available inventory, budget omitted. 'reach_freq': points at ascending reach/frequency targets. 'weekly'/'daily': metrics are per-period values. 'clicks'/'conversions': points at ascending outcome targets. 'package': each point is a distinct inventory package."), OmittedNotNull] = None
     method: Annotated[ForecastMethod, Field(description='Method used to produce this forecast')]
     currency: Annotated[str, Field(description='ISO 4217 currency code for monetary values in this forecast (spend, budget)')]
-    demographic_system: Annotated[DemographicSystem | None, Field(description='Measurement system for the demographic field. Ensures buyer and seller agree on demographic notation.')] = None
-    demographic: Annotated[str | None, Field(description='Target demographic code within the specified demographic_system. For Nielsen: P18-49, M25-54, W35+. For BARB: ABC1 Adults, 16-34. For AGF: E 14-49.')] = None
-    measurement_source: Annotated[MeasurementSource | None, Field(description='Third-party measurement provider whose data was used to produce this forecast. Distinct from demographic_system, which specifies demographic notation — measurement_source identifies whose data produced the forecast numbers. Should be present when measured_impressions is used. Lowercase slug format.')] = None
-    reach_unit: Annotated[ReachUnit | None, Field(description='Unit of measurement for reach and audience_size metrics in this forecast. Required for cross-channel forecast comparison.')] = None
-    generated_at: Annotated[AwareDatetime | None, Field(description='When this forecast was computed')] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='When this forecast expires. After this time, the forecast should be refreshed. Forecast expiry does not affect proposal executability.')] = None
-    ext: ExtensionObject | None = None
+    demographic_system: Annotated[DemographicSystem | None, Field(description='Measurement system for the demographic field. Ensures buyer and seller agree on demographic notation.'), OmittedNotNull] = None
+    demographic: Annotated[str | None, Field(description='Target demographic code within the specified demographic_system. For Nielsen: P18-49, M25-54, W35+. For BARB: ABC1 Adults, 16-34. For AGF: E 14-49.'), OmittedNotNull] = None
+    measurement_source: Annotated[MeasurementSource | None, Field(description='Third-party measurement provider whose data was used to produce this forecast. Distinct from demographic_system, which specifies demographic notation — measurement_source identifies whose data produced the forecast numbers. Should be present when measured_impressions is used. Lowercase slug format.'), OmittedNotNull] = None
+    reach_unit: Annotated[ReachUnit | None, Field(description='Unit of measurement for reach and audience_size metrics in this forecast. Required for cross-channel forecast comparison.'), OmittedNotNull] = None
+    generated_at: Annotated[AwareDatetime | None, Field(description='When this forecast was computed'), OmittedNotNull] = None
+    valid_until: Annotated[AwareDatetime | None, Field(description='When this forecast expires. After this time, the forecast should be refreshed. Forecast expiry does not affect proposal executability.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["DeliveryForecast"]

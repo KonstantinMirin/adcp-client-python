@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from .brand_id import BrandID
@@ -25,8 +25,8 @@ class BrandKey(AdCPBaseModel):
         UniqueItems('countries'),
     )
     domain: Annotated[DomainName, Field(description='Domain that hosts /.well-known/brand.json or is registered for the brand.')]
-    brand_id: Annotated[BrandID | None, Field(description='Brand within a house-of-brands manifest. Omit for a single-brand domain.')] = None
-    countries: Annotated[list[CountryCode] | None, Field(description='Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    brand_id: Annotated[BrandID | None, Field(description='Brand within a house-of-brands manifest. Omit for a single-brand domain.'), OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["BrandKey"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -25,8 +25,8 @@ class CreateCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRe
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/create-collection-list-response.json', pointer='#')
     list: Annotated[CollectionList, Field(description='The created collection list')]
     auth_token: Annotated[str, Field(description='Token that authorizes sellers to fetch this list via get_collection_list. Only returned at creation time — buyers MUST store it in a secret manager. Scoped to this one list_id; MUST NOT be reused across lists. Governance agents MUST issue a distinct token per seller so per-relationship revocation is possible. Tokens MUST NOT be logged, appear in cache keys, or echo in error responses. delete_collection_list MUST revoke the token immediately; compromise-driven revocation MUST also signal cache invalidation to sellers (reduced cache_valid_until or a list-changed webhook). See Security considerations in docs/governance/collection/tasks/collection_lists.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CreateCollectionListResponse"]

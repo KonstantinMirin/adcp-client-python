@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen500
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -60,10 +60,10 @@ class SignedSuccessPayload(AdCPBaseModel):
     )
     claim_type: ClaimType
     verification_status: VerificationStatus
-    details: dict[str, Any] | None = None
-    context_note: StrMaxLen500 | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    details: Annotated[dict[str, Any] | None, OmittedNotNull] = None
+    context_note: Annotated[StrMaxLen500 | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class Payload(ResponsePayload):
@@ -99,11 +99,11 @@ class VerifyBrandClaimSuccess(VerifyBrandClaimResponse):
     )
     claim_type: Annotated[ClaimType, Field(description="Echoes the request's claim_type for caller-side routing.")]
     verification_status: Annotated[VerificationStatus, Field(description='Verification status. Not every status applies to every claim_type — see the task page for the applicable subset. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization (#4878).')]
-    details: Annotated[dict[str, Any] | None, Field(description="Per-claim-type response fields. Shape varies — see the task page for each claim_type's expected fields. Examples: subsidiary returns brand_id + first_observed_by_house_at + expected_resolution_window_days; parent returns house_domain; property returns relationship + regions + use_case_authorization; trademark returns matched_registration + licensor_domain + countries + nice_classes + use_case_authorization.")] = None
-    context_note: Annotated[StrMaxLen500 | None, Field(description='Public — free-text context the brand chooses to surface. For disputed/transferring, typically carries the rationale or transition details.')] = None
-    context: ContextObject | None = None
+    details: Annotated[dict[str, Any] | None, Field(description="Per-claim-type response fields. Shape varies — see the task page for each claim_type's expected fields. Examples: subsidiary returns brand_id + first_observed_by_house_at + expected_resolution_window_days; parent returns house_domain; property returns relationship + regions + use_case_authorization; trademark returns matched_registration + licensor_domain + countries + nice_classes + use_case_authorization."), OmittedNotNull] = None
+    context_note: Annotated[StrMaxLen500 | None, Field(description='Public — free-text context the brand chooses to surface. For disputed/transferring, typically carries the rationale or transition details.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
     signed_response: Annotated[SignedResponse, Field(description='Payload-envelope JWS attesting the canonical success response for verify_brand_claim. The signed payload response MUST match the unsigned task-body fields on this response, excluding signed_response and protocol/version envelope fields.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class VerifyBrandClaimError(VerifyBrandClaimResponse, FailedResponse):
@@ -115,8 +115,8 @@ class VerifyBrandClaimError(VerifyBrandClaimResponse, FailedResponse):
         ForbiddenGroups((('verification_status',), ('claim_type',))),
     )
     errors: Annotated[list[Error], Field(min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 VerifyBrandClaimResponse._branch_models = (VerifyBrandClaimSuccess, VerifyBrandClaimError,)

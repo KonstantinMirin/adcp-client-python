@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -48,7 +48,7 @@ class ItemIssuesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/0/properties/catalogs/items/properties/item_issues/items')
     item_id: Annotated[str, Field(description='ID of the catalog item with an issue')]
     status: Annotated[CatalogItemStatus, Field(description='Item review status')]
-    reasons: Annotated[list[str] | None, Field(description='Reasons for rejection or warning')] = None
+    reasons: Annotated[list[str] | None, Field(description='Reasons for rejection or warning'), OmittedNotNull] = None
 
 
 class CatalogsItem(AdCPBaseModel):
@@ -60,19 +60,19 @@ class CatalogsItem(AdCPBaseModel):
         ConditionalRequired((Match('action', True, ('created', 'updated', 'unchanged')),), require=('item_count',), forbid=()),
     )
     catalog_id: Annotated[str, Field(description='Catalog ID from the request')]
-    catalog_generation: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque token for this catalog incarnation. Sellers declaring catalog_item_availability_updates MUST return it for every accessible buyer-managed catalog result, including discovery. It remains stable across ordinary upserts and feed refreshes, changes after deletion and recreation, and is never reused for the same resolved account and catalog_id.')] = None
+    catalog_generation: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque token for this catalog incarnation. Sellers declaring catalog_item_availability_updates MUST return it for every accessible buyer-managed catalog result, including discovery. It remains stable across ordinary upserts and feed refreshes, changes after deletion and recreation, and is never reused for the same resolved account and catalog_id.'), OmittedNotNull] = None
     action: Annotated[CatalogAction, Field(description='Action taken for this catalog')]
-    platform_id: Annotated[str | None, Field(description='Platform-specific ID assigned to the catalog')] = None
-    item_count: Annotated[NonNegativeInt | None, Field(description="Total number of items in the catalog after sync. Required when action is 'created', 'updated', or 'unchanged'. Omitted on 'failed' and 'deleted'.")] = None
-    items_approved: Annotated[NonNegativeInt | None, Field(description='Number of items approved by the platform. Populated when the platform performs item-level review.')] = None
-    items_pending: Annotated[NonNegativeInt | None, Field(description='Number of items pending platform review. Common for product catalogs where items must pass content policy checks.')] = None
-    items_rejected: Annotated[NonNegativeInt | None, Field(description='Number of items rejected by the platform. Check item_issues for rejection reasons.')] = None
-    item_issues: Annotated[list[ItemIssuesItem] | None, Field(description='Per-item issues reported by the platform (rejections, warnings). Only present when the platform performs item-level review.')] = None
-    last_synced_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the most recent sync was accepted by the platform')] = None
-    next_fetch_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the platform will next fetch the feed URL. Only present for URL-based catalogs with update_frequency.')] = None
-    changes: Annotated[list[str] | None, Field(description="Field names that were modified (only present when action='updated')")] = None
-    errors: Annotated[list[Error] | None, Field(description="Validation or processing errors (only present when action='failed')")] = None
-    warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this catalog')] = None
+    platform_id: Annotated[str | None, Field(description='Platform-specific ID assigned to the catalog'), OmittedNotNull] = None
+    item_count: Annotated[NonNegativeInt | None, Field(description="Total number of items in the catalog after sync. Required when action is 'created', 'updated', or 'unchanged'. Omitted on 'failed' and 'deleted'."), OmittedNotNull] = None
+    items_approved: Annotated[NonNegativeInt | None, Field(description='Number of items approved by the platform. Populated when the platform performs item-level review.'), OmittedNotNull] = None
+    items_pending: Annotated[NonNegativeInt | None, Field(description='Number of items pending platform review. Common for product catalogs where items must pass content policy checks.'), OmittedNotNull] = None
+    items_rejected: Annotated[NonNegativeInt | None, Field(description='Number of items rejected by the platform. Check item_issues for rejection reasons.'), OmittedNotNull] = None
+    item_issues: Annotated[list[ItemIssuesItem] | None, Field(description='Per-item issues reported by the platform (rejections, warnings). Only present when the platform performs item-level review.'), OmittedNotNull] = None
+    last_synced_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the most recent sync was accepted by the platform'), OmittedNotNull] = None
+    next_fetch_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the platform will next fetch the feed URL. Only present for URL-based catalogs with update_frequency.'), OmittedNotNull] = None
+    changes: Annotated[list[str] | None, Field(description="Field names that were modified (only present when action='updated')"), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description="Validation or processing errors (only present when action='failed')"), OmittedNotNull] = None
+    warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this catalog'), OmittedNotNull] = None
 
 
 class SyncCatalogsSuccess(SyncCatalogsResponse):
@@ -87,13 +87,13 @@ class SyncCatalogsSuccess(SyncCatalogsResponse):
         ForbiddenGroups((('errors',),)),
     )
     status: Annotated[Literal['completed'], Field(description='Availability and synchronous catalog results are terminal and complete.')]
-    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)')] = None
+    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
     catalogs: Annotated[list[CatalogsItem], Field(description="Results for each catalog processed. Items with action='failed' indicate per-catalog validation/processing failures, not operation-level failures.")]
-    item_availability_updates: Annotated[list[CatalogItemAvailabilityUpdateResult] | None, Field(description='Acknowledgements for item_availability_updates. The array length MUST equal the request array length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, item_id, and action from request entry N. Buyers MUST reject the response as non-conformant if count, ordering, request_index, or echoed identity differs. Lenient-mode failures stay in their request positions. In strict mode, any per-entry failure instead produces the operation-level error branch before mutation and this array is absent.', max_length=1000, min_length=1)] = None
-    item_availability_states: Annotated[list[CatalogItemAvailabilityState] | None, Field(description='Current-state results for item_availability_queries, evaluated after updates in a mixed request. The array length MUST equal the request query length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, and item_id. Buyers MUST reject any mismatch. A replayed response is historical; use a fresh query idempotency_key before treating it as current after time-dependent expiry or catalog deletion/recreation.', max_length=1000, min_length=1)] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    item_availability_updates: Annotated[list[CatalogItemAvailabilityUpdateResult] | None, Field(description='Acknowledgements for item_availability_updates. The array length MUST equal the request array length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, item_id, and action from request entry N. Buyers MUST reject the response as non-conformant if count, ordering, request_index, or echoed identity differs. Lenient-mode failures stay in their request positions. In strict mode, any per-entry failure instead produces the operation-level error branch before mutation and this array is absent.', max_length=1000, min_length=1), OmittedNotNull] = None
+    item_availability_states: Annotated[list[CatalogItemAvailabilityState] | None, Field(description='Current-state results for item_availability_queries, evaluated after updates in a mixed request. The array length MUST equal the request query length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, and item_id. Buyers MUST reject any mismatch. A replayed response is historical; use a fresh query idempotency_key before treating it as current after time-dependent expiry or catalog deletion/recreation.', max_length=1000, min_length=1), OmittedNotNull] = None
+    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ErrorsItem(Error):
@@ -125,8 +125,8 @@ class SyncCatalogsError(SyncCatalogsResponse, FailedResponse):
         Approximation(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'errors': {'contains': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/catalog-item-reference-not-found-error.json'}}}, 'required': ['errors']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     errors: Annotated[list[ErrorsItem], Field(description='Operation-level errors that prevented processing any catalogs (e.g., authentication failure, service unavailable, invalid request format)', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SyncCatalogsResponseSubmitted(SyncCatalogsResponse):
@@ -142,10 +142,10 @@ class SyncCatalogsResponseSubmitted(SyncCatalogsResponse):
     )
     status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose catalogs array is issued in-line. See task-status.json for the full task-status enum.')]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
-    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Catalog ingestion queued; typical turnaround 5–15 minutes.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent.")] = None
-    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Catalog ingestion queued; typical turnaround 5–15 minutes.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent."), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 SyncCatalogsResponse._branch_models = (SyncCatalogsSuccess, SyncCatalogsError, SyncCatalogsResponseSubmitted,)

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import AssetPath, HttpUrl, StrMinLen1
 
@@ -65,20 +65,20 @@ class MacroResolutionResult(AdCPBaseModel):
     asset_path: Annotated[AssetPath, Field(description='JSON Pointer to the asset carrying the declaration.')]
     token: StrMinLen1
     dialect: MacroDialectFamily
-    dialect_namespace: HttpUrl | None = None
-    dialect_revision: StrMinLen1 | None = None
+    dialect_namespace: Annotated[HttpUrl | None, OmittedNotNull] = None
+    dialect_revision: Annotated[StrMinLen1 | None, OmittedNotNull] = None
     dialect_semantic: StrMinLen1
     mapping_status: MacroMappingStatus
-    universal_semantic: UniversalMacro | None = None
+    universal_semantic: Annotated[UniversalMacro | None, OmittedNotNull] = None
     operation: MacroProcessingOperation
-    performed_by: MacroProcessingActor | None = None
+    performed_by: Annotated[MacroProcessingActor | None, OmittedNotNull] = None
     requested_encoding: MacroEncoding
     required: bool
     unavailable_behavior: UnavailableBehavior
     status: Status
     reason: MacroResolutionReason
-    matched_encodings: Annotated[list[MacroEncoding] | None, Field(description='Exact advertised profiles considered for this match, when relevant.')] = None
-    message: StrMinLen1 | None = None
+    matched_encodings: Annotated[list[MacroEncoding] | None, Field(description='Exact advertised profiles considered for this match, when relevant.'), OmittedNotNull] = None
+    message: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 __all__ = ["MacroResolutionResult"]

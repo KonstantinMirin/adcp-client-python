@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMaxLen255, StrMaxLen500, TermsTotalBudgetCurrency
 
 
@@ -43,12 +43,12 @@ class Terms(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/insertion-order.json', pointer='#/properties/terms')
-    advertiser: Annotated[StrMaxLen500 | None, Field(description='Advertiser name or identifier')] = None
-    publisher: Annotated[StrMaxLen500 | None, Field(description='Publisher name or identifier')] = None
-    total_budget: Annotated[TotalBudget | None, Field(description='Total committed budget')] = None
-    flight_start: Annotated[AwareDatetime | None, Field(description='Campaign start date')] = None
-    flight_end: Annotated[AwareDatetime | None, Field(description='Campaign end date')] = None
-    payment_terms: Annotated[TermsPaymentTerms | None, Field(description='Payment terms')] = None
+    advertiser: Annotated[StrMaxLen500 | None, Field(description='Advertiser name or identifier'), OmittedNotNull] = None
+    publisher: Annotated[StrMaxLen500 | None, Field(description='Publisher name or identifier'), OmittedNotNull] = None
+    total_budget: Annotated[TotalBudget | None, Field(description='Total committed budget'), OmittedNotNull] = None
+    flight_start: Annotated[AwareDatetime | None, Field(description='Campaign start date'), OmittedNotNull] = None
+    flight_end: Annotated[AwareDatetime | None, Field(description='Campaign end date'), OmittedNotNull] = None
+    payment_terms: Annotated[TermsPaymentTerms | None, Field(description='Payment terms'), OmittedNotNull] = None
 
 
 class InsertionOrder(AdCPBaseModel):
@@ -60,9 +60,9 @@ class InsertionOrder(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/insertion-order.json', pointer='#')
     io_id: Annotated[StrMaxLen255, Field(description='Unique identifier for this insertion order. Referenced by io_acceptance on create_media_buy.')]
-    terms: Annotated[Terms | None, Field(description='Summary fields echoed from the committed proposal for agent verification. Buyer agents use these to confirm the IO matches what was negotiated before a human signs. These are read-only summaries, not negotiation surfaces — deal terms live on products and packages.')] = None
-    terms_url: Annotated[HttpUrl | None, Field(description='URL to a human-readable document containing the full insertion order terms')] = None
-    signing_url: Annotated[HttpUrl | None, Field(description='URL to an electronic signing service (e.g., DocuSign) for human signature workflows. When present, a human must sign before the buyer agent can proceed with create_media_buy.')] = None
+    terms: Annotated[Terms | None, Field(description='Summary fields echoed from the committed proposal for agent verification. Buyer agents use these to confirm the IO matches what was negotiated before a human signs. These are read-only summaries, not negotiation surfaces — deal terms live on products and packages.'), OmittedNotNull] = None
+    terms_url: Annotated[HttpUrl | None, Field(description='URL to a human-readable document containing the full insertion order terms'), OmittedNotNull] = None
+    signing_url: Annotated[HttpUrl | None, Field(description='URL to an electronic signing service (e.g., DocuSign) for human signature workflows. When present, a human must sign before the buyer agent can proceed with create_media_buy.'), OmittedNotNull] = None
     requires_signature: Annotated[bool, Field(description='Whether the buyer must accept this IO before creating a media buy. When true, create_media_buy requires an io_acceptance referencing this io_id.')]
 
 

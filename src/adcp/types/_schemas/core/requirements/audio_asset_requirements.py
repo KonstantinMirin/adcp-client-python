@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ...formats.canonical.audio_hosted import AudioChannels
@@ -33,17 +33,17 @@ class AudioAssetRequirements(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/audio-asset-requirements.json', pointer='#')
-    min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum duration in milliseconds')] = None
-    max_duration_ms: Annotated[IntMin1 | None, Field(description='Maximum duration in milliseconds')] = None
-    formats: Annotated[list[FormatsItem] | None, Field(description='Accepted audio file formats')] = None
-    max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes')] = None
-    sample_rates: Annotated[list[IntMin1] | None, Field(description='Accepted sample rates in Hz (e.g., [44100, 48000])')] = None
-    channels: Annotated[list[AudioChannels] | None, Field(description='Accepted audio channel configurations')] = None
-    min_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Minimum audio bitrate in kilobits per second')] = None
-    max_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Maximum audio bitrate in kilobits per second')] = None
-    loudness_lufs: Annotated[float | None, Field(description='Target integrated loudness in LUFS. LKFS is the equivalent unit name under ITU-R BS.1770; values expressed in LUFS and LKFS are directly comparable without conversion.')] = None
-    loudness_tolerance_db: Annotated[NonNegativeFloat | None, Field(description='Acceptable deviation from the loudness_lufs target in dB.')] = None
-    true_peak_dbfs: Annotated[float | None, Field(description='Maximum true-peak level in dBFS.')] = None
+    min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum duration in milliseconds'), OmittedNotNull] = None
+    max_duration_ms: Annotated[IntMin1 | None, Field(description='Maximum duration in milliseconds'), OmittedNotNull] = None
+    formats: Annotated[list[FormatsItem] | None, Field(description='Accepted audio file formats'), OmittedNotNull] = None
+    max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes'), OmittedNotNull] = None
+    sample_rates: Annotated[list[IntMin1] | None, Field(description='Accepted sample rates in Hz (e.g., [44100, 48000])'), OmittedNotNull] = None
+    channels: Annotated[list[AudioChannels] | None, Field(description='Accepted audio channel configurations'), OmittedNotNull] = None
+    min_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Minimum audio bitrate in kilobits per second'), OmittedNotNull] = None
+    max_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Maximum audio bitrate in kilobits per second'), OmittedNotNull] = None
+    loudness_lufs: Annotated[float | None, Field(description='Target integrated loudness in LUFS. LKFS is the equivalent unit name under ITU-R BS.1770; values expressed in LUFS and LKFS are directly comparable without conversion.'), OmittedNotNull] = None
+    loudness_tolerance_db: Annotated[NonNegativeFloat | None, Field(description='Acceptable deviation from the loudness_lufs target in dB.'), OmittedNotNull] = None
+    true_peak_dbfs: Annotated[float | None, Field(description='Maximum true-peak level in dBFS.'), OmittedNotNull] = None
 
 
 __all__ = ["AudioAssetRequirements"]

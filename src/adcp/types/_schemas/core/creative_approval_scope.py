@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..enums.creative_approval_status import CreativeApprovalStatus
@@ -26,7 +26,7 @@ class ScopedCreativeApproval(AdCPBaseModel):
     )
     scope: Annotated[IndicatorScope, Field(description='Publisher or placement to which this approval outcome applies.')]
     approval_status: Literal[CreativeApprovalStatus.PENDING_REVIEW, CreativeApprovalStatus.APPROVED, CreativeApprovalStatus.REJECTED]
-    rejection_reason: Annotated[str | None, Field(description='Human-readable explanation when this scope is rejected.')] = None
+    rejection_reason: Annotated[str | None, Field(description='Human-readable explanation when this scope is rejected.'), OmittedNotNull] = None
 
 
 __all__ = ["ScopedCreativeApproval"]

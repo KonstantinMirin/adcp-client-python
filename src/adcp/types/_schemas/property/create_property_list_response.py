@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -25,8 +25,8 @@ class CreatePropertyListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResp
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/create-property-list-response.json', pointer='#')
     list: Annotated[PropertyList, Field(description='The created property list')]
     auth_token: Annotated[str, Field(description='Token that can be shared with sellers to authorize fetching this list. Store this - it is only returned at creation time.')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CreatePropertyListResponse"]

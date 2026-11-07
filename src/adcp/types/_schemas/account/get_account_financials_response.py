@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max100
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -45,7 +45,7 @@ class Spend(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/spend')
     total_spend: Annotated[NonNegativeFloat, Field(description='Total spend in the period, in currency')]
-    media_buy_count: Annotated[NonNegativeInt | None, Field(description='Number of active media buys in the period')] = None
+    media_buy_count: Annotated[NonNegativeInt | None, Field(description='Number of active media buys in the period'), OmittedNotNull] = None
 
 
 class Credit(AdCPBaseModel):
@@ -55,7 +55,7 @@ class Credit(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/credit')
     credit_limit: Annotated[NonNegativeFloat, Field(description='Maximum outstanding balance allowed')]
     available_credit: Annotated[float, Field(description='Remaining credit available (credit_limit minus outstanding balance)')]
-    utilization_percent: Annotated[FloatMin0Max100 | None, Field(description='Credit utilization as a percentage (0-100)')] = None
+    utilization_percent: Annotated[FloatMin0Max100 | None, Field(description='Credit utilization as a percentage (0-100)'), OmittedNotNull] = None
 
 
 class LastTopUp(AdCPBaseModel):
@@ -73,7 +73,7 @@ class Balance(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/balance')
     available: Annotated[NonNegativeFloat, Field(description='Remaining prepaid balance')]
-    last_top_up: Annotated[LastTopUp | None, Field(description='Most recent balance top-up')] = None
+    last_top_up: Annotated[LastTopUp | None, Field(description='Most recent balance top-up'), OmittedNotNull] = None
 
 
 class PaymentStatus(StrEnum):
@@ -107,11 +107,11 @@ class Status(StrEnum):
 class InvoicesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/invoices/items')
     invoice_id: Annotated[str, Field(description='Seller-assigned invoice identifier')]
-    period: Annotated[DateRange | None, Field(description='Billing period covered by this invoice')] = None
+    period: Annotated[DateRange | None, Field(description='Billing period covered by this invoice'), OmittedNotNull] = None
     amount: Annotated[NonNegativeFloat, Field(description='Invoice total in currency')]
     status: Annotated[Status, Field(description='Invoice status')]
-    due_date: Annotated[date | None, Field(description='Payment due date')] = None
-    paid_date: Annotated[date | None, Field(description="Date payment was received. Present when status is 'paid'.")] = None
+    due_date: Annotated[date | None, Field(description='Payment due date'), OmittedNotNull] = None
+    paid_date: Annotated[date | None, Field(description="Date payment was received. Present when status is 'paid'."), OmittedNotNull] = None
 
 
 class GetAccountFinancialsSuccess(GetAccountFinancialsResponse):
@@ -129,14 +129,14 @@ class GetAccountFinancialsSuccess(GetAccountFinancialsResponse):
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code for all monetary amounts in this response')]
     period: Annotated[DateRange, Field(description='The actual period covered by spend data. May differ from the requested period if the seller adjusts to billing cycle boundaries.')]
     timezone: Annotated[str, Field(description="IANA timezone of the seller's billing day boundaries (e.g., 'America/New_York'). All dates in this response — period, invoice periods, due dates — are calendar dates in this timezone. This may differ from Account.timezone or a feature-specific cap/reporting timezone when the upstream platform uses distinct clocks; buyers MUST use this value for financial periods rather than infer equality.")]
-    spend: Annotated[Spend | None, Field(description='Spend summary for the period')] = None
-    credit: Annotated[Credit | None, Field(description='Credit status. Present for credit-based accounts (payment_terms like net_30).')] = None
-    balance: Annotated[Balance | None, Field(description='Prepay balance. Present for prepay accounts.')] = None
-    payment_status: Annotated[PaymentStatus | None, Field(description='Overall payment status. current: all obligations met. past_due: one or more invoices overdue. suspended: account suspended due to payment issues.')] = None
-    payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms in effect for this account')] = None
-    invoices: Annotated[list[InvoicesItem] | None, Field(description='Recent invoices. Sellers may limit the number returned.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    spend: Annotated[Spend | None, Field(description='Spend summary for the period'), OmittedNotNull] = None
+    credit: Annotated[Credit | None, Field(description='Credit status. Present for credit-based accounts (payment_terms like net_30).'), OmittedNotNull] = None
+    balance: Annotated[Balance | None, Field(description='Prepay balance. Present for prepay accounts.'), OmittedNotNull] = None
+    payment_status: Annotated[PaymentStatus | None, Field(description='Overall payment status. current: all obligations met. past_due: one or more invoices overdue. suspended: account suspended due to payment issues.'), OmittedNotNull] = None
+    payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms in effect for this account'), OmittedNotNull] = None
+    invoices: Annotated[list[InvoicesItem] | None, Field(description='Recent invoices. Sellers may limit the number returned.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class GetAccountFinancialsError(GetAccountFinancialsResponse, FailedResponse):
@@ -151,8 +151,8 @@ class GetAccountFinancialsError(GetAccountFinancialsResponse, FailedResponse):
         ForbiddenGroups((('account',), ('currency',), ('period',), ('timezone',))),
     )
     errors: Annotated[list[Error], Field(description='Operation-level errors', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 GetAccountFinancialsResponse._branch_models = (GetAccountFinancialsSuccess, GetAccountFinancialsError,)

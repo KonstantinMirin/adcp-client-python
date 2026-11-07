@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.ext import ExtensionObject
 from ..core.idempotency_key import IdempotencyKey
@@ -16,8 +16,8 @@ class ArtifactsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact-webhook-payload.json', pointer='#/properties/artifacts/items')
     artifact: Annotated[Artifact, Field(description='The content artifact')]
     delivered_at: Annotated[AwareDatetime, Field(description='When the impression was delivered (ISO 8601)')]
-    impression_id: Annotated[str | None, Field(description='Optional impression identifier for correlation with delivery reports')] = None
-    package_id: Annotated[str | None, Field(description='Package within the media buy this artifact relates to')] = None
+    impression_id: Annotated[str | None, Field(description='Optional impression identifier for correlation with delivery reports'), OmittedNotNull] = None
+    package_id: Annotated[str | None, Field(description='Package within the media buy this artifact relates to'), OmittedNotNull] = None
 
 
 class Pagination(AdCPBaseModel):
@@ -25,9 +25,9 @@ class Pagination(AdCPBaseModel):
     Pagination info when batching large artifact sets
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact-webhook-payload.json', pointer='#/properties/pagination')
-    total_artifacts: Annotated[int | None, Field(description='Total artifacts in the delivery period')] = None
-    batch_number: Annotated[int | None, Field(description='Current batch number (1-indexed)')] = None
-    total_batches: Annotated[int | None, Field(description='Total batches for this delivery period')] = None
+    total_artifacts: Annotated[int | None, Field(description='Total artifacts in the delivery period'), OmittedNotNull] = None
+    batch_number: Annotated[int | None, Field(description='Current batch number (1-indexed)'), OmittedNotNull] = None
+    total_batches: Annotated[int | None, Field(description='Total batches for this delivery period'), OmittedNotNull] = None
 
 
 class ArtifactWebhookPayload(AdCPBaseModel):
@@ -43,8 +43,8 @@ class ArtifactWebhookPayload(AdCPBaseModel):
     batch_id: Annotated[str, Field(description='Unique identifier for this batch of artifacts. Use for deduplication and acknowledgment.')]
     timestamp: Annotated[AwareDatetime, Field(description='When this batch was generated (ISO 8601)')]
     artifacts: Annotated[list[ArtifactsItem], Field(description='Content artifacts from delivered impressions')]
-    pagination: Annotated[Pagination | None, Field(description='Pagination info when batching large artifact sets')] = None
-    ext: ExtensionObject | None = None
+    pagination: Annotated[Pagination | None, Field(description='Pagination info when batching large artifact sets'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ArtifactWebhookPayload"]

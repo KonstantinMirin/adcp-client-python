@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
@@ -54,7 +54,7 @@ class Baseline(AdCPBaseModel):
     system: HTTPSURL
     population_id: StrMinLen1
     version: StrMinLen1
-    description: str | None = None
+    description: Annotated[str | None, OmittedNotNull] = None
 
 
 class EvidenceType(StrEnum):
@@ -117,15 +117,15 @@ class AudienceEvidence(AdCPBaseModel):
     evidence_type: Annotated[EvidenceType, Field(description='Nature of the evidence. Independent verification is represented separately by attestation_refs and never inferred from this value.')]
     methodology: AudienceEvidenceMethodology
     subject_type: AudienceSubjectType
-    resolution_method: Annotated[AudienceResolutionMethod | None, Field(description='Optional subject-resolution method used by the study or estimate. This describes population methodology, not a promise that the product can execute that resolution at serving time.')] = None
+    resolution_method: Annotated[AudienceResolutionMethod | None, Field(description='Optional subject-resolution method used by the study or estimate. This describes population methodology, not a promise that the product can execute that resolution at serving time.'), OmittedNotNull] = None
     provider: Annotated[BrandReference, Field(description='Brand responsible for producing the evidence.')]
     measurement_window: DateRange
-    sample_size: Annotated[IntMin1 | None, Field(description='Number of observations or respondents underlying the estimate, when applicable.')] = None
-    confidence: Annotated[FloatMin0Max1 | None, Field(description="Provider-defined confidence score in [0,1]. Consumers MUST compare scores only when the provider's methodology makes them comparable.")] = None
+    sample_size: Annotated[IntMin1 | None, Field(description='Number of observations or respondents underlying the estimate, when applicable.'), OmittedNotNull] = None
+    confidence: Annotated[FloatMin0Max1 | None, Field(description="Provider-defined confidence score in [0,1]. Consumers MUST compare scores only when the provider's methodology makes them comparable."), OmittedNotNull] = None
     last_updated: Annotated[AwareDatetime, Field(description='When the provider last produced or refreshed this immutable snapshot.')]
-    methodology_url: Annotated[HTTPSURL | None, Field(description='Documentation for interpreting the methodology. It is disclosure, not executable routing.')] = None
-    attestation_refs: Annotated[list[AttestationRefsItem] | None, Field(description="Optional portable attestations about this exact evidence snapshot. Each subject MUST be resource type https://adcontextprotocol.org/claims/subjects/audience-evidence, subject.id MUST equal snapshot_id, and subject.content_digest MUST equal this evidence object's content_digest. Buyer references do not override evaluator issuer or resolver policy.", max_length=10, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    methodology_url: Annotated[HTTPSURL | None, Field(description='Documentation for interpreting the methodology. It is disclosure, not executable routing.'), OmittedNotNull] = None
+    attestation_refs: Annotated[list[AttestationRefsItem] | None, Field(description="Optional portable attestations about this exact evidence snapshot. Each subject MUST be resource type https://adcontextprotocol.org/claims/subjects/audience-evidence, subject.id MUST equal snapshot_id, and subject.content_digest MUST equal this evidence object's content_digest. Buyer references do not override evaluator issuer or resolver policy.", max_length=10, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AudienceEvidence"]

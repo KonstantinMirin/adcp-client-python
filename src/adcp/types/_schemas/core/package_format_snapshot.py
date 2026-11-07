@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, ZipAssetDigest
 
@@ -64,12 +64,12 @@ class PackageFormatSnapshot(BranchDispatchMixin, AdCPBaseModel):
         NegatedConditional((Match('tracker_execution_contract', True, None),), require=(), forbid=('tracker_execution_contract_digest',)),
         ConditionalRequired((Match('product_snapshot_digest', True, None),), require=('product_id',), forbid=()),
     )
-    product_id: Annotated[StrMinLen1 | None, Field(description='Product whose effective selected format was snapshotted. Required whenever tracker_execution_contract is present.')] = None
-    placement_refs: Annotated[list[PlacementRefsItem] | None, Field(description='Nonempty, duplicate-free effective placement set, sorted by publisher_domain then placement_id using ascending UTF-8 bytes without Unicode normalization. Omission binds the product-wide common effective contract; it never means an inferred list of all current placements.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST execution version selected for first-class VAST tracker matching when no sibling delivery document supplies one. The value is immutable for the package.')] = None
-    execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST execution version selected for first-class DAAST tracker matching when no sibling delivery document supplies one. The value is immutable for the package.')] = None
-    tracker_execution_contract_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of RFC 8785 canonical JSON for tracker_execution_contract alone. Required if and only if the snapshot contains that contract.')] = None
-    product_snapshot_digest: Annotated[ZipAssetDigest | None, Field(description="Immutable SHA-256 digest of the package format snapshot's closed product-binding preimage. Required for every contract-bearing snapshot and paired with product_id whenever present.")] = None
+    product_id: Annotated[StrMinLen1 | None, Field(description='Product whose effective selected format was snapshotted. Required whenever tracker_execution_contract is present.'), OmittedNotNull] = None
+    placement_refs: Annotated[list[PlacementRefsItem] | None, Field(description='Nonempty, duplicate-free effective placement set, sorted by publisher_domain then placement_id using ascending UTF-8 bytes without Unicode normalization. Omission binds the product-wide common effective contract; it never means an inferred list of all current placements.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST execution version selected for first-class VAST tracker matching when no sibling delivery document supplies one. The value is immutable for the package.'), OmittedNotNull] = None
+    execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST execution version selected for first-class DAAST tracker matching when no sibling delivery document supplies one. The value is immutable for the package.'), OmittedNotNull] = None
+    tracker_execution_contract_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of RFC 8785 canonical JSON for tracker_execution_contract alone. Required if and only if the snapshot contains that contract.'), OmittedNotNull] = None
+    product_snapshot_digest: Annotated[ZipAssetDigest | None, Field(description="Immutable SHA-256 digest of the package format snapshot's closed product-binding preimage. Required for every contract-bearing snapshot and paired with product_id whenever present."), OmittedNotNull] = None
 
 
 class PackageFormatSnapshotImage(PackageFormatSnapshot, ImageFormatDeclaration):

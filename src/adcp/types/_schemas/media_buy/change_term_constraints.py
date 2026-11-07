@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 
 from ..core.currency_code import CurrencyCode
@@ -43,10 +43,10 @@ class BudgetChangeConstraints(MediaBuyChangeTermConstraints):
         RequiredGroups((('max_delta_amount',), ('max_delta_percent',), ('min_result_amount',), ('max_result_amount',)), 'anyOf'),
     )
     kind: Literal['budget']
-    max_delta_amount: Annotated[Money | None, Field(description='Maximum absolute amount by which the affected budget may change in the direction named by the action.')] = None
-    max_delta_percent: Annotated[NonNegativeFloat | None, Field(description='Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.')] = None
-    min_result_amount: Annotated[Money | None, Field(description='Minimum resulting committed value after the change.')] = None
-    max_result_amount: Annotated[Money | None, Field(description='Maximum resulting committed value after the change.')] = None
+    max_delta_amount: Annotated[Money | None, Field(description='Maximum absolute amount by which the affected budget may change in the direction named by the action.'), OmittedNotNull] = None
+    max_delta_percent: Annotated[NonNegativeFloat | None, Field(description='Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.'), OmittedNotNull] = None
+    min_result_amount: Annotated[Money | None, Field(description='Minimum resulting committed value after the change.'), OmittedNotNull] = None
+    max_result_amount: Annotated[Money | None, Field(description='Maximum resulting committed value after the change.'), OmittedNotNull] = None
 
 
 class FlightChangeConstraints(MediaBuyChangeTermConstraints):
@@ -58,10 +58,10 @@ class FlightChangeConstraints(MediaBuyChangeTermConstraints):
         RequiredGroups((('max_change',), ('earliest_result',), ('latest_result',), ('minimum_notice',)), 'anyOf'),
     )
     kind: Literal['flight']
-    max_change: Annotated[Duration | None, Field(description='Maximum extension, shortening, or shift in the direction named by the action.')] = None
-    earliest_result: Annotated[AwareDatetime | None, Field(description='Earliest resulting start or end timestamp accepted for this action.')] = None
-    latest_result: Annotated[AwareDatetime | None, Field(description='Latest resulting start or end timestamp accepted for this action.')] = None
-    minimum_notice: Annotated[Duration | None, Field(description='Minimum elapsed notice before the requested flight change may take effect.')] = None
+    max_change: Annotated[Duration | None, Field(description='Maximum extension, shortening, or shift in the direction named by the action.'), OmittedNotNull] = None
+    earliest_result: Annotated[AwareDatetime | None, Field(description='Earliest resulting start or end timestamp accepted for this action.'), OmittedNotNull] = None
+    latest_result: Annotated[AwareDatetime | None, Field(description='Latest resulting start or end timestamp accepted for this action.'), OmittedNotNull] = None
+    minimum_notice: Annotated[Duration | None, Field(description='Minimum elapsed notice before the requested flight change may take effect.'), OmittedNotNull] = None
 
 
 class PackageCountConstraints(MediaBuyChangeTermConstraints):
@@ -73,9 +73,9 @@ class PackageCountConstraints(MediaBuyChangeTermConstraints):
         RequiredGroups((('max_additions',), ('max_removals',), ('max_result_count',)), 'anyOf'),
     )
     kind: Literal['package_count']
-    max_additions: Annotated[NonNegativeInt | None, Field(description='Maximum packages that may be added by one exercise of the right.')] = None
-    max_removals: Annotated[NonNegativeInt | None, Field(description='Maximum packages that may be removed by one exercise of the right.')] = None
-    max_result_count: Annotated[NonNegativeInt | None, Field(description='Maximum active package count after the change.')] = None
+    max_additions: Annotated[NonNegativeInt | None, Field(description='Maximum packages that may be added by one exercise of the right.'), OmittedNotNull] = None
+    max_removals: Annotated[NonNegativeInt | None, Field(description='Maximum packages that may be removed by one exercise of the right.'), OmittedNotNull] = None
+    max_result_count: Annotated[NonNegativeInt | None, Field(description='Maximum active package count after the change.'), OmittedNotNull] = None
 
 
 class EffectiveTimingConstraints(MediaBuyChangeTermConstraints):
@@ -87,9 +87,9 @@ class EffectiveTimingConstraints(MediaBuyChangeTermConstraints):
         RequiredGroups((('minimum_notice',), ('earliest_effective_at',), ('latest_effective_at',)), 'anyOf'),
     )
     kind: Literal['effective_timing']
-    minimum_notice: Annotated[Duration | None, Field(description='Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.')] = None
-    earliest_effective_at: AwareDatetime | None = None
-    latest_effective_at: AwareDatetime | None = None
+    minimum_notice: Annotated[Duration | None, Field(description='Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.'), OmittedNotNull] = None
+    earliest_effective_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    latest_effective_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 MediaBuyChangeTermConstraints._branch_models = (BudgetChangeConstraints, FlightChangeConstraints, PackageCountConstraints, EffectiveTimingConstraints,)

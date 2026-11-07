@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 
 from .creative_manifest import CreativeManifest
@@ -35,9 +35,9 @@ class GenerationContext(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-variant.json', pointer='#/allOf/1/properties/generation_context')
-    context_type: Annotated[str | None, Field(description="Type of context that triggered generation (e.g., 'web_page', 'conversational', 'search', 'app', 'dooh')")] = None
-    artifact: Annotated[GenerationContextArtifact | None, Field(description='Reference to the content-standards artifact that provided the generation context. Links this variant to the specific piece of content (article, video, podcast segment, etc.) where the ad was placed.')] = None
-    ext: ExtensionObject | None = None
+    context_type: Annotated[str | None, Field(description="Type of context that triggered generation (e.g., 'web_page', 'conversational', 'search', 'app', 'dooh')"), OmittedNotNull] = None
+    artifact: Annotated[GenerationContextArtifact | None, Field(description='Reference to the content-standards artifact that provided the generation context. Links this variant to the specific piece of content (article, video, podcast segment, etc.) where the ad was placed.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class CreativeVariant(DeliveryMetrics):
@@ -49,10 +49,10 @@ class CreativeVariant(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-variant.json', pointer='#')
     variant_id: Annotated[str, Field(description='Agent-assigned served-execution identifier. The legacy contract scopes uniqueness to the agent and creative. When the agent advertises creative.supports_revisions, the identifier is agent-unique and MUST NOT be reused for another creative, source revision, locale, or rendered manifest. A revision-capable adapter whose native platform reuses an identifier maps each distinct execution to a distinct AdCP variant_id and may retain the native identifier in ext. When that agent supports variant preview, this ID is its unambiguous lookup key.')]
-    revision_id: Annotated[CreativeRevisionID | None, Field(description='Buyer-authored input revision from which this served execution was derived. Required when that execution derives from a revision-aware creative. Historical reporting may legitimately return an older revision after list_creatives shows a newer current revision. Delivery optimization, generation, transcoding, or representation selection does not mint a revision.')] = None
-    locale_variant_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Buyer-assigned locale variant that supplied the served assets. Required for every delivered variant of a localized creative, including default fallback delivery. Omitted for unlocalized creatives.')] = None
-    manifest: Annotated[CreativeManifest | None, Field(description='The rendered creative manifest for this variant — the actual output that was served, not the input assets. In 3.2 it carries canonical `format_kind`, optional `format_option_ref`, and the resolved assets (specific headline, image, video, etc. the platform selected or generated). For Tier 2, shows which asset combination was picked. For Tier 3, contains the generated assets which may differ entirely from the input brand identity. Pass to preview_creative to re-render.')] = None
-    generation_context: Annotated[GenerationContext | None, Field(description='Input signals that triggered generation of this variant (Tier 3). Describes why the platform created this specific variant. Platforms should provide summarized or anonymized signals rather than raw user input. For web contexts, may include page topic or URL. For conversational contexts, an anonymized content signal. For search, query category or intent. When the content context is managed through AdCP content standards, reference the artifact directly via the artifact field.')] = None
+    revision_id: Annotated[CreativeRevisionID | None, Field(description='Buyer-authored input revision from which this served execution was derived. Required when that execution derives from a revision-aware creative. Historical reporting may legitimately return an older revision after list_creatives shows a newer current revision. Delivery optimization, generation, transcoding, or representation selection does not mint a revision.'), OmittedNotNull] = None
+    locale_variant_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Buyer-assigned locale variant that supplied the served assets. Required for every delivered variant of a localized creative, including default fallback delivery. Omitted for unlocalized creatives.'), OmittedNotNull] = None
+    manifest: Annotated[CreativeManifest | None, Field(description='The rendered creative manifest for this variant — the actual output that was served, not the input assets. In 3.2 it carries canonical `format_kind`, optional `format_option_ref`, and the resolved assets (specific headline, image, video, etc. the platform selected or generated). For Tier 2, shows which asset combination was picked. For Tier 3, contains the generated assets which may differ entirely from the input brand identity. Pass to preview_creative to re-render.'), OmittedNotNull] = None
+    generation_context: Annotated[GenerationContext | None, Field(description='Input signals that triggered generation of this variant (Tier 3). Describes why the platform created this specific variant. Platforms should provide summarized or anonymized signals rather than raw user input. For web contexts, may include page topic or URL. For conversational contexts, an anonymized content signal. For search, query category or intent. When the content context is managed through AdCP content standards, reference the artifact directly via the artifact field.'), OmittedNotNull] = None
 
 
 __all__ = ["CreativeVariant"]

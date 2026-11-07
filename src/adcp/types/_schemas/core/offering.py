@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import GeoForecastDimensionCode, HttpUrl
 
 from ..enums.metro_system import MetroAreaSystem
@@ -32,10 +32,10 @@ class GeoTargets(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/offering.json', pointer='#/properties/geo_targets')
-    countries: Annotated[list[CountryCode] | None, Field(description="Countries where this offering is relevant. ISO 3166-1 alpha-2 codes (e.g., 'US', 'NL', 'DE').", min_length=1)] = None
-    regions: Annotated[list[GeoForecastDimensionCode] | None, Field(description="Regions or states where this offering is relevant. ISO 3166-2 subdivision codes (e.g., 'NL-NH', 'US-CA').", min_length=1)] = None
-    metros: Annotated[list[MetrosItem] | None, Field(description='Metro areas where this offering is relevant. Each entry specifies the classification system and target values.', min_length=1)] = None
-    postal_areas: Annotated[list[PostalArea] | None, Field(description='Postal areas where this offering is relevant. Prefer the native country + postal system form. Deprecated legacy country-fused postal-system tokens remain accepted for compatibility.', min_length=1)] = None
+    countries: Annotated[list[CountryCode] | None, Field(description="Countries where this offering is relevant. ISO 3166-1 alpha-2 codes (e.g., 'US', 'NL', 'DE').", min_length=1), OmittedNotNull] = None
+    regions: Annotated[list[GeoForecastDimensionCode] | None, Field(description="Regions or states where this offering is relevant. ISO 3166-2 subdivision codes (e.g., 'NL-NH', 'US-CA').", min_length=1), OmittedNotNull] = None
+    metros: Annotated[list[MetrosItem] | None, Field(description='Metro areas where this offering is relevant. Each entry specifies the classification system and target values.', min_length=1), OmittedNotNull] = None
+    postal_areas: Annotated[list[PostalArea] | None, Field(description='Postal areas where this offering is relevant. Prefer the native country + postal system form. Deprecated legacy country-fused postal-system tokens remain accepted for compatibility.', min_length=1), OmittedNotNull] = None
 
 
 class Offering(AdCPBaseModel):
@@ -48,17 +48,17 @@ class Offering(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/offering.json', pointer='#')
     offering_id: Annotated[str, Field(description='Unique identifier for this offering. Used by hosts to reference specific offerings in si_get_offering calls.')]
     name: Annotated[str, Field(description="Human-readable offering name (e.g., 'Winter Sale', 'Free Trial', 'Enterprise Platform')")]
-    description: Annotated[str | None, Field(description="Description of what's being offered")] = None
-    tagline: Annotated[str | None, Field(description='Short promotional tagline for the offering')] = None
-    valid_from: Annotated[AwareDatetime | None, Field(description='When the offering becomes available. If not specified, offering is immediately available.')] = None
-    valid_to: Annotated[AwareDatetime | None, Field(description='When the offering expires. If not specified, offering has no expiration.')] = None
-    checkout_url: Annotated[HttpUrl | None, Field(description="URL for checkout/purchase flow when the brand doesn't support agentic checkout.")] = None
-    landing_url: Annotated[HttpUrl | None, Field(description="Landing page URL for this offering. For catalog-driven creatives, this is the per-item click-through destination that platforms map to the ad's link-out URL. Every offering in a catalog should have a landing_url unless the format provides its own destination logic.")] = None
-    assets: Annotated[list[OfferingAssetGroup] | None, Field(description='Structured asset groups for this offering. Each group carries a typed pool of creative assets (headlines, images, videos, etc.) identified by a group ID that matches format-level vocabulary.')] = None
-    geo_targets: Annotated[GeoTargets | None, Field(description="Geographic scope of this offering. Declares where the offering is relevant — for location-specific offerings such as job vacancies, in-store promotions, or local events. Platforms use this to target geographically appropriate audiences and to filter out offerings irrelevant to a user's location. Uses the same geographic structures as targeting_overlay in create_media_buy.")] = None
-    keywords: Annotated[list[str] | None, Field(description='Keywords for matching this offering to user intent. Hosts use these for retrieval/relevance scoring.')] = None
-    categories: Annotated[list[str] | None, Field(description="Categories this offering belongs to (e.g., 'measurement', 'identity', 'programmatic')")] = None
-    ext: ExtensionObject | None = None
+    description: Annotated[str | None, Field(description="Description of what's being offered"), OmittedNotNull] = None
+    tagline: Annotated[str | None, Field(description='Short promotional tagline for the offering'), OmittedNotNull] = None
+    valid_from: Annotated[AwareDatetime | None, Field(description='When the offering becomes available. If not specified, offering is immediately available.'), OmittedNotNull] = None
+    valid_to: Annotated[AwareDatetime | None, Field(description='When the offering expires. If not specified, offering has no expiration.'), OmittedNotNull] = None
+    checkout_url: Annotated[HttpUrl | None, Field(description="URL for checkout/purchase flow when the brand doesn't support agentic checkout."), OmittedNotNull] = None
+    landing_url: Annotated[HttpUrl | None, Field(description="Landing page URL for this offering. For catalog-driven creatives, this is the per-item click-through destination that platforms map to the ad's link-out URL. Every offering in a catalog should have a landing_url unless the format provides its own destination logic."), OmittedNotNull] = None
+    assets: Annotated[list[OfferingAssetGroup] | None, Field(description='Structured asset groups for this offering. Each group carries a typed pool of creative assets (headlines, images, videos, etc.) identified by a group ID that matches format-level vocabulary.'), OmittedNotNull] = None
+    geo_targets: Annotated[GeoTargets | None, Field(description="Geographic scope of this offering. Declares where the offering is relevant — for location-specific offerings such as job vacancies, in-store promotions, or local events. Platforms use this to target geographically appropriate audiences and to filter out offerings irrelevant to a user's location. Uses the same geographic structures as targeting_overlay in create_media_buy."), OmittedNotNull] = None
+    keywords: Annotated[list[str] | None, Field(description='Keywords for matching this offering to user intent. Hosts use these for retrieval/relevance scoring.'), OmittedNotNull] = None
+    categories: Annotated[list[str] | None, Field(description="Categories this offering belongs to (e.g., 'measurement', 'identity', 'programmatic')"), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["Offering"]

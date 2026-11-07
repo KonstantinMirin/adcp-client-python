@@ -90,6 +90,7 @@ from adcp.types._base import (
     BranchDispatchMixin,
     SchemaRef,
     applied_schema,
+    omits_null,
     schema_at,
 )
 from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
@@ -1046,7 +1047,15 @@ def test_the_compiler_carries_what_the_document_says_and_a_text_emitter_dropped(
     assert {
         name: field.description for name, field in model.model_fields.items()
     } == {name: node["description"] for name, node in schema["properties"].items()}
-    emitted = model.model_json_schema()["properties"]["max_results"]["anyOf"][0]
+    #: **The FIELD's own schema and not an ``anyOf`` over it and ``null``**, which is
+    #: :data:`adcp.types._base.OmittedNotNull`'s visible half: the document declares
+    #: ``max_results`` outside ``required`` with ``{"type": "integer", "minimum": …}`` and
+    #: says nothing about ``null``, so a published null arm was the model stating a fact
+    #: its document does not (``adcp-client-python-4yhb``).  The navigation through that
+    #: arm is gone and the arm is asserted ABSENT, which is stronger than the subscript it
+    #: replaces -- a fifth fact the document states and the model now does not drop.
+    emitted = model.model_json_schema()["properties"]["max_results"]
+    assert "anyOf" not in emitted, emitted
     assert (emitted["minimum"], emitted["maximum"]) == (
         schema["properties"]["max_results"]["minimum"],
         schema["properties"]["max_results"]["maximum"],
@@ -1567,6 +1576,207 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
             _grades_a_cause(cause)
     else:
         assert rep.outcome == "pass", rep.outcome
+
+
+def _declaring_class(model: type, name: str) -> type | None:
+    """The class in ``model``'s MRO whose own body declares the field ``name``.
+
+    Read off ``__annotations__`` in each class's own ``__dict__`` and never off
+    ``model_fields``, which pydantic flattens: a field a base declares is in the
+    subclass's ``model_fields`` with no record of where it came from, and WHERE it came
+    from is what says which document declares it.
+    """
+    return next(
+        (c for c in model.__mro__ if name in getattr(c, "__dict__", {}).get("__annotations__", {})),
+        None,
+    )
+
+
+def _refuses_a_null(root: dict, declarations: tuple[Any, ...]) -> bool:
+    """Does the DOCUMENT refuse a JSON ``null`` at a property these subschemas declare.
+
+    The declarations are conjoined the way draft-07 spells a conjunction -- an ``allOf``
+    -- for ``adcp.types._base._conjunction``'s reason: a key two views declare is one key
+    whose declarations compose, and merging them keyword by keyword would be a second copy
+    of §2's intersection.  A single declaration is passed as itself, so the commonest case
+    is validated against the node the document states and not against a wrapper.
+
+    The validator is built on ``root`` and evolved onto the declaration, which is
+    ``_base._refuse``'s own arrangement and is what makes a LOCAL ``$ref`` inside the
+    declaration resolve: ``bundle.record`` leaves one, and a validator built on the
+    fragment alone raises ``Unresolvable`` rather than answering.
+    """
+    node = declarations[0] if len(declarations) == 1 else {"allOf": list(declarations)}
+    cls = jsonschema.validators.validator_for(root)
+    validator = cls(root, format_checker=cls.FORMAT_CHECKER)
+    return bool(list(validator.evolve(schema=node).iter_errors(None)))
+
+
+@pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
+def test_every_optional_field_refuses_an_explicit_null_where_its_document_refuses_one(
+    row: Graded,
+) -> None:
+    """**Reading 1 at an OPTIONAL property, which is the clause the tree had no check for**
+    (``adcp-client-python-4yhb``).
+
+    The clause: *for every emitted field that is optional and whose document property does
+    not admit ``null``, ``model_validate`` with that key set to an explicit ``null`` must
+    REFUSE* -- not merely ``strict_validate``.
+
+    What it cost unstated: every optional property is rendered ``T | None = None``, the
+    ``| None`` is there to carry ABSENCE, and pydantic reads it as a type that also admits
+    an explicit ``null``.  So the MODEL half admitted a value the document refuses at
+    13,790 of this tree's 13,961 graded optional fields, in 1,819 classes, with no
+    declaration anywhere -- and the SCHEMA half refused it, so the two halves of one class
+    disagreed about what the class accepts.  The value the bead carries is
+    ``{"kind": "fee", "name": "ad_serving", "rate": null}`` at
+    ``pricing-options/price-breakdown.json#/properties/adjustments/items``, whose document
+    refuses on the property's own ``type: number``.
+
+    **BOTH DIRECTIONS, as a set equality, because one of them alone is the defect read
+    backwards.**  A property whose document DOES admit ``null`` -- ``type: [..., "null"]``,
+    171 fields here -- must keep its plain ``| None``: marking one would be a NARROWING
+    manufactured out of the repair, which is the direction reading 2 says a caller learns
+    about immediately and is blocked by.  So the marker's presence is asserted to EQUAL the
+    document's refusal, and the refusal itself is then put to a value: the presence of
+    ``OmittedNotNull`` is a property of the emitted text, and what the clause demands is a
+    behaviour.
+
+    **The declarations are read with the harness's own walk**
+    (``harness.property_declarations``) off the node ``schema_at`` returns, which is the
+    node the grade is already made against -- so this is not a second resolution of the
+    document and cannot answer about a node no other reader sees.  A key the walk finds no
+    declaration for is REPORTED and not skipped: it means the comparand at this pointer
+    does not name a property the class carries, which is a fact about the pointer
+    (``adcp-client-python-0ejo``) and is asserted to be empty.
+    """
+    model = row.model
+    if not isinstance(model, type) or not issubclass(model, AdCPBaseModel):
+        pytest.skip("D2's root-scalar row is an alias and declares no property")
+    root = schema_at(SchemaRef(row.ref.document, "#"), module=row.module)
+    #: **THE RESOLVED NODE, which is ``check_pair``'s own ``drawn_from``**: the record
+    #: leaves a LOCAL ``$ref``, and §2's intersection composes a branch class out of a
+    #: ``$ref`` conjunct -- ``brand.json#/oneOf/4``'s 27 fields are declared behind
+    #: ``{"$ref": "#/definitions/brand"}`` -- so a reader of the node as it stands finds 5
+    #: of its 34 declared keys.  The same resolution the grade is made through, so this
+    #: cannot answer about a node no other reader sees.
+    node = harness.resolve(schema_at(row.ref, module=row.module), store={}, referrer=root)
+    declared = harness.property_declarations(node, branches=True)
+    #: **A DISPATCHING base takes the marker half and not the behaviour half, and the
+    #: behaviour is asserted at its branches instead.**  Reading 3 makes a union root
+    #: resolve a payload to its branch, so ``model_validate`` on one never validates the
+    #: base's own fields: ``{"context_id": null}`` at
+    #: ``account/get-account-financials-response.json#`` comes back as one ``oneOf`` error
+    #: at the root, which is a refusal about the DISPATCH and says nothing about the
+    #: field.  A branch class SUBCLASSES the base and so carries the base's fields by
+    #: plain Python inheritance, and every branch is a pair of this population -- so the
+    #: field's own refusal is put to a value at ``#/oneOf/0`` and at every other branch,
+    #: where ``model_validate`` is the field's own validator.  Waived here and asserted
+    #: there, rather than asserted here against the dispatch.
+    dispatches = bool(getattr(model, "_branch_models", ()))
+    #: **READING 1's SECOND CHECK, at the one instance that needs no draw**: a model with
+    #: NOTHING supplied, dumped plainly.  Every marked field reads back ``None`` there, and
+    #: the document refuses a ``null`` at each of them -- so before
+    #: :data:`~adcp.types._base.OmittedNotNull`'s serialisation half, this dump carried
+    #: four explicit nulls at ``AdjustmentsItem`` and 12,000-odd across the tree, and the
+    #: project's dump check passed only because ``harness._wire_dump`` narrows the call
+    #: with ``exclude_unset`` (``tests/test_emit.py``'s own note at the exemption census).
+    #: ``model_construct`` and not a drawn payload for the reason the clause is about
+    #: absence: what is being asserted is what a plain dump does with a property NOBODY
+    #: SUPPLIED, which is exactly the instance ``model_construct`` builds, and it costs no
+    #: draw at 2,327 pairs.  Measured: 79 classes still write an explicit ``null`` here and
+    #: every one of them is at a property whose own document admits one.
+    blank = model.model_construct().model_dump(mode="json", by_alias=True)
+    #: **EVERY MARKED FIELD IS OPTIONAL, which is the marker's own premise and the half a
+    #: perturbation found ungated.**  :data:`~adcp.types._base.OmittedNotNull` is "an
+    #: optional property whose document does not admit ``null``: omit it, or supply a
+    #: value", and a REQUIRED field has no "omitted" for it to spell -- so on a required
+    #: field it is either inert (the annotation carries no ``| None`` for it to strike) or
+    #: a NARROWING (where the document declares ``type: [X, "null"]`` and requires the key,
+    #: the class would refuse a value the document admits).  Asserted over the whole field
+    #: set rather than inside the optional loop below, because what it forbids is a field
+    #: that loop never reaches.
+    marked_and_required = sorted(
+        name
+        for name, field in model.model_fields.items()
+        if field.is_required() and omits_null(field)
+    )
+    assert marked_and_required == [], (
+        f"{row.ref.document}{row.ref.pointer} {model.__name__}: {marked_and_required} are "
+        "REQUIRED and carry OmittedNotNull, which spells an absence they cannot have"
+    )
+    unnamed: list[str] = []
+    for name, field in model.model_fields.items():
+        if field.is_required():
+            continue
+        wire = field.alias or name
+        #: **A FIELD ANOTHER DOCUMENT DECLARES IS GRADED AT THAT DOCUMENT'S PAIR**, which
+        #: is reading 2's "the demand is over facts, proved at the innermost position that
+        #: carries one -- a carrying position inherits that proof; it does not owe a second
+        #: one".  ``compliance/task-completion-data.json#/anyOf/2`` composes
+        #: ``core/protocol-envelope.json``'s class, so it carries ``context_id``,
+        #: ``task_id`` and ten more fields that the envelope's own document declares and
+        #: this one says nothing about beyond ``additionalProperties: true``.  The owner
+        #: is required to BE a pair, so nothing leaves this clause unasked.
+        owner = _declaring_class(model, name)
+        where = getattr(owner, "__adcp_schema__", None)
+        if where is not None and where.document != row.ref.document:
+            assert where in {g.ref for g in graded()}, (
+                f"{model.__name__}.{name} is declared by {owner.__name__} at {where}, "
+                "which is no pair of this population, so the field is graded nowhere"
+            )
+            continue
+        declarations = declared.get(wire)
+        if not declarations:
+            #: A key the comparand does not name: the document states nothing about it,
+            #: so a MARKED field would be refusing a ``null`` on no authority -- a
+            #: narrowing manufactured out of the repair.  One field of this tree is here,
+            #: ``CreateMediaBuyCompletion.status``, which §5's "a required name no
+            #: declaration declares" row types ``Any`` and which therefore admits a null
+            #: exactly as its silent document does.
+            assert not omits_null(field), (
+                f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: the "
+                f"comparand declares no property for {wire!r} and the field refuses a null"
+            )
+            unnamed.append(wire)
+            continue
+        refused = _refuses_a_null(root, declarations)
+        assert omits_null(field) is refused, (
+            f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: the document "
+            f"{'refuses' if refused else 'admits'} an explicit null at {wire!r} and the "
+            f"field {'does not carry' if refused else 'carries'} OmittedNotNull"
+        )
+        if not refused:
+            continue
+        assert blank.get(wire, "absent") is not None, (
+            f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: a plain "
+            f"model_dump writes {wire!r} as an explicit null the document refuses"
+        )
+        if dispatches:
+            continue
+        #: **The BEHAVIOUR and not the marker**, which is the half a reading of the
+        #: emitted text cannot make: the payload is offered to ``model_validate``, the
+        #: entry point a consumer calls, and the error at this key must be the TYPE's own
+        #: and never ``missing`` -- a class whose other required keys are absent raises
+        #: anyway, and reading that as the refusal would make this clause green on a model
+        #: that admits the null and complains about something else.
+        with pytest.raises(ValidationError) as caught:
+            model.model_validate({wire: None})
+        #: **The loc PREFIX, because a union-typed field reports one error per ARM**:
+        #: pydantic's loc for ``locator: A | B | None`` is ``('locator', 'A')``, not
+        #: ``('locator',)``, so an exact match read a real refusal as none.  The prefix is
+        #: what says "this key", and the ``missing`` filter below then ranges over the
+        #: errors about this key alone -- a required key the payload omits reports at its
+        #: OWN loc and cannot satisfy the clause for this one.
+        at = [e for e in caught.value.errors() if tuple(e["loc"][:1]) in ((name,), (wire,))]
+        assert at and all(e["type"] != "missing" for e in at), (
+            f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: "
+            f"model_validate refused nothing at {wire!r}: {caught.value.errors()[:3]}"
+        )
+    #: Reported and not asserted empty, for the reason the arm above gives: a key the
+    #: comparand does not name is answered there, by the one thing the document's silence
+    #: decides -- the field may not refuse a value on no authority.
+    assert all(not omits_null(model.model_fields[n]) for n in unnamed if n in model.model_fields)
 
 
 def test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier() -> None:

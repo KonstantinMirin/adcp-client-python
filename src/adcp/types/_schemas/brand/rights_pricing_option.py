@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ..core.currency_code import CurrencyCode
@@ -28,11 +28,11 @@ class RightsPricingOption(AdCPBaseModel):
     price: Annotated[NonNegativeFloat, Field(description='Price amount. Interpretation depends on model: CPM = cost per 1,000 impressions, flat_rate = fixed cost per period.')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     uses: Annotated[list[RightUse], Field(description='Which rights uses this pricing option covers. A single option can bundle multiple uses (e.g., likeness + voice).', min_length=1)]
-    period: Annotated[RightsBillingPeriod | None, Field(description='Billing period for flat_rate and time-based models')] = None
-    impression_cap: Annotated[IntMin1 | None, Field(description='Maximum impressions included in this pricing option per period')] = None
-    overage_cpm: Annotated[NonNegativeFloat | None, Field(description='CPM rate applied to impressions exceeding the impression_cap')] = None
-    description: Annotated[str | None, Field(description='Human-readable description of this pricing option')] = None
-    ext: ExtensionObject | None = None
+    period: Annotated[RightsBillingPeriod | None, Field(description='Billing period for flat_rate and time-based models'), OmittedNotNull] = None
+    impression_cap: Annotated[IntMin1 | None, Field(description='Maximum impressions included in this pricing option per period'), OmittedNotNull] = None
+    overage_cpm: Annotated[NonNegativeFloat | None, Field(description='CPM rate applied to impressions exceeding the impression_cap'), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Human-readable description of this pricing option'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["RightsPricingOption"]

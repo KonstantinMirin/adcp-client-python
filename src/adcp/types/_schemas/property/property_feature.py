@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 
 class PropertyFeature(AdCPBaseModel):
@@ -18,7 +18,7 @@ class PropertyFeature(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-feature.json', pointer='#')
     feature_id: Annotated[str, Field(description='Identifier for the feature being assessed')]
     value: Annotated[str, Field(description='The feature value')]
-    source: Annotated[str | None, Field(description='Source of the feature data (e.g., app_store_privacy_label, tcf_string)')] = None
+    source: Annotated[str | None, Field(description='Source of the feature data (e.g., app_store_privacy_label, tcf_string)'), OmittedNotNull] = None
 
 
 __all__ = ["PropertyFeature"]

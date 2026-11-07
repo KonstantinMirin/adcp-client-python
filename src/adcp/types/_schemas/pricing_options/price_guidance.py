@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 
 class PriceGuidance(AdCPBaseModel):
@@ -16,10 +16,10 @@ class PriceGuidance(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='pricing-options/price-guidance.json', pointer='#')
-    p25: Annotated[NonNegativeFloat | None, Field(description='25th percentile of recent winning bids')] = None
-    p50: Annotated[NonNegativeFloat | None, Field(description='Median of recent winning bids')] = None
-    p75: Annotated[NonNegativeFloat | None, Field(description='75th percentile of recent winning bids')] = None
-    p90: Annotated[NonNegativeFloat | None, Field(description='90th percentile of recent winning bids')] = None
+    p25: Annotated[NonNegativeFloat | None, Field(description='25th percentile of recent winning bids'), OmittedNotNull] = None
+    p50: Annotated[NonNegativeFloat | None, Field(description='Median of recent winning bids'), OmittedNotNull] = None
+    p75: Annotated[NonNegativeFloat | None, Field(description='75th percentile of recent winning bids'), OmittedNotNull] = None
+    p90: Annotated[NonNegativeFloat | None, Field(description='90th percentile of recent winning bids'), OmittedNotNull] = None
 
 
 __all__ = ["PriceGuidance"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
@@ -28,12 +28,12 @@ class RefineProposalsRequest(AdCPVersionEnvelope, AdcpRequest):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('refinements'),
     )
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
-    context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.')] = None
-    context: ContextObject | None = None
-    governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: PushNotificationConfig | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
+    context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    governance_context: Annotated[StrMinLen1MaxLen4096 | None, OmittedNotNull] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key required for retry-safe proposal refinement.')]
     refinements: Annotated[list[ProposalRefinement], Field(description='Proposal operations to apply, with at most 25 entries per request. revise creates a draft successor from a draft, committed, or accepted source. finalize MUST target a draft, reserves inventory, and creates a committed successor whose expires_at is the hold deadline. A batch containing finalize MUST contain only finalize entries and is atomic. proposal_id values MUST be unique; results preserve request order.', json_schema_extra={'uniqueItems': True}, max_length=25, min_length=1)]
 

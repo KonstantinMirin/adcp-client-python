@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import ProductLimit
 from adcp.types.envelopes import AdcpRequest
 
@@ -23,11 +23,11 @@ class SIGetOfferingRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-get-offering-request.json', pointer='#')
     offering_id: Annotated[str, Field(description='Offering identifier from the catalog to get details for')]
-    intent: Annotated[str | None, Field(description="Optional natural language description of user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII.")] = None
-    context: ContextObject | None = None
-    include_products: Annotated[bool | None, Field(description='Whether to include matching products in the response')] = False
-    product_limit: Annotated[ProductLimit | None, Field(description='Maximum number of matching products to return')] = 5
-    ext: ExtensionObject | None = None
+    intent: Annotated[str | None, Field(description="Optional natural language description of user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII."), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    include_products: Annotated[bool | None, Field(description='Whether to include matching products in the response'), OmittedNotNull] = False
+    product_limit: Annotated[ProductLimit | None, Field(description='Maximum number of matching products to return'), OmittedNotNull] = 5
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SIGetOfferingRequest"]

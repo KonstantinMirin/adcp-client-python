@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen2000
 
 from ..enums.warning_code import WarningCode
@@ -28,8 +28,8 @@ class Warning(AdCPBaseModel):
     code: WarningCode
     message: Annotated[StrMinLen1MaxLen2000, Field(description='Short human-readable explanation. Treat as untrusted seller text and do not require buyers to parse it for routing.')]
     affected_resource: Annotated[WarningAffectedResource, Field(description='Resource or relationship affected by this warning. Required so multi-package and multi-creative responses remain machine-joinable.')]
-    details: Annotated[dict[str, Any] | None, Field(description='Optional seller-specific structured diagnostics. AdCP 3.2 defines interoperability through code and affected_resource only; buyers MUST NOT require portable keys inside details. Seller extensions that are not direct diagnostics belong in ext.')] = None
-    ext: ExtensionObject | None = None
+    details: Annotated[dict[str, Any] | None, Field(description='Optional seller-specific structured diagnostics. AdCP 3.2 defines interoperability through code and affected_resource only; buyers MUST NOT require portable keys inside details. Seller extensions that are not direct diagnostics belong in ext.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["Warning"]

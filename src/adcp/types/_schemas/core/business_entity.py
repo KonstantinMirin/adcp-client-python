@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AddressPostalCode,
     BankBic,
@@ -34,7 +34,7 @@ class Address(AdCPBaseModel):
     street: Annotated[StrMaxLen200, Field(description='Street address including building number')]
     city: StrMaxLen100
     postal_code: AddressPostalCode
-    region: Annotated[StrMaxLen100 | None, Field(description='State, province, or region')] = None
+    region: Annotated[StrMaxLen100 | None, Field(description='State, province, or region'), OmittedNotNull] = None
     country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code')]
 
 
@@ -70,9 +70,9 @@ class ContactsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#/properties/contacts/items')
     role: Annotated[Role, Field(description="Contact's functional role in the business relationship")]
-    name: Annotated[StrMaxLen200 | None, Field(description='Full name of the contact')] = None
-    email: Annotated[StrFormatEmailMaxLen254 | None, Field(json_schema_extra={'format': 'email'})] = None
-    phone: StrMaxLen30 | None = None
+    name: Annotated[StrMaxLen200 | None, Field(description='Full name of the contact'), OmittedNotNull] = None
+    email: Annotated[StrFormatEmailMaxLen254 | None, Field(json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    phone: Annotated[StrMaxLen30 | None, OmittedNotNull] = None
 
 
 class Bank(AdCPBaseModel):
@@ -84,10 +84,10 @@ class Bank(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#/properties/bank')
     account_holder: Annotated[StrMaxLen200, Field(description='Name on the bank account')]
-    iban: Annotated[BankIban | None, Field(description='International Bank Account Number (SEPA markets)')] = None
-    bic: Annotated[BankBic | None, Field(description='Bank Identifier Code / SWIFT code (SEPA markets)')] = None
-    routing_number: Annotated[StrMaxLen30 | None, Field(description='Bank routing number for non-SEPA markets (e.g., US ABA routing number, Canadian transit/institution number)')] = None
-    account_number: Annotated[StrMaxLen30 | None, Field(description='Bank account number for non-SEPA markets')] = None
+    iban: Annotated[BankIban | None, Field(description='International Bank Account Number (SEPA markets)'), OmittedNotNull] = None
+    bic: Annotated[BankBic | None, Field(description='Bank Identifier Code / SWIFT code (SEPA markets)'), OmittedNotNull] = None
+    routing_number: Annotated[StrMaxLen30 | None, Field(description='Bank routing number for non-SEPA markets (e.g., US ABA routing number, Canadian transit/institution number)'), OmittedNotNull] = None
+    account_number: Annotated[StrMaxLen30 | None, Field(description='Bank account number for non-SEPA markets'), OmittedNotNull] = None
 
 
 class BusinessEntity(AdCPBaseModel):
@@ -99,13 +99,13 @@ class BusinessEntity(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#')
     legal_name: Annotated[StrMaxLen200, Field(description='Registered legal name of the business entity')]
-    vat_id: Annotated[VatId | None, Field(description='VAT identification number (e.g., DE123456789 for Germany, FR12345678901 for France). Required for B2B invoicing in the EU. Must be normalized: no spaces, dots, or dashes.')] = None
-    tax_id: Annotated[StrMaxLen30 | None, Field(description='Tax identification number for jurisdictions that do not use VAT (e.g., US EIN)')] = None
-    registration_number: Annotated[StrMaxLen50 | None, Field(description='Company registration number (e.g., HRB 12345 for German Handelsregister)')] = None
-    address: Annotated[Address | None, Field(description='Postal address for invoicing and legal correspondence')] = None
-    contacts: Annotated[list[ContactsItem] | None, Field(description='Contacts for billing, legal, and operational matters. Contains personal data subject to GDPR and equivalent regulations. Implementations MUST use this data only for invoicing and account management.', max_length=10)] = None
-    bank: Annotated[Bank | None, Field(description='Bank account details for payment processing. Write-only: included in requests to provide payment coordinates, but MUST NOT be echoed in responses. Sellers store these details and confirm receipt without returning them.')] = None
-    ext: ExtensionObject | None = None
+    vat_id: Annotated[VatId | None, Field(description='VAT identification number (e.g., DE123456789 for Germany, FR12345678901 for France). Required for B2B invoicing in the EU. Must be normalized: no spaces, dots, or dashes.'), OmittedNotNull] = None
+    tax_id: Annotated[StrMaxLen30 | None, Field(description='Tax identification number for jurisdictions that do not use VAT (e.g., US EIN)'), OmittedNotNull] = None
+    registration_number: Annotated[StrMaxLen50 | None, Field(description='Company registration number (e.g., HRB 12345 for German Handelsregister)'), OmittedNotNull] = None
+    address: Annotated[Address | None, Field(description='Postal address for invoicing and legal correspondence'), OmittedNotNull] = None
+    contacts: Annotated[list[ContactsItem] | None, Field(description='Contacts for billing, legal, and operational matters. Contains personal data subject to GDPR and equivalent regulations. Implementations MUST use this data only for invoicing and account management.', max_length=10), OmittedNotNull] = None
+    bank: Annotated[Bank | None, Field(description='Bank account details for payment processing. Write-only: included in requests to provide payment coordinates, but MUST NOT be echoed in responses. Sellers store these details and confirm receipt without returning them.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["BusinessEntity"]

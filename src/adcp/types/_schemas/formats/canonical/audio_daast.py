@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import IntMin1
 
@@ -25,15 +25,15 @@ class CanonicalFormatDAASTAudio(CanonicalFormatBase):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('daast_version', 'daast_versions'),)),
     )
-    slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for audio_daast canonical. Buyer ships a DAAST tag (URL or inline XML, 1.0 or 1.1) plus an optional clickthrough URL. Tracking events are inherent to DAAST and don't require explicit slots.", json_schema_extra={'default': [{'asset_group_id': 'daast_tag', 'asset_type': 'daast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'daast_tag', 'asset_type': 'daast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
-    daast_version: Annotated[DAASTVersion | None, Field(description='Deprecated one-element alias for `daast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.')] = None
-    daast_versions: Annotated[DaastVersions | None, Field(description="Accepted DAAST versions for this format option. A tracker execution selector's daast_versions must be a nonempty subset of this set.")] = None
-    duration_ms_range: Annotated[list[NonNegativeInt] | None, Field(description='[min, max] duration in milliseconds. **Precedence**: `duration_ms_exact` takes precedence when both ship. SDKs SHOULD lint a warning when both fields ship.', max_length=2, min_length=2)] = None
-    duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship.')] = None
-    linear_required: bool | None = None
-    max_wrapper_depth: NonNegativeInt | None = None
-    ssl_required: bool | None = None
-    companion_image_required: bool | None = None
+    slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for audio_daast canonical. Buyer ships a DAAST tag (URL or inline XML, 1.0 or 1.1) plus an optional clickthrough URL. Tracking events are inherent to DAAST and don't require explicit slots.", json_schema_extra={'default': [{'asset_group_id': 'daast_tag', 'asset_type': 'daast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'daast_tag', 'asset_type': 'daast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
+    daast_version: Annotated[DAASTVersion | None, Field(description='Deprecated one-element alias for `daast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.'), OmittedNotNull] = None
+    daast_versions: Annotated[DaastVersions | None, Field(description="Accepted DAAST versions for this format option. A tracker execution selector's daast_versions must be a nonempty subset of this set."), OmittedNotNull] = None
+    duration_ms_range: Annotated[list[NonNegativeInt] | None, Field(description='[min, max] duration in milliseconds. **Precedence**: `duration_ms_exact` takes precedence when both ship. SDKs SHOULD lint a warning when both fields ship.', max_length=2, min_length=2), OmittedNotNull] = None
+    duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship.'), OmittedNotNull] = None
+    linear_required: Annotated[bool | None, OmittedNotNull] = None
+    max_wrapper_depth: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    ssl_required: Annotated[bool | None, OmittedNotNull] = None
+    companion_image_required: Annotated[bool | None, OmittedNotNull] = None
 
 
 __all__ = ["CanonicalFormatDAASTAudio"]

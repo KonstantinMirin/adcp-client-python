@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, StrMinLen1
 from adcp.types.envelopes import AdcpRequest
@@ -33,7 +33,7 @@ class CreativesItem(CreativeAsset):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('representation_selection', True, None),), require=(), forbid=('localization',)),
     )
-    revision_id: Annotated[CreativeRevisionID | None, Field(description='Optional buyer-assigned identity for this exact input-content state. Buyers may send it to any 3.2 peer; creative.supports_revisions gates reliance on immutability, echo, readback, and delivery correlation, not whether the open request shape may carry the field. Within a supporting seller, a revision_id is immutable under one creative_id: reusing it with different canonical revision content MUST fail with CREATIVE_REVISION_CONTENT_MISMATCH. Metadata and assignment fields excluded from revision content may change without minting a new revision.')] = None
+    revision_id: Annotated[CreativeRevisionID | None, Field(description='Optional buyer-assigned identity for this exact input-content state. Buyers may send it to any 3.2 peer; creative.supports_revisions gates reliance on immutability, echo, readback, and delivery correlation, not whether the open request shape may carry the field. Within a supporting seller, a revision_id is immutable under one creative_id: reusing it with different canonical revision content MUST fail with CREATIVE_REVISION_CONTENT_MISMATCH. Metadata and assignment fields excluded from revision content may change without minting a new revision.'), OmittedNotNull] = None
     localization: Annotated[CreativeLocalization | None, Field(description='Sync-only materialized-localization mutation. The top-level assets are the source variant; optional locale_fallbacks declare buyer-approved language-family substitutions, and default_locale_variant_id selects the final serving fallback. An object transactionally replaces the source assets and complete locale set, omission preserves existing localization only when the top-level source assets are unchanged, and null removes localization. This field never requests translation or generation. Receivers MUST advertise get_adcp_capabilities creative.localization before accepting it.')] = None
 
 
@@ -44,8 +44,8 @@ class AssignmentsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/assignments/items')
     creative_id: Annotated[str, Field(description='ID of the creative to assign')]
     package_id: Annotated[str, Field(description='ID of the package to assign the creative to')]
-    weight: Annotated[FloatMin0Max100 | None, Field(description='Relative delivery weight (0-100). When multiple creatives are assigned to the same package, weights determine impression distribution proportionally. When omitted, the creative receives equal rotation with other unweighted creatives. A weight of 0 means the creative is assigned but paused (receives no delivery).')] = None
-    placement_ids: Annotated[list[str] | None, Field(description='Restrict this creative to specific placements within the package. When omitted, the creative is eligible for all placements.', min_length=1)] = None
+    weight: Annotated[FloatMin0Max100 | None, Field(description='Relative delivery weight (0-100). When multiple creatives are assigned to the same package, weights determine impression distribution proportionally. When omitted, the creative receives equal rotation with other unweighted creatives. A weight of 0 means the creative is assigned but paused (receives no delivery).'), OmittedNotNull] = None
+    placement_ids: Annotated[list[str] | None, Field(description='Restrict this creative to specific placements within the package. When omitted, the creative is eligible for all placements.', min_length=1), OmittedNotNull] = None
 
 
 class AssignOrUpdate(AdCPBaseModel):
@@ -59,8 +59,8 @@ class AssignOrUpdate(AdCPBaseModel):
     operation: Literal['assign']
     creative_id: StrMinLen1
     package_id: StrMinLen1
-    weight: FloatMin0Max100 | None = None
-    placement_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    weight: Annotated[FloatMin0Max100 | None, OmittedNotNull] = None
+    placement_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 class Unassign(AdCPBaseModel):
@@ -85,8 +85,8 @@ class ReplaceAssignment(AdCPBaseModel):
     creative_id: Annotated[StrMinLen1, Field(description='Replacement creative ID.')]
     replaces_creative_id: Annotated[StrMinLen1, Field(description='Currently assigned creative ID to remove atomically.')]
     package_id: StrMinLen1
-    weight: FloatMin0Max100 | None = None
-    placement_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    weight: Annotated[FloatMin0Max100 | None, OmittedNotNull] = None
+    placement_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 class SyncCreativesRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -106,17 +106,17 @@ class SyncCreativesRequest(AdCPVersionEnvelope, AdcpRequest):
         Approximation(document='creative/sync-creatives-request.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['assignment_operations']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     account: Annotated[AccountReference, Field(description='Account that owns these creatives.')]
-    creatives: Annotated[list[CreativesItem] | None, Field(description='Array of creative assets to sync (create or update)', max_length=100, min_length=1)] = None
-    creative_ids: Annotated[list[str] | None, Field(description='Optional filter to limit sync scope to specific creative IDs. When provided, only these creatives will be created/updated. Other creatives in the library are unaffected. Useful for partial updates and error recovery.', max_length=100, min_length=1)] = None
-    assignments: Annotated[list[AssignmentsItem] | None, Field(description='Deprecated additive assignment shorthand. Each entry upserts one creative-to-package assignment. Use assignment_operations for explicit assign, unassign, and replace semantics. Standalone creative agents that do not manage media buys ignore this field.', min_length=1)] = None
-    assignment_operations: Annotated[list[AssignOrUpdate | Unassign | ReplaceAssignment] | None, Field(description='Explicit, ordered assignment mutations. These operations may be sent without creatives to traffic existing creative IDs independently from MediaBuy commercial control. The entire request is atomic under idempotency_key and therefore requires strict validation; lenient partial processing is not permitted.', max_length=500, min_length=1)] = None
+    creatives: Annotated[list[CreativesItem] | None, Field(description='Array of creative assets to sync (create or update)', max_length=100, min_length=1), OmittedNotNull] = None
+    creative_ids: Annotated[list[str] | None, Field(description='Optional filter to limit sync scope to specific creative IDs. When provided, only these creatives will be created/updated. Other creatives in the library are unaffected. Useful for partial updates and error recovery.', max_length=100, min_length=1), OmittedNotNull] = None
+    assignments: Annotated[list[AssignmentsItem] | None, Field(description='Deprecated additive assignment shorthand. Each entry upserts one creative-to-package assignment. Use assignment_operations for explicit assign, unassign, and replace semantics. Standalone creative agents that do not manage media buys ignore this field.', min_length=1), OmittedNotNull] = None
+    assignment_operations: Annotated[list[AssignOrUpdate | Unassign | ReplaceAssignment] | None, Field(description='Explicit, ordered assignment mutations. These operations may be sent without creatives to traffic existing creative IDs independently from MediaBuy commercial control. The entire request is atomic under idempotency_key and therefore requires strict validation; lenient partial processing is not permitted.', max_length=500, min_length=1), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated idempotency key for safe retries. If a sync fails without a response, resending with the same idempotency_key guarantees at-most-once execution. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
-    delete_missing: Annotated[bool | None, Field(description='When true, creatives not included in this sync will be archived. Use with caution for full library replacement. Invalid when creative_ids is provided — delete_missing applies to the entire library scope, not a filtered subset.')] = False
-    dry_run: Annotated[bool | None, Field(description="When true, rehearse this sync_creatives operation without applying it. Validates the actual trafficking request in the seller's current context, including library upsert semantics, creative IDs, assignments, account-scoped gates, and seller policies, then returns what would be created/updated/deleted. This is distinct from validate_input, which only validates manifest structure against canonical/product format targets.")] = False
-    validation_mode: Annotated[ValidationMode | None, Field(description="Validation strictness. 'strict' fails entire sync on any validation error. 'lenient' processes valid creatives and reports errors.", json_schema_extra={'default': 'strict'})] = Field(default_factory=lambda: TypeAdapter(ValidationMode).validate_python('strict'))
-    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async sync notifications. The agent will send a webhook when sync completes if the operation takes longer than immediate response time (typically for large bulk operations or manual approval/HITL).')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    delete_missing: Annotated[bool | None, Field(description='When true, creatives not included in this sync will be archived. Use with caution for full library replacement. Invalid when creative_ids is provided — delete_missing applies to the entire library scope, not a filtered subset.'), OmittedNotNull] = False
+    dry_run: Annotated[bool | None, Field(description="When true, rehearse this sync_creatives operation without applying it. Validates the actual trafficking request in the seller's current context, including library upsert semantics, creative IDs, assignments, account-scoped gates, and seller policies, then returns what would be created/updated/deleted. This is distinct from validate_input, which only validates manifest structure against canonical/product format targets."), OmittedNotNull] = False
+    validation_mode: Annotated[ValidationMode | None, Field(description="Validation strictness. 'strict' fails entire sync on any validation error. 'lenient' processes valid creatives and reports errors.", json_schema_extra={'default': 'strict'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(ValidationMode).validate_python('strict'))
+    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async sync notifications. The agent will send a webhook when sync completes if the operation takes longer than immediate response time (typically for large bulk operations or manual approval/HITL).'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SyncCreativesRequest"]

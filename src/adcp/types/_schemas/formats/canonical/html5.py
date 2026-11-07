@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
 from adcp.types.constraints import IntMin1, IntMin1Max100
 
@@ -27,9 +27,7 @@ class MraidVersion(StrEnum):
     Required MRAID version when mraid_required is true.
     """
     V_2_0 = '2.0'
-    field_2_0 = MemberAlias('V_2_0')
     V_3_0 = '3.0'
-    field_3_0 = MemberAlias('V_3_0')
 
 
 class CanonicalFormatHTML5Banner(CanonicalFormatBase):
@@ -43,26 +41,26 @@ class CanonicalFormatHTML5Banner(CanonicalFormatBase):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PresenceGroups((Presence(require=(('width', 'height'),), forbid=(('sizes',), ('min_width',), ('max_width',), ('min_height',), ('max_height',))), Presence(require=(('sizes',),), forbid=(('width',), ('height',), ('min_width',), ('max_width',), ('min_height',), ('max_height',))), Presence(require=(('min_width',), ('max_width',), ('min_height',), ('max_height',)), forbid=(('width',), ('height',), ('sizes',))), Presence(require=(), forbid=(('width',), ('height',), ('sizes',), ('min_width',), ('max_width',), ('min_height',), ('max_height',)))), 'oneOf'),
     )
-    slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for html5 canonical. Buyer ships a zip bundle plus optional backup image (required when `backup_image_required: true`) and clickthrough URL. The zip's entry point is typically `index.html`; click handling uses the `clickTag` (or `clickTAG`) macro substituted by the seller at serve time.", json_schema_extra={'default': [{'asset_group_id': 'html5_bundle', 'asset_type': 'zip', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'html5_bundle', 'asset_type': 'zip', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
-    width: Annotated[IntMin1 | None, Field(description='Required banner width in pixels — use for fixed-size slots. For multi-size flexible slots use `sizes[]`; for responsive use `min_width`/`max_width`/`min_height`/`max_height`. Exactly one of `(width, height)`, `sizes[]`, or `min/max_width` + `min/max_height` ranges MUST be set.')] = None
-    height: Annotated[IntMin1 | None, Field(description='Required banner height in pixels. See `width` for size-mode mutual exclusion.')] = None
-    sizes: Annotated[list[SizesItem] | None, Field(description='List of accepted (width, height) pairs for a multi-size flexible slot (publisher banner that accepts 300×250 OR 728×90 OR 970×250). Mirrors OpenRTB `banner.format[]`. Mutually exclusive with `(width, height)` and with responsive ranges.', min_length=1)] = None
-    min_width: Annotated[IntMin1 | None, Field(description='Minimum accepted width for responsive HTML5 banners that adapt within a range. Pair with `max_width`. Mutually exclusive with `(width, height)` and `sizes[]`.')] = None
-    max_width: Annotated[IntMin1 | None, Field(description='Maximum accepted width for responsive HTML5 banners. Pair with `min_width`.')] = None
-    min_height: Annotated[IntMin1 | None, Field(description='Minimum accepted height for responsive HTML5 banners. Pair with `max_height`.')] = None
-    max_height: Annotated[IntMin1 | None, Field(description='Maximum accepted height for responsive HTML5 banners. Pair with `min_height`.')] = None
-    max_initial_load_kb: Annotated[IntMin1 | None, Field(description='Maximum initial-load file size (zip + above-the-fold assets) in kilobytes. IAB display standards: 200 KB for fixed sizes, 100 KB for mobile.')] = None
-    max_polite_load_kb: Annotated[IntMin1 | None, Field(description='Maximum polite-load file size after host-initiated subload, in kilobytes. IAB display standards: 500 KB for fixed sizes.')] = None
-    host_initiated_subload: Annotated[bool | None, Field(description='Whether the host page must initiate the polite-load phase. IAB-compliant banners require true.')] = None
-    max_animation_duration_ms: Annotated[NonNegativeInt | None, Field(description='Maximum total animation duration in milliseconds. IAB standard: 30000 (30 seconds).')] = None
-    max_cpu_load_percent: Annotated[IntMin1Max100 | None, Field(description='Maximum CPU load percentage during render.')] = None
-    mraid_required: Annotated[bool | None, Field(description='Whether MRAID compatibility is required (mobile in-app).')] = None
-    mraid_version: Annotated[MraidVersion | None, Field(description='Required MRAID version when mraid_required is true.')] = None
-    om_sdk_required: Annotated[bool | None, Field(description='Whether IAB Open Measurement SDK integration is required.')] = None
-    clicktag_macro: Annotated[Literal['clickTag', 'clickTAG'] | None, Field(description='Name of the click-tag macro the bundle must use.')] = None
-    backup_image_required: Annotated[bool | None, Field(description='Whether a backup image must accompany the zip for non-HTML5 environments.')] = None
-    backup_image_max_size_kb: Annotated[IntMin1 | None, Field(description='Maximum backup image file size in kilobytes.')] = None
-    ssl_required: bool | None = None
+    slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for html5 canonical. Buyer ships a zip bundle plus optional backup image (required when `backup_image_required: true`) and clickthrough URL. The zip's entry point is typically `index.html`; click handling uses the `clickTag` (or `clickTAG`) macro substituted by the seller at serve time.", json_schema_extra={'default': [{'asset_group_id': 'html5_bundle', 'asset_type': 'zip', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'html5_bundle', 'asset_type': 'zip', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
+    width: Annotated[IntMin1 | None, Field(description='Required banner width in pixels — use for fixed-size slots. For multi-size flexible slots use `sizes[]`; for responsive use `min_width`/`max_width`/`min_height`/`max_height`. Exactly one of `(width, height)`, `sizes[]`, or `min/max_width` + `min/max_height` ranges MUST be set.'), OmittedNotNull] = None
+    height: Annotated[IntMin1 | None, Field(description='Required banner height in pixels. See `width` for size-mode mutual exclusion.'), OmittedNotNull] = None
+    sizes: Annotated[list[SizesItem] | None, Field(description='List of accepted (width, height) pairs for a multi-size flexible slot (publisher banner that accepts 300×250 OR 728×90 OR 970×250). Mirrors OpenRTB `banner.format[]`. Mutually exclusive with `(width, height)` and with responsive ranges.', min_length=1), OmittedNotNull] = None
+    min_width: Annotated[IntMin1 | None, Field(description='Minimum accepted width for responsive HTML5 banners that adapt within a range. Pair with `max_width`. Mutually exclusive with `(width, height)` and `sizes[]`.'), OmittedNotNull] = None
+    max_width: Annotated[IntMin1 | None, Field(description='Maximum accepted width for responsive HTML5 banners. Pair with `min_width`.'), OmittedNotNull] = None
+    min_height: Annotated[IntMin1 | None, Field(description='Minimum accepted height for responsive HTML5 banners. Pair with `max_height`.'), OmittedNotNull] = None
+    max_height: Annotated[IntMin1 | None, Field(description='Maximum accepted height for responsive HTML5 banners. Pair with `min_height`.'), OmittedNotNull] = None
+    max_initial_load_kb: Annotated[IntMin1 | None, Field(description='Maximum initial-load file size (zip + above-the-fold assets) in kilobytes. IAB display standards: 200 KB for fixed sizes, 100 KB for mobile.'), OmittedNotNull] = None
+    max_polite_load_kb: Annotated[IntMin1 | None, Field(description='Maximum polite-load file size after host-initiated subload, in kilobytes. IAB display standards: 500 KB for fixed sizes.'), OmittedNotNull] = None
+    host_initiated_subload: Annotated[bool | None, Field(description='Whether the host page must initiate the polite-load phase. IAB-compliant banners require true.'), OmittedNotNull] = None
+    max_animation_duration_ms: Annotated[NonNegativeInt | None, Field(description='Maximum total animation duration in milliseconds. IAB standard: 30000 (30 seconds).'), OmittedNotNull] = None
+    max_cpu_load_percent: Annotated[IntMin1Max100 | None, Field(description='Maximum CPU load percentage during render.'), OmittedNotNull] = None
+    mraid_required: Annotated[bool | None, Field(description='Whether MRAID compatibility is required (mobile in-app).'), OmittedNotNull] = None
+    mraid_version: Annotated[MraidVersion | None, Field(description='Required MRAID version when mraid_required is true.'), OmittedNotNull] = None
+    om_sdk_required: Annotated[bool | None, Field(description='Whether IAB Open Measurement SDK integration is required.'), OmittedNotNull] = None
+    clicktag_macro: Annotated[Literal['clickTag', 'clickTAG'] | None, Field(description='Name of the click-tag macro the bundle must use.'), OmittedNotNull] = None
+    backup_image_required: Annotated[bool | None, Field(description='Whether a backup image must accompany the zip for non-HTML5 environments.'), OmittedNotNull] = None
+    backup_image_max_size_kb: Annotated[IntMin1 | None, Field(description='Maximum backup image file size in kilobytes.'), OmittedNotNull] = None
+    ssl_required: Annotated[bool | None, OmittedNotNull] = None
 
 
 __all__ = ["CanonicalFormatHTML5Banner"]

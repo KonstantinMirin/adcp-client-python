@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from ..common._vocabularies import _VALUES_BINARY_QUANTITATIVE_CATEGORICAL
@@ -34,8 +34,8 @@ class Coverage(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-feature-definition.json', pointer='#/properties/coverage')
-    property_types: Annotated[list[str] | None, Field(description='Property types this feature applies to')] = None
-    countries: Annotated[list[str] | None, Field(description='Countries where this feature is available')] = None
+    property_types: Annotated[list[str] | None, Field(description='Property types this feature applies to'), OmittedNotNull] = None
+    countries: Annotated[list[str] | None, Field(description='Countries where this feature is available'), OmittedNotNull] = None
 
 
 class PropertyFeatureDefinition(AdCPBaseModel):
@@ -48,14 +48,14 @@ class PropertyFeatureDefinition(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-feature-definition.json', pointer='#')
     feature_id: Annotated[str, Field(description="Unique identifier for this feature (e.g., 'consent_quality', 'carbon_score'). Features prefixed with 'registry:' reference standardized policies from the shared policy registry (e.g., 'registry:us_coppa', 'registry:uk_hfss'). Unprefixed feature IDs are agent-defined.")]
     name: Annotated[str, Field(description='Human-readable name for the feature')]
-    description: Annotated[str | None, Field(description='Description of what this feature measures or represents')] = None
+    description: Annotated[str | None, Field(description='Description of what this feature measures or represents'), OmittedNotNull] = None
     type: Annotated[PropertyFeatureDefinitionType, Field(description='The type of values this feature produces: binary (true/false), quantitative (numeric range), categorical (enumerated values)')]
-    range: Annotated[ObjMinMax | None, Field(description='For quantitative features, the valid range of values')] = None
-    allowed_values: Annotated[list[str] | None, Field(description='For categorical features, the set of valid values')] = None
-    coverage: Annotated[Coverage | None, Field(description='What this feature covers (empty arrays = all)')] = None
+    range: Annotated[ObjMinMax | None, Field(description='For quantitative features, the valid range of values'), OmittedNotNull] = None
+    allowed_values: Annotated[list[str] | None, Field(description='For categorical features, the set of valid values'), OmittedNotNull] = None
+    coverage: Annotated[Coverage | None, Field(description='What this feature covers (empty arrays = all)'), OmittedNotNull] = None
     methodology_url: Annotated[HttpUrl, Field(description='URL to documentation explaining how this feature is calculated/measured')]
-    methodology_version: Annotated[str | None, Field(description='Version identifier for the methodology (for audit trails)')] = None
-    ext: ExtensionObject | None = None
+    methodology_version: Annotated[str | None, Field(description='Version identifier for the methodology (for audit trails)'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["PropertyFeatureDefinition"]

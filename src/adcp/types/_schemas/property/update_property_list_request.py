@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 from adcp.types.envelopes import AdcpRequest
 
@@ -28,15 +28,15 @@ class UpdatePropertyListRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/update-property-list-request.json', pointer='#')
     list_id: Annotated[str, Field(description='ID of the property list to update')]
-    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.')] = None
-    name: Annotated[str | None, Field(description='New name for the list')] = None
-    description: Annotated[str | None, Field(description='New description')] = None
-    base_properties: Annotated[list[BasePropertySource] | None, Field(description='Complete replacement for the base properties list (not a patch). Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers).')] = None
-    filters: Annotated[PropertyListFilters | None, Field(description='Complete replacement for the filters (not a patch)')] = None
-    brand: Annotated[BrandReference | None, Field(description='Update brand reference. Resolved to full brand identity at execution time.')] = None
-    webhook_url: Annotated[HttpUrl | None, Field(description='Update the webhook URL for list change notifications (set to empty string to remove)')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.'), OmittedNotNull] = None
+    name: Annotated[str | None, Field(description='New name for the list'), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='New description'), OmittedNotNull] = None
+    base_properties: Annotated[list[BasePropertySource] | None, Field(description='Complete replacement for the base properties list (not a patch). Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers).'), OmittedNotNull] = None
+    filters: Annotated[PropertyListFilters | None, Field(description='Complete replacement for the filters (not a patch)'), OmittedNotNull] = None
+    brand: Annotated[BrandReference | None, Field(description='Update brand reference. Resolved to full brand identity at execution time.'), OmittedNotNull] = None
+    webhook_url: Annotated[HttpUrl | None, Field(description='Update the webhook URL for list change notifications (set to empty string to remove)'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
 
 

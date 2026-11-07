@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -21,13 +21,13 @@ class TextAssetRequirements(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('allowed_values'),
     )
-    min_length: Annotated[NonNegativeInt | None, Field(description='Minimum character length')] = None
-    max_length: Annotated[IntMin1 | None, Field(description='Maximum character length')] = None
-    min_lines: Annotated[IntMin1 | None, Field(description='Minimum number of lines')] = None
-    max_lines: Annotated[IntMin1 | None, Field(description='Maximum number of lines')] = None
-    character_pattern: Annotated[str | None, Field(description="Regex pattern defining allowed characters (e.g., '^[a-zA-Z0-9 .,!?-]+$')")] = None
-    prohibited_terms: Annotated[list[str] | None, Field(description='List of prohibited words or phrases')] = None
-    allowed_values: Annotated[list[str] | None, Field(description='Closed set of permitted string values for this text slot. When present, a conformant implementation MUST reject any submitted content not in this list with `CREATIVE_VALUE_NOT_ALLOWED` (echoing the offending field path in `error.field` and the allowed list in `error.details.allowed_values`). Matching is case-sensitive; producers MUST supply exact casing. If the submitted value contains unresolved template tokens (e.g., {{product_name}}), validation against allowed_values MUST be deferred until interpolation is complete. All declared constraints (allowed_values, character_pattern, max_length, etc.) are conjunctive — submitted content must satisfy every applicable constraint simultaneously.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    min_length: Annotated[NonNegativeInt | None, Field(description='Minimum character length'), OmittedNotNull] = None
+    max_length: Annotated[IntMin1 | None, Field(description='Maximum character length'), OmittedNotNull] = None
+    min_lines: Annotated[IntMin1 | None, Field(description='Minimum number of lines'), OmittedNotNull] = None
+    max_lines: Annotated[IntMin1 | None, Field(description='Maximum number of lines'), OmittedNotNull] = None
+    character_pattern: Annotated[str | None, Field(description="Regex pattern defining allowed characters (e.g., '^[a-zA-Z0-9 .,!?-]+$')"), OmittedNotNull] = None
+    prohibited_terms: Annotated[list[str] | None, Field(description='List of prohibited words or phrases'), OmittedNotNull] = None
+    allowed_values: Annotated[list[str] | None, Field(description='Closed set of permitted string values for this text slot. When present, a conformant implementation MUST reject any submitted content not in this list with `CREATIVE_VALUE_NOT_ALLOWED` (echoing the offending field path in `error.field` and the allowed list in `error.details.allowed_values`). Matching is case-sensitive; producers MUST supply exact casing. If the submitted value contains unresolved template tokens (e.g., {{product_name}}), validation against allowed_values MUST be deferred until interpolation is complete. All declared constraints (allowed_values, character_pattern, max_length, etc.) are conjunctive — submitted content must satisfy every applicable constraint simultaneously.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["TextAssetRequirements"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import AcceptancePolicyRequirementId, StrMinLen1
 
@@ -32,8 +32,8 @@ class AcceptancePolicyRequirementCategoryDeclaration(AcceptancePolicyRequirement
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/0')
     kind: Literal['category_declaration']
-    declaration: StrMinLen1 | None = None
-    description: StrMinLen1 | None = None
+    declaration: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementAdvertiserVerification(AcceptancePolicyRequirement):
@@ -42,8 +42,8 @@ class AcceptancePolicyRequirementAdvertiserVerification(AcceptancePolicyRequirem
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/1')
     kind: Literal['advertiser_verification']
-    verification_scheme: StrMinLen1 | None = None
-    description: StrMinLen1 | None = None
+    verification_scheme: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementAdvertiserEligibility(AcceptancePolicyRequirement):
@@ -56,7 +56,7 @@ class AcceptancePolicyRequirementAdvertiserEligibility(AcceptancePolicyRequireme
     )
     kind: Literal['advertiser_eligibility']
     criteria: Annotated[list[AcceptancePolicyRequirementId], Field(description='Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    description: StrMinLen1 | None = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementFundingRestriction(AcceptancePolicyRequirement):
@@ -69,7 +69,7 @@ class AcceptancePolicyRequirementFundingRestriction(AcceptancePolicyRequirement)
     )
     kind: Literal['funding_restriction']
     criteria: Annotated[list[AcceptancePolicyRequirementId], Field(description='Stable restrictions such as no_foreign_funding or sponsor_identity_required.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    description: StrMinLen1 | None = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementCertification(AcceptancePolicyRequirement):
@@ -78,8 +78,8 @@ class AcceptancePolicyRequirementCertification(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/4')
     kind: Literal['certification']
-    credential: StrMinLen1 | None = None
-    description: StrMinLen1 | None = None
+    credential: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementLicense(AcceptancePolicyRequirement):
@@ -88,8 +88,8 @@ class AcceptancePolicyRequirementLicense(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/5')
     kind: Literal['license']
-    credential: StrMinLen1 | None = None
-    description: StrMinLen1 | None = None
+    credential: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementPriorAuthorization(AcceptancePolicyRequirement):
@@ -98,7 +98,7 @@ class AcceptancePolicyRequirementPriorAuthorization(AcceptancePolicyRequirement)
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/6')
     kind: Literal['prior_authorization']
-    description: StrMinLen1 | None = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementAccountSetup(AcceptancePolicyRequirement):
@@ -107,7 +107,7 @@ class AcceptancePolicyRequirementAccountSetup(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/7')
     kind: Literal['account_setup']
-    description: StrMinLen1 | None = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementSalesAssisted(AcceptancePolicyRequirement):
@@ -116,7 +116,7 @@ class AcceptancePolicyRequirementSalesAssisted(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/8')
     kind: Literal['sales_assisted']
-    description: StrMinLen1 | None = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementDisclosure(AcceptancePolicyRequirement):
@@ -125,9 +125,9 @@ class AcceptancePolicyRequirementDisclosure(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/9')
     kind: Literal['disclosure']
-    format: StrMinLen1 | None = None
-    placement: StrMinLen1 | None = None
-    description: StrMinLen1 | None = None
+    format: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    placement: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementTargetingRestriction(AcceptancePolicyRequirement):
@@ -139,8 +139,8 @@ class AcceptancePolicyRequirementTargetingRestriction(AcceptancePolicyRequiremen
         UniqueItems('restricted_attributes'),
     )
     kind: Literal['targeting_restriction']
-    restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    description: StrMinLen1 | None = None
+    restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementCreativeRestriction(AcceptancePolicyRequirement):
@@ -170,8 +170,8 @@ class AcceptancePolicyRequirementFormatRestriction(AcceptancePolicyRequirement):
         UniqueItems('format_ids'),
     )
     kind: Literal['format_restriction']
-    format_ids: Annotated[list[StrMinLen1] | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    description: StrMinLen1 | None = None
+    format_ids: Annotated[list[StrMinLen1] | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementTimeRestriction(AcceptancePolicyRequirement):
@@ -180,9 +180,9 @@ class AcceptancePolicyRequirementTimeRestriction(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/14')
     kind: Literal['time_restriction']
-    starts_at: AwareDatetime | None = None
-    ends_at: AwareDatetime | None = None
-    description: StrMinLen1 | None = None
+    starts_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    ends_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementTransparencyReporting(AcceptancePolicyRequirement):
@@ -191,7 +191,7 @@ class AcceptancePolicyRequirementTransparencyReporting(AcceptancePolicyRequireme
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/15')
     kind: Literal['transparency_reporting']
-    description: StrMinLen1 | None = None
+    description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class AcceptancePolicyRequirementCustom(AcceptancePolicyRequirement):
@@ -202,7 +202,7 @@ class AcceptancePolicyRequirementCustom(AcceptancePolicyRequirement):
     kind: Literal['custom']
     id: AcceptancePolicyRequirementId
     description: StrMinLen1
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 AcceptancePolicyRequirement._branch_models = (AcceptancePolicyRequirementCategoryDeclaration, AcceptancePolicyRequirementAdvertiserVerification, AcceptancePolicyRequirementAdvertiserEligibility, AcceptancePolicyRequirementFundingRestriction, AcceptancePolicyRequirementCertification, AcceptancePolicyRequirementLicense, AcceptancePolicyRequirementPriorAuthorization, AcceptancePolicyRequirementAccountSetup, AcceptancePolicyRequirementSalesAssisted, AcceptancePolicyRequirementDisclosure, AcceptancePolicyRequirementTargetingRestriction, AcceptancePolicyRequirementCreativeRestriction, AcceptancePolicyRequirementDestinationRestriction, AcceptancePolicyRequirementFormatRestriction, AcceptancePolicyRequirementTimeRestriction, AcceptancePolicyRequirementTransparencyReporting, AcceptancePolicyRequirementCustom,)

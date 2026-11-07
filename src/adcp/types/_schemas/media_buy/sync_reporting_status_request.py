@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.envelopes import AdcpRequest
 
@@ -38,13 +38,13 @@ class SyncReportingStatusRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-request.json', pointer='#')
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
     account: CanonicalAccountReference
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated batch key. Exact retries reuse the key and body.')]
     statuses: Annotated[list[StatusesItem], Field(description='Immutable status updates. New state uses a new reporting_status_id and explicitly supersedes the current status for that expected period. A batch contains at most one update for each logical status chain. content_mismatch entries report a consumed revision that contradicts the accepted configuration generation; they are operational disagreements about contract facts, never measurement disputes.', max_length=100, min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SyncReportingStatusRequest"]

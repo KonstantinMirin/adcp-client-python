@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, StrMinLen1
 
@@ -39,7 +39,7 @@ class GoalEvent(AdCPBaseModel):
     )
     kind: Literal['event']
     event_type: Annotated[EventType, Field(description='Conversion event to plan for, in the same vocabulary forecast points report.')]
-    custom_event_name: Annotated[StrMinLen1 | None, Field(description="Required when event_type is 'custom'. Platform-specific name for the custom event.")] = None
+    custom_event_name: Annotated[StrMinLen1 | None, Field(description="Required when event_type is 'custom'. Platform-specific name for the custom event."), OmittedNotNull] = None
 
 
 class OutcomeTarget(AdCPBaseModel):
@@ -54,8 +54,8 @@ class OutcomeTarget(AdCPBaseModel):
         RequiredGroups((('volume',), ('cost_per',)), 'anyOf'),
     )
     goal: Annotated[GoalMetric | GoalEvent, Field(description='The outcome to plan against: a seller-tracked delivery metric or an advertiser conversion event.')]
-    volume: Annotated[FloatGt0 | None, Field(description="Desired total volume of the goal's metric or event across the planned flight. Alone, the seller solves for budget and answers with total_budget_guidance and a forecast. With cost_per, the seller plans toward the volume at the cost: under a cap it SHOULD keep the buyer's amount and forecast the lower volume it can deliver, unless no volume can be planned at that amount; under a target the ask is plannable when the seller can forecast the volume around it.")] = None
-    cost_per: OutcomeTargetCostPer | None = None
+    volume: Annotated[FloatGt0 | None, Field(description="Desired total volume of the goal's metric or event across the planned flight. Alone, the seller solves for budget and answers with total_budget_guidance and a forecast. With cost_per, the seller plans toward the volume at the cost: under a cap it SHOULD keep the buyer's amount and forecast the lower volume it can deliver, unless no volume can be planned at that amount; under a target the ask is plannable when the seller can forecast the volume around it."), OmittedNotNull] = None
+    cost_per: Annotated[OutcomeTargetCostPer | None, OmittedNotNull] = None
 
 
 __all__ = ["OutcomeTarget"]

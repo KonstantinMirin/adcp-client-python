@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 
 from .signal_id import SignalID
@@ -36,8 +36,8 @@ class SignalTargetingBinary(SignalTargeting):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
     )
-    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.')] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.'), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
     value_type: Annotated[Literal['binary'], Field(description='Discriminator for binary signals')]
     value: Annotated[bool, Field(description='Whether to include (true) or exclude (false) users matching this signal')]
 
@@ -53,8 +53,8 @@ class SignalTargetingCategorical(SignalTargeting):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
     )
-    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.')] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.'), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
     value_type: Annotated[Literal['categorical'], Field(description='Discriminator for categorical signals')]
     values: Annotated[list[str], Field(description='Values to target. Users with any of these values will be included.', min_length=1)]
 
@@ -70,11 +70,11 @@ class SignalTargetingNumeric(SignalTargeting):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
     )
-    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.')] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.')] = None
+    signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.'), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
     value_type: Annotated[Literal['numeric'], Field(description='Discriminator for numeric signals')]
-    min_value: Annotated[float | None, Field(description="Minimum value (inclusive). Omit for no minimum. Must be <= max_value when both are provided. Should be >= signal's range.min if defined.")] = None
-    max_value: Annotated[float | None, Field(description="Maximum value (inclusive). Omit for no maximum. Must be >= min_value when both are provided. Should be <= signal's range.max if defined.")] = None
+    min_value: Annotated[float | None, Field(description="Minimum value (inclusive). Omit for no minimum. Must be <= max_value when both are provided. Should be >= signal's range.min if defined."), OmittedNotNull] = None
+    max_value: Annotated[float | None, Field(description="Maximum value (inclusive). Omit for no maximum. Must be >= min_value when both are provided. Should be <= signal's range.max if defined."), OmittedNotNull] = None
 
 
 SignalTargeting._branch_models = (SignalTargetingBinary, SignalTargetingCategorical, SignalTargetingNumeric,)

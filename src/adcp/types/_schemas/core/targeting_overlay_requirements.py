@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 
 from ..enums.browser_family import BrowserFamily
@@ -46,10 +46,10 @@ class TargetingOverlayRequirementsGeoProximity(AdCPBaseModel):
         RequiredGroups((('radius',), ('travel_time',), ('geometry',), ('transport_modes',)), 'anyOf'),
         UniqueItems('transport_modes'),
     )
-    radius: TargetingOverlayRequirementsRequired | None = None
-    travel_time: TargetingOverlayRequirementsRequired | None = None
-    geometry: TargetingOverlayRequirementsRequired | None = None
-    transport_modes: Annotated[list[TransportMode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    radius: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    travel_time: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    geometry: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    transport_modes: Annotated[list[TransportMode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 class DaypartRequirementTimezoneModes(AdCPBaseModel):
@@ -68,7 +68,7 @@ class DaypartRequirementTimezoneModes(AdCPBaseModel):
         Approximation(document='core/targeting-overlay-requirements.json', pointer='#/definitions/daypartRequirement/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['iana_timezones']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     timezone_modes: Annotated[list[DaypartTimezoneMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    iana_timezones: Annotated[list[IANATimezoneIdentifier] | None, Field(description='Exact concrete IANA timezone identifiers that must remain selectable after discovery. Valid only when timezone_modes includes iana.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    iana_timezones: Annotated[list[IANATimezoneIdentifier] | None, Field(description='Exact concrete IANA timezone identifiers that must remain selectable after discovery. Valid only when timezone_modes includes iana.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 DaypartRequirement = TargetingOverlayRequirementsRequired | DaypartRequirementTimezoneModes
@@ -125,41 +125,41 @@ class TargetingOverlayRequirements(AdCPBaseModel):
         PropertyCount(minimum=1, maximum=None),
         ForbiddenGroups((('frequency_cap', 'frequency_cap_support'),)),
     )
-    geo_countries: TargetingOverlayRequirementsRequired | None = None
-    geo_countries_exclude: TargetingOverlayRequirementsRequired | None = None
-    geo_regions: TargetingOverlayRequirementsRequired | GeographicRegionRequirement | None = None
-    geo_regions_exclude: TargetingOverlayRequirementsRequired | GeographicRegionRequirement | None = None
-    geo_metros: MetroRequirement | None = None
-    geo_metros_exclude: MetroRequirement | None = None
-    geo_places: GeographicPlaceRequirement | None = None
-    geo_places_exclude: GeographicPlaceRequirement | None = None
-    geo_postal_areas: TargetingOverlayRequirementsRequired | PositivePostalAreaSupport | None = None
-    geo_postal_areas_exclude: TargetingOverlayRequirementsRequired | PositivePostalAreaSupport | None = None
-    geo_proximity: TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsGeoProximity | None = None
-    daypart_targets: DaypartRequirement | None = None
-    audience_include: TargetingOverlayRequirementsRequired | None = None
-    audience_exclude: TargetingOverlayRequirementsRequired | None = None
-    signal_targeting_groups: TargetingOverlayRequirementsRequired | None = None
-    demographics: TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsDemographicsAge | None = None
-    frequency_cap: TargetingOverlayRequirementsRequired | None = None
-    frequency_cap_support: Annotated[FrequencyCapRequirements | None, Field(description='Minimum structured package-cap support. Matches a broad legacy frequency_cap: true or a containing frequency_cap_support object. Mutually exclusive with a frequency_cap: true requirement, which would exclude every constrained product.')] = None
-    property_list: TargetingOverlayRequirementsRequired | None = None
-    property_list_exclude: TargetingOverlayRequirementsRequired | None = None
-    collection_list: TargetingOverlayRequirementsRequired | None = None
-    collection_list_exclude: TargetingOverlayRequirementsRequired | None = None
-    placement_selection: TargetingOverlayRequirementsRequired | None = None
-    age_restriction: TargetingOverlayRequirementsRequired | None = None
-    device_platform: TargetingOverlayRequirementsRequired | None = None
-    device_platform_exclude: TargetingOverlayRequirementsRequired | None = None
-    device_type: TargetingOverlayRequirementsRequired | None = None
-    device_type_exclude: TargetingOverlayRequirementsRequired | None = None
-    browser: BrowserRequirement | None = None
-    browser_exclude: BrowserRequirement | None = None
-    store_catchments: TargetingOverlayRequirementsRequired | None = None
-    language: TargetingOverlayRequirementsRequired | None = None
-    keyword_targets: KeywordRequirement | None = None
-    negative_keywords: KeywordRequirement | None = None
-    ext: ExtensionObject | None = None
+    geo_countries: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    geo_countries_exclude: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    geo_regions: Annotated[TargetingOverlayRequirementsRequired | GeographicRegionRequirement | None, OmittedNotNull] = None
+    geo_regions_exclude: Annotated[TargetingOverlayRequirementsRequired | GeographicRegionRequirement | None, OmittedNotNull] = None
+    geo_metros: Annotated[MetroRequirement | None, OmittedNotNull] = None
+    geo_metros_exclude: Annotated[MetroRequirement | None, OmittedNotNull] = None
+    geo_places: Annotated[GeographicPlaceRequirement | None, OmittedNotNull] = None
+    geo_places_exclude: Annotated[GeographicPlaceRequirement | None, OmittedNotNull] = None
+    geo_postal_areas: Annotated[TargetingOverlayRequirementsRequired | PositivePostalAreaSupport | None, OmittedNotNull] = None
+    geo_postal_areas_exclude: Annotated[TargetingOverlayRequirementsRequired | PositivePostalAreaSupport | None, OmittedNotNull] = None
+    geo_proximity: Annotated[TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsGeoProximity | None, OmittedNotNull] = None
+    daypart_targets: Annotated[DaypartRequirement | None, OmittedNotNull] = None
+    audience_include: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    audience_exclude: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    signal_targeting_groups: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    demographics: Annotated[TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsDemographicsAge | None, OmittedNotNull] = None
+    frequency_cap: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    frequency_cap_support: Annotated[FrequencyCapRequirements | None, Field(description='Minimum structured package-cap support. Matches a broad legacy frequency_cap: true or a containing frequency_cap_support object. Mutually exclusive with a frequency_cap: true requirement, which would exclude every constrained product.'), OmittedNotNull] = None
+    property_list: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    property_list_exclude: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    collection_list: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    collection_list_exclude: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    placement_selection: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    age_restriction: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    device_platform: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    device_platform_exclude: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    device_type: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    device_type_exclude: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    browser: Annotated[BrowserRequirement | None, OmittedNotNull] = None
+    browser_exclude: Annotated[BrowserRequirement | None, OmittedNotNull] = None
+    store_catchments: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    language: Annotated[TargetingOverlayRequirementsRequired | None, OmittedNotNull] = None
+    keyword_targets: Annotated[KeywordRequirement | None, OmittedNotNull] = None
+    negative_keywords: Annotated[KeywordRequirement | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["BrowserRequirement", "DaypartRequirement", "KeywordRequirement", "MetroRequirement", "TargetingOverlayRequirements", "TargetingOverlayRequirementsRequired"]

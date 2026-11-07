@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -24,9 +24,9 @@ class DeleteCollectionListRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/delete-collection-list-request.json', pointer='#')
     list_id: Annotated[str, Field(description='ID of the collection list to delete')]
-    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
 
 

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 
 class ConflictDetails(AdCPBaseModel):
@@ -16,9 +16,9 @@ class ConflictDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/conflict.json', pointer='#')
-    resource_id: Annotated[str | None, Field(description='Identifier of the conflicting resource')] = None
-    expected_version: Annotated[float | str | None, Field(description='Version or ETag the client was operating against')] = None
-    current_version: Annotated[float | str | None, Field(description='Current version or ETag on the server')] = None
+    resource_id: Annotated[str | None, Field(description='Identifier of the conflicting resource'), OmittedNotNull] = None
+    expected_version: Annotated[float | str | None, Field(description='Version or ETag the client was operating against'), OmittedNotNull] = None
+    current_version: Annotated[float | str | None, Field(description='Current version or ETag on the server'), OmittedNotNull] = None
 
 
 __all__ = ["ConflictDetails"]

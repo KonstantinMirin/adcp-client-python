@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.country_code import CountryCode
 from ..core.feature_requirement import FeatureRequirement
@@ -22,11 +22,11 @@ class PropertyListFilters(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-list-filters.json', pointer='#')
-    countries_all: Annotated[list[CountryCode] | None, Field(description='Property must have feature data for ALL listed countries (ISO codes). When omitted, no country restriction is applied.', min_length=1)] = None
-    channels_any: Annotated[list[MediaChannel] | None, Field(description='Property must support ANY of the listed channels. When omitted, no channel restriction is applied.', min_length=1)] = None
-    property_types: Annotated[list[PropertyType] | None, Field(description='Filter to these property types', min_length=1)] = None
-    feature_requirements: Annotated[list[FeatureRequirement] | None, Field(description='Feature-based requirements. Property must pass ALL requirements (AND logic).', min_length=1)] = None
-    exclude_identifiers: Annotated[list[Identifier] | None, Field(description='Identifiers to always exclude from results', min_length=1)] = None
+    countries_all: Annotated[list[CountryCode] | None, Field(description='Property must have feature data for ALL listed countries (ISO codes). When omitted, no country restriction is applied.', min_length=1), OmittedNotNull] = None
+    channels_any: Annotated[list[MediaChannel] | None, Field(description='Property must support ANY of the listed channels. When omitted, no channel restriction is applied.', min_length=1), OmittedNotNull] = None
+    property_types: Annotated[list[PropertyType] | None, Field(description='Filter to these property types', min_length=1), OmittedNotNull] = None
+    feature_requirements: Annotated[list[FeatureRequirement] | None, Field(description='Feature-based requirements. Property must pass ALL requirements (AND logic).', min_length=1), OmittedNotNull] = None
+    exclude_identifiers: Annotated[list[Identifier] | None, Field(description='Identifiers to always exclude from results', min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["PropertyListFilters"]

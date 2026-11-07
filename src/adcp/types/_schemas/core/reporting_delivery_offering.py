@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AgentReportingDestinationFileTransferDestinationTransport,
@@ -59,11 +59,11 @@ class ReportingProfile(AdCPBaseModel):
     schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is a self-contained bundle. Every $ref is a local # fragment; remote and relative-document dependencies are forbidden.')]
     grain: Annotated[StrMinLen1MaxLen128, Field(description='Stable description of what one logical row represents.')]
     primary_keys: Annotated[list[ReportingPrimaryKey], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    canonicalization_id: Annotated[StrMinLen1MaxLen128 | None, Field(description='Rules for stable logical row ordering, value encoding, nulls, and schema used by canonical_content_digest.')] = None
-    canonicalization_contract_version: Literal['1.0'] | None = None
-    canonicalization_media_type: Literal['application/vnd.adcp.reporting-canonicalization+json'] | None = None
-    canonicalization_uri: Annotated[HttpUrl | None, Field(description='Retrievable exact canonicalization contract on the authenticated seller/provider or AdCP-registry origin. SDKs apply the same bounded, redirect-free SSRF controls as schema_uri and verify canonicalization_sha256 before use.')] = None
-    canonicalization_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, Field(description='Digest of the exact canonicalization contract identified by canonicalization_id.')] = None
+    canonicalization_id: Annotated[StrMinLen1MaxLen128 | None, Field(description='Rules for stable logical row ordering, value encoding, nulls, and schema used by canonical_content_digest.'), OmittedNotNull] = None
+    canonicalization_contract_version: Annotated[Literal['1.0'] | None, OmittedNotNull] = None
+    canonicalization_media_type: Annotated[Literal['application/vnd.adcp.reporting-canonicalization+json'] | None, OmittedNotNull] = None
+    canonicalization_uri: Annotated[HttpUrl | None, Field(description='Retrievable exact canonicalization contract on the authenticated seller/provider or AdCP-registry origin. SDKs apply the same bounded, redirect-free SSRF controls as schema_uri and verify canonicalization_sha256 before use.'), OmittedNotNull] = None
+    canonicalization_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, Field(description='Digest of the exact canonicalization contract identified by canonicalization_id.'), OmittedNotNull] = None
 
 
 class ReportingDeliveryPattern(StrEnum):
@@ -96,8 +96,8 @@ class ProducerIdentity(AdCPBaseModel):
     )
     provider: ObjDomain
     identity: StrMinLen1MaxLen512
-    cloud: ReportingCloud | None = None
-    region: StrMinLen1MaxLen128 | None = None
+    cloud: Annotated[ReportingCloud | None, OmittedNotNull] = None
+    region: Annotated[StrMinLen1MaxLen128 | None, OmittedNotNull] = None
 
 
 class Method(AdCPBaseModel):
@@ -119,11 +119,11 @@ class Method(AdCPBaseModel):
     transport: AgentReportingDestinationFileTransferDestinationTransport
     orchestration: ReportingOrchestration
     destination_modes: Annotated[list[DestinationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    provider: ObjDomain | None = None
-    format: FileFormat | None = None
-    access_mode: AgentReportingDestinationFileTransferDestinationTransport | None = None
-    producer_identity: Annotated[ProducerIdentity | None, Field(description='Seller principal a buyer grants access to for this exact buyer-hosted destination offering.')] = None
-    reader_compatibility: Annotated[list[ReportingReaderCompatibilityItem] | None, Field(json_schema_extra={'uniqueItems': True})] = None
+    provider: Annotated[ObjDomain | None, OmittedNotNull] = None
+    format: Annotated[FileFormat | None, OmittedNotNull] = None
+    access_mode: Annotated[AgentReportingDestinationFileTransferDestinationTransport | None, OmittedNotNull] = None
+    producer_identity: Annotated[ProducerIdentity | None, Field(description='Seller principal a buyer grants access to for this exact buyer-hosted destination offering.'), OmittedNotNull] = None
+    reader_compatibility: Annotated[list[ReportingReaderCompatibilityItem] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
 class ReportingDeliveryOffering(AdCPBaseModel):
@@ -151,7 +151,7 @@ class ReportingDeliveryOffering(AdCPBaseModel):
     schedule: Annotated[ReportingScheduleOffering, Field(description='Period and availability SLA this offering can honor. For example, PT1H with snapshot finality explicitly advertises hourly provisional snapshots; a separate P1D official offering advertises daily finalized reporting.')]
     supported_finality: Annotated[list[ReportingFinality], Field(description='Finality classes available under this exact report definition, schedule, and delivery method. snapshot is an explicit provisional capability, not inferred from poll frequency. Use separate atomic offerings when snapshot and official schedules or methods differ.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     reconciliation_mode: Annotated[ReportingReconciliationMode, Field(description='Receipt contract included in this atomic offering. Billing offerings MUST require consumer_receipt.')]
-    method: Annotated[Method | None, Field(description='Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.')] = None
+    method: Annotated[Method | None, Field(description='Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.'), OmittedNotNull] = None
 
 
 __all__ = ["ReportingDeliveryOffering", "ReportingDeliveryPattern", "ReportingFeedPurpose"]

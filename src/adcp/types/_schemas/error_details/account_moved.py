@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ..core.canonical_account_ref import CanonicalAccountReference
@@ -20,7 +20,7 @@ class AccountMovedDetails(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/account-moved.json', pointer='#')
     current_account: Annotated[CanonicalAccountReference, Field(description='Current canonical reference. Buyer-declared account sellers return the complete current natural key; account-id namespaces may return account_id.')]
-    revision: Annotated[IntMin1 | None, Field(description='Current account revision when the seller exposes account revisions.')] = None
+    revision: Annotated[IntMin1 | None, Field(description='Current account revision when the seller exposes account revisions.'), OmittedNotNull] = None
 
 
 __all__ = ["AccountMovedDetails"]

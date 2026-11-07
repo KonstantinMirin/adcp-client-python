@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin1, StrMinLen1
 
@@ -66,8 +66,8 @@ class TargetFrequency(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('min',), ('max',)), 'anyOf'),
     )
-    min: IntMin1 | None = None
-    max: IntMin1 | None = None
+    min: Annotated[IntMin1 | None, OmittedNotNull] = None
+    max: Annotated[IntMin1 | None, OmittedNotNull] = None
     window: Duration
 
 
@@ -94,13 +94,13 @@ class CanonicalOptimizationGoalMetric(CanonicalOptimizationGoal):
     )
     kind: Literal['metric']
     metric: Metric
-    standard: ViewabilityStandard | None = None
-    vendor: BrandKey | None = None
-    reach_unit: ReachUnit | None = None
-    target_frequency: TargetFrequency | None = None
-    view_duration_seconds: FloatGt0 | None = None
-    target: CanonicalOptimizationGoalMetricTarget | None = None
-    priority: IntMin1 | None = None
+    standard: Annotated[ViewabilityStandard | None, OmittedNotNull] = None
+    vendor: Annotated[BrandKey | None, OmittedNotNull] = None
+    reach_unit: Annotated[ReachUnit | None, OmittedNotNull] = None
+    target_frequency: Annotated[TargetFrequency | None, OmittedNotNull] = None
+    view_duration_seconds: Annotated[FloatGt0 | None, OmittedNotNull] = None
+    target: Annotated[CanonicalOptimizationGoalMetricTarget | None, OmittedNotNull] = None
+    priority: Annotated[IntMin1 | None, OmittedNotNull] = None
 
 
 class EventSourcesItem(AdCPBaseModel):
@@ -110,9 +110,9 @@ class EventSourcesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-optimization-goal.json', pointer='#/oneOf/1/properties/event_sources/items')
     event_source_id: StrMinLen1
     event_type: EventType
-    custom_event_name: StrMinLen1 | None = None
-    value_field: StrMinLen1 | None = None
-    value_factor: float | None = 1
+    custom_event_name: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    value_field: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    value_factor: Annotated[float | None, OmittedNotNull] = 1
 
 
 class CanonicalOptimizationGoalEventTarget(AdCPBaseModel):
@@ -130,9 +130,9 @@ class CanonicalOptimizationGoalEvent(CanonicalOptimizationGoal):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-optimization-goal.json', pointer='#/oneOf/1')
     kind: Literal['event']
     event_sources: Annotated[list[EventSourcesItem], Field(min_length=1)]
-    target: CanonicalOptimizationGoalEventTarget | None = None
-    attribution_window: AttributionWindow | None = None
-    priority: IntMin1 | None = None
+    target: Annotated[CanonicalOptimizationGoalEventTarget | None, OmittedNotNull] = None
+    attribution_window: Annotated[AttributionWindow | None, OmittedNotNull] = None
+    priority: Annotated[IntMin1 | None, OmittedNotNull] = None
 
 
 CanonicalOptimizationGoalVendorMetricTarget = CanonicalOptimizationGoalMetricTarget
@@ -146,8 +146,8 @@ class CanonicalOptimizationGoalVendorMetric(CanonicalOptimizationGoal):
     kind: Literal['vendor_metric']
     vendor: BrandKey
     metric_id: VendorMetricID
-    target: CanonicalOptimizationGoalVendorMetricTarget | None = None
-    priority: IntMin1 | None = None
+    target: Annotated[CanonicalOptimizationGoalVendorMetricTarget | None, OmittedNotNull] = None
+    priority: Annotated[IntMin1 | None, OmittedNotNull] = None
 
 
 CanonicalOptimizationGoal._branch_models = (CanonicalOptimizationGoalMetric, CanonicalOptimizationGoalEvent, CanonicalOptimizationGoalVendorMetric,)

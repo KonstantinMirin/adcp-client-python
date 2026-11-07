@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
 
 class Voice(AdCPBaseModel):
@@ -14,8 +14,8 @@ class Voice(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/modalities/properties/voice/oneOf/1')
-    provider: Annotated[str | None, Field(description='TTS provider (elevenlabs, openai, etc.)')] = None
-    voice_id: Annotated[str | None, Field(description='Brand voice identifier')] = None
+    provider: Annotated[str | None, Field(description='TTS provider (elevenlabs, openai, etc.)'), OmittedNotNull] = None
+    voice_id: Annotated[str | None, Field(description='Brand voice identifier'), OmittedNotNull] = None
 
 
 class Video(AdCPBaseModel):
@@ -23,8 +23,8 @@ class Video(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/modalities/properties/video/oneOf/1')
-    formats: Annotated[list[str] | None, Field(description='Supported video formats (mp4, webm, etc.)')] = None
-    max_duration_seconds: Annotated[int | None, Field(description='Maximum video duration')] = None
+    formats: Annotated[list[str] | None, Field(description='Supported video formats (mp4, webm, etc.)'), OmittedNotNull] = None
+    max_duration_seconds: Annotated[int | None, Field(description='Maximum video duration'), OmittedNotNull] = None
 
 
 class Avatar(AdCPBaseModel):
@@ -32,8 +32,8 @@ class Avatar(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/modalities/properties/avatar/oneOf/1')
-    provider: Annotated[str | None, Field(description='Avatar provider (d-id, heygen, synthesia, etc.)')] = None
-    avatar_id: Annotated[str | None, Field(description='Brand avatar identifier')] = None
+    provider: Annotated[str | None, Field(description='Avatar provider (d-id, heygen, synthesia, etc.)'), OmittedNotNull] = None
+    avatar_id: Annotated[str | None, Field(description='Brand avatar identifier'), OmittedNotNull] = None
 
 
 class Modalities(AdCPBaseModel):
@@ -44,10 +44,10 @@ class Modalities(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/modalities')
-    conversational: Annotated[bool | None, Field(description='Pure text exchange - the baseline modality')] = True
-    voice: Annotated[bool | Voice | None, Field(description='Audio-based interaction using brand voice')] = None
-    video: Annotated[bool | Video | None, Field(description='Brand video content playback')] = None
-    avatar: Annotated[bool | Avatar | None, Field(description='Animated video presence with brand avatar')] = None
+    conversational: Annotated[bool | None, Field(description='Pure text exchange - the baseline modality'), OmittedNotNull] = True
+    voice: Annotated[bool | Voice | None, Field(description='Audio-based interaction using brand voice'), OmittedNotNull] = None
+    video: Annotated[bool | Video | None, Field(description='Brand video content playback'), OmittedNotNull] = None
+    avatar: Annotated[bool | Avatar | None, Field(description='Animated video presence with brand avatar'), OmittedNotNull] = None
 
 
 class StandardItem(StrEnum):
@@ -73,8 +73,8 @@ class Components(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/components')
-    standard: Annotated[list[StandardItem] | None, Field(description='Standard components that all SI hosts must render')] = None
-    extensions: Annotated[dict[str, Any] | None, Field(description='Platform-specific extensions (chatgpt_apps_sdk, maps, forms, etc.)')] = None
+    standard: Annotated[list[StandardItem] | None, Field(description='Standard components that all SI hosts must render'), OmittedNotNull] = None
+    extensions: Annotated[dict[str, Any] | None, Field(description='Platform-specific extensions (chatgpt_apps_sdk, maps, forms, etc.)'), OmittedNotNull] = None
 
 
 class Commerce(AdCPBaseModel):
@@ -85,7 +85,7 @@ class Commerce(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/commerce')
-    acp_checkout: Annotated[bool | None, Field(description='Supports ACP (Agentic Commerce Protocol) checkout handoff')] = None
+    acp_checkout: Annotated[bool | None, Field(description='Supports ACP (Agentic Commerce Protocol) checkout handoff'), OmittedNotNull] = None
 
 
 class A2ui(AdCPBaseModel):
@@ -96,8 +96,8 @@ class A2ui(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/a2ui')
-    supported: Annotated[bool | None, Field(description='Supports A2UI surface rendering')] = False
-    catalogs: Annotated[list[str] | None, Field(description="Supported A2UI component catalogs (e.g., 'si-standard', 'standard')")] = None
+    supported: Annotated[bool | None, Field(description='Supports A2UI surface rendering'), OmittedNotNull] = False
+    catalogs: Annotated[list[str] | None, Field(description="Supported A2UI component catalogs (e.g., 'si-standard', 'standard')"), OmittedNotNull] = None
 
 
 class SICapabilities(AdCPBaseModel):
@@ -108,11 +108,11 @@ class SICapabilities(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#')
-    modalities: Annotated[Modalities | None, Field(description='Interaction modalities supported')] = None
-    components: Annotated[Components | None, Field(description='Visual components supported')] = None
-    commerce: Annotated[Commerce | None, Field(description='Commerce capabilities')] = None
-    a2ui: Annotated[A2ui | None, Field(description='A2UI (Agent-to-UI) capabilities')] = None
-    mcp_apps: Annotated[bool | None, Field(description='Supports MCP Apps for rendering A2UI surfaces in iframes')] = False
+    modalities: Annotated[Modalities | None, Field(description='Interaction modalities supported'), OmittedNotNull] = None
+    components: Annotated[Components | None, Field(description='Visual components supported'), OmittedNotNull] = None
+    commerce: Annotated[Commerce | None, Field(description='Commerce capabilities'), OmittedNotNull] = None
+    a2ui: Annotated[A2ui | None, Field(description='A2UI (Agent-to-UI) capabilities'), OmittedNotNull] = None
+    mcp_apps: Annotated[bool | None, Field(description='Supports MCP Apps for rendering A2UI surfaces in iframes'), OmittedNotNull] = False
 
 
 __all__ = ["SICapabilities"]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import GeoForecastDimensionCode, IntMin1, StrCountryCode, StrMinLen1
 
@@ -41,11 +41,11 @@ class GeographicRegionSupport(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-support.json', pointer='#')
     countries: Annotated[dict[StrCountryCode, ObjAllValues | ObjValues], Field(description='Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
-    catalog_version: Annotated[StrMinLen1 | None, Field(description='Optional opaque ISO subdivision catalog or seller-mapping version that identifies the support snapshot. It is provenance, not part of subdivision identity.')] = None
-    as_of: Annotated[date | None, Field(description='Optional date on which the seller last validated this support declaration.')] = None
-    max_values_per_package: Annotated[IntMin1 | None, Field(description='Optional maximum number of region values selectable on one package.')] = None
-    max_packages: Annotated[IntMin1 | None, Field(description='Optional maximum number of independently region-targeted packages created from this configured product.')] = None
-    ext: ExtensionObject | None = None
+    catalog_version: Annotated[StrMinLen1 | None, Field(description='Optional opaque ISO subdivision catalog or seller-mapping version that identifies the support snapshot. It is provenance, not part of subdivision identity.'), OmittedNotNull] = None
+    as_of: Annotated[date | None, Field(description='Optional date on which the seller last validated this support declaration.'), OmittedNotNull] = None
+    max_values_per_package: Annotated[IntMin1 | None, Field(description='Optional maximum number of region values selectable on one package.'), OmittedNotNull] = None
+    max_packages: Annotated[IntMin1 | None, Field(description='Optional maximum number of independently region-targeted packages created from this configured product.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GeographicRegionSupport"]

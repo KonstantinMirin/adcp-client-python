@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AgentReportingDestinationFileTransferDestinationTransport,
     StrMinLen1MaxLen255,
@@ -45,7 +45,7 @@ class ProvisionBinding(ReportingWriteDestination):
     mode: Literal['provision']
     provider: Annotated[ObjDomain, Field(description='Platform hosting the destination.')]
     location: Annotated[StrMinLen1MaxLen2048, Field(description='Provider-native bucket, prefix, project/dataset, catalog/schema, or equivalent locator. It MUST NOT contain an embedded credential or signed URL.')]
-    access_mode: Annotated[AgentReportingDestinationFileTransferDestinationTransport | None, Field(description='Optional provider access family used for capability matching.')] = None
+    access_mode: Annotated[AgentReportingDestinationFileTransferDestinationTransport | None, Field(description='Optional provider access family used for capability matching.'), OmittedNotNull] = None
 
 
 ReportingWriteDestination._branch_models = (ReportingWriteDestinationExisting, ProvisionBinding,)

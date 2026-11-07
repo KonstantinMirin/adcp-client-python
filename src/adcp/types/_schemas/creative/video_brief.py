@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
 
 
@@ -17,8 +17,8 @@ class SegmentsItem(AdCPBaseModel):
     order: Annotated[IntMin1, Field(description='1-indexed sequence position of this segment in the final video.')]
     duration_ms: Annotated[IntMin1, Field(description='Duration of this segment in milliseconds.')]
     prompt: Annotated[str, Field(description='Text prompt fed to the synthesis pipeline for this segment (subject, action, setting, mood). Renamed from earlier `description` to make explicit that this is a generation prompt — not a description-of-finished-content.')]
-    vo: Annotated[str | None, Field(description='Voiceover line for this segment (optional).')] = None
-    caption: Annotated[str | None, Field(description='On-screen caption text for this segment (optional).')] = None
+    vo: Annotated[str | None, Field(description='Voiceover line for this segment (optional).'), OmittedNotNull] = None
+    caption: Annotated[str | None, Field(description='On-screen caption text for this segment (optional).'), OmittedNotNull] = None
 
 
 class VideoBrief(AdCPBaseModel):

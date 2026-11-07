@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
 
 from ..core.ext import ExtensionObject
@@ -37,9 +37,9 @@ class Requirement(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validation-result.json', pointer='#/properties/features/items/properties/requirement')
-    min_value: Annotated[float | None, Field(description='Minimum value that was required')] = None
-    max_value: Annotated[float | None, Field(description='Maximum value that was allowed')] = None
-    allowed_values: Annotated[list[Any] | None, Field(description='Values that would have been acceptable')] = None
+    min_value: Annotated[float | None, Field(description='Minimum value that was required'), OmittedNotNull] = None
+    max_value: Annotated[float | None, Field(description='Maximum value that was allowed'), OmittedNotNull] = None
+    allowed_values: Annotated[list[Any] | None, Field(description='Values that would have been acceptable'), OmittedNotNull] = None
 
 
 class FeaturesItem(AdCPBaseModel):
@@ -49,10 +49,10 @@ class FeaturesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validation-result.json', pointer='#/properties/features/items')
     feature_id: Annotated[str, Field(description="Which feature was evaluated. Data features come from the governance agent's feature catalog (e.g., 'mfa_score', 'carbon_score'). Record-level structural checks use reserved namespaces: 'record:list_membership', 'record:excluded', 'delivery:seller_authorization', 'delivery:click_url_presence'. Reserved prefixes: 'record:', 'delivery:'.")]
     status: FeatureCheckStatus
-    policy_id: Annotated[str | None, Field(description='Optional attribution — when this feature was evaluated for the purpose of a specific policy, policy_id references the authorizing PolicyEntry. Property-list agents populate when the validation was motivated by a specific policy. See /docs/governance/policy-attribution.')] = None
-    explanation: Annotated[str | None, Field(description='Directional human-readable explanation of the result.')] = None
-    requirement: Annotated[Requirement | None, Field(description='The feature requirement that was not met. MAY be present on failed features when the caller authored the requirement (e.g., feature_requirements on a property list). The buyer set these thresholds — echoing them back enables fix-and-retry loops without looking up the list definition.')] = None
-    confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.')] = None
+    policy_id: Annotated[str | None, Field(description='Optional attribution — when this feature was evaluated for the purpose of a specific policy, policy_id references the authorizing PolicyEntry. Property-list agents populate when the validation was motivated by a specific policy. See /docs/governance/policy-attribution.'), OmittedNotNull] = None
+    explanation: Annotated[str | None, Field(description='Directional human-readable explanation of the result.'), OmittedNotNull] = None
+    requirement: Annotated[Requirement | None, Field(description='The feature requirement that was not met. MAY be present on failed features when the caller authored the requirement (e.g., feature_requirements on a property list). The buyer set these thresholds — echoing them back enables fix-and-retry loops without looking up the list definition.'), OmittedNotNull] = None
+    confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.'), OmittedNotNull] = None
 
 
 class ValidationResult(AdCPBaseModel):
@@ -64,12 +64,12 @@ class ValidationResult(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validation-result.json', pointer='#')
     identifier: Annotated[Identifier, Field(description='The identifier that was validated')]
-    record_id: Annotated[str | None, Field(description='Client-provided ID from the delivery record (if provided)')] = None
+    record_id: Annotated[str | None, Field(description='Client-provided ID from the delivery record (if provided)'), OmittedNotNull] = None
     status: Annotated[Status, Field(description='Validation status: compliant (in list), non_compliant (not in list), not_covered (identifier recognized but no data available), unidentified (identifier type not resolvable by this governance agent)')]
     impressions: Annotated[NonNegativeInt, Field(description='Number of impressions from this record')]
-    features: Annotated[list[FeaturesItem] | None, Field(description='Per-feature breakdown for this record. SHOULD include all failed and warning features. MAY include passed features. For property validation the buyer authored the requirement, so the `requirement` that was not met MAY be echoed back on failures — this is contract data, not evaluator IP.')] = None
-    authorization: Annotated[AuthorizationResult | None, Field(description='Authorization validation result (only present if sales_agent_url was provided in the delivery record)')] = None
-    ext: ExtensionObject | None = None
+    features: Annotated[list[FeaturesItem] | None, Field(description='Per-feature breakdown for this record. SHOULD include all failed and warning features. MAY include passed features. For property validation the buyer authored the requirement, so the `requirement` that was not met MAY be echoed back on failures — this is contract data, not evaluator IP.'), OmittedNotNull] = None
+    authorization: Annotated[AuthorizationResult | None, Field(description='Authorization validation result (only present if sales_agent_url was provided in the delivery record)'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ValidationResult"]

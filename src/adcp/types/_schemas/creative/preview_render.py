@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from ..core.preview_renderer_metadata import PreviewRendererMetadata
@@ -38,10 +38,10 @@ class PreviewRenderUrlEmbedding(AdCPBaseModel):
     Optional security and embedding metadata for safe iframe integration
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/0/properties/embedding')
-    recommended_sandbox: Annotated[Literal[''] | None, Field(description='Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.')] = None
-    requires_https: Annotated[bool | None, Field(description='Whether this output requires HTTPS for secure embedding')] = None
-    supports_fullscreen: Annotated[bool | None, Field(description='Whether this output supports fullscreen mode')] = None
-    csp_policy: Annotated[str | None, Field(description='Content Security Policy requirements for embedding')] = None
+    recommended_sandbox: Annotated[Literal[''] | None, Field(description='Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.'), OmittedNotNull] = None
+    requires_https: Annotated[bool | None, Field(description='Whether this output requires HTTPS for secure embedding'), OmittedNotNull] = None
+    supports_fullscreen: Annotated[bool | None, Field(description='Whether this output supports fullscreen mode'), OmittedNotNull] = None
+    csp_policy: Annotated[str | None, Field(description='Content Security Policy requirements for embedding'), OmittedNotNull] = None
 
 
 class PreviewRenderUrl(PreviewRender):
@@ -56,9 +56,9 @@ class PreviewRenderUrl(PreviewRender):
     output_format: Annotated[Literal['url'], Field(description='Discriminator indicating preview_url is provided')]
     preview_url: Annotated[HttpUrl, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     role: Annotated[str, Field(description="Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.")]
-    dimensions: Annotated[PreviewRenderUrlDimensions | None, Field(description='Dimensions for this rendered piece')] = None
-    embedding: Annotated[PreviewRenderUrlEmbedding | None, Field(description='Optional security and embedding metadata for safe iframe integration')] = None
-    renderer: Annotated[PreviewRendererMetadata | None, Field(description='Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.')] = None
+    dimensions: Annotated[PreviewRenderUrlDimensions | None, Field(description='Dimensions for this rendered piece'), OmittedNotNull] = None
+    embedding: Annotated[PreviewRenderUrlEmbedding | None, Field(description='Optional security and embedding metadata for safe iframe integration'), OmittedNotNull] = None
+    renderer: Annotated[PreviewRendererMetadata | None, Field(description='Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.'), OmittedNotNull] = None
 
 
 PreviewRenderHtmlDimensions = PreviewRenderUrlDimensions
@@ -69,10 +69,10 @@ class PreviewRenderHtmlEmbedding(AdCPBaseModel):
     Optional security and embedding metadata
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/1/properties/embedding')
-    recommended_sandbox: Annotated[Literal[''] | None, Field(description='Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.')] = None
-    requires_https: Annotated[bool | None, Field(description='Whether this output requires HTTPS for secure embedding')] = None
-    supports_fullscreen: Annotated[bool | None, Field(description='Whether this output supports fullscreen mode')] = None
-    csp_policy: Annotated[str | None, Field(description='Content Security Policy requirements for embedding')] = None
+    recommended_sandbox: Annotated[Literal[''] | None, Field(description='Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.'), OmittedNotNull] = None
+    requires_https: Annotated[bool | None, Field(description='Whether this output requires HTTPS for secure embedding'), OmittedNotNull] = None
+    supports_fullscreen: Annotated[bool | None, Field(description='Whether this output supports fullscreen mode'), OmittedNotNull] = None
+    csp_policy: Annotated[str | None, Field(description='Content Security Policy requirements for embedding'), OmittedNotNull] = None
 
 
 class PreviewRenderHtml(PreviewRender):
@@ -87,9 +87,9 @@ class PreviewRenderHtml(PreviewRender):
     output_format: Annotated[Literal['html'], Field(description='Discriminator indicating preview_html is provided')]
     preview_html: Annotated[str, Field(description='Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     role: Annotated[str, Field(description="Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.")]
-    dimensions: Annotated[PreviewRenderHtmlDimensions | None, Field(description='Dimensions for this rendered piece')] = None
-    embedding: Annotated[PreviewRenderHtmlEmbedding | None, Field(description='Optional security and embedding metadata')] = None
-    renderer: Annotated[PreviewRendererMetadata | None, Field(description='Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.')] = None
+    dimensions: Annotated[PreviewRenderHtmlDimensions | None, Field(description='Dimensions for this rendered piece'), OmittedNotNull] = None
+    embedding: Annotated[PreviewRenderHtmlEmbedding | None, Field(description='Optional security and embedding metadata'), OmittedNotNull] = None
+    renderer: Annotated[PreviewRendererMetadata | None, Field(description='Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.'), OmittedNotNull] = None
 
 
 PreviewRenderBothDimensions = PreviewRenderUrlDimensions
@@ -111,9 +111,9 @@ class PreviewRenderBoth(PreviewRender):
     preview_url: Annotated[HttpUrl, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     preview_html: Annotated[str, Field(description='Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     role: Annotated[str, Field(description="Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.")]
-    dimensions: Annotated[PreviewRenderBothDimensions | None, Field(description='Dimensions for this rendered piece')] = None
-    embedding: Annotated[PreviewRenderBothEmbedding | None, Field(description='Optional security and embedding metadata for safe iframe integration')] = None
-    renderer: Annotated[PreviewRendererMetadata | None, Field(description='Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.')] = None
+    dimensions: Annotated[PreviewRenderBothDimensions | None, Field(description='Dimensions for this rendered piece'), OmittedNotNull] = None
+    embedding: Annotated[PreviewRenderBothEmbedding | None, Field(description='Optional security and embedding metadata for safe iframe integration'), OmittedNotNull] = None
+    renderer: Annotated[PreviewRendererMetadata | None, Field(description='Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.'), OmittedNotNull] = None
 
 
 PreviewRender._branch_models = (PreviewRenderUrl, PreviewRenderHtml, PreviewRenderBoth,)

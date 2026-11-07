@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -19,8 +19,8 @@ class GetContentStandardsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-content-standards-request.json', pointer='#')
     standards_id: Annotated[str, Field(description='Identifier for the standards configuration to retrieve')]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetContentStandardsRequest"]

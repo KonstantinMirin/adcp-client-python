@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255, StrMinLen1MaxLen1000
 
@@ -61,9 +61,9 @@ class CatalogItemAvailabilityUpdate(AdCPBaseModel):
     expected_overlay_revision: Annotated[NonNegativeInt, Field(description='Required optimistic-concurrency token obtained from item_availability_states. Revision 0 is the initial active state. The seller MUST compare this value atomically with the write and return CONFLICT without mutation when it differs from current state.')]
     action: Annotated[Action, Field(description='suppress makes the item and known derived creative variants ineligible immediately; restore removes the buyer-authored suppression but does not bypass seller controls.')]
     reason: Annotated[Reason, Field(description='Machine-readable reason for the transition. Use other only when no standard reason applies and explain the condition in reason_detail.')]
-    reason_detail: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Optional human-readable context. Required when reason is other. Plain text only; receivers MUST treat it as untrusted buyer input.')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='Optional expiry for a suppress overlay. At this instant the seller automatically removes the buyer-authored suppression as if it received restore. Valid only with action suppress; omit for an indefinite suppression. Sellers MUST reject a timestamp that is not in the future when the request is processed. On a repeated suppress, this value is complete replacement state: a changed timestamp replaces the prior expiry, and omission clears a prior expiry to make suppression indefinite. Either change returns status applied, not unchanged.')] = None
-    ext: ExtensionObject | None = None
+    reason_detail: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Optional human-readable context. Required when reason is other. Plain text only; receivers MUST treat it as untrusted buyer input.'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='Optional expiry for a suppress overlay. At this instant the seller automatically removes the buyer-authored suppression as if it received restore. Valid only with action suppress; omit for an indefinite suppression. Sellers MUST reject a timestamp that is not in the future when the request is processed. On a repeated suppress, this value is complete replacement state: a changed timestamp replaces the prior expiry, and omission clears a prior expiry to make suppression indefinite. Either change returns status applied, not unchanged.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CatalogItemAvailabilityUpdate"]

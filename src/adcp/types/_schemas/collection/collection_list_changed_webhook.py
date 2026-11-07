@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.ext import ExtensionObject
 from ..core.idempotency_key import IdempotencyKey
@@ -19,9 +19,9 @@ class ChangeSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/collection-list-changed-webhook.json', pointer='#/properties/change_summary')
-    collections_added: Annotated[int | None, Field(description='Number of collections added since last resolution')] = None
-    collections_removed: Annotated[int | None, Field(description='Number of collections removed since last resolution')] = None
-    total_collections: Annotated[int | None, Field(description='Total collections in the resolved list')] = None
+    collections_added: Annotated[int | None, Field(description='Number of collections added since last resolution'), OmittedNotNull] = None
+    collections_removed: Annotated[int | None, Field(description='Number of collections removed since last resolution'), OmittedNotNull] = None
+    total_collections: Annotated[int | None, Field(description='Total collections in the resolved list'), OmittedNotNull] = None
 
 
 class CollectionListChangedWebhook(AdCPBaseModel):
@@ -35,12 +35,12 @@ class CollectionListChangedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook event. Governance agents MUST generate a cryptographically random value (UUID v4 recommended) per distinct list-change event and reuse the same key on every retry. Recipients MUST dedupe by this key, scoped to the authenticated sender identity (HMAC secret or Bearer credential) — keys from different governance agents are independent.')]
     event: Annotated[Literal['collection_list_changed'], Field(description='The event type')]
     list_id: Annotated[str, Field(description='ID of the collection list that changed')]
-    list_name: Annotated[str | None, Field(description='Name of the collection list')] = None
-    change_summary: Annotated[ChangeSummary | None, Field(description='Summary of changes to the resolved list')] = None
+    list_name: Annotated[str | None, Field(description='Name of the collection list'), OmittedNotNull] = None
+    change_summary: Annotated[ChangeSummary | None, Field(description='Summary of changes to the resolved list'), OmittedNotNull] = None
     resolved_at: Annotated[AwareDatetime, Field(description='When the list was re-resolved')]
-    cache_valid_until: Annotated[AwareDatetime | None, Field(description='When the consumer should refresh from the governance agent')] = None
+    cache_valid_until: Annotated[AwareDatetime | None, Field(description='When the consumer should refresh from the governance agent'), OmittedNotNull] = None
     signature: Annotated[str, Field(description='HMAC-SHA256 webhook signature over {unix_timestamp}.{raw_http_body_bytes} using the secret exchanged out-of-band when the seller registered with the governance agent. Recipients MUST verify against the X-ADCP-Signature and X-ADCP-Timestamp headers using timing-safe comparison and MUST reject requests where |now - timestamp| > 300 seconds. The body copy of this field is a convenience only — the headers are authoritative. See docs/building/by-layer/L1/security#webhook-security.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CollectionListChangedWebhook"]

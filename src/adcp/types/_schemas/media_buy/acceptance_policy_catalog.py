@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1
 
@@ -26,10 +26,10 @@ class AcceptancePolicyCatalog(AdCPBaseModel):
         RequiredGroups((('profiles',), ('registry_profiles',)), 'anyOf'),
     )
     catalog_version: StrMinLen1
-    generated_at: AwareDatetime | None = None
-    profiles: Annotated[list[AcceptancePolicyProfile] | None, Field(min_length=1)] = None
-    registry_profiles: Annotated[list[RegistryAcceptancePolicyProfileReference] | None, Field(description='Exact reusable profiles adopted from the shared policy registry. Resolution failure is unknown, never allowed. A seller adds a distinct local profile to narrow a registry profile.', min_length=1)] = None
-    ext: ExtensionObject | None = None
+    generated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    profiles: Annotated[list[AcceptancePolicyProfile] | None, Field(min_length=1), OmittedNotNull] = None
+    registry_profiles: Annotated[list[RegistryAcceptancePolicyProfileReference] | None, Field(description='Exact reusable profiles adopted from the shared policy registry. Resolution failure is unknown, never allowed. A seller adds a distinct local profile to narrow a registry profile.', min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AcceptancePolicyCatalog"]

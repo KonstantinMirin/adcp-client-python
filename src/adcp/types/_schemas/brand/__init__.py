@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AuthorizedOperatorBrandsItem,
@@ -90,12 +90,12 @@ class AuthoritativeLocationRedirect(BrandDiscovery):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/oneOf/0')
-    schema_: Annotated[str | None, Field(alias='$schema')] = None
+    schema_: Annotated[str | None, Field(alias='$schema'), OmittedNotNull] = None
     authoritative_location: Annotated[HTTPSURL, Field(description='HTTPS URL of the authoritative brand.json file')]
-    redirect_reason: Annotated[AuthoritativeLocationRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.")] = None
-    redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.')] = None
-    note: Annotated[str | None, Field(description='Optional human-readable rationale for the redirect.')] = None
-    last_updated: AwareDatetime | None = None
+    redirect_reason: Annotated[AuthoritativeLocationRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'."), OmittedNotNull] = None
+    redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.'), OmittedNotNull] = None
+    note: Annotated[str | None, Field(description='Optional human-readable rationale for the redirect.'), OmittedNotNull] = None
+    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 HouseRedirectRedirectReason = AuthoritativeLocationRedirectRedirectReason
@@ -109,13 +109,13 @@ class HouseRedirect(BrandDiscovery):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/oneOf/1')
-    schema_: Annotated[str | None, Field(alias='$schema')] = None
+    schema_: Annotated[str | None, Field(alias='$schema'), OmittedNotNull] = None
     house: Annotated[DomainName, Field(description='House domain to fetch brand portfolio from')]
-    region: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code if this is a regional domain')] = None
-    redirect_reason: Annotated[HouseRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.")] = None
-    redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.')] = None
-    note: Annotated[str | None, Field(description='Optional human-readable rationale for the redirect.')] = None
-    last_updated: AwareDatetime | None = None
+    region: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code if this is a regional domain'), OmittedNotNull] = None
+    redirect_reason: Annotated[HouseRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'."), OmittedNotNull] = None
+    redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.'), OmittedNotNull] = None
+    note: Annotated[str | None, Field(description='Optional human-readable rationale for the redirect.'), OmittedNotNull] = None
+    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 class BrandAgentEntry(AdCPBaseModel):
@@ -129,11 +129,11 @@ class BrandAgentEntry(AdCPBaseModel):
     type: Annotated[BrandAgentType, Field(description='Functional role of this agent')]
     url: Annotated[HTTPSURL, Field(description="Agent endpoint URL (MCP or A2A). Callers comparing a brand's declared agent URL against another value (e.g., resolving 'is this the agent that signed this artifact?' or matching against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. After the publication chain and an authorized request-signing key verify, this exact entry's canonical URL is the stable Agent identity input for principal mapping; the domain, JWKS URI, kid, and key material are credential or trust facts beneath it, not the Agent identity. See docs/reference/url-canonicalization.")]
     id: Annotated[BrandAgentEntryId, Field(description='Agent identifier (useful for logging, multi-tenant platforms)')]
-    description: Annotated[StrMaxLen500 | None, Field(description="Human-readable description of this agent's capabilities or scope")] = None
-    jwks_uri: Annotated[HTTPSURL | None, Field(description="HTTPS URL of the agent's JWKS (RFC 7517) containing public keys used to verify artifacts this agent signs or requests it sends. Verified artifacts include signed governance_context tokens (for governance agents) and RFC 9421 HTTP Signatures on outgoing requests (for any agent). When absent, verifiers MUST default to /.well-known/jwks.json on the origin of `url`. Keys are identified by `kid` in the JWS header or RFC 9421 `keyid` parameter; JWKS MAY contain multiple keys to support rotation and per-purpose separation via `key_ops` and `use`.")] = None
-    available_uses: Annotated[list[RightUse] | None, Field(description='For rights agents: rights uses available for licensing', min_length=1)] = None
-    right_types: Annotated[list[RightType] | None, Field(description='For rights agents: types of rights available', min_length=1)] = None
-    countries: Annotated[list[CountryCode] | None, Field(description='ISO 3166-1 alpha-2 country codes where this agent operates. Omit for global scope.')] = None
+    description: Annotated[StrMaxLen500 | None, Field(description="Human-readable description of this agent's capabilities or scope"), OmittedNotNull] = None
+    jwks_uri: Annotated[HTTPSURL | None, Field(description="HTTPS URL of the agent's JWKS (RFC 7517) containing public keys used to verify artifacts this agent signs or requests it sends. Verified artifacts include signed governance_context tokens (for governance agents) and RFC 9421 HTTP Signatures on outgoing requests (for any agent). When absent, verifiers MUST default to /.well-known/jwks.json on the origin of `url`. Keys are identified by `kid` in the JWS header or RFC 9421 `keyid` parameter; JWKS MAY contain multiple keys to support rotation and per-purpose separation via `key_ops` and `use`."), OmittedNotNull] = None
+    available_uses: Annotated[list[RightUse] | None, Field(description='For rights agents: rights uses available for licensing', min_length=1), OmittedNotNull] = None
+    right_types: Annotated[list[RightType] | None, Field(description='For rights agents: types of rights available', min_length=1), OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='ISO 3166-1 alpha-2 country codes where this agent operates. Omit for global scope.'), OmittedNotNull] = None
 
 
 Agents = Annotated[list[BrandAgentEntry], Field(description='Agents declared by this brand or house. Multiple entries with the same type are permitted when they have distinct url values, such as one endpoint URL per tenant or property scope. Agent url values MUST be unique within this array; duplicate urls are invalid because signature verifiers resolve a signing key by matching one agent url to one agents[] entry and reject ambiguous matches.')]
@@ -160,8 +160,8 @@ class BrandDiscoveryContact(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/contact')
     name: StrMinLen1MaxLen255
-    email: Annotated[StrMaxLen255 | None, Field(json_schema_extra={'format': 'email'})] = None
-    domain: DomainName | None = None
+    email: Annotated[StrMaxLen255 | None, Field(json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    domain: Annotated[DomainName | None, OmittedNotNull] = None
 
 
 class DataSubjectContestation(AdCPBaseModel):
@@ -175,9 +175,9 @@ class DataSubjectContestation(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('url',), ('email',)), 'anyOf'),
     )
-    url: Annotated[HTTPSURL | None, Field(description='HTTPS URL to a human-accessible contestation form or information page.')] = None
-    email: Annotated[str | None, Field(description='Email address for contestation requests. Deployer MUST monitor and respond within the timelines set by applicable law (e.g., 1 month under GDPR Art. 12(3)).', json_schema_extra={'format': 'email'})] = None
-    languages: Annotated[list[str] | None, Field(description="BCP 47 language tags the contestation channel supports (e.g., ['en', 'de', 'fr']). At minimum SHOULD include a language spoken in every jurisdiction where the brand runs regulated-vertical campaigns.")] = None
+    url: Annotated[HTTPSURL | None, Field(description='HTTPS URL to a human-accessible contestation form or information page.'), OmittedNotNull] = None
+    email: Annotated[str | None, Field(description='Email address for contestation requests. Deployer MUST monitor and respond within the timelines set by applicable law (e.g., 1 month under GDPR Art. 12(3)).', json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    languages: Annotated[list[str] | None, Field(description="BCP 47 language tags the contestation channel supports (e.g., ['en', 'de', 'fr']). At minimum SHOULD include a language spoken in every jurisdiction where the brand runs regulated-vertical campaigns."), OmittedNotNull] = None
 
 
 class BrandAgent(BrandDiscovery):
@@ -191,13 +191,13 @@ class BrandAgent(BrandDiscovery):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('agents',), ('brand_agent',)), 'anyOf'),
     )
-    schema_: Annotated[str | None, Field(alias='$schema')] = None
-    version: str | None = None
-    agents: Agents | None = None
-    brand_agent: BrandDiscoveryBrandAgent | None = None
-    contact: BrandDiscoveryContact | None = None
-    data_subject_contestation: DataSubjectContestation | None = None
-    last_updated: AwareDatetime | None = None
+    schema_: Annotated[str | None, Field(alias='$schema'), OmittedNotNull] = None
+    version: Annotated[str | None, OmittedNotNull] = None
+    agents: Annotated[Agents | None, OmittedNotNull] = None
+    brand_agent: Annotated[BrandDiscoveryBrandAgent | None, OmittedNotNull] = None
+    contact: Annotated[BrandDiscoveryContact | None, OmittedNotNull] = None
+    data_subject_contestation: Annotated[DataSubjectContestation | None, OmittedNotNull] = None
+    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 LocalizedName = Annotated[dict[str, StrMinLen1], Field(description="A localized name using the legacy underscore-separated language/region key convention (for example 'en_US', 'fr_CA', or 'zh_CN') and a name value. Bare language codes such as 'en' are also accepted for backwards compatibility. These keys are not AdCP locale-tag values: a bridge to /schemas/core/locale-tag.json replaces '_' with '-', applies the AdCP canonical wire profile, and validates the result rather than passing the key through unchanged.", max_length=1, min_length=1)]
@@ -234,9 +234,9 @@ class IdentityRelyingParty(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/identity_relying_party')
     issuer: Annotated[BrandReference, Field(description='Identity issuer / attestation authority, referenced as a vendor BrandRef (e.g. {"domain": "world.org"}) — the same vendor-reference shape AdCP uses for measurement and signals vendors. The issuer\'s canonical domain is the anchor; it need not host a brand.json, but if it does, that is where its verifier metadata (scheme versions, verify endpoint, JWKs) lives. Issuer-agnostic: World ID, ISO 18013-5 mDL, and W3C-VC issuers all reference by domain. The relying party is namespaced by the issuer — identity is the tuple (issuer.domain, issuer.brand_id, relying_party_id), mirroring (vendor.domain, vendor.brand_id, metric_id).')]
-    scheme: Annotated[str | None, Field(description='Proof scheme and version, e.g. "world_id_v4".')] = None
+    scheme: Annotated[str | None, Field(description='Proof scheme and version, e.g. "world_id_v4".'), OmittedNotNull] = None
     relying_party_id: Annotated[str, Field(description="The relying-party id registered with the issuer (and, for on-chain issuers like World ID, with the issuer's registry). One entity may operate many relying parties (scope=entity vs scope=property); this is the attestation's audience / linkability boundary, not an entity identifier.")]
-    scope: Annotated[Scope | None, Field(description="Whether this relying_party_id is shared across the entity's properties (entity → a within-entity unique-human graph) or scoped to a single property (property → per-property pseudonyms, unlinkable across the entity).")] = None
+    scope: Annotated[Scope | None, Field(description="Whether this relying_party_id is shared across the entity's properties (entity → a within-entity unique-human graph) or scoped to a single property (property → per-property pseudonyms, unlinkable across the entity)."), OmittedNotNull] = None
 
 
 class House(AdCPBaseModel):
@@ -249,11 +249,11 @@ class House(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/house')
     domain: Annotated[DomainName, Field(description="The house's domain where brand.json is hosted")]
     name: Annotated[StrMinLen1, Field(description='Primary display name of the house')]
-    names: Annotated[list[LocalizedName] | None, Field(description='Localized house names including legal name, stock symbol, etc.')] = None
-    architecture: Annotated[Architecture | None, Field(description='Brand architecture model: branded_house (Google), house_of_brands (P&G), hybrid (Nike)')] = None
-    agents: Annotated[Agents | None, Field(description='House-level agents that apply to all brands unless overridden at the brand level')] = None
-    data_subject_contestation: Annotated[DataSubjectContestation | None, Field(description='House-level fallback contestation contact. Governance agents resolve in order: brand.data_subject_contestation → house.data_subject_contestation → missing (critical finding when human review required).')] = None
-    identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description="Verified-identity relying parties this house/entity operates, so a buyer can verify that a forwarded TMP identity attestation's relying_party_id genuinely belongs to this entity (provenance) rather than being replayed under another owner. For network-as-RP, the network publishes its own relying_party_id here. See specs/tmp-verified-identity-attestation.md.")] = None
+    names: Annotated[list[LocalizedName] | None, Field(description='Localized house names including legal name, stock symbol, etc.'), OmittedNotNull] = None
+    architecture: Annotated[Architecture | None, Field(description='Brand architecture model: branded_house (Google), house_of_brands (P&G), hybrid (Nike)'), OmittedNotNull] = None
+    agents: Annotated[Agents | None, Field(description='House-level agents that apply to all brands unless overridden at the brand level'), OmittedNotNull] = None
+    data_subject_contestation: Annotated[DataSubjectContestation | None, Field(description='House-level fallback contestation contact. Governance agents resolve in order: brand.data_subject_contestation → house.data_subject_contestation → missing (critical finding when human review required).'), OmittedNotNull] = None
+    identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description="Verified-identity relying parties this house/entity operates, so a buyer can verify that a forwarded TMP identity attestation's relying_party_id genuinely belongs to this entity (provenance) rather than being replayed under another owner. For network-as-RP, the network publishes its own relying_party_id here. See specs/tmp-verified-identity-attestation.md."), OmittedNotNull] = None
 
 
 BrandId = Annotated[BrandDiscoveryAgentId, Field(description='Brand identifier within the house portfolio. Lowercase alphanumeric with underscores. House chooses this ID.')]
@@ -329,16 +329,16 @@ class Logo(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('slots'),
     )
-    id: Annotated[LogoId | None, Field(description='Stable identifier for this logo entry. Recommended when logo usage rules or mark lockups need to bind to a specific logo asset.')] = None
+    id: Annotated[LogoId | None, Field(description='Stable identifier for this logo entry. Recommended when logo usage rules or mark lockups need to bind to a specific logo asset.'), OmittedNotNull] = None
     url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
-    orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements')] = None
-    background: Annotated[Background | None, Field(description='Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background')] = None
-    variant: Annotated[LogoVariant | None, Field(description='Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo')] = None
-    tags: Annotated[list[str] | None, Field(description='Additional semantic tags for custom categorization beyond the standard orientation, background, and variant fields')] = None
-    slots: Annotated[list[LogoSlot] | None, Field(description='Canonical renderer slots where this logo is appropriate. Consumers SHOULD prefer this over inferring from tags or usage prose when selecting a logo for a specific UI surface.', json_schema_extra={'uniqueItems': True})] = None
-    usage: Annotated[str | None, Field(description="Human-readable description of when to use this logo variant (e.g., 'Primary logo for use on light backgrounds')")] = None
-    width: Annotated[int | None, Field(description='Width in pixels')] = None
-    height: Annotated[int | None, Field(description='Height in pixels')] = None
+    orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements'), OmittedNotNull] = None
+    background: Annotated[Background | None, Field(description='Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background'), OmittedNotNull] = None
+    variant: Annotated[LogoVariant | None, Field(description='Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo'), OmittedNotNull] = None
+    tags: Annotated[list[str] | None, Field(description='Additional semantic tags for custom categorization beyond the standard orientation, background, and variant fields'), OmittedNotNull] = None
+    slots: Annotated[list[LogoSlot] | None, Field(description='Canonical renderer slots where this logo is appropriate. Consumers SHOULD prefer this over inferring from tags or usage prose when selecting a logo for a specific UI surface.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    usage: Annotated[str | None, Field(description="Human-readable description of when to use this logo variant (e.g., 'Primary logo for use on light backgrounds')"), OmittedNotNull] = None
+    width: Annotated[int | None, Field(description='Width in pixels'), OmittedNotNull] = None
+    height: Annotated[int | None, Field(description='Height in pixels'), OmittedNotNull] = None
 
 
 ColorValue = BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue]
@@ -353,18 +353,18 @@ class Colors(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/colors')
     __pydantic_extra__: dict[str, ColorValue] = Field(init=False)
-    primary: ColorValue | None = None
-    secondary: ColorValue | None = None
-    accent: ColorValue | None = None
-    background: ColorValue | None = None
-    text: ColorValue | None = None
-    heading: ColorValue | None = None
-    body: ColorValue | None = None
-    label: ColorValue | None = None
-    border: ColorValue | None = None
-    divider: ColorValue | None = None
-    surface_1: ColorValue | None = None
-    surface_2: ColorValue | None = None
+    primary: Annotated[ColorValue | None, OmittedNotNull] = None
+    secondary: Annotated[ColorValue | None, OmittedNotNull] = None
+    accent: Annotated[ColorValue | None, OmittedNotNull] = None
+    background: Annotated[ColorValue | None, OmittedNotNull] = None
+    text: Annotated[ColorValue | None, OmittedNotNull] = None
+    heading: Annotated[ColorValue | None, OmittedNotNull] = None
+    body: Annotated[ColorValue | None, OmittedNotNull] = None
+    label: Annotated[ColorValue | None, OmittedNotNull] = None
+    border: Annotated[ColorValue | None, OmittedNotNull] = None
+    divider: Annotated[ColorValue | None, OmittedNotNull] = None
+    surface_1: Annotated[ColorValue | None, OmittedNotNull] = None
+    surface_2: Annotated[ColorValue | None, OmittedNotNull] = None
 
 
 class FontFileStyle(StrEnum):
@@ -388,9 +388,9 @@ class ObjUrlWeightWeightRangeStyle(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/font_file')
     url: Annotated[HTTPSURL, Field(description='HTTPS URL to the font file (WOFF2, TTF, or OTF)')]
-    weight: Annotated[IntMin100Max900 | None, Field(description='CSS numeric font-weight for static fonts (100-900)')] = None
-    weight_range: Annotated[list[IntMin100Max900] | None, Field(description='Variable font weight axis range as [min, max] (e.g., [100, 900]). Use instead of weight for variable fonts.', max_length=2, min_length=2)] = None
-    style: Annotated[FontFileStyle | None, Field(description='CSS font-style')] = None
+    weight: Annotated[IntMin100Max900 | None, Field(description='CSS numeric font-weight for static fonts (100-900)'), OmittedNotNull] = None
+    weight_range: Annotated[list[IntMin100Max900] | None, Field(description='Variable font weight axis range as [min, max] (e.g., [100, 900]). Use instead of weight for variable fonts.', max_length=2, min_length=2), OmittedNotNull] = None
+    style: Annotated[FontFileStyle | None, Field(description='CSS font-style'), OmittedNotNull] = None
 
 
 class BrandDiscoveryFontRoleFamily(AdCPBaseModel):
@@ -402,9 +402,9 @@ class BrandDiscoveryFontRoleFamily(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/font_role/oneOf/1')
     family: Annotated[str, Field(description="CSS font-family name (e.g., 'Brand Sans')")]
-    files: Annotated[list[ObjUrlWeightWeightRangeStyle] | None, Field(description='Font files for different weights and styles', max_length=36)] = None
-    opentype_features: Annotated[list[BrandDiscoveryFontRoleOpentypeFeaturesItem] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum', 'cv01']). These are four-character tags per the OpenType spec.", max_length=20)] = None
-    fallbacks: Annotated[list[StrMaxLen100] | None, Field(description="Ordered fallback font-family names for when the primary font is unavailable or does not support the required script (e.g., ['Noto Sans Arabic', 'Noto Sans SC', 'sans-serif'])", max_length=10)] = None
+    files: Annotated[list[ObjUrlWeightWeightRangeStyle] | None, Field(description='Font files for different weights and styles', max_length=36), OmittedNotNull] = None
+    opentype_features: Annotated[list[BrandDiscoveryFontRoleOpentypeFeaturesItem] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum', 'cv01']). These are four-character tags per the OpenType spec.", max_length=20), OmittedNotNull] = None
+    fallbacks: Annotated[list[StrMaxLen100] | None, Field(description="Ordered fallback font-family names for when the primary font is unavailable or does not support the required script (e.g., ['Noto Sans Arabic', 'Noto Sans SC', 'sans-serif'])", max_length=10), OmittedNotNull] = None
 
 
 BrandDiscoveryFontRole = Annotated[str | BrandDiscoveryFontRoleFamily, Field(description='A font role entry. Either a CSS font-family string (simple) or a structured object with family name and font files (rich).')]
@@ -422,8 +422,8 @@ class Fonts(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=20),
     )
-    primary: Annotated[BrandDiscoveryFontRole | None, Field(description='Primary font family')] = None
-    secondary: Annotated[BrandDiscoveryFontRole | None, Field(description='Secondary font family')] = None
+    primary: Annotated[BrandDiscoveryFontRole | None, Field(description='Primary font family'), OmittedNotNull] = None
+    secondary: Annotated[BrandDiscoveryFontRole | None, Field(description='Secondary font family'), OmittedNotNull] = None
 
 
 LocalizedScalar = Annotated[str | NonEmptyList[LocalizedName], Field(description="A legacy plain string or an ordered set of one-locale string maps. Producers MUST NOT repeat a locale after replacing '_' with '-' and applying the AdCP locale-tag canonicalization profile. Readers resolve the requested locale using the document default_language fallback contract and MUST NOT choose an arbitrary available translation.")]
@@ -440,10 +440,10 @@ class Tone(AdCPBaseModel):
     Structured brand voice guidelines
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/tone/oneOf/1')
-    voice: Annotated[LocalizedScalar | None, Field(description='High-level voice descriptor, either a legacy plain string or localized values.')] = None
-    attributes: Annotated[LocalizedStringList | None, Field(description='Personality traits that characterize the brand voice. Localized lists are selected as a whole.')] = None
-    dos: Annotated[LocalizedStringList | None, Field(description='Guidance for copy generation - what TO do. Localized lists are selected as a whole.')] = None
-    donts: Annotated[LocalizedStringList | None, Field(description='Guardrails to avoid brand violations - what NOT to do. Localized lists are selected as a whole.')] = None
+    voice: Annotated[LocalizedScalar | None, Field(description='High-level voice descriptor, either a legacy plain string or localized values.'), OmittedNotNull] = None
+    attributes: Annotated[LocalizedStringList | None, Field(description='Personality traits that characterize the brand voice. Localized lists are selected as a whole.'), OmittedNotNull] = None
+    dos: Annotated[LocalizedStringList | None, Field(description='Guidance for copy generation - what TO do. Localized lists are selected as a whole.'), OmittedNotNull] = None
+    donts: Annotated[LocalizedStringList | None, Field(description='Guardrails to avoid brand violations - what NOT to do. Localized lists are selected as a whole.'), OmittedNotNull] = None
 
 
 class Asset(AdCPBaseModel):
@@ -457,15 +457,15 @@ class Asset(AdCPBaseModel):
     asset_id: Annotated[str, Field(description='Unique identifier')]
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
     url: Annotated[HttpUrl, Field(description='URL to CDN-hosted asset file')]
-    tags: Annotated[list[str] | None, Field(description="Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')")] = None
-    name: Annotated[LocalizedScalar | None, Field(description='Human-readable name, either a legacy plain string or localized values.')] = None
-    description: Annotated[LocalizedScalar | None, Field(description='Asset description or usage notes, either a legacy plain string or localized values.')] = None
-    width: Annotated[int | None, Field(description='Image/video width in pixels')] = None
-    height: Annotated[int | None, Field(description='Image/video height in pixels')] = None
-    duration_seconds: Annotated[float | None, Field(description='Video/audio duration in seconds')] = None
-    file_size_bytes: Annotated[int | None, Field(description='File size in bytes')] = None
-    format: Annotated[str | None, Field(description="File format (e.g., 'jpg', 'mp4', 'mp3')")] = None
-    metadata: Annotated[dict[str, Any] | None, Field(description='Additional asset-specific metadata')] = None
+    tags: Annotated[list[str] | None, Field(description="Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')"), OmittedNotNull] = None
+    name: Annotated[LocalizedScalar | None, Field(description='Human-readable name, either a legacy plain string or localized values.'), OmittedNotNull] = None
+    description: Annotated[LocalizedScalar | None, Field(description='Asset description or usage notes, either a legacy plain string or localized values.'), OmittedNotNull] = None
+    width: Annotated[int | None, Field(description='Image/video width in pixels'), OmittedNotNull] = None
+    height: Annotated[int | None, Field(description='Image/video height in pixels'), OmittedNotNull] = None
+    duration_seconds: Annotated[float | None, Field(description='Video/audio duration in seconds'), OmittedNotNull] = None
+    file_size_bytes: Annotated[int | None, Field(description='File size in bytes'), OmittedNotNull] = None
+    format: Annotated[str | None, Field(description="File format (e.g., 'jpg', 'mp4', 'mp3')"), OmittedNotNull] = None
+    metadata: Annotated[dict[str, Any] | None, Field(description='Additional asset-specific metadata'), OmittedNotNull] = None
 
 
 class Store(StrEnum):
@@ -512,10 +512,10 @@ class BrandDiscoveryProperty(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/property')
     type: Annotated[PropertyType, Field(description='Property type')]
     identifier: Annotated[StrMinLen1, Field(description='Property identifier - domain for websites, bundle ID for apps')]
-    store: Annotated[Store | None, Field(description='App store for mobile/CTV apps')] = None
-    region: Annotated[PropertyRegion | None, Field(description="ISO 3166-1 alpha-2 country code or 'global'")] = None
-    primary: Annotated[bool | None, Field(description='Whether this is the primary property for the brand')] = False
-    relationship: Annotated[Relationship | None, Field(description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.", json_schema_extra={'default': 'owned'})] = Field(default_factory=lambda: TypeAdapter(Relationship).validate_python('owned'))
+    store: Annotated[Store | None, Field(description='App store for mobile/CTV apps'), OmittedNotNull] = None
+    region: Annotated[PropertyRegion | None, Field(description="ISO 3166-1 alpha-2 country code or 'global'"), OmittedNotNull] = None
+    primary: Annotated[bool | None, Field(description='Whether this is the primary property for the brand'), OmittedNotNull] = False
+    relationship: Annotated[Relationship | None, Field(description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.", json_schema_extra={'default': 'owned'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Relationship).validate_python('owned'))
 
 
 class AgenticCheckout(AdCPBaseModel):
@@ -525,7 +525,7 @@ class AgenticCheckout(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/product_catalog/properties/agentic_checkout')
     endpoint: Annotated[HttpUrl, Field(description='Base URL for checkout session API')]
     spec: Annotated[str, Field(description='Checkout API specification identifier. Use a namespaced string to identify the checkout protocol (e.g., vendor-prefixed or custom). Vendor-specific values belong under ext.{vendor}.')]
-    supported_payment_providers: Annotated[list[str] | None, Field(description='Payment providers supported by this checkout endpoint')] = None
+    supported_payment_providers: Annotated[list[str] | None, Field(description='Payment providers supported by this checkout endpoint'), OmittedNotNull] = None
 
 
 class ProductCatalog(AdCPBaseModel):
@@ -537,18 +537,18 @@ class ProductCatalog(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/product_catalog')
     feed_url: Annotated[HttpUrl, Field(description='URL to product catalog feed')]
-    feed_format: Annotated[FeedFormat | None, Field(description='Format of the product feed')] = None
-    categories: Annotated[list[str] | None, Field(description='Product categories available in the catalog')] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='When the product catalog was last updated')] = None
-    update_frequency: Annotated[UpdateFrequency | None, Field(description='How frequently the product catalog is updated')] = None
-    agentic_checkout: Annotated[AgenticCheckout | None, Field(description='Agentic checkout endpoint configuration')] = None
+    feed_format: Annotated[FeedFormat | None, Field(description='Format of the product feed'), OmittedNotNull] = None
+    categories: Annotated[list[str] | None, Field(description='Product categories available in the catalog'), OmittedNotNull] = None
+    last_updated: Annotated[AwareDatetime | None, Field(description='When the product catalog was last updated'), OmittedNotNull] = None
+    update_frequency: Annotated[UpdateFrequency | None, Field(description='How frequently the product catalog is updated'), OmittedNotNull] = None
+    agentic_checkout: Annotated[AgenticCheckout | None, Field(description='Agentic checkout endpoint configuration'), OmittedNotNull] = None
 
 
 class DisclaimersItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/disclaimers/items')
     text: str
-    context: str | None = None
-    required: bool | None = True
+    context: Annotated[str | None, OmittedNotNull] = None
+    required: Annotated[bool | None, OmittedNotNull] = True
 
 
 class Status(StrEnum):
@@ -590,11 +590,11 @@ class Trademark(AdCPBaseModel):
     registry: Annotated[str, Field(description="Trademark registry (e.g., 'USPTO', 'EUIPO', 'JPO', 'CNIPA')")]
     number: Annotated[str, Field(description='Registration number as issued by the registry')]
     mark: Annotated[str, Field(description='The registered mark as published')]
-    status: Annotated[Status | None, Field(description='Registration status. Omit for active marks if status tracking is not maintained.')] = None
-    license_type: Annotated[LicenseType | None, Field(description="Whether the publisher owns the mark, licenses it from another entity, or licenses it to others. 'owned' is the default if omitted.")] = None
-    licensor_domain: Annotated[DomainName | None, Field(description='Domain of the entity that licenses this mark to the publisher. Meaningful when license_type=licensed_in; omit otherwise.')] = None
-    countries: Annotated[list[StrMinLen2MaxLen2] | None, Field(description="ISO 3166-1 alpha-2 country codes where this registration applies. Omit for global or where the registry's jurisdiction is implicit.")] = None
-    nice_classes: Annotated[list[TrademarkNiceClassesItem] | None, Field(description='Nice Classification class numbers (1-45) covered by this registration. Disambiguates marks across industries (e.g., Delta-airline vs Delta-faucet). Omit if scope is implicit from registry.')] = None
+    status: Annotated[Status | None, Field(description='Registration status. Omit for active marks if status tracking is not maintained.'), OmittedNotNull] = None
+    license_type: Annotated[LicenseType | None, Field(description="Whether the publisher owns the mark, licenses it from another entity, or licenses it to others. 'owned' is the default if omitted."), OmittedNotNull] = None
+    licensor_domain: Annotated[DomainName | None, Field(description='Domain of the entity that licenses this mark to the publisher. Meaningful when license_type=licensed_in; omit otherwise.'), OmittedNotNull] = None
+    countries: Annotated[list[StrMinLen2MaxLen2] | None, Field(description="ISO 3166-1 alpha-2 country codes where this registration applies. Omit for global or where the registry's jurisdiction is implicit."), OmittedNotNull] = None
+    nice_classes: Annotated[list[TrademarkNiceClassesItem] | None, Field(description='Nice Classification class numbers (1-45) covered by this registration. Disambiguates marks across industries (e.g., Delta-airline vs Delta-faucet). Omit if scope is implicit from registry.'), OmittedNotNull] = None
 
 
 class VoiceSynthesis(AdCPBaseModel):
@@ -605,9 +605,9 @@ class VoiceSynthesis(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/voice_synthesis')
-    provider: str | None = None
-    voice_id: str | None = None
-    settings: dict[str, Any] | None = None
+    provider: Annotated[str | None, OmittedNotNull] = None
+    voice_id: Annotated[str | None, OmittedNotNull] = None
+    settings: Annotated[dict[str, Any] | None, OmittedNotNull] = None
 
 
 class Avatar(AdCPBaseModel):
@@ -618,9 +618,9 @@ class Avatar(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/avatar')
-    provider: str | None = None
-    avatar_id: str | None = None
-    settings: dict[str, Any] | None = None
+    provider: Annotated[str | None, OmittedNotNull] = None
+    avatar_id: Annotated[str | None, OmittedNotNull] = None
+    settings: Annotated[dict[str, Any] | None, OmittedNotNull] = None
 
 
 class Realism(StrEnum):
@@ -688,9 +688,9 @@ class People(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/photography_style/properties/subject/properties/people')
-    age_range: Annotated[str | None, Field(description="Target age range (e.g., '20-35')")] = None
-    diversity: Annotated[str | None, Field(description="Diversity representation (e.g., 'mixed', 'varied')")] = None
-    mood: Annotated[list[str] | None, Field(description="Mood descriptors (e.g., ['confident', 'relaxed'])")] = None
+    age_range: Annotated[str | None, Field(description="Target age range (e.g., '20-35')"), OmittedNotNull] = None
+    diversity: Annotated[str | None, Field(description="Diversity representation (e.g., 'mixed', 'varied')"), OmittedNotNull] = None
+    mood: Annotated[list[str] | None, Field(description="Mood descriptors (e.g., ['confident', 'relaxed'])"), OmittedNotNull] = None
 
 
 class ProductFocus(StrEnum):
@@ -715,9 +715,9 @@ class Subject(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/photography_style/properties/subject')
-    people: Annotated[People | None, Field(description='People photography guidelines')] = None
-    product_focus: Annotated[ProductFocus | None, Field(description='How products are shown')] = None
-    setting: Annotated[str | None, Field(description="Environmental context for photography (e.g., 'indoor', 'outdoor', 'studio', 'urban', 'nature', 'workplace')")] = None
+    people: Annotated[People | None, Field(description='People photography guidelines'), OmittedNotNull] = None
+    product_focus: Annotated[ProductFocus | None, Field(description='How products are shown'), OmittedNotNull] = None
+    setting: Annotated[str | None, Field(description="Environmental context for photography (e.g., 'indoor', 'outdoor', 'studio', 'urban', 'nature', 'workplace')"), OmittedNotNull] = None
 
 
 class Framing(AdCPBaseModel):
@@ -728,9 +728,9 @@ class Framing(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/photography_style/properties/framing')
-    subject_position: Annotated[str | None, Field(description="Where the subject sits in frame (e.g., 'center', 'center-left', 'rule-of-thirds')")] = None
-    crop_style: Annotated[str | None, Field(description="Cropping convention (e.g., 'waist-up', 'full-body', 'close-up', 'wide')")] = None
-    perspective: Annotated[str | None, Field(description="Camera perspective (e.g., 'eye-level', 'overhead', 'low-angle')")] = None
+    subject_position: Annotated[str | None, Field(description="Where the subject sits in frame (e.g., 'center', 'center-left', 'rule-of-thirds')"), OmittedNotNull] = None
+    crop_style: Annotated[str | None, Field(description="Cropping convention (e.g., 'waist-up', 'full-body', 'close-up', 'wide')"), OmittedNotNull] = None
+    perspective: Annotated[str | None, Field(description="Camera perspective (e.g., 'eye-level', 'overhead', 'low-angle')"), OmittedNotNull] = None
 
 
 class PhotographyStyle(AdCPBaseModel):
@@ -741,15 +741,15 @@ class PhotographyStyle(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/photography_style')
-    realism: Annotated[Realism | None, Field(description='Level of photographic realism')] = None
-    lighting: Annotated[str | None, Field(description="Lighting style (e.g., 'soft daylight', 'studio', 'golden hour', 'high-key', 'low-key')")] = None
-    color_temperature: Annotated[ColorTemperature | None, Field(description='Overall color temperature of photography')] = None
-    contrast: Annotated[Contrast | None, Field(description='Contrast level in photography')] = None
-    depth_of_field: Annotated[DepthOfField | None, Field(description='Depth of field preference. shallow: blurred background with subject isolation, deep: everything in focus')] = None
-    subject: Annotated[Subject | None, Field(description='Subject matter guidelines')] = None
-    framing: Annotated[Framing | None, Field(description='Camera framing rules')] = None
-    preferred_aspect_ratios: Annotated[list[BrandDiscoveryPhotographyStylePreferredAspectRatiosItem] | None, Field(description="Preferred aspect ratios for brand photography (e.g., '16:9', '4:5', '1:1')")] = None
-    tags: Annotated[list[str] | None, Field(description='Additional style descriptors')] = None
+    realism: Annotated[Realism | None, Field(description='Level of photographic realism'), OmittedNotNull] = None
+    lighting: Annotated[str | None, Field(description="Lighting style (e.g., 'soft daylight', 'studio', 'golden hour', 'high-key', 'low-key')"), OmittedNotNull] = None
+    color_temperature: Annotated[ColorTemperature | None, Field(description='Overall color temperature of photography'), OmittedNotNull] = None
+    contrast: Annotated[Contrast | None, Field(description='Contrast level in photography'), OmittedNotNull] = None
+    depth_of_field: Annotated[DepthOfField | None, Field(description='Depth of field preference. shallow: blurred background with subject isolation, deep: everything in focus'), OmittedNotNull] = None
+    subject: Annotated[Subject | None, Field(description='Subject matter guidelines'), OmittedNotNull] = None
+    framing: Annotated[Framing | None, Field(description='Camera framing rules'), OmittedNotNull] = None
+    preferred_aspect_ratios: Annotated[list[BrandDiscoveryPhotographyStylePreferredAspectRatiosItem] | None, Field(description="Preferred aspect ratios for brand photography (e.g., '16:9', '4:5', '1:1')"), OmittedNotNull] = None
+    tags: Annotated[list[str] | None, Field(description='Additional style descriptors'), OmittedNotNull] = None
 
 
 class StyleType(StrEnum):
@@ -798,11 +798,11 @@ class GraphicStyle(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/graphic_style')
-    style_type: Annotated[StyleType | None, Field(description='Primary graphic style')] = None
-    stroke_style: Annotated[StrokeStyle | None, Field(description='Stroke end/join style')] = None
-    stroke_weight: Annotated[str | None, Field(description="Stroke weight (e.g., '2px', 'thin', 'bold')")] = None
-    corner_radius: Annotated[str | None, Field(description="Default corner radius for graphic and illustration elements (e.g., '12px', '8px', 'sharp'). For UI component radii (buttons, cards, inputs), see visual_guidelines.border_radius.")] = None
-    tags: Annotated[list[str] | None, Field(description='Additional style descriptors')] = None
+    style_type: Annotated[StyleType | None, Field(description='Primary graphic style'), OmittedNotNull] = None
+    stroke_style: Annotated[StrokeStyle | None, Field(description='Stroke end/join style'), OmittedNotNull] = None
+    stroke_weight: Annotated[str | None, Field(description="Stroke weight (e.g., '2px', 'thin', 'bold')"), OmittedNotNull] = None
+    corner_radius: Annotated[str | None, Field(description="Default corner radius for graphic and illustration elements (e.g., '12px', '8px', 'sharp'). For UI component radii (buttons, cards, inputs), see visual_guidelines.border_radius."), OmittedNotNull] = None
+    tags: Annotated[list[str] | None, Field(description='Additional style descriptors'), OmittedNotNull] = None
 
 
 class BrandShapesUsage(AdCPBaseModel):
@@ -813,8 +813,8 @@ class BrandShapesUsage(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand_shapes/properties/usage')
-    max_per_layout: Annotated[int | None, Field(description='Maximum distinct shapes per layout')] = None
-    overlap_allowed: Annotated[bool | None, Field(description='Whether shapes may overlap')] = None
+    max_per_layout: Annotated[int | None, Field(description='Maximum distinct shapes per layout'), OmittedNotNull] = None
+    overlap_allowed: Annotated[bool | None, Field(description='Whether shapes may overlap'), OmittedNotNull] = None
 
 
 class BrandShapes(AdCPBaseModel):
@@ -825,9 +825,9 @@ class BrandShapes(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand_shapes')
-    primary_shape: Annotated[str | None, Field(description="Primary brand shape (e.g., 'rounded_rectangle', 'circle', 'hexagon')")] = None
-    secondary_shapes: Annotated[list[str] | None, Field(description='Secondary shapes in the brand vocabulary')] = None
-    usage: Annotated[BrandShapesUsage | None, Field(description='Shape usage rules')] = None
+    primary_shape: Annotated[str | None, Field(description="Primary brand shape (e.g., 'rounded_rectangle', 'circle', 'hexagon')"), OmittedNotNull] = None
+    secondary_shapes: Annotated[list[str] | None, Field(description='Secondary shapes in the brand vocabulary'), OmittedNotNull] = None
+    usage: Annotated[BrandShapesUsage | None, Field(description='Shape usage rules'), OmittedNotNull] = None
 
 
 class IconographyStyle(StrEnum):
@@ -868,8 +868,8 @@ class IconographyUsage(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/iconography/properties/usage')
-    max_per_frame: Annotated[int | None, Field(description='Maximum icons per creative frame')] = None
-    size_ratio: Annotated[str | None, Field(description="Icon-to-layout size ratio (e.g., '1:8')")] = None
+    max_per_frame: Annotated[int | None, Field(description='Maximum icons per creative frame'), OmittedNotNull] = None
+    size_ratio: Annotated[str | None, Field(description="Icon-to-layout size ratio (e.g., '1:8')"), OmittedNotNull] = None
 
 
 class Iconography(AdCPBaseModel):
@@ -880,10 +880,10 @@ class Iconography(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/iconography')
-    style: Annotated[IconographyStyle | None, Field(description='Icon rendering style')] = None
-    stroke_weight: Annotated[str | None, Field(description="Icon stroke weight (e.g., '2px', '1.5px')")] = None
-    corner_style: Annotated[CornerStyle | None, Field(description='Corner style for icon paths')] = None
-    usage: Annotated[IconographyUsage | None, Field(description='Icon usage rules')] = None
+    style: Annotated[IconographyStyle | None, Field(description='Icon rendering style'), OmittedNotNull] = None
+    stroke_weight: Annotated[str | None, Field(description="Icon stroke weight (e.g., '2px', '1.5px')"), OmittedNotNull] = None
+    corner_style: Annotated[CornerStyle | None, Field(description='Corner style for icon paths'), OmittedNotNull] = None
+    usage: Annotated[IconographyUsage | None, Field(description='Icon usage rules'), OmittedNotNull] = None
 
 
 class GradientStyle(StrEnum):
@@ -908,9 +908,9 @@ class Overlays(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/composition_rules/properties/overlays')
-    gradient_style: Annotated[GradientStyle | None, Field(description='Gradient type for overlays')] = None
-    gradient_direction: Annotated[str | None, Field(description="Gradient direction (e.g., '45deg', 'to-bottom-right')")] = None
-    opacity: Annotated[str | None, Field(description="Overlay opacity (e.g., '70%')")] = None
+    gradient_style: Annotated[GradientStyle | None, Field(description='Gradient type for overlays'), OmittedNotNull] = None
+    gradient_direction: Annotated[str | None, Field(description="Gradient direction (e.g., '45deg', 'to-bottom-right')"), OmittedNotNull] = None
+    opacity: Annotated[str | None, Field(description="Overlay opacity (e.g., '70%')"), OmittedNotNull] = None
 
 
 class TextureStyle(StrEnum):
@@ -951,8 +951,8 @@ class Texture(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/composition_rules/properties/texture')
-    style: Annotated[TextureStyle | None, Field(description='Texture style applied to creative assets')] = None
-    intensity: Annotated[Intensity | None, Field(description='Texture intensity')] = None
+    style: Annotated[TextureStyle | None, Field(description='Texture style applied to creative assets'), OmittedNotNull] = None
+    intensity: Annotated[Intensity | None, Field(description='Texture intensity'), OmittedNotNull] = None
 
 
 class TypesAllowedItem(StrEnum):
@@ -980,7 +980,7 @@ class Backgrounds(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/composition_rules/properties/backgrounds')
-    types_allowed: Annotated[list[TypesAllowedItem] | None, Field(description='Permitted background types')] = None
+    types_allowed: Annotated[list[TypesAllowedItem] | None, Field(description='Permitted background types'), OmittedNotNull] = None
 
 
 class CompositionRules(AdCPBaseModel):
@@ -991,9 +991,9 @@ class CompositionRules(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/composition_rules')
-    overlays: Annotated[Overlays | None, Field(description='Graphic overlay rules')] = None
-    texture: Annotated[Texture | None, Field(description='Texture treatment rules')] = None
-    backgrounds: Annotated[Backgrounds | None, Field(description='Background treatment rules')] = None
+    overlays: Annotated[Overlays | None, Field(description='Graphic overlay rules'), OmittedNotNull] = None
+    texture: Annotated[Texture | None, Field(description='Texture treatment rules'), OmittedNotNull] = None
+    backgrounds: Annotated[Backgrounds | None, Field(description='Background treatment rules'), OmittedNotNull] = None
 
 
 class BorderRadius(AdCPBaseModel):
@@ -1005,11 +1005,11 @@ class BorderRadius(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/border_radius')
     __pydantic_extra__: dict[str, str] = Field(init=False)
-    none: Annotated[str | None, Field(description="Explicitly sharp corners (e.g., '0')")] = None
-    default: Annotated[str | None, Field(description="Default border radius for UI components (e.g., '8px', '12px', '0'). For graphic/illustration elements, see graphic_style.corner_radius.")] = None
-    small: Annotated[str | None, Field(description="Small border radius for compact elements (e.g., '4px')")] = None
-    large: Annotated[str | None, Field(description="Large border radius for cards and containers (e.g., '16px', '24px')")] = None
-    pill: Annotated[str | None, Field(description="Fully rounded / pill shape (e.g., '999px')")] = None
+    none: Annotated[str | None, Field(description="Explicitly sharp corners (e.g., '0')"), OmittedNotNull] = None
+    default: Annotated[str | None, Field(description="Default border radius for UI components (e.g., '8px', '12px', '0'). For graphic/illustration elements, see graphic_style.corner_radius."), OmittedNotNull] = None
+    small: Annotated[str | None, Field(description="Small border radius for compact elements (e.g., '4px')"), OmittedNotNull] = None
+    large: Annotated[str | None, Field(description="Large border radius for cards and containers (e.g., '16px', '24px')"), OmittedNotNull] = None
+    pill: Annotated[str | None, Field(description="Fully rounded / pill shape (e.g., '999px')"), OmittedNotNull] = None
 
 
 class Elevation(AdCPBaseModel):
@@ -1021,10 +1021,10 @@ class Elevation(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/elevation')
     __pydantic_extra__: dict[str, str] = Field(init=False)
-    none: Annotated[str | None, Field(description="No shadow (e.g., 'none')")] = None
-    subtle: Annotated[str | None, Field(description="Subtle shadow for slight lift (e.g., '0 1px 2px rgba(0,0,0,0.05)')")] = None
-    card: Annotated[str | None, Field(description="Card-level shadow (e.g., '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)')")] = None
-    modal: Annotated[str | None, Field(description="Modal/overlay shadow (e.g., '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)')")] = None
+    none: Annotated[str | None, Field(description="No shadow (e.g., 'none')"), OmittedNotNull] = None
+    subtle: Annotated[str | None, Field(description="Subtle shadow for slight lift (e.g., '0 1px 2px rgba(0,0,0,0.05)')"), OmittedNotNull] = None
+    card: Annotated[str | None, Field(description="Card-level shadow (e.g., '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)')"), OmittedNotNull] = None
+    modal: Annotated[str | None, Field(description="Modal/overlay shadow (e.g., '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)')"), OmittedNotNull] = None
 
 
 class Scale(AdCPBaseModel):
@@ -1036,12 +1036,12 @@ class Scale(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/spacing/properties/scale')
     __pydantic_extra__: dict[str, str] = Field(init=False)
-    xs: Annotated[str | None, Field(description="Extra small spacing (e.g., '4px')")] = None
-    sm: Annotated[str | None, Field(description="Small spacing (e.g., '8px')")] = None
-    md: Annotated[str | None, Field(description="Medium spacing (e.g., '16px')")] = None
-    lg: Annotated[str | None, Field(description="Large spacing (e.g., '24px')")] = None
-    xl: Annotated[str | None, Field(description="Extra large spacing (e.g., '32px')")] = None
-    f_2xl: Annotated[str | None, Field(alias='2xl', description="Section-level spacing (e.g., '48px', '64px')")] = None
+    xs: Annotated[str | None, Field(description="Extra small spacing (e.g., '4px')"), OmittedNotNull] = None
+    sm: Annotated[str | None, Field(description="Small spacing (e.g., '8px')"), OmittedNotNull] = None
+    md: Annotated[str | None, Field(description="Medium spacing (e.g., '16px')"), OmittedNotNull] = None
+    lg: Annotated[str | None, Field(description="Large spacing (e.g., '24px')"), OmittedNotNull] = None
+    xl: Annotated[str | None, Field(description="Extra large spacing (e.g., '32px')"), OmittedNotNull] = None
+    f_2xl: Annotated[str | None, Field(alias='2xl', description="Section-level spacing (e.g., '48px', '64px')"), OmittedNotNull] = None
 
 
 class Spacing(AdCPBaseModel):
@@ -1052,8 +1052,8 @@ class Spacing(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/spacing')
-    unit: Annotated[str | None, Field(description="Base grid unit this scale was designed from (e.g., '8px', '4px'). Informational — agents should use the named scale values, not compute from this.")] = None
-    scale: Annotated[Scale | None, Field(description='Named spacing scale built from the base unit')] = None
+    unit: Annotated[str | None, Field(description="Base grid unit this scale was designed from (e.g., '8px', '4px'). Informational — agents should use the named scale values, not compute from this."), OmittedNotNull] = None
+    scale: Annotated[Scale | None, Field(description='Named spacing scale built from the base unit'), OmittedNotNull] = None
 
 
 class GraphicElementType(StrEnum):
@@ -1100,11 +1100,11 @@ class GraphicElement(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/graphic_element')
     name: Annotated[str, Field(description="Element name (e.g., 'Paper Tear', 'Brand Watermark', 'Section Divider')")]
-    type: Annotated[GraphicElementType | None, Field(description='Element type')] = None
-    description: Annotated[str | None, Field(description='How the element is used in layouts')] = None
-    orientation: Annotated[Orientation | None, Field(description='Preferred orientation when used in layouts')] = None
-    colors: Annotated[list[HexColor] | None, Field(description='Colors this element may appear in')] = None
-    max_per_layout: Annotated[int | None, Field(description='Maximum instances per layout')] = None
+    type: Annotated[GraphicElementType | None, Field(description='Element type'), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='How the element is used in layouts'), OmittedNotNull] = None
+    orientation: Annotated[Orientation | None, Field(description='Preferred orientation when used in layouts'), OmittedNotNull] = None
+    colors: Annotated[list[HexColor] | None, Field(description='Colors this element may appear in'), OmittedNotNull] = None
+    max_per_layout: Annotated[int | None, Field(description='Maximum instances per layout'), OmittedNotNull] = None
 
 
 class TransitionStyle(StrEnum):
@@ -1175,13 +1175,13 @@ class MotionGuidelines(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/motion_guidelines')
-    transition_style: Annotated[TransitionStyle | None, Field(description='Primary transition style between scenes')] = None
-    animation_speed: Annotated[AnimationSpeed | None, Field(description='Overall animation pacing')] = None
-    easing: Annotated[str | None, Field(description="Default easing function (e.g., 'ease-in-out', 'spring', 'linear')")] = None
-    text_entrance: Annotated[TextEntrance | None, Field(description='How text enters the frame')] = None
-    pacing: Annotated[MotionGuidelinesPacing | None, Field(description='Overall editing rhythm')] = None
-    kinetic_typography: Annotated[bool | None, Field(description='Whether animated/kinetic typography is allowed')] = None
-    tags: Annotated[list[str] | None, Field(description='Additional motion style descriptors')] = None
+    transition_style: Annotated[TransitionStyle | None, Field(description='Primary transition style between scenes'), OmittedNotNull] = None
+    animation_speed: Annotated[AnimationSpeed | None, Field(description='Overall animation pacing'), OmittedNotNull] = None
+    easing: Annotated[str | None, Field(description="Default easing function (e.g., 'ease-in-out', 'spring', 'linear')"), OmittedNotNull] = None
+    text_entrance: Annotated[TextEntrance | None, Field(description='How text enters the frame'), OmittedNotNull] = None
+    pacing: Annotated[MotionGuidelinesPacing | None, Field(description='Overall editing rhythm'), OmittedNotNull] = None
+    kinetic_typography: Annotated[bool | None, Field(description='Whether animated/kinetic typography is allowed'), OmittedNotNull] = None
+    tags: Annotated[list[str] | None, Field(description='Additional motion style descriptors'), OmittedNotNull] = None
 
 
 class PreferredPosition(StrEnum):
@@ -1223,10 +1223,10 @@ class LogoPlacement(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/logo_placement')
-    preferred_position: Annotated[PreferredPosition | None, Field(description='Preferred logo position in layouts')] = None
-    min_clear_space: Annotated[str | None, Field(description="Minimum clear space around the logo, expressed as a multiple of logo height (e.g., '0.5x', '1x') or fixed value (e.g., '16px')")] = None
-    min_height: Annotated[str | None, Field(description="Minimum logo height to maintain legibility (e.g., '40px', '24px')")] = None
-    background_contrast: Annotated[BackgroundContrast | None, Field(description='Permitted background contrast behind logo')] = None
+    preferred_position: Annotated[PreferredPosition | None, Field(description='Preferred logo position in layouts'), OmittedNotNull] = None
+    min_clear_space: Annotated[str | None, Field(description="Minimum clear space around the logo, expressed as a multiple of logo height (e.g., '0.5x', '1x') or fixed value (e.g., '16px')"), OmittedNotNull] = None
+    min_height: Annotated[str | None, Field(description="Minimum logo height to maintain legibility (e.g., '40px', '24px')"), OmittedNotNull] = None
+    background_contrast: Annotated[BackgroundContrast | None, Field(description='Permitted background contrast behind logo'), OmittedNotNull] = None
 
 
 class Colorway(AdCPBaseModel):
@@ -1240,11 +1240,11 @@ class Colorway(AdCPBaseModel):
     name: Annotated[str, Field(description="Colorway name (e.g., 'primary', 'inverted', 'subtle')")]
     foreground: HexColor
     background: HexColor
-    accent: HexColor | None = None
-    border: HexColor | None = None
-    cta_foreground: Annotated[HexColor | None, Field(description='CTA text/icon color, if different from foreground')] = None
-    cta_background: Annotated[HexColor | None, Field(description='CTA button/container color, if different from accent')] = None
-    channels: Annotated[list[str] | None, Field(description="Channels or contexts where this colorway applies (e.g., 'online', 'print', 'pos', 'social', 'outdoor'). Omit for universal colorways.")] = None
+    accent: Annotated[HexColor | None, OmittedNotNull] = None
+    border: Annotated[HexColor | None, OmittedNotNull] = None
+    cta_foreground: Annotated[HexColor | None, Field(description='CTA text/icon color, if different from foreground'), OmittedNotNull] = None
+    cta_background: Annotated[HexColor | None, Field(description='CTA button/container color, if different from accent'), OmittedNotNull] = None
+    channels: Annotated[list[str] | None, Field(description="Channels or contexts where this colorway applies (e.g., 'online', 'print', 'pos', 'social', 'outdoor'). Omit for universal colorways."), OmittedNotNull] = None
 
 
 class Kind(StrEnum):
@@ -1308,10 +1308,10 @@ class ColorRef(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    kind: Annotated[Kind | None, Field(description='Discriminator for the color reference variant.')] = None
-    name: Annotated[str | None, Field(description='Key from the colors object, such as market_yellow, river_green, or any custom palette key. Unambiguous lookup into colors{}.')] = None
-    value: Annotated[HexColor | None, Field(description='Literal hex color when no palette key exists.')] = None
-    surface: Annotated[Surface | None, Field(description='Usage surface rather than a specific color value.')] = None
+    kind: Annotated[Kind | None, Field(description='Discriminator for the color reference variant.'), OmittedNotNull] = None
+    name: Annotated[str | None, Field(description='Key from the colors object, such as market_yellow, river_green, or any custom palette key. Unambiguous lookup into colors{}.'), OmittedNotNull] = None
+    value: Annotated[HexColor | None, Field(description='Literal hex color when no palette key exists.'), OmittedNotNull] = None
+    surface: Annotated[Surface | None, Field(description='Usage surface rather than a specific color value.'), OmittedNotNull] = None
 
 
 class ColorRefName(ColorRef):
@@ -1385,13 +1385,13 @@ class ColorConstraint(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_constraint')
     color: Annotated[ColorRef, Field(description='Color role or value this constraint governs.')]
-    applies_to: Annotated[list[AppliesToItem] | None, Field(description='Surfaces where this color may be used.')] = None
-    allowed_on: Annotated[list[ColorRef] | None, Field(description='Backgrounds, surfaces, or color roles where this color is allowed.')] = None
-    forbidden_on: Annotated[list[ColorRef] | None, Field(description='Backgrounds, surfaces, or color roles where this color is forbidden.')] = None
-    never_pair_with: Annotated[list[ColorRef] | None, Field(description='Color roles or values that must not be paired with this color.')] = None
-    contexts: Annotated[list[str] | None, Field(description='Channels or creative contexts where this constraint applies, such as digital, print, social, or ctv_end_card.')] = None
-    severity: GuidelineSeverity | None = None
-    description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the rule.')] = None
+    applies_to: Annotated[list[AppliesToItem] | None, Field(description='Surfaces where this color may be used.'), OmittedNotNull] = None
+    allowed_on: Annotated[list[ColorRef] | None, Field(description='Backgrounds, surfaces, or color roles where this color is allowed.'), OmittedNotNull] = None
+    forbidden_on: Annotated[list[ColorRef] | None, Field(description='Backgrounds, surfaces, or color roles where this color is forbidden.'), OmittedNotNull] = None
+    never_pair_with: Annotated[list[ColorRef] | None, Field(description='Color roles or values that must not be paired with this color.'), OmittedNotNull] = None
+    contexts: Annotated[list[str] | None, Field(description='Channels or creative contexts where this constraint applies, such as digital, print, social, or ctv_end_card.'), OmittedNotNull] = None
+    severity: Annotated[GuidelineSeverity | None, OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the rule.'), OmittedNotNull] = None
 
 
 class MinimumSize(AdCPBaseModel):
@@ -1402,8 +1402,8 @@ class MinimumSize(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/logo_usage_rule/properties/minimum_size')
-    width: Annotated[str | None, Field(description='Minimum width, such as 48px or 12mm.')] = None
-    height: Annotated[str | None, Field(description='Minimum height, such as 18px or 6mm.')] = None
+    width: Annotated[str | None, Field(description='Minimum width, such as 48px or 12mm.'), OmittedNotNull] = None
+    height: Annotated[str | None, Field(description='Minimum height, such as 18px or 6mm.'), OmittedNotNull] = None
 
 
 class LogoUsageRule(AdCPBaseModel):
@@ -1418,19 +1418,19 @@ class LogoUsageRule(AdCPBaseModel):
         RequiredGroups((('logo_id',), ('logo_url',), ('logo_variant',), ('logo_tags',), ('slots',)), 'anyOf'),
         UniqueItems('slots'),
     )
-    logo_url: Annotated[HttpUrl | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.')] = None
-    logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` this rule applies to. Prefer this over logo_url when the rule targets a specific logo entry.')] = None
-    logo_variant: Annotated[LogoVariant | None, Field(description='Logo variant this rule applies to.')] = None
-    logo_tags: Annotated[list[str] | None, Field(description='Logo tags this rule applies to.', min_length=1)] = None
-    contexts: Annotated[list[str] | None, Field(description='Creative contexts where this rule applies.')] = None
-    slots: Annotated[list[LogoSlot] | None, Field(description='Canonical renderer slots where this rule applies. Use this for deterministic logo-card, profile-mark, end-card, and lockup selection.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    minimum_size: Annotated[MinimumSize | None, Field(description='Minimum rendered size needed for legibility.')] = None
-    clear_space: Annotated[str | None, Field(description='Minimum clear space around the logo, expressed in brand terms or units.')] = None
-    allowed_backgrounds: Annotated[list[ColorRef] | None, Field(description='Background color roles, values, or surfaces where this logo may be placed.')] = None
-    forbidden_backgrounds: Annotated[list[ColorRef] | None, Field(description='Background color roles, values, or surfaces where this logo must not be placed.')] = None
-    forbidden_contexts: Annotated[list[str] | None, Field(description='Contexts where this logo must not be used, such as photography_without_knockout.')] = None
-    severity: GuidelineSeverity | None = None
-    description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the rule.')] = None
+    logo_url: Annotated[HttpUrl | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.'), OmittedNotNull] = None
+    logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` this rule applies to. Prefer this over logo_url when the rule targets a specific logo entry.'), OmittedNotNull] = None
+    logo_variant: Annotated[LogoVariant | None, Field(description='Logo variant this rule applies to.'), OmittedNotNull] = None
+    logo_tags: Annotated[list[str] | None, Field(description='Logo tags this rule applies to.', min_length=1), OmittedNotNull] = None
+    contexts: Annotated[list[str] | None, Field(description='Creative contexts where this rule applies.'), OmittedNotNull] = None
+    slots: Annotated[list[LogoSlot] | None, Field(description='Canonical renderer slots where this rule applies. Use this for deterministic logo-card, profile-mark, end-card, and lockup selection.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    minimum_size: Annotated[MinimumSize | None, Field(description='Minimum rendered size needed for legibility.'), OmittedNotNull] = None
+    clear_space: Annotated[str | None, Field(description='Minimum clear space around the logo, expressed in brand terms or units.'), OmittedNotNull] = None
+    allowed_backgrounds: Annotated[list[ColorRef] | None, Field(description='Background color roles, values, or surfaces where this logo may be placed.'), OmittedNotNull] = None
+    forbidden_backgrounds: Annotated[list[ColorRef] | None, Field(description='Background color roles, values, or surfaces where this logo must not be placed.'), OmittedNotNull] = None
+    forbidden_contexts: Annotated[list[str] | None, Field(description='Contexts where this logo must not be used, such as photography_without_knockout.'), OmittedNotNull] = None
+    severity: Annotated[GuidelineSeverity | None, OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the rule.'), OmittedNotNull] = None
 
 
 class LockupType(StrEnum):
@@ -1490,8 +1490,8 @@ class Separator(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/mark_lockup/properties/separator')
     type: Annotated[SeparatorType, Field(description='Separator style.')]
-    color: ColorRef | None = None
-    width: Annotated[str | None, Field(description='Separator width, such as 1px.')] = None
+    color: Annotated[ColorRef | None, OmittedNotNull] = None
+    width: Annotated[str | None, Field(description='Separator width, such as 1px.'), OmittedNotNull] = None
 
 
 class MarkLockup(AdCPBaseModel):
@@ -1506,16 +1506,16 @@ class MarkLockup(AdCPBaseModel):
         UniqueItems('secondary_logo_ids'),
     )
     lockup_type: Annotated[LockupType, Field(description='Type of mark relationship governed by this lockup rule.')]
-    ordering: Annotated[Ordering | None, Field(description='Required visual ordering of the brand mark relative to partner or secondary marks.')] = None
-    contexts: Annotated[list[str] | None, Field(description='Creative contexts where this lockup rule applies.')] = None
-    brand_logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` for the brand logo this lockup rule is anchored on.')] = None
-    secondary_logo_ids: Annotated[list[LogoId] | None, Field(description='Stable `logos[].id` values for secondary, program, sponsor, or partner marks governed by this lockup rule when those marks are represented in this brand.json.', json_schema_extra={'uniqueItems': True})] = None
-    separator: Annotated[Separator | None, Field(description='Separator between marks, when required.')] = None
-    min_gap: Annotated[str | None, Field(description='Minimum gap between marks, expressed in brand terms or units.')] = None
-    brand_min_optical_weight_ratio: Annotated[FloatGt0 | None, Field(description='Minimum optical weight of the brand mark relative to partner marks. 1 means at least equal.')] = None
-    partner_max_optical_weight_ratio: Annotated[FloatGt0 | None, Field(description='Maximum optical weight of partner marks relative to the brand mark. 1 means no larger than the brand mark. Enforcement is at layout time, not parse time — this value signals to renderers and creative agents how much space to provision for each mark.')] = None
-    severity: GuidelineSeverity | None = None
-    description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the lockup rule.')] = None
+    ordering: Annotated[Ordering | None, Field(description='Required visual ordering of the brand mark relative to partner or secondary marks.'), OmittedNotNull] = None
+    contexts: Annotated[list[str] | None, Field(description='Creative contexts where this lockup rule applies.'), OmittedNotNull] = None
+    brand_logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` for the brand logo this lockup rule is anchored on.'), OmittedNotNull] = None
+    secondary_logo_ids: Annotated[list[LogoId] | None, Field(description='Stable `logos[].id` values for secondary, program, sponsor, or partner marks governed by this lockup rule when those marks are represented in this brand.json.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
+    separator: Annotated[Separator | None, Field(description='Separator between marks, when required.'), OmittedNotNull] = None
+    min_gap: Annotated[str | None, Field(description='Minimum gap between marks, expressed in brand terms or units.'), OmittedNotNull] = None
+    brand_min_optical_weight_ratio: Annotated[FloatGt0 | None, Field(description='Minimum optical weight of the brand mark relative to partner marks. 1 means at least equal.'), OmittedNotNull] = None
+    partner_max_optical_weight_ratio: Annotated[FloatGt0 | None, Field(description='Maximum optical weight of partner marks relative to the brand mark. 1 means no larger than the brand mark. Enforcement is at layout time, not parse time — this value signals to renderers and creative agents how much space to provision for each mark.'), OmittedNotNull] = None
+    severity: Annotated[GuidelineSeverity | None, OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the lockup rule.'), OmittedNotNull] = None
 
 
 class TextTransform(StrEnum):
@@ -1539,12 +1539,12 @@ class TypeScaleEntry(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/type_scale_entry')
-    font: Annotated[str | None, Field(description="Font reference. Use a key from the fonts object (e.g., 'primary', 'secondary') to reference a defined font role, or a literal CSS font-family string as a fallback.")] = None
-    size: Annotated[str | None, Field(description="Font size (e.g., '48px', '2rem')")] = None
-    weight: Annotated[str | None, Field(description="Font weight (e.g., '700', 'bold')")] = None
-    line_height: Annotated[str | None, Field(description="Line height (e.g., '1.2', '56px')")] = None
-    letter_spacing: Annotated[str | None, Field(description="Letter spacing (e.g., '-0.02em', '0.5px')")] = None
-    text_transform: Annotated[TextTransform | None, Field(description='Text transformation')] = None
+    font: Annotated[str | None, Field(description="Font reference. Use a key from the fonts object (e.g., 'primary', 'secondary') to reference a defined font role, or a literal CSS font-family string as a fallback."), OmittedNotNull] = None
+    size: Annotated[str | None, Field(description="Font size (e.g., '48px', '2rem')"), OmittedNotNull] = None
+    weight: Annotated[str | None, Field(description="Font weight (e.g., '700', 'bold')"), OmittedNotNull] = None
+    line_height: Annotated[str | None, Field(description="Line height (e.g., '1.2', '56px')"), OmittedNotNull] = None
+    letter_spacing: Annotated[str | None, Field(description="Letter spacing (e.g., '-0.02em', '0.5px')"), OmittedNotNull] = None
+    text_transform: Annotated[TextTransform | None, Field(description='Text transformation'), OmittedNotNull] = None
 
 
 class TypeScale(AdCPBaseModel):
@@ -1556,12 +1556,12 @@ class TypeScale(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/visual_guidelines/properties/type_scale')
     __pydantic_extra__: dict[str, TypeScaleEntry] = Field(init=False)
-    base_width: Annotated[str | None, Field(description="Reference canvas width these sizes were designed for (e.g., '1080px'). Generative systems should scale proportionally for other canvas sizes.")] = None
-    heading: TypeScaleEntry | None = None
-    subheading: TypeScaleEntry | None = None
-    body: TypeScaleEntry | None = None
-    caption: TypeScaleEntry | None = None
-    cta: TypeScaleEntry | None = None
+    base_width: Annotated[str | None, Field(description="Reference canvas width these sizes were designed for (e.g., '1080px'). Generative systems should scale proportionally for other canvas sizes."), OmittedNotNull] = None
+    heading: Annotated[TypeScaleEntry | None, OmittedNotNull] = None
+    subheading: Annotated[TypeScaleEntry | None, OmittedNotNull] = None
+    body: Annotated[TypeScaleEntry | None, OmittedNotNull] = None
+    caption: Annotated[TypeScaleEntry | None, OmittedNotNull] = None
+    cta: Annotated[TypeScaleEntry | None, OmittedNotNull] = None
 
 
 class AssetLibraryType(StrEnum):
@@ -1597,8 +1597,8 @@ class ColorGuide(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset_library/properties/color_guide')
-    roles: Annotated[list[str] | None, Field(description='Named color roles used in the library (e.g., base, shadow_1, highlight_1, stroke)')] = None
-    palettes: Annotated[list[PalettesItem] | None, Field(description='Named color palettes mapping roles to specific colors')] = None
+    roles: Annotated[list[str] | None, Field(description='Named color roles used in the library (e.g., base, shadow_1, highlight_1, stroke)'), OmittedNotNull] = None
+    palettes: Annotated[list[PalettesItem] | None, Field(description='Named color palettes mapping roles to specific colors'), OmittedNotNull] = None
 
 
 class AssetLibrary(AdCPBaseModel):
@@ -1610,10 +1610,10 @@ class AssetLibrary(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset_library')
     name: Annotated[str, Field(description='Display name of the asset library')]
-    type: Annotated[AssetLibraryType | None, Field(description='Type of asset library')] = None
+    type: Annotated[AssetLibraryType | None, Field(description='Type of asset library'), OmittedNotNull] = None
     url: Annotated[HttpUrl, Field(description='URL to the asset library (for human access)')]
-    description: Annotated[str | None, Field(description='Description of the library contents and usage')] = None
-    color_guide: Annotated[ColorGuide | None, Field(description='Color guide for the asset library defining roles and palettes')] = None
+    description: Annotated[str | None, Field(description='Description of the library contents and usage'), OmittedNotNull] = None
+    color_guide: Annotated[ColorGuide | None, Field(description='Color guide for the asset library defining roles and palettes'), OmittedNotNull] = None
 
 
 class VisualGuidelines(AdCPBaseModel):
@@ -1624,24 +1624,24 @@ class VisualGuidelines(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/visual_guidelines')
-    photography: PhotographyStyle | None = None
-    graphic_style: GraphicStyle | None = None
-    shapes: BrandShapes | None = None
-    iconography: Iconography | None = None
-    composition: CompositionRules | None = None
-    border_radius: BorderRadius | None = None
-    elevation: Elevation | None = None
-    spacing: Spacing | None = None
-    graphic_elements: Annotated[list[GraphicElement] | None, Field(description='Reusable decorative elements that are part of the brand visual identity (e.g., torn paper edges, watermarks, dividers)')] = None
-    motion: MotionGuidelines | None = None
-    logo_placement: LogoPlacement | None = None
-    colorways: Annotated[list[Colorway] | None, Field(description='Named color pairings for consistent foreground/background combinations')] = None
-    color_constraints: Annotated[list[ColorConstraint] | None, Field(description='Machine-readable constraints for color usage and pairings, such as accent-only rules or forbidden foreground/background combinations.')] = None
-    logo_usage_rules: Annotated[list[LogoUsageRule] | None, Field(description='Machine-readable logo selection and placement constraints for minimum size, clear space, backgrounds, and contexts.')] = None
-    mark_lockups: Annotated[list[MarkLockup] | None, Field(description='Machine-readable co-brand, partner, sponsor, program, or secondary-mark lockup rules.')] = None
-    type_scale: Annotated[TypeScale | None, Field(description='Typography scale defining sizes and weights for different text roles. When sizes are in px, use base_width to indicate the reference canvas.')] = None
-    asset_libraries: Annotated[list[AssetLibrary] | None, Field(description='References to managed asset libraries (icon sets, illustration systems, image collections). URLs are intended for human access; agent-facing DAM integration is under investigation.')] = None
-    restrictions: Annotated[list[str] | None, Field(description="Visual prohibitions and guardrails (e.g., 'Never use black backgrounds', 'Do not crop the logo', 'No stock photography of people on phones')")] = None
+    photography: Annotated[PhotographyStyle | None, OmittedNotNull] = None
+    graphic_style: Annotated[GraphicStyle | None, OmittedNotNull] = None
+    shapes: Annotated[BrandShapes | None, OmittedNotNull] = None
+    iconography: Annotated[Iconography | None, OmittedNotNull] = None
+    composition: Annotated[CompositionRules | None, OmittedNotNull] = None
+    border_radius: Annotated[BorderRadius | None, OmittedNotNull] = None
+    elevation: Annotated[Elevation | None, OmittedNotNull] = None
+    spacing: Annotated[Spacing | None, OmittedNotNull] = None
+    graphic_elements: Annotated[list[GraphicElement] | None, Field(description='Reusable decorative elements that are part of the brand visual identity (e.g., torn paper edges, watermarks, dividers)'), OmittedNotNull] = None
+    motion: Annotated[MotionGuidelines | None, OmittedNotNull] = None
+    logo_placement: Annotated[LogoPlacement | None, OmittedNotNull] = None
+    colorways: Annotated[list[Colorway] | None, Field(description='Named color pairings for consistent foreground/background combinations'), OmittedNotNull] = None
+    color_constraints: Annotated[list[ColorConstraint] | None, Field(description='Machine-readable constraints for color usage and pairings, such as accent-only rules or forbidden foreground/background combinations.'), OmittedNotNull] = None
+    logo_usage_rules: Annotated[list[LogoUsageRule] | None, Field(description='Machine-readable logo selection and placement constraints for minimum size, clear space, backgrounds, and contexts.'), OmittedNotNull] = None
+    mark_lockups: Annotated[list[MarkLockup] | None, Field(description='Machine-readable co-brand, partner, sponsor, program, or secondary-mark lockup rules.'), OmittedNotNull] = None
+    type_scale: Annotated[TypeScale | None, Field(description='Typography scale defining sizes and weights for different text roles. When sizes are in px, use base_width to indicate the reference canvas.'), OmittedNotNull] = None
+    asset_libraries: Annotated[list[AssetLibrary] | None, Field(description='References to managed asset libraries (icon sets, illustration systems, image collections). URLs are intended for human access; agent-facing DAM integration is under investigation.'), OmittedNotNull] = None
+    restrictions: Annotated[list[str] | None, Field(description="Visual prohibitions and guardrails (e.g., 'Never use black backgrounds', 'Do not crop the logo', 'No stock photography of people on phones')"), OmittedNotNull] = None
 
 
 class RightsAgent(AdCPBaseModel):
@@ -1655,8 +1655,8 @@ class RightsAgent(AdCPBaseModel):
     url: Annotated[HTTPSURL, Field(description="Rights agent MCP endpoint URL. Callers comparing this URL against another value (e.g., matching against a brand's declared rights endpoint) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
     id: Annotated[BrandDiscoveryAgentId, Field(description='Agent identifier')]
     available_uses: Annotated[list[RightUse], Field(description='Rights uses available for licensing through this agent', min_length=1)]
-    right_types: Annotated[list[RightType] | None, Field(description='Types of rights available', min_length=1)] = None
-    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2)')] = None
+    right_types: Annotated[list[RightType] | None, Field(description='Types of rights available', min_length=1), OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2)'), OmittedNotNull] = None
 
 
 class BrandContact(AdCPBaseModel):
@@ -1664,8 +1664,8 @@ class BrandContact(AdCPBaseModel):
     Brand-level contact information
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/contact')
-    email: Annotated[str | None, Field(description='Contact email', json_schema_extra={'format': 'email'})] = None
-    phone: Annotated[str | None, Field(description='Contact phone number')] = None
+    email: Annotated[str | None, Field(description='Contact email', json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    phone: Annotated[str | None, Field(description='Contact phone number'), OmittedNotNull] = None
 
 
 class CollectionsItem(AdCPBaseModel):
@@ -1673,10 +1673,10 @@ class CollectionsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/collections/items')
-    collection_id: Annotated[str | None, Field(description="Collection identifier as used in the seller's get_products responses")] = None
+    collection_id: Annotated[str | None, Field(description="Collection identifier as used in the seller's get_products responses"), OmittedNotNull] = None
     name: Annotated[str, Field(description='Human-readable collection name')]
-    role: Annotated[TalentRole | None, Field(description="This person's role on the collection")] = None
-    seller_agent_url: Annotated[HttpUrl | None, Field(description='URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products.')] = None
+    role: Annotated[TalentRole | None, Field(description="This person's role on the collection"), OmittedNotNull] = None
+    seller_agent_url: Annotated[HttpUrl | None, Field(description='URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products.'), OmittedNotNull] = None
 
 
 class Brand(AdCPBaseModel):
@@ -1688,34 +1688,34 @@ class Brand(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand')
     id: Annotated[BrandId, Field(description='Brand identifier within the house. House chooses this ID.')]
-    url: Annotated[HttpUrl | None, Field(description='Primary brand URL for context and asset discovery')] = None
-    identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description='Verified-identity relying parties scoped to this brand/property, for attestation provenance in TMP Identity Match. Use when a brand or property runs its own relying_party_id (per-property pseudonyms); entity-wide relying parties live on the house object. See specs/tmp-verified-identity-attestation.md.')] = None
+    url: Annotated[HttpUrl | None, Field(description='Primary brand URL for context and asset discovery'), OmittedNotNull] = None
+    identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description='Verified-identity relying parties scoped to this brand/property, for attestation provenance in TMP Identity Match. Use when a brand or property runs its own relying_party_id (per-property pseudonyms); entity-wide relying parties live on the house object. See specs/tmp-verified-identity-attestation.md.'), OmittedNotNull] = None
     names: Annotated[list[LocalizedName], Field(description='Localized brand names. Multiple entries per language allowed for aliases.', min_length=1)]
-    keller_type: KellerType | None = None
-    parent_brand: Annotated[BrandId | None, Field(description='Parent brand ID for sub-brands and endorsed brands')] = None
-    description: Annotated[str | None, Field(description='Brand description')] = None
-    industries: Annotated[list[str] | None, Field(description="Brand industries (e.g., ['automotive'] or ['pharmaceutical', 'cpg'] for a consumer health company). Describes what the company does — not what regulatory regimes apply (use policy_categories for that).", min_length=1)] = None
-    target_audience: Annotated[str | None, Field(description='Primary target audience')] = None
-    logos: Annotated[list[Logo] | None, Field(description='Brand logo assets')] = None
-    colors: Colors | None = None
-    fonts: Fonts | None = None
-    tone: Annotated[str | Tone | None, Field(description='Brand voice and messaging tone guidelines')] = None
-    tagline: Annotated[str | NonEmptyList[LocalizedName] | None, Field(description='Brand tagline or slogan. Accepts a plain string or a localized array matching the names pattern.')] = None
-    assets: Annotated[list[Asset] | None, Field(description='Brand asset library')] = None
-    properties: Annotated[list[BrandDiscoveryProperty] | None, Field(description='Digital properties associated with this brand — owned, managed, or represented')] = None
-    product_catalog: ProductCatalog | None = None
-    privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the brand's privacy policy")] = None
-    data_subject_contestation: DataSubjectContestation | None = None
-    disclaimers: Annotated[list[DisclaimersItem] | None, Field(description='Legal disclaimers for creatives')] = None
-    trademarks: Annotated[list[Trademark] | None, Field(description="Brand-level registered trademarks. Use for marks the brand owns or controls (e.g., a sub-brand's own marks distinct from the corporate parent). House-level trademarks live on the house object; resolution between the two is union — both lists are valid claims.")] = None
-    voice_synthesis: Annotated[VoiceSynthesis | None, Field(description='TTS voice synthesis configuration for AI-generated audio')] = None
-    avatar: Annotated[Avatar | None, Field(description='Visual avatar configuration')] = None
-    visual_guidelines: Annotated[VisualGuidelines | None, Field(description='Structured visual rules for generative creative systems')] = None
-    agents: Annotated[Agents | None, Field(description='Agents authorized to act on behalf of this brand. Consumers resolving an agent by URL use the matching brand-level entry; do not infer a type-wide override of unrelated house-level entries when multiple same-type entries exist.')] = None
-    brand_agent: Annotated[BrandDiscoveryBrandAgent | None, Field(description="Deprecated: use agents array with type 'brand' instead. Brand agent that provides dynamic brand data via MCP.")] = None
-    rights_agent: Annotated[RightsAgent | None, Field(description="Deprecated: use agents array with type 'rights' instead. Rights licensing agent for this brand.")] = None
-    contact: Annotated[BrandContact | None, Field(description='Brand-level contact information')] = None
-    collections: Annotated[list[CollectionsItem] | None, Field(description="Collections this person or brand is associated with. Enables bidirectional linking: a collection's talent references brand.json via brand_url, and brand.json links back to collections.")] = None
+    keller_type: Annotated[KellerType | None, OmittedNotNull] = None
+    parent_brand: Annotated[BrandId | None, Field(description='Parent brand ID for sub-brands and endorsed brands'), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Brand description'), OmittedNotNull] = None
+    industries: Annotated[list[str] | None, Field(description="Brand industries (e.g., ['automotive'] or ['pharmaceutical', 'cpg'] for a consumer health company). Describes what the company does — not what regulatory regimes apply (use policy_categories for that).", min_length=1), OmittedNotNull] = None
+    target_audience: Annotated[str | None, Field(description='Primary target audience'), OmittedNotNull] = None
+    logos: Annotated[list[Logo] | None, Field(description='Brand logo assets'), OmittedNotNull] = None
+    colors: Annotated[Colors | None, OmittedNotNull] = None
+    fonts: Annotated[Fonts | None, OmittedNotNull] = None
+    tone: Annotated[str | Tone | None, Field(description='Brand voice and messaging tone guidelines'), OmittedNotNull] = None
+    tagline: Annotated[str | NonEmptyList[LocalizedName] | None, Field(description='Brand tagline or slogan. Accepts a plain string or a localized array matching the names pattern.'), OmittedNotNull] = None
+    assets: Annotated[list[Asset] | None, Field(description='Brand asset library'), OmittedNotNull] = None
+    properties: Annotated[list[BrandDiscoveryProperty] | None, Field(description='Digital properties associated with this brand — owned, managed, or represented'), OmittedNotNull] = None
+    product_catalog: Annotated[ProductCatalog | None, OmittedNotNull] = None
+    privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the brand's privacy policy"), OmittedNotNull] = None
+    data_subject_contestation: Annotated[DataSubjectContestation | None, OmittedNotNull] = None
+    disclaimers: Annotated[list[DisclaimersItem] | None, Field(description='Legal disclaimers for creatives'), OmittedNotNull] = None
+    trademarks: Annotated[list[Trademark] | None, Field(description="Brand-level registered trademarks. Use for marks the brand owns or controls (e.g., a sub-brand's own marks distinct from the corporate parent). House-level trademarks live on the house object; resolution between the two is union — both lists are valid claims."), OmittedNotNull] = None
+    voice_synthesis: Annotated[VoiceSynthesis | None, Field(description='TTS voice synthesis configuration for AI-generated audio'), OmittedNotNull] = None
+    avatar: Annotated[Avatar | None, Field(description='Visual avatar configuration'), OmittedNotNull] = None
+    visual_guidelines: Annotated[VisualGuidelines | None, Field(description='Structured visual rules for generative creative systems'), OmittedNotNull] = None
+    agents: Annotated[Agents | None, Field(description='Agents authorized to act on behalf of this brand. Consumers resolving an agent by URL use the matching brand-level entry; do not infer a type-wide override of unrelated house-level entries when multiple same-type entries exist.'), OmittedNotNull] = None
+    brand_agent: Annotated[BrandDiscoveryBrandAgent | None, Field(description="Deprecated: use agents array with type 'brand' instead. Brand agent that provides dynamic brand data via MCP."), OmittedNotNull] = None
+    rights_agent: Annotated[RightsAgent | None, Field(description="Deprecated: use agents array with type 'rights' instead. Rights licensing agent for this brand."), OmittedNotNull] = None
+    contact: Annotated[BrandContact | None, Field(description='Brand-level contact information'), OmittedNotNull] = None
+    collections: Annotated[list[CollectionsItem] | None, Field(description="Collections this person or brand is associated with. Enables bidirectional linking: a collection's talent references brand.json via brand_url, and brand.json links back to collections."), OmittedNotNull] = None
 
 
 class PortfolioEntry(AdCPBaseModel):
@@ -1728,8 +1728,8 @@ class PortfolioEntry(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/portfolio_entry')
     domain: Annotated[DomainName, Field(description="Domain where the child's canonical brand.json lives")]
     brand_id: Annotated[BrandId, Field(description='Stable brand identifier within the house portfolio. Required so the cross-array uniqueness invariant (brand_id MUST NOT appear in both brands[] and brand_refs[]) is enforceable.')]
-    managed_by: Annotated[DomainName | None, Field(description="Optional domain of the entity that operationally manages this brand (e.g., an agency network within a holdco). House-declared. Consumers MUST NOT use it for trust or authorization decisions. Aggregation across houses ('show me everything BBH manages') is the intended use; trust is unaffected.")] = None
-    effective_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the house established this ownership claim. Consumers age mutual-assertion edges from this date for TTL purposes and MUST NOT extend relationship trust before a future effective_at is reached. Optional; absent means the consumer ages from its own durable first observation.')] = None
+    managed_by: Annotated[DomainName | None, Field(description="Optional domain of the entity that operationally manages this brand (e.g., an agency network within a holdco). House-declared. Consumers MUST NOT use it for trust or authorization decisions. Aggregation across houses ('show me everything BBH manages') is the intended use; trust is unaffected."), OmittedNotNull] = None
+    effective_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the house established this ownership claim. Consumers age mutual-assertion edges from this date for TTL purposes and MUST NOT extend relationship trust before a future effective_at is reached. Optional; absent means the consumer ages from its own durable first observation.'), OmittedNotNull] = None
 
 
 class ScopesItem(StrEnum):
@@ -1762,10 +1762,10 @@ class AuthorizedOperator(AdCPBaseModel):
     )
     domain: Annotated[DomainName, Field(description="Domain of the authorized operator (e.g., 'groupm.com')")]
     brands: Annotated[list[AuthorizedOperatorBrandsItem], Field(description="Brand IDs this operator is authorized for. Use ['*'] for all brands in the portfolio.", min_length=1)]
-    countries: Annotated[list[CountryCode] | None, Field(description='ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.')] = None
-    scopes: Annotated[list[ScopesItem] | None, Field(description="Activities this operator is authorized to perform for the listed brands and countries. Omit for backwards-compatible broad authorization. Use ['all'] only when every listed scope is delegated.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    valid_from: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization starts. Omit when authorization is already active or the start date is not tracked.')] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization expires. Consumers MUST treat entries at or after this timestamp as inactive for authorization decisions.')] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.'), OmittedNotNull] = None
+    scopes: Annotated[list[ScopesItem] | None, Field(description="Activities this operator is authorized to perform for the listed brands and countries. Omit for backwards-compatible broad authorization. Use ['all'] only when every listed scope is delegated.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    valid_from: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization starts. Omit when authorization is already active or the start date is not tracked.'), OmittedNotNull] = None
+    valid_until: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization expires. Consumers MUST treat entries at or after this timestamp as inactive for authorization decisions.'), OmittedNotNull] = None
 
 
 class HousePortfolio(BrandDiscovery):
@@ -1779,16 +1779,16 @@ class HousePortfolio(BrandDiscovery):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('brands',), ('brand_refs',)), 'anyOf'),
     )
-    schema_: Annotated[str | None, Field(alias='$schema')] = None
-    version: str | None = None
-    default_language: Annotated[LanguageTag | None, Field(json_schema_extra={'default': 'en'})] = Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'))
+    schema_: Annotated[str | None, Field(alias='$schema'), OmittedNotNull] = None
+    version: Annotated[str | None, OmittedNotNull] = None
+    default_language: Annotated[LanguageTag | None, Field(json_schema_extra={'default': 'en'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'))
     house: House
-    brands: Annotated[list[Brand] | None, Field(description='Inline brands owned by this house (parent-owned data). Use for sub-brands without their own canonical document — typically those without a dedicated domain or that the holdco wants to manage centrally. A brand_id MUST NOT appear in both brands[] and brand_refs[].', min_length=1)] = None
-    brand_refs: Annotated[list[PortfolioEntry] | None, Field(description="Portfolio entries for brands owned by this house that publish their own canonical brand.json elsewhere (child-owned data). Each entry asserts ownership plus where the child's document lives. Mutual-assertion trust: the pointed-to document's house_domain must equal this house's domain. Invariants: a brand_id MUST NOT appear in both brands[] and brand_refs[]; brand_id and domain MUST each be unique within brand_refs[]. See docs/brand-protocol/brand-json.mdx", min_length=1)] = None
-    contact: BrandDiscoveryContact | None = None
-    authorized_operators: Annotated[list[AuthorizedOperator] | None, Field(description="Entities authorized to represent brands from this house. Third parties (sellers, platforms) can verify an operator's authorization by checking this list. Operators are identified by domain.")] = None
-    trademarks: Annotated[list[Trademark] | None, Field(description='House-level (corporate) registered trademarks. Brand-level marks live on individual brand entries; resolution is union.')] = None
-    last_updated: AwareDatetime | None = None
+    brands: Annotated[list[Brand] | None, Field(description='Inline brands owned by this house (parent-owned data). Use for sub-brands without their own canonical document — typically those without a dedicated domain or that the holdco wants to manage centrally. A brand_id MUST NOT appear in both brands[] and brand_refs[].', min_length=1), OmittedNotNull] = None
+    brand_refs: Annotated[list[PortfolioEntry] | None, Field(description="Portfolio entries for brands owned by this house that publish their own canonical brand.json elsewhere (child-owned data). Each entry asserts ownership plus where the child's document lives. Mutual-assertion trust: the pointed-to document's house_domain must equal this house's domain. Invariants: a brand_id MUST NOT appear in both brands[] and brand_refs[]; brand_id and domain MUST each be unique within brand_refs[]. See docs/brand-protocol/brand-json.mdx", min_length=1), OmittedNotNull] = None
+    contact: Annotated[BrandDiscoveryContact | None, OmittedNotNull] = None
+    authorized_operators: Annotated[list[AuthorizedOperator] | None, Field(description="Entities authorized to represent brands from this house. Third parties (sellers, platforms) can verify an operator's authorization by checking this list. Operators are identified by domain."), OmittedNotNull] = None
+    trademarks: Annotated[list[Trademark] | None, Field(description='House-level (corporate) registered trademarks. Brand-level marks live on individual brand entries; resolution is union.'), OmittedNotNull] = None
+    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 class BrandCanonicalDocument(BrandDiscovery, Brand):
@@ -1802,11 +1802,11 @@ class BrandCanonicalDocument(BrandDiscovery, Brand):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('house',), ('brands',), ('brand_refs',), ('authorized_operators',), ('authoritative_location',), ('redirect_reason',), ('redirect_effective_at',), ('region',), ('note',))),
     )
-    schema_: Annotated[str | None, Field(alias='$schema')] = None
-    version: str | None = None
-    default_language: Annotated[LanguageTag | None, Field(json_schema_extra={'default': 'en'})] = Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'))
-    house_domain: Annotated[DomainName | None, Field(description="Optional pointer to the corporate house this brand belongs to. The named house's brand_refs[] MUST reciprocate for mutual-assertion trust. Single-hop only — a brand cannot itself declare brand_refs[]. Omit for standalone brands (no house).")] = None
-    last_updated: AwareDatetime | None = None
+    schema_: Annotated[str | None, Field(alias='$schema'), OmittedNotNull] = None
+    version: Annotated[str | None, OmittedNotNull] = None
+    default_language: Annotated[LanguageTag | None, Field(json_schema_extra={'default': 'en'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'))
+    house_domain: Annotated[DomainName | None, Field(description="Optional pointer to the corporate house this brand belongs to. The named house's brand_refs[] MUST reciprocate for mutual-assertion trust. Single-hop only — a brand cannot itself declare brand_refs[]. Omit for standalone brands (no house)."), OmittedNotNull] = None
+    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
 BrandDiscovery._branch_models = (AuthoritativeLocationRedirect, HouseRedirect, BrandAgent, HousePortfolio, BrandCanonicalDocument,)

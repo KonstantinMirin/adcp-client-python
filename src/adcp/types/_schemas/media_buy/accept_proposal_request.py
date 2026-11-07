@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
@@ -36,7 +36,7 @@ class IoAcceptance(AdCPBaseModel):
     io_id: StrMinLen1
     accepted_at: AwareDatetime
     signatory: IoAcceptanceSignatory
-    signature_id: StrMinLen1 | None = None
+    signature_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
 class Opportunity(OpportunityContext):
@@ -50,7 +50,7 @@ class Opportunity(OpportunityContext):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/accept-proposal-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
+    status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.'), OmittedNotNull] = None
 
 
 class AcceptProposalRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -67,24 +67,24 @@ class AcceptProposalRequest(AdCPVersionEnvelope, AdcpRequest):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/accept-proposal-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
     idempotency_key: IdempotencyKey
-    name: Annotated[MediaBuyName | None, Field(description='Human-readable MediaBuy name supplied by the buyer for trafficking UI display and operational communication. When supplied, this value wins over proposal.name; the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. It is operational metadata outside accepted_proposal and is not covered by proposal_terms_digest or terms_digest. When an acceptance creates a MediaBuy and name is absent, the seller MAY seed the MediaBuy name from proposal.name only when proposal.name already satisfies the MediaBuy name constraints (non-whitespace and no longer than 255 characters); the seller MUST NOT silently truncate or otherwise rewrite it. A seeded value counts as a name created through AdCP and MUST be reported on commitment and read surfaces. This display label is not an identifier or financial reference.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Human-readable MediaBuy name supplied by the buyer for trafficking UI display and operational communication. When supplied, this value wins over proposal.name; the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. It is operational metadata outside accepted_proposal and is not covered by proposal_terms_digest or terms_digest. When an acceptance creates a MediaBuy and name is absent, the seller MAY seed the MediaBuy name from proposal.name only when proposal.name already satisfies the MediaBuy name constraints (non-whitespace and no longer than 255 characters); the seller MUST NOT silently truncate or otherwise rewrite it. A seeded value counts as a name created through AdCP and MUST be reported on commitment and read surfaces. This display label is not an identifier or financial reference.'), OmittedNotNull] = None
     account: CanonicalAccountReference
     proposal_id: StrMinLen1
     proposal_terms_digest: Annotated[CanonicalProposalTermsDigest, Field(description='terms_digest from the committed proposal. The seller MUST atomically verify both ID and digest before acceptance.')]
-    total_budget: Annotated[Money | None, Field(description='Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.')] = None
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling applied when the committed proposal is accepted. It constrains execution without changing the proposal's negotiated pricing.")] = None
-    budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional shared IANA cap-day timezone override. Requires buyer_timezone_override support. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.')] = None
-    io_acceptance: IoAcceptance | None = None
-    purchase_order_ref: StrMinLen1MaxLen255 | None = None
-    governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: PushNotificationConfig | None = None
-    reporting_webhook: Annotated[ReportingWebhook | None, Field(description='Optional reporting delivery configuration established atomically when the proposal is accepted. This is execution metadata and does not alter the accepted commercial terms digest.')] = None
-    opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle closure. Success infers closed with accepted_with_seller when status is omitted. If the proposal carries opportunity_id, a supplied ID MUST match; the accepted proposal preserves that association.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    total_budget: Annotated[Money | None, Field(description='Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.'), OmittedNotNull] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling applied when the committed proposal is accepted. It constrains execution without changing the proposal's negotiated pricing."), OmittedNotNull] = None
+    budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional shared IANA cap-day timezone override. Requires buyer_timezone_override support. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.'), OmittedNotNull] = None
+    io_acceptance: Annotated[IoAcceptance | None, OmittedNotNull] = None
+    purchase_order_ref: Annotated[StrMinLen1MaxLen255 | None, OmittedNotNull] = None
+    governance_context: Annotated[StrMinLen1MaxLen4096 | None, OmittedNotNull] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, OmittedNotNull] = None
+    reporting_webhook: Annotated[ReportingWebhook | None, Field(description='Optional reporting delivery configuration established atomically when the proposal is accepted. This is execution metadata and does not alter the accepted commercial terms digest.'), OmittedNotNull] = None
+    opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle closure. Success infers closed with accepted_with_seller when status is omitted. If the proposal carries opportunity_id, a supplied ID MUST match; the accepted proposal preserves that association.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AcceptProposalRequest"]

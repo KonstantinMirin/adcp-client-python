@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import ComplyTestControllerRequestParamsIdentifierValueDigestsItem
 
@@ -24,14 +24,14 @@ class UserMatch(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('uids',), ('hashed_email',), ('hashed_phone',), ('click_id',), ('client_ip', 'client_user_agent')), 'anyOf'),
     )
-    uids: Annotated[list[UidsItem] | None, Field(description='Universal ID values for user matching', min_length=1)] = None
-    hashed_email: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace. Pseudonymous PII, not anonymous — the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.')] = None
-    hashed_phone: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Buyer must normalize to E.164 before hashing. Pseudonymous PII, not anonymous — the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.')] = None
-    click_id: Annotated[str | None, Field(description='Platform click identifier (fbclid, gclid, ttclid, ScCid, etc.)')] = None
-    click_id_type: Annotated[str | None, Field(description='Type of click identifier (e.g. fbclid, gclid, ttclid, msclkid, ScCid)')] = None
-    client_ip: Annotated[str | None, Field(description='Client IP address for probabilistic matching')] = None
-    client_user_agent: Annotated[str | None, Field(description='Client user agent string for probabilistic matching')] = None
-    ext: ExtensionObject | None = None
+    uids: Annotated[list[UidsItem] | None, Field(description='Universal ID values for user matching', min_length=1), OmittedNotNull] = None
+    hashed_email: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace. Pseudonymous PII, not anonymous — the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.'), OmittedNotNull] = None
+    hashed_phone: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Buyer must normalize to E.164 before hashing. Pseudonymous PII, not anonymous — the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.'), OmittedNotNull] = None
+    click_id: Annotated[str | None, Field(description='Platform click identifier (fbclid, gclid, ttclid, ScCid, etc.)'), OmittedNotNull] = None
+    click_id_type: Annotated[str | None, Field(description='Type of click identifier (e.g. fbclid, gclid, ttclid, msclkid, ScCid)'), OmittedNotNull] = None
+    client_ip: Annotated[str | None, Field(description='Client IP address for probabilistic matching'), OmittedNotNull] = None
+    client_user_agent: Annotated[str | None, Field(description='Client user agent string for probabilistic matching'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["UserMatch"]

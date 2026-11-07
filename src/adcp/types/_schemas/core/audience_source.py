@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen256, StrMinLen1MaxLen512
 
 from .brand_ref import BrandReference
@@ -35,7 +35,7 @@ class Dataset(AudienceSource):
     kind: Literal['dataset']
     vendor: Annotated[BrandReference, Field(description='Data-sharing platform hosting the shared object.')]
     locator: Annotated[StrMinLen1MaxLen512, Field(description="Vendor-native reference to the shared object (share/database/table path). Opaque to AdCP; meaningful to the vendor. Never a credential. For the Databricks path, the locator convention is share://<provider-sharing-identifier>/<share-name>/<schema>.<object>; this identifies what to read and is distinct from the seller's recipient identity in consumer_identities[].")]
-    access_expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 time after which the buyer will revoke the grant. Declarative — tells the seller when the pipe closes so re-read behavior is predictable. Expiry bounds the access window, not retention: revocation does not claw back matched membership, and retention remains governed by the buyer-seller data processing agreement.')] = None
+    access_expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 time after which the buyer will revoke the grant. Declarative — tells the seller when the pipe closes so re-read behavior is predictable. Expiry bounds the access window, not retention: revocation does not claw back matched membership, and retention remains governed by the buyer-seller data processing agreement.'), OmittedNotNull] = None
 
 
 class PlatformSegment(AudienceSource):

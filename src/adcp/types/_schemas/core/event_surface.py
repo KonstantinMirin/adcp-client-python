@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen128, StrMinLen1MaxLen256
 
 from .ext import ExtensionObject
@@ -77,10 +77,10 @@ class EventSurface(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event-surface.json', pointer='#')
     category: Annotated[Category, Field(description='Generic surface category. `owned_property` covers durable creator or brand-controlled properties hosted by a platform, such as channels, profiles, feeds, lists, podcasts, or playlists.')]
-    property_type: Annotated[StrMinLen1MaxLen128 | None, Field(description='Open vocabulary describing the kind of property, for example `channel`, `profile`, `feed`, `list`, `podcast`, `playlist`, or `newsletter`. Required by convention when `category` is `owned_property`; optional for other categories.')] = None
-    namespace: Annotated[StrMinLen1MaxLen128 | None, Field(description='Platform, publisher, or system namespace for the property, such as `video_platform`, `short_video_app`, `audio_service`, or a seller-defined namespace. This is intentionally not an enum.')] = None
-    property_id: Annotated[StrMinLen1MaxLen256 | None, Field(description='Optional identifier for the property within `namespace`.')] = None
-    ext: ExtensionObject | None = None
+    property_type: Annotated[StrMinLen1MaxLen128 | None, Field(description='Open vocabulary describing the kind of property, for example `channel`, `profile`, `feed`, `list`, `podcast`, `playlist`, or `newsletter`. Required by convention when `category` is `owned_property`; optional for other categories.'), OmittedNotNull] = None
+    namespace: Annotated[StrMinLen1MaxLen128 | None, Field(description='Platform, publisher, or system namespace for the property, such as `video_platform`, `short_video_app`, `audio_service`, or a seller-defined namespace. This is intentionally not an enum.'), OmittedNotNull] = None
+    property_id: Annotated[StrMinLen1MaxLen256 | None, Field(description='Optional identifier for the property within `namespace`.'), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["EventSurface"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, HttpUrl
 
@@ -51,20 +51,20 @@ class AudienceEvidenceRequirements(AdCPBaseModel):
     )
     requirement_mode: Annotated[RequirementMode, Field(description='required excludes products whose published evidence violates the constraints; preferred only affects ranking and explanation. When this policy affects inclusion or ranking, the seller MUST return the exact matching audience_evidence_selections even if get_products.fields omitted that field.')]
     evidence_presence: Annotated[EvidencePresence, Field(description='required applies the mode to evidence presence itself. when_available applies constraints only when a product publishes evidence: with requirement_mode required, a product with no evidence remains eligible but a product with evidence must have an admissible item; with preferred, presence and admissibility only affect ranking.')]
-    accepted_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(description='Allowed methodologies. excluded_methodologies always wins if a value appears in both lists.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    excluded_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(description='Disallowed methodologies. Exclusion wins over accepted_methodologies when the lists overlap.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_evidence_types: Annotated[list[EvidenceType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_providers: Annotated[list[BrandReference] | None, Field(description='Allowed evidence providers. excluded_providers always wins if the same canonical BrandRef appears in both lists.', min_length=1)] = None
-    excluded_providers: Annotated[list[BrandReference] | None, Field(description='Disallowed evidence providers. Exclusion wins over accepted_providers when the lists overlap.', min_length=1)] = None
-    accepted_subject_types: Annotated[list[AudienceSubjectType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_resolution_methods: Annotated[list[AudienceResolutionMethod] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    minimum_confidence: FloatMin0Max1 | None = None
-    maximum_age: Annotated[MaximumAge | None, Field(description='Maximum age at evaluation time measured from last_updated. Campaign-relative duration is not valid for evidence age.')] = None
-    methodology_documentation_required: Annotated[bool | None, Field(description='Whether an admissible item must carry methodology_url.')] = False
-    independent_attestation_required: Annotated[bool | None, Field(description="Whether an admissible item must have at least one exact reference/evaluation pair whose outcome is verified, whose reference is published in the evidence, and whose claim type and issuer match the buyer's accepted lists as well as the seller's issuer and resolver policy. Setting true requires accepted_attestation_issuers.")] = False
-    accepted_attestation_issuers: Annotated[list[AttestationIssuer] | None, Field(description="Buyer allowlist for independent attestation issuers. An exact reference/evaluation pair satisfies the requirement only when reference.issuer matches an entry here. This list narrows and never broadens the seller's accepted issuer policy.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(description='Optional acceptable claim types when attestation is used. Buyer-supplied claim types further constrain but never broaden seller policy.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    accepted_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(description='Allowed methodologies. excluded_methodologies always wins if a value appears in both lists.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    excluded_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(description='Disallowed methodologies. Exclusion wins over accepted_methodologies when the lists overlap.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_evidence_types: Annotated[list[EvidenceType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_providers: Annotated[list[BrandReference] | None, Field(description='Allowed evidence providers. excluded_providers always wins if the same canonical BrandRef appears in both lists.', min_length=1), OmittedNotNull] = None
+    excluded_providers: Annotated[list[BrandReference] | None, Field(description='Disallowed evidence providers. Exclusion wins over accepted_providers when the lists overlap.', min_length=1), OmittedNotNull] = None
+    accepted_subject_types: Annotated[list[AudienceSubjectType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_resolution_methods: Annotated[list[AudienceResolutionMethod] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    minimum_confidence: Annotated[FloatMin0Max1 | None, OmittedNotNull] = None
+    maximum_age: Annotated[MaximumAge | None, Field(description='Maximum age at evaluation time measured from last_updated. Campaign-relative duration is not valid for evidence age.'), OmittedNotNull] = None
+    methodology_documentation_required: Annotated[bool | None, Field(description='Whether an admissible item must carry methodology_url.'), OmittedNotNull] = False
+    independent_attestation_required: Annotated[bool | None, Field(description="Whether an admissible item must have at least one exact reference/evaluation pair whose outcome is verified, whose reference is published in the evidence, and whose claim type and issuer match the buyer's accepted lists as well as the seller's issuer and resolver policy. Setting true requires accepted_attestation_issuers."), OmittedNotNull] = False
+    accepted_attestation_issuers: Annotated[list[AttestationIssuer] | None, Field(description="Buyer allowlist for independent attestation issuers. An exact reference/evaluation pair satisfies the requirement only when reference.issuer matches an entry here. This list narrows and never broadens the seller's accepted issuer policy.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(description='Optional acceptable claim types when attestation is used. Buyer-supplied claim types further constrain but never broaden seller policy.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AudienceEvidenceRequirements"]

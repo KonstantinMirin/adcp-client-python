@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 
 class CreativeConsumption(AdCPBaseModel):
@@ -16,10 +16,10 @@ class CreativeConsumption(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-consumption.json', pointer='#')
-    tokens: Annotated[NonNegativeInt | None, Field(description='LLM or generation tokens consumed during creative generation.')] = None
-    images_generated: Annotated[NonNegativeInt | None, Field(description='Number of images produced during generation.')] = None
-    renders: Annotated[NonNegativeInt | None, Field(description='Number of render passes performed (video, animation).')] = None
-    duration_seconds: Annotated[NonNegativeFloat | None, Field(description='Processing time billed, in seconds. For compute-time pricing models.')] = None
+    tokens: Annotated[NonNegativeInt | None, Field(description='LLM or generation tokens consumed during creative generation.'), OmittedNotNull] = None
+    images_generated: Annotated[NonNegativeInt | None, Field(description='Number of images produced during generation.'), OmittedNotNull] = None
+    renders: Annotated[NonNegativeInt | None, Field(description='Number of render passes performed (video, animation).'), OmittedNotNull] = None
+    duration_seconds: Annotated[NonNegativeFloat | None, Field(description='Processing time billed, in seconds. For compute-time pricing models.'), OmittedNotNull] = None
 
 
 __all__ = ["CreativeConsumption"]

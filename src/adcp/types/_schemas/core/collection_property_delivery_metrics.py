@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 
 from .collection_ref import CollectionReference
 from .delivery_metrics import DeliveryMetrics
@@ -23,11 +23,11 @@ class CollectionPropertyDeliveryMetrics(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection-property-delivery-metrics.json', pointer='#')
     collection_ref: CollectionReference
-    collection_name: Annotated[str | None, Field(description='Current human-readable collection name. Convenience metadata only.')] = None
+    collection_name: Annotated[str | None, Field(description='Current human-readable collection name. Convenience metadata only.'), OmittedNotNull] = None
     publisher_domain: Annotated[DomainName, Field(description='Publisher or platform authority that namespaces the property identifier, including for an unregistered surface.')]
     identifier: Annotated[Identifier, Field(description='Operational identity of the property that delivered.')]
-    property_ref: Annotated[PropertyReference | None, Field(description="Canonical publisher-scoped catalog identity when available. Its publisher_domain MUST equal the row's publisher_domain.")] = None
-    property_name: Annotated[str | None, Field(description='Current human-readable property name. Convenience metadata only.')] = None
+    property_ref: Annotated[PropertyReference | None, Field(description="Canonical publisher-scoped catalog identity when available. Its publisher_domain MUST equal the row's publisher_domain."), OmittedNotNull] = None
+    property_name: Annotated[str | None, Field(description='Current human-readable property name. Convenience metadata only.'), OmittedNotNull] = None
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 

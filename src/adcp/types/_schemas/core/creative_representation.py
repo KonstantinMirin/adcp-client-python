@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import CreativeRepresentationRepresentationId, StrMinLen1
 
@@ -20,7 +20,7 @@ class Source(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/properties/source')
     system: Annotated[StrMinLen1, Field(description='Source system namespace.')]
     source_representation: Annotated[StrMinLen1, Field(description="Source system's human-readable name for this representation.")]
-    source_id: Annotated[str | None, Field(description='Optional immutable source-system identifier for this representation.')] = None
+    source_id: Annotated[str | None, Field(description='Optional immutable source-system identifier for this representation.'), OmittedNotNull] = None
 
 
 class CreativeRepresentation(CreativeManifest):

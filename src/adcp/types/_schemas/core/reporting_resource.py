@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -59,12 +59,12 @@ class ReportingResource(AdCPBaseModel):
     resource_ref: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Seller-issued opaque reference to this exact authenticated resource descriptor.')]
     kind: Annotated[Kind, Field(description='Shape through which the durable revision is consumed.')]
     location: Annotated[StrMinLen1MaxLen2048, Field(description='Non-secret provider-native object, relation, or share identifier. MUST NOT contain an activation URL, signed URL, bearer token, password, private key, or embedded credential.')]
-    native_version_ref: ReportingNativeVersionReference | None = None
-    manifest_version: Annotated[Literal['1.0'] | None, Field(description='Version of reporting-file-manifest.json used by a manifest resource.')] = None
-    manifest_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, Field(description='SHA-256 over the exact manifest bytes. Consumers verify this before parsing the manifest.')] = None
+    native_version_ref: Annotated[ReportingNativeVersionReference | None, OmittedNotNull] = None
+    manifest_version: Annotated[Literal['1.0'] | None, Field(description='Version of reporting-file-manifest.json used by a manifest resource.'), OmittedNotNull] = None
+    manifest_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, Field(description='SHA-256 over the exact manifest bytes. Consumers verify this before parsing the manifest.'), OmittedNotNull] = None
     immutability: Annotated[Immutability, Field(description='How this descriptor selects the exact immutable materialization.')]
     expires_at: Annotated[AwareDatetime, Field(description='Mandatory finite lower-bound endpoint through which this exact resource remains resolvable; it cannot be earlier than the advertised retention contract.')]
-    reader_compatibility: Annotated[list[ReportingReaderCompatibilityItem] | None, Field(description='Reader features or format constraints required to consume this resource. Readiness verification MUST use a representative supported reader.', json_schema_extra={'uniqueItems': True})] = None
+    reader_compatibility: Annotated[list[ReportingReaderCompatibilityItem] | None, Field(description='Reader features or format constraints required to consume this resource. Readiness verification MUST use a representative supported reader.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
 __all__ = ["ReportingReaderCompatibilityItem", "ReportingResource"]

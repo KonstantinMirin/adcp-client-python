@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMaxLen500
 
@@ -54,26 +54,26 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/signal-definition-enrichment.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['demographic_predicate']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Restricted attribute categories this signal touches.', min_length=1)] = None
-    demographic_predicate: Annotated[DemographicPredicate | None, Field(description="Projected authoritative demographic meaning for the signal. When projected from another provider, this MUST match the provider's definition exactly. Signal names alone never establish demographic semantics.")] = None
-    policy_categories: Annotated[list[str] | None, Field(description='Policy categories this signal is sensitive for.', min_length=1)] = None
-    taxonomy: Annotated[Taxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.')] = None
-    segmentation_criteria: StrMaxLen500 | None = None
-    criteria_url: HttpUrl | None = None
-    data_sources: Annotated[list[DataSourcesItem] | None, Field(min_length=1)] = None
-    methodology: Methodology | None = None
-    audience_expansion: bool | None = None
-    device_expansion: bool | None = None
-    refresh_cadence: RefreshCadence | None = None
-    lookback_window: LookbackWindow | None = None
-    onboarder: Onboarder | None = None
-    countries: Annotated[list[CountryCode] | None, Field(min_length=1)] = None
-    consent_basis: Annotated[list[ConsentBasis] | None, Field(description="Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.", min_length=1)] = None
-    art9_basis: Annotated[Art9Basis | None, Field(description="Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis.")] = None
-    modeling: Modeling | None = None
-    data_subject_rights: Annotated[DataSubjectRights | None, Field(description='Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.')] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.')] = None
-    dts_compliant_version: str | None = None
+    restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Restricted attribute categories this signal touches.', min_length=1), OmittedNotNull] = None
+    demographic_predicate: Annotated[DemographicPredicate | None, Field(description="Projected authoritative demographic meaning for the signal. When projected from another provider, this MUST match the provider's definition exactly. Signal names alone never establish demographic semantics."), OmittedNotNull] = None
+    policy_categories: Annotated[list[str] | None, Field(description='Policy categories this signal is sensitive for.', min_length=1), OmittedNotNull] = None
+    taxonomy: Annotated[Taxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.'), OmittedNotNull] = None
+    segmentation_criteria: Annotated[StrMaxLen500 | None, OmittedNotNull] = None
+    criteria_url: Annotated[HttpUrl | None, OmittedNotNull] = None
+    data_sources: Annotated[list[DataSourcesItem] | None, Field(min_length=1), OmittedNotNull] = None
+    methodology: Annotated[Methodology | None, OmittedNotNull] = None
+    audience_expansion: Annotated[bool | None, OmittedNotNull] = None
+    device_expansion: Annotated[bool | None, OmittedNotNull] = None
+    refresh_cadence: Annotated[RefreshCadence | None, OmittedNotNull] = None
+    lookback_window: Annotated[LookbackWindow | None, OmittedNotNull] = None
+    onboarder: Annotated[Onboarder | None, OmittedNotNull] = None
+    countries: Annotated[list[CountryCode] | None, Field(min_length=1), OmittedNotNull] = None
+    consent_basis: Annotated[list[ConsentBasis] | None, Field(description="Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.", min_length=1), OmittedNotNull] = None
+    art9_basis: Annotated[Art9Basis | None, Field(description="Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis."), OmittedNotNull] = None
+    modeling: Annotated[Modeling | None, OmittedNotNull] = None
+    data_subject_rights: Annotated[DataSubjectRights | None, Field(description='Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.'), OmittedNotNull] = None
+    last_updated: Annotated[AwareDatetime | None, Field(description='When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.'), OmittedNotNull] = None
+    dts_compliant_version: Annotated[str | None, OmittedNotNull] = None
 
 
 __all__ = ["SignalDefinitionEnrichment"]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
@@ -40,7 +40,7 @@ class ReferenceAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reference-asset.json', pointer='#')
     url: Annotated[HttpUrl, Field(description='URL to the reference asset (image, video, or document)')]
     role: Annotated[Role, Field(description='How the creative agent should use this asset. style_reference: match the visual style; product_shot: include this product; mood_board: overall look and feel; example_creative: example of a similar execution; logo: logo to use; strategy_doc: strategy or planning document for context; storyboard: sequential visual direction for video or multi-scene creative')]
-    description: Annotated[str | None, Field(description='Human-readable description of the asset and how it should inform creative generation')] = None
+    description: Annotated[str | None, Field(description='Human-readable description of the asset and how it should inform creative generation'), OmittedNotNull] = None
 
 
 __all__ = ["ReferenceAsset"]

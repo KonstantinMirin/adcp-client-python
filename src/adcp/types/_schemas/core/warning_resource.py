@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 
@@ -36,9 +36,9 @@ class WarningAffectedResource(AdCPBaseModel):
         ConditionalRequired((Match('resource_type', True, ('creative_assignment',)),), require=('media_buy_id', 'package_id', 'creative_id'), forbid=()),
     )
     resource_type: ResourceType
-    media_buy_id: str | None = None
-    package_id: str | None = None
-    creative_id: str | None = None
+    media_buy_id: Annotated[str | None, OmittedNotNull] = None
+    package_id: Annotated[str | None, OmittedNotNull] = None
+    creative_id: Annotated[str | None, OmittedNotNull] = None
 
 
 __all__ = ["WarningAffectedResource"]

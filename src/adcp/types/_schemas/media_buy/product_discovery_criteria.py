@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -42,17 +42,17 @@ class ProductDiscoveryCriteria(AdCPBaseModel):
         UniqueItems('product_ids'),
         UniqueItems('policy_ids'),
     )
-    product_ids: Annotated[list[StrMinLen1] | None, Field(description='Exact seller-issued products to retrieve or use as proposal candidates.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    offer_filters: Annotated[ProductOfferFilters | None, Field(description='Hard commercial and product-characteristic filters. Every returned product MUST satisfy them. These fields do not become package delivery targeting.')] = None
-    targeting_overlay: Annotated[TargetingOverlay | None, Field(description='Concrete delivery constraints the buyer expects to carry into create_media_buy. Returned product pricing and forecasts MUST reflect the effective targeting. A product that cannot apply the request exactly is omitted or returned as a distinct configured product with sparse Product.targeting_resolution modifications; absence of that resolution means exact acceptance.')] = None
-    media_buy_frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Concrete aggregate max-impression cap expected at the MediaBuy root. Every returned product must participate in one shared counter for this exact value. Proposals carry it in commercial_terms.frequency_cap.')] = None
-    required_overlay_support: Annotated[TargetingOverlayRequirements | None, Field(description='Minimum product-scoped targeting dimensions the buyer must be able to select independently on packages later. This requests capability, not current values, value-specific availability, a forecast for every later value, or one product per value.')] = None
-    required_media_buy_support: Annotated[ProductMediaBuySupportRequirements | None, Field(description='Minimum product participation in shared MediaBuy-level controls. For frequency caps, every returned product is promising composability in one aggregate seller counter for each requested per unit.')] = None
-    outcome_target: Annotated[ProductDiscoveryCriteriaOutcomeTarget | None, Field(description='Reverse-forecast planning input for sellers declaring media_buy.outcome_target: a goal plus a volume, a cost target, or both, answered on proposals. Inert on list_products for every seller. See outcome-target.json.')] = None
-    acceptance_context: Annotated[AcceptanceContext | None, Field(description='Structured campaign and advertiser facts for coarse acceptance-policy matching. A matching product is not a guarantee of final acceptance.')] = None
-    catalog: CatalogSelection | None = None
-    policy_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: dict[str, Any] | None = None
+    product_ids: Annotated[list[StrMinLen1] | None, Field(description='Exact seller-issued products to retrieve or use as proposal candidates.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    offer_filters: Annotated[ProductOfferFilters | None, Field(description='Hard commercial and product-characteristic filters. Every returned product MUST satisfy them. These fields do not become package delivery targeting.'), OmittedNotNull] = None
+    targeting_overlay: Annotated[TargetingOverlay | None, Field(description='Concrete delivery constraints the buyer expects to carry into create_media_buy. Returned product pricing and forecasts MUST reflect the effective targeting. A product that cannot apply the request exactly is omitted or returned as a distinct configured product with sparse Product.targeting_resolution modifications; absence of that resolution means exact acceptance.'), OmittedNotNull] = None
+    media_buy_frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Concrete aggregate max-impression cap expected at the MediaBuy root. Every returned product must participate in one shared counter for this exact value. Proposals carry it in commercial_terms.frequency_cap.'), OmittedNotNull] = None
+    required_overlay_support: Annotated[TargetingOverlayRequirements | None, Field(description='Minimum product-scoped targeting dimensions the buyer must be able to select independently on packages later. This requests capability, not current values, value-specific availability, a forecast for every later value, or one product per value.'), OmittedNotNull] = None
+    required_media_buy_support: Annotated[ProductMediaBuySupportRequirements | None, Field(description='Minimum product participation in shared MediaBuy-level controls. For frequency caps, every returned product is promising composability in one aggregate seller counter for each requested per unit.'), OmittedNotNull] = None
+    outcome_target: Annotated[ProductDiscoveryCriteriaOutcomeTarget | None, Field(description='Reverse-forecast planning input for sellers declaring media_buy.outcome_target: a goal plus a volume, a cost target, or both, answered on proposals. Inert on list_products for every seller. See outcome-target.json.'), OmittedNotNull] = None
+    acceptance_context: Annotated[AcceptanceContext | None, Field(description='Structured campaign and advertiser facts for coarse acceptance-policy matching. A matching product is not a guarantee of final acceptance.'), OmittedNotNull] = None
+    catalog: Annotated[CatalogSelection | None, OmittedNotNull] = None
+    policy_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[dict[str, Any] | None, OmittedNotNull] = None
 
 
 __all__ = ["ProductDiscoveryCriteria"]

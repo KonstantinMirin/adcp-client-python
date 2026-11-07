@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     BrandDiscoveryColorValue,
     IntMin0Max8192,
@@ -26,7 +26,7 @@ class Canvas(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/properties/canvas')
     width: IntMin1Max8192
     height: IntMin1Max8192
-    background_color: BrandDiscoveryColorValue | None = '#ffffff'
+    background_color: Annotated[BrandDiscoveryColorValue | None, OmittedNotNull] = '#ffffff'
 
 
 _VALUES_CONTAIN_COVER_STRETCH: tuple[str, ...] = (
@@ -150,7 +150,7 @@ class PlacementPresentationDocument(AdCPBaseModel):
     schema_version: Literal['1.0']
     canvas: Canvas
     creative_slot: Annotated[CreativeSlot, Field(description='Rectangle into which the selected creative render is fitted and clipped without changing its manifest or renderer.')]
-    decorations: Annotated[list[BoxDecoration | TextDecoration | ImageDecoration] | None, Field(max_length=100)] = None
+    decorations: Annotated[list[BoxDecoration | TextDecoration | ImageDecoration] | None, Field(max_length=100), OmittedNotNull] = None
 
 
 __all__ = ["BoxDecoration", "Color", "ImageDecoration", "Layer", "PlacementPresentationDocument", "Rectangle", "TextDecoration"]

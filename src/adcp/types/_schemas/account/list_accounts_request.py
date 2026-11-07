@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1Max200
 from adcp.types.envelopes import AdcpRequest
 
@@ -25,14 +25,14 @@ class ListAccountsRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/list-accounts-request.json', pointer='#')
-    account: Annotated[AccountReference | None, Field(description='Optional exact account filter. Use `account_id` to retrieve one known seller/storefront account, or the complete natural key (`brand` + `operator` + optional `operator_unit`, fixed `currency`, buyer-selected account `timezone`, and `sandbox`) for buyer-declared accounts. When present, the seller returns only matching accounts visible to the authenticated caller.')] = None
-    status: Annotated[AccountStatus | None, Field(description='Filter accounts by status. Omit to return accounts in all statuses.')] = None
-    pagination: PaginationRequest | None = None
-    sandbox: Annotated[bool | None, Field(description='Filter by sandbox status. true returns only sandbox accounts, false returns only production accounts. Omit to return all accounts. Primarily used with account-id namespaces where sandbox accounts are pre-existing test accounts on the platform.')] = None
-    include_webhook_activity: Annotated[bool | None, Field(description='When true, request recent webhook delivery attempts for each returned account in account.webhook_activity[]. Sellers MAY omit webhook_activity if they do not expose this debug log; when present, three-state semantics match the shared webhook_activity[] contract.')] = False
-    webhook_activity_limit: Annotated[IntMin1Max200 | None, Field(description='Maximum number of webhook_activity[] records to return per account when include_webhook_activity is true.')] = 50
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    account: Annotated[AccountReference | None, Field(description='Optional exact account filter. Use `account_id` to retrieve one known seller/storefront account, or the complete natural key (`brand` + `operator` + optional `operator_unit`, fixed `currency`, buyer-selected account `timezone`, and `sandbox`) for buyer-declared accounts. When present, the seller returns only matching accounts visible to the authenticated caller.'), OmittedNotNull] = None
+    status: Annotated[AccountStatus | None, Field(description='Filter accounts by status. Omit to return accounts in all statuses.'), OmittedNotNull] = None
+    pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
+    sandbox: Annotated[bool | None, Field(description='Filter by sandbox status. true returns only sandbox accounts, false returns only production accounts. Omit to return all accounts. Primarily used with account-id namespaces where sandbox accounts are pre-existing test accounts on the platform.'), OmittedNotNull] = None
+    include_webhook_activity: Annotated[bool | None, Field(description='When true, request recent webhook delivery attempts for each returned account in account.webhook_activity[]. Sellers MAY omit webhook_activity if they do not expose this debug log; when present, three-state semantics match the shared webhook_activity[] contract.'), OmittedNotNull] = False
+    webhook_activity_limit: Annotated[IntMin1Max200 | None, Field(description='Maximum number of webhook_activity[] records to return per account when include_webhook_activity is true.'), OmittedNotNull] = 50
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ListAccountsRequest"]

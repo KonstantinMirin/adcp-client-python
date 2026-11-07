@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..provenance import Provenance
 
@@ -20,8 +20,8 @@ class TextAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/text-asset.json', pointer='#')
     asset_type: Annotated[Literal['text'], Field(description='Discriminator identifying this as a text asset. See /schemas/creative/asset-types for the registry.')]
     content: Annotated[str, Field(description='Text content')]
-    language: Annotated[str | None, Field(description='Optional language claim for this text. In a materialized creative localization variant, localized-creative-asset.json requires this value to use /schemas/core/locale-tag.json and conformance requires exact equality with the enclosing variant locale. General non-localized assets retain the legacy unconstrained string for compatibility.')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    language: Annotated[str | None, Field(description='Optional language claim for this text. In a materialized creative localization variant, localized-creative-asset.json requires this value to use /schemas/core/locale-tag.json and conformance requires exact equality with the enclosing variant locale. General non-localized assets retain the legacy unconstrained string for compatibility.'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["TextAsset"]

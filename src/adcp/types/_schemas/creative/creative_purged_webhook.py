@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -47,9 +47,9 @@ class CreativePurgedWebhook(AdCPBaseModel):
     purge_kind: Annotated[PurgeKind, Field(description="`soft` — tombstone retained on `list_creatives` (with `include_purged: true`) for the seller's retention window (default 30 days, MUST match the `webhook_activity[]` retention rule). `hard` — no tombstone; the seller MUST NOT retain or echo the asset content elsewhere. `hard` is reserved for legal erasure or equivalent compelled destruction; sellers SHOULD default to `soft`.")]
     purged_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller observed the destruction. Distinct from `fired_at`.')]
     reason_code: Annotated[CreativeEventReasonCode, Field(description='Categorical reason for the purge. Typical values: `retention_expired`, `legal_erasure`, `takedown_request`. Receivers MUST treat unknown reason codes as forward-compatible additions.')]
-    reason_detail: Annotated[StrMaxLen500 | None, Field(description='Human-readable supplement. Sellers MUST NOT include third-party PII or the asset content in this field — the field is meant for operational context, not asset preservation.')] = None
+    reason_detail: Annotated[StrMaxLen500 | None, Field(description='Human-readable supplement. Sellers MUST NOT include third-party PII or the asset content in this field — the field is meant for operational context, not asset preservation.'), OmittedNotNull] = None
     initiator: Annotated[Initiator, Field(description='Who initiated the purge. `seller` — explicit decision (legal team, content policy, takedown handler). `system` — automated retention sweep, storage policy enforcement. `buyer` never appears on this event — buyer-initiated destruction (if and when supported) is acknowledged on the `sync_creatives` response path.')]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["CreativePurgedWebhook"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen1MaxLen64, StrMinLen1MaxLen255, StrMinLen1MaxLen2048
 from adcp.types.envelopes import AdcpResponse
@@ -62,7 +62,7 @@ class Scope(AdCPBaseModel):
     period_start: AwareDatetime
     period_end: AwareDatetime
     scope_closed: Annotated[bool, Field(description='True only when no new obligation can enter this evaluated scope.')]
-    media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True})] = None
+    media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     all_accessible_media_buys: Annotated[bool, Field(description='True when media_buy_ids was omitted and the scope covers all caller-accessible account buys.')]
     delivery_config_generations: Annotated[list[DeliveryConfigGenerationsItem], Field(description='Exact independently reconciled configuration generations in the denominator.', json_schema_extra={'uniqueItems': True})]
     feed_purposes: Annotated[list[ReportingFeedPurpose], Field(json_schema_extra={'uniqueItems': True})]
@@ -82,7 +82,7 @@ class ObligationCounts(AdCPBaseModel):
     delayed: NonNegativeInt
     action_required: NonNegativeInt
     complete: NonNegativeInt
-    consumer_status_pending: Annotated[NonNegativeInt | None, Field(description="Obligations in this scope whose elapsed expected period has passed its consumer-status deadline — expected_at plus automated_recovery_window_seconds — without a current consumer status from the authenticated caller. A chain with any unsuperseded leaf counts as current whatever that leaf says; only an empty chain is pending. Because it counts obligations, a period the seller omitted entirely has no obligation and is not counted here — the buyer's independently derived denominator, not this field, remains the authority on omitted periods. It is a visibility count over the caller's own silence, never a health input: it MUST NOT change health, any other count, or seller-advertised reliability_statistics, and it overlaps the health counts rather than partitioning them. Required when the seller advertises consumer_status_task.")] = None
+    consumer_status_pending: Annotated[NonNegativeInt | None, Field(description="Obligations in this scope whose elapsed expected period has passed its consumer-status deadline — expected_at plus automated_recovery_window_seconds — without a current consumer status from the authenticated caller. A chain with any unsuperseded leaf counts as current whatever that leaf says; only an empty chain is pending. Because it counts obligations, a period the seller omitted entirely has no obligation and is not counted here — the buyer's independently derived denominator, not this field, remains the authority on omitted periods. It is a visibility count over the caller's own silence, never a health input: it MUST NOT change health, any other count, or seller-advertised reliability_statistics, and it overlaps the health counts rather than partitioning them. Required when the seller advertises consumer_status_task."), OmittedNotNull] = None
 
 
 class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -113,30 +113,30 @@ class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
         Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'scope': {'properties': {'coverage_complete': {'const': False}}, 'required': ['coverage_complete']}}, 'required': ['scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'complete'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    view: ReportingStatusView | None = None
-    ledger_snapshot_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value.")] = None
-    ledger_as_of: Annotated[AwareDatetime | None, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')] = None
-    changes_checkpoint: Annotated[StrMinLen1MaxLen2048 | None, Field(description='Opaque durable incremental-repair checkpoint for this periods snapshot. Consumers persist it only after consuming every page, then send it as changes_after. It is bound to authenticated caller, account, and filters and MUST order every committed obligation, revision, adjustment, materialization, consumer status statement, revision receipt, and adjustment receipt without gaps.')] = None
-    account_id: Annotated[StrMinLen1 | None, Field(description='Resolved seller/storefront account identifier.')] = None
-    scope: Annotated[Scope | None, Field(description='Exact denominator evaluated for summary or periods health. complete is valid only when scope_closed is true.')] = None
-    health: ReportingHealth | None = None
-    coverage: Annotated[ReportingCoverage | None, Field(description='Aggregated effective coverage for the exact selected scope. This remains independent of reporting health and finality so a fresh covered subset cannot look like complete campaign reporting.')] = None
+    view: Annotated[ReportingStatusView | None, OmittedNotNull] = None
+    ledger_snapshot_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value."), OmittedNotNull] = None
+    ledger_as_of: Annotated[AwareDatetime | None, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.'), OmittedNotNull] = None
+    changes_checkpoint: Annotated[StrMinLen1MaxLen2048 | None, Field(description='Opaque durable incremental-repair checkpoint for this periods snapshot. Consumers persist it only after consuming every page, then send it as changes_after. It is bound to authenticated caller, account, and filters and MUST order every committed obligation, revision, adjustment, materialization, consumer status statement, revision receipt, and adjustment receipt without gaps.'), OmittedNotNull] = None
+    account_id: Annotated[StrMinLen1 | None, Field(description='Resolved seller/storefront account identifier.'), OmittedNotNull] = None
+    scope: Annotated[Scope | None, Field(description='Exact denominator evaluated for summary or periods health. complete is valid only when scope_closed is true.'), OmittedNotNull] = None
+    health: Annotated[ReportingHealth | None, OmittedNotNull] = None
+    coverage: Annotated[ReportingCoverage | None, Field(description='Aggregated effective coverage for the exact selected scope. This remains independent of reporting health and finality so a fresh covered subset cannot look like complete campaign reporting.'), OmittedNotNull] = None
     data_through: Annotated[AwareDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.')] = None
-    next_expected_at: Annotated[AwareDatetime | None, Field(description='Next obligation due time for an open scope. In a complete summary (view: summary, health: complete), the nearest future period start, strictly after ledger_as_of, across all active committed configuration generations in scope.delivery_config_generations. Sellers MUST populate it when such a scheduled period exists outside the closed evaluated scope, and omit it when none exists. This complete-scope projection applies only to summary responses. It is derived from the configuration schedule and does not represent an open obligation in the evaluated scope; its presence does not indicate that the scope is still open. Projecting it MUST NOT create, expose, lease, count, or alter an obligation whose period has not closed, or change obligation_counts, scope, or coverage. Obligation expected_at remains period.end plus schedule.delivery_sla; get_media_buy_delivery.next_expected_at remains the next webhook notification time.')] = None
-    obligation_counts: ObligationCounts | None = None
-    issues: list[ReportingStatusIssue] | None = None
-    periods: list[ReportingObligation] | None = None
-    revisions: Annotated[list[ReportingRevision] | None, Field(description='Revision ledger records on this page. Pagination is over the flat union of obligations, revisions, adjustments, materializations, consumer status statements, revision receipts, and adjustment receipts, avoiding unbounded nested history.')] = None
-    adjustments: Annotated[list[ReportingAdjustment] | None, Field(description='Immutable post-official accounting corrections on this page. They preserve the original invoice-to-revision binding and are included in flat ledger pagination.')] = None
-    consumer_statuses: Annotated[list[ReportingConsumerStatus] | None, Field(description="Authenticated caller's append-only reporting status history on this page. Current leaves are identified by obligation current_consumer_status_id or, for a missing seller obligation, by the supersession chain over configuration generation, report definition, and period. No other consumer's status is disclosed.")] = None
-    adjustment_receipts: Annotated[list[ReportingAdjustmentReceipt] | None, Field(description='Authenticated Reconciled Billing outcomes for adjustments on this page.')] = None
-    pagination: PaginationResponse | None = None
-    revision: ReportingRevision | None = None
-    materializations: list[ReportingMaterialization] | None = None
-    receipts: Annotated[list[ReportingReceipt] | None, Field(description="Authenticated caller's durable reconciliation receipts. Receipts from another consumer principal are never disclosed.")] = None
-    errors: list[Error] | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    next_expected_at: Annotated[AwareDatetime | None, Field(description='Next obligation due time for an open scope. In a complete summary (view: summary, health: complete), the nearest future period start, strictly after ledger_as_of, across all active committed configuration generations in scope.delivery_config_generations. Sellers MUST populate it when such a scheduled period exists outside the closed evaluated scope, and omit it when none exists. This complete-scope projection applies only to summary responses. It is derived from the configuration schedule and does not represent an open obligation in the evaluated scope; its presence does not indicate that the scope is still open. Projecting it MUST NOT create, expose, lease, count, or alter an obligation whose period has not closed, or change obligation_counts, scope, or coverage. Obligation expected_at remains period.end plus schedule.delivery_sla; get_media_buy_delivery.next_expected_at remains the next webhook notification time.'), OmittedNotNull] = None
+    obligation_counts: Annotated[ObligationCounts | None, OmittedNotNull] = None
+    issues: Annotated[list[ReportingStatusIssue] | None, OmittedNotNull] = None
+    periods: Annotated[list[ReportingObligation] | None, OmittedNotNull] = None
+    revisions: Annotated[list[ReportingRevision] | None, Field(description='Revision ledger records on this page. Pagination is over the flat union of obligations, revisions, adjustments, materializations, consumer status statements, revision receipts, and adjustment receipts, avoiding unbounded nested history.'), OmittedNotNull] = None
+    adjustments: Annotated[list[ReportingAdjustment] | None, Field(description='Immutable post-official accounting corrections on this page. They preserve the original invoice-to-revision binding and are included in flat ledger pagination.'), OmittedNotNull] = None
+    consumer_statuses: Annotated[list[ReportingConsumerStatus] | None, Field(description="Authenticated caller's append-only reporting status history on this page. Current leaves are identified by obligation current_consumer_status_id or, for a missing seller obligation, by the supersession chain over configuration generation, report definition, and period. No other consumer's status is disclosed."), OmittedNotNull] = None
+    adjustment_receipts: Annotated[list[ReportingAdjustmentReceipt] | None, Field(description='Authenticated Reconciled Billing outcomes for adjustments on this page.'), OmittedNotNull] = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    revision: Annotated[ReportingRevision | None, OmittedNotNull] = None
+    materializations: Annotated[list[ReportingMaterialization] | None, OmittedNotNull] = None
+    receipts: Annotated[list[ReportingReceipt] | None, Field(description="Authenticated caller's durable reconciliation receipts. Receipts from another consumer principal are never disclosed."), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class SuccessfulLookup(GetReportingStatusResponse):
@@ -271,8 +271,8 @@ class UnavailableLookup(FailedLookup):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/1/oneOf/0')
     view: Annotated[ReportingStatusView, Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     failure_kind: Literal['lookup_unavailable']
-    message: Annotated[Literal['Reporting status resource is unavailable.'] | None, Field(description='Human-readable summary of the task result. Provides natural language explanation of what happened, suitable for display to end users or for AI agent comprehension. Generated by the protocol layer based on the task response.')] = None
-    adcp_error: Annotated[AdcpError | None, Field(description="Transport-envelope error signal for fatal task failures. Per the two-layer model in `error-handling.mdx#envelope-vs-payload-errors-the-two-layer-model`, a fatal task failure SHOULD populate both this envelope-level field AND the payload's `errors[]` array — the envelope carries a typed, extractable error so MCP/A2A clients can dispatch without re-parsing the payload, while the payload's structured `errors[]` remains the canonical normative shape. Non-fatal warnings populate ONLY `payload.errors[]` with `severity: warning` — the envelope MUST NOT carry `adcp_error` for non-failures.")] = None
+    message: Annotated[Literal['Reporting status resource is unavailable.'] | None, Field(description='Human-readable summary of the task result. Provides natural language explanation of what happened, suitable for display to end users or for AI agent comprehension. Generated by the protocol layer based on the task response.'), OmittedNotNull] = None
+    adcp_error: Annotated[AdcpError | None, Field(description="Transport-envelope error signal for fatal task failures. Per the two-layer model in `error-handling.mdx#envelope-vs-payload-errors-the-two-layer-model`, a fatal task failure SHOULD populate both this envelope-level field AND the payload's `errors[]` array — the envelope carries a typed, extractable error so MCP/A2A clients can dispatch without re-parsing the payload, while the payload's structured `errors[]` remains the canonical normative shape. Non-fatal warnings populate ONLY `payload.errors[]` with `severity: warning` — the envelope MUST NOT carry `adcp_error` for non-failures."), OmittedNotNull] = None
     errors: Annotated[list[ErrorsItem], Field(max_length=1, min_length=1)]
 
 
@@ -283,7 +283,7 @@ class OperationalFailure(FailedLookup):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/1/oneOf/1')
     view: Annotated[ReportingStatusView, Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     failure_kind: Literal['operational']
-    adcp_error: Error | None = None
+    adcp_error: Annotated[Error | None, OmittedNotNull] = None
     errors: Annotated[list[Error], Field(min_length=1)]
 
 

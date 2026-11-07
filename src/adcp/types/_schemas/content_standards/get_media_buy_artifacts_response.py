@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
@@ -42,8 +42,8 @@ class ObjBrandIdSkuId(AdCPBaseModel):
     Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0/properties/artifacts/items/properties/brand_context')
-    brand_id: Annotated[str | None, Field(description='Brand identifier')] = None
-    sku_id: Annotated[str | None, Field(description='Product/SKU identifier if applicable')] = None
+    brand_id: Annotated[str | None, Field(description='Brand identifier'), OmittedNotNull] = None
+    sku_id: Annotated[str | None, Field(description='Product/SKU identifier if applicable'), OmittedNotNull] = None
 
 
 class LocalVerdict(StrEnum):
@@ -61,13 +61,13 @@ class LocalVerdict(StrEnum):
 class ArtifactsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0/properties/artifacts/items')
     record_id: Annotated[str, Field(description='Unique identifier for this delivery record')]
-    timestamp: Annotated[AwareDatetime | None, Field(description='When the delivery occurred')] = None
-    package_id: Annotated[str | None, Field(description='Which package this delivery belongs to')] = None
+    timestamp: Annotated[AwareDatetime | None, Field(description='When the delivery occurred'), OmittedNotNull] = None
+    package_id: Annotated[str | None, Field(description='Which package this delivery belongs to'), OmittedNotNull] = None
     artifact: Annotated[Artifact, Field(description='Full artifact with content assets')]
-    country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred')] = None
-    channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)')] = None
-    brand_context: Annotated[ObjBrandIdSkuId | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
-    local_verdict: Annotated[LocalVerdict | None, Field(description="Seller's local model verdict for this artifact")] = None
+    country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred'), OmittedNotNull] = None
+    channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)'), OmittedNotNull] = None
+    brand_context: Annotated[ObjBrandIdSkuId | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.'), OmittedNotNull] = None
+    local_verdict: Annotated[LocalVerdict | None, Field(description="Seller's local model verdict for this artifact"), OmittedNotNull] = None
 
 
 class CollectionInfo(AdCPBaseModel):
@@ -75,10 +75,10 @@ class CollectionInfo(AdCPBaseModel):
     Information about artifact collection for this media buy. Sampling is configured at buy creation time — this reports what was actually collected.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0/properties/collection_info')
-    total_deliveries: Annotated[int | None, Field(description='Total deliveries in the requested time range')] = None
-    total_collected: Annotated[int | None, Field(description="Total artifacts collected (per the buy's sampling configuration)")] = None
-    returned_count: Annotated[int | None, Field(description='Number of artifacts in this response (may be less than total_collected due to pagination or filters)')] = None
-    effective_rate: Annotated[float | None, Field(description='Actual collection rate achieved (total_collected / total_deliveries)')] = None
+    total_deliveries: Annotated[int | None, Field(description='Total deliveries in the requested time range'), OmittedNotNull] = None
+    total_collected: Annotated[int | None, Field(description="Total artifacts collected (per the buy's sampling configuration)"), OmittedNotNull] = None
+    returned_count: Annotated[int | None, Field(description='Number of artifacts in this response (may be less than total_collected due to pagination or filters)'), OmittedNotNull] = None
+    effective_rate: Annotated[float | None, Field(description='Actual collection rate achieved (total_collected / total_deliveries)'), OmittedNotNull] = None
 
 
 class GetMediaBuyArtifactsResponseArtifactsMediaBuyId(GetMediaBuyArtifactsResponse):
@@ -91,10 +91,10 @@ class GetMediaBuyArtifactsResponseArtifactsMediaBuyId(GetMediaBuyArtifactsRespon
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0')
     media_buy_id: Annotated[str, Field(description='Media buy these artifacts belong to')]
     artifacts: Annotated[list[ArtifactsItem], Field(description='Delivery records with full artifact content')]
-    collection_info: Annotated[CollectionInfo | None, Field(description='Information about artifact collection for this media buy. Sampling is configured at buy creation time — this reports what was actually collected.')] = None
-    pagination: PaginationResponse | None = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    collection_info: Annotated[CollectionInfo | None, Field(description='Information about artifact collection for this media buy. Sampling is configured at buy creation time — this reports what was actually collected.'), OmittedNotNull] = None
+    pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class GetMediaBuyArtifactsResponseErrors(GetMediaBuyArtifactsResponse, FailedResponse):
@@ -106,8 +106,8 @@ class GetMediaBuyArtifactsResponseErrors(GetMediaBuyArtifactsResponse, FailedRes
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/1')
     errors: list[Error]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 GetMediaBuyArtifactsResponse._branch_models = (GetMediaBuyArtifactsResponseArtifactsMediaBuyId, GetMediaBuyArtifactsResponseErrors,)

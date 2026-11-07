@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 from .ext import ExtensionObject
@@ -70,21 +70,21 @@ class EducationItem(AdCPBaseModel):
     program_id: Annotated[str, Field(description='Unique identifier for this program or course.')]
     name: Annotated[str, Field(description="Program or course name (e.g., 'MSc Computer Science', 'Digital Marketing Certificate').")]
     school: Annotated[str, Field(description='Institution or provider name.')]
-    description: Annotated[str | None, Field(description='Program description including curriculum highlights and outcomes.')] = None
-    subject: Annotated[str | None, Field(description="Subject area or field of study (e.g., 'computer-science', 'business', 'healthcare').")] = None
-    degree_type: Annotated[DegreeType | None, Field(description='Type of credential awarded.')] = None
-    level: Annotated[Level | None, Field(description='Difficulty or prerequisite level.')] = None
-    price: Annotated[Price | None, Field(description='Tuition or course fee.')] = None
-    duration: Annotated[str | None, Field(description="Program duration as a human-readable string (e.g., '4 weeks', '2 years', '6 months').")] = None
-    start_date: Annotated[date | None, Field(description='Next available start date (ISO 8601 date).')] = None
-    language: Annotated[str | None, Field(description="Language of instruction (e.g., 'en', 'nl', 'es').")] = None
-    modality: Annotated[Modality | None, Field(description='Delivery format.')] = None
-    location: Annotated[str | None, Field(description="Campus or instruction location (e.g., 'Amsterdam, NL'). Omit for fully online programs.")] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Program or institution image URL.')] = None
-    url: Annotated[HttpUrl | None, Field(description='Program landing page or enrollment URL.')] = None
-    tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'stem', 'scholarship-available', 'evening-classes').", min_length=1)] = None
-    assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this program. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (campus/program hero), 'images_vertical' (9:16 for Stories), 'logo' (institution logo). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1)] = None
-    ext: ExtensionObject | None = None
+    description: Annotated[str | None, Field(description='Program description including curriculum highlights and outcomes.'), OmittedNotNull] = None
+    subject: Annotated[str | None, Field(description="Subject area or field of study (e.g., 'computer-science', 'business', 'healthcare')."), OmittedNotNull] = None
+    degree_type: Annotated[DegreeType | None, Field(description='Type of credential awarded.'), OmittedNotNull] = None
+    level: Annotated[Level | None, Field(description='Difficulty or prerequisite level.'), OmittedNotNull] = None
+    price: Annotated[Price | None, Field(description='Tuition or course fee.'), OmittedNotNull] = None
+    duration: Annotated[str | None, Field(description="Program duration as a human-readable string (e.g., '4 weeks', '2 years', '6 months')."), OmittedNotNull] = None
+    start_date: Annotated[date | None, Field(description='Next available start date (ISO 8601 date).'), OmittedNotNull] = None
+    language: Annotated[str | None, Field(description="Language of instruction (e.g., 'en', 'nl', 'es')."), OmittedNotNull] = None
+    modality: Annotated[Modality | None, Field(description='Delivery format.'), OmittedNotNull] = None
+    location: Annotated[str | None, Field(description="Campus or instruction location (e.g., 'Amsterdam, NL'). Omit for fully online programs."), OmittedNotNull] = None
+    image_url: Annotated[HttpUrl | None, Field(description='Program or institution image URL.'), OmittedNotNull] = None
+    url: Annotated[HttpUrl | None, Field(description='Program landing page or enrollment URL.'), OmittedNotNull] = None
+    tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'stem', 'scholarship-available', 'evening-classes').", min_length=1), OmittedNotNull] = None
+    assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this program. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (campus/program hero), 'images_vertical' (9:16 for Stories), 'logo' (institution logo). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["EducationItem"]

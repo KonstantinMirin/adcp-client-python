@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne
 from adcp.types.constraints import StrMinLen1MaxLen1000
 
@@ -61,7 +61,7 @@ class Impact(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/definitions/impact')
     area: Area
     effect: ImpactEffect
-    reason: StrMinLen1MaxLen1000 | None = None
+    reason: Annotated[StrMinLen1MaxLen1000 | None, OmittedNotNull] = None
 
 
 class NonblockingImpactsItemEffect(StrEnum):

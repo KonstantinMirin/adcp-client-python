@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
@@ -31,10 +31,10 @@ class FormatReferenceStructuredObject(AdCPBaseModel):
     )
     agent_url: Annotated[HttpUrl, Field(description="URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.")]
     id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Format identifier within the agent's namespace (e.g., 'display_static', 'video_hosted', 'audio_standard'). When used alone, references a template format. When combined with dimension/duration fields, creates a parameterized format ID for a specific variant.")]
-    width: Annotated[IntMin1 | None, Field(description='Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.')] = None
-    height: Annotated[IntMin1 | None, Field(description='Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.')] = None
-    duration_ms: Annotated[FloatMin1 | None, Field(description='Duration in milliseconds for time-based formats (video, audio). When specified, creates a parameterized format ID. Omit to reference a template format without parameters.')] = None
-    pixel_ratio: Annotated[FloatGt0 | None, Field(description='Required intrinsic-pixel density for a parameterized visual format, expressed as intrinsic pixels per logical pixel. Requires `width` and `height`. Example: `{id: "display_image", width: 300, height: 250, pixel_ratio: 2}` identifies a 300×250 logical render supplied by a 600×500 image. Omit for the backward-compatible 1x variant.')] = None
+    width: Annotated[IntMin1 | None, Field(description='Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.'), OmittedNotNull] = None
+    height: Annotated[IntMin1 | None, Field(description='Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.'), OmittedNotNull] = None
+    duration_ms: Annotated[FloatMin1 | None, Field(description='Duration in milliseconds for time-based formats (video, audio). When specified, creates a parameterized format ID. Omit to reference a template format without parameters.'), OmittedNotNull] = None
+    pixel_ratio: Annotated[FloatGt0 | None, Field(description='Required intrinsic-pixel density for a parameterized visual format, expressed as intrinsic pixels per logical pixel. Requires `width` and `height`. Example: `{id: "display_image", width: 300, height: 250, pixel_ratio: 2}` identifies a 300×250 logical render supplied by a 600×500 image. Omit for the backward-compatible 1x variant.'), OmittedNotNull] = None
 
 
 __all__ = ["FormatReferenceStructuredObject"]

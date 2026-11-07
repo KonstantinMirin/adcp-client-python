@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
@@ -70,10 +70,10 @@ class DAASTTrackerConstraints(AdCPBaseModel):
         Approximation(document='core/daast-tracker-constraints.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'not': {'required': ['target']}}, {'properties': {'target': {'const': 'linear'}}, 'required': ['target']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/daast-tracker-constraints.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'target': {'const': 'companion'}}, 'required': ['target']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    daast_event: DaastEvent | None = None
-    target: Annotated[DaastTarget | None, Field(json_schema_extra={'default': 'linear'})] = Field(default_factory=lambda: TypeAdapter(DaastTarget).validate_python('linear'))
-    offset: DaastOffset | None = None
-    daast_versions: DaastVersions | None = None
+    daast_event: Annotated[DaastEvent | None, OmittedNotNull] = None
+    target: Annotated[DaastTarget | None, Field(json_schema_extra={'default': 'linear'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(DaastTarget).validate_python('linear'))
+    offset: Annotated[DaastOffset | None, OmittedNotNull] = None
+    daast_versions: Annotated[DaastVersions | None, OmittedNotNull] = None
 
 
 __all__ = ["DAASTTrackerConstraints", "DaastEvent", "DaastOffset", "DaastTarget", "DaastVersions"]

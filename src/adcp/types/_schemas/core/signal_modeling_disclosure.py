@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMaxLen2000
 
@@ -33,11 +33,11 @@ class JurisdictionsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-modeling-disclosure.json', pointer='#/properties/jurisdictions/items')
     country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code.')]
-    region: Annotated[str | None, Field(description='Provider-defined sub-national region code or name when the obligation is regional. No global canonical format is implied.')] = None
+    region: Annotated[str | None, Field(description='Provider-defined sub-national region code or name when the obligation is regional. No global canonical format is implied.'), OmittedNotNull] = None
     regulation: Annotated[str, Field(description='Provider-supplied regulation identifier for the disclosure obligation.')]
-    disclosure_text: Annotated[str | None, Field(description='Human-readable disclosure text or summary the provider expects buyers or reviewers to see.')] = None
-    disclosure_url: Annotated[HttpUrl | None, Field(description="Optional URL to the provider's canonical disclosure or methodology page for this jurisdiction.")] = None
-    audience: Annotated[Audience | None, Field(description='Primary audience for this disclosure entry.')] = None
+    disclosure_text: Annotated[str | None, Field(description='Human-readable disclosure text or summary the provider expects buyers or reviewers to see.'), OmittedNotNull] = None
+    disclosure_url: Annotated[HttpUrl | None, Field(description="Optional URL to the provider's canonical disclosure or methodology page for this jurisdiction."), OmittedNotNull] = None
+    audience: Annotated[Audience | None, Field(description='Primary audience for this disclosure entry.'), OmittedNotNull] = None
 
 
 class SignalModelingDisclosure(AdCPBaseModel):
@@ -52,8 +52,8 @@ class SignalModelingDisclosure(AdCPBaseModel):
         ConditionalRequired((Match('required', True, (True,)),), require=('jurisdictions',), forbid=()),
     )
     required: Annotated[bool, Field(description="The provider's claim that a modeling or AI-use disclosure is required for this signal in at least one applicable jurisdiction. This is a declared compliance signal, not a protocol-level legal determination.")]
-    jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where a modeling or AI-use disclosure applies.', min_length=1)] = None
-    notes: Annotated[StrMaxLen2000 | None, Field(description='Optional provider notes on how the disclosure should be interpreted. Informational only; buyers should not branch programmatically on this text.')] = None
+    jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where a modeling or AI-use disclosure applies.', min_length=1), OmittedNotNull] = None
+    notes: Annotated[StrMaxLen2000 | None, Field(description='Optional provider notes on how the disclosure should be interpreted. Informational only; buyers should not branch programmatically on this text.'), OmittedNotNull] = None
 
 
 __all__ = ["SignalModelingDisclosure"]

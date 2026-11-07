@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.ext import ExtensionObject
 from ..core.targeting import TargetingOverlay
@@ -20,7 +20,7 @@ class ProductDiscoveryTargetingResolution(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-targeting-resolution.json', pointer='#')
     brief_targeting: Annotated[TargetingOverlay, Field(description="Structured delivery constraints the seller resolved from explicit hard targeting in the brief. This is the seller's literal interpretation, not a counteroffer: products that cannot honor it are omitted. Sellers MUST emit this confirmation when the interpretation materially affects product eligibility, pricing, or forecasting; otherwise it is a best practice. Unchanged structured targeting_overlay values are not repeated.")]
-    ext: ExtensionObject | None = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ProductDiscoveryTargetingResolution"]

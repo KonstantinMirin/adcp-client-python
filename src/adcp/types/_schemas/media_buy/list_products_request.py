@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import IntMin1Max100, StrMinLen1, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
@@ -41,21 +41,21 @@ class ListProductsRequest(AdCPVersionEnvelope, AdcpRequest):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/list-products-request.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'criteria': {'required': ['catalog']}}, 'required': ['criteria']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    adcp_version: AdcpVersion | None = None
-    adcp_major_version: AdcpMajorVersion | None = None
-    idempotency_key: Annotated[IdempotencyKey | None, Field(description='Optional replay key accepted uniformly on read calls.')] = None
-    context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.')] = None
-    context: ContextObject | None = None
-    governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: Annotated[ListProductsRequestPushNotificationConfig | None, Field(description='Uniform per-call envelope field accepted for SDK compatibility. This does not register a wholesale feed subscription; durable product.* and wholesale_feed.bulk_change subscribers are registered through sync_accounts notification_configs.')] = None
-    account: Annotated[CanonicalAccountReference | None, Field(description='Account scope for pricing and availability. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.')] = None
-    brand: BrandKey | None = None
-    criteria: ProductDiscoveryCriteria | None = None
-    fields: ProductResponseFields | None = None
-    cursor: StrMinLen1 | None = None
-    max_results: IntMin1Max100 | None = 25
-    if_feed_version: Annotated[str | None, Field(description='Opaque feed version returned by a prior list_products response or wholesale product-feed webhook for the same cache scope and canonicalized selection. Used for repair and conditional reconciliation, not routine polling when webhooks are active.')] = None
-    if_pricing_version: Annotated[str | None, Field(description='Opaque pricing version returned by a prior list_products response. Valid only with if_feed_version.')] = None
+    adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
+    idempotency_key: Annotated[IdempotencyKey | None, Field(description='Optional replay key accepted uniformly on read calls.'), OmittedNotNull] = None
+    context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    governance_context: Annotated[StrMinLen1MaxLen4096 | None, OmittedNotNull] = None
+    push_notification_config: Annotated[ListProductsRequestPushNotificationConfig | None, Field(description='Uniform per-call envelope field accepted for SDK compatibility. This does not register a wholesale feed subscription; durable product.* and wholesale_feed.bulk_change subscribers are registered through sync_accounts notification_configs.'), OmittedNotNull] = None
+    account: Annotated[CanonicalAccountReference | None, Field(description='Account scope for pricing and availability. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.'), OmittedNotNull] = None
+    brand: Annotated[BrandKey | None, OmittedNotNull] = None
+    criteria: Annotated[ProductDiscoveryCriteria | None, OmittedNotNull] = None
+    fields: Annotated[ProductResponseFields | None, OmittedNotNull] = None
+    cursor: Annotated[StrMinLen1 | None, OmittedNotNull] = None
+    max_results: Annotated[IntMin1Max100 | None, OmittedNotNull] = 25
+    if_feed_version: Annotated[str | None, Field(description='Opaque feed version returned by a prior list_products response or wholesale product-feed webhook for the same cache scope and canonicalized selection. Used for repair and conditional reconciliation, not routine polling when webhooks are active.'), OmittedNotNull] = None
+    if_pricing_version: Annotated[str | None, Field(description='Opaque pricing version returned by a prior list_products response. Valid only with if_feed_version.'), OmittedNotNull] = None
 
 
 __all__ = ["ListProductsRequest"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
 from adcp.types.constraints import FloatMin0Max1, StrMaxLen128
 
@@ -25,9 +25,9 @@ class CoverageRate(ForecastRange):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#/properties/metrics/properties/coverage_rate')
-    low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value')] = None
-    mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value')] = None
-    high: Annotated[FloatMin0Max1 | None, Field(description='Optimistic (high-end) forecast value')] = None
+    low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value'), OmittedNotNull] = None
+    mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value'), OmittedNotNull] = None
+    high: Annotated[FloatMin0Max1 | None, Field(description='Optimistic (high-end) forecast value'), OmittedNotNull] = None
 
 
 class Metrics(AdCPBaseModel):
@@ -39,23 +39,23 @@ class Metrics(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#/properties/metrics')
     __pydantic_extra__: dict[str, ForecastRange] = Field(init=False)
-    audience_size: ForecastRange | None = None
-    reach: ForecastRange | None = None
-    frequency: ForecastRange | None = None
-    impressions: ForecastRange | None = None
-    clicks: ForecastRange | None = None
-    spend: ForecastRange | None = None
-    views: ForecastRange | None = None
-    completed_views: ForecastRange | None = None
-    grps: ForecastRange | None = None
-    engagements: ForecastRange | None = None
-    follows: ForecastRange | None = None
-    saves: ForecastRange | None = None
-    profile_visits: ForecastRange | None = None
-    measured_impressions: ForecastRange | None = None
-    downloads: ForecastRange | None = None
-    plays: ForecastRange | None = None
-    coverage_rate: Annotated[CoverageRate | None, Field(description="Share of the declared forecast scope represented by this point. For signal coverage forecasts, this is the point's count divided by the coverage_forecast.scope denominator. Range 0.0 to 1.0.")] = None
+    audience_size: Annotated[ForecastRange | None, OmittedNotNull] = None
+    reach: Annotated[ForecastRange | None, OmittedNotNull] = None
+    frequency: Annotated[ForecastRange | None, OmittedNotNull] = None
+    impressions: Annotated[ForecastRange | None, OmittedNotNull] = None
+    clicks: Annotated[ForecastRange | None, OmittedNotNull] = None
+    spend: Annotated[ForecastRange | None, OmittedNotNull] = None
+    views: Annotated[ForecastRange | None, OmittedNotNull] = None
+    completed_views: Annotated[ForecastRange | None, OmittedNotNull] = None
+    grps: Annotated[ForecastRange | None, OmittedNotNull] = None
+    engagements: Annotated[ForecastRange | None, OmittedNotNull] = None
+    follows: Annotated[ForecastRange | None, OmittedNotNull] = None
+    saves: Annotated[ForecastRange | None, OmittedNotNull] = None
+    profile_visits: Annotated[ForecastRange | None, OmittedNotNull] = None
+    measured_impressions: Annotated[ForecastRange | None, OmittedNotNull] = None
+    downloads: Annotated[ForecastRange | None, OmittedNotNull] = None
+    plays: Annotated[ForecastRange | None, OmittedNotNull] = None
+    coverage_rate: Annotated[CoverageRate | None, Field(description="Share of the declared forecast scope represented by this point. For signal coverage forecasts, this is the point's count divided by the coverage_forecast.scope denominator. Range 0.0 to 1.0."), OmittedNotNull] = None
 
 
 class ViewableRate(ForecastRange):
@@ -66,9 +66,9 @@ class ViewableRate(ForecastRange):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#/properties/viewability/properties/viewable_rate')
-    low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value')] = None
-    mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value')] = None
-    high: Annotated[FloatMin0Max1 | None, Field(description='Optimistic (high-end) forecast value')] = None
+    low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value'), OmittedNotNull] = None
+    mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value'), OmittedNotNull] = None
+    high: Annotated[FloatMin0Max1 | None, Field(description='Optimistic (high-end) forecast value'), OmittedNotNull] = None
 
 
 class Viewability(AdCPBaseModel):
@@ -82,12 +82,12 @@ class Viewability(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PresenceGroups((Presence(require=(), forbid=(('measurable_impressions',), ('viewable_impressions',), ('viewable_rate',), ('viewed_seconds',))), Presence(require=(('standard',),), forbid=())), 'anyOf'),
     )
-    vendor: Annotated[BrandReference | None, Field(description='Vendor expected to produce or verify these viewability values.')] = None
-    measurable_impressions: Annotated[ForecastRange | None, Field(description='Forecasted impressions where viewability can be measured. Coverage denominator for viewable_rate and viewed_seconds.')] = None
-    viewable_impressions: Annotated[ForecastRange | None, Field(description='Forecasted impressions expected to meet the viewability threshold defined by standard.')] = None
-    viewable_rate: Annotated[ViewableRate | None, Field(description='Forecasted viewable impression rate (viewable_impressions / measurable_impressions). Range 0.0 to 1.0.')] = None
-    viewed_seconds: Annotated[ForecastRange | None, Field(description='Forecasted average in-view duration per measurable impression, in seconds.')] = None
-    standard: Annotated[ViewabilityStandard | None, Field(description='Viewability measurement standard applied to these forecasted values.')] = None
+    vendor: Annotated[BrandReference | None, Field(description='Vendor expected to produce or verify these viewability values.'), OmittedNotNull] = None
+    measurable_impressions: Annotated[ForecastRange | None, Field(description='Forecasted impressions where viewability can be measured. Coverage denominator for viewable_rate and viewed_seconds.'), OmittedNotNull] = None
+    viewable_impressions: Annotated[ForecastRange | None, Field(description='Forecasted impressions expected to meet the viewability threshold defined by standard.'), OmittedNotNull] = None
+    viewable_rate: Annotated[ViewableRate | None, Field(description='Forecasted viewable impression rate (viewable_impressions / measurable_impressions). Range 0.0 to 1.0.'), OmittedNotNull] = None
+    viewed_seconds: Annotated[ForecastRange | None, Field(description='Forecasted average in-view duration per measurable impression, in seconds.'), OmittedNotNull] = None
+    standard: Annotated[ViewabilityStandard | None, Field(description='Viewability measurement standard applied to these forecasted values.'), OmittedNotNull] = None
 
 
 class ForecastPoint(AdCPBaseModel):
@@ -98,14 +98,14 @@ class ForecastPoint(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#')
-    label: Annotated[StrMaxLen128 | None, Field(description="Human-readable name for this forecast point. Required when forecast_range_unit is 'package' so buyer agents can identify and reference individual packages. Optional for other forecast types.")] = None
-    budget: Annotated[NonNegativeFloat | None, Field(description='Budget amount for this forecast point. Required for spend curves; omit for availability forecasts where the metrics represent total available inventory. For allocation-level forecasts, this is the absolute budget for that allocation (not the percentage). For proposal-level forecasts, this is the total proposal budget. When omitted, use metrics.spend to express the estimated cost of the available inventory.')] = None
-    product_id: Annotated[str | None, Field(description='Optional product context for this forecast row. Usually omitted on product-level and allocation-level forecasts where the product is already implied. On proposal-level forecasts, populate when a dimensional row, especially a placement row, maps to a specific product allocation so buyers can turn the row into an executable package choice. Omit for true aggregate proposal rows spanning multiple products.')] = None
-    dimensions: Annotated[ForecastPointDimensions | None, Field(description='Dimension constraints represented by this forecast point, such as country, region, placement, device type, platform, audience, signal value, time window, or intersections such as placement x country or product x signal. Each item declares one dimension family; when multiple items are present, the point represents their intersection. Sellers MUST NOT emit more than one item for each `kind` on a point; consumers MUST NOT treat repeated kinds as OR semantics. Use multiple points with dimensions to expose country/placement/signal availability within one product, proposal, or signal coverage forecast without creating separate products solely for each dimension. Dimensions describe the forecast row and are independent of pricing_options.')] = None
-    availability_status: Annotated[AvailabilityStatus | None, Field(description="Bookability of the inventory this row describes, as of the forecast's generated_at. Most meaningful on rows with a time dimension in an availability forecast (forecast_range_unit 'availability'). This is a snapshot, not a hold: valid_until bounds freshness, and proposal finalization or purchase remains the commitment boundary. When omitted, the row makes no bookability claim. 'unavailable' rows may carry empty metrics.")] = None
+    label: Annotated[StrMaxLen128 | None, Field(description="Human-readable name for this forecast point. Required when forecast_range_unit is 'package' so buyer agents can identify and reference individual packages. Optional for other forecast types."), OmittedNotNull] = None
+    budget: Annotated[NonNegativeFloat | None, Field(description='Budget amount for this forecast point. Required for spend curves; omit for availability forecasts where the metrics represent total available inventory. For allocation-level forecasts, this is the absolute budget for that allocation (not the percentage). For proposal-level forecasts, this is the total proposal budget. When omitted, use metrics.spend to express the estimated cost of the available inventory.'), OmittedNotNull] = None
+    product_id: Annotated[str | None, Field(description='Optional product context for this forecast row. Usually omitted on product-level and allocation-level forecasts where the product is already implied. On proposal-level forecasts, populate when a dimensional row, especially a placement row, maps to a specific product allocation so buyers can turn the row into an executable package choice. Omit for true aggregate proposal rows spanning multiple products.'), OmittedNotNull] = None
+    dimensions: Annotated[ForecastPointDimensions | None, Field(description='Dimension constraints represented by this forecast point, such as country, region, placement, device type, platform, audience, signal value, time window, or intersections such as placement x country or product x signal. Each item declares one dimension family; when multiple items are present, the point represents their intersection. Sellers MUST NOT emit more than one item for each `kind` on a point; consumers MUST NOT treat repeated kinds as OR semantics. Use multiple points with dimensions to expose country/placement/signal availability within one product, proposal, or signal coverage forecast without creating separate products solely for each dimension. Dimensions describe the forecast row and are independent of pricing_options.'), OmittedNotNull] = None
+    availability_status: Annotated[AvailabilityStatus | None, Field(description="Bookability of the inventory this row describes, as of the forecast's generated_at. Most meaningful on rows with a time dimension in an availability forecast (forecast_range_unit 'availability'). This is a snapshot, not a hold: valid_until bounds freshness, and proposal finalization or purchase remains the commitment boundary. When omitted, the row makes no bookability claim. 'unavailable' rows may carry empty metrics."), OmittedNotNull] = None
     metrics: Annotated[Metrics, Field(description='Forecasted metric values. Keys are forecastable-metric enum values for delivery/engagement or event-type enum values for outcomes. Values are ForecastRange objects (low/mid/high). Use { "mid": value } for point estimates. When budget is present, these are the expected metrics at that spend level. When budget is omitted, these represent total available inventory — use spend to express the estimated cost. Additional keys beyond the documented properties are allowed for event-type values (purchase, lead, app_install, etc.).')]
-    viewability: Annotated[Viewability | None, Field(description='Forecasted viewability metrics. Mirrors delivery-metrics.viewability, but numeric values are ForecastRange objects because forecast rows may provide low/mid/high bounds. Use this for pre-buy viewability expectations by forecast point without folding measurement metrics into pricing_options.')] = None
-    vendor_metric_values: Annotated[list[ForecastVendorMetricValue] | None, Field(description="Forecasted values for vendor-defined metrics that the product's reporting_capabilities.vendor_metrics declared. Mirrors delivery-metrics.vendor_metric_values, but value and measurable_impressions use ForecastRange. These forecasted measurement values are independent of pricing_options.")] = None
+    viewability: Annotated[Viewability | None, Field(description='Forecasted viewability metrics. Mirrors delivery-metrics.viewability, but numeric values are ForecastRange objects because forecast rows may provide low/mid/high bounds. Use this for pre-buy viewability expectations by forecast point without folding measurement metrics into pricing_options.'), OmittedNotNull] = None
+    vendor_metric_values: Annotated[list[ForecastVendorMetricValue] | None, Field(description="Forecasted values for vendor-defined metrics that the product's reporting_capabilities.vendor_metrics declared. Mirrors delivery-metrics.vendor_metric_values, but value and measurable_impressions use ForecastRange. These forecasted measurement values are independent of pricing_options."), OmittedNotNull] = None
 
 
 __all__ = ["CoverageRate", "ForecastPoint"]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -29,11 +29,11 @@ class GetProductsInputRequired(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-async-response-input-required.json', pointer='#')
-    reason: Annotated[Reason | None, Field(description='Reason code indicating why input is needed')] = None
-    partial_results: Annotated[list[Product] | None, Field(description='Partial product results that may help inform the clarification')] = None
-    suggestions: Annotated[list[str] | None, Field(description='Suggested values or options for the required input')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    reason: Annotated[Reason | None, Field(description='Reason code indicating why input is needed'), OmittedNotNull] = None
+    partial_results: Annotated[list[Product] | None, Field(description='Partial product results that may help inform the clarification'), OmittedNotNull] = None
+    suggestions: Annotated[list[str] | None, Field(description='Suggested values or options for the required input'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["GetProductsInputRequired"]

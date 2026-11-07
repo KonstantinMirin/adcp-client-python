@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.media_buy_action_mode import MediaBuyActionMode
@@ -42,11 +42,11 @@ class MediaBuyAvailableAction(AdCPBaseModel):
     )
     action: Annotated[MediaBuyAvailableActionID, Field(description='The action identifier.')]
     mode: Annotated[MediaBuyActionMode, Field(description='The single mode that applies right now on this buy for this action. Singular because the buy has a concrete state, exactly one mode applies. Buyer SDKs branch on this to decide whether to expect a synchronous response, conditional handling, or an asynchronous approval callback.')]
-    task: Annotated[Task | None, Field(description='Compact-lifecycle task for this resolved action: operational control, commercial refinement, or creative lifecycle mutation.')] = None
-    sla: Annotated[SLAWindow | None, Field(description='Optional SLA commitment for this action on this buy. Absence means no commitment, not zero commitment.')] = None
-    change_term_id: MediaBuyChangeTermID | None = None
-    terms_ref: MediaBuyTermsReference | None = None
-    applicable_package_ids: Annotated[list[ApplicablePackageID] | None, Field(description='For a package-scoped action, the exact packages currently eligible. Omission means every relevant package. Root actions omit this field.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    task: Annotated[Task | None, Field(description='Compact-lifecycle task for this resolved action: operational control, commercial refinement, or creative lifecycle mutation.'), OmittedNotNull] = None
+    sla: Annotated[SLAWindow | None, Field(description='Optional SLA commitment for this action on this buy. Absence means no commitment, not zero commitment.'), OmittedNotNull] = None
+    change_term_id: Annotated[MediaBuyChangeTermID | None, OmittedNotNull] = None
+    terms_ref: Annotated[MediaBuyTermsReference | None, OmittedNotNull] = None
+    applicable_package_ids: Annotated[list[ApplicablePackageID] | None, Field(description='For a package-scoped action, the exact packages currently eligible. Omission means every relevant package. Root actions omit this field.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 __all__ = ["MediaBuyAvailableAction"]

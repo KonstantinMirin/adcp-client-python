@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, PropertyCount, Rule
 
 from .ext import ExtensionObject
@@ -24,9 +24,9 @@ class ProductMediaBuySupport(AdCPBaseModel):
         Dependencies('frequency_cap_constraints', ('frequency_cap',)),
         PropertyCount(minimum=1, maximum=None),
     )
-    frequency_cap: Annotated[Literal[True] | None, Field(description="This product can participate in the seller's shared counter for a root MediaBuy.frequency_cap. A buy mixing this product with one that lacks this declaration, or whose resolved supported_per_units omits the root cap's per value, is rejected atomically.")] = None
-    frequency_cap_constraints: MediaBuyFrequencyCapSupport | None = None
-    ext: ExtensionObject | None = None
+    frequency_cap: Annotated[Literal[True] | None, Field(description="This product can participate in the seller's shared counter for a root MediaBuy.frequency_cap. A buy mixing this product with one that lacks this declaration, or whose resolved supported_per_units omits the root cap's per value, is rejected atomically."), OmittedNotNull] = None
+    frequency_cap_constraints: Annotated[MediaBuyFrequencyCapSupport | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ProductMediaBuySupport"]

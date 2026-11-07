@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
@@ -63,7 +63,7 @@ class GoldenVectors(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-canonicalization-contract.json', pointer='#/properties/golden_vectors')
     empty_report: EmptyReport
     ordering_encoding: OrderingEncoding
-    additional: list[AdditionalItem] | None = None
+    additional: Annotated[list[AdditionalItem] | None, OmittedNotNull] = None
 
 
 class ReportingCanonicalizationContract(AdCPBaseModel):

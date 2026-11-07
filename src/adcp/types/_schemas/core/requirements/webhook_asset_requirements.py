@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ...enums.http_method import HTTPMethod
 
@@ -18,7 +18,7 @@ class WebhookAssetRequirements(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/webhook-asset-requirements.json', pointer='#')
-    methods: Annotated[list[HTTPMethod] | None, Field(description='Allowed HTTP methods')] = None
+    methods: Annotated[list[HTTPMethod] | None, Field(description='Allowed HTTP methods'), OmittedNotNull] = None
 
 
 __all__ = ["WebhookAssetRequirements"]

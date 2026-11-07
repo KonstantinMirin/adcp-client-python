@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse
 
@@ -41,8 +41,8 @@ class PreviewCreativeSingleResponsePreviewsItemInput(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/0/properties/previews/items/properties/input')
     name: Annotated[str, Field(description='Human-readable name for this variant')]
-    macros: Annotated[dict[str, str] | None, Field(description='Macro values applied to this variant')] = None
-    context_description: Annotated[str | None, Field(description='Context description applied to this variant')] = None
+    macros: Annotated[dict[str, str] | None, Field(description='Macro values applied to this variant'), OmittedNotNull] = None
+    context_description: Annotated[str | None, Field(description='Context description applied to this variant'), OmittedNotNull] = None
 
 
 class PreviewCreativeSingleResponsePreviewsItem(AdCPBaseModel):
@@ -62,18 +62,18 @@ class PreviewCreativeSingleResponse(PreviewCreativeResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/0')
     response_type: Annotated[Literal['single'], Field(description='Discriminator indicating this is a single preview response')]
     previews: Annotated[list[PreviewCreativeSingleResponsePreviewsItem], Field(description='Array of preview variants. Each preview corresponds to an input set from the request. If no inputs were provided, returns a single default preview.', min_length=1)]
-    quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this response. This field MUST be present when the corresponding request supplied `quality`, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier, allowing buyers to detect a downgrade before approval.')] = None
-    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them, modify macro values, and test different scenarios.')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when preview links expire. **Optional.** Omit when preview URLs do not expire (some creative agents serve perpetually-valid preview URLs — e.g., signed asset URLs with no TTL, or session-scoped previews that the agent retires explicitly via revocation). When present, consumers MUST treat the URLs as invalid after this timestamp; when omitted, consumers MAY assume the preview URLs are valid until the creative agent revokes them out-of-band (no protocol-level revocation signal exists in 3.x — buyers requiring expiry guarantees SHOULD require sellers that publish `expires_at`).')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this response. This field MUST be present when the corresponding request supplied `quality`, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier, allowing buyers to detect a downgrade before approval.'), OmittedNotNull] = None
+    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them, modify macro values, and test different scenarios.'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when preview links expire. **Optional.** Omit when preview URLs do not expire (some creative agents serve perpetually-valid preview URLs — e.g., signed asset URLs with no TTL, or session-scoped previews that the agent retires explicitly via revocation). When present, consumers MUST treat the URLs as invalid after this timestamp; when omitted, consumers MAY assume the preview URLs are valid until the creative agent revokes them out-of-band (no protocol-level revocation signal exists in 3.x — buyers requiring expiry guarantees SHOULD require sellers that publish `expires_at`).'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class ResponsePreviewsItemInput(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/previews/items/properties/input')
     name: str
-    macros: dict[str, str] | None = None
-    context_description: str | None = None
+    macros: Annotated[dict[str, str] | None, OmittedNotNull] = None
+    context_description: Annotated[str | None, OmittedNotNull] = None
 
 
 class ResponsePreviewsItem(AdCPBaseModel):
@@ -89,8 +89,8 @@ class Response(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response')
     previews: Annotated[list[ResponsePreviewsItem], Field(description='Array of preview variants for this creative', min_length=1)]
-    interactive_url: HttpUrl | None = None
-    expires_at: Annotated[AwareDatetime | None, Field(description="When the preview URLs expire. **Optional** — omit for non-expiring preview URLs. See the single-preview branch's `expires_at` description for the full convention.")] = None
+    interactive_url: Annotated[HttpUrl | None, OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description="When the preview URLs expire. **Optional** — omit for non-expiring preview URLs. See the single-preview branch's `expires_at` description for the full convention."), OmittedNotNull] = None
 
 
 class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
@@ -103,9 +103,9 @@ class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
     success: Annotated[bool, Field(description='Whether this preview request succeeded')]
     creative_id: Annotated[str, Field(description='ID of the creative this result corresponds to. Enables correlation when processing batch results.')]
-    quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this successful batch result. This field MUST be present when the effective item request supplied `quality`, whether directly or through the batch-level default, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier.')] = None
-    response: Annotated[Response | None, Field(description='Preview data for successful requests')] = None
-    errors: Annotated[list[Error] | None, Field(description='Errors for failed requests', min_length=1)] = None
+    quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this successful batch result. This field MUST be present when the effective item request supplied `quality`, whether directly or through the batch-level default, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier.'), OmittedNotNull] = None
+    response: Annotated[Response | None, Field(description='Preview data for successful requests'), OmittedNotNull] = None
+    errors: Annotated[list[Error] | None, Field(description='Errors for failed requests', min_length=1), OmittedNotNull] = None
 
 
 class PreviewBatchResultSuccess(ResultsItem):
@@ -134,8 +134,8 @@ class PreviewCreativeBatchResponse(PreviewCreativeResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/1')
     response_type: Annotated[Literal['batch'], Field(description='Discriminator indicating this is a batch preview response')]
     results: Annotated[list[ResultsItem], Field(description='Array of preview results corresponding to each request in the same order. results[0] is the result for requests[0], results[1] for requests[1], etc. Order is guaranteed even when some requests fail. Each result contains either a successful preview response or an error.', min_length=1)]
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class PreviewCreativeVariantResponsePreviewsItem(AdCPBaseModel):
@@ -154,12 +154,12 @@ class PreviewCreativeVariantResponse(PreviewCreativeResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/2')
     response_type: Annotated[Literal['variant'], Field(description='Discriminator indicating this is a variant preview response')]
     variant_id: Annotated[str, Field(description="Agent-assigned AdCP served-execution identifier. Agent-unique for an agent advertising creative.supports_revisions; otherwise scoped by this response's creative_id.")]
-    creative_id: Annotated[str | None, Field(description='Creative identifier this variant belongs to')] = None
+    creative_id: Annotated[str | None, Field(description='Creative identifier this variant belongs to'), OmittedNotNull] = None
     previews: Annotated[list[PreviewCreativeVariantResponsePreviewsItem], Field(description='Array of rendered pieces for this variant. Most formats render as a single piece.', min_length=1)]
-    manifest: Annotated[CreativeManifest | None, Field(description='The rendered creative manifest for this variant — the actual output that was served, not the input assets')] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when preview links expire. **Optional** — omit for non-expiring preview URLs. See the top-level `PreviewCreativeResponse` branch for the full convention.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    manifest: Annotated[CreativeManifest | None, Field(description='The rendered creative manifest for this variant — the actual output that was served, not the input assets'), OmittedNotNull] = None
+    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when preview links expire. **Optional** — omit for non-expiring preview URLs. See the top-level `PreviewCreativeResponse` branch for the full convention.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 class PreviewCreativeSubmitted(PreviewCreativeResponse):
@@ -173,9 +173,9 @@ class PreviewCreativeSubmitted(PreviewCreativeResponse):
     response_type: Annotated[Literal['submitted'], Field(description='Preview-response discriminator for the asynchronous arm.')]
     status: Annotated[Literal['submitted'], Field(description='Discriminates this opt-in async envelope from synchronous preview responses.')]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
-    message: Annotated[StrMaxLen2000 | None, Field(description='Optional human-readable explanation of why preview rendering was queued. Plain text only; buyers MUST treat this as untrusted agent input.')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    message: Annotated[StrMaxLen2000 | None, Field(description='Optional human-readable explanation of why preview rendering was queued. Plain text only; buyers MUST treat this as untrusted agent input.'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 PreviewCreativeResponse._branch_models = (PreviewCreativeSingleResponse, PreviewCreativeBatchResponse, PreviewCreativeVariantResponse, PreviewCreativeSubmitted,)

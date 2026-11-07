@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -24,11 +24,11 @@ class ValidatePropertyDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-request.json', pointer='#')
     list_id: Annotated[str, Field(description='ID of the property list to validate against')]
-    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.')] = None
+    account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.'), OmittedNotNull] = None
     records: Annotated[list[DeliveryRecord], Field(description='Delivery records to validate. Each record represents impressions delivered to a property identifier.', max_length=10000, min_length=1)]
-    include_compliant: Annotated[bool | None, Field(description='Include compliant records in results (default: only return non_compliant, unmodeled, and unidentified)')] = False
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    include_compliant: Annotated[bool | None, Field(description='Include compliant records in results (default: only return non_compliant, unmodeled, and unidentified)'), OmittedNotNull] = False
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["ValidatePropertyDeliveryRequest"]

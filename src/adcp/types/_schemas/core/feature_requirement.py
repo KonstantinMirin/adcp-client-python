@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
 
 class IfNotCovered(StrEnum):
@@ -28,11 +28,11 @@ class FeatureRequirement(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/feature-requirement.json', pointer='#')
     feature_id: Annotated[str, Field(description='Feature to evaluate (discovered via get_adcp_capabilities)')]
-    min_value: Annotated[float | None, Field(description='Minimum numeric value required (for quantitative features)')] = None
-    max_value: Annotated[float | None, Field(description='Maximum numeric value allowed (for quantitative features)')] = None
-    allowed_values: Annotated[list[Any] | None, Field(description='Values that pass the requirement (for binary/categorical features)', min_length=1)] = None
-    if_not_covered: Annotated[IfNotCovered | None, Field(description="How to handle properties where this feature is not covered. 'exclude' (default): property is removed from the list. 'include': property passes this requirement (fail-open).", json_schema_extra={'default': 'exclude'})] = Field(default_factory=lambda: TypeAdapter(IfNotCovered).validate_python('exclude'))
-    policy_id: Annotated[str | None, Field(description='Optional attribution — when this requirement encodes a specific buyer-chosen threshold authorized by a policy, policy_id references the authorizing PolicyEntry. Producers populate when the mechanism exists because of a specific policy (e.g., max_value: 15 on audience_children_composition because of uk_hfss); do NOT populate when the requirement is a general filter unrelated to any policy. Governance findings echo this policy_id when emitting denials traced to the requirement. See /docs/governance/policy-attribution.')] = None
+    min_value: Annotated[float | None, Field(description='Minimum numeric value required (for quantitative features)'), OmittedNotNull] = None
+    max_value: Annotated[float | None, Field(description='Maximum numeric value allowed (for quantitative features)'), OmittedNotNull] = None
+    allowed_values: Annotated[list[Any] | None, Field(description='Values that pass the requirement (for binary/categorical features)', min_length=1), OmittedNotNull] = None
+    if_not_covered: Annotated[IfNotCovered | None, Field(description="How to handle properties where this feature is not covered. 'exclude' (default): property is removed from the list. 'include': property passes this requirement (fail-open).", json_schema_extra={'default': 'exclude'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(IfNotCovered).validate_python('exclude'))
+    policy_id: Annotated[str | None, Field(description='Optional attribution — when this requirement encodes a specific buyer-chosen threshold authorized by a policy, policy_id references the authorizing PolicyEntry. Producers populate when the mechanism exists because of a specific policy (e.g., max_value: 15 on audience_children_composition because of uk_hfss); do NOT populate when the requirement is a general filter unrelated to any policy. Governance findings echo this policy_id when emitting denials traced to the requirement. See /docs/governance/policy-attribution.'), OmittedNotNull] = None
 
 
 __all__ = ["FeatureRequirement"]

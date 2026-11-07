@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
@@ -77,9 +77,9 @@ class AudienceEvidenceSelection(AdCPBaseModel):
     version: StrMinLen1
     content_digest: ZipAssetDigest
     decision_use: Annotated[DecisionUse, Field(description="How this evidence affected the seller's decision. This is not targeting execution.")]
-    evidence: Annotated[AudienceEvidence | None, Field(description='Optional inline immutable snapshot. Its identity, version, and digest MUST equal the surrounding fields.')] = None
-    attestation_evaluations: Annotated[list[AttestationEvaluationsItem] | None, Field(description="Exact reference/evaluation pairs used in the decision. The reference MUST be one of the selected evidence snapshot's attestation_refs, evaluation.reference_digest MUST equal the digest of that same reference, reference.subject.content_digest and evaluation.action_binding.action_digest MUST equal this selection's content_digest, evaluation.action_binding.action_id MUST equal snapshot_id, and action_type MUST be https://adcontextprotocol.org/actions/audience-evidence-evaluation.", max_length=10, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    evidence: Annotated[AudienceEvidence | None, Field(description='Optional inline immutable snapshot. Its identity, version, and digest MUST equal the surrounding fields.'), OmittedNotNull] = None
+    attestation_evaluations: Annotated[list[AttestationEvaluationsItem] | None, Field(description="Exact reference/evaluation pairs used in the decision. The reference MUST be one of the selected evidence snapshot's attestation_refs, evaluation.reference_digest MUST equal the digest of that same reference, reference.subject.content_digest and evaluation.action_binding.action_digest MUST equal this selection's content_digest, evaluation.action_binding.action_id MUST equal snapshot_id, and action_type MUST be https://adcontextprotocol.org/actions/audience-evidence-evaluation.", max_length=10, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AudienceEvidenceSelection"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 
 from ..enums.available_metric import AvailableMetric
 from .brand_ref import BrandReference
@@ -33,7 +33,7 @@ class ObjScopeMetricIdQualifier(MissingMetric):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/missing-metric.json', pointer='#/oneOf/0')
     scope: Literal['standard']
     metric_id: AvailableMetric
-    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Mirrors the qualifier on `committed_metrics` so the missing entry preserves the contract distinction (e.g., flagging MRC viewability as missing when only GroupM was reported, vendor-attested completion as missing when only seller-attested was reported, or deterministic_purchase attribution as missing when only probabilistic was reported). MUST match the qualifier on the corresponding `committed_metrics` entry the missing flag refers to.')] = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Mirrors the qualifier on `committed_metrics` so the missing entry preserves the contract distinction (e.g., flagging MRC viewability as missing when only GroupM was reported, vendor-attested completion as missing when only seller-attested was reported, or deterministic_purchase attribution as missing when only probabilistic was reported). MUST match the qualifier on the corresponding `committed_metrics` entry the missing flag refers to.'), OmittedNotNull] = None
 
 
 class MissingMetricVendor(MissingMetric):
@@ -44,7 +44,7 @@ class MissingMetricVendor(MissingMetric):
     scope: Literal['vendor']
     vendor: BrandReference
     metric_id: VendorMetricID
-    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Mirrors the qualifier on the corresponding vendor-scope `committed_metrics` entry. MUST match that entry so reconciliation joins on (vendor, metric_id, qualifier).')] = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Mirrors the qualifier on the corresponding vendor-scope `committed_metrics` entry. MUST match that entry so reconciliation joins on (vendor, metric_id, qualifier).'), OmittedNotNull] = None
 
 
 MissingMetric._branch_models = (ObjScopeMetricIdQualifier, MissingMetricVendor,)

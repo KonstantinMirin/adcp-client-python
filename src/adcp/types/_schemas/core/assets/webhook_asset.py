@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HttpUrl, IntMin10Max5000
 
 from ...enums.http_method import HTTPMethod
@@ -21,8 +21,8 @@ class Security(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/webhook-asset.json', pointer='#/properties/security')
     method: Annotated[WebhookSecurityMethod, Field(description='Authentication method')]
-    hmac_header: Annotated[str | None, Field(description="Header name for HMAC signature (e.g., 'X-Signature')")] = None
-    api_key_header: Annotated[str | None, Field(description="Header name for API key (e.g., 'X-API-Key')")] = None
+    hmac_header: Annotated[str | None, Field(description="Header name for HMAC signature (e.g., 'X-Signature')"), OmittedNotNull] = None
+    api_key_header: Annotated[str | None, Field(description="Header name for API key (e.g., 'X-API-Key')"), OmittedNotNull] = None
 
 
 class WebhookAsset(AdCPBaseModel):
@@ -35,13 +35,13 @@ class WebhookAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/webhook-asset.json', pointer='#')
     asset_type: Annotated[Literal['webhook'], Field(description='Discriminator identifying this as a webhook asset. See /schemas/creative/asset-types for the registry.')]
     url: Annotated[HttpUrl, Field(description='Webhook URL to call for dynamic content')]
-    method: Annotated[HTTPMethod | None, Field(description='HTTP method', json_schema_extra={'default': 'POST'})] = Field(default_factory=lambda: TypeAdapter(HTTPMethod).validate_python('POST'))
-    timeout_ms: Annotated[IntMin10Max5000 | None, Field(description='Maximum time to wait for response in milliseconds')] = 500
-    supported_macros: Annotated[list[UniversalMacro | str] | None, Field(description='Universal macros that can be passed to webhook (e.g., DEVICE_TYPE, COUNTRY). See docs/creative/universal-macros.mdx for full list.')] = None
-    required_macros: Annotated[list[UniversalMacro | str] | None, Field(description='Universal macros that must be provided for webhook to function')] = None
+    method: Annotated[HTTPMethod | None, Field(description='HTTP method', json_schema_extra={'default': 'POST'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(HTTPMethod).validate_python('POST'))
+    timeout_ms: Annotated[IntMin10Max5000 | None, Field(description='Maximum time to wait for response in milliseconds'), OmittedNotNull] = 500
+    supported_macros: Annotated[list[UniversalMacro | str] | None, Field(description='Universal macros that can be passed to webhook (e.g., DEVICE_TYPE, COUNTRY). See docs/creative/universal-macros.mdx for full list.'), OmittedNotNull] = None
+    required_macros: Annotated[list[UniversalMacro | str] | None, Field(description='Universal macros that must be provided for webhook to function'), OmittedNotNull] = None
     response_type: Annotated[WebhookResponseType, Field(description='Expected content type of webhook response')]
     security: Annotated[Security, Field(description='Security configuration for webhook calls')]
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
 __all__ = ["WebhookAsset"]

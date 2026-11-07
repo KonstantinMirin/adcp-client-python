@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
 from ..platform_extension_ref import PlatformExtensionReference
 from ..provenance import Provenance
@@ -28,12 +28,12 @@ class CardAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/card-asset.json', pointer='#')
     asset_type: Annotated[Literal['card'], Field(description='Discriminator identifying this as a card asset. See /schemas/creative/asset-types for the registry.')]
     media: Annotated[ImageAsset | VideoAsset, Field(description="The card's primary visual asset. Either an `image` or `video` asset, matching the parent format's `allowed_card_media_asset_types` parameter.")]
-    headline: Annotated[str | None, Field(description='Optional per-card short text label (typically 25-40 chars). Length governed by `card_headline_max_chars` on the format declaration. Meta carousel headline, Pinterest pin title, Snap Collection sticker text, TikTok caption-short.')] = None
-    description: Annotated[str | None, Field(description='Optional per-card longer text (typically 100-500 chars). Distinct from `headline`: `description` is body copy, `headline` is the label. Length governed by `card_description_max_chars` on the format declaration. Meta carousel description, Pinterest pin description, AI-surface result body text, TikTok long caption.')] = None
-    cta: Annotated[str | None, Field(description="Optional per-card call-to-action label (e.g., 'SHOP_NOW', 'LEARN_MORE'). When the parent format declares `cta_values` (allowed CTA labels), the per-card `cta` MUST be one of those values. Lets a Meta or TikTok carousel show different CTAs per card.")] = None
-    landing_page_url: Annotated[URLAsset | None, Field(description='Optional per-card click-through URL. URL asset with `url_type: "clickthrough"`.')] = None
-    platform_extensions: Annotated[list[PlatformExtensionReference] | None, Field(description='Per-card platform-specific extensions (URI+digest references). Same hosting model as format-level platform_extensions. Use this for Meta carousel-card attributes, Pinterest pin overrides, etc. — NEVER inline non-canonical keys on the card object directly.')] = None
-    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this card, overrides manifest-level provenance.')] = None
+    headline: Annotated[str | None, Field(description='Optional per-card short text label (typically 25-40 chars). Length governed by `card_headline_max_chars` on the format declaration. Meta carousel headline, Pinterest pin title, Snap Collection sticker text, TikTok caption-short.'), OmittedNotNull] = None
+    description: Annotated[str | None, Field(description='Optional per-card longer text (typically 100-500 chars). Distinct from `headline`: `description` is body copy, `headline` is the label. Length governed by `card_description_max_chars` on the format declaration. Meta carousel description, Pinterest pin description, AI-surface result body text, TikTok long caption.'), OmittedNotNull] = None
+    cta: Annotated[str | None, Field(description="Optional per-card call-to-action label (e.g., 'SHOP_NOW', 'LEARN_MORE'). When the parent format declares `cta_values` (allowed CTA labels), the per-card `cta` MUST be one of those values. Lets a Meta or TikTok carousel show different CTAs per card."), OmittedNotNull] = None
+    landing_page_url: Annotated[URLAsset | None, Field(description='Optional per-card click-through URL. URL asset with `url_type: "clickthrough"`.'), OmittedNotNull] = None
+    platform_extensions: Annotated[list[PlatformExtensionReference] | None, Field(description='Per-card platform-specific extensions (URI+digest references). Same hosting model as format-level platform_extensions. Use this for Meta carousel-card attributes, Pinterest pin overrides, etc. — NEVER inline non-canonical keys on the card object directly.'), OmittedNotNull] = None
+    provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this card, overrides manifest-level provenance.'), OmittedNotNull] = None
 
 
 __all__ = ["CardAsset"]

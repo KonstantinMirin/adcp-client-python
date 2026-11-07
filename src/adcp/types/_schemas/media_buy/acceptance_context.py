@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem
 
@@ -23,7 +23,7 @@ class SubjectsItem(AdCPBaseModel):
         UniqueItems('subject_facets'),
     )
     subject_category: AccountAuthorizationAllowedTasksItem
-    subject_facets: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    subject_facets: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 class AcceptanceContext(AdCPBaseModel):
@@ -40,12 +40,12 @@ class AcceptanceContext(AdCPBaseModel):
         UniqueItems('advertiser_jurisdictions'),
         UniqueItems('delivery_jurisdictions'),
     )
-    subjects: Annotated[list[SubjectsItem] | None, Field(min_length=1)] = None
-    advertiser_roles: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    advertiser_industry: AdvertiserIndustry | None = None
-    advertiser_jurisdictions: Annotated[list[CountryCode] | None, Field(description='Jurisdictions in which the advertiser is established or legally organized. This is distinct from where an ad will be delivered.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    delivery_jurisdictions: Annotated[list[CountryCode] | None, Field(description="Jurisdictions in which the proposed advertising will be delivered. Seller acceptance rules' jurisdictions and jurisdiction_groups match this field.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    ext: ExtensionObject | None = None
+    subjects: Annotated[list[SubjectsItem] | None, Field(min_length=1), OmittedNotNull] = None
+    advertiser_roles: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    advertiser_industry: Annotated[AdvertiserIndustry | None, OmittedNotNull] = None
+    advertiser_jurisdictions: Annotated[list[CountryCode] | None, Field(description='Jurisdictions in which the advertiser is established or legally organized. This is distinct from where an ad will be delivered.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    delivery_jurisdictions: Annotated[list[CountryCode] | None, Field(description="Jurisdictions in which the proposed advertising will be delivered. Seller acceptance rules' jurisdictions and jurisdiction_groups match this field.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["AcceptanceContext"]

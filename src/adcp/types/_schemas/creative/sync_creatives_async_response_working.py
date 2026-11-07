@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max100, IntMin1
 
 from ..core.context import ContextObject
@@ -20,14 +20,14 @@ class SyncCreativesWorking(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-async-response-working.json', pointer='#')
-    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)')] = None
-    current_step: Annotated[str | None, Field(description='Current step or phase of the operation')] = None
-    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation')] = None
-    step_number: Annotated[IntMin1 | None, Field(description='Current step number')] = None
-    creatives_processed: Annotated[NonNegativeInt | None, Field(description='Number of creatives processed so far')] = None
-    creatives_total: Annotated[NonNegativeInt | None, Field(description='Total number of creatives to process')] = None
-    context: ContextObject | None = None
-    ext: ExtensionObject | None = None
+    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)'), OmittedNotNull] = None
+    current_step: Annotated[str | None, Field(description='Current step or phase of the operation'), OmittedNotNull] = None
+    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation'), OmittedNotNull] = None
+    step_number: Annotated[IntMin1 | None, Field(description='Current step number'), OmittedNotNull] = None
+    creatives_processed: Annotated[NonNegativeInt | None, Field(description='Number of creatives processed so far'), OmittedNotNull] = None
+    creatives_total: Annotated[NonNegativeInt | None, Field(description='Total number of creatives to process'), OmittedNotNull] = None
+    context: Annotated[ContextObject | None, OmittedNotNull] = None
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
 __all__ = ["SyncCreativesWorking"]

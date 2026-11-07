@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     ViolationsItemCriterion,
     ViolationsItemCriterionSource,
@@ -46,7 +46,7 @@ class ViolationsItem(AdCPBaseModel):
     criterion_source: Annotated[ViolationsItemCriterionSource, Field(description='Standard or policy namespace defining the criterion, for example WCAG21, WCAG22, or EN301549.')]
     required_level: Annotated[ViolationsItemRequiredLevel, Field(description="Conformance level or policy threshold that applied, for example AA. Kept open because not every accessibility standard uses WCAG's A/AA/AAA vocabulary.")]
     failure_kind: Annotated[FailureKind | ViolationsItemFailureKind, Field(description='Diagnostic failure category. Canonical values cover common portable cases. Vendor-local extensions use an x_ prefix. Portable recovery dispatches on criterion_source plus criterion after validating this details schema; failure_kind may refine diagnostics but does not select the recovery class.')]
-    remediation: Annotated[ViolationsItemRemediation | None, Field(description='Optional human-readable correction guidance. Plain text only; consumers treat it as untrusted agent input.')] = None
+    remediation: Annotated[ViolationsItemRemediation | None, Field(description='Optional human-readable correction guidance. Plain text only; consumers treat it as untrusted agent input.'), OmittedNotNull] = None
 
 
 class AccessibilityViolationDetails(AdCPBaseModel):
@@ -58,7 +58,7 @@ class AccessibilityViolationDetails(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/accessibility-violation.json', pointer='#')
     violations: Annotated[list[ViolationsItem], Field(description='Accessibility requirements the creative or its assets failed. This is distinct from error.issues, which carries JSON Schema validator failures.', max_length=4, min_length=1)]
-    truncated: Annotated[bool | None, Field(description='True when the producer omitted additional violations or remediation text to keep the complete serialized error within the 4096-byte transport safety limit. Omission means false.')] = None
+    truncated: Annotated[bool | None, Field(description='True when the producer omitted additional violations or remediation text to keep the complete serialized error within the 4096-byte transport safety limit. Omission means false.'), OmittedNotNull] = None
 
 
 __all__ = ["AccessibilityViolationDetails"]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import OmittedNotNull, SchemaRef
 
 from .delivery_metrics import DeliveryMetrics
 from .installment_ref import InstallmentReference
@@ -20,8 +20,8 @@ class InstallmentDeliveryMetrics(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/installment-delivery-metrics.json', pointer='#')
     installment_ref: InstallmentReference
-    installment_name: Annotated[str | None, Field(description='Current human-readable installment name. Convenience metadata only; installment_ref is stable identity.')] = None
-    scheduled_at: Annotated[AwareDatetime | None, Field(description="Convenience echo of the installment's scheduled publication or air time.")] = None
+    installment_name: Annotated[str | None, Field(description='Current human-readable installment name. Convenience metadata only; installment_ref is stable identity.'), OmittedNotNull] = None
+    scheduled_at: Annotated[AwareDatetime | None, Field(description="Convenience echo of the installment's scheduled publication or air time."), OmittedNotNull] = None
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
