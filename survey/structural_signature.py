@@ -693,6 +693,144 @@ def partition(rows: list[dict], our_documents: set[str], index: dict) -> dict[st
     return out
 
 
+#: **WHAT SIGNATURE IDENTITY IS EVIDENCE OF DEPENDS ON THE KIND, and mixing the kinds into
+#: one table is what produced a 196-row "reading 4" bucket out of nothing**
+#: (`adcp-client-python-shh0`, re-graded; `adcp-client-python-0kfk`).  The key is the same
+#: canonical schema for every kind -- that is not the problem.  The problem is the INFERENCE
+#: drawn from two of them being equal, and it is not the same inference.
+KIND_EVIDENCE = {
+    "model": (
+        "STRONG.  A model's canonical schema carries its wire names, its optionality, its "
+        "defaults, its discriminators and its constraint keywords.  Two models agreeing on "
+        "all of that agree about a structure nobody writes twice by accident, so signature "
+        "identity is real evidence of one subject and a 1:N row is a genuine reading 4 "
+        "question"
+    ),
+    "enum": (
+        "STRONG.  Reading 10's own identity for an enumeration IS the value list, so two "
+        "enums with one signature admit exactly the same values by the reading's own key -- "
+        "there is no further fact a document could state that this key drops"
+    ),
+    "adapter": (
+        "NEARLY VACUOUS, and this is the finding.  An `Annotated[str, FieldInfo(...)]` "
+        "answers `{\"type\": \"string\"}` plus whatever bounds it states, and `description` "
+        "is removed at every node -- correctly, since a description is not a constraint.  So "
+        "EVERY unbounded constrained string matches every other one.  Upstream's "
+        "`CanonicalFormatKindStr` reaches seven declarations of ours -- `AxeExcludeSegment`, "
+        "`AxeIncludeSegment`, `Category`, `HoursValue`, `MediaBuyTermsReference`, `Query` -- "
+        "which are seven UNRELATED SUBJECTS differing only in the prose each document states. "
+        "A 1:N row here means THE KEY COULD NOT DECIDE THE TARGET and never that we declared "
+        "one subject twice.  `test_the_domain_surface.declaring`'s own docstring already said "
+        "so: 'where several documents each state the same constrained scalar, the walk emits "
+        "an independent alias statement in each ... a gate keyed on object identity reports "
+        "those as a violation with NO AVAILABLE REPAIR'"
+    ),
+}
+
+
+def by_kind(ours: dict, theirs: dict, *, deliberate_only: bool) -> dict[str, dict]:
+    """The four buckets computed ONCE PER KIND, because one table cannot be read.
+
+    **A BUCKET COUNT OVER THE MIXED POPULATION IS NOT A FINDING ABOUT EITHER KIND.**  Each
+    kind is joined against ITS OWN side of the other population, so a row's bucket is decided
+    only against declarations whose signature means the same sort of thing -- and the figure
+    `0kfk` asks to be isolated, the MODEL-CLASS 1:N count, is this function's `model` entry.
+
+    Restricting the population is not a normalisation and costs nothing: a model's canonical
+    schema is an object and an `adapter`'s is a scalar, so a cross-kind signature equality is
+    possible but rare, and the mixed join above still reports it.  What changes is the
+    DENOMINATOR each row is decided against, which is the whole point.
+    """
+    out: dict[str, dict] = {}
+    for kind in sorted(KIND_EVIDENCE):
+        def only(blob: dict, kind: str = kind) -> dict:
+            return {
+                **blob,
+                "declarations": {
+                    key: row
+                    for key, row in blob["declarations"].items()
+                    if row["method"] == kind
+                },
+            }
+
+        inner = join(only(ours), only(theirs), deliberate_only=deliberate_only)
+        out[kind] = {
+            "evidence": KIND_EVIDENCE[kind],
+            "ours_declarations": inner["ours_declarations"],
+            "theirs_declarations": inner["theirs_declarations"],
+            "buckets": inner["buckets"],
+            "our_own_collisions": len(inner["our_own_collisions"]),
+            "one_to_n": [
+                {"theirs": row["theirs"], "names": row["names"], "ours": row["ours"]}
+                for row in inner["rows"]["1:N"]
+            ],
+        }
+    return out
+
+
+def resolve_by_document(report: dict, ours: dict, theirs: dict, index: dict) -> dict:
+    """The 1:N rows decided by the DOCUMENT NODE, which this key drops by design.
+
+    **THE SIGNATURE DROPS PROVENANCE ON PURPOSE AND UPSTREAM'S CLASS CARRIES IT.**  Their
+    generator derives the module path from the document path, so
+    `adcp.types.domains.core.account_ref.AccountReference1` names `core/account-ref.json`
+    whatever the structure of the class is; our private tree mirrors the same document path.
+    So where the key could not decide between several declarations of ours, the DOCUMENT can
+    -- and that is `adcp-client-python-1hck`'s approved rule ("the key is the document node
+    and never a word") applied as a SECONDARY key rather than as a replacement.
+
+    **IT IS A TIE-BREAK AND NEVER A PROPOSAL.**  The candidates are exactly the declarations
+    the signature already matched, so nothing is admitted that structure did not admit; the
+    document only chooses among them.  A row whose candidates all name a different document
+    than theirs is reported as `document-disagrees` and NOT resolved -- the structural match
+    stands and the provenance does not corroborate it, which is a row for a reader.
+
+    Both sides' document is read off the defining module through
+    `migration_notes.document_of` (theirs, which resolves `bundled/` and `mcp/` projections to
+    the canonical document they project) and through :func:`document_modules` (ours, which is
+    the bundle's own file list and never a reconstruction).  A name upstream declares OUTSIDE
+    its generated tree -- `adcp.types.CanonicalFormatKindStr`, `adcp.types.registry.*` --
+    names no document at its defining module, so there is no secondary key for it and it is
+    reported as `theirs-nameless`.
+    """
+    import migration_notes
+
+    documents = set(index["documents"])
+    mirror = document_modules(index)
+
+    def our_document(key: str) -> str | None:
+        return mirror.get(key.rsplit(".", 1)[0].removeprefix("adcp.types._schemas."))
+
+    out: dict[str, list[dict]] = {
+        "collapsed": [],
+        "theirs-nameless": [],
+        "document-disagrees": [],
+        "still-several": [],
+    }
+    for row in report["rows"]["1:N"]:
+        theirs_at = row["theirs"]
+        document = migration_notes.document_of(theirs_at.rsplit(".", 1)[0], documents)
+        agree = [key for key in row["ours"] if our_document(key) == document]
+        entry = {
+            "theirs": theirs_at,
+            "names": row["names"],
+            "method": row["method"],
+            "document": document,
+            "candidates": row["ours"],
+            "ours_documents": [our_document(key) for key in row["ours"]],
+            "agree": agree,
+        }
+        if document is None:
+            out["theirs-nameless"].append(entry)
+        elif len(agree) == 1:
+            out["collapsed"].append(entry)
+        elif not agree:
+            out["document-disagrees"].append(entry)
+        else:
+            out["still-several"].append(entry)
+    return out
+
+
 def join(ours: dict, theirs: dict, *, deliberate_only: bool) -> dict:
     """The four-way decomposition, and the judgment table is what it leaves behind.
 
@@ -813,7 +951,11 @@ def write_judgment(
     * ``N:1`` -- reading 10's many-to-one, "a HYPOTHESIS, not a verdict", decided by reading
       the bundle for REFERENCE vs RESTATEMENT.  The row names every sibling sharing the
       target, which is what that reading is made over.
-    * ``1:N`` -- **OUR duplication**, a reading 4 red.  The repair is in the walk, not here.
+    * ``1:N`` -- **THE KEY COULD NOT DECIDE THE TARGET.**  This header asserted "OUR
+      duplication, a reading 4 red" and that was MEASURED FALSE for the bucket's dominant
+      case: see :data:`KIND_EVIDENCE` for the seven unrelated constrained scalars one
+      signature of upstream's reaches.  :func:`resolve_by_document` is the secondary key and
+      :func:`by_kind` isolates the subset that is a reading 4 question at all.
     * ``none/same-document`` -- we compile the document and differ at depth.  The judgment.
     * ``none/no-document`` and ``none/document-not-ours`` -- NOT a judgment, and
       :func:`partition` carries the reading: a name with no schema subject takes a migration
@@ -885,7 +1027,13 @@ def write_judgment(
         (f"# The judgment table: upstream adcp {theirs['version']} declarations that structure "
         f"could not decide against adcp_emit {ours['version']}.\n"),
         "# kind=N:1 a many-to-one -- decided by reading the bundle for REFERENCE vs RESTATEMENT\n",
-        "# kind=1:N OUR duplication, a reading 4 red; the repair is in the walk\n",
+        "# kind=1:N THE KEY COULD NOT DECIDE THE TARGET, which is NOT our duplication.  Measured\n",
+        "#   (adcp-client-python-shh0, re-graded; 0kfk): the bucket's dominant case is the\n",
+        "#   constrained scalar, whose signature is nearly vacuous -- every bounded string matches\n",
+        "#   every other with the same bounds, so upstream's CanonicalFormatKindStr reaches seven\n",
+        "#   UNRELATED subjects of ours differing only in the prose their documents state.  The\n",
+        "#   secondary key is the DOCUMENT NODE (--provenance), and the model-class count is the\n",
+        "#   figure that is a reading 4 question at all (--by-kind).\n",
         "# kind=none/same-document the judgment: we compile the document and differ at depth\n",
         "# kind=none/no-document NOT a judgment -- reading 10's migration note, never a class\n",
         "# kind=none/document-not-ours NOT a judgment -- a question for the walk\n",
@@ -943,6 +1091,20 @@ def main() -> None:
     parser.add_argument("--mechanical", type=Path, metavar="PATH")
     parser.add_argument("--deliberate-only", action="store_true")
     parser.add_argument(
+        "--by-kind",
+        action="store_true",
+        help="compute the four buckets ONCE PER KIND, because signature identity is strong "
+        "evidence for a model and nearly vacuous for a constrained scalar.  Isolates the "
+        "MODEL-CLASS 1:N count, which is the only part of that bucket that is a reading 4 "
+        "question (adcp-client-python-0kfk)",
+    )
+    parser.add_argument(
+        "--provenance",
+        action="store_true",
+        help="tie-break the 1:N rows on the DOCUMENT NODE the signature drops by design.  A "
+        "tie-break over the candidates structure already admitted, never a proposal",
+    )
+    parser.add_argument(
         "--relax",
         default="",
         help="comma-separated names from RELAXATIONS, each with its cost stated there.  The "
@@ -993,8 +1155,28 @@ def main() -> None:
         print(f"  {bucket:6} {count:6}")
     print(f"  JUDGMENT TABLE {sum(report['buckets'][k] for k in ('N:1', '1:N', 'none')):6}")
     print(f"  our own signature collisions: {len(report['our_own_collisions'])}")
+    if args.by_kind:
+        report["by_kind"] = by_kind(ours, theirs, deliberate_only=args.deliberate_only)
+        print("  THE FOUR BUCKETS, ONCE PER KIND -- the denominator each row is decided against")
+        for kind, blob in report["by_kind"].items():
+            counts = "  ".join(f"{k} {v}" for k, v in blob["buckets"].items())
+            print(
+                f"    {kind:8} theirs {blob['theirs_declarations']:5}  "
+                f"ours {blob['ours_declarations']:5}  |  {counts}"
+            )
+            print(f"             evidence: {blob['evidence'].split('.')[0]}")
+        print(f"  MODEL-CLASS 1:N = {report['by_kind']['model']['buckets']['1:N']}")
     if args.mechanical:
         write_mechanical(args.mechanical, report, theirs, ours)
+    if args.provenance:
+        import alias_surface
+
+        report["provenance"] = resolve_by_document(
+            report, ours, theirs, alias_surface.bundle_index(args.bundle)
+        )
+        print("  THE 1:N ROWS, TIE-BROKEN ON THE DOCUMENT NODE")
+        for where, entries in report["provenance"].items():
+            print(f"    {where:20} {len(entries):5}")
     if args.judgment:
         import alias_surface
 
