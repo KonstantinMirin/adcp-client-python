@@ -475,8 +475,23 @@ ranges over names. `core/error.json` states the value list `transient|correctabl
 **nothing** about the attribute a caller types — so `TRANSIENT` is OUR convention and the value
 verbatim is theirs, and **neither is the document's.** Refusing the alias there defends the schema
 from nothing: both enums admit exactly the same set, so it is not a wire difference and not a
-reading 1 failure. **The emitted enum carries the value-verbatim spelling as an alias member**, and
+reading 1 failure. **The emitted enum carries upstream's derived spelling as an alias member**, and
 one member spelling blocked more of upstream's behavioural tests than any class name.
+
+**AND OURS IS UPPER_SNAKE BECAUSE THAT IS PYTHON'S, NOT BECAUSE IT IS OURS.** An enum member is a
+constant, and the standard library is uniform about it — `HTTPStatus.CONTINUE`, `Signals.SIGHUP`,
+`AddressFamily.AF_UNSPEC`. Upstream's member is the value pushed through its generator's identifier
+sanitiser, which is a tool's artefact and no convention at all. **So this is not a tie between two
+house styles: one side is the language's and the other is a mangling.** Ours is canonical, theirs is
+the alias, and the migration note says deprecated.
+
+**AND "THE DERIVED SPELLING" IS NOT "THE VALUE VERBATIM", WHICH IS THE WORD THAT COST 159 FILES.**
+Where the value is already an identifier the two coincide and the distinction is invisible; where it
+is not — a kebab value like `media-buy` — upstream does not refuse it, it **SANITISES** it to
+`media_buy` and ships that. A rule phrased as *verbatim* therefore reads the unsanitisable case as a
+REFUSAL, and the alias never appears. **The refusal classes below are over what the sanitiser cannot
+rescue, never over what it was built to handle** — and the derivation is upstream's own, read off
+their installed wheel rather than guessed from their output.
 
 **AN ENUM ALIAS IS A NAME AND NEVER A SECOND MEMBER.** `Recovery.transient` **is**
 `Recovery.TRANSIENT`: `__members__` unchanged, no value set widened, no approximated fact arising.
@@ -489,9 +504,9 @@ already proved itself wrong rather than merely inelegant:** installing the membe
 the private tree before the suite's own fixtures and brought down the collector, which is what a
 layer that must run before being true looks like when it is late.
 
-**THE ALIAS IS REFUSED WHERE THE SPELLING CANNOT BE ONE**: where the value is not a valid Python
-identifier, where two values would re-case onto one attribute, and where the alias would collide
-with a canonical member. Those are reported with their counts, not silently skipped — a member
+**THE ALIAS IS REFUSED WHERE THE SPELLING CANNOT BE ONE *AFTER* SANITISING**: where no identifier
+can be derived at all (a leading digit, the empty string, pure punctuation), where two values
+sanitise onto one attribute, and where the derived spelling collides with a canonical member. Those are reported with their counts, not silently skipped — a member
 upstream spells and we cannot is a migration-guide entry, by the pair rule above.
 
 **AND A FOURTH REASON, WHICH THE IMPLEMENTATION MEASURED AND THESE THREE DID NOT NAME**: where the
