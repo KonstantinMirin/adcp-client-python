@@ -56,7 +56,9 @@ from ._schemas.adagents import (
 from ._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistrySignals as AdCPAgentsAuthorizationCommunityFormatRegistrySignals,
 )
+from ._schemas.adagents import Contact as AdCPAgentsAuthorizationCommunityFormatRegistryContact
 from ._schemas.adagents import DelegationType as DelegationType
+from ._schemas.adagents import FormatsItem as AdCPAgentsAuthorizationCommunityFormatRegistryFormatsItem
 from ._schemas.adagents import FormatsItemAgentPlacement as FormatsItemAgentPlacement
 from ._schemas.adagents import FormatsItemAudioDaast as FormatsItemAudioDaast
 from ._schemas.adagents import FormatsItemAudioHosted as FormatsItemAudioHosted
@@ -73,6 +75,14 @@ from ._schemas.adagents import FormatsItemSellerRenderedStatefulDisplay as Forma
 from ._schemas.adagents import FormatsItemSponsoredPlacement as FormatsItemSponsoredPlacement
 from ._schemas.adagents import FormatsItemVideoHosted as FormatsItemVideoHosted
 from ._schemas.adagents import FormatsItemVideoVast as FormatsItemVideoVast
+from ._schemas.adagents import PlacementTagsValue as AdCPAgentsAuthorizationCommunityFormatRegistryPlacementTagsValue
+from ._schemas.adagents import (
+    PropertyFeaturesItem as AdCPAgentsAuthorizationCommunityFormatRegistryPropertyFeaturesItem,
+)
+from ._schemas.adagents import Reason as AdCPAgentsAuthorizationCommunityFormatRegistryRevokedPublisherDomainsItemReason
+from ._schemas.adagents import (
+    RevokedPublisherDomainsItem as AdCPAgentsAuthorizationCommunityFormatRegistryRevokedPublisherDomainsItem,
+)
 from ._schemas.adagents import SignalTagsValue as SignalTagsValue
 
 __all__ = [
@@ -87,9 +97,15 @@ __all__ = [
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags',
     'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0',
     'AdCPAgentsAuthorizationCommunityFormatRegistryCollections',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryContact',
     'AdCPAgentsAuthorizationCommunityFormatRegistryFormats',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryFormatsItem',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryPlacementTagsValue',
     'AdCPAgentsAuthorizationCommunityFormatRegistryPlacements',
     'AdCPAgentsAuthorizationCommunityFormatRegistryProperties',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryPropertyFeaturesItem',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryRevokedPublisherDomainsItem',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryRevokedPublisherDomainsItemReason',
     'AdCPAgentsAuthorizationCommunityFormatRegistrySignals',
     'DelegationType',
     'FormatsItemAgentPlacement',

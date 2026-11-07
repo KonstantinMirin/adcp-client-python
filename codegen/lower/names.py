@@ -196,6 +196,59 @@ SUBJECT_SCOPE = (
     "ruling, the run is not the bundle)"
 )
 
+#: **The KIND reading 6's inner-node clause exports a position under**, beside ``root``,
+#: ``branch`` and ``alias``.  One string, named, because three readers ask for it --
+#: :func:`the_surface_exports` answers it, :func:`assign` decides the word it publishes,
+#: and ``emit.domain_modules`` writes the statement -- and a fourth kind spelled three
+#: times is how the three come to disagree about which positions the clause reaches.
+INNER = "inner"
+
+#: **Reading 6's inner-node clause, in the reading's own words.**  QUOTED by the checks
+#: that grade it, for :data:`COLLISION_SCOPE`'s reason: the sentence the code states and
+#: the sentence a failure reports against are one string.
+#:
+#: Reading 6 (2026-11-07, ``86f197a5d``): "**AND AN UNTITLED INNER NODE IS EXPORTED UNDER
+#: ITS PARENT'S NAME AND ITS KEY, ALWAYS -- NEVER ONLY WHEN THE KEY COLLIDES.**  A domain
+#: carries many a ``method``, a ``target``, an ``items``, so the key alone cannot be the
+#: export for all of them. ... **REFUSE IT, because such a name is not stable under the
+#: bundle's own growth:** a document arriving later with a colliding key would RENAME an
+#: export an application already imports."
+#:
+#: **THE PARENT'S NAME IS THE PARENT'S OWN EXPORT WORD, WHICH MAKES THE RULE RECURSIVE AND
+#: THE WORD THE WHOLE CHAIN.**  The clause is stated for one node, and a bundle nests them:
+#: the parent of an untitled inner node is very often another untitled inner node, whose
+#: own export word this same clause decides.  Read transitively the recursion bottoms out
+#: at the nearest ancestor the bundle TITLES -- in this bundle always the document root --
+#: so the word is :func:`segments`' whole chain joined, which is exactly "the parent's name
+#: and its key" at every step of the way down.
+#:
+#: **MEASURED, and the measurement is why it is read transitively.**  Over bundle 3.2's
+#: 1,059 emitted documents the clause reaches 1,342 declarations, and taking "the parent's
+#: name" to be the parent's own SHORT segment -- the last two segments of the chain, the
+#: literal depth-2 reading -- leaves **18 words that two positions of one domain both want,
+#: over 38 positions, and 3 more that collide with a name the surface already exports**.
+#: Taking it to be the parent's own export word leaves **0 of either**.  Reading 6's
+#: "a rule that collides is not a rule" therefore selects the transitive reading, and it
+#: needs no third component to do it.
+#:
+#: **AND THE WORD IS A FUNCTION OF THE DOCUMENT'S OWN PATH AND OF NOTHING ELSE**, which is
+#: the stability the clause is about.  The parent's post-collision SYMBOL was the third
+#: candidate and it is the one the clause's own reason rules out: §4's collision rule
+#: lengthens a symbol against what else the MODULE declares, so an export worded from it
+#: would move when an unrelated sibling arrived -- the hidden coupling reading 6 names in
+#: so many words ("adding an unrelated document is a breaking change to an unrelated
+#: import").  :func:`segments` is already stated as "a function of the node's PATH through
+#: the document and of nothing else", so the chain is the one reading that has the property.
+THE_INNER_EXPORT = (
+    "an untitled inner node is exported under its parent's name and its key, ALWAYS and "
+    "never only when the key collides -- and the parent's name is the parent's own EXPORT "
+    "word, so the rule read transitively bottoms out at the nearest ancestor the bundle "
+    "TITLES and the word is the node's whole chain through the document (reading 6, "
+    "2026-11-07).  The word is a function of the document's own path and of nothing else, "
+    "which is the stability the clause is about: a name chosen by what ELSE a module or a "
+    "domain happens to hold is not stable under the bundle's own growth"
+)
+
 
 # --------------------------------------------------------------------------- #
 # §4's name rules
@@ -1723,16 +1776,28 @@ def the_surface_exports(
     """§1's export set, as the KIND one position is exported under, or ``None``.
 
     §1 (2026-10-30) fixes it as **every document ROOT, every union BRANCH and every D2
-    type ALIAS** -- and not every class the tree declares, which was decided and withdrawn
-    the same day because it makes ``core.Status`` name one of fourteen declarations.  The
-    three arms are read off what the position IS and never off its name:
+    type ALIAS**, and reading 6 adds the fourth arm on 2026-11-07
+    (:data:`THE_INNER_EXPORT`): **every untitled INNER node too, under a word of its own.**
+    The four arms are read off what the position IS and never off its name:
 
     * the ROOT is the empty pointer, which is D5's one exported symbol per document;
     * a BRANCH is a position whose hop is a :class:`Branch`, which is what §4's union row
       builds a class per;
     * a D2 ALIAS is an :class:`codegen.ir.AliasDecl` or the :class:`codegen.ir.RootBinding`
       wrapping one -- §4's "a scalar at a root is a module-level annotated alias, not a
-      class" -- and §1 exports those because "an alias is a name an application writes".
+      class" -- and §1 exports those because "an alias is a name an application writes";
+    * an INNER node is a position that DECLARES a class or an enumeration and is none of
+      the three above -- a property, an element, a mapping value or a ``definitions``
+      entry whose node the bundle gives no title.
+
+    **THE INNER ARM IS NOT "EVERY CLASS THE TREE DECLARES" UNDER A NEW NAME**, which was
+    decided and withdrawn on 2026-10-30 "because it makes ``core.Status`` name one of
+    fourteen declarations".  That withdrawal was about the WORD and not about the set: the
+    name it would have exported is the position's own short symbol, and fourteen positions
+    of ``core`` derive ``Status``.  Reading 6's clause supplies the word the withdrawal was
+    missing -- the node's whole chain -- so the set returns with every one of those
+    fourteen reachable and none of them spelled ``Status``.  :func:`assign` is where the
+    word is minted, because a word needs the position's chain and a kind does not.
 
     What it deliberately does NOT reach is the per-module ``strict_validate`` helper, which
     is not a declaration of this pass at all, and §1's own reason stands: a domain name
@@ -1740,7 +1805,7 @@ def the_surface_exports(
 
     **IT ANSWERS FOR THE POSITION AND NOT FOR THE DECLARATION, which is why the answer is
     not the export set on its own** (§1, 2026-11-03).  A position can be one of these
-    three kinds and still declare nothing -- an identity binding is an ``AliasDecl``, so
+    four kinds and still declare nothing -- an identity binding is an ``AliasDecl``, so
     the third arm says ``alias`` for it -- and §1's one-path rule is about declarations.
     :func:`assign` relocates such an export onto the position that DECLARES the class,
     reading :func:`names_a_declaration`; the split is here because a kind is a property of
@@ -1768,6 +1833,8 @@ def the_surface_exports(
         return "branch"
     if isinstance(declaration, ir.AliasDecl | ir.RootBinding):
         return "alias"
+    if isinstance(declaration, ir.ClassDecl | ir.EnumDecl):
+        return INNER
     return None
 
 
@@ -1861,6 +1928,18 @@ def assign(
     #: Every pointer this module BINDS rather than declares -> the pointer or symbol it
     #: names (:func:`names_a_declaration`), for :attr:`ir.Module.binds`.
     binds: dict[str, str] = {}
+    #: **Reading 6's INNER positions -> the chain its clause words the export from**
+    #: (:data:`THE_INNER_EXPORT`).  Held APART from ``exports`` until the relocation below
+    #: has run, which is the whole of the ordering this record exists for: the relocation
+    #: asks whether a declaration is exported TWICE, and an inner export added before it
+    #: would answer that question with its own arrival -- renaming 20 names of this bundle
+    #: that reading 6 already holds for, where the clause adds none.
+    inner: dict[str, tuple[str, ...]] = {}
+    #: **Reading 6's inner POINTER -> the word the domain surface publishes it under**,
+    #: where that word is not the private symbol (:data:`THE_INNER_EXPORT`).  Keyed by
+    #: pointer here and rebound to the SYMBOL on the way out, for :attr:`ir.Module.exports`'
+    #: reason: what the surface writes is ``<symbol> as <word>`` and both halves are names.
+    published: dict[str, str] = {}
     for i, declaration in enumerate(mod.declarations):
         pointer = _at(declaration)
         if pointer is None:
@@ -1871,7 +1950,7 @@ def assign(
         if named is not None:
             binds[pointer] = named
         kind = the_surface_exports(pointer, declaration, mod.hops)
-        if kind is not None:
+        if kind is not None and kind != INNER:
             exports[pointer] = kind
         rungs = ladder(pointer, mod.hops)
         if isinstance(rungs, Refusal):
@@ -1892,6 +1971,11 @@ def assign(
             takes[pointer] = declares
             degenerate.add(i)
             continue
+        #: Reading 6's clause reaches a position that DECLARES, so it is recorded on the
+        #: far side of the degenerate arm above: an adoption binding no name of its own
+        #: declares nothing for the clause to export and has no chain to word it from.
+        if kind == INNER:
+            inner[pointer] = chain
         #: §3a's judged name as rung 0, read AFTER the dedup arm above: the comparison
         #: there is §4's "two positions stating the same NODE", which a name the catalogue
         #: judged has no part in.
@@ -1928,6 +2012,36 @@ def assign(
     # that holds this document, so the answer does not depend on the argument list.
     for pointer in [p for p in exports if p in binds and binds[p] in abroad]:
         del exports[pointer]
+    # **READING 6's INNER CLAUSE, APPLIED LAST AND ONLY WHERE NO EXPORT ALREADY REACHES THE
+    # CLASS** (:data:`THE_INNER_EXPORT`).  The clause adds a PATH to a class no path
+    # reaches; a class some other position already exports has its one path, and a second
+    # one would break the very reading this clause belongs to -- "no second way reaches the
+    # same class".
+    #
+    # **MEASURED, and this is the error the uniform rule most plausibly introduces.**  Over
+    # this bundle 1,362 positions answer ``inner`` and **20 of them declare a class the
+    # surface ALREADY carries** -- §4's content dedup put the class at the first pointer in
+    # document order and the surface exports the ADOPTING position's word, because the
+    # relocation above leaves a declaration that is reached at exactly one path alone.
+    # ``adagents``'s ``TagsValue`` is one: it is declared at
+    # ``#/oneOf/1/properties/tags/additionalProperties`` and reached today at
+    # ``adcp.types.adagents.SignalTagsValue``.  So the population of the clause is 1,342
+    # and not 1,362, and an export per declaring POSITION rather than per unreached CLASS
+    # would hand those 20 objects a second domain path.
+    #
+    # ``_reaching`` is the same reading the relocation above makes -- a binding chain
+    # followed to the declaration it ends at -- so "already reached" and "exported twice"
+    # cannot come to disagree about what reaches what.
+    reached = frozenset(exports) | frozenset(_reaching(exports, binds, mod.at))
+    for pointer, chain in inner.items():
+        if pointer in reached:
+            continue
+        exports[pointer] = INNER
+        #: The WHOLE chain, which is :data:`THE_INNER_EXPORT`'s transitive reading of "its
+        #: parent's name and its key".  :func:`spelling` and not a join, because a chain
+        #: whose join is a Python keyword is a module that does not parse and that reading
+        #: is already taken once.
+        published[pointer] = spelling(chain, len(chain))
     spelled = spell_the_rungs(
         ladders,
         carriers | {symbol for _, symbol in mod.imports},
@@ -1938,7 +2052,23 @@ def assign(
         # dropped name would lengthen a sibling against a name no module publishes, and
         # one that missed an added one would publish two.  So the relocation above runs
         # BEFORE the names are spelled rather than on the way out.
-        frozenset(exports),
+        #
+        # **AND READING 6's INNER POSITIONS ARE NOT IN IT, because their SYMBOL is not the
+        # name the surface publishes** (:data:`THE_INNER_EXPORT`).  :data:`COLLISION_SCOPE`
+        # is stated over "a position the surface exports" and what it forbids two of is an
+        # ``adcp.types.<domain>.<Name>``; an inner export's path carries the clause's WORD,
+        # which is a function of the document's own path and collides with nothing, so its
+        # symbol stays private and the domain rule has nothing to ask of it.
+        #
+        # **MEASURED: holding them in renames three private classes for a collision that
+        # does not exist** -- ``brand/get_brand_identity_response``'s ``Tone``,
+        # ``core/event_surface``'s ``Category`` and ``core/signal_definition``'s
+        # ``LookbackWindow``, each lengthened against a word ANOTHER document of its domain
+        # exports, while the word this clause publishes them under is unaffected.  Reading
+        # 6's own reason rules it out from the other side as well: a private symbol that
+        # moved because an unrelated document of the domain holds the word is the hidden
+        # coupling the clause exists to remove.
+        frozenset(p for p in exports if p not in published),
         subjects,
         # **§3a step 3's narrowing: the positions that DECLARE, which is ``ladders``
         # MINUS the ones that bind.**  ``binds`` is §1's own reading -- "a position that
@@ -1992,6 +2122,11 @@ def assign(
         # forbids two of.  A degenerate adoption is absent by construction: it binds no
         # name of its own, so no pointer of it reached ``exports``.
         exports={symbols[pointer]: kind for pointer, kind in exports.items()},
+        # **Reading 6's inner WORD beside the kind**, symbol -> the name the domain surface
+        # publishes that symbol under (:data:`THE_INNER_EXPORT`).  Only the ``inner`` kind
+        # is here: for the other three the surface's word IS the symbol, and an entry
+        # restating that would be a second place for the two to disagree.
+        published={symbols[pointer]: word for pointer, word in published.items()},
         # §1's BINDINGS, every one this module writes and not only the exported ones --
         # which is what makes the gate on the export set non-vacuous once the repair has
         # landed: the record still names what a binding is, so a name that returns to the

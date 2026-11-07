@@ -274,9 +274,12 @@ def test_the_alias_layer_adds_no_declaration(rows: list[dict[str, str]]) -> None
     behind: dict[str, tuple[str, str] | None] = {}
     for (domain, name), sources in exported.items():
         private = sources[0][0].replace(".", "/")
+        # The SYMBOL for ``declaring``'s record arm and the WORD for the path, which is
+        # reading 6's inner clause (``tests/test_the_domain_surface.surface``).
+        symbol = sources[0][2]
         module = importlib.import_module(f"adcp.types.{domain}")
         behind[f"adcp.types.{domain}.{name}"] = declaring(
-            private, name, getattr(module, name), held.binds.get(private, {})
+            private, symbol, getattr(module, name), held.binds.get(private, {})
         )
     claimed("the export paths of the domain surface", behind)
     declarations = {key for key in behind.values() if key is not None}
@@ -498,3 +501,69 @@ def test_what_this_file_does_not_grade(rows: list[dict[str, str]]) -> None:
     )
     assert {"Format", "Brand", "TaskStatus", "Targeting"} <= differs, sorted(differs)
     assert len(artifacts) > 1_000, len(artifacts)
+
+
+def test_every_provisional_alias_is_paired_with_its_migration_entry() -> None:
+    """Reading 10's narrowed prohibition, graded over the PAIR and never over the alias.
+
+    ``final-state.md`` reading 10: "**NO ALIAS POINTS AT A NAME THIS COMPILER MINTED FROM
+    STRUCTURE** ... such a name is *pending* an upstream title.  Publishing an alias onto it
+    makes a placeholder permanent and public" -- **"UNLESS THE ALIAS IS UPSTREAM'S OWN
+    PUBLISHED WORD, DECLARED DEPRECATED AND PENDING ... an alias RECORDS it rather than
+    minting it ... So the alias is admissible AND THE MIGRATION ENTRY MUST SAY THE WORD IS
+    PROVISIONAL -- naming the untitled node by pointer and the upstream ask that would title
+    it."**
+
+    **THE ENTRY IS WHAT MAKES THE ALIAS ADMISSIBLE, so the two are one unit and the unit is
+    what is asserted.**  An alias without its entry is not a documented name missing a
+    paragraph: it is reading 10's prohibition unnarrowed -- a permanent public commitment to
+    a placeholder -- and the alias should not have been written.  That is why this reddens on
+    the alias rather than on the guide.
+
+    Four things are required of each pair, each reported BY NAME:
+
+    * the word RESOLVES, flat and at the alias module, which is what an application writes;
+    * it ``is`` the object reading 6's own surface word reaches -- an alias is a NAME, so a
+      provisional one is held to the same ``is`` every other row of this module is;
+    * the guide NAMES the word and NAMES the node's POINTER, which is reading 10's "naming
+      the untitled node by pointer";
+    * the guide says **PROVISIONAL**, which is the sentence the reading asks for in those
+      words and the one thing a reader has to be told.
+
+    The ASK is prose and is not grepped for: reading 10 requires it to be stated and no check
+    can decide whether a sentence is one.  What is checked is that the entry exists, is about
+    this node, and carries the word the reading fixes.
+    """
+    compat = importlib.import_module(MODULE)
+    provisional: dict[str, str] = compat.__adcp_provisional__
+    claimed("the provisional words", provisional)
+    guide = (ROOT / "docs" / "migration-from-upstream.md").read_text(encoding="utf-8")
+
+    unresolved: dict[str, str] = {}
+    not_the_same: dict[str, str] = {}
+    unentered: dict[str, str] = {}
+    for word, pointer in sorted(provisional.items()):
+        namespace: dict[str, object] = {}
+        try:
+            exec(f"from adcp.types import {word}", namespace)  # noqa: S102
+        except BaseException as error:  # noqa: BLE001 -- the payload is the report
+            unresolved[word] = f"{type(error).__name__}: {error}"
+            continue
+        if namespace[word] is not getattr(compat, word):
+            not_the_same[word] = f"adcp.types.{word} is not {MODULE}.{word}"
+        missing = [
+            what
+            for what, found in (
+                ("the word", f"`{word}`" in guide),
+                ("the node's pointer", f"`{pointer}`" in guide),
+                ("the word PROVISIONAL", "PROVISIONAL" in guide),
+            )
+            if not found
+        ]
+        if missing:
+            unentered[word] = f"{pointer}: the guide does not carry {', '.join(missing)}"
+    assert not unresolved, {"provisional words that do not resolve flat": unresolved}
+    assert not not_the_same, {"a provisional word reaching a second object": not_the_same}
+    assert not unentered, {
+        "provisional aliases with no migration entry -- reading 10 unnarrowed": unentered,
+    }

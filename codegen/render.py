@@ -1516,7 +1516,9 @@ def _import_statement(module: str, names: Sequence[str]) -> list[str]:
     return [f"from {module} import (", *(f"{IMPORT_INDENT}{name}," for name in names), ")"]
 
 
-def _module_statements(module: str, names: Collection[str], reexported: Collection[str]) -> list[str]:
+def _module_statements(
+    module: str, names: Collection[str], reexported: Mapping[str, str]
+) -> list[str]:
     """One module's statements: the plain names in ONE statement, then each re-export in
     its own.
 
@@ -1524,34 +1526,48 @@ def _module_statements(module: str, names: Collection[str], reexported: Collecti
     so ``X as X`` cannot share a statement with anything: ``from m import A, B as B``
     is rewritten to two statements by the sorter, and the plain one comes first.  That is
     the whole reason this is not one join.
+
+    ``reexported`` is symbol -> the WORD the statement binds it to, which is the symbol
+    itself for every re-export but reading 6's inner clause (``ir.Module.published``).  A
+    MAPPING and not a set because the two halves of ``X as Y`` are two names and a set
+    could only carry one of them; the identity case is simply the entry where they agree,
+    so there is no second spelling of ``X as X`` to keep in step.
     """
     plain = sorted(set(names) - set(reexported), key=_member_key)
     out = _import_statement(module, plain) if plain else []
+    #: Sorted by the SYMBOL, which is the member a sorter reads: ``isort`` orders the
+    #: statements of one module by the imported name and not by the ``as`` clause.
     for name in sorted(reexported, key=_member_key):
-        out += _import_statement(module, [f"{name} as {name}"])
+        out += _import_statement(module, [f"{name} as {reexported[name]}"])
     return out
 
 
 def _import_block(
-    imports: Collection[tuple[str, str]], reexports: Collection[tuple[str, str]] = ()
+    imports: Collection[tuple[str, str]],
+    reexports: Collection[tuple[str, str] | tuple[str, str, str]] = (),
 ) -> list[str]:
     """The import statements, grouped by :func:`_import_rank` and sorted within a rank.
 
     Sorted the way the SORTER sorts -- :func:`_natural` over the module name, case-blind,
     and :func:`_member_key` over the names within a statement -- rather than by
     ``sorted()``, which agrees with it on most of this tree and not on all of it.
+
+    A re-export is ``(module, symbol)`` or ``(module, symbol, word)``, and the pair is the
+    word-equals-symbol case written short: every caller but the domain surface re-exports
+    under the name it imported, and reading 6's inner clause is the one that does not.
     """
     groups: list[list[str]] = [[], [], [], []]
     by_module: dict[str, set[str]] = {}
-    held: dict[str, set[str]] = {}
+    held: dict[str, dict[str, str]] = {}
     for module, name in imports:
         by_module.setdefault(module, set()).add(name)
-    for module, name in reexports:
+    for reexport in reexports:
+        module, name, word = (*reexport, reexport[1])[:3]
         by_module.setdefault(module, set()).add(name)
-        held.setdefault(module, set()).add(name)
+        held.setdefault(module, {})[name] = word
     for module in sorted(by_module, key=lambda m: _natural(m.lower())):
         groups[_import_rank(module)] += _module_statements(
-            module, by_module[module], held.get(module, ())
+            module, by_module[module], held.get(module, {})
         )
     out: list[str] = []
     for group in groups:
@@ -1616,7 +1632,7 @@ def _identifier_strings(node: ast.AST) -> set[str]:
 def _import_section(
     imports: Collection[tuple[str, str]],
     body: str,
-    reexports: Collection[tuple[str, str]] = (),
+    reexports: Collection[tuple[str, str] | tuple[str, str, str]] = (),
 ) -> list[str]:
     """``from __future__ import annotations``, the import block, and the blank lines
     ``isort`` puts between that block and what follows.
@@ -1638,6 +1654,8 @@ def _import_section(
     """
     used = _code_names(body)
     named = [(module, name) for module, name in imports if name in used]
+    # ``X as X`` and ``X as Y`` are both exempt from the usage filter above, and for the
+    # same reason: the name is promised to a CONSUMER and is not named by this module.
     block = _import_block(named, reexports)
     after = ["", ""] if body.lstrip("\n").startswith(("class ", "def ", "@")) else [""]
     return ["from __future__ import annotations", *(["", *block[:-1]] if block else []), *after]
@@ -1892,20 +1910,29 @@ entry point is the document's.
 """'''
 
 
-def domain_module(domain: str, held: Mapping[str, Sequence[str]]) -> str:
+def domain_module(domain: str, held: Mapping[str, Sequence[tuple[str, str]]]) -> str:
     """The text of ``adcp/types/<domain>.py``: §1's public surface for one domain.
 
-    ``held`` is the private module each exported name is declared in, grouped -- the
-    DECISION, which is ``emit.domain_modules``' (§1's export set, read off the compiler's
-    own record of it).  What is here is the TEXT, because §7 gives a module's header,
-    import block and ``__all__`` to this module and because ``tests/test_import_rule.py``
-    holds it: nothing before the renderer holds a string of Python.
+    ``held`` is the private module each exported name is declared in, grouped, with each
+    entry the ``(symbol, word)`` pair the statement binds -- the DECISION, which is
+    ``emit.domain_modules``' (§1's export set plus reading 6's inner words, read off the
+    compiler's own record of both).  What is here is the TEXT, because §7 gives a module's
+    header, import block and ``__all__`` to this module and because
+    ``tests/test_import_rule.py`` holds it: nothing before the renderer holds a string of
+    Python.
 
     **``X as X`` and a literal ``__all__``, which are two statements of one fact and both
     are wanted.**  The re-export form is what makes the name an export to a type checker
     rather than an incidental binding, and the literal list is what §1 asks for in so many
     words -- a module that leaves its surface implicit makes a reader derive it.  Written
     from one ``held``, so the two cannot disagree.
+
+    **AND ``X as Y`` FOR READING 6's INNER CLAUSE**, where the two names differ by
+    construction (``lower/names.THE_INNER_EXPORT``): the symbol is what §4 decided the
+    private module declares and the word is what the clause decides the DOMAIN publishes.
+    There the ``__all__`` entry is the half that makes it an export -- PEP 484 reads a name
+    in ``__all__`` as public whatever the import spelling -- which is the second reason the
+    literal list is written and not derived.
 
     **RELATIVE, for ``emit.relative_module``'s reason**: ``_schemas`` is private (P8) and a
     relative import is the one spelling that cannot name it.  One level, because every
@@ -1933,11 +1960,15 @@ def domain_module(domain: str, held: Mapping[str, Sequence[str]]) -> str:
         '"""',
         "",
     ]
-    names = [symbol for module in held for symbol in held[module]]
+    names = [word for module in held for _, word in held[module]]
     body = "\n".join(
-        ["__all__ = [", *(f"    {symbol!r}," for symbol in sorted(names, key=_export_key)), "]", ""]
+        ["__all__ = [", *(f"    {word!r}," for word in sorted(names, key=_export_key)), "]", ""]
     )
-    reexports = [(f"._schemas.{module}", symbol) for module in held for symbol in held[module]]
+    reexports = [
+        (f"._schemas.{module}", symbol, word)
+        for module in held
+        for symbol, word in held[module]
+    ]
     return "\n".join([*lines, *_import_section((), body, reexports), body])
 
 

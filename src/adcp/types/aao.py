@@ -16,7 +16,19 @@ from __future__ import annotations
 from ._schemas.aao.agent_publishers import (
     AAODirectoryAgentPublishersInverseLookupResponse as AAODirectoryAgentPublishersInverseLookupResponse,
 )
+from ._schemas.aao.agent_publishers import (
+    DiscoveryMethod as AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryDiscoveryMethod,
+)
+from ._schemas.aao.agent_publishers import (
+    PublisherEntry as AAODirectoryAgentPublishersInverseLookupResponsePublisherEntry,
+)
+from ._schemas.aao.agent_publishers import (
+    Status as AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryStatus,
+)
 
 __all__ = [
     'AAODirectoryAgentPublishersInverseLookupResponse',
+    'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntry',
+    'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryDiscoveryMethod',
+    'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryStatus',
 ]
