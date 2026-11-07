@@ -40,12 +40,14 @@ from adcp.types.a2ui import A2UIBoundValuePath as A2UiBoundValue4
 from adcp.types.a2ui import A2UIComponent as A2UiComponent
 from adcp.types.a2ui import A2UISurface as A2UiSurface
 from adcp.types.a2ui import A2UIUserAction as A2UiUserAction
+from adcp.types.a2ui import A2UIUserActionAction as Action
 from adcp.types.a2ui import SIComponentCatalog as SiComponentCatalog
 from adcp.types.a2ui import SIComponentCatalogComponentsItem as Component
 from adcp.types.aao import AAODirectoryAgentPublishersInverseLookupResponse as AaoDirectoryAgentPublishersInverseLookupResponse
 from adcp.types.aao import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntry as PublisherEntry
 from adcp.types.account import GetAccountFinancialsRequest as GetAccountFinancialsRequest
 from adcp.types.account import GetAccountFinancialsResponse as GetAccountFinancialsResponse
+from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsResponse1
 from adcp.types.account import ListAccountChangesRequest as ListAccountChangesRequest
 from adcp.types.account import ListAccountChangesRequestStartingPosition as StartingPosition
 from adcp.types.account import ListAccountChangesResponse as ListAccountChangesResponse
@@ -55,6 +57,7 @@ from adcp.types.account import ReportUsageRequest as ReportUsageRequest
 from adcp.types.account import ReportUsageResponse as ReportUsageResponse
 from adcp.types.account import SyncAccountsRequest as SyncAccountsRequest
 from adcp.types.account import SyncAccountsResponse as SyncAccountsResponse
+from adcp.types.account import SyncAccountsSuccess as SyncAccountsResponse1
 from adcp.types.account import SyncGovernanceRequest as SyncGovernanceRequest
 from adcp.types.account import SyncGovernanceRequestAccountsItemGovernanceAgentsItem as SyncGovernanceGovernanceAgent
 from adcp.types.account import SyncGovernanceRequestAccountsItemGovernanceAgentsItemAuthentication as GovernanceAuthentication
@@ -69,6 +72,8 @@ from adcp.types.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryRe
 from adcp.types.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryRevokedPublisherDomainsItem as RevokedPublisherDomain5
 from adcp.types.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryRevokedPublisherDomainsItem as RevokedPublisherDomain6
 from adcp.types.adagents import DelegationType as DelegationType
+from adcp.types.adagents import SignalTagsValue as Tags
+from adcp.types.brand import AcquireRightsAcquired as AcquireRightsResponse1
 from adcp.types.brand import AcquireRightsRequest as AcquireRightsRequest
 from adcp.types.brand import AcquireRightsResponse as AcquireRightsResponse
 from adcp.types.brand import Agents as Agents
@@ -99,6 +104,7 @@ from adcp.types.brand import BrandDiscoveryCompositionRulesTextureStyle as Style
 from adcp.types.brand import BrandDiscoveryElevation as Elevation
 from adcp.types.brand import BrandDiscoveryFontFile as FontFile
 from adcp.types.brand import BrandDiscoveryFontFileStyle as Style
+from adcp.types.brand import BrandDiscoveryFonts as Fonts
 from adcp.types.brand import BrandDiscoveryGraphicElement as GraphicElement
 from adcp.types.brand import BrandDiscoveryGraphicElementOrientation as Orientation1
 from adcp.types.brand import BrandDiscoveryGraphicElementType as Type1
@@ -130,6 +136,7 @@ from adcp.types.brand import BrandDiscoveryPhotographyStyleSubject as Subject
 from adcp.types.brand import BrandDiscoveryPhotographyStyleSubjectPeople as People
 from adcp.types.brand import BrandDiscoveryPhotographyStyleSubjectProductFocus as ProductFocus
 from adcp.types.brand import BrandDiscoveryPortfolioEntry as PortfolioEntry
+from adcp.types.brand import BrandDiscoveryProductCatalog as ProductCatalog
 from adcp.types.brand import BrandDiscoveryPropertyRelationship as Relationship
 from adcp.types.brand import BrandDiscoveryRightsAgent as RightsAgent
 from adcp.types.brand import BrandDiscoverySpacing as Spacing
@@ -148,8 +155,10 @@ from adcp.types.brand import GetBrandIdentityRequest as GetBrandIdentityRequest
 from adcp.types.brand import GetBrandIdentityRequestFieldsItem as GetBrandIdentityField
 from adcp.types.brand import GetBrandIdentityRequestFieldsItem as ListCreativesField
 from adcp.types.brand import GetBrandIdentityResponse as GetBrandIdentityResponse
+from adcp.types.brand import GetBrandIdentitySuccess as GetBrandIdentityResponse1
 from adcp.types.brand import GetRightsRequest as GetRightsRequest
 from adcp.types.brand import GetRightsResponse as GetRightsResponse
+from adcp.types.brand import GetRightsSuccess as GetRightsResponse1
 from adcp.types.brand import HexColor as HexColor
 from adcp.types.brand import HouseRedirect as BrandDiscovery2
 from adcp.types.brand import HouseRedirectRedirectReason as RedirectReason
@@ -170,10 +179,17 @@ from adcp.types.brand import UpdateRightsResponse as UpdateRightsResponse
 from adcp.types.brand import VerificationStatus as VerificationStatus
 from adcp.types.brand import VerifyBrandClaimRequest as VerifyBrandClaimRequest
 from adcp.types.brand import VerifyBrandClaimResponse as VerifyBrandClaimResponse
+from adcp.types.brand import VerifyBrandClaimResponseSignedResponse as VerifyBrandClaimSignedResponse
+from adcp.types.brand import VerifyBrandClaimResponseSignedResponsePayload as VerifyBrandClaimPayload
+from adcp.types.brand import VerifyBrandClaimResponseSignedSuccessPayload as VerifyBrandClaimSignedSuccessPayload
+from adcp.types.brand import VerifyBrandClaimsError as VerifyBrandClaimsErrorResponse
 from adcp.types.brand import VerifyBrandClaimsRequestBulk as VerifyBrandClaimsRequest
 from adcp.types.brand import VerifyBrandClaimsRequestBulk as VerifyBrandClaimsRequestBulk
 from adcp.types.brand import VerifyBrandClaimsResponseBulk as VerifyBrandClaimsResponse
 from adcp.types.brand import VerifyBrandClaimsResponseBulk as VerifyBrandClaimsResponseBulk
+from adcp.types.brand import VerifyBrandClaimsResponseBulkSignedResponse as VerifyBrandClaimsSignedResponse
+from adcp.types.brand import VerifyBrandClaimsResponseBulkSignedResponsePayload as VerifyBrandClaimsPayload
+from adcp.types.brand import VerifyBrandClaimsResponseBulkSignedSuccessPayload as VerifyBrandClaimsSignedSuccessPayload
 from adcp.types.brand import VerifyBrandClaimsResultError as ResultEntry2
 from adcp.types.brand import VerifyBrandClaimsResultSuccess as ResultEntry1
 from adcp.types.brand import VerifyPropertyClaimClaim as Claim2
@@ -199,6 +215,7 @@ from adcp.types.compliance import ComplyTestControllerRequestParamsMetricsItem a
 from adcp.types.compliance import ComplyTestControllerResponse as ComplyTestControllerResponse
 from adcp.types.compliance import ForcedDirectiveSuccessForced as Forced
 from adcp.types.compliance import GetCreativeFeaturesComplianceCompletion as GetCreativeFeaturesComplianceCompletion
+from adcp.types.compliance import ListScenariosSuccess as ComplyTestControllerResponse1
 from adcp.types.compliance import UpstreamTrafficSuccessRecordedCallsItemAttestationMode as AttestationMode
 from adcp.types.compliance import UpstreamTrafficSuccessRecordedCallsItemIdentifierMatchProofsItem as IdentifierMatchProof
 from adcp.types.compliance import UpstreamTrafficSuccessRecordedCallsItemPurpose as Purpose
@@ -213,19 +230,27 @@ from adcp.types.content_standards import AssetAccess as AssetAccess
 from adcp.types.content_standards import AssetsItemAudioTranscriptFormat as TranscriptFormat
 from adcp.types.content_standards import CalibrateContentRequest as CalibrateContentRequest
 from adcp.types.content_standards import CalibrateContentResponse as CalibrateContentResponse
+from adcp.types.content_standards import CalibrateContentResponseVerdict as CalibrateContentResponse1
 from adcp.types.content_standards import CreateContentStandardsRequest as CreateContentStandardsRequest
 from adcp.types.content_standards import CreateContentStandardsResponse as CreateContentStandardsResponse
+from adcp.types.content_standards import CreateContentStandardsResponseStandardsId as CreateContentStandardsResponse1
 from adcp.types.content_standards import GetContentStandardsRequest as GetContentStandardsRequest
 from adcp.types.content_standards import GetContentStandardsResponse as GetContentStandardsResponse
+from adcp.types.content_standards import GetContentStandardsResponseBranch0 as GetContentStandardsResponse1
 from adcp.types.content_standards import GetMediaBuyArtifactsRequest as GetMediaBuyArtifactsRequest
+from adcp.types.content_standards import GetMediaBuyArtifactsRequestTimeRange as MeasurementPeriod
 from adcp.types.content_standards import GetMediaBuyArtifactsRequestTimeRange as TimeRange
 from adcp.types.content_standards import GetMediaBuyArtifactsResponse as GetMediaBuyArtifactsResponse
+from adcp.types.content_standards import GetMediaBuyArtifactsResponseArtifactsMediaBuyId as GetMediaBuyArtifactsResponse1
 from adcp.types.content_standards import ListContentStandardsRequest as ListContentStandardsRequest
 from adcp.types.content_standards import ListContentStandardsResponse as ListContentStandardsResponse
+from adcp.types.content_standards import ListContentStandardsResponseStandards as ListContentStandardsResponse1
 from adcp.types.content_standards import UpdateContentStandardsRequest as UpdateContentStandardsRequest
 from adcp.types.content_standards import UpdateContentStandardsResponse as UpdateContentStandardsResponse
+from adcp.types.content_standards import UpdateContentStandardsSuccess as UpdateContentStandardsResponse1
 from adcp.types.content_standards import ValidateContentDeliveryRequest as ValidateContentDeliveryRequest
 from adcp.types.content_standards import ValidateContentDeliveryResponse as ValidateContentDeliveryResponse
+from adcp.types.content_standards import ValidateContentDeliveryResponseResultsSummary as ValidateContentDeliveryResponse1
 from adcp.types.core import AcceptancePolicyProfileIDs as AcceptancePolicyProfileIds
 from adcp.types.core import Account as Account
 from adcp.types.core import AccountAuthorization as AccountAuthorization
@@ -233,12 +258,14 @@ from adcp.types.core import AccountChange as AccountChange
 from adcp.types.core import AccountChangeActor as Actor
 from adcp.types.core import AccountChangeRecordedWebhook as AccountChangeRecordedWebhook
 from adcp.types.core import AccountChangeRepairUnavailableReason as UnavailableReason
+from adcp.types.core import AccountCreditLimit as CreditLimit
 from adcp.types.core import AccountGovernanceAgentsItem as CoreGovernanceAgent
 from adcp.types.core import AccountIdentityChange as AccountIdentityChange
 from adcp.types.core import AccountIdentityChangePreview as AccountIdentityChangePreview
 from adcp.types.core import AccountIdentityChangePreviewImpact as Impact
 from adcp.types.core import AccountIdentityChangePreviewNonblockingImpactsItemEffect as Effect1
 from adcp.types.core import AccountReference as AccountReference
+from adcp.types.core import AccountReportingBucket as ReportingBucket
 from adcp.types.core import AccountReportingBucketCompression as Compression
 from adcp.types.core import AccountStatusChangedWebhook as AccountStatusChangedWebhook
 from adcp.types.core import AccountTimezoneCapability as AccountTimezoneCapability
@@ -339,6 +366,7 @@ from adcp.types.core import CardAsset as CardAsset
 from adcp.types.core import Catalog as Catalog
 from adcp.types.core import CatalogAsset as CatalogAsset
 from adcp.types.core import CatalogFieldBinding as CatalogFieldBinding
+from adcp.types.core import CatalogFieldBindingCatalogGroup as CatalogFieldBinding1
 from adcp.types.core import CatalogFieldMapping as CatalogFieldMapping
 from adcp.types.core import CatalogItemAvailabilityError as CatalogItemAvailabilityError
 from adcp.types.core import CatalogItemAvailabilityReference as CatalogItemAvailabilityReference
@@ -406,6 +434,7 @@ from adcp.types.core import DeliveryMetricAggregate as DeliveryMetricAggregate
 from adcp.types.core import DeliveryMetrics as DeliveryMetrics
 from adcp.types.core import DeliveryMetricsByActionSourceItem as ByActionSourceItem
 from adcp.types.core import DeliveryMetricsByEventTypeItem as ByEventTypeItem
+from adcp.types.core import DeliveryMetricsDoohMetrics as DoohMetrics
 from adcp.types.core import DeliveryMetricsDoohMetricsVenueBreakdownItem as VenueBreakdownItem
 from adcp.types.core import DeliveryMetricsOohMetricsEstimationBasis as EstimationBasis
 from adcp.types.core import DeliveryMetricsOohMetricsPanelsItem as Panel
@@ -464,6 +493,10 @@ from adcp.types.core import ForecastPointDimensions as ForecastPointDimensions
 from adcp.types.core import ForecastRange as ForecastRange
 from adcp.types.core import ForecastRateRange as ForecastRateRange
 from adcp.types.core import ForecastVendorMetricValue as ForecastVendorMetricValue
+from adcp.types.core import FormatBaseGroupAsset as UnknownGroupAsset
+from adcp.types.core import FormatBaseIndividualAsset as UnknownFormatAsset
+from adcp.types.core import FormatFormatCard as FormatCard
+from adcp.types.core import FormatFormatCard as FormatCardDetailed
 from adcp.types.core import FormatOptionReference as FormatOptionReference
 from adcp.types.core import FormatReferenceStructuredObject as FormatId
 from adcp.types.core import FormatReferenceStructuredObject as FormatReferenceStructuredObject
@@ -634,6 +667,7 @@ from adcp.types.core import ProductCardReferenceAsset as ProductCardReferenceAss
 from adcp.types.core import ProductChangeMap as ProductChangeMap
 from adcp.types.core import ProductChangeMapValue as ProductChangeMap1
 from adcp.types.core import ProductConversionTracking as ConversionTracking
+from adcp.types.core import ProductDeliveryMeasurement as DeliveryMeasurement
 from adcp.types.core import ProductExecutionRequirement as ProductExecutionRequirement
 from adcp.types.core import ProductFiltersRequiredGeoTargetingItem as RequiredGeoTargetingItem
 from adcp.types.core import ProductFormatDeclarationSellerPreference as ProductFormatSellerPreference
@@ -643,6 +677,8 @@ from adcp.types.core import ProductMediaBuySupport as ProductMediaBuySupport
 from adcp.types.core import ProductMediaBuySupportRequirements as ProductMediaBuySupportRequirements
 from adcp.types.core import ProductOfferFilters as ProductOfferFilters
 from adcp.types.core import ProductOfferFiltersAvailabilityHorizon as AvailabilityHorizon
+from adcp.types.core import ProductProductCard as ProductCard
+from adcp.types.core import ProductProductCardDetailed as ProductCardDetailed
 from adcp.types.core import ProductProductCardDetailedSpecificationsItem as Specification
 from adcp.types.core import ProductSignalTargetingOption as ProductSignalTargetingOption
 from adcp.types.core import ProductSignalTargetingOptionActivationStatus as ActivationStatus
@@ -660,6 +696,7 @@ from adcp.types.core import ProtocolEnvelope as ProtocolEnvelope
 from adcp.types.core import ProtocolResponse as ProtocolResponse
 from adcp.types.core import ProtocolResponse as Response
 from adcp.types.core import Provenance as Provenance
+from adcp.types.core import ProvenanceAiTool as AiTool
 from adcp.types.core import ProvenanceEmbeddedProvenanceItem as EmbeddedProvenanceItem
 from adcp.types.core import ProvenanceVerificationItemResult as Result
 from adcp.types.core import ProvenanceWatermarksItem as Watermark
@@ -713,6 +750,7 @@ from adcp.types.core import ReportingDeliveryMethod as ReportingDeliveryMethod
 from adcp.types.core import ReportingDeliveryMethodReportingOrchestration as ReportingOrchestration
 from adcp.types.core import ReportingDeliveryOffering as ReportingDeliveryOffering
 from adcp.types.core import ReportingDeliveryOfferingID as ReportingDeliveryOfferingId
+from adcp.types.core import ReportingDeliveryOfferingMethod as Method
 from adcp.types.core import ReportingDeliveryOfferingMethodDestinationModesItem as DestinationMode
 from adcp.types.core import ReportingDeliveryOfferingMethodProducerIdentity as ProducerIdentity
 from adcp.types.core import ReportingDeliveryOfferingReportingFeedPurpose as ReportingFeedPurpose
@@ -724,6 +762,7 @@ from adcp.types.core import ReportingFileManifest as ReportingFileManifest
 from adcp.types.core import ReportingFileObjectReference as ReportingFileObjectReference
 from adcp.types.core import ReportingLedgerChangedWebhook as ReportingLedgerChangedWebhook
 from adcp.types.core import ReportingMaterialization as ReportingMaterialization
+from adcp.types.core import ReportingMediaBuyId as AcceptancePolicyProfileId
 from adcp.types.core import ReportingNativeVersionReference as ReportingNativeVersionReference
 from adcp.types.core import ReportingObligation as ReportingObligation
 from adcp.types.core import ReportingObligationProductionStatus as ProductionStatus
@@ -880,11 +919,15 @@ from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliver
 from adcp.types.creative import GetCreativeDeliveryResponse as GetCreativeDeliveryResponse
 from adcp.types.creative import GetCreativeDeliveryResponsePagination as Pagination
 from adcp.types.creative import GetCreativeDeliveryResponseReportingPeriod as ReportingPeriod
+from adcp.types.creative import GetCreativeFeaturesResponse as GetCreativeFeaturesResponse1
 from adcp.types.creative import GetCreativeFeaturesSubmitted as GetCreativeFeaturesSubmitted
 from adcp.types.creative import GetCreativeFeaturesSuccess as GetCreativeFeaturesSuccess
 from adcp.types.creative import ListCreativeFormatsRequestCreativeAgent as ListCreativeFormatsRequestCreativeAgent
 from adcp.types.creative import ListCreativeFormatsResponseCreativeAgent as ListCreativeFormatsResponseCreativeAgent
+from adcp.types.creative import ListCreativeFormatsResponseCreativeAgentCreativeAgentsItem as CreativeAgent
 from adcp.types.creative import ListCreativesRequestAssignmentProjection as AssignmentProjection
+from adcp.types.creative import ListCreativesResponseCreativesItemAssignments as Assignments
+from adcp.types.creative import ListCreativesResponseCreativesItemAssignmentsAssignedPackagesItem as AssignedPackage
 from adcp.types.creative import ListCreativesResponseCreativesItemLocalizationUnavailable as LocalizationUnavailable
 from adcp.types.creative import ListCreativesResponseCreativesItemSnapshot as Snapshot
 from adcp.types.creative import ListCreativesResponseQuerySummary as QuerySummary
@@ -897,10 +940,14 @@ from adcp.types.creative import ListTransformersResponseCreativeAgent as ListTra
 from adcp.types.creative import ListTransformersResponseCreativeAgent as ListTransformersResponseCreativeAgent
 from adcp.types.creative import PreviewCreativeRequest as PreviewCreativeRequest
 from adcp.types.creative import PreviewCreativeRequestRequestType as RequestType
+from adcp.types.creative import PreviewCreativeRequestRequestsItem as Request
 from adcp.types.creative import PreviewCreativeResponse as PreviewCreativeResponse
+from adcp.types.creative import PreviewCreativeSingleResponsePreviewsItemInput as Input
+from adcp.types.creative import SyncCreativesError as SyncCreativesResponse3
 from adcp.types.creative import SyncCreativesInputRequired as SyncCreativesInputRequired
 from adcp.types.creative import SyncCreativesRequestAssignmentsItem as Assignment
 from adcp.types.creative import SyncCreativesSubmitted as SyncCreativesSubmitted
+from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesWorking as SyncCreativesWorking
 from adcp.types.creative import ValidateInputRequest as ValidateInputRequest
 from adcp.types.creative import ValidateInputResponse as ValidateInputResponse
@@ -1239,6 +1286,9 @@ from adcp.types.media_buy import DeclineProposalsSubmitted as DeclineProposalsSu
 from adcp.types.media_buy import DeclineProposalsWorking as DeclineProposalsWorking
 from adcp.types.media_buy import FieldsItem as Fields
 from adcp.types.media_buy import GetMediaBuyDeliveryRequestReportingDimensionsSpot as Spot
+from adcp.types.media_buy import GetMediaBuyDeliveryResponseAggregatedTotals as AggregatedTotals
+from adcp.types.media_buy import GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemDailyBreakdownItem as DailyBreakdownItem
+from adcp.types.media_buy import GetMediaBuysResponseMediaBuysItemPackagesItemCreativeApprovalsItem as CreativeApproval
 from adcp.types.media_buy import GetProductsInputRequired as GetProductsInputRequired
 from adcp.types.media_buy import GetProductsRejected as GetProductsRejected
 from adcp.types.media_buy import GetProductsRequest as GetProductsRequest
@@ -1259,6 +1309,7 @@ from adcp.types.media_buy import ListCreativeFormatsResponse as ListCreativeForm
 from adcp.types.media_buy import ListProductsResponseIncompleteItem as IncompleteItem3
 from adcp.types.media_buy import LogEventRequest as LogEventRequest
 from adcp.types.media_buy import LogEventResponse as LogEventResponse
+from adcp.types.media_buy import LogEventSuccess as LogEventResponse1
 from adcp.types.media_buy import MediaBuyChangeTermAllowedStatusesItem as AllowedStatus
 from adcp.types.media_buy import MediaBuyCommitmentResponse as MediaBuyCommitmentResponse
 from adcp.types.media_buy import MediaBuyDeliveryWebhookResult as MediaBuyDeliveryWebhookResult
@@ -1280,23 +1331,31 @@ from adcp.types.media_buy import ProposalRefinementConstraintsFlight as Flight
 from adcp.types.media_buy import ProposalRefinementConstraintsImpressions as Impressions
 from adcp.types.media_buy import ProvidePerformanceFeedbackRequest as ProvidePerformanceFeedbackRequest
 from adcp.types.media_buy import ProvidePerformanceFeedbackResponse as ProvidePerformanceFeedbackResponse
+from adcp.types.media_buy import ProvidePerformanceFeedbackSuccess as ProvidePerformanceFeedbackResponse1
 from adcp.types.media_buy import RefineProposalsInputRequired as RefineProposalsInputRequired
 from adcp.types.media_buy import RefineProposalsSubmitted as RefineProposalsSubmitted
 from adcp.types.media_buy import RefineProposalsWorking as RefineProposalsWorking
+from adcp.types.media_buy import RefinementAppliedItemProduct as RefinementApplied2
+from adcp.types.media_buy import RefinementAppliedItemProposal as RefinementApplied3
+from adcp.types.media_buy import RefinementAppliedItemRequest as RefinementApplied1
 from adcp.types.media_buy import RequestProposalsInputRequired as RequestProposalsInputRequired
+from adcp.types.media_buy import RequestProposalsResponsePurchaseContinuationLegacyCreateLossesItem as AcceptedLoss
 from adcp.types.media_buy import RequestProposalsResponsePurchaseContinuationLegacyCreateSourceAdcpVersion as SourceAdcpVersion
 from adcp.types.media_buy import RequestProposalsSubmitted as RequestProposalsSubmitted
 from adcp.types.media_buy import RequestProposalsWorking as RequestProposalsWorking
 from adcp.types.media_buy import SyncAudiencesRequest as SyncAudiencesRequest
 from adcp.types.media_buy import SyncAudiencesRequestAudiencesItemAudienceType as AudienceType
 from adcp.types.media_buy import SyncAudiencesResponse as SyncAudiencesResponse
+from adcp.types.media_buy import SyncAudiencesSuccess as SyncAudiencesResponse1
 from adcp.types.media_buy import SyncCatalogsInputRequired as SyncCatalogsInputRequired
 from adcp.types.media_buy import SyncCatalogsRequest as SyncCatalogsRequest
 from adcp.types.media_buy import SyncCatalogsResponse as SyncCatalogsResponse
 from adcp.types.media_buy import SyncCatalogsSubmitted as SyncCatalogsSubmitted
+from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsResponse1
 from adcp.types.media_buy import SyncCatalogsWorking as SyncCatalogsWorking
 from adcp.types.media_buy import SyncEventSourcesRequest as SyncEventSourcesRequest
 from adcp.types.media_buy import SyncEventSourcesResponse as SyncEventSourcesResponse
+from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesResponse1
 from adcp.types.media_buy import SyncReportingReceiptsRequest as SyncReportingReceiptsRequest
 from adcp.types.media_buy import SyncReportingReceiptsResponse as SyncReportingReceiptsResponse
 from adcp.types.media_buy import SyncReportingStatusRequest as SyncReportingStatusRequest
@@ -1338,6 +1397,7 @@ from adcp.types.property import PropertyFeatureDefinitionCoverage as Coverage
 from adcp.types.property import PropertyFeatureResult as PropertyFeatureResult
 from adcp.types.property import PropertyFeatureResultCoverageStatus as CoverageStatus
 from adcp.types.property import PropertyFeatureValue as PropertyFeatureValue
+from adcp.types.property import PropertyList as PropertyList
 from adcp.types.property import PropertyListChangedWebhook as PropertyListChangedWebhook
 from adcp.types.property import PropertyListFilters as PropertyListFilters
 from adcp.types.property import UpdatePropertyListRequest as UpdatePropertyListRequest
@@ -1349,14 +1409,19 @@ from adcp.types.property import ValidationResultFeaturesItem as Feature
 from adcp.types.property import ValidationResultFeaturesItemRequirement as Requirement
 from adcp.types.protocol import AccountIdentityUpdatesSupportedSupportedChangesItem as SupportedChange
 from adcp.types.protocol import AccountIdentityUpdatesUnsupported as IdentityUpdates1
+from adcp.types.protocol import AppliedPrincipalConfiguration as PrincipalAppliedResult
 from adcp.types.protocol import CapabilityChangeNotificationsSupportedRegistrationTask as RegistrationTask
 from adcp.types.protocol import CreativeFeaturesItemRange as Range
+from adcp.types.protocol import CurrentPrincipalConfiguration as PrincipalCurrentResult
 from adcp.types.protocol import ExtensionsSupportedItem as ExtensionsSupportedItem
+from adcp.types.protocol import FailedPrincipalRead as PrincipalReadFailedResult
+from adcp.types.protocol import FailedPrincipalSync as PrincipalSyncFailedResult
 from adcp.types.protocol import GetAdCPCapabilitiesRequest as GetAdcpCapabilitiesRequest
 from adcp.types.protocol import GetAdCPCapabilitiesResponse as GetAdcpCapabilitiesResponse
 from adcp.types.protocol import GetAdCPCapabilitiesResponseAdcpPrincipalSupportedSectionsItem as SupportedSection
 from adcp.types.protocol import GetAdCPCapabilitiesResponseBudgetCappingTimezoneBasis as BudgetCappingTimezoneBasis
 from adcp.types.protocol import GetAdCPCapabilitiesResponseCapabilityReportingDeliveryMethod as CapabilityReportingDeliveryMethod
+from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyAcceptancePolicyDiscovery as AcceptancePolicyDiscovery
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyBudgetCappingSupportedScopesItem as SupportedScope
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyCreativeApprovalMode as CreativeApprovalMode
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyExecutionCreativeSpecsVastValidation as VastValidation
@@ -1368,9 +1433,12 @@ from adcp.types.protocol import GetAdCPCapabilitiesResponseWholesaleFeedVersioni
 from adcp.types.protocol import IdempotencySupported as IdempotencySupported
 from adcp.types.protocol import IdempotencyUnsupported as IdempotencyUnsupported
 from adcp.types.protocol import Language as Language
+from adcp.types.protocol import RecognizedPrincipalWithoutStandingConfiguration as PrincipalRecognizedResult
 from adcp.types.protocol import SupportedHashedIdentifiersItem as SupportedIdentifierType
 from adcp.types.protocol import SyncAgentNotificationConfigsRequest as SyncAgentNotificationConfigsRequest
 from adcp.types.protocol import SyncAgentNotificationConfigsResponse as SyncAgentNotificationConfigsResponse
+from adcp.types.protocol import UnconfiguredPrincipal as PrincipalUnconfiguredResult
+from adcp.types.protocol import ValidatedPrincipalDryRun as PrincipalValidatedResult
 from adcp.types.protocol import ValidatedPrincipalDryRunAction as Action33
 from adcp.types.registries import V1PatternFormatIdGlob as V1CanonicalGlobPattern
 from adcp.types.registries import V1PatternFormatIdGlob as V1Pattern
@@ -1381,6 +1449,7 @@ from adcp.types.registries import V1V2CanonicalFormatMappingRegistry as V1V2Cano
 from adcp.types.registries import V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructural as Structural
 from adcp.types.registries import V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructural as V1CanonicalStructural
 from adcp.types.registries import V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructuralDimensions as V1CanonicalDimensions
+from adcp.types.signals import ActivateSignalSuccess as ActivateSignalResponse1
 from adcp.types.signals import GetSignalsResponseIncompleteItem as IncompleteItem
 from adcp.types.signals import GetSignalsSubmitted as GetSignalsSubmitted
 from adcp.types.signals import GetSignalsWorking as GetSignalsWorking
@@ -1470,8 +1539,11 @@ __all__ = [
     "AcceptProposalInputRequired",
     "AcceptProposalSubmitted",
     "AcceptProposalWorking",
+    "AcceptancePolicyDiscovery",
+    "AcceptancePolicyProfileId",
     "AcceptancePolicyProfileIds",
     "AcceptedGovernanceAgents",
+    "AcceptedLoss",
     "Account",
     "AccountAuthorization",
     "AccountChange",
@@ -1488,12 +1560,15 @@ __all__ = [
     "AccountWithAuthorization",
     "AcquireRightsRequest",
     "AcquireRightsResponse",
+    "AcquireRightsResponse1",
+    "Action",
     "Action3",
     "Action33",
     "Action4",
     "ActionNotAllowedReason",
     "ActionResponse",
     "ActionSource",
+    "ActivateSignalResponse1",
     "ActivationKey",
     "ActivationStatus",
     "Actor",
@@ -1524,8 +1599,10 @@ __all__ = [
     "AgentWebhookChallenge",
     "AgenticadvertisingOrgVerificationTokenClaims",
     "Agents",
+    "AggregatedTotals",
     "Aggregation",
     "AiActRiskClass",
+    "AiTool",
     "Allocations",
     "AllowedStatus",
     "Alternatives",
@@ -1546,8 +1623,10 @@ __all__ = [
     "AssetSource",
     "AssetSource5",
     "AssetVariant",
+    "AssignedPackage",
     "Assignment",
     "AssignmentProjection",
+    "Assignments",
     "AttestationCapabilities",
     "AttestationClaim",
     "AttestationIssuer",
@@ -1655,6 +1734,7 @@ __all__ = [
     "Calendar",
     "CalibrateContentRequest",
     "CalibrateContentResponse",
+    "CalibrateContentResponse1",
     "CanceledBy",
     "CancellationFee",
     "CancellationPolicy",
@@ -1713,6 +1793,7 @@ __all__ = [
     "CatalogAction",
     "CatalogAsset",
     "CatalogFieldBinding",
+    "CatalogFieldBinding1",
     "CatalogFieldMapping",
     "CatalogItemAvailabilityError",
     "CatalogItemAvailabilityReference",
@@ -1770,6 +1851,7 @@ __all__ = [
     "ComplianceTaskCompletionData",
     "ComplyTestControllerRequest",
     "ComplyTestControllerResponse",
+    "ComplyTestControllerResponse1",
     "Component",
     "CompositionModel",
     "CompositionRules",
@@ -1818,6 +1900,7 @@ __all__ = [
     "CreateCollectionListResponse",
     "CreateContentStandardsRequest",
     "CreateContentStandardsResponse",
+    "CreateContentStandardsResponse1",
     "CreateMediaBuyInputRequired",
     "CreateMediaBuySubmitted",
     "CreateMediaBuyWorking",
@@ -1825,7 +1908,9 @@ __all__ = [
     "CreatePropertyListResponse",
     "CreativeAction",
     "CreativeActivationMethod",
+    "CreativeAgent",
     "CreativeAgentCapability",
+    "CreativeApproval",
     "CreativeApprovalMode",
     "CreativeApprovalRequest",
     "CreativeApprovalResponse",
@@ -1858,6 +1943,7 @@ __all__ = [
     "CreativeStatusChangedWebhook",
     "CreativeVariable",
     "CreativeVariant",
+    "CreditLimit",
     "CssAssetRequirements",
     "CtvAdExperience",
     "DaastAsset",
@@ -1868,6 +1954,7 @@ __all__ = [
     "DaastTrackingEvent",
     "DaastVersion",
     "DaastVersions",
+    "DailyBreakdownItem",
     "DataProviderSignalSelector",
     "DataSource",
     "DataThroughPrecision",
@@ -1894,6 +1981,7 @@ __all__ = [
     "DeliveryBreakdownControls",
     "DeliveryConfigGeneration",
     "DeliveryForecast",
+    "DeliveryMeasurement",
     "DeliveryMetricAggregate",
     "DeliveryMetrics",
     "DeliveryMode",
@@ -1937,6 +2025,7 @@ __all__ = [
     "DistributionIdentifierType",
     "DocumentRole",
     "Domain",
+    "DoohMetrics",
     "DoohMotionType",
     "DownstreamConnectionRequirement",
     "DriftMetrics",
@@ -1989,6 +2078,7 @@ __all__ = [
     "FlightItem",
     "FollowUp",
     "FontFile",
+    "Fonts",
     "Forced",
     "ForecastMethod",
     "ForecastPoint",
@@ -1998,6 +2088,8 @@ __all__ = [
     "ForecastRateRange",
     "ForecastVendorMetricValue",
     "ForecastableMetric",
+    "FormatCard",
+    "FormatCardDetailed",
     "FormatId",
     "FormatIdParameter",
     "FormatKind",
@@ -2038,24 +2130,29 @@ __all__ = [
     "GeographicTargetingLevel",
     "GetAccountFinancialsRequest",
     "GetAccountFinancialsResponse",
+    "GetAccountFinancialsResponse1",
     "GetAdcpCapabilitiesRequest",
     "GetAdcpCapabilitiesResponse",
     "GetBrandIdentityField",
     "GetBrandIdentityRequest",
     "GetBrandIdentityResponse",
+    "GetBrandIdentityResponse1",
     "GetCollectionListRequest",
     "GetCollectionListResponse",
     "GetContentStandardsRequest",
     "GetContentStandardsResponse",
+    "GetContentStandardsResponse1",
     "GetCreativeDeliveryRequest",
     "GetCreativeDeliveryResponse",
     "GetCreativeFeaturesComplianceCompletion",
+    "GetCreativeFeaturesResponse1",
     "GetCreativeFeaturesSubmitted",
     "GetCreativeFeaturesSuccess",
     "GetGeographicPlaceResolutionRequest",
     "GetGeographicPlaceResolutionResponse",
     "GetMediaBuyArtifactsRequest",
     "GetMediaBuyArtifactsResponse",
+    "GetMediaBuyArtifactsResponse1",
     "GetPlanAuditLogsRequest",
     "GetPlanAuditLogsResponse",
     "GetProductsInputRequired",
@@ -2070,6 +2167,7 @@ __all__ = [
     "GetReportingStatusResponse",
     "GetRightsRequest",
     "GetRightsResponse",
+    "GetRightsResponse1",
     "GetSignalsSubmitted",
     "GetSignalsWorking",
     "GopType",
@@ -2120,6 +2218,7 @@ __all__ = [
     "IndicatorType",
     "IndicatorsChangedWebhook",
     "IndustryIdentifier",
+    "Input",
     "InsertionOrder",
     "Installment",
     "InstallmentDeadlines",
@@ -2160,6 +2259,7 @@ __all__ = [
     "ListCollectionListsResponse",
     "ListContentStandardsRequest",
     "ListContentStandardsResponse",
+    "ListContentStandardsResponse1",
     "ListCreativeFormatsRequest",
     "ListCreativeFormatsRequestCreativeAgent",
     "ListCreativeFormatsResponse",
@@ -2182,6 +2282,7 @@ __all__ = [
     "LockupType",
     "LogEventRequest",
     "LogEventResponse",
+    "LogEventResponse1",
     "LogoId",
     "LogoPlacement",
     "LogoSlot",
@@ -2209,6 +2310,7 @@ __all__ = [
     "MaterialStage",
     "MaxSpend",
     "McpWebhookPayload",
+    "MeasurementPeriod",
     "MeasurementReadiness",
     "MeasurementTerms",
     "MeasurementWindow",
@@ -2231,6 +2333,7 @@ __all__ = [
     "MediaBuyTermsReference",
     "MediaBuyValidAction",
     "MediaChannel",
+    "Method",
     "Methodology",
     "Metric",
     "MetricScope",
@@ -2361,15 +2464,25 @@ __all__ = [
     "PricingModel",
     "PricingOption",
     "PricingStructure",
+    "PrincipalAppliedResult",
     "PrincipalChangedWebhook",
+    "PrincipalCurrentResult",
     "PrincipalDeclarationsState",
     "PrincipalKind",
+    "PrincipalReadFailedResult",
+    "PrincipalRecognizedResult",
     "PrincipalState",
+    "PrincipalSyncFailedResult",
+    "PrincipalUnconfiguredResult",
+    "PrincipalValidatedResult",
     "ProducerIdentity",
     "ProductAllocation",
     "ProductAllowedAction",
     "ProductAudienceEvidenceRequirements",
+    "ProductCard",
+    "ProductCardDetailed",
     "ProductCardReferenceAsset",
+    "ProductCatalog",
     "ProductChangeMap",
     "ProductChangeMap1",
     "ProductDiscoveryCriteria",
@@ -2401,6 +2514,7 @@ __all__ = [
     "PropertyId",
     "PropertyIdentifier",
     "PropertyIdentifierTypes",
+    "PropertyList",
     "PropertyListChangedWebhook",
     "PropertyListFilters",
     "PropertyListReference",
@@ -2420,6 +2534,7 @@ __all__ = [
     "ProvenanceRequirements",
     "ProvidePerformanceFeedbackRequest",
     "ProvidePerformanceFeedbackResponse",
+    "ProvidePerformanceFeedbackResponse1",
     "Provider",
     "ProviderIdentityMatchResponse",
     "Proximity",
@@ -2451,6 +2566,9 @@ __all__ = [
     "RefineProposalsInputRequired",
     "RefineProposalsSubmitted",
     "RefineProposalsWorking",
+    "RefinementApplied1",
+    "RefinementApplied2",
+    "RefinementApplied3",
     "RegistrationTask",
     "RegistryEvent",
     "RegistryFeedResponse",
@@ -2474,6 +2592,7 @@ __all__ = [
     "ReportingAdjustment",
     "ReportingAdjustmentReceipt",
     "ReportingAuthoritativeParty",
+    "ReportingBucket",
     "ReportingCanonicalContentDigest",
     "ReportingCanonicalizationContract",
     "ReportingCapabilities",
@@ -2532,6 +2651,7 @@ __all__ = [
     "RepresentationRejection",
     "RepresentationSelection",
     "RepresentationSelectionStrategy",
+    "Request",
     "RequestProposalsInputRequired",
     "RequestProposalsSubmitted",
     "RequestProposalsWorking",
@@ -2684,20 +2804,26 @@ __all__ = [
     "SupportedSection",
     "SyncAccountsRequest",
     "SyncAccountsResponse",
+    "SyncAccountsResponse1",
     "SyncAgentNotificationConfigsRequest",
     "SyncAgentNotificationConfigsResponse",
     "SyncAudiencesRequest",
     "SyncAudiencesResponse",
+    "SyncAudiencesResponse1",
     "SyncCatalogsInputRequired",
     "SyncCatalogsRequest",
     "SyncCatalogsResponse",
+    "SyncCatalogsResponse1",
     "SyncCatalogsSubmitted",
     "SyncCatalogsWorking",
     "SyncCreativesInputRequired",
+    "SyncCreativesResponse1",
+    "SyncCreativesResponse3",
     "SyncCreativesSubmitted",
     "SyncCreativesWorking",
     "SyncEventSourcesRequest",
     "SyncEventSourcesResponse",
+    "SyncEventSourcesResponse1",
     "SyncGovernanceGovernanceAgent",
     "SyncGovernanceRequest",
     "SyncGovernanceResponse",
@@ -2707,6 +2833,7 @@ __all__ = [
     "SyncReportingReceiptsResponse",
     "SyncReportingStatusRequest",
     "SyncReportingStatusResponse",
+    "Tags",
     "Talent",
     "TalentRole",
     "Target",
@@ -2770,11 +2897,14 @@ __all__ = [
     "UnavailableBehavior",
     "UnavailableReason",
     "UniversalMacro",
+    "UnknownFormatAsset",
+    "UnknownGroupAsset",
     "UnknownHandling",
     "UpdateCollectionListRequest",
     "UpdateCollectionListResponse",
     "UpdateContentStandardsRequest",
     "UpdateContentStandardsResponse",
+    "UpdateContentStandardsResponse1",
     "UpdateFrequency",
     "UpdateMediaBuyInputRequired",
     "UpdateMediaBuySubmitted",
@@ -2799,6 +2929,7 @@ __all__ = [
     "V1V2CanonicalFormatMappingRegistry",
     "ValidateContentDeliveryRequest",
     "ValidateContentDeliveryResponse",
+    "ValidateContentDeliveryResponse1",
     "ValidateInputRequest",
     "ValidateInputResponse",
     "ValidateInputResult",
@@ -2837,12 +2968,19 @@ __all__ = [
     "VerificationPath",
     "VerificationStatus",
     "VerificationTokenGradingProfile",
+    "VerifyBrandClaimPayload",
     "VerifyBrandClaimRequest",
     "VerifyBrandClaimResponse",
+    "VerifyBrandClaimSignedResponse",
+    "VerifyBrandClaimSignedSuccessPayload",
+    "VerifyBrandClaimsErrorResponse",
+    "VerifyBrandClaimsPayload",
     "VerifyBrandClaimsRequest",
     "VerifyBrandClaimsRequestBulk",
     "VerifyBrandClaimsResponse",
     "VerifyBrandClaimsResponseBulk",
+    "VerifyBrandClaimsSignedResponse",
+    "VerifyBrandClaimsSignedSuccessPayload",
     "Video",
     "VideoAssetRequirements",
     "VideoBrief",
@@ -3009,7 +3147,11 @@ __adcp_provisional__ = {
     "A2UiBoundValue3": "a2ui/bound-value.json#/oneOf/2",
     "A2UiBoundValue4": "a2ui/bound-value.json#/oneOf/3",
     "A2UiBoundValue5": "a2ui/bound-value.json#/oneOf/4",
+    "AcceptancePolicyDiscovery": "protocol/get-adcp-capabilities-response.json#/properties/media_buy/properties/acceptance_policy_discovery",
+    "AcceptancePolicyProfileId": "",
+    "AcceptedLoss": "",
     "AccountSelection": "",
+    "Action": "a2ui/user-action.json#/properties/action",
     "Action3": "",
     "Action33": "",
     "Action4": "",
@@ -3021,8 +3163,10 @@ __adcp_provisional__ = {
     "AdjustmentMagnitudeItem": "core/reporting-reliability-statistics.json#/properties/adjustment_magnitude/items",
     "AdvanceTo": "",
     "AffectedEntityType": "",
+    "AggregatedTotals": "media-buy/get-media-buy-delivery-response.json#/properties/aggregated_totals",
     "Aggregation": "",
     "AiActRiskClass": "",
+    "AiTool": "core/provenance.json#/properties/ai_tool",
     "Allocations": "governance/sync-plans-request.json#/properties/plans/items/properties/budget/properties/allocations/additionalProperties",
     "AllowedStatus": "",
     "Alternatives": "media-buy/proposal-refinement.json#/properties/alternatives",
@@ -3033,8 +3177,10 @@ __adcp_provisional__ = {
     "ArtifactRef": "trusted-match/context-match-request.json#/properties/artifact_refs/items",
     "AssetSource": "",
     "AssetSource5": "",
+    "AssignedPackage": "creative/list-creatives-response.json#/properties/creatives/items/properties/assignments/properties/assigned_packages/items",
     "Assignment": "creative/sync-creatives-request.json#/properties/assignments/items",
     "AssignmentProjection": "",
+    "Assignments": "creative/list-creatives-response.json#/properties/creatives/items/properties/assignments",
     "AttestationMode": "",
     "Audience": "",
     "AudienceScope": "",
@@ -3067,10 +3213,12 @@ __adcp_provisional__ = {
     "ByEventTypeItem": "core/delivery-metrics.json#/properties/by_event_type/items",
     "CAEnum": "",
     "Calendar": "core/reporting-report-definition.json#/properties/calendar",
+    "CalibrateContentResponse1": "content-standards/calibrate-content-response.json#/oneOf/0",
     "CancellationFee": "core/cancellation-policy.json#/properties/cancellation_fee",
     "CancellationTerms": "media-buy/commercial-terms.json#/properties/cancellation_terms",
     "CanonicalAssetSource": "",
     "CanonicalCompositionModel": "",
+    "CatalogFieldBinding1": "core/requirements/catalog-field-binding.json#/oneOf/2",
     "ChannelAllocation": "governance/get-plan-audit-logs-response.json#/properties/plans/items/properties/channel_allocation/additionalProperties",
     "Channels": "governance/sync-plans-request.json#/properties/plans/items/properties/channels",
     "Claim2": "brand/verify-brand-claim-request.json#/oneOf/2/properties/claim",
@@ -3109,15 +3257,21 @@ __adcp_provisional__ = {
     "CoverageStatus": "",
     "CoversContentDigest": "",
     "Cpm": "media-buy/proposal-refinement.json#/properties/constraints/properties/cpm",
+    "CreateContentStandardsResponse1": "content-standards/create-content-standards-response.json#/oneOf/0",
+    "CreativeAgent": "creative/list-creative-formats-response.json#/properties/creative_agents/items",
+    "CreativeApproval": "media-buy/get-media-buys-response.json#/properties/media_buys/items/properties/packages/items/properties/creative_approvals/items",
     "CreativeApprovalMode": "",
     "CreativeSlot": "core/placement-presentation.json#/properties/creative_slot",
+    "CreditLimit": "core/account.json#/properties/credit_limit",
     "DaastEvent": "",
+    "DailyBreakdownItem": "media-buy/get-media-buy-delivery-response.json#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/daily_breakdown/items",
     "DataSource": "",
     "DataThroughPrecision": "",
     "Decision": "",
     "DeclaredBy": "sponsored-intelligence/si-sponsored-context.json#/properties/declared_by",
     "DegreeType": "",
     "DeliveryConfigGeneration": "media-buy/get-reporting-status-response.json#/properties/scope/properties/delivery_config_generations/items",
+    "DeliveryMeasurement": "core/product.json#/properties/delivery_measurement",
     "DeliveryMode": "",
     "DepthOfField": "",
     "DerivativeOf": "core/installment.json#/properties/derivative_of",
@@ -3130,6 +3284,7 @@ __adcp_provisional__ = {
     "DiscriminatorItem": "core/error.json#/properties/issues/items/properties/discriminator/items",
     "Disposition": "",
     "DocumentRole": "",
+    "DoohMetrics": "core/delivery-metrics.json#/properties/dooh_metrics",
     "DriftMetrics": "governance/get-plan-audit-logs-response.json#/properties/plans/items/properties/summary/properties/drift_metrics",
     "Effect1": "",
     "Elevation": "brand.json#/definitions/elevation",
@@ -3157,7 +3312,10 @@ __adcp_provisional__ = {
     "Flight": "media-buy/proposal-refinement.json#/properties/constraints/properties/flight",
     "FollowUp": "sponsored-intelligence/si-terminate-session-response.json#/properties/follow_up",
     "FontFile": "brand.json#/definitions/font_file",
+    "Fonts": "brand.json#/definitions/fonts",
     "Forced": "compliance/comply-test-controller-response.json#/oneOf/3/properties/forced",
+    "FormatCard": "core/format.json#/properties/format_card",
+    "FormatCardDetailed": "core/format.json#/properties/format_card",
     "FormatKind": "",
     "Framing": "brand.json#/definitions/photography_style/properties/framing",
     "Freshness": "core/registry-feed-response.json#/properties/freshness",
@@ -3165,6 +3323,8 @@ __adcp_provisional__ = {
     "FuelType": "",
     "GBEnum": "",
     "GetBrandIdentityField": "",
+    "GetContentStandardsResponse1": "content-standards/get-content-standards-response.json#/oneOf/0",
+    "GetMediaBuyArtifactsResponse1": "content-standards/get-media-buy-artifacts-response.json#/oneOf/0",
     "GovernanceAuthentication": "account/sync-governance-request.json#/properties/accounts/items/properties/governance_agents/items/properties/authentication",
     "GovernedAction": "governance/get-plan-audit-logs-response.json#/properties/plans/items/properties/governed_actions/items",
     "GradientStyle": "",
@@ -3183,6 +3343,7 @@ __adcp_provisional__ = {
     "Impressions": "media-buy/proposal-refinement.json#/properties/constraints/properties/impressions",
     "IncompleteItem": "signals/get-signals-response.json#/properties/incomplete/items",
     "IncompleteItem3": "media-buy/list-products-response.json#/properties/incomplete/items",
+    "Input": "creative/preview-creative-response.json#/oneOf/0/properties/previews/items/properties/input",
     "Issue": "core/error.json#/properties/issues/items",
     "IssueState": "",
     "Issuer": "governance/policy-entry.json#/properties/issuer",
@@ -3193,6 +3354,7 @@ __adcp_provisional__ = {
     "LegacyProposalTotalBudgetGuidance": "core/proposal.json#/properties/total_budget_guidance",
     "Level": "",
     "LicenseType": "",
+    "ListContentStandardsResponse1": "content-standards/list-content-standards-response.json#/oneOf/0",
     "ListCreativesField": "",
     "ListingType": "",
     "LocalizationUnavailable": "creative/list-creatives-response.json#/properties/creatives/items/properties/localization_unavailable",
@@ -3203,7 +3365,9 @@ __adcp_provisional__ = {
     "MatchKey": "",
     "MaterialStage": "core/deadline-policy.json#/properties/material_stages/items",
     "MaxSpend": "media-buy/build-creative-request.json#/properties/max_spend",
+    "MeasurementPeriod": "content-standards/get-media-buy-artifacts-request.json#/properties/time_range",
     "MediaBuyDeliveryStatus": "",
+    "Method": "core/reporting-delivery-offering.json#/properties/method",
     "Methodology": "",
     "Metric": "compliance/comply-test-controller-request.json#/properties/params/properties/metrics/items",
     "Metro": "trusted-match/context-match-request.json#/properties/geo/properties/metro",
@@ -3253,6 +3417,9 @@ __adcp_provisional__ = {
     "PreferredPosition": "",
     "Presence": "",
     "ProducerIdentity": "core/reporting-delivery-offering.json#/properties/method/properties/producer_identity",
+    "ProductCard": "core/product.json#/properties/product_card",
+    "ProductCardDetailed": "core/product.json#/properties/product_card_detailed",
+    "ProductCatalog": "brand.json#/definitions/product_catalog",
     "ProductChangeMap1": "",
     "ProductFocus": "",
     "ProductFormatSellerPreference": "",
@@ -3277,6 +3444,9 @@ __adcp_provisional__ = {
     "Rectangle": "core/placement-presentation.json#/definitions/rectangle",
     "RedirectReason": "",
     "ReferenceMutability": "",
+    "RefinementApplied1": "media-buy/get-products-response.json#/properties/refinement_applied/items/oneOf/0",
+    "RefinementApplied2": "media-buy/get-products-response.json#/properties/refinement_applied/items/oneOf/1",
+    "RefinementApplied3": "media-buy/get-products-response.json#/properties/refinement_applied/items/oneOf/2",
     "RegistrationTask": "",
     "RegulatoryBasi": "governance/attribute-definition.json#/properties/regulatory_basis/items",
     "RegulatoryFramework": "governance/policy-category-definition.json#/properties/regulatory_frameworks/items",
@@ -3288,6 +3458,7 @@ __adcp_provisional__ = {
     "Renders": "core/format.json#/properties/renders/items/oneOf/0",
     "Renders1": "core/format.json#/properties/renders/items/oneOf/1",
     "ReportingAuthoritativeParty": "",
+    "ReportingBucket": "core/account.json#/properties/reporting_bucket",
     "ReportingConsumerFailureCode": "",
     "ReportingConsumerMismatchCode": "",
     "ReportingConsumerStatusValue": "",
@@ -3297,6 +3468,7 @@ __adcp_provisional__ = {
     "ReportingMode": "",
     "ReportingObligationCounts": "media-buy/get-reporting-status-response.json#/properties/obligation_counts",
     "ReportingPeriod": "creative/get-creative-delivery-response.json#/properties/reporting_period",
+    "Request": "creative/preview-creative-request.json#/properties/requests/items",
     "RequestType": "",
     "RequiredGeoTargetingItem": "core/product-filters.json#/properties/required_geo_targeting/items",
     "Requirement": "property/validation-result.json#/properties/features/items/properties/requirement",
@@ -3372,6 +3544,7 @@ __adcp_provisional__ = {
     "SupportedScope": "",
     "SupportedSection": "",
     "SyncGovernanceGovernanceAgent": "account/sync-governance-request.json#/properties/accounts/items/properties/governance_agents/items",
+    "Tags": "adagents.json#/oneOf/1/properties/tags/additionalProperties",
     "Target": "creative/validate-input-result.json#/properties/target",
     "TerminationContext": "sponsored-intelligence/si-terminate-session-request.json#/properties/termination_context",
     "Terms": "core/insertion-order.json#/properties/terms",
@@ -3402,6 +3575,8 @@ __adcp_provisional__ = {
     "TypesAllowedEnum": "",
     "UnavailableBehavior": "",
     "UnavailableReason": "",
+    "UnknownFormatAsset": "core/format.json#/$defs/baseIndividualAsset",
+    "UnknownGroupAsset": "core/format.json#/$defs/baseGroupAsset",
     "UnknownHandling": "",
     "Usage": "brand.json#/definitions/brand_shapes/properties/usage",
     "Usage1": "brand.json#/definitions/iconography/properties/usage",
@@ -3412,6 +3587,7 @@ __adcp_provisional__ = {
     "V1CanonicalStructuralPattern": "registries/v1-canonical-mapping.json#/properties/mappings/items/properties/v1_pattern/oneOf/1",
     "V1Pattern": "registries/v1-canonical-mapping.json#/properties/mappings/items/properties/v1_pattern/oneOf/0",
     "V1Pattern1": "registries/v1-canonical-mapping.json#/properties/mappings/items/properties/v1_pattern/oneOf/1",
+    "ValidateContentDeliveryResponse1": "content-standards/validate-content-delivery-response.json#/oneOf/0",
     "ValidityHint": "core/attestation-reference.json#/properties/validity_hint",
     "Value": "core/signal-definition.json#/properties/taxonomy/properties/values/items",
     "ValueMapping": "core/signal-definition.json#/properties/taxonomy/properties/value_mappings/items",
@@ -3424,6 +3600,12 @@ __adcp_provisional__ = {
     "VenueBreakdownItem": "core/delivery-metrics.json#/properties/dooh_metrics/properties/venue_breakdown/items",
     "VerificationLevel": "",
     "VerificationPath": "",
+    "VerifyBrandClaimPayload": "brand/verify-brand-claim-response.json#/definitions/signed_response/allOf/1/properties/payload",
+    "VerifyBrandClaimSignedResponse": "brand/verify-brand-claim-response.json#/definitions/signed_response",
+    "VerifyBrandClaimSignedSuccessPayload": "brand/verify-brand-claim-response.json#/definitions/signed_success_payload",
+    "VerifyBrandClaimsPayload": "brand/verify-brand-claims-response.json#/definitions/signed_response/allOf/1/properties/payload",
+    "VerifyBrandClaimsSignedResponse": "brand/verify-brand-claims-response.json#/definitions/signed_response",
+    "VerifyBrandClaimsSignedSuccessPayload": "brand/verify-brand-claims-response.json#/definitions/signed_success_payload",
     "ViewThreshold1": "pricing-options/cpv-option.json#/properties/parameters/properties/view_threshold/oneOf/1",
     "ViewedSecondsHistogramItem": "core/delivery-metrics.json#/properties/viewability/properties/viewed_seconds_histogram/items",
     "ViewedSecondsPercentiles": "core/delivery-metrics.json#/properties/viewability/properties/viewed_seconds_percentiles",

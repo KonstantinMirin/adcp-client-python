@@ -246,33 +246,22 @@ by name.
     return head + body + tail
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--report", action="store_true")
-    parser.add_argument("--write", action="store_true")
-    parser.add_argument("--json", type=Path)
-    args = parser.parse_args()
+def write_pairs(
+    pairs: list[dict[str, str]],
+    section: str,
+    fence: str,
+    end: str,
+    guide_text: str,
+) -> None:
+    """Write BOTH HALVES of every pair: the statements in ``compat.py``, the entries in the guide.
 
-    report = decide()
-    pairs: list[dict[str, str]] = report["pairs"]  # type: ignore[assignment]
-    print(f"1:1 declarations           {report['declarations']}")
-    print(f"PAIRS to write             {len(pairs)}")
-    print(f"  TITLED                   {sum(1 for p in pairs if p['verdict'] == 'TITLED')}")
-    print(f"  PROVISIONAL              {sum(1 for p in pairs if p['verdict'] == 'PROVISIONAL')}")
-    print(f"already resolves flat      {len(report['already_resolves_flat'])}")
-    print(f"name -> two of ours        {len(report['name_resolves_to_two_of_ours'])}")
-    print(f"target owes an export      {len(report['target_owes_an_export'])}")
-    if args.json:
-        args.json.write_text(json.dumps(report, indent=1, default=str))
-    if args.report:
-        for name, where in sorted(report["name_resolves_to_two_of_ours"].items()):  # type: ignore[union-attr]
-            print(f"  TWO-OF-OURS {name}: {' | '.join(where)}")
-        for row in report["target_owes_an_export"]:  # type: ignore[union-attr]
-            print(f"  OWES-EXPORT {row['ours_declared_at']}: {row['why']}")
-    if not args.write:
-        return
-
-    # ---- compat.py: the statements, `__all__`, and the provisional mapping -----------
+    **ONE WRITER FOR EVERY DERIVATION THAT OWES PAIRS, which is the clause enforcing itself.**
+    Reading 10 grades the pair, so a second instrument that wrote only aliases would be a
+    reading 10 failure by construction.  Sharing this function makes that impossible: a caller
+    hands over the rows and the guide section together or it writes nothing.  The import block,
+    ``__all__`` and ``__adcp_provisional__`` are rewritten as SORTED UNIONS of what is there and
+    what is handed in, so two callers compose and neither erases the other's rows.
+    """
     text = COMPAT.read_text(encoding="utf-8")
     lines = text.splitlines()
     imports = [i for i, line in enumerate(lines) if line.startswith("from adcp.types")]
@@ -305,19 +294,47 @@ def main() -> None:
     print(f"compat.py: {len(block)} alias statements, {len(words)} words, "
           f"{len(existing)} provisional")
 
-    # ---- the guide: the other half of every pair --------------------------------------
     guide = GUIDE.read_text(encoding="utf-8")
-    section = FENCE + "\n\n" + guide_section(pairs, report) + "\n" + END
-    if FENCE in guide:
-        head, _, rest = guide.partition(FENCE)
-        _, _, tail = rest.partition(END)
-        guide = head + section + tail
+    written = fence + "\n\n" + guide_text + "\n" + end
+    if fence in guide:
+        head, _, rest = guide.partition(fence)
+        _, _, tail = rest.partition(end)
+        guide = head + written + tail
     else:
         marker = "\n---\n\n## Re-deriving this document"
         head, _, tail = guide.partition(marker)
-        guide = head + "\n---\n\n" + section + "\n" + marker.lstrip("\n") + tail
+        guide = head + "\n---\n\n" + written + "\n" + marker.lstrip("\n") + tail
     GUIDE.write_text(guide, encoding="utf-8")
-    print(f"{GUIDE.name}: §10 rewritten with {len(pairs)} pairs")
+    print(f"{GUIDE.name}: {section.split('.')[0]} rewritten with {len(pairs)} pairs")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--report", action="store_true")
+    parser.add_argument("--write", action="store_true")
+    parser.add_argument("--json", type=Path)
+    args = parser.parse_args()
+
+    report = decide()
+    pairs: list[dict[str, str]] = report["pairs"]  # type: ignore[assignment]
+    print(f"1:1 declarations           {report['declarations']}")
+    print(f"PAIRS to write             {len(pairs)}")
+    print(f"  TITLED                   {sum(1 for p in pairs if p['verdict'] == 'TITLED')}")
+    print(f"  PROVISIONAL              {sum(1 for p in pairs if p['verdict'] == 'PROVISIONAL')}")
+    print(f"already resolves flat      {len(report['already_resolves_flat'])}")
+    print(f"name -> two of ours        {len(report['name_resolves_to_two_of_ours'])}")
+    print(f"target owes an export      {len(report['target_owes_an_export'])}")
+    if args.json:
+        args.json.write_text(json.dumps(report, indent=1, default=str))
+    if args.report:
+        for name, where in sorted(report["name_resolves_to_two_of_ours"].items()):  # type: ignore[union-attr]
+            print(f"  TWO-OF-OURS {name}: {' | '.join(where)}")
+        for row in report["target_owes_an_export"]:  # type: ignore[union-attr]
+            print(f"  OWES-EXPORT {row['ours_declared_at']}: {row['why']}")
+    if not args.write:
+        return
+
+    write_pairs(pairs, SECTION, FENCE, END, guide_section(pairs, report))
 
 
 if __name__ == "__main__":
