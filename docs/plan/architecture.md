@@ -1764,6 +1764,42 @@ pairs a root model as it pairs a class.
 
 ---
 
+## 8a. The drop-in tree is DISPOSABLE, and is rebuilt from this one
+
+**OUR SOURCE CHANGES LAND HERE AND NOWHERE ELSE.** The tree that measures us
+against upstream's behavioural suite — their wheel with our types grafted in and
+the alias layer over it — is **regenerated from this repository and never edited
+directly.** It is an instrument, not a branch.
+
+**WHY, MEASURED.** Maintained as a parallel branch it forked: 44,406 files and
+49.7M insertions from the last common commit, of which **47 files and 24,511
+lines are our own `src/` and `codegen/`**. A repair to `BranchDispatchMixin` made
+there would not transplant back — the patch failed at `_base.py:99` because both
+copies had moved. Three symptoms that were tracked as separate rows are that one
+cause: the two trees' lint configuration could not be reconciled, our own suite
+did not run there at all (the graft renamed `tests/` and left its imports
+dangling, so `./check` raised and the accepts floor answered `None` for **every**
+branch position), and a landed fix had nowhere to go.
+
+**AND A NUMBER MEASURED ON A FORK DESCRIBES THE FORK.** The deliverable is the
+types this repository emits. A branch that proves upstream's suite passes while
+its copy of those types drifts is measuring something we do not ship, and the
+drift is invisible precisely because the suite it runs is upstream's rather than
+ours.
+
+So the rule is one-directional and has no merge step:
+
+- a defect in our types or our compiler is fixed **here**, with our own gates;
+- the drop-in tree is **regenerated** to measure; what it reveals comes back as a
+  change **here**, never as a commit there;
+- nothing in it is authored. A hand edit to the drop-in tree is a fork beginning,
+  and the only honest repair is to delete it and regenerate.
+
+**THE COST IS A REBUILD AND IT IS THE POINT.** A regeneration step is cheap and
+repeatable; a divergence is neither, and it compounds silently. The rebuild is
+also the only thing that keeps the measurement honest — it can only ever report on
+the artifact as this repository states it.
+
 ## 9. The verifier: `codegen/verify/`
 
 **A CHECK'S COST IS LINEAR IN THE DOCUMENT'S NODES, EACH VISITED ONCE — AND A BUDGET IS EVIDENCE
