@@ -36,6 +36,7 @@ from __future__ import annotations
 import importlib
 import pkgutil
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +48,7 @@ from pydantic import BaseModel, ValidationError
 import adcp.types._schemas as schemas_pkg
 from adcp.types._base import BranchDispatchMixin, applied_schema, through_the_store
 from codegen import bundle, catalogue, harness, held
-from tests.nodeset import claimed, partitions
+from tests.nodeset import claimed, partitions, ratchet
 
 REPO = Path(__file__).resolve().parents[1]
 #: **The bundle a run reads, taken from the ONE declaration of it**
@@ -956,3 +957,493 @@ def test_a_restated_required_key_is_required_of_the_class(
     natural = {"brand": {"domain": "nova-athletics.example"}, "operator": "nova.example"}
     assert jsonschema.Draft7Validator(conjunction).is_valid(natural)
     assert isinstance(cls.model_validate(natural), cls)
+
+
+# --------------------------------------------------------------------------- #
+# adcp-client-python-jgsf: a union's refusal names WHERE, and not only THAT
+# --------------------------------------------------------------------------- #
+#: A value no scalar position admits, and a MAPPING rather than a bare sentinel on
+#: purpose: it survives a JSON round trip, so the same perturbation reaches
+#: ``model_validate`` and ``model_validate_json``, and pydantic refuses it for a
+#: ``str``/``int``/``float``/``bool`` field with that field's own kind
+#: (``string_type``, ``int_type``, ...) at that field's own position -- which is the
+#: position this reading is about.  A bare ``object()`` would refuse identically and
+#: could not be written down as a document.
+A_VALUE_NO_SCALAR_ADMITS = {"__not_a_scalar__": True}
+
+#: **THE CEILING ON THE CELL THAT WOULD OTHERWISE ABSORB A REGRESSION**, read off the
+#: run's own census and stated here because a cell a check may grow into is a cell a
+#: check can hide in.  These are the branch positions whose arms each object to a
+#: DIFFERENT field the payload does carry and share none, so there is no position they
+#: agree on and the object itself is the answer -- reading 3's keyless case.  A ceiling
+#: and not an equality (``tests/test_every_check_names_its_set.py``): the number may
+#: only FALL, and nothing is exempted for being in it.
+#:
+#: **THAT IT IS READING 3's KEYLESS CASE IS MEASURED AND NOT ASSUMED: all of them carry
+#: an EMPTY** :attr:`~adcp.types._base.BranchDispatchMixin._BRANCH_DISCRIMINATOR` -- eight
+#: documents' worth, ``core/audience-selector.json``'s three alternative-key arms,
+#: ``media-buy/build-creative-response.json``'s four, ``brand.json``'s two,
+#: ``compliance/comply-test-controller-response.json``'s two (one arm's ``literal_error``
+#: at ``('status',)`` against another's ``int_type`` at ``('total_count',)``) and the
+#: account references.  A KEYED union landing here would be a position the discriminator
+#: names and the dispatch did not report, which is why the ceiling exists rather than a
+#: carve-out.
+CELL_CEILING = 18
+
+
+def _scalar_leaves(value: Any, path: tuple[int | str, ...] = ()) -> list[tuple[int | str, ...]]:
+    """Every position in ``value`` holding a scalar, as a pydantic ``loc``.
+
+    A ``loc`` and not a JSON pointer, because the thing being compared is the ``loc`` a
+    refusal reports: a list index is an ``int`` there and a property is a ``str``, which
+    is the same spelling ``ValidationError.errors()`` uses and so needs no translation at
+    the comparison.
+    """
+    if isinstance(value, Mapping):
+        out: list[tuple[int | str, ...]] = []
+        for key in value:
+            out += _scalar_leaves(value[key], (*path, key))
+        return out
+    if isinstance(value, (list, tuple)):
+        out = []
+        for index, item in enumerate(value):
+            out += _scalar_leaves(item, (*path, index))
+        return out
+    return [path] if path else []
+
+
+def _deepest_leaf(value: Any) -> tuple[int | str, ...] | None:
+    """The scalar position FURTHEST from the root, or ``None`` where there is none.
+
+    Deepest because nesting is the case this reading earns its keep on: a repair that
+    prepends the dispatch's own position and loses the branch's inner path is right on a
+    one-level union and wrong on ``('packages', 0, 'targeting_overlay',
+    'geo_countries', 0)``, and a shallow witness cannot tell the two apart.  Ties are
+    broken by the path itself so the witness is the same on every run and in every lane.
+    """
+    leaves = _scalar_leaves(value)
+    if not leaves:
+        return None
+    return max(leaves, key=lambda p: (len(p), [str(s) for s in p]))
+
+
+def _replaced_at(value: Any, path: tuple[int | str, ...], put: Any) -> Any:
+    """``value`` with ``path`` holding ``put``, copied rather than mutated.
+
+    Copied because the committed floor's instance is shared with
+    :func:`test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_from`
+    through ``held.Store``'s own cache, and a perturbation that wrote through it would
+    silently change what that clause grades.
+    """
+    if not path:
+        return put
+    head, rest = path[0], path[1:]
+    if isinstance(value, Mapping):
+        return {k: (_replaced_at(v, rest, put) if k == head else v) for k, v in value.items()}
+    return [
+        (_replaced_at(item, rest, put) if index == head else item)
+        for index, item in enumerate(value)
+    ]
+
+
+def _document_path(loc: tuple[int | str, ...], payload: Any) -> tuple[int | str, ...]:
+    """A reported ``loc`` reduced to the positions the PAYLOAD actually has.
+
+    **Pydantic interleaves an arm label at every union it reports THROUGH, and the label
+    can land anywhere along the path -- not only in front.**  Measured on this tree:
+    ``core/package-signal-targeting.json`` reports a broken ``signal_ref.signal_id`` at
+    ``('binary', 'signal_ref', 'data_provider', 'signal_id')`` -- the outer tag in front
+    AND an inner branch's own name in the middle -- ``core/placement-selection.json`` at
+    ``('selected', 'placement_refs', 0, 'function-after[_enforce_adcp_rules(),
+    PlacementRefsItem]', 'publisher_domain')``, ``core/assets/asset-union.json`` at
+    ``('card', 'media', 'function-after[_enforce_adcp_rules(), ImageAsset]', 'width')``,
+    and the same document at ``('daast_tracker', 'url', 'str')`` and
+    ``(..., 'constrained-str')`` for the three arms of one ``url`` field's own union.  A
+    rule that tolerated one LEADING label read all of those as the wrong position.
+
+    So the label is IDENTIFIED rather than counted, and by the payload rather than by its
+    spelling: a segment that INDEXES the value at hand is a document step, and one that
+    does not is pydantic's own word for an arm.  Nothing here matches on
+    ``function-after[``, ``tagged-union[`` or a capitalised name -- the heuristic
+    upstream's own error narrowing uses, and the one whose residual edge case this
+    reduction does not have -- because the payload answers the question exactly.
+
+    **ONE AMBIGUITY IS REAL AND IS RESOLVED BY WHICH READING CONSUMES THE WHOLE ``loc``.**
+    A TAGGED union's arm label is the tag VALUE, and a tag value can be spelled the same
+    as a property of the object it tags: ``core/vendor-pricing-option.json`` reports a
+    broken ``pricing_option_id`` at ``('cpm', 'pricing_option_id')`` on a payload that
+    HAS a ``cpm`` key, so reading ``cpm`` as a document step walks into it and then
+    cannot find ``pricing_option_id``.  The reading that treats the first segment as the
+    label consumes every segment it is given; the other does not, and a reduction that
+    accounts for the whole ``loc`` is the one that describes it.
+    """
+
+    def walked(steps: tuple[int | str, ...]) -> tuple[int | str, ...]:
+        at = payload
+        out: list[int | str] = []
+        for step in steps:
+            indexes = (isinstance(at, Mapping) and step in at) or (
+                isinstance(at, (list, tuple)) and isinstance(step, int) and step < len(at)
+            )
+            if indexes:
+                out.append(step)
+                at = at[step]
+        return tuple(out)
+
+    best: tuple[int | str, ...] = ()
+    for drop in (0, 1):
+        got = walked(loc[drop:])
+        if got and len(got) == len(loc) - drop:
+            return got
+        if len(got) > len(best):
+            best = got
+    return best
+
+
+def _locates(path: tuple[int | str, ...], fault: tuple[int | str, ...]) -> bool:
+    """Does a reduced document path name the position the perturbation put the fault at?
+
+    ``()`` never does: "somewhere in your request" is the defect
+    ``adcp-client-python-jgsf`` is about.  Anything else counts if it is the fault's own
+    position, an ANCESTOR of it -- the union refused the containing object rather than the
+    leaf, which still sends the caller to a field of theirs -- or UNDER it, which a fault
+    at a scalar leaf makes reachable only through a union inside that very field.
+    """
+    shared = min(len(path), len(fault))
+    return bool(path) and path[:shared] == fault[:shared]
+
+
+def test_a_union_refusal_names_the_position_it_refuses_at() -> None:
+    """``adcp-client-python-jgsf``: a union that refuses a payload says WHERE.
+
+    **THE REQUIREMENT IS READING 3's AND IS OLDER THAN THE SUITE THAT CAUGHT IT.**  A
+    union is emitted as a base and one class per branch (§4) *precisely so that a caller
+    learns which field was wrong*, so a refusal that reports the combinator at the root
+    and discards the path has thrown away the thing the structure was built to carry.
+    Measured before the repair: ``BranchDispatchMixin._no_branch`` reported the combinator
+    at ``loc=()`` for EVERY union in the tree and ``_undetermined`` did the same, so a
+    caller was told the request was invalid and not where.
+
+    **THE POSITION IS A WIRE FACT AND NOT A DIAGNOSTIC.**  ``core/error.json`` types
+    ``Error.field`` as a JSONPath-lite pointer and an error narrowing derives it from the
+    pydantic ``loc``, so an empty ``loc`` publishes an empty ``Error.field`` on the wire.
+
+    **THE SET IS THE EMITTED TREE AND NOT A LIST OF UNIONS, which is the only way this
+    covers a union no other test exercises.**  Every base the tree emits that declares a
+    branch list is offered a payload, and the payload is DERIVED: the committed accepts
+    floor's instance at the branch's own pointer -- the same witness
+    :func:`test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_from`
+    grades, so neither clause can pass on a witness the other does not see -- with its
+    DEEPEST scalar position replaced by :data:`A_VALUE_NO_SCALAR_ADMITS`.  Deepest, so
+    the witness is a nested path wherever the instance has depth, which is where a repair
+    that prepends the dispatch's own position but drops the branch's inner path shows up.
+
+    **THE SCREEN IS THE DOCUMENT'S AND NOT THIS FILE'S.**  A perturbation the DOCUMENT
+    still admits did not bite -- the position is typed ``{}`` or the branch ignores it --
+    and nothing follows about a refusal that never happened, so those positions are named
+    in their own cell.  Of the ones the document refuses, a base that ADMITS the payload
+    anyway is laxer than its document, which is ``adcp-client-python-9iee`` and not this
+    reading; it is counted and named, and this clause asserts over the refusals.
+
+    **WHAT IS ASSERTED IS THAT NO REFUSAL NAMES THE WRONG POSITION, and the two other
+    outcomes are CELLS.**  A refusal reporting a non-empty position that is neither the
+    fault nor an ancestor of it sends a caller to a field that is not wrong, which is
+    worse than reporting none, and that is the hard failure.  A refusal reporting the
+    fault or an ancestor of it is the requirement held.  A refusal reporting the OBJECT is
+    reading 3's own keyless case -- the arms each object to a different field the payload
+    does carry and share none, so there is no position to name and the document
+    determines no branch to prefer one by -- and it is counted in its own named cell
+    rather than asserted away.  An ancestor counts as a location because it is one a
+    caller can act on; the EXACT pointer is pinned by
+    :func:`test_a_union_refusal_names_a_nested_position_through_a_list_and_a_model`, and
+    the division of labour between the two is what
+    ``perturb_the_union_location.sh`` demonstrates case by case.
+
+    **NO CENSUS IS ASSERTED AS AN EQUALITY** (``tests/test_every_check_names_its_set.py``),
+    so the non-vacuity defence is :func:`claimed` and :func:`partitions`: every branch
+    position is offered-or-unheld, every offered position is bitten-or-not, and every
+    bitten position is refused-or-admitted by the base.  Pointing
+    ``codegen.held.COMMITTED`` at a directory that is not there takes this clause from
+    green to ``empty set of nodes``.
+    """
+    bases = _declaring_bases()
+    graded_bases = claimed("emitted union bases declaring a branch list", bases)
+    records = _records()
+    identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
+    floor = held.Store(held.COMMITTED)
+
+    positions: set[tuple[str, str]] = set()
+    offered: set[tuple[str, str]] = set()
+    unheld: set[tuple[str, str]] = set()
+    the_document_still_admits_it: set[tuple[str, str]] = set()
+    bitten: set[tuple[str, str]] = set()
+    the_base_admits_what_its_document_refuses: set[tuple[str, str]] = set()
+    named_the_position: set[tuple[str, str]] = set()
+    the_arms_share_no_position: set[tuple[str, str]] = set()
+    bases_that_named_a_position: set[str] = set()
+    nameless: dict[str, tuple[str, str, str]] = {}
+    for name in sorted(graded_bases):
+        base = bases[name]
+        for branch in base.__dict__["_branch_models"]:
+            ref = branch.__dict__["__adcp_schema__"]
+            site = (ref.document, ref.pointer)
+            positions.add(site)
+            key = harness.corpus_key(
+                {
+                    "document": ref.document,
+                    "pointer": ref.pointer,
+                    "admits": identities.get(ref.document),
+                },
+                custom_formats=harness.FORMAT_STRATEGIES,
+            )
+            drawn = (floor.get(key) or [None])[0]
+            fault = None if drawn is None else _deepest_leaf(drawn)
+            if fault is None:
+                # No held instance, or one with no scalar position to perturb: there is
+                # no witness here and this clause says nothing about the position.
+                unheld.add(site)
+                continue
+            offered.add(site)
+            payload = _replaced_at(drawn, fault, A_VALUE_NO_SCALAR_ADMITS)
+            root = records[ref.document]
+            if not _admits(root, "#", payload):
+                the_document_still_admits_it.add(site)
+                continue
+            bitten.add(site)
+            try:
+                base.model_validate(payload)
+            except ValidationError as why:
+                rows = why.errors()
+            else:
+                the_base_admits_what_its_document_refuses.add(site)
+                continue
+            paths = [_document_path(tuple(row["loc"]), payload) for row in rows]
+            if any(_locates(path, fault) for path in paths):
+                named_the_position.add(site)
+                bases_that_named_a_position.add(name)
+            elif all(not path for path in paths):
+                # **READING 3's OWN KEYLESS CASE, and the cell is named rather than
+                # asserted away.**  These are the unions whose arms each object to a
+                # DIFFERENT field the payload does carry and share none -- measured on
+                # ``compliance/comply-test-controller-response.json``'s eight keyless
+                # branches, where one arm's ``literal_error`` is at ``('status',)`` and
+                # another's ``int_type`` is at ``('total_count',)``.  There is no position
+                # the branches agree on, the document determines no branch to prefer one
+                # of them by, and picking either is the guess reading 3 forbids.  So the
+                # object itself is the position, which is where upstream's own group
+                # validator reports the same refusal.
+                the_arms_share_no_position.add(site)
+            else:
+                # A NON-EMPTY position that is not the fault's and not an ancestor of it
+                # is WORSE than none: it sends the caller to a field that is not wrong.
+                nameless[f"{name} <- {branch.__name__}"] = (
+                    ref.document,
+                    ref.pointer,
+                    (
+                        "refused and named the WRONG position: fault at "
+                        f"{fault!r}, reported {[tuple(row['loc']) for row in rows]!r}, "
+                        f"which reduces to {paths!r}"
+                    ),
+                )
+    assert nameless == {}, nameless
+    claimed("branch positions a union base names", positions)
+    partitions(positions, offered=offered, unheld=unheld)
+    partitions(
+        offered,
+        bitten=bitten,
+        the_document_still_admits_the_perturbation=the_document_still_admits_it,
+    )
+    partitions(
+        bitten,
+        named_the_position=named_the_position,
+        the_arms_share_no_position_the_payload_has=the_arms_share_no_position,
+        the_base_admits_what_its_document_refuses=the_base_admits_what_its_document_refuses,
+    )
+    claimed("branch positions whose refusal named the position", named_the_position)
+    claimed("union bases whose refusal named a position", bases_that_named_a_position)
+    # **AND THE CELL IS CEILINGED, BECAUSE A CELL THAT GROWS ABSORBS A REGRESSION.**
+    # Measured: with ``_common_position`` returning ``()`` instead of the position every
+    # arm names, the sites whose position came from IT move out of
+    # ``named_the_position`` and into this cell -- and the partition above still holds,
+    # so the clause would read green on a dispatch that had lost half the repair.  A
+    # ceiling at the measured truth is what sees that; it is not a budget, because the
+    # number may only FALL and nothing is exempted for being here.
+    ratchet(
+        "branch positions whose arms share no position the payload has",
+        len(the_arms_share_no_position),
+        at_most=CELL_CEILING,
+        because=(
+            "a union whose arms each object to a different field the payload DOES carry "
+            "has no position they agree on, which is reading 3's keyless case; the count "
+            "falls when a union gains a discriminator its document guarantees, and it "
+            "RISES only when the dispatch stops naming a position it could have named"
+        ),
+    )
+
+
+#: The path the requirement is stated over, and upstream's own assertion: their
+#: ``test_direct_validation_error_uses_request_document_path`` offers ``create_media_buy``
+#: a package whose ``targeting_overlay.geo_countries`` holds a number and asserts the
+#: refusal is reported HERE.  Three levels and two list indices, which is the shape a
+#: repair that only prepends the dispatch's own position gets wrong.
+A_NESTED_FAULT = ("packages", 0, "targeting_overlay", "geo_countries", 0)
+
+
+def test_a_union_refusal_names_a_nested_position_through_a_list_and_a_model() -> None:
+    """The requirement's hard case, written out: a fault three levels under the union.
+
+    ``core/create-media-buy-request.json`` is an ``anyOf`` of three branches and the
+    class a consumer holds is the BASE, so every payload offered to it goes through
+    :meth:`adcp.types._base.BranchDispatchMixin._dispatch`.  The fault is at
+    :data:`A_NESTED_FAULT` -- into a list, into a nested model, into another list -- and
+    all three branches report it at that same position while two of them ALSO report the
+    fields only they require (``total_budget``/``budget_allocation``,
+    ``proposal_id``/``total_budget``).  So the refusal is the intersection: the one error
+    the branches agree on, at the pointer they agree on, which is the error upstream's own
+    class raises for the same payload.
+
+    **AND THE SECOND HALF IS THE PREPEND, which the one-level case cannot see.**  The
+    same base reached through an enclosing list field must report the enclosing path AND
+    keep the branch's inner one, so the assertion below is made twice: at the root, and
+    under a ``list[...]`` field of another model.
+    """
+    cls = importlib.import_module(
+        "adcp.types._schemas.media_buy.create_media_buy_request"
+    ).CreateMediaBuyRequest
+    assert cls.__dict__.get("_branch_models"), "the row is about a DISPATCHING base"
+    payload = {
+        "adcp_version": "3.2",
+        "idempotency_key": "targeting-error-1181",
+        "account": {"account_id": "account-1"},
+        "brand": {"brand_id": "brand_1", "domain": "brand.example"},
+        "start_time": "2026-10-01T00:00:00Z",
+        "end_time": "2026-10-31T00:00:00Z",
+        "packages": [
+            {
+                "product_id": "product-1",
+                "pricing_option_id": "price-1",
+                "budget": 1000,
+                "targeting_overlay": {"geo_countries": [123]},
+            }
+        ],
+    }
+    with pytest.raises(ValidationError) as refused:
+        cls.model_validate(payload)
+    assert refused.value.errors(include_input=False, include_context=False, include_url=False) == [
+        {
+            "type": "string_type",
+            "loc": A_NESTED_FAULT,
+            "msg": "Input should be a valid string",
+        }
+    ]
+
+    class Enclosing(BaseModel):
+        requests: list[cls]  # type: ignore[valid-type]
+
+    with pytest.raises(ValidationError) as nested:
+        Enclosing.model_validate({"requests": [payload]})
+    assert [tuple(row["loc"]) for row in nested.value.errors()] == [("requests", 0, *A_NESTED_FAULT)]
+
+
+#: Offered at a scalar position to find the payloads that reach
+#: :meth:`adcp.types._base.BranchDispatchMixin._undetermined` -- the keyless screen, which
+#: fires where a branch CLASS admits a payload its own node REFUSES (reading 2's declared
+#: widenings).  Three generic values and no document knowledge: ``""`` and ``"0"`` violate
+#: the ``minLength``, ``pattern``, ``format`` and ``enum`` a widened annotation does not
+#: carry, and ``"not-a-value"`` violates a ``const``.  **Which of them lands is MEASURED
+#: and not assumed**: a payload counts only once the document has refused it and the
+#: screen has answered, so a value that reaches neither contributes nothing rather than a
+#: false witness.
+A_VALUE_A_WIDENED_CLASS_STILL_ADMITS = ("", "0", "not-a-value")
+
+
+def test_a_keyless_dispatch_refusal_names_the_position_the_document_refuses_at() -> None:
+    """``adcp-client-python-jgsf``, over :meth:`BranchDispatchMixin._undetermined`.
+
+    **A GOOD SENTENCE IS NOT A LOCATION, and that screen's sentence is very good**: it
+    names the branch a structural first match reached, says the union states no
+    discriminator its document guarantees, and quotes the document's own reason.  That
+    is exactly why it was allowed to carry ``loc=()`` for as long as it did.  A caller
+    handed "no branch is determined" with an empty ``loc`` is no better off than one
+    handed a type error with an empty ``loc``, because ``core/error.json``'s
+    ``Error.field`` is derived from the ``loc`` and is empty either way.  Reading 3 now
+    says so: "the message and the location are separate obligations and neither excuses
+    the other".
+
+    **AND THE 84a9 WITNESS CANNOT SEE IT, which is why this clause exists beside that
+    one.**  Measured: the four payloads
+    :func:`test_a_keyless_dispatch_refuses_rather_than_answering_with_a_branch_the_document_refuses`
+    is about are each refused by the document at the ROOT, on ``'errors' is a required
+    property`` or ``'products' is a required property``, so the document's own pointer
+    for them IS ``()`` and a dispatch that discarded the pointer and one that reports it
+    give the same answer.  A perturbation of ``_undetermined``'s ``loc`` therefore reads
+    GREEN against that row, which is the worthless-guard shape.
+
+    So the witnesses are DERIVED: every keyless base's branch position that the committed
+    floor answers for, with a scalar position replaced by one of
+    :data:`A_VALUE_A_WIDENED_CLASS_STILL_ADMITS`, keeping only the payloads where the
+    DOCUMENT refuses and the screen answers.
+
+    The deepest positions are tried first and the search stops at the first witness per
+    branch position, so the cost is bounded by the positions and not by the product.
+    """
+    bases = {n: c for n, c in _declaring_bases().items() if not c._BRANCH_DISCRIMINATOR}
+    graded = claimed("emitted union bases with NO dispatch key", bases)
+    records = _records()
+    identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
+    floor = held.Store(held.COMMITTED)
+
+    reached: set[tuple[str, str]] = set()
+    named_the_position: set[tuple[str, str]] = set()
+    nameless: dict[str, tuple[str, str, str]] = {}
+    for name in sorted(graded):
+        base = bases[name]
+        for branch in base.__dict__["_branch_models"]:
+            ref = branch.__dict__["__adcp_schema__"]
+            site = (ref.document, ref.pointer)
+            key = harness.corpus_key(
+                {
+                    "document": ref.document,
+                    "pointer": ref.pointer,
+                    "admits": identities.get(ref.document),
+                },
+                custom_formats=harness.FORMAT_STRATEGIES,
+            )
+            drawn = (floor.get(key) or [None])[0]
+            if drawn is None:
+                continue
+            root = records[ref.document]
+            leaves = sorted(_scalar_leaves(drawn), key=lambda p: (-len(p), [str(s) for s in p]))
+            for leaf in leaves[:3]:
+                for put in A_VALUE_A_WIDENED_CLASS_STILL_ADMITS:
+                    payload = _replaced_at(drawn, leaf, put)
+                    if not _admits(root, "#", payload):
+                        continue  # the document admits it: nothing for the screen to do
+                    try:
+                        base.model_validate(payload)
+                    except ValidationError as why:
+                        rows = why.errors()
+                    else:
+                        continue  # no refusal at all, which is adcp-client-python-9iee
+                    if not any("no discriminator" in row["msg"] for row in rows):
+                        continue  # refused by a branch or by the combinator, not the screen
+                    reached.add(site)
+                    paths = [_document_path(tuple(row["loc"]), payload) for row in rows]
+                    if any(_locates(path, leaf) for path in paths):
+                        named_the_position.add(site)
+                    else:
+                        nameless[f"{name} <- {branch.__name__}"] = (
+                            ref.document,
+                            ref.pointer,
+                            (
+                                "the keyless screen refused and named no position: "
+                                f"document refuses at {leaf!r}, reported "
+                                f"{[tuple(row['loc']) for row in rows]!r}"
+                            ),
+                        )
+                    break
+                if site in reached:
+                    break
+    assert nameless == {}, nameless
+    claimed("branch positions whose keyless dispatch reached the undetermined screen", reached)
+    partitions(reached, named_the_position=named_the_position)

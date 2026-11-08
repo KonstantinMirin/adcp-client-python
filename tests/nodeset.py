@@ -28,15 +28,57 @@ Three shapes satisfy that, and everything here is one of them:
 What is NOT here, deliberately: no registry, no decorator and no rule table.  A check
 names its own set at the point it ranges over it, because a set named somewhere else is
 a second place to go stale.
+
+**AND BECAUSE THE SETS ARE NAMED HERE, THEIR SIZES CAN BE READ HERE.**  ``NODESET_CENSUS``
+(:data:`_CENSUS`) writes the size of every set a run claims, which is the only reason a
+verdict needs for quoting a number: before it existed, a lane wanting one of these
+figures wrote a second derivation beside the check and quoted THAT, and two derivations
+of one number is how a verdict comes to disagree with the gate it cites.  It asserts
+nothing -- a census is not an obligation, and ``ratchet`` is the shape for a number that
+is one.
 """
 
 from __future__ import annotations
 
 import itertools
+import os
+import sys
 from collections.abc import Hashable, Iterable
+from pathlib import Path
 from typing import TypeVar
 
 T = TypeVar("T", bound=Hashable)
+
+#: **THE SIZE OF EVERY SET A CHECK CLAIMS, where a lane asks for it and nowhere else.**
+#: :func:`claimed` and :func:`partitions` already know every number a verdict wants to
+#: state -- how many union bases a reading ranged over, how many branch positions the
+#: floor answered for, how many of them each outcome holds for -- and until this existed a
+#: lane wanting one of those figures wrote a second derivation beside the check and quoted
+#: THAT.  Two derivations of one number is how a verdict comes to disagree with the gate
+#: it cites.  So the check is the instrument: point ``NODESET_CENSUS`` at a file and every
+#: set named in the run is appended to it as ``size<TAB>check<TAB>name``.
+#:
+#: **OFF BY DEFAULT AND IT ASSERTS NOTHING.**  A census is not an obligation
+#: (:func:`ratchet` is the shape for a number that is one), so this writes and never
+#: compares: an equality on a count is the thing this module exists to replace
+#: (``tests/test_every_check_names_its_set.py``).  Unset, the only cost is one ``is None``
+#: per claim.
+_CENSUS = os.environ.get("NODESET_CENSUS")
+
+
+def _record(name: str, size: int) -> None:
+    """Append one claimed set's size, with the check that claimed it.
+
+    The CHECK is read off the calling frame rather than passed in, because a name passed
+    in is a name that can disagree with the function it sits in -- and the whole point of
+    reading a census off the check is that there is one derivation.  Two frames up:
+    this function, then :func:`claimed` or :func:`partitions`, then the test.  Appended
+    line by line so a parallel run interleaves whole rows rather than truncating one.
+    """
+    if _CENSUS is None:
+        return
+    with Path(_CENSUS).open("a") as fh:
+        fh.write(f"{size}\t{sys._getframe(2).f_code.co_name}\t{name}\n")
 
 
 def claimed(name: str, members: Iterable[T], *, inside: Iterable[T] | None = None) -> set[T]:
@@ -49,6 +91,7 @@ def claimed(name: str, members: Iterable[T], *, inside: Iterable[T] | None = Non
     detect.
     """
     got = set(members)
+    _record(name, len(got))
     assert got, f"{name}: empty set of nodes -- every assertion over it holds vacuously"
     if inside is not None:
         outside = got - set(inside)
@@ -64,8 +107,10 @@ def partitions(whole: Iterable[T], **parts: Iterable[T]) -> set[T]:
     another.  So the two failures are reported separately and by name.
     """
     everything = set(whole)
-    assert everything, "empty whole -- the partition below holds vacuously"
     named = {k: set(v) for k, v in parts.items()}
+    for part in sorted(named):
+        _record(part, len(named[part]))
+    assert everything, "empty whole -- the partition below holds vacuously"
     assert named, "a partition with no parts accounts for nothing"
 
     union: set[T] = set().union(*named.values())
