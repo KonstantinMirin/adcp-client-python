@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen1000, StrMinLen1MaxLen2000
 from adcp.types.envelopes import AdcpResponse
@@ -23,16 +23,6 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .get_products_targeting_resolution import ProductDiscoveryTargetingResolution
 
 
-class RefinementAppliedItem(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/refinement_applied/items')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "scope"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
 class RefinementAppliedItemRequestStatus(StrEnum):
     """
     'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled — see notes for details. 'unable': the seller could not fulfill the ask — see notes for why.
@@ -45,7 +35,7 @@ class RefinementAppliedItemRequestStatus(StrEnum):
     unable = MemberAlias('UNABLE')
 
 
-class RefinementAppliedItemRequest(RefinementAppliedItem):
+class RefinementAppliedItemRequest(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -58,7 +48,7 @@ class RefinementAppliedItemRequest(RefinementAppliedItem):
 RefinementAppliedItemProductStatus = RefinementAppliedItemRequestStatus
 
 
-class RefinementAppliedItemProduct(RefinementAppliedItem):
+class RefinementAppliedItemProduct(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -72,7 +62,7 @@ class RefinementAppliedItemProduct(RefinementAppliedItem):
 RefinementAppliedItemProposalStatus = RefinementAppliedItemRequestStatus
 
 
-class RefinementAppliedItemProposal(RefinementAppliedItem):
+class RefinementAppliedItemProposal(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -81,10 +71,6 @@ class RefinementAppliedItemProposal(RefinementAppliedItem):
     proposal_id: Annotated[str, Field(description='Echoes proposal_id from the corresponding refine entry.')]
     status: Annotated[RefinementAppliedItemProposalStatus, Field(description="'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled — see notes for details. 'unable': the seller could not fulfill the ask — see notes for why.")]
     notes: Annotated[str | None, Field(description="Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."), OmittedNotNull] = None
-
-
-RefinementAppliedItem._branch_models = (RefinementAppliedItemRequest, RefinementAppliedItemProduct, RefinementAppliedItemProposal,)
-RefinementAppliedItem.model_rebuild(force=True)
 
 
 class Scope(StrEnum):
@@ -194,7 +180,7 @@ class GetProductsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     suggestions: Annotated[list[StrMinLen1MaxLen1000] | None, Field(description='Actionable alternatives available only on the GetProductsRejected arm.', max_length=20), OmittedNotNull] = None
     property_list_applied: Annotated[bool | None, Field(description='[AdCP 3.0] Indicates whether deprecated top-level property_list filtering was applied. True if the agent filtered products based on the provided property_list; every returned product also carries the corresponding property/include list_applications receipt. Absent or false if property_list was not provided or not supported by this agent.'), OmittedNotNull] = None
     catalog_applied: Annotated[bool | None, Field(description='Whether the seller filtered results based on the provided catalog. True if the seller matched catalog items against its inventory. Absent or false if no catalog was provided or the seller does not support catalog matching.'), OmittedNotNull] = None
-    refinement_applied: Annotated[list[RefinementAppliedItem] | None, Field(description="Seller's response to each change request in the refine array, matched by position. Each entry acknowledges whether the corresponding ask was applied, partially applied, or unable to be fulfilled. MUST contain the same number of entries in the same order as the request's refine array. Only present when the request used buying_mode: 'refine'. Each entry MUST echo the request entry's scope and — for product and proposal scopes — the matching id field (product_id or proposal_id), so orchestrators can cross-validate alignment."), OmittedNotNull] = None
+    refinement_applied: Annotated[list[RefinementAppliedItemRequest | RefinementAppliedItemProduct | RefinementAppliedItemProposal] | None, Field(description="Seller's response to each change request in the refine array, matched by position. Each entry acknowledges whether the corresponding ask was applied, partially applied, or unable to be fulfilled. MUST contain the same number of entries in the same order as the request's refine array. Only present when the request used buying_mode: 'refine'. Each entry MUST echo the request entry's scope and — for product and proposal scopes — the matching id field (product_id or proposal_id), so orchestrators can cross-validate alignment."), OmittedNotNull] = None
     incomplete: Annotated[list[IncompleteItem] | None, Field(description="Declares what the seller could not finish within the buyer's time_budget or due to internal limits while still returning a usable response. Each entry identifies a scope that is missing or partial. Absent when the response is fully complete. This field does not classify the condition as retryable; retryability is carried by error.recovery on the error channel.", min_length=1), OmittedNotNull] = None
     filter_diagnostics: Annotated[FilterDiagnostics | None, Field(description="Optional non-fatal diagnostic block describing how the request's `filters` narrowed the candidate set. Use this to disambiguate empty/small result lists between 'no inventory matches the brief' and 'a specific filter excluded everything', without breaking the filter-not-fail convention (sellers still silently exclude unmatched products; this block is observability, not error reporting). Sellers MAY populate this when meaningful narrowing occurred; buyers MAY use it for triage UX without depending on its presence. Counts only — products are not enumerated by name to avoid leaking competitive intelligence about adjacent campaigns or seller inventory. `total_candidates` and `excluded_by` are independently optional — sellers whose baseline candidate set size is sensitive MAY emit `excluded_by` without `total_candidates`, or vice versa."), OmittedNotNull] = None
     pagination: Annotated[PaginationResponse | None, Field(description="Cursor metadata for paginated get_products responses. In brief/refine mode, continuation pages bound returned products[] for the seller's curated or refined answer; proposals may accompany a page as plan metadata but are not independently counted by this pagination envelope, and pagination does not convert the response into an exhaustive feed contract. In wholesale mode, continuation pages walk the wholesale product feed."), OmittedNotNull] = None

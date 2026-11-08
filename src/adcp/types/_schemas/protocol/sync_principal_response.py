@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
 
@@ -17,16 +17,6 @@ from ..core.principal_state import PrincipalState
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.principal_kind import PrincipalKind
-
-
-class Result(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-response.json', pointer='#/properties/result')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "kind"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
 
 
 class AppliedPrincipalConfigurationAction(StrEnum):
@@ -41,7 +31,7 @@ class AppliedPrincipalConfigurationAction(StrEnum):
     cleared = MemberAlias('CLEARED')
 
 
-class AppliedPrincipalConfiguration(Result):
+class AppliedPrincipalConfiguration(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -65,7 +55,7 @@ class ValidatedPrincipalDryRunAction(StrEnum):
     would_clear = MemberAlias('WOULD_CLEAR')
 
 
-class ValidatedPrincipalDryRun(Result):
+class ValidatedPrincipalDryRun(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -76,17 +66,13 @@ class ValidatedPrincipalDryRun(Result):
     warnings: Annotated[list[Error] | None, Field(max_length=16), OmittedNotNull] = None
 
 
-class FailedPrincipalSync(Result):
+class FailedPrincipalSync(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-response.json', pointer='#/properties/result/oneOf/2')
     kind: Literal['failed']
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
-
-
-Result._branch_models = (AppliedPrincipalConfiguration, ValidatedPrincipalDryRun, FailedPrincipalSync,)
-Result.model_rebuild(force=True)
 
 
 class SyncPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -100,7 +86,7 @@ class SyncPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='protocol/sync-principal-response.json', pointer='#', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'result': {'properties': {'kind': {'const': 'failed'}}, 'required': ['kind']}}, 'required': ['result']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    result: Result
+    result: AppliedPrincipalConfiguration | ValidatedPrincipalDryRun | FailedPrincipalSync
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

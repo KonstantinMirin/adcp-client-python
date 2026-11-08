@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
 
@@ -18,17 +18,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.principal_kind import PrincipalKind
 
 
-class Result(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-principal-response.json', pointer='#/properties/result')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "kind"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
-class CurrentPrincipalConfiguration(Result):
+class CurrentPrincipalConfiguration(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -40,7 +30,7 @@ class CurrentPrincipalConfiguration(Result):
     configuration: PrincipalState
 
 
-class RecognizedPrincipalWithoutStandingConfiguration(Result):
+class RecognizedPrincipalWithoutStandingConfiguration(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -50,7 +40,7 @@ class RecognizedPrincipalWithoutStandingConfiguration(Result):
     principal_kind: Annotated[PrincipalKind, Field(description='Seller-resolved party kind of the authenticated principal. This is resolved from authenticated transport and authorization state, never request content.')]
 
 
-class UnconfiguredPrincipal(Result):
+class UnconfiguredPrincipal(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -58,17 +48,13 @@ class UnconfiguredPrincipal(Result):
     kind: Literal['unconfigured']
 
 
-class FailedPrincipalRead(Result):
+class FailedPrincipalRead(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-principal-response.json', pointer='#/properties/result/oneOf/3')
     kind: Literal['failed']
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
-
-
-Result._branch_models = (CurrentPrincipalConfiguration, RecognizedPrincipalWithoutStandingConfiguration, UnconfiguredPrincipal, FailedPrincipalRead,)
-Result.model_rebuild(force=True)
 
 
 class GetPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -82,7 +68,7 @@ class GetPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='protocol/get-principal-response.json', pointer='#', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'result': {'properties': {'kind': {'const': 'failed'}}, 'required': ['kind']}}, 'required': ['result']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    result: Result
+    result: CurrentPrincipalConfiguration | RecognizedPrincipalWithoutStandingConfiguration | UnconfiguredPrincipal | FailedPrincipalRead
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

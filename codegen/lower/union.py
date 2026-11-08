@@ -2502,53 +2502,6 @@ def composes_its_siblings(node: nodes.Union) -> bool:
     return bool(frozenset(node.declares) & carried_by_a_class(node))
 
 
-def branches_are_all_classes(node: nodes.Union) -> bool:
-    """Does EVERY branch of this union declare a class?  §5's base-at-any-position row.
-
-    §5 gives the base-plus-branches shape "at a union in ANY position", and
-    :func:`nested` took the rest of that sentence to mean "a union stating no sibling is
-    one TYPE at any pointer".  Both halves are true of a union whose branches are
-    ANNOTATIONS, and only the first is true of a union whose branches are CLASSES -- and
-    the difference is what was missing.  Measured on this tree before this predicate
-    existed: **48 union pointers emitted two or more branch classes and nothing of ours
-    at the union's own pointer**.  ``content-standards/artifact.json#/$defs/asset_access``
-    is the clearest of them -- three classes each deriving ``AdCPBaseModel`` directly,
-    bound as ``AssetAccess = Annotated[A | B | C, Field(...)]`` at module scope -- so the
-    branches existed and nothing of ours said they were ALTERNATIVES: no class for §4's
-    third source to range over, no base for the hierarchy claim, and no
-    ``_BRANCH_DISCRIMINATOR`` for a caller to read even where the document NAMES the
-    selector (that node's own ``discriminator: {propertyName: "method"}``).
-
-    :func:`nested`'s reason for one type is sound where it applies: "a nested position
-    exports nothing: it is a property's type, an element type or a mapping value, so what
-    it needs is a TYPE".  It needs a type AND the branches need a base, and the two are
-    not in tension -- the base's own symbol IS the type, exactly as it is at a root.
-    What the alias bought over the base was nothing: the same module-level name, bound to
-    an ``Annotated`` union instead of to a class.
-
-    **READ OFF THE DECLARATION AND RESOLVING NOTHING**, which is :func:`_undetermined`'s
-    own sequencing constraint arriving one function earlier.  That function resolves a
-    bare ``$ref`` branch's target and must therefore be asked AFTER the arms, because
-    ``Module.target`` RECORDS the site and asking first put a module into the tree the
-    arms had not reached (measured there as 866 -> 867).  This predicate DECIDES which
-    arm runs, so it cannot resolve anything at all: :func:`declares_a_class` is the
-    reading that needs no resolution -- an object-ish applied ``type`` beside a property
-    map or a conjunct list -- and it is already §4's own answer to "can this branch be a
-    class".
-
-    EVERY branch and not two or more, and that is the clause that keeps the answer
-    coherent.  A bare ``$ref`` branch of a nested union lowers to the TARGET's symbol,
-    which is a class declared by another document and cannot be made to inherit a base
-    this one declares; a union mixing one of those with a declaring branch therefore has
-    no base its branches all descend from, and taking the base shape for it would emit a
-    hierarchy that is false of half the arms.  Such a union keeps the one type it has
-    always had.
-    """
-    return len(node.branches) >= 2 and all(
-        declares_a_class(node, i) for i in range(len(node.branches))
-    )
-
-
 def lower(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     """§4's union row, at the node's own POSITION: a base plus one class per branch at a
     document ROOT, and one ``A | B`` type below it.
@@ -2566,15 +2519,6 @@ def lower(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     a nested union stating ``properties`` and a root union stating none reach the same
     reader for opposite reasons.
 
-    **AND SO DOES A UNION WHOSE BRANCHES ARE ALL CLASSES**
-    (:func:`branches_are_all_classes`), which is the third question and the one 48 nodes
-    of this tree were decided wrongly by: a union whose branches become classes needs a
-    class at its OWN pointer for them to be alternatives of, whatever its position and
-    whatever it states beside the combinator.  Nothing is exported there that was not
-    exported before -- the base takes the symbol the ``Annotated`` alias held -- and what
-    arrives with it is the hierarchy claim, the dispatch, and the discriminator the
-    document names.
-
     **CONVERTED to node fields.**  The branch PLAN -- a branch's ``const`` pin, its
     ``required`` set, its title, its conjunct list -- is read off
     :attr:`nodes.Union.branch_raw`, which §6 keeps at the declaration level, and a
@@ -2582,11 +2526,7 @@ def lower(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     BRANCH.  The sibling screen is :attr:`nodes.Base.declares` at the node's own
     position, which is the parser's classification read by the table.
     """
-    if (
-        node.position is Position.ROOT
-        or composes_its_siblings(node)
-        or branches_are_all_classes(node)
-    ):
+    if node.position is Position.ROOT or composes_its_siblings(node):
         base = lower_union(node, mod)
         if isinstance(base, Refusal):
             return base

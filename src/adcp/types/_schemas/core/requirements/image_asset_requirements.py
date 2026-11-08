@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, IntMin1, MaxWeightGrams
 
@@ -36,20 +36,7 @@ class FormatsItem(StrEnum):
     eps = MemberAlias('EPS')
 
 
-class Bleed(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Required bleed area beyond the trim size. The submitted image must be larger than the declared dimensions: total width = trim width + left bleed + right bleed, total height = trim height + top bleed + bottom bleed. For uniform bleed: total = trim + (2 * uniform). Uses the same unit as the parent dimensions.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/image-asset-requirements.json', pointer='#/properties/bleed')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
-class BleedUniform(Bleed):
+class BleedUniform(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -57,7 +44,7 @@ class BleedUniform(Bleed):
     uniform: Annotated[NonNegativeFloat, Field(description='Same bleed on all four sides')]
 
 
-class BleedBottomLeftRightTop(Bleed):
+class BleedBottomLeftRightTop(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -66,10 +53,6 @@ class BleedBottomLeftRightTop(Bleed):
     right: NonNegativeFloat
     bottom: NonNegativeFloat
     left: NonNegativeFloat
-
-
-Bleed._branch_models = (BleedUniform, BleedBottomLeftRightTop,)
-Bleed.model_rebuild(force=True)
 
 
 class ColorSpace(StrEnum):
@@ -106,7 +89,7 @@ class ImageAssetRequirements(AdCPBaseModel):
     aspect_ratio: Annotated[FormatRendersItemDimensionsAspectRatio | None, Field(description="Required aspect ratio (e.g., '16:9', '1:1', '1.91:1')"), OmittedNotNull] = None
     formats: Annotated[list[FormatsItem] | None, Field(description='Accepted image file formats'), OmittedNotNull] = None
     min_dpi: Annotated[IntMin1 | None, Field(description='Minimum resolution in dots per inch. Always in DPI regardless of the dimension unit. Standard print requires 300 DPI, newspaper 150 DPI.'), OmittedNotNull] = None
-    bleed: Annotated[Bleed | None, Field(description='Required bleed area beyond the trim size. The submitted image must be larger than the declared dimensions: total width = trim width + left bleed + right bleed, total height = trim height + top bleed + bottom bleed. For uniform bleed: total = trim + (2 * uniform). Uses the same unit as the parent dimensions.'), OmittedNotNull] = None
+    bleed: Annotated[BleedUniform | BleedBottomLeftRightTop | None, Field(description='Required bleed area beyond the trim size. The submitted image must be larger than the declared dimensions: total width = trim width + left bleed + right bleed, total height = trim height + top bleed + bottom bleed. For uniform bleed: total = trim + (2 * uniform). Uses the same unit as the parent dimensions.'), OmittedNotNull] = None
     color_space: Annotated[ColorSpace | None, Field(description='Required color space. Print typically requires CMYK.'), OmittedNotNull] = None
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes'), OmittedNotNull] = None
     transparency_required: Annotated[bool | None, Field(description='Whether the image must support transparency (requires PNG, WebP, or GIF)'), OmittedNotNull] = None

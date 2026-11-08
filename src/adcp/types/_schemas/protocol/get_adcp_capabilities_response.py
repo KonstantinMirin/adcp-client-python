@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
@@ -104,20 +104,7 @@ from ..media_buy.get_products_request import BuyingMode
 from ..sponsored_intelligence.si_capabilities import SICapabilities
 
 
-class Idempotency(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Idempotency semantics for mutating requests. Sellers MUST declare whether they honor idempotency_key replay protection so buyers can reason about safe retry behavior. Modeled as a discriminated union on the supported boolean so that code generators produce two named types (IdempotencySupported, IdempotencyUnsupported) with the replay_ttl_seconds invariant enforced at the type level — draft-07 if/then would be dropped by most generators (openapi-typescript, zod-to-json-schema, datamodel-code-generator pre-0.25, quicktype). Clients MUST NOT assume a default — a seller without this declaration is non-compliant and should be treated as unsafe for retry-sensitive operations.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/adcp/properties/idempotency')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "supported"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
-class IdempotencySupported(Idempotency):
+class IdempotencySupported(AdCPBaseModel):
     """
     Seller honors idempotency_key replay protection on mutating requests. Replays within replay_ttl_seconds return the cached response (or IDEMPOTENCY_CONFLICT on payload divergence); a completed key record MUST remain available until at least committed_at + replay_ttl_seconds independently of the lifecycle of any resource the request created. If the mutation committed but its affected resource was independently deleted or purged before the canonical success response could be durably recorded, exact replays return COMMITTED_RESOURCE_PURGED without re-executing the mutation. Ambiguous in-flight outcomes retain their claims until reconciled and MUST NOT be released on a handler or downstream timeout. Replays past the completed entry's window return IDEMPOTENCY_EXPIRED when the seller can still distinguish 'seen and evicted' from 'never seen'.
     """
@@ -128,7 +115,7 @@ class IdempotencySupported(Idempotency):
     account_id_is_opaque: Annotated[bool | None, Field(description="When true, the seller derives `account_id` via an HKDF-based one-way transform of the buyer's natural account key rather than echoing the natural key on the wire. Buyers MUST NOT attempt to invert the opaque id and MUST treat it as a blind handle scoped to this seller. Absent or false, callers should assume `account_id` is the natural key (or a server-assigned but non-opaque id). This flag does not change the wire shape, but it DOES change buyer behavior — buyers MUST NOT cache, log, or treat `account_id` as a natural-key analog when this flag is true. Migration note for sellers already returning an opaque id without this flag: set it to true at the next capabilities refresh so buyers stop inferring natural-key semantics; until set, new-buyer replay/retry logic will misclassify these ids as natural keys."), OmittedNotNull] = False
 
 
-class IdempotencyUnsupported(Idempotency):
+class IdempotencyUnsupported(AdCPBaseModel):
     """
     Seller does NOT honor idempotency_key replay protection — sending a key is a no-op, the seller will NOT return IDEMPOTENCY_CONFLICT or IDEMPOTENCY_EXPIRED, and a naive retry WILL double-process. Buyers MUST use natural-key checks (e.g., get_media_buys plus request context such as context.internal_campaign_id or package context such as context.buyer_ref) before retrying spend-committing operations against this seller. replay_ttl_seconds and in_flight_max_seconds MUST be absent — they have no meaning without replay support.
     """
@@ -137,10 +124,6 @@ class IdempotencyUnsupported(Idempotency):
         ForbiddenGroups((('replay_ttl_seconds',), ('in_flight_max_seconds',))),
     )
     supported: Annotated[Literal[False], Field(description='Discriminator. False means the seller does not deduplicate retries.')]
-
-
-Idempotency._branch_models = (IdempotencySupported, IdempotencyUnsupported,)
-Idempotency.model_rebuild(force=True)
 
 
 class SupportedSectionsItem(StrEnum):
@@ -204,19 +187,6 @@ class Principal(AdCPBaseModel):
     optimistic_concurrency: Annotated[bool, Field(description='Whether expected_configuration_version is enforced. Sellers SHOULD support it when several services may authenticate as the same stable principal. When false, a request carrying expected_configuration_version is rejected with UNSUPPORTED_FEATURE rather than silently ignored.')]
 
 
-class CapabilityChangesNotifications(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Whether the seller supports agent-level capability-change webhooks. When supported, interested consumers register endpoint subscribers with the declared registration_task; sync_principal is preferred when the broader connection surface is available, while sync_agent_notification_configs remains the specialized compatibility task. Each capabilities.changed fire is a small invalidation payload, and consumers repair by re-reading get_adcp_capabilities.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/adcp/properties/capability_changes/properties/notifications')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "supported"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
 class RegistrationTask(StrEnum):
     """
     Task consumers call to manage their caller-scoped agent-level subscriber set.
@@ -232,7 +202,7 @@ class CapabilityChangeNotificationsSupportedEventTypesItem(StrEnum):
     capabilities_changed = MemberAlias('CAPABILITIES_CHANGED')
 
 
-class CapabilityChangeNotificationsSupported(CapabilityChangesNotifications):
+class CapabilityChangeNotificationsSupported(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -246,7 +216,7 @@ class CapabilityChangeNotificationsSupported(CapabilityChangesNotifications):
     coalescence_window_seconds: Annotated[IntMin0Max86400 | None, Field(description='Maximum coalescence window the seller applies before firing a `capabilities.changed` webhook after a burst of related capability edits. The default recommendation is at most 300 seconds; latency-sensitive deactivations SHOULD fire sooner.'), OmittedNotNull] = None
 
 
-class CapabilityChangeNotificationsUnsupported(CapabilityChangesNotifications):
+class CapabilityChangeNotificationsUnsupported(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -255,10 +225,6 @@ class CapabilityChangeNotificationsUnsupported(CapabilityChangesNotifications):
         ForbiddenGroups((('registration_task',), ('event_types',))),
     )
     supported: Annotated[Literal[False], Field(description='Discriminator. False means consumers must rely on TTL refresh, manual refresh, or registry polling for capability changes.')]
-
-
-CapabilityChangesNotifications._branch_models = (CapabilityChangeNotificationsSupported, CapabilityChangeNotificationsUnsupported,)
-CapabilityChangesNotifications.model_rebuild(force=True)
 
 
 class CapabilityChanges(AdCPBaseModel):
@@ -275,17 +241,7 @@ class CapabilityChanges(AdCPBaseModel):
     capabilities_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque revision token for the full capability document. Required when `notifications.supported: true` because `capabilities.changed` webhooks use this as the read-after-notify fence. Sellers SHOULD change this value whenever any material field in `get_adcp_capabilities` changes. Buyers MUST treat it as opaque and compare it only for equality.'), OmittedNotNull] = None
     last_modified: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller last changed the advertised capability document. This is the scoped replacement for legacy top-level `last_updated` when buyers need cache validation semantics.'), OmittedNotNull] = None
     cache_ttl_seconds: Annotated[AdcpCapabilityChangesCacheTtlSeconds | None, Field(description='Maximum time a buyer or registry SHOULD reuse this capability response before refreshing when it has no fresher invalidation signal. Sellers that emit `capabilities.changed` webhooks SHOULD still set a bounded TTL so consumers can recover from missed notifications. This is a cache hint, not an authorization lifetime.'), OmittedNotNull] = None
-    notifications: Annotated[CapabilityChangesNotifications | None, Field(description='Whether the seller supports agent-level capability-change webhooks. When supported, interested consumers register endpoint subscribers with the declared registration_task; sync_principal is preferred when the broader connection surface is available, while sync_agent_notification_configs remains the specialized compatibility task. Each capabilities.changed fire is a small invalidation payload, and consumers repair by re-reading get_adcp_capabilities.'), OmittedNotNull] = None
-
-
-class TasksItem(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/adcp/properties/governance_enforcement/properties/tasks/items')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "task"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
+    notifications: Annotated[CapabilityChangeNotificationsSupported | CapabilityChangeNotificationsUnsupported | None, Field(description='Whether the seller supports agent-level capability-change webhooks. When supported, interested consumers register endpoint subscribers with the declared registration_task; sync_principal is preferred when the broader connection surface is available, while sync_agent_notification_configs remains the specialized compatibility task. Each capabilities.changed fire is a small invalidation payload, and consumers repair by re-reading get_adcp_capabilities.'), OmittedNotNull] = None
 
 
 class TasksItemCreateMediaBuyModesItem(StrEnum):
@@ -295,7 +251,7 @@ class TasksItemCreateMediaBuyModesItem(StrEnum):
     online_execution_check = MemberAlias('ONLINE_EXECUTION_CHECK')
 
 
-class TasksItemCreateMediaBuy(TasksItem):
+class TasksItemCreateMediaBuy(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -310,7 +266,7 @@ class TasksItemCreateMediaBuy(TasksItem):
 TasksItemUpdateMediaBuyModesItem = TasksItemCreateMediaBuyModesItem
 
 
-class TasksItemUpdateMediaBuy(TasksItem):
+class TasksItemUpdateMediaBuy(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -325,7 +281,7 @@ class TasksItemUpdateMediaBuy(TasksItem):
 TasksItemBuyProductsModesItem = TasksItemCreateMediaBuyModesItem
 
 
-class TasksItemBuyProducts(TasksItem):
+class TasksItemBuyProducts(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -340,7 +296,7 @@ class TasksItemBuyProducts(TasksItem):
 TasksItemAcceptProposalModesItem = TasksItemCreateMediaBuyModesItem
 
 
-class TasksItemAcceptProposal(TasksItem):
+class TasksItemAcceptProposal(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -355,7 +311,7 @@ class TasksItemAcceptProposal(TasksItem):
 TasksItemControlMediaBuyModesItem = TasksItemCreateMediaBuyModesItem
 
 
-class TasksItemControlMediaBuy(TasksItem):
+class TasksItemControlMediaBuy(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -367,7 +323,7 @@ class TasksItemControlMediaBuy(TasksItem):
     modes: Annotated[Annotated[list[TasksItemControlMediaBuyModesItem], AfterValidator(AtLeastOne(values=('signed_context',), pinned=()))], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-class TasksItemBuildCreative(TasksItem):
+class TasksItemBuildCreative(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -379,7 +335,7 @@ class TasksItemBuildCreative(TasksItem):
     modes: Annotated[list[Literal['signed_context']], Field(json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
 
 
-class TasksItemActivateSignal(TasksItem):
+class TasksItemActivateSignal(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -391,7 +347,7 @@ class TasksItemActivateSignal(TasksItem):
     modes: Annotated[list[Literal['signed_context']], Field(json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
 
 
-class TasksItemAcquireRights(TasksItem):
+class TasksItemAcquireRights(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -403,7 +359,7 @@ class TasksItemAcquireRights(TasksItem):
     modes: Annotated[list[Literal['signed_context']], Field(json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
 
 
-class TasksItemUpdateRights(TasksItem):
+class TasksItemUpdateRights(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -413,10 +369,6 @@ class TasksItemUpdateRights(TasksItem):
     )
     task: Literal['update_rights']
     modes: Annotated[list[Literal['signed_context']], Field(json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
-
-
-TasksItem._branch_models = (TasksItemCreateMediaBuy, TasksItemUpdateMediaBuy, TasksItemBuyProducts, TasksItemAcceptProposal, TasksItemControlMediaBuy, TasksItemBuildCreative, TasksItemActivateSignal, TasksItemAcquireRights, TasksItemUpdateRights,)
-TasksItem.model_rebuild(force=True)
 
 
 class GovernanceEnforcement(AdCPBaseModel):
@@ -430,7 +382,7 @@ class GovernanceEnforcement(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('tasks'),
     )
-    tasks: Annotated[list[TasksItem], Field(description='Task-scoped enforcement claims. The task field is a semantic uniqueness key: an agent MUST emit at most one entry per task and combine all supported modes in that entry. JSON Schema uniqueItems only rejects structurally identical objects, so producers and capability validators MUST enforce task-key uniqueness separately. Values correspond to request schemas annotated with x-governed-commitment. Online execution checks are currently defined only for media-buy tasks, whose prepared result has the PlannedDelivery contract; other roles can enforce signed intent authorization without inventing media-buy fields.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    tasks: Annotated[list[TasksItemCreateMediaBuy | TasksItemUpdateMediaBuy | TasksItemBuyProducts | TasksItemAcceptProposal | TasksItemControlMediaBuy | TasksItemBuildCreative | TasksItemActivateSignal | TasksItemAcquireRights | TasksItemUpdateRights], Field(description='Task-scoped enforcement claims. The task field is a semantic uniqueness key: an agent MUST emit at most one entry per task and combine all supported modes in that entry. JSON Schema uniqueItems only rejects structurally identical objects, so producers and capability validators MUST enforce task-key uniqueness separately. Values correspond to request schemas annotated with x-governed-commitment. Online execution checks are currently defined only for media-buy tasks, whose prepared result has the PlannedDelivery contract; other roles can enforce signed intent authorization without inventing media-buy fields.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     accepted_governance_agents: Annotated[AcceptedGovernanceAgents | None, Field(description='Seller-wide advisory default for governance agents this enforcing service accepts as binding counterparties. A candidate satisfying any matcher is accepted by this declaration. The per-account sync_governance response is authoritative and may apply stricter account-specific criteria. Omission means accept any, preserving legacy behavior.'), OmittedNotNull] = None
 
 
@@ -446,7 +398,7 @@ class Adcp(AdCPBaseModel):
     major_versions: Annotated[list[IntMin1], Field(description='DEPRECATED in favor of `supported_versions` (release-precision strings). Servers MUST continue to emit this field through 3.x for backwards compatibility. Removed in 4.0. Original semantics: AdCP major versions supported by this seller. Major versions indicate breaking changes.', min_length=1)]
     supported_versions: Annotated[list[AdCPVersionEnvelopeAdcpVersion] | None, Field(description='Release-precision (VERSION.RELEASE) AdCP versions this seller speaks. Authoritative for buyer-side release pinning — buyers SHOULD declare `adcp_version` (release-precision string) on each request. Sellers downshift to the highest supported release ≤ the buyer\'s pin within the same major; cross-major mismatch returns VERSION_UNSUPPORTED. Pre-release tags (e.g. `"3.1-beta"`) hang off release.', min_length=1), OmittedNotNull] = None
     build_version: Annotated[VersionUnsupportedDetailsBuildVersion | None, Field(description="Optional advisory metadata: full semver build identifier of the seller's deployment — MAJOR.MINOR.PATCH plus optional pre-release and build-metadata segments per semver §9–§10. Patches are not part of the wire contract — semver patch by definition introduces no contract change — but surfacing the build helps buyers triage incidents and bug reports against a specific seller deployment lineage. Buyers MUST NOT use this field for negotiation; use `supported_versions` (release-precision) instead."), OmittedNotNull] = None
-    idempotency: Annotated[Idempotency, Field(description='Idempotency semantics for mutating requests. Sellers MUST declare whether they honor idempotency_key replay protection so buyers can reason about safe retry behavior. Modeled as a discriminated union on the supported boolean so that code generators produce two named types (IdempotencySupported, IdempotencyUnsupported) with the replay_ttl_seconds invariant enforced at the type level — draft-07 if/then would be dropped by most generators (openapi-typescript, zod-to-json-schema, datamodel-code-generator pre-0.25, quicktype). Clients MUST NOT assume a default — a seller without this declaration is non-compliant and should be treated as unsafe for retry-sensitive operations.')]
+    idempotency: Annotated[IdempotencySupported | IdempotencyUnsupported, Field(description='Idempotency semantics for mutating requests. Sellers MUST declare whether they honor idempotency_key replay protection so buyers can reason about safe retry behavior. Modeled as a discriminated union on the supported boolean so that code generators produce two named types (IdempotencySupported, IdempotencyUnsupported) with the replay_ttl_seconds invariant enforced at the type level — draft-07 if/then would be dropped by most generators (openapi-typescript, zod-to-json-schema, datamodel-code-generator pre-0.25, quicktype). Clients MUST NOT assume a default — a seller without this declaration is non-compliant and should be treated as unsafe for retry-sensitive operations.')]
     principal: Annotated[Principal | None, Field(description='Caller-scoped durable connection configuration accepted by this agent. This is the buyer-to-seller configuration half of negotiation, not a second seller capability document: the seller advertises its objective offering here, while each authenticated caller submits its desired webhooks and reusable destinations through sync_principal and reads them back through get_principal. Per-account authority and feed selection remain in account/reporting configuration. Sellers exposing this block MUST list protocol.principal in experimental_features.'), OmittedNotNull] = None
     capability_changes: Annotated[CapabilityChanges | None, Field(description='Freshness metadata and optional invalidation webhooks for this `get_adcp_capabilities` document. Buyers and registries MAY cache capabilities for up to `cache_ttl_seconds` when present, SHOULD compare `capabilities_version` across refreshes when present, and SHOULD re-run `get_adcp_capabilities` after receiving a `capabilities.changed` webhook. This block describes the agent-wide capability document, not per-caller authorization or account-scoped settings. A material capability change is any externally advertised contract change that can affect routing, validation, conformance coverage, task availability, auth/account handling, sandbox support, billing support, reporting delivery methods, creative-library support, targeting support, protocol versions, or other buyer-visible feature gates. Non-contract operational changes that do not alter the response body do not require a revision or webhook fire.'), OmittedNotNull] = None
     governance_enforcement: Annotated[GovernanceEnforcement | None, Field(description='Cross-role declaration that this agent enforces buyer-provided governance authorization when performing consequential tasks. This is distinct from the top-level `governance` capability block, which describes an agent that provides governance services. An agent can enforce governance without implementing the governance protocol itself. Absence means the agent makes no governance-enforcement conformance claim.'), OmittedNotNull] = None
@@ -470,25 +422,12 @@ class SupportedProtocolsItem(StrEnum):
     measurement = MemberAlias('MEASUREMENT')
 
 
-class AccountNotifications(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Whether the seller supports durable account-lifecycle webhooks through account-level `notification_configs[]`. This capability is specifically for account status changes such as approval, rejection, payment-required, suspension, recovery, and closure. When supported, buyers register subscribers with `sync_accounts.accounts[].notification_configs[]`; each `account.status_changed` fire is an invalidation payload, and buyers repair by re-reading `list_accounts` for the account_id.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/account/properties/notifications')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "supported"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
 class AccountNotificationsSupportedEventTypesItem(StrEnum):
     ACCOUNT_STATUS_CHANGED = 'account.status_changed'
     account_status_changed = MemberAlias('ACCOUNT_STATUS_CHANGED')
 
 
-class AccountNotificationsSupported(AccountNotifications):
+class AccountNotificationsSupported(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -503,7 +442,7 @@ class AccountNotificationsSupported(AccountNotifications):
     supports_webhook_activity: Annotated[bool | None, Field(description='Whether `list_accounts` can return recent delivery attempts in `accounts[].webhook_activity[]` when the buyer requests `include_webhook_activity: true`.'), OmittedNotNull] = False
 
 
-class AccountNotificationsUnsupported(AccountNotifications):
+class AccountNotificationsUnsupported(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -514,24 +453,7 @@ class AccountNotificationsUnsupported(AccountNotifications):
     supported: Annotated[Literal[False], Field(description='Discriminator. False means buyers must rely on `sync_accounts` results, `push_notification_config` for one-shot provisioning callbacks, and polling `list_accounts` for later status changes.')]
 
 
-AccountNotifications._branch_models = (AccountNotificationsSupported, AccountNotificationsUnsupported,)
-AccountNotifications.model_rebuild(force=True)
-
-
-class ChangeFeed(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Whether the seller exposes a durable, ordered feed of material changes to authoritative account-scoped state. This is distinct from webhook_activity transport diagnostics and from current-state reads. Sellers claiming support MUST retain changes for at least 90 days after recording and MUST produce records regardless of whether a mutation originated through AdCP, a seller surface, another authorized principal, seller automation, or a connected platform within declared coverage. Experimental in 3.2 (RFC #6810): sellers advertising supported: true MUST list account.change_feed in experimental_features.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/account/properties/change_feed')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "supported"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
-class AccountChangeFeedSupported(ChangeFeed):
+class AccountChangeFeedSupported(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -547,7 +469,7 @@ class AccountChangeFeedSupported(ChangeFeed):
     resource_types: Annotated[list[ListAccountChangesRequestResourceTypesItem], Field(description='Resource families for which this seller can produce change records. Account-specific connected-source status and freshness are returned by list_account_changes.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-class AccountChangeFeedUnsupported(ChangeFeed):
+class AccountChangeFeedUnsupported(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -556,23 +478,6 @@ class AccountChangeFeedUnsupported(ChangeFeed):
         ForbiddenGroups((('read_task',), ('registration_task',), ('event_type',), ('retention_days',), ('resource_types',))),
     )
     supported: Literal[False]
-
-
-ChangeFeed._branch_models = (AccountChangeFeedSupported, AccountChangeFeedUnsupported,)
-ChangeFeed.model_rebuild(force=True)
-
-
-class IdentityUpdates(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Whether the seller accepts buyer-desired operator identity reconciliation through sync_accounts settings-update entries. Sellers declaring support expose the exact identity transitions they implement, MUST return account revisions from sync_accounts and list_accounts, and MUST return identity_change_preview for dry-run identity updates.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/account/properties/identity_updates')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "supported"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
 
 
 class SupportedChangesItem(StrEnum):
@@ -584,7 +489,7 @@ class SupportedChangesItem(StrEnum):
     operator = MemberAlias('OPERATOR')
 
 
-class AccountIdentityUpdatesSupported(IdentityUpdates):
+class AccountIdentityUpdatesSupported(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -596,7 +501,7 @@ class AccountIdentityUpdatesSupported(IdentityUpdates):
     supported_changes: Annotated[list[SupportedChangesItem], Field(description='Identity changes the seller accepts. operator_unit_name covers display-name-only reconciliation within the current operator. operator_unit covers adding, removing, or changing the stable unit id within the current operator and also implies name updates. operator covers an inter-entity operator-domain handoff and encompasses the entire replacement operator identity, including any simultaneous unit addition, removal, or change; a seller need not also advertise operator_unit for that cross-operator replacement.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-class AccountIdentityUpdatesUnsupported(IdentityUpdates):
+class AccountIdentityUpdatesUnsupported(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -605,10 +510,6 @@ class AccountIdentityUpdatesUnsupported(IdentityUpdates):
         ForbiddenGroups((('supported_changes',),)),
     )
     supported: Annotated[Literal[False], Field(description='Discriminator. False means buyers must not submit operator_identity settings updates.')]
-
-
-IdentityUpdates._branch_models = (AccountIdentityUpdatesSupported, AccountIdentityUpdatesUnsupported,)
-IdentityUpdates.model_rebuild(force=True)
 
 
 class GetAdCPCapabilitiesResponseAccount(AdCPBaseModel):
@@ -626,9 +527,9 @@ class GetAdCPCapabilitiesResponseAccount(AdCPBaseModel):
     timezone: Annotated[AccountTimezoneCapability | None, Field(description='Required for sellers implementing AdCP 3.2 advertiser-account provisioning, but optional in the shared 3.x response schema for compatibility. Declares whether the account timezone is seller-wide or fixed per account and whether a buyer must select it during sync_accounts provisioning. Account timezone is the default for account-scoped calendar semantics; feature-specific capability fields explicitly declare exceptions.'), OmittedNotNull] = None
     required_for_products: Annotated[bool | None, Field(description='Whether an account reference is required for get_products. When true, the buyer must establish an account before browsing products. When false (default), the buyer can browse products without an account — useful for price comparison and discovery before committing to a seller. Before an account is provisioned, the buyer omits account rather than sending a natural key that does not resolve yet. See /docs/accounts/overview#account-references-before-provisioning.'), OmittedNotNull] = False
     account_financials: Annotated[bool | None, Field(description='Whether this seller exposes the `get_account_financials` task for querying account-level financial status (spend, credit, invoices). Acts as a **pre-call discriminator** — buyers MUST consult this field before issuing `get_account_financials`; when `false` (or absent), sellers MAY reject the call with an `UNSUPPORTED_FEATURE` / `OPERATION_NOT_SUPPORTED` error. Companion pattern to `creative.bills_through_adcp` (issue #2881) — both fields let buyers gate optional capability calls on a single declared boolean rather than probing for support. Only applicable to operator-billed accounts; sellers using buyer-billed flows omit or set to `false`.'), OmittedNotNull] = False
-    notifications: Annotated[AccountNotifications | None, Field(description='Whether the seller supports durable account-lifecycle webhooks through account-level `notification_configs[]`. This capability is specifically for account status changes such as approval, rejection, payment-required, suspension, recovery, and closure. When supported, buyers register subscribers with `sync_accounts.accounts[].notification_configs[]`; each `account.status_changed` fire is an invalidation payload, and buyers repair by re-reading `list_accounts` for the account_id.'), OmittedNotNull] = None
-    change_feed: Annotated[ChangeFeed | None, Field(description='Whether the seller exposes a durable, ordered feed of material changes to authoritative account-scoped state. This is distinct from webhook_activity transport diagnostics and from current-state reads. Sellers claiming support MUST retain changes for at least 90 days after recording and MUST produce records regardless of whether a mutation originated through AdCP, a seller surface, another authorized principal, seller automation, or a connected platform within declared coverage. Experimental in 3.2 (RFC #6810): sellers advertising supported: true MUST list account.change_feed in experimental_features.'), OmittedNotNull] = None
-    identity_updates: Annotated[IdentityUpdates | None, Field(description='Whether the seller accepts buyer-desired operator identity reconciliation through sync_accounts settings-update entries. Sellers declaring support expose the exact identity transitions they implement, MUST return account revisions from sync_accounts and list_accounts, and MUST return identity_change_preview for dry-run identity updates.'), OmittedNotNull] = None
+    notifications: Annotated[AccountNotificationsSupported | AccountNotificationsUnsupported | None, Field(description='Whether the seller supports durable account-lifecycle webhooks through account-level `notification_configs[]`. This capability is specifically for account status changes such as approval, rejection, payment-required, suspension, recovery, and closure. When supported, buyers register subscribers with `sync_accounts.accounts[].notification_configs[]`; each `account.status_changed` fire is an invalidation payload, and buyers repair by re-reading `list_accounts` for the account_id.'), OmittedNotNull] = None
+    change_feed: Annotated[AccountChangeFeedSupported | AccountChangeFeedUnsupported | None, Field(description='Whether the seller exposes a durable, ordered feed of material changes to authoritative account-scoped state. This is distinct from webhook_activity transport diagnostics and from current-state reads. Sellers claiming support MUST retain changes for at least 90 days after recording and MUST produce records regardless of whether a mutation originated through AdCP, a seller surface, another authorized principal, seller automation, or a connected platform within declared coverage. Experimental in 3.2 (RFC #6810): sellers advertising supported: true MUST list account.change_feed in experimental_features.'), OmittedNotNull] = None
+    identity_updates: Annotated[AccountIdentityUpdatesSupported | AccountIdentityUpdatesUnsupported | None, Field(description='Whether the seller accepts buyer-desired operator identity reconciliation through sync_accounts settings-update entries. Sellers declaring support expose the exact identity transitions they implement, MUST return account revisions from sync_accounts and list_accounts, and MUST return identity_change_preview for dry-run identity updates.'), OmittedNotNull] = None
     sandbox: Annotated[bool | None, Field(description='Whether this seller supports sandbox accounts for testing. Buyer-declared accounts use sandbox: true in sync_accounts or, for an unambiguous lazy-provisioning seller, in the natural-key account reference. Sellers with account_id namespaces expose sandbox accounts as pre-existing test accounts through list_accounts or supply them out-of-band. Requests using a sandbox account perform no real platform calls or spend.'), OmittedNotNull] = False
 
 

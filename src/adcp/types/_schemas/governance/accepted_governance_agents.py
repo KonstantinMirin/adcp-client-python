@@ -5,24 +5,14 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import AcceptedGovernanceAgentsAnyOfItemAgentUrl, AnyOfItemAdcpVersion, AnyOfItemRole
 
 from ..core.verification_token_claims import VerificationMode
 
 
-class AnyOfItem(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/accepted-governance-agents.json', pointer='#/properties/any_of/items')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "kind"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
-class AnyOfItemAgentUrl(AnyOfItem):
+class AnyOfItemAgentUrl(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -31,7 +21,7 @@ class AnyOfItemAgentUrl(AnyOfItem):
     agent_url: Annotated[AcceptedGovernanceAgentsAnyOfItemAgentUrl, Field(description='Exact canonical agent endpoint without userinfo, query, or fragment. Redirect targets, DNS aliases, and URLs asserted by the candidate do not satisfy this matcher.', json_schema_extra={'format': 'uri'})]
 
 
-class AnyOfItemVerification(AnyOfItem):
+class AnyOfItemVerification(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -47,10 +37,6 @@ class AnyOfItemVerification(AnyOfItem):
     max_age_seconds: Annotated[NonNegativeInt, Field(description='Maximum age of the registry evidence at binding time. Zero requires a fresh result. Evidence is pinned to the accepted binding; later registry drift does not silently revoke an existing binding.')]
 
 
-AnyOfItem._branch_models = (AnyOfItemAgentUrl, AnyOfItemVerification,)
-AnyOfItem.model_rebuild(force=True)
-
-
 class AcceptedGovernanceAgents(AdCPBaseModel):
     """
     Seller-wide advisory acceptance matchers for buyer-bound governance agents. The union is permissive: a candidate satisfying any matcher is accepted by this declaration. The sync_governance response remains authoritative per account.
@@ -59,7 +45,7 @@ class AcceptedGovernanceAgents(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/accepted-governance-agents.json', pointer='#')
-    any_of: Annotated[list[AnyOfItem], Field(min_length=1)]
+    any_of: Annotated[list[AnyOfItemAgentUrl | AnyOfItemVerification], Field(min_length=1)]
 
 
 __all__ = ["AcceptedGovernanceAgents"]

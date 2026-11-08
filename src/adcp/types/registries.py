@@ -27,9 +27,6 @@ from ._schemas.registries.v1_canonical_mapping import (
 from ._schemas.registries.v1_canonical_mapping import (
     Transform as V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItemTransform,
 )
-from ._schemas.registries.v1_canonical_mapping import (
-    V1Pattern as V1V2CanonicalFormatMappingRegistryMappingsItemV1Pattern,
-)
 from ._schemas.registries.v1_canonical_mapping import V1PatternFormatIdGlob as V1PatternFormatIdGlob
 from ._schemas.registries.v1_canonical_mapping import V1PatternStructural as V1PatternStructural
 from ._schemas.registries.v1_canonical_mapping import (
@@ -41,7 +38,6 @@ __all__ = [
     'V1PatternStructural',
     'V1V2CanonicalFormatMappingRegistry',
     'V1V2CanonicalFormatMappingRegistryMappingsItem',
-    'V1V2CanonicalFormatMappingRegistryMappingsItemV1Pattern',
     'V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructural',
     'V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructuralDimensions',
     'V1V2CanonicalFormatMappingRegistryMappingsItemV2',

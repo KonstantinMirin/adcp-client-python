@@ -6,24 +6,14 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import GeoForecastDimensionCode, IntMin1, StrCountryCode, StrMinLen1
 
 from .ext import ExtensionObject
 
 
-class CountriesValue(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-support.json', pointer='#/properties/countries/additionalProperties')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "anyOf"
-
-
-class ObjAllValues(CountriesValue):
+class ObjAllValues(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -31,7 +21,7 @@ class ObjAllValues(CountriesValue):
     all_values: Annotated[Literal[True], Field(description="Every protocol-valid ISO 3166-2 subdivision active in this declaration's support snapshot is selectable. Values introduced by a later catalog revision are not included automatically.")]
 
 
-class ObjValues(CountriesValue):
+class ObjValues(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -42,10 +32,6 @@ class ObjValues(CountriesValue):
     values: Annotated[list[GeoForecastDimensionCode], Field(description='Exact finite selectable subset of ISO 3166-2 identifiers for this country.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-CountriesValue._branch_models = (ObjAllValues, ObjValues,)
-CountriesValue.model_rebuild(force=True)
-
-
 class GeographicRegionSupport(AdCPBaseModel):
     """
     Country- and value-aware support for selecting canonical ISO 3166-2 subdivisions. all_values is exhaustive for the values active in the seller's support snapshot when the declaration is issued; it does not automatically include values introduced by a later catalog revision. values is an exact finite subset. In seller-wide capabilities, each declared value is individually supported within the response scope, but the declaration does not promise that values are jointly composable or available through the same execution route or account. In Product.overlay_support, the declared values form the binding set of executable targeting permissions for that Product, subject to its declared limits; support does not itself guarantee inventory for every selection.
@@ -54,7 +40,7 @@ class GeographicRegionSupport(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-support.json', pointer='#')
-    countries: Annotated[dict[StrCountryCode, CountriesValue], Field(description='Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
+    countries: Annotated[dict[StrCountryCode, ObjAllValues | ObjValues], Field(description='Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
     catalog_version: Annotated[StrMinLen1 | None, Field(description='Optional opaque ISO subdivision catalog or seller-mapping version that identifies the support snapshot. It is provenance, not part of subdivision identity.'), OmittedNotNull] = None
     as_of: Annotated[date | None, Field(description='Optional date on which the seller last validated this support declaration.'), OmittedNotNull] = None
     max_values_per_package: Annotated[IntMin1 | None, Field(description='Optional maximum number of region values selectable on one package.'), OmittedNotNull] = None

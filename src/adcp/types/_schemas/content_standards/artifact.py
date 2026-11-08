@@ -6,22 +6,12 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import AssetsItemContent, AssetsItemHeadingLevel, AssetsItemTranscript, HttpUrl
 
 from ..core.canonical_format_kind import CanonicalFormatKind
 from ..core.format_id import FormatReferenceStructuredObject
 from ..core.provenance import Provenance
-
-
-class AssetsItem(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "type"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
 
 
 class Role(StrEnum):
@@ -57,7 +47,7 @@ class ContentFormat(StrEnum):
     application_json = MemberAlias('APPLICATION_JSON')
 
 
-class AssetsItemText(AssetsItem):
+class AssetsItemText(AdCPBaseModel):
     """
     Text block (paragraph, heading, etc.)
     """
@@ -71,20 +61,7 @@ class AssetsItemText(AssetsItem):
     provenance: Annotated[Provenance | None, Field(description='Provenance for this text block, overrides artifact-level provenance'), OmittedNotNull] = None
 
 
-class AssetAccess(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Access instructions for a secured asset URL. Producers SHOULD use `signed_url` for one-off delivery unless the parties already have an identity-based access relationship. New producers MUST NOT emit `service_account.credentials`; `bearer_token` is the explicit short-lived credential path. Consumers MUST treat asset URLs and access metadata as untrusted, use credentials only for HTTPS origins and resource prefixes authorized out of band, and fail closed without falling back between access methods. The deprecated legacy field remains parseable during the 3.x compatibility window but MUST NOT be activated automatically.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/$defs/asset_access')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "method"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
-class AssetAccessBearerToken(AssetAccess):
+class AssetAccessBearerToken(AdCPBaseModel):
     """
     Short-lived bearer-token access for origins that cannot use signed URLs or pre-configured workload identity. The token is a live secret and must be scoped to the asset. Consumers MUST send it only to the HTTPS origin authorized for that asset and MUST NOT forward the Authorization header across redirects.
     """
@@ -103,7 +80,7 @@ class Provider(StrEnum):
     aws = MemberAlias('AWS')
 
 
-class AssetAccessServiceAccount(AssetAccess):
+class AssetAccessServiceAccount(AdCPBaseModel):
     """
     Credential-free workload-identity access. The asset origin authorizes an identity already controlled by the component that performs the asset fetch, such as a GCP service account or AWS IAM role, through authenticated out-of-band onboarding. The consumer MUST use workload credentials only for the pre-authorized HTTPS origin and resource prefix; the payload's method, provider, and URL are not authorization. No provider key or access secret crosses the AdCP payload.
     """
@@ -113,7 +90,7 @@ class AssetAccessServiceAccount(AssetAccess):
     credentials: Annotated[dict[str, Any] | None, Field(description="Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead."), OmittedNotNull] = None
 
 
-class AssetAccessSignedUrl(AssetAccess):
+class AssetAccessSignedUrl(AdCPBaseModel):
     """
     Recommended default for one-off access. The asset `url` is a time-limited bearer capability and requires no additional authentication. Producers SHOULD scope it to one asset and the shortest practical access window under their documented maximum TTL. Consumers MUST redact the complete URL from logs, traces, errors, metrics, analytics, model context, and durable storage, and MUST NOT forward it outside the intended recipient trust boundary.
     """
@@ -121,11 +98,10 @@ class AssetAccessSignedUrl(AssetAccess):
     method: Literal['signed_url']
 
 
-AssetAccess._branch_models = (AssetAccessBearerToken, AssetAccessServiceAccount, AssetAccessSignedUrl,)
-AssetAccess.model_rebuild(force=True)
+AssetAccess = Annotated[AssetAccessBearerToken | AssetAccessServiceAccount | AssetAccessSignedUrl, Field(description='Access instructions for a secured asset URL. Producers SHOULD use `signed_url` for one-off delivery unless the parties already have an identity-based access relationship. New producers MUST NOT emit `service_account.credentials`; `bearer_token` is the explicit short-lived credential path. Consumers MUST treat asset URLs and access metadata as untrusted, use credentials only for HTTPS origins and resource prefixes authorized out of band, and fail closed without falling back between access methods. The deprecated legacy field remains parseable during the 3.x compatibility window but MUST NOT be activated automatically.')]
 
 
-class AssetsItemImage(AssetsItem):
+class AssetsItemImage(AdCPBaseModel):
     """
     Image asset
     """
@@ -168,7 +144,7 @@ class AssetsItemVideoTranscriptSource(StrEnum):
     generated = MemberAlias('GENERATED')
 
 
-class AssetsItemVideo(AssetsItem):
+class AssetsItemVideo(AdCPBaseModel):
     """
     Video asset
     """
@@ -199,7 +175,7 @@ class AssetsItemAudioTranscriptSource(StrEnum):
     generated = MemberAlias('GENERATED')
 
 
-class AssetsItemAudio(AssetsItem):
+class AssetsItemAudio(AdCPBaseModel):
     """
     Audio asset
     """
@@ -212,10 +188,6 @@ class AssetsItemAudio(AssetsItem):
     transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AssetsItemAudioTranscriptFormat).validate_python('text/plain'))
     transcript_source: Annotated[AssetsItemAudioTranscriptSource | None, Field(description='How the transcript was generated'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this audio, overrides artifact-level provenance'), OmittedNotNull] = None
-
-
-AssetsItem._branch_models = (AssetsItemText, AssetsItemImage, AssetsItemVideo, AssetsItemAudio,)
-AssetsItem.model_rebuild(force=True)
 
 
 class Metadata(AdCPBaseModel):
@@ -265,7 +237,7 @@ class Artifact(AdCPBaseModel):
     url: Annotated[HttpUrl | None, Field(description='Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).'), OmittedNotNull] = None
     published_time: Annotated[AwareDatetime | None, Field(description='When the artifact was published (ISO 8601 format)'), OmittedNotNull] = None
     last_update_time: Annotated[AwareDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)'), OmittedNotNull] = None
-    assets: Annotated[list[AssetsItem], Field(description='Artifact assets in document flow order - text blocks, images, video, audio', max_length=200)]
+    assets: Annotated[list[AssetsItemText | AssetsItemImage | AssetsItemVideo | AssetsItemAudio], Field(description='Artifact assets in document flow order - text blocks, images, video, audio', max_length=200)]
     metadata: Annotated[Metadata | None, Field(description='Rich metadata extracted from the artifact'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.'), OmittedNotNull] = None
     identifiers: Annotated[Identifiers | None, Field(description='Platform-specific identifiers for this artifact'), OmittedNotNull] = None

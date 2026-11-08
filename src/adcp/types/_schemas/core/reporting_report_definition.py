@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -99,17 +99,7 @@ class RestatementPolicy(AdCPBaseModel):
     official_correction_mode: Annotated[Literal['adjustments_only'] | None, Field(description='Once an official revision is published it is immutable and cannot be superseded. Later source corrections are separate reporting-adjustment records applied to a later accounting period.'), OmittedNotNull] = None
 
 
-class FinalityPoliciesItem(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/finality_policies/items')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "basis"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
-class FinalityPoliciesItemSourceFinal(FinalityPoliciesItem):
+class FinalityPoliciesItemSourceFinal(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -119,7 +109,7 @@ class FinalityPoliciesItemSourceFinal(FinalityPoliciesItem):
     source_signal: StrMinLen1MaxLen512
 
 
-class FinalityPoliciesItemContractualCutoff(FinalityPoliciesItem):
+class FinalityPoliciesItemContractualCutoff(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -129,7 +119,7 @@ class FinalityPoliciesItemContractualCutoff(FinalityPoliciesItem):
     duration_after_period_end: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
 
 
-class FinalityPoliciesItemStabilized(FinalityPoliciesItem):
+class FinalityPoliciesItemStabilized(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -138,10 +128,6 @@ class FinalityPoliciesItemStabilized(FinalityPoliciesItem):
     basis: Literal['stabilized']
     minimum_age: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
     unchanged_for: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
-
-
-FinalityPoliciesItem._branch_models = (FinalityPoliciesItemSourceFinal, FinalityPoliciesItemContractualCutoff, FinalityPoliciesItemStabilized,)
-FinalityPoliciesItem.model_rebuild(force=True)
 
 
 class ReportingReportDefinition(AdCPBaseModel):
@@ -168,7 +154,7 @@ class ReportingReportDefinition(AdCPBaseModel):
     metrics: Annotated[list[MetricsItem], Field(min_length=1)]
     dimensions: Annotated[list[StrMinLen1MaxLen128], Field(json_schema_extra={'uniqueItems': True})]
     restatement_policy: RestatementPolicy
-    finality_policies: Annotated[list[FinalityPoliciesItem], Field(min_length=1)]
+    finality_policies: Annotated[list[FinalityPoliciesItemSourceFinal | FinalityPoliciesItemContractualCutoff | FinalityPoliciesItemStabilized], Field(min_length=1)]
 
 
 __all__ = ["ReportCalendarTimezoneBasis", "ReportingReportDefinition"]

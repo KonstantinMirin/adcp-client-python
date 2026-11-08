@@ -55,23 +55,7 @@ class IncompleteItem(AdCPBaseModel):
     estimated_wait: Annotated[Duration | None, OmittedNotNull] = None
 
 
-class PurchaseContinuation(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/properties/purchase_continuation')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "kind"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/request-proposals-response.json', pointer='#/properties/purchase_continuation/oneOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'source_adcp_version': {'const': '2.5'}}, 'required': ['source_adcp_version']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-    )
-
-
-class PurchaseContinuationListedPurchaseAccount(PurchaseContinuation):
+class PurchaseContinuationListedPurchaseAccount(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -107,7 +91,7 @@ class LossesItem(StrEnum):
     mutation_idempotency_not_guaranteed = MemberAlias('MUTATION_IDEMPOTENCY_NOT_GUARANTEED')
 
 
-class PurchaseContinuationLegacyCreate(PurchaseContinuation):
+class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -126,10 +110,6 @@ class PurchaseContinuationLegacyCreate(PurchaseContinuation):
     product_ids: Annotated[list[StrMinLen1], Field(description='Exact products bound to this continuation. A follow-up MUST select a non-empty subset and MUST NOT substitute an ID from another discovery result.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     losses: Annotated[Annotated[list[LossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Guarantees that the established create_media_buy continuation cannot provide. The coordinator MUST fail before mutation unless the caller explicitly accepts every listed loss.', json_schema_extra={'uniqueItems': True}, min_length=2)]
     requires_explicit_acceptance: Literal[True]
-
-
-PurchaseContinuation._branch_models = (PurchaseContinuationListedPurchaseAccount, PurchaseContinuationLegacyCreate,)
-PurchaseContinuation.model_rebuild(force=True)
 
 
 class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
@@ -160,7 +140,7 @@ class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse)
     proposals: Annotated[list[ProposalsItem] | None, Field(min_length=1), OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct] | None, Field(min_length=1), OmittedNotNull] = None
     incomplete: Annotated[list[IncompleteItem] | None, Field(description='Usable partial discovery result retained from the established get_products response. Absence means the source response did not declare an incomplete scope; it does not authorize an adapter to infer missing proposal terms.', min_length=1), OmittedNotNull] = None
-    purchase_continuation: Annotated[PurchaseContinuation | None, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.'), OmittedNotNull] = None
+    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate | None, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.'), OmittedNotNull] = None
     targeting_resolution: Annotated[ProductDiscoveryTargetingResolution | None, Field(description='Response-level confirmation of structured targeting interpreted from explicit hard requirements in the brief. Sellers MUST emit this when that interpretation materially affects eligibility, pricing, or forecasting; otherwise it remains a best practice. Product-specific changes to explicit criteria.targeting_overlay values remain on Product.targeting_resolution.'), OmittedNotNull] = None
     status: Annotated[Status | None, OmittedNotNull] = None
     task_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
@@ -199,7 +179,7 @@ class RequestProposalsResponseProductsAvailableCompleted(RequestProposalsRespons
     outcome: Literal[Outcome.PRODUCTS_AVAILABLE]
     status: Annotated[Literal['completed'] | None, OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
-    purchase_continuation: Annotated[PurchaseContinuation, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
+    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
 
 
 class RequestProposalsResponseRejectedCompleted(RequestProposalsResponse):

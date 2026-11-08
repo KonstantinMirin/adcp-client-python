@@ -95,17 +95,7 @@ RendersItem._branch_models = (RendersItemDimensions, RendersItemParametersFromFo
 RendersItem.model_rebuild(force=True)
 
 
-class FormatAssetsItem(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "item_type"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
-class AssetsItemIndividual(FormatAssetsItem):
+class AssetsItemIndividual(BranchDispatchMixin, AdCPBaseModel):
     """
     Individual asset slot
     """
@@ -346,16 +336,6 @@ class SelectionMode(StrEnum):
     optimize = MemberAlias('OPTIMIZE')
 
 
-class RepeatableGroupAssetAssetsItem(BranchDispatchMixin, AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "asset_type"
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "oneOf"
-
-
 class BaseGroupAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/$defs/baseGroupAsset')
     asset_id: Annotated[str, Field(description='Identifier for this asset within the group')]
@@ -366,7 +346,7 @@ class BaseGroupAsset(AdCPBaseModel):
     asset_type: Any
 
 
-class GroupImageAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupImageAsset(BaseGroupAsset):
     """
     Image asset in group
     """
@@ -375,7 +355,7 @@ class GroupImageAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[ImageAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupVideoAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupVideoAsset(BaseGroupAsset):
     """
     Video asset in group
     """
@@ -384,7 +364,7 @@ class GroupVideoAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[VideoAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupAudioAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupAudioAsset(BaseGroupAsset):
     """
     Audio asset in group
     """
@@ -393,7 +373,7 @@ class GroupAudioAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[AudioAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupTextAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupTextAsset(BaseGroupAsset):
     """
     Text asset in group
     """
@@ -402,7 +382,7 @@ class GroupTextAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[TextAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupMarkdownAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupMarkdownAsset(BaseGroupAsset):
     """
     Markdown asset in group
     """
@@ -411,7 +391,7 @@ class GroupMarkdownAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[MarkdownAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupHtmlAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupHtmlAsset(BaseGroupAsset):
     """
     HTML asset in group
     """
@@ -420,7 +400,7 @@ class GroupHtmlAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[HTMLAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupCssAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupCssAsset(BaseGroupAsset):
     """
     CSS asset in group
     """
@@ -429,7 +409,7 @@ class GroupCssAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[CSSAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupJavaScriptAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupJavaScriptAsset(BaseGroupAsset):
     """
     JavaScript asset in group
     """
@@ -438,7 +418,7 @@ class GroupJavaScriptAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[JavaScriptAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupZipAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupZipAsset(BaseGroupAsset):
     """
     Zip-bundled asset in group (HTML5 banner bundles, etc.)
     """
@@ -446,7 +426,7 @@ class GroupZipAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     asset_type: Literal['zip']
 
 
-class GroupVastAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupVastAsset(BaseGroupAsset):
     """
     VAST asset in group
     """
@@ -455,7 +435,7 @@ class GroupVastAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[VASTAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupDaastAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupDaastAsset(BaseGroupAsset):
     """
     DAAST asset in group
     """
@@ -464,7 +444,7 @@ class GroupDaastAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[DAASTAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupUrlAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupUrlAsset(BaseGroupAsset):
     """
     URL asset in group
     """
@@ -473,7 +453,7 @@ class GroupUrlAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[URLAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupWebhookAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupWebhookAsset(BaseGroupAsset):
     """
     Webhook asset in group
     """
@@ -482,7 +462,7 @@ class GroupWebhookAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[WebhookAssetRequirements | None, OmittedNotNull] = None
 
 
-class GroupBriefAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupBriefAsset(BaseGroupAsset):
     """
     Brief asset in group
     """
@@ -490,7 +470,7 @@ class GroupBriefAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     asset_type: Literal['brief']
 
 
-class GroupCatalogAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupCatalogAsset(BaseGroupAsset):
     """
     Catalog asset in group
     """
@@ -499,7 +479,7 @@ class GroupCatalogAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     requirements: Annotated[CatalogRequirements | None, OmittedNotNull] = None
 
 
-class GroupDisplayTagAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupDisplayTagAsset(BaseGroupAsset):
     """
     Third-party display tag asset in group
     """
@@ -507,7 +487,7 @@ class GroupDisplayTagAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     asset_type: Literal['display_tag']
 
 
-class GroupPublishedPostAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupPublishedPostAsset(BaseGroupAsset):
     """
     Published post asset in group
     """
@@ -515,7 +495,7 @@ class GroupPublishedPostAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     asset_type: Literal['published_post']
 
 
-class GroupCardAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupCardAsset(BaseGroupAsset):
     """
     Card asset in group
     """
@@ -523,7 +503,7 @@ class GroupCardAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     asset_type: Literal['card']
 
 
-class GroupPixelTrackerAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupPixelTrackerAsset(BaseGroupAsset):
     """
     Pixel tracker asset in group
     """
@@ -531,7 +511,7 @@ class GroupPixelTrackerAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     asset_type: Literal['pixel_tracker']
 
 
-class GroupVastTrackerAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupVastTrackerAsset(BaseGroupAsset):
     """
     VAST tracker asset in group
     """
@@ -539,7 +519,7 @@ class GroupVastTrackerAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     asset_type: Literal['vast_tracker']
 
 
-class GroupDaastTrackerAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
+class GroupDaastTrackerAsset(BaseGroupAsset):
     """
     DAAST tracker asset in group
     """
@@ -547,11 +527,7 @@ class GroupDaastTrackerAsset(RepeatableGroupAssetAssetsItem, BaseGroupAsset):
     asset_type: Literal['daast_tracker']
 
 
-RepeatableGroupAssetAssetsItem._branch_models = (GroupImageAsset, GroupVideoAsset, GroupAudioAsset, GroupTextAsset, GroupMarkdownAsset, GroupHtmlAsset, GroupCssAsset, GroupJavaScriptAsset, GroupZipAsset, GroupVastAsset, GroupDaastAsset, GroupUrlAsset, GroupWebhookAsset, GroupBriefAsset, GroupCatalogAsset, GroupDisplayTagAsset, GroupPublishedPostAsset, GroupCardAsset, GroupPixelTrackerAsset, GroupVastTrackerAsset, GroupDaastTrackerAsset,)
-RepeatableGroupAssetAssetsItem.model_rebuild(force=True)
-
-
-class RepeatableGroupAsset(FormatAssetsItem):
+class RepeatableGroupAsset(AdCPBaseModel):
     """
     Repeatable asset group (for carousels, slideshows, playlists, etc.)
     """
@@ -562,11 +538,7 @@ class RepeatableGroupAsset(FormatAssetsItem):
     min_count: Annotated[NonNegativeInt, Field(description='Minimum number of repetitions required (if group is required) or allowed (if optional)')]
     max_count: Annotated[IntMin1, Field(description='Maximum number of repetitions allowed')]
     selection_mode: Annotated[SelectionMode | None, Field(description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).", json_schema_extra={'default': 'sequential'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('sequential'))
-    assets: Annotated[list[RepeatableGroupAssetAssetsItem], Field(description='Assets within each repetition of this group')]
-
-
-FormatAssetsItem._branch_models = (AssetsItemIndividual, RepeatableGroupAsset,)
-FormatAssetsItem.model_rebuild(force=True)
+    assets: Annotated[list[GroupImageAsset | GroupVideoAsset | GroupAudioAsset | GroupTextAsset | GroupMarkdownAsset | GroupHtmlAsset | GroupCssAsset | GroupJavaScriptAsset | GroupZipAsset | GroupVastAsset | GroupDaastAsset | GroupUrlAsset | GroupWebhookAsset | GroupBriefAsset | GroupCatalogAsset | GroupDisplayTagAsset | GroupPublishedPostAsset | GroupCardAsset | GroupPixelTrackerAsset | GroupVastTrackerAsset | GroupDaastTrackerAsset], Field(description='Assets within each repetition of this group')]
 
 
 class FormatCard(AdCPBaseModel):
@@ -637,7 +609,7 @@ class Format(AdCPBaseModel):
     example_url: Annotated[HttpUrl | None, Field(description='Optional URL to showcase page with examples and interactive demos of this format'), OmittedNotNull] = None
     accepts_parameters: Annotated[list[FormatIDParameter] | None, Field(description='List of parameters this format accepts in format_id. Template formats define which parameters (dimensions, duration, etc.) can be specified when instantiating the format. Empty or omitted means this is a concrete format with fixed parameters.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     renders: Annotated[list[RendersItem] | None, Field(description='Specification of rendered pieces for this format. Most formats produce a single render. Companion ad formats (video + banner), adaptive formats, and multi-placement formats produce multiple renders. Each render specifies its role and dimensions.', min_length=1), OmittedNotNull] = None
-    assets: Annotated[list[FormatAssetsItem] | None, Field(description="Array of all assets supported for this format. Each asset is identified by its asset_id, which must be used as the key in creative manifests. Use the 'required' boolean on each asset to indicate whether it's mandatory."), OmittedNotNull] = None
+    assets: Annotated[list[AssetsItemIndividual | RepeatableGroupAsset] | None, Field(description="Array of all assets supported for this format. Each asset is identified by its asset_id, which must be used as the key in creative manifests. Use the 'required' boolean on each asset to indicate whether it's mandatory."), OmittedNotNull] = None
     delivery: Annotated[dict[str, Any] | None, Field(description='Delivery method specifications (e.g., hosted, VAST, third-party tags)'), OmittedNotNull] = None
     supported_macros: Annotated[list[UniversalMacro | str] | None, Field(description='List of universal macros supported by this format (e.g., MEDIA_BUY_ID, CACHEBUSTER, DEVICE_ID). Used for validation and developer tooling. See docs/creative/universal-macros.mdx for full documentation.'), OmittedNotNull] = None
     input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `list_transformers` instead — a transformer declares its own `input_format_ids`/`output_format_ids`, so build capability is a property of the transformer (the unit you select and that carries pricing), not a relationship hung on a format. Discover build capability via `list_transformers` (optionally filtered by `input_format_ids`/`output_format_ids`).\n\nMigration: sellers that expressed transform capability by hanging `input_format_ids` on a format SHOULD declare a transformer via `list_transformers` instead. Buyers SHOULD discover build capability via `list_transformers` rather than filtering formats.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* array of format IDs this format accepts as input creative manifests; when present, indicates this format can take existing creatives in these formats as input. SDKs reading 3.1 catalogs MUST continue to honor this field when present; 4.0+ SDKs MAY reject it. New code SHOULD NOT emit this field.'), OmittedNotNull] = None
