@@ -78,23 +78,6 @@ regenerate-registry: ## Regenerate registry types from OpenAPI spec
 	$(PYTHON) scripts/generate_registry_types.py
 	@echo "✓ Registry types regenerated"
 
-regenerate-schemas: ## Download latest schemas and skills from bundle, then regenerate models
-	@echo "Downloading latest schemas and skills..."
-	$(PYTHON) scripts/sync_schemas.py
-	@echo "Fixing schema references..."
-	$(PYTHON) scripts/fix_schema_refs.py
-	@echo "Bundling schemas into package..."
-	$(PYTHON) scripts/bundle_schemas.py
-	$(PYTHON) scripts/generate_versioned_stubs.py
-	$(PYTHON) scripts/generate_versioned_bases.py
-	@echo "Generating Pydantic models..."
-	$(PYTHON) scripts/generate_types.py
-	@echo "Consolidating exports..."
-	$(PYTHON) scripts/consolidate_exports.py
-	@echo "Generating ergonomic coercion..."
-	$(PYTHON) scripts/generate_ergonomic_coercion.py
-	@echo "✓ Schemas regenerated successfully"
-
 validate-generated: ## Validate generated code (syntax, imports, and equality with a regeneration)
 	@echo "Validating generated code..."
 	@$(PYTHON) -m py_compile src/adcp/types/_generated.py

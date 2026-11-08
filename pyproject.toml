@@ -152,7 +152,6 @@ dev = [
     # Pin to exact version: codegen's variant numbering (e.g. CreateMediaBuyResponse1 vs
     # CreateMediaBuyResponse) shifts between versions, producing diff churn and breaking
     # generated-code imports that reference specific suffixes.
-    "datamodel-code-generator[http]==0.64.0",
     # Runs Starlette app lifespan under httpx.ASGITransport in tests —
     # the canonical library for what httpx doesn't do natively. Used by
     # tests/test_mcp_middleware_composition.py and future integration
@@ -294,19 +293,9 @@ extend-exclude = "/(tasks|_generated|registry)\\.py$|/types/domains/|/types/v3[0
 line-length = 100
 target-version = "py310"
 extend-exclude = [
-    "src/adcp/types/_generated.py",
     # datamodel-code-generator output; regenerate with
     # scripts/vendor_reporting_status_preview.py rather than hand-editing.
     "src/adcp/reporting/_preview/_generated_models/",
-    "src/adcp/types/registry.py",
-    "src/adcp/types/tasks.py",
-    "src/adcp/types/domains/",
-    "src/adcp/types/v30.pyi",
-    "src/adcp/types/v31.pyi",
-    "src/adcp/types/v32.pyi",
-    "src/adcp/types/versioned_bases/_v*.py",
-    "src/adcp/types/versioned_bases/v*.py",
-    "src/adcp/types/versioned_bases/v*.pyi",
     "examples/",
     "scripts/",
 ]
@@ -393,9 +382,6 @@ source = ["src/adcp"]
 omit = [
     "*/tests/*",
     "*/test_*.py",
-    "src/adcp/types/_generated.py",
-    "src/adcp/types/domains/*",
-    "src/adcp/types/domains/**/*",
 ]
 branch = true
 
@@ -435,7 +421,6 @@ dev = [
     # shared test suite and type checks see both distributions at once. pip
     # users install it explicitly: ``make install-dev``.
     "adcp-reporting-storage[pg,gcs,s3,azure]",
-    "datamodel-code-generator==0.64.0",
     "pre-commit>=4.4.0",
     "types-protobuf>=7.34.1.20260408",
     # Pinned in the dev group so ``uv run mypy`` (used by the pre-commit
