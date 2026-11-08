@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import pytest
 
+from tests import nodeset
 from tests.nodeset import claimed, partitions, ratchet
 
 
@@ -88,3 +89,34 @@ def test_ratchet_refuses_a_number_with_no_direction() -> None:
     it moves, which is the whole defect the ratchet shape replaces."""
     with pytest.raises(AssertionError, match="a ratchet states a direction"):
         ratchet("n", 10, because="nothing is said about which way it moves")
+
+
+def test_the_census_writes_every_claimed_size_against_the_check_that_claimed_it(
+    tmp_path, monkeypatch
+) -> None:
+    """``NODESET_CENSUS``, and the two things about it that a verdict relies on.
+
+    **The CHECK is read off the calling frame and not passed in**, so the name in the
+    census cannot disagree with the function the claim sits in -- which is the whole
+    reason a verdict may quote the gate's own run instead of a second derivation beside
+    it.  And a ``partitions`` call writes one row PER PART, because the figures a verdict
+    wants out of a partition are the cells and not the whole.
+
+    It asserts nothing and it is off unless asked for: with ``NODESET_CENSUS`` unset,
+    nothing is written and nothing is opened.
+    """
+    census = tmp_path / "census.tsv"
+    here = test_the_census_writes_every_claimed_size_against_the_check_that_claimed_it.__name__
+    monkeypatch.setattr(nodeset, "_CENSUS", str(census))
+    claimed("three things", ["a", "b", "c"])
+    partitions(["a", "b", "c"], left=["a"], right=["b", "c"])
+    written = census.read_text()
+    assert [line.split("\t") for line in written.splitlines()] == [
+        ["3", here, "three things"],
+        ["1", here, "left"],
+        ["2", here, "right"],
+    ]
+
+    monkeypatch.setattr(nodeset, "_CENSUS", None)
+    claimed("unrecorded", ["a"])
+    assert census.read_text() == written

@@ -100,7 +100,13 @@ import jsonschema
 from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, RootModel, TypeAdapter
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic.fields import FieldInfo
-from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError, core_schema
+from pydantic_core import (
+    ErrorDetails,
+    InitErrorDetails,
+    PydanticCustomError,
+    ValidationError,
+    core_schema,
+)
 
 from adcp.types._runtime import RuleBound, refuse
 
@@ -1905,6 +1911,41 @@ class AdCPRootModel(SchemaBound, RootModel[Any]):
 _TAG_ERRORS = frozenset({"union_tag_not_found", "union_tag_invalid"})
 
 
+@functools.cache
+def _is_pydantic_error_kind(kind: str) -> bool:
+    """Is ``kind`` one of pydantic's OWN error kinds, as opposed to one of ours?
+
+    Read by :meth:`BranchDispatchMixin._line_error`, which rebuilds a branch's own line
+    error so the dispatch can re-raise it at the document's position.  The two halves are
+    rebuilt differently and the difference is not cosmetic: a kind pydantic knows is
+    rebuilt BY ITS NAME, which regenerates that kind's message and its documentation URL
+    verbatim from pydantic's own table, while a kind pydantic has never heard of -- our
+    ``anyOf``, our ``required``, the group refusals the emitter writes -- has no entry
+    there and has to be carried as a :class:`PydanticCustomError`.  Rebuilding a native
+    kind as a custom error would publish ``msg`` with no ``url`` and lose the equality
+    that makes this re-raise lossless.
+
+    **DECIDED BY CONSTRUCTION AND NOT BY A LIST OF NAMES**, because a list is a second
+    copy of pydantic's table and goes stale on a pin bump:
+    ``ValidationError.from_exception_data`` already answers the question.  It raises
+    ``KeyError('Invalid error type: ...')`` for a kind it does not define, and
+    ``TypeError("StringTooShort: 'min_length' required in context")`` for one it DOES
+    define and whose context this probe deliberately does not supply -- so the
+    ``TypeError`` is a yes and only the ``KeyError`` is a no.  Measured on this pin: 104
+    kinds answer yes, and ``anyOf``/``required`` answer no.
+
+    Memoised, because a union's report names the same handful of kinds over and over and
+    this probe allocates an exception to answer.
+    """
+    try:
+        ValidationError.from_exception_data("", [InitErrorDetails(type=kind, loc=(), input=None)])
+    except KeyError:
+        return False
+    except TypeError:
+        return True
+    return True
+
+
 #: What :class:`BranchDispatchMixin` inherits, and the two spellings are the SAME CLASS
 #: at runtime: a bare ``class X:`` already has ``object`` as its one base, so the
 #: ``else`` arm is the declaration this file carried before the shipped package entered
@@ -2244,6 +2285,17 @@ class BranchDispatchMixin(_MixedInto):
         very class gives.  ``None`` where nothing is wrong, so the cost on the common
         path is one document validation and no exception.
 
+        **AND THE POSITION IS THE DOCUMENT'S TOO** (``adcp-client-python-jgsf``).  The
+        message here is an asset -- it names the branch, the absent discriminator and the
+        document's own sentence -- and that is exactly why it was allowed to carry
+        ``loc=()`` for as long as it did.  **A good sentence is not a location.**  A
+        caller handed "no branch is determined" with an empty ``loc`` is no better off
+        than one handed a type error with an empty ``loc``: ``core/error.json``'s
+        ``Error.field`` is derived from the ``loc`` and is empty either way.  The
+        document half already reports the pointer it refuses at
+        (``_refuse``'s ``tuple(e.absolute_path)``), so the refusal is raised AT it and
+        the sentence is unchanged.
+
         **Asked of a KEYLESS base only.**  With a key, pydantic validates against the one
         branch the key names and the answer is the document's own function of the
         instance; there is nothing selected by order and nothing to screen.
@@ -2288,7 +2340,7 @@ class BranchDispatchMixin(_MixedInto):
                                 )
                             },
                         ),
-                        loc=(),
+                        loc=tuple(why["loc"]),
                         input=value,
                     )
                 ],
@@ -2318,6 +2370,233 @@ class BranchDispatchMixin(_MixedInto):
         )
 
     @classmethod
+    def _agreed(cls, err: ValidationError) -> list[ErrorDetails]:
+        """The refusals EVERY branch reports, at the position the branch reports them.
+
+        ``adcp-client-python-jgsf``.  An ``anyOf`` refuses a payload exactly when every
+        branch refuses it, so the branches' reports are not alternatives to choose
+        between: **their INTERSECTION is the document's own refusal** and their
+        difference is each branch's own requiredness.  Measured on
+        ``core/create-media-buy-request.json``'s three branches with
+        ``packages[0].targeting_overlay.geo_countries = [123]``: all three report
+        ``string_type`` at ``('packages', 0, 'targeting_overlay', 'geo_countries', 0)``,
+        and two add ``missing`` for the fields only they require
+        (``total_budget``/``budget_allocation``, ``proposal_id``/``total_budget``).  The
+        intersection is the one ``string_type``, which is the error upstream's own class
+        raises for the same payload at the same pointer.
+
+        **The ARM LABEL is the first segment and it is dropped, because it is pydantic's
+        word and not the document's.**  A plain union prefixes each arm's errors with
+        that arm's label -- here ``function-after[_enforce_adcp_rules(), <Branch>]`` --
+        and the rest of the ``loc`` is the document's own pointer below the union's
+        position.  So the arms are read off ``loc[0]`` and the agreement is computed over
+        ``loc[1:]``.  A row with an EMPTY ``loc`` names no arm, so nothing can be
+        attributed and this answers with nothing rather than guessing.
+
+        **Agreement is a MULTISET and not a set**, measured: a native-JSON request with a
+        repeated key reports the same ``(loc, type, msg)`` more than once per arm, and
+        intersecting as sets would silently keep one.  Each key's multiplicity is the
+        MINIMUM over the arms, and the rows come back in the FIRST arm's own order --
+        which is the order the document's properties were validated in, and the order
+        upstream's report carries.
+
+        **ONLY THE POSITIONS BELOW THE UNION'S OWN, and that is what keeps the
+        combinator's vocabulary where :meth:`_no_branch` argues it belongs.**  An
+        agreement whose stripped ``loc`` is EMPTY is an agreement at the union's own
+        position -- every arm saying "this is not an object of mine" and nothing about
+        where -- and the combinator already says exactly that, in the document's keyword,
+        at that same position.  So those rows are dropped here and :meth:`_no_branch`
+        falls through to the keyword; what this method answers with is a pointer the
+        branches locate BELOW the union, which is the thing the keyword cannot carry.
+
+        **THE NUMBER OF BRANCHES IS NOT CONSULTED, deliberately.**  An earlier draft
+        required ``len(arms) == len(cls._branch_models)`` before intersecting, and the
+        condition is both unnecessary and the wrong shape: this method is only reached
+        once the adapter has refused, which means every arm refused and every arm
+        reported, and an intersection over MORE groups than there are branches -- a
+        report that labels one arm twice -- can only make the result smaller.  A
+        requirement that every union refusal names its position may not be conditional on
+        a branch count.
+        """
+        arms: dict[Any, list[ErrorDetails]] = {}
+        for row in err.errors():
+            if not row["loc"]:
+                return []
+            arms.setdefault(row["loc"][0], []).append(row)
+
+        def tally(part: Sequence[ErrorDetails]) -> dict[tuple[Any, ...], int]:
+            out: dict[tuple[Any, ...], int] = {}
+            for row in part:
+                key = (tuple(row["loc"][1:]), row["type"], row["msg"])
+                out[key] = out.get(key, 0) + 1
+            return out
+
+        parts = list(arms.values())
+        shared = tally(parts[0])
+        for part in parts[1:]:
+            other = tally(part)
+            shared = {k: min(n, other[k]) for k, n in shared.items() if k in other}
+        agreed: list[ErrorDetails] = []
+        for row in parts[0]:
+            below = tuple(row["loc"][1:])
+            key = (below, row["type"], row["msg"])
+            if shared.get(key):
+                shared[key] -= 1
+                if below:
+                    agreed.append({**row, "loc": below})
+        return agreed
+
+    @classmethod
+    def _present(cls, value: Any, loc: Sequence[int | str]) -> bool:
+        """Does ``value`` actually HAVE the position ``loc`` names?
+
+        The screen :meth:`_common_position` applies, and the whole of why it has a
+        position to report at all.  A branch's ``missing`` names a key the payload does
+        not carry: it is a statement about what is ABSENT and so locates nothing in the
+        caller's own document, while a branch's ``string_type`` names a key the caller
+        DID send and is a position they can go and look at.  Walked rather than tested
+        with a pointer library, because a ``loc`` is a mapping key or a list index and
+        those are the only two steps there are.
+        """
+        at = value
+        for step in loc:
+            if isinstance(at, Mapping):
+                if step not in at:
+                    return False
+                at = at[step]
+            elif isinstance(at, (list, tuple)) and isinstance(step, int):
+                if step >= len(at):
+                    return False
+                at = at[step]
+            else:
+                return False
+        return True
+
+    @classmethod
+    def _common_position(cls, value: Any, err: ValidationError) -> tuple[int | str, ...]:
+        """The deepest position in the PAYLOAD that every reported refusal lies at or under.
+
+        The combinator's own ``loc``, and the second half of ``adcp-client-python-jgsf``:
+        a refusal that names a keyword rather than a branch's error still owes the caller
+        a position.  Where :meth:`_agreed` finds no error the arms SHARE they may still
+        agree on a PREFIX -- every arm faulting somewhere under ``('packages', 0)`` for
+        different reasons -- and the combinator reported there is strictly more than the
+        combinator reported at the union.
+
+        **AND THE ROWS THAT NAME NOTHING THE PAYLOAD HAS ARE NOT IN THE PREFIX, which is
+        the difference between a position and ``()``.**  Measured on
+        ``a2ui/bound-value.json``, a four-branch ``oneOf`` of four alternative keys:
+        ``{"path": <not a string>}`` makes the ``path`` arm report ``string_type`` at
+        ``('path',)`` and each of the other three report ``missing`` for ITS own key --
+        ``literalString``, ``literalNumber``, ``literalBoolean`` -- none of which the
+        payload carries.  A prefix over all four is ``()``, and a prefix over the rows
+        that name a position the payload actually HAS is ``('path',)``, which is where the
+        caller's document and the document disagree.  **It is not a guess at which branch
+        they meant**, which reading 3 forbids and :meth:`_undetermined` refuses to make:
+        no branch is chosen and no object is returned, and the only claim is about where
+        to look.  Measured over the branch positions the committed floor answers for,
+        this screen is what takes 200 of them from ``()`` to a named position.
+
+        ``()`` where nothing survives the screen, and that is the honest answer rather
+        than a fallback: a payload every arm refuses for a key it does not carry is at
+        fault as a WHOLE OBJECT -- ``core/create-media-buy-request.json``'s three
+        required groups, satisfied by none -- and the object's own position is where
+        upstream's own group validator reports it too.  Pydantic prefixes whatever path
+        the dispatch was reached through onto it, so a nested union still tells a caller
+        which field of theirs refused.
+
+        **AND IT IS THE POSITIONS EVERY ARM COMPLAINS ABOUT, not every position any arm
+        complains about** -- which is :meth:`_agreed`'s rule with the type and the message
+        dropped, and it is what a ``oneOf`` of mutually exclusive keys needs.  Measured on
+        ``a2ui/bound-value.json#/oneOf/4``, the arm admitting BOTH ``literalString`` and
+        ``path``, with ``path`` broken: the both-keys arm reports ``string_type`` at
+        ``('path',)``, the ``literalString``-only arm reports ``extra_forbidden`` at
+        ``('path',)``, and the ``path``-only arm reports both that and
+        ``extra_forbidden`` at ``('literalString',)``.  Every arm names ``('path',)`` and
+        only one names ``('literalString',)``, so a prefix over the ROWS is ``()`` and the
+        position every arm agrees on is ``path`` -- which is the one the caller broke.
+        The arms disagree about the KEYWORD there, which is why :meth:`_agreed` passes it
+        by and the combinator answers.
+
+        **A TAG ERROR IS THE DISCRIMINATOR'S OWN POSITION, and that is the one case read
+        off the class rather than off the report.**  ``union_tag_not_found`` and
+        ``union_tag_invalid`` (:data:`_TAG_ERRORS`) are pydantic's two statements about
+        the discriminating KEY rather than about a branch, and it reports them at the
+        union with no position: the key is absent, or its value names no branch.  The key
+        is :attr:`_BRANCH_DISCRIMINATOR` and the emitter wrote it there, so the position
+        is exact and nothing is inferred -- measured on
+        ``account/list-account-changes-response.json``, where a ``status`` that is not a
+        string took the refusal from ``()`` to ``('status',)``.
+
+        **AN ARM WITH NOTHING TO SAY ABOUT WHAT WAS SENT DOES NOT VOTE**, which the
+        screen above makes true by construction: an arm whose every complaint is a
+        ``missing`` for a key the payload does not carry contributes no position, so it
+        neither names one nor vetoes the one the other arms agree on.  The alternative --
+        letting it empty the intersection -- would put every union whose branches are
+        alternative REQUIRED GROUPS back at ``()``, including the ones where the arms do
+        agree about a field the caller broke.  Where NO arm has a present position the
+        answer is ``()`` and that is the required-group case, reported at the object.
+
+        The arm label is dropped before any of this, for :meth:`_agreed`'s reason.
+        """
+        rows = err.errors()
+        if cls._BRANCH_DISCRIMINATOR and any(r["type"] in _TAG_ERRORS for r in rows):
+            return (cls._BRANCH_DISCRIMINATOR,)
+        arms: dict[Any, set[tuple[int | str, ...]]] = {}
+        for row in rows:
+            if not row["loc"]:
+                return ()
+            below = tuple(row["loc"][1:])
+            if cls._present(value, below):
+                arms.setdefault(row["loc"][0], set()).add(below)
+        if not arms:
+            return ()
+        parts = list(arms.values())
+        shared = set(parts[0]).intersection(*parts[1:])
+        prefix: tuple[int | str, ...] | None = None
+        for position in sorted(shared, key=lambda p: [str(s) for s in p]):
+            if prefix is None:
+                prefix = position
+                continue
+            keep = 0
+            while keep < min(len(prefix), len(position)) and prefix[keep] == position[keep]:
+                keep += 1
+            prefix = prefix[:keep]
+        return prefix or ()
+
+    @classmethod
+    def _line_error(cls, row: ErrorDetails) -> InitErrorDetails:
+        """One reported error, back in the form ``from_exception_data`` takes.
+
+        Lossless, and that is what it is for: :meth:`_agreed`'s rows are a BRANCH'S own
+        errors and the dispatch re-raises them rather than renaming them, so ``type``,
+        ``msg``, ``ctx``, ``input`` and ``url`` all have to come back out the way they
+        went in.  Verified by round-trip over the kinds the suite's unions actually
+        report -- ``string_type``, ``missing``, ``string_too_short``,
+        ``string_pattern_mismatch``, ``extra_forbidden``, ``model_type``, and our own
+        ``anyOf``.
+
+        ``ctx`` is passed only when the row carried one: a native kind rebuilt with
+        ``ctx={}`` reports ``'ctx': {}`` where the original reported no ``ctx`` key at
+        all, which is a difference a whole-``errors()`` comparison sees.  For a kind
+        pydantic does not define, the already-rendered ``msg`` is the template and the
+        original ``ctx`` goes with it -- our custom errors are all written
+        ``("{detail}", {"detail": ...})``, so the rendered text holds no placeholder left
+        to substitute and the pair reproduces the original exactly.
+        """
+        loc = tuple(row["loc"])
+        if _is_pydantic_error_kind(row["type"]):
+            ctx = row.get("ctx")
+            if ctx is None:
+                return InitErrorDetails(type=row["type"], loc=loc, input=row["input"])
+            return InitErrorDetails(type=row["type"], loc=loc, input=row["input"], ctx=ctx)
+        return InitErrorDetails(
+            type=PydanticCustomError(row["type"], row["msg"], row.get("ctx")),
+            loc=loc,
+            input=row["input"],
+        )
+
+    @classmethod
     def _no_branch(cls, value: Any, err: ValidationError) -> ValidationError:
         """The refusal for a payload no branch admits, named in the DOCUMENT'S vocabulary.
 
@@ -2340,6 +2619,19 @@ class BranchDispatchMixin(_MixedInto):
         report and are not a draft-07 keyword either, so they keep going through the
         combinator below.  Decided by the error TYPE and never by its message, for
         ``codegen.refusal.Kind``'s reason.
+
+        **AND BEFORE THE COMBINATOR, THE POSITION THE BRANCHES AGREE TO REFUSE AT**
+        (:meth:`_agreed`, ``adcp-client-python-jgsf``).  "``err`` is not re-raised"
+        above is an argument about the errors a branch reports BECAUSE IT IS THAT
+        BRANCH -- one ``missing`` per field per branch -- and it is sound about those.
+        It is not an argument about an error EVERY branch reports at the SAME position:
+        that one is not a branch's own doing but the document's, at a pointer every
+        branch shares, and reporting the combinator at ``loc=()`` in its place throws
+        the pointer away.  **The pointer is a WIRE fact**: ``core/error.json`` types
+        ``Error.field`` as a JSONPath-lite pointer derived from the pydantic ``loc``, so
+        an empty ``loc`` tells a caller the request is invalid and not where.  Where the
+        branches agree on nothing the combinator is still the answer and the paragraph
+        above is still the reason.
         """
         absent = (
             [k for k in cls._ROOT_REQUIRED if k not in value] if isinstance(value, Mapping) else []
@@ -2350,6 +2642,11 @@ class BranchDispatchMixin(_MixedInto):
             return err
         if absent:
             return cls._required(value, absent)
+        agreed = cls._agreed(err)
+        if agreed:
+            return ValidationError.from_exception_data(
+                cls.__name__, [cls._line_error(row) for row in agreed]
+            )
         return ValidationError.from_exception_data(
             cls.__name__,
             [
@@ -2362,7 +2659,7 @@ class BranchDispatchMixin(_MixedInto):
                             f"{len(cls._branch_models)} branches"
                         },
                     ),
-                    loc=(),
+                    loc=cls._common_position(value, err),
                     input=value,
                 )
             ],
