@@ -1395,6 +1395,51 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
 #: the junit XML as itself.  No ``xfail``, no ``skip``, no exemption list: the residue is
 #: visible as a failure under its own name, which ``docs/plan/final-state.md`` reading 1
 #: requires and an unobtainable run cannot give.
+#:
+#: **AND §9 CONDEMNS IT, WHICH IS WHY THIS PARAGRAPH IS HERE AND NOT A DEFENCE.**
+#: ``docs/plan/architecture.md`` §9 now states the rule: "A CHECK'S COST IS LINEAR IN THE
+#: DOCUMENT'S NODES, EACH VISITED ONCE -- AND A BUDGET IS EVIDENCE THAT ONE IS NOT ...
+#: every pair such a budget cuts is a check that did not run, recorded as though something
+#: had been learned."  The paragraph above argues the number is high enough that "no
+#: working check can reach it"; §9's answer is that the argument is the wrong kind.  **This
+#: constant is owed a deletion and ``adcp-client-python-l6xn`` owns it.**
+#:
+#: **WHAT THE PAIRS IT CUTS ACTUALLY COST, PROFILED RATHER THAN SUPPOSED** (``cProfile``
+#: and ``py-spy``, one process, warm compile and warm corpora, no budget -- the lane that
+#: tried to delete this constant):
+#:
+#: * ``core/signal-coverage-forecast.json#`` was 435.2 s, of which 432.1 s was
+#:   ``check_accepts`` -- and **none of it was ``5pb``'s power set**:
+#:   ``merged_as_strategies`` was never reached, because
+#:   ``harness.a_combinator_is_covered_and_never_enumerated`` already bounds it.  It was
+#:   ``hypothesis_jsonschema`` rebuilding the strategy for every key of every instance of
+#:   every one of 1,092 generated test cases -- 72,860 ``__from_schema`` calls for 6,844
+#:   distinct nodes, because ``from_object_schema`` is an ``@st.composite`` that calls
+#:   ``__from_schema`` and ``merged_as_strategies`` INSIDE the draw.  That is §9's second
+#:   arm, "linear already and merely repeated", and
+#:   ``harness.a_strategy_is_built_once_per_node`` is the memoisation §9 calls "the design
+#:   and not an optimisation": **435.2 s to 9.0 s, same verdict, down to the text of its
+#:   ``strategy_error``.**  This pair now grades well inside the bound and the bound is
+#:   not what reports it.
+#:
+#: * ``media-buy/get-media-buys-response.json#`` and
+#:   ``media-buy/refine-proposals-response.json#`` are a DIFFERENT defect and the memo
+#:   does not reach them.  598.7 s of 600 s is in ``check_widening`` and **0.0 s in
+#:   ``check_accepts``** -- the accepts floor answers both.  The stack is
+#:   ``check_widening`` -> ``_Draws.one`` -> ``_Draws._draw`` -> ``Fixtures.reduced`` ->
+#:   ``_pin`` -> ``value`` -> ``one_instance``, and §8's fixture derivation makes **509
+#:   whole generative draws for one pair** -- one per frontier location, recursively --
+#:   at 92 s of leaf time; of those 509, the ones measured raise ``Unsatisfiable`` on
+#:   nodes of 411 to 427 bytes, which is §8's own named caveat that two pins meeting on
+#:   one location EMPTY it.  The reduction then places too little, and ``_draw`` falls
+#:   through to its fail-safe -- ``one_instance`` on the UNREDUCED node -- which for a
+#:   683,849-byte node does not terminate: 43 minutes and 17.7 GB of resident memory on
+#:   one pair with every memo above already applied, and the draw still running.
+#:
+#: So the two are not a cost to cache and not a budget to raise: they are §9's FIRST arm,
+#: a fail-safe whose cost is unbounded, and the repair is in
+#: ``harness.Fixtures``/``_Draws._draw`` rather than in this figure.
+#: ``adcp-client-python-l6xn`` carries all of the above, and this constant goes with it.
 PAIR_BUDGET = 300
 
 

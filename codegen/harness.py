@@ -73,6 +73,7 @@ dict section 6 deleted.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import ctypes
 import ctypes.util
@@ -1913,6 +1914,19 @@ def a_combinator_is_covered_and_never_enumerated() -> Iterator[list[tuple[int, i
     ``(inputs, groups, intersections)`` per call for a caller that wants to measure it.
     """
     cover: list[tuple[int, int, int]] = []
+    #: **ONE GROUP SET PER SITE, and the repetition it removes is the library's own
+    #: re-entry and not a second caller.**  ``from_object_schema`` calls
+    #: ``merged_as_strategies`` from INSIDE the object draw -- once per key per generated
+    #: test case -- over the schema objects its closure holds, so the greedy pass and its
+    #: ``merged`` calls were re-run for every value of every key of every instance.  The
+    #: groups are a function of those objects, which is what makes this a memo and not a
+    #: bound: nothing is skipped, and the ``st.one_of`` handed back is the one the same
+    #: call built the first time.  Keyed on the objects' IDENTITY, with the objects
+    #: themselves held in the entry so an address cannot be reused -- and identity is the
+    #: honest key here because content equality is what the caller already has
+    #: (``encode_canonical_json`` below) and it costs a full serialisation of the subtree
+    #: per call, which is the cost this removes.
+    sites: dict[tuple[Any, ...], tuple[Any, ...]] = {}
     enumerated = _hjs_from.merged_as_strategies
     #: The library's own per-schema entry point, under the name the module spells.  Module
     #: scope does not mangle, so this is the global its ``allOf``/``anyOf``/``oneOf`` arms
@@ -1925,6 +1939,10 @@ def a_combinator_is_covered_and_never_enumerated() -> Iterator[list[tuple[int, i
         assert schemas, "internal error: must pass at least one schema to merge"
         if len(schemas) == 1:
             return one(schemas[0], alphabet=alphabet, custom_formats=custom_formats)
+        site = (tuple(id(s) for s in schemas), id(alphabet), id(custom_formats))
+        held = sites.get(site)
+        if held is not None:
+            return held[0]
         #: Keyed on the canonical encoding, which is the library's own de-duplication of
         #: its inputs: two conjuncts spelling one statement are one input.
         inputs = {_hjs_canon.encode_canonical_json(s): s for s in schemas}
@@ -1952,7 +1970,7 @@ def a_combinator_is_covered_and_never_enumerated() -> Iterator[list[tuple[int, i
         #: One validator per INPUT and not per group: what a drawn value has to satisfy is
         #: every statement, which is the library's filter unchanged.
         validators = tuple(_hjs_canon.make_validator(s).is_valid for s in schemas)
-        return st.one_of(
+        answer = st.one_of(
             [
                 one(s, alphabet=alphabet, custom_formats=custom_formats).filter(
                     lambda obj, _v=validators: all(valid(obj) for valid in _v)
@@ -1961,12 +1979,134 @@ def a_combinator_is_covered_and_never_enumerated() -> Iterator[list[tuple[int, i
                 if s != _hjs_canon.FALSEY
             ]
         )
+        sites[site] = (answer, schemas, alphabet, custom_formats)
+        return answer
 
     _hjs_from.merged_as_strategies = covered
     try:
         yield cover
     finally:
         _hjs_from.merged_as_strategies = enumerated
+        sites.clear()
+
+
+@contextmanager
+def a_strategy_is_built_once_per_node() -> Iterator[dict]:
+    """Build each node's strategy ONCE per check, however many times it is drawn from.
+
+    **THE LARGEST SINGLE COST THIS SUITE HAD LEFT, and it is one body of work run per
+    generated test case rather than per node.**  ``hypothesis_jsonschema`` builds an
+    object's strategy with an ``@st.composite``, and the composite's body calls
+    ``__from_schema`` and ``merged_as_strategies`` *inside the draw* -- once per key, per
+    instance, for every test case ``hypothesis`` generates (``_from_schema.py:671``).
+    Each of those calls is a full build: ``resolve_all_refs`` (which deep-copies),
+    ``canonicalish``, ``merged``, and ``check_schema`` against the metaschema.  The
+    argument is the SAME OBJECT every time -- the composite's closure holds it -- so the
+    answer is the same strategy and the build is pure repetition.
+
+    ``docs/plan/architecture.md`` §9 decides which of the two readings this is:
+    "Combinatorial explosion and unbounded recursion are defects of the approach ...
+    **Memoisation here is the design and not an optimisation.**"  The cost here is neither
+    combinatorial nor recursive -- it is linear in the node and repeated, which is the
+    second arm of that rule and the same shape as the per-pair grade left uncached beneath
+    a cached whole-set one.
+
+    **MEASURED, single process, warm compile and warm corpora, no budget:**
+
+    ==========================================  ==========  =========  =========
+    pair                                          before      after     builds
+    ==========================================  ==========  =========  =========
+    ``core/signal-coverage-forecast.json#``        435.2 s      9.0 s   1,119 of 7,402
+    ==========================================  ==========  =========  =========
+
+    -- the same verdict in both, down to the text of its ``strategy_error``: 6,283 of the
+    7,402 calls asked for a strategy the same call had already built.
+
+    **KEYED ON IDENTITY, and the entry HOLDS what it was keyed on.**  Content is the other
+    candidate and it is the wrong one twice over: ``encode_canonical_json`` of the subtree
+    costs a full serialisation per call -- 174 s of one 600 s pair in the sibling memo
+    below -- and ``resolve_all_refs`` REWRITES the node it is handed in place, so the
+    content of a key changes under it while the strategy stays the one that node yields.
+    Identity answers exactly the question the repetition asks, "is this the object I was
+    just handed", and the schema, the alphabet and the formats are kept in the entry so
+    nothing keyed here can be collected and no address can be reused under a key.
+
+    A strategy is immutable and drawing from one twice is what ``given`` already does, so
+    handing back the same object is handing back the same answer -- unlike
+    :func:`canonicalisation_shared_within_one_call`, whose entry must be copied because
+    the library rewrites the NODES it is given.
+
+    **The lifetime is one check, which is this module's rule for every sharing it
+    installs**: nothing is patched at import time, so a caller that did not ask for it
+    gets the library exactly as it ships, and the memo is dropped on exit including on an
+    exception.
+    """
+    memo: dict[tuple[int, int, int], tuple[Any, ...]] = {}
+    built = _hjs_from.__dict__["__from_schema"]
+
+    def once(schema: Any, *, alphabet: Any, custom_formats: Any) -> st.SearchStrategy:
+        key = (id(schema), id(alphabet), id(custom_formats))
+        held = memo.get(key)
+        if held is not None:
+            return held[0]
+        answer = built(schema, alphabet=alphabet, custom_formats=custom_formats)
+        memo[key] = (answer, schema, alphabet, custom_formats)
+        return answer
+
+    #: **THE MARK A SHARING WEARS, which is how :func:`shared_within_one_grade` knows one
+    #: is already open.**  The alternative was a module flag beside the library, and a
+    #: flag is a second copy of a fact the library already carries -- it goes stale the
+    #: first time an exit path forgets it, and this module's whole style is to read the
+    #: state off the library (``_hjs_from.merged_as_strategies``) rather than to shadow it.
+    once.__shared_within_one_grade__ = True  # type: ignore[attr-defined]
+    _hjs_from.__dict__["__from_schema"] = once
+    try:
+        yield memo
+    finally:
+        _hjs_from.__dict__["__from_schema"] = built
+        memo.clear()
+
+
+def shared_within_one_grade() -> Any:
+    """Every sharing this module installs, for the whole of ONE GRADE -- and ONCE.
+
+    A grade is one check: :func:`check_accepts`' draw opens this, and so does
+    :func:`one_instance`, which is where every DERIVED draw in this module arrives.  It is
+    a no-op at the inner of those two frames, so the four sharings are installed once
+    however deep the nesting goes.
+
+    **IT IS WHERE THE THREE SHARINGS ALREADY WERE, with a fourth added and the
+    re-entrance made explicit.**  The fourth --
+    :func:`a_strategy_is_built_once_per_node` -- is the one that removes the repetition
+    the other three could not reach, and it is this function's whole reason for existing
+    as a name: the two call sites used to spell the three contexts out, so a fourth would
+    have had to be added in both places and could drift between them.
+
+    **NOT OPENED AT :func:`check_pair`, which is a measured decision**: that function's
+    own comment carries it -- a pair-wide lifetime is 9x the memory for 15% of the leaf
+    time on the one pair where the difference is visible, on a suite whose measured
+    ceiling is memory.
+
+    **The order the four go on is load-bearing in one place.**
+    :func:`a_strategy_is_built_once_per_node` goes on FIRST, so that
+    :func:`a_combinator_is_covered_and_never_enumerated` -- which reads ``__from_schema``
+    out of the library at its own entry -- reaches the memoised one, and the mutual
+    recursion between the two stays inside both memos.
+
+    Re-entrant at its own door, which is the one way it differs from the four it composes:
+    a nested :func:`a_combinator_is_covered_and_never_enumerated` deliberately installs a
+    second cover (``tests/test_harness_halves.py`` asserts it), because what that function
+    promises is a lifetime of one call.  What this one promises is that the INNER frame
+    joins the outer memo instead of starting a new one, and that is the saving.
+    """
+    if getattr(_hjs_from.__dict__["__from_schema"], "__shared_within_one_grade__", False):
+        return contextlib.nullcontext()
+    stack = contextlib.ExitStack()
+    stack.enter_context(a_strategy_is_built_once_per_node())
+    stack.enter_context(canonicalisation_shared_within_one_call())
+    stack.enter_context(validator_classes_shared_within_one_call())
+    stack.enter_context(a_combinator_is_covered_and_never_enumerated())
+    return stack
 
 
 def format_pattern_positions(schema: Any) -> list[tuple[str, dict]]:
@@ -4005,17 +4145,20 @@ def check_accepts(
                 res.stated += 1
                 body(instance)
         elif held is None:
-            with (
-                canonicalisation_shared_within_one_call(),
-                validator_classes_shared_within_one_call(),
-                #: **§8's residue clause, and it has to be live during the DRAW and not
-                #: only during the build**: the library reaches ``merged_as_strategies``
-                #: from inside an ``@st.composite`` object draw as well as from its
-                #: ``allOf`` arm, so a patch that ended with the strategy object would miss
-                #: the nested call.  :func:`a_combinator_is_covered_and_never_enumerated`
-                #: carries the rule, the stacks and the measurement.
-                a_combinator_is_covered_and_never_enumerated(),
-            ):
+            #: **§8's residue clause, and it has to be live during the DRAW and not
+            #: only during the build**: the library reaches ``merged_as_strategies`` from
+            #: inside an ``@st.composite`` object draw as well as from its ``allOf`` arm,
+            #: so a patch that ended with the strategy object would miss the nested call.
+            #: :func:`a_combinator_is_covered_and_never_enumerated` carries the rule, the
+            #: stacks and the measurement, and
+            #: :func:`a_strategy_is_built_once_per_node` is what makes that nested call
+            #: cost one build and not one per generated test case.
+            #:
+            #: :func:`shared_within_one_grade` and not the four blocks spelled out, because
+            #: :func:`check_pair` holds them for the whole pair and a second set here
+            #: would be a second lifetime inside the first -- which is the defect that
+            #: function's docstring measures at 509 teardowns in one grade.
+            with shared_within_one_grade():
                 #: **A CALLABLE IS CALLED HERE AND NOWHERE ELSE, which is what keeps
                 #: §8's substitution off the replayed path.**  The substitution derives
                 #: a value per instance location of the node (:meth:`Fixtures.reduced`),
@@ -5645,20 +5788,22 @@ def one_instance(schema: Mapping[str, Any], custom_formats: Mapping[str, Any]) -
     def body(instance: Any) -> None:
         drawn.append(instance)
 
-    with (
-        canonicalisation_shared_within_one_call(),
-        validator_classes_shared_within_one_call(),
-        #: **AND THE SAME RULE REACHES EVERY DERIVED DRAW, which is the measured half of
-        #: the row rather than a tidiness.**  Two of the four pairs §8's residue names --
-        #: ``creative/sync-creatives-response.json#`` and
-        #: ``media-buy/get-media-buys-response.json#`` -- draw in 0.13 s and 0.03 s in
-        #: ``check_accepts`` and were cut in ``check_widening``, one check further on,
-        #: inside the same library call.  Every derived draw in this module arrives here:
-        #: :meth:`_Draws._draw` for a widening's proving value, :meth:`Fixtures.value` for
-        #: a frontier pin and :meth:`Fixtures._derived` for a referenced document's
-        #: fixture.  One seam, so reading 2 cannot stay blocked where reading 1 is not.
-        a_combinator_is_covered_and_never_enumerated(),
-    ):
+    #: **AND THE SAME RULE REACHES EVERY DERIVED DRAW, which is the measured half of
+    #: the row rather than a tidiness.**  Two of the four pairs §8's residue names --
+    #: ``creative/sync-creatives-response.json#`` and
+    #: ``media-buy/get-media-buys-response.json#`` -- draw in 0.13 s and 0.03 s in
+    #: ``check_accepts`` and were cut in ``check_widening``, one check further on,
+    #: inside the same library call.  Every derived draw in this module arrives here:
+    #: :meth:`_Draws._draw` for a widening's proving value, :meth:`Fixtures.value` for
+    #: a frontier pin and :meth:`Fixtures._derived` for a referenced document's
+    #: fixture.  One seam, so reading 2 cannot stay blocked where reading 1 is not.
+    #:
+    #: **AND ONE LIFETIME FOR ALL OF THEM, which is :func:`shared_within_one_grade`'s whole content**:
+    #: this function is where §8's derivation spends a pair -- 509 calls on
+    #: ``media-buy/get-media-buys-response.json#`` -- so a sharing opened HERE is a
+    #: sharing thrown away 509 times, and the memo it threw away is the one the next call
+    #: rebuilds from scratch.
+    with shared_within_one_grade():
         run = given(instance=strategy(dict(schema), dict(custom_formats)))(body)
         settings(max_examples=1, phases=[Phase.explicit, Phase.generate], **_SETTINGS)(run)()
     if not drawn:
@@ -7871,6 +8016,28 @@ def check_pair(
     document, which is :func:`corpus_key`'s whole argument.  A ``corpus`` beside a pair
     carrying no identity raises there rather than keying on the rendering.
     """
+    #: **THE SHARING IS NOT HOISTED TO THE PAIR, AND THAT IS A MEASUREMENT AND NOT AN
+    #: OMISSION.**  :func:`shared_within_one_grade` is re-entrant, so opening it here
+    #: would make one memo serve a whole pair -- and §8's fixture derivation calls
+    #: :func:`one_instance` once per frontier item, 509 times on
+    #: ``media-buy/get-media-buys-response.json#``, so that is 509 canonicalisation memos
+    #: collapsed into one.  Measured on that pair, both ways:
+    #:
+    #: =====================  =========  ==========================================
+    #: sharing lifetime        peak RSS   ``one_instance`` total over 509 calls
+    #: =====================  =========  ==========================================
+    #: per call (this)           1.9 GB   92 s
+    #: per pair                 17.7 GB   78 s, and still climbing at 43 minutes
+    #: =====================  =========  ==========================================
+    #:
+    #: 15% of the leaf time for nine times the memory, on a suite whose measured ceiling
+    #: at ``-n 10`` is **93.7 GB resident and two workers taken by the kernel**
+    #: (``pyproject.toml``'s own reading).  The entry a pair-lifetime canonicalisation
+    #: memo holds is a whole subtree's compressed text, and ``adcp-client-python-82m.25.1``
+    #: already measured one pair's at 981 MiB; multiplying its lifetime by 509 multiplies
+    #: that.  So the lifetime stays one call and :func:`a_strategy_is_built_once_per_node`
+    #: -- which is the memo that actually removes the repetition, and whose entries are
+    #: strategy objects rather than schema text -- is what each of those calls gets.
     rep = PairReport(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
     )
