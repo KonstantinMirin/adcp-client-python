@@ -1320,6 +1320,27 @@ NO_PAYLOAD_PAIRS: tuple[str, ...] = (
 #: with every accepts draw answered by the committed floor.  ``harness._Draws`` carries the
 #: reading; ``corpus.WIDENING_STORE`` is where it lands, and it is a SEPARATE key space so
 #: that the accepts floor's own both-directions gate keeps meaning what it says.
+#:
+#: **AND THE UNIT IS SIX READERS AND NOT FOUR, because the pass is also asked for ONE PAIR
+#: AT A TIME.**  :func:`graded_report` is the per-pair grade the pass is made of, and two
+#: tests ask for it by name rather than reading a total -- the parametrised
+#: ``test_every_class_passes_all_three_checks`` over all 2,584 pairs and
+#: ``test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier`` over the 206
+#: that declare.  Both were ungrouped, and both paid the whole cost of the pairs the
+#: committed floor does not answer, on whichever worker they landed on.  Measured at
+#: ``-n 4`` on the base of this row, against a 2,344 s wall clock:
+#:
+#: ======================================================= ========
+#: reader                                                   seconds
+#: ======================================================= ========
+#: ``..._a_refused_payload_...`` (the pass itself)             853.5
+#: ``test_every_class_passes_all_three_checks`` (2,584)        877.5
+#: ``..._every_declared_fact_holds_a_value_...``               784.7
+#: ======================================================= ========
+#:
+#: 2,515.7 s for one pass's worth of work, done three times.  The second and third rows
+#: are now cache reads in this unit, and ``tests/test_every_check_names_its_set.py``'s
+#: gate reads BOTH names so a per-pair asker cannot be added back outside it.
 GRADED_REPORTS_GROUP = "graded_reports"
 
 
@@ -1377,6 +1398,7 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
 PAIR_BUDGET = 300
 
 
+@functools.cache
 def graded_report(g: Graded) -> PairReport:
     """One pair's three checks, bounded by :data:`PAIR_BUDGET`.
 
@@ -1384,6 +1406,21 @@ def graded_report(g: Graded) -> PairReport:
     the population and absent in another -- which is the shape the whole-file hang was:
     :func:`graded_reports`' pass and the parametrised test below both grade every pair, and
     a bound on one of them leaves the other able to hang the run on its own.
+
+    **CACHED, AND THE CACHE IS WHAT ``graded_reports`` ALWAYS CLAIMED TO BE.**  The pass
+    above is ``functools.cache``d and its docstring says "the pole one pass instead of
+    four" -- but the per-PAIR grade was not, so a second reader asking for one pair by name
+    re-graded it even inside the same process, and the whole-population cache could not
+    answer a question asked one pair at a time.  Measured on the base of this row, at
+    ``-n 4``: ``test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier``
+    asks for 206 pairs by name and cost **784.7 s** doing it, every second of which
+    ``graded_reports`` had already paid in another worker -- and
+    ``test_every_class_passes_all_three_checks`` cost a further **877.5 s** over 2,584
+    items for the same reason.  Both are pure duplication: the report is a function of the
+    pair, which is why it can be cached at all, and :data:`GRADED_REPORTS_GROUP` is what
+    puts the askers in the process that holds it.
+    ``Graded`` is a ``NamedTuple`` of the ref, the class and its constructor, so the key is
+    the pair itself and there is no second name for one report.
 
     A cut is reported as a ``PairReport`` whose every check NAMES the budget, so a reader
     of a total sees the pair and the reason rather than an exception out of a list
@@ -1529,6 +1566,7 @@ def _grades_a_cause(cause: str, where: str = "") -> None:
     assert ": format " in cause, (where, cause)
 
 
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
 @pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
 def test_every_class_passes_all_three_checks(row: Graded) -> None:
     """N: emitted AND graded green against the schema the class itself names.
@@ -1539,9 +1577,24 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
     and not the model -- asserted by requiring each cause to name a shape (a format
     beside a pattern) and not merely to exist.
 
-    **Parametrised, and that is load-bearing for the suite's wall clock.** xdist
-    distributes by TEST, so this is 1,055 work items that spread across the workers
-    while the three tests reading a population TOTAL are one item each.
+    **Parametrised, and the parametrisation is what makes a cut land under ONE pair's
+    name.**  Each item asserts one pair's verdict, so a residue is reported as the pair it
+    belongs to rather than as a list comprehension inside a population total -- which is
+    what ``accepts:over_budget`` needs in order to be a named red.
+
+    **GROUPED ONTO THE PROCESS THAT HOLDS THE PASS, which is a correction of the sentence
+    that stood here.**  It said the parametrisation "is load-bearing for the suite's wall
+    clock ... 1,055 work items that spread across the workers", and that was true while
+    each item paid for its own grade.  It is no longer: :func:`graded_report` is cached and
+    :func:`graded_reports` grades exactly :func:`graded`, which is this parametrize's own
+    argument -- so every item here is a report the same process has already computed, and
+    spreading them spreads not work but a *re-derivation* of work.  Measured at ``-n 4`` on
+    the base of this row: 877.5 s over these 2,584 items, **821.3 s of it in six of them**,
+    all six already graded by the pass.  Grouped, the items are cache reads and the six
+    are paid once.
+    What spreading cost is the other half of the same measurement: the six are pairs whose
+    draw the committed floor does not answer, so wherever they landed they re-paid the
+    whole :data:`PAIR_BUDGET` beside a worker that had already spent it.
 
     **And BOUNDED, by :data:`PAIR_BUDGET`, which is what makes this file completable in
     one invocation.**  A pair whose draw does not terminate used to hang the worker it
@@ -1779,6 +1832,7 @@ def test_every_optional_field_refuses_an_explicit_null_where_its_document_refuse
     assert all(not omits_null(model.model_fields[n]) for n in unnamed if n in model.model_fields)
 
 
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
 def test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier() -> None:
     """**Reading 2's second conjunct, which no check of this suite owned**
     (``adcp-client-python-82m.57``).
@@ -1833,6 +1887,15 @@ def test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier() -> 
     has no widening cell at all, which is the ``absent`` the verdict table prints and the
     complement of the set named below.  Measured on this box with the two stores warm:
     1,017 s for the 206, about 830 s of it in the three slowest pairs.
+
+    **AND IT NOW PAYS NONE OF THAT, because it asks for reports the pass beside it already
+    holds.**  Those 206 are a SUBSET of :func:`graded`, so every one of them is a pair
+    :func:`graded_reports` grades -- and the figure above was the price of asking in
+    another process: 784.7 s of a 2,344 s run at ``-n 4``, duplicating the three slowest
+    pairs of the population for the third time in one run.  :func:`graded_report` is cached
+    and this test carries :data:`GRADED_REPORTS_GROUP`, so the 206 are cache reads.  The
+    paragraph above is kept as the cost of NOT being grouped, which is what the mark buys
+    and what no summary line would have shown.
     """
     #: fact -> every declaring pair that carries it, as pair name -> that pair's pointer.
     #: The pointer travels with the name because "innermost" is a question about it.
@@ -4128,10 +4191,7 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
 
         adapter = TypeAdapter(base)
         for branch in base._branch_models:
-            payload = _an_instance(
-                schema_at(branch.__adcp_schema__),
-                schema_at(SchemaRef(branch.__adcp_schema__.document, "#")),
-            )
+            payload = _an_instance(branch.__adcp_schema__)
             paths = {
                 "model_validate": type(base.model_validate(payload)),
                 "TypeAdapter": type(adapter.validate_python(payload)),
@@ -4176,11 +4236,41 @@ def _dispatched_to(branch: type, got: type) -> bool:
     return False
 
 
-def _an_instance(schema: dict, document: dict | None = None) -> Any:
-    """One instance the schema admits, drawn rather than written.
+def _an_instance(ref: SchemaRef) -> Any:
+    """One instance the node at ``ref`` admits: **the HELD one, its own ``examples``, or a draw.**
 
-    ``document`` is the schema's own document, and it is the resolution scope a LOCAL
-    ``$ref`` in a sub-node needs.  Architecture §4 leaves a local reference in the
+    **THE LADDER IS READING 1's AND IT IS THE SAME LADDER ``check_accepts`` CLIMBS** --
+    "the store, then the document's own ``examples``, then the draw" -- and this call site
+    was the last reader of a union branch's node that climbed none of it.  It drew, every
+    run, from the full resolved branch node, and that is where both union tests' 900 s park
+    was: measured over the 443 arms of this tree's 115 emitted union bases, one arm
+    (``adagents.json#/oneOf/1``) exceeds 20 s on its own and three more are cut at it,
+    while the median arm is under a second -- so the two tests below are a park and not a
+    cost, and the cap is what they report rather than a verdict.
+
+    **THE STORE IS THE ACCEPTS CHECK'S OWN STORE, UNDER THE ACCEPTS CHECK'S OWN KEY, AND
+    THAT IS WHY THIS IS NOT A SECOND WITNESS.**  A union branch is a GRADED PAIR: the
+    branch class carries ``__adcp_schema__``, that pair is in :func:`graded`, and reading
+    1's accepts check has already drawn an instance of exactly this node and committed it
+    to the floor under ``harness.corpus_key(identity_of(ref))``.  So there is nothing to
+    hold here that is not held, and no key that is not already keyed -- what changes is
+    that these tests grade the instance reading 1 grades instead of a fresh one.  Measured
+    over this tree: **443 of 443 arms hit the committed floor and the held instance is
+    admitted by the arm's own resolved node**, 0 misses and 0 rejections.
+
+    **AND A HELD ENTRY THAT CANNOT STAND IN IS LOUD, never a silent re-draw**, which is
+    :func:`harness.corpus_defect`'s whole contract one key space over: a store answering
+    with an instance the node refuses is broken, and a fallback would hide it for as long
+    as it kept happening.  The screen is the RESOLVED node, because that is what the
+    instance is offered to below.
+
+    ``ref`` and not two schemas, because the identity the store is keyed on is a statement
+    about the NODE and not about our rendering of it (:func:`identity_of`) -- a caller
+    handed only the dict could not compute it, which is how the three call sites below came
+    to draw.  The document root is read here for the reason it was passed before: it is the
+    resolution scope a LOCAL ``$ref`` in a sub-node needs.
+
+    Architecture §4 leaves a local reference in the
     record as written, so a BRANCH node can say ``{"$ref": "#/definitions/x"}`` -- a
     pointer relative to the DOCUMENT root.  Handed the node alone,
     ``hypothesis_jsonschema``'s generator raises ``_RefResolutionError``, which is a
@@ -4213,11 +4303,34 @@ def _an_instance(schema: dict, document: dict | None = None) -> Any:
     run was unobtainable, and it was unobtainable at a call site no pair's verdict passes
     through.
     """
-    if document is not None:
-        try:
-            schema = harness.resolve(schema, store={}, referrer=document)
-        except Exception:  # any resolution failure falls back to the node
-            pass
+    schema = schema_at(ref)
+    try:
+        schema = harness.resolve(schema, store={}, referrer=schema_at(SchemaRef(ref.document, "#")))
+    except Exception:  # any resolution failure falls back to the node
+        pass
+    #: **THE STORE FIRST**, under the accepts check's own key, which is what makes this the
+    #: witness reading 1 grades rather than a second one.  An identity this suite cannot
+    #: compute -- a document outside the portable set -- is a miss and not a raise: the
+    #: ladder then answers the way it answered before the store was read at all.
+    held = None
+    try:
+        held = corpus.STORE.get(
+            harness.corpus_key(identity_of(ref), custom_formats=FORMAT_STRATEGIES)
+        )
+    except Exception:  # noqa: BLE001 -- a node this suite cannot name has no entry
+        held = None
+    if isinstance(held, list) and held:
+        #: Loud, never a silent re-draw: :func:`harness.corpus_defect` re-offers the held
+        #: instance to the node, and a store answering with one the node refuses is broken
+        #: in a way a fallback would hide for as long as it kept happening.
+        defect = harness.corpus_defect(schema, held, 1)
+        assert not defect, (f"{ref.document}{ref.pointer}", defect)
+        return held[0]
+    #: **THEN THE NODE'S OWN ``examples``** -- JSON Schema's own keyword for "here is a
+    #: valid instance of this schema", screened by the node (:func:`harness.stated_instances`).
+    stated = harness.stated_instances(schema)
+    if stated:
+        return stated[0]
     return harness.one_instance(schema, {})
 
 
@@ -4244,10 +4357,7 @@ def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:
             mine: int | None = None
 
         assert "_branch_models" not in Refinement.__dict__
-        arm = _an_instance(
-            schema_at(branch.__adcp_schema__),
-            schema_at(SchemaRef(branch.__adcp_schema__.document, "#")),
-        )
+        arm = _an_instance(branch.__adcp_schema__)
         got = Refinement.model_validate({**arm, "mine": 7})
         assert type(got) is Refinement, (document, type(got))
         assert got.mine == 7, document
@@ -4303,10 +4413,7 @@ def test_a_union_base_instance_and_a_branch_each_serialise_as_what_they_are() ->
         assert not set(held.model_dump()) - set(base.model_fields), document
 
         branch = base._branch_models[0]
-        payload = _an_instance(
-                schema_at(branch.__adcp_schema__),
-                schema_at(SchemaRef(branch.__adcp_schema__.document, "#")),
-            )
+        payload = _an_instance(branch.__adcp_schema__)
         instance = base.strict_validate(payload)
         # **A branch serialises the BRANCH's fields**, through a base-typed field, in
         # both modes -- the arm's own keys survive the dispatch and the payload's

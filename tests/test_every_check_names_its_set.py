@@ -314,25 +314,39 @@ def test_no_check_ranges_over_a_derived_set_without_naming_it() -> None:
 #: So the mark is the instrument and this is its gate: a reader of the pass carries
 #: ``xdist_group``, or it adds a whole pass to the slowest worker and nothing says so.
 #: ``--dist=loadgroup`` in ``pyproject.toml`` is what reads the mark.
+#: **AND THE PER-PAIR GRADE IS THE SAME CACHE, which is the hole this set had.**  The
+#: name above is the whole-population pass; ``graded_report`` is the per-PAIR grade it is
+#: made of, and both are ``functools.cache``d in one process.  A test asking for pairs BY
+#: NAME therefore pays exactly what an ungrouped reader of the pass pays, and the gate
+#: could not see it: measured at ``-n 4``,
+#: ``test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier`` asked for 206
+#: pairs and cost 784.7 s, and ``test_every_class_passes_all_three_checks`` 877.5 s over
+#: 2,584 items, both of them re-deriving reports another worker already held -- 71% of the
+#: slowest worker's load, invisible to a gate that read one of the two names.
+#: So the set is BOTH names: whichever a test calls, it is asking the cache for a grade,
+#: and a grade is only free in the process that holds it.
 CACHED_PASS = "graded_reports"
+CACHED_PASS_NAMES = (CACHED_PASS, "graded_report")
 CACHED_PASS_GROUP = "xdist_group"
 
 
 def readers_of_the_cached_pass(path: pathlib.Path) -> dict[str, bool]:
-    """Every test function in one file that calls :data:`CACHED_PASS`, and whether it
+    """Every test function in one file that calls :data:`CACHED_PASS_NAMES`, and whether it
     carries the group mark.
 
-    An AST reading like the two above, and deliberately as simple: a ``Call`` to the
+    An AST reading like the two above, and deliberately as simple: a ``Call`` to either
     name anywhere inside a ``test_`` function, against a decorator whose attribute is
     ``xdist_group``.  It cannot see a reader that reaches the pass through a helper, and
-    there is none -- the pass is a module function and every reader calls it by name.
+    there is none -- both are module functions and every reader calls one of them by name.
     """
     out: dict[str, bool] = {}
     for node in ast.walk(ast.parse(path.read_text())):
         if not isinstance(node, ast.FunctionDef) or not node.name.startswith("test_"):
             continue
         calls = any(
-            isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == CACHED_PASS
+            isinstance(n, ast.Call)
+            and isinstance(n.func, ast.Name)
+            and n.func.id in CACHED_PASS_NAMES
             for n in ast.walk(node)
         )
         if not calls:
@@ -358,7 +372,7 @@ def test_every_reader_of_the_cached_pass_is_grouped_onto_one_worker() -> None:
         f"readers of {CACHED_PASS}",
         {f"{name}::{fn}" for name, fns in live.items() for fn in fns},
     )
-    assert len(readers) >= 4, sorted(readers)
+    assert len(readers) >= 6, sorted(readers)
     ungrouped = sorted(
         f"{name}::{fn}" for name, fns in live.items() for fn, marked in fns.items() if not marked
     )
