@@ -662,6 +662,173 @@ def test_the_cover_is_installed_for_one_call_and_restored_even_on_a_raise() -> N
 
 
 # --------------------------------------------------------------------------- #
+# §9: the canonical encoding is the SAME TEXT, rendered by the C encoder
+# --------------------------------------------------------------------------- #
+#: **Every value the substitution has to answer for, and the three it must DECLINE.**
+#: ``the_canonical_encoding_is_not_rebuilt_in_python`` takes ``json``'s C encoder wherever
+#: its text is the library's own, and the library's own differs in exactly one place --
+#: ``CanonicalisingJsonEncoder._floatstr`` writes an integer-valued float as an integer --
+#: so what has to be graded is that the texts AGREE on everything plain and that anything a
+#: ``float`` can reach, at a value or at a KEY, goes to the library.  The last three rows
+#: are the declines, and each is a value whose C text is NOT the canonical one or whose type
+#: this walk refuses to reason about.
+A_CANONICAL_ENCODING: list[Any] = [
+    {},
+    [],
+    None,
+    True,
+    False,
+    0,
+    -1,
+    "x",
+    {"a": 1, "b": [1, "x", None, True, False], "c": {"d": {}}},
+    {"type": ["string", "null"], "minLength": 0, "enum": ["a", "b"]},
+    {"a": [[[[{"b": [1, 2, 3]}]]]]},
+    {"": {"": {"": 1}}},
+    1.0,
+    {"multipleOf": 1.0},
+    {"maximum": 2.5},
+    {"a": 1e30},
+    {"a": -0.0},
+    {1: "x"},
+    {"a": (1, 2)},
+]
+
+
+@pytest.mark.parametrize("value", A_CANONICAL_ENCODING, ids=lambda v: repr(v)[:40])
+def test_the_c_encoder_substitution_renders_the_librarys_own_text(value: Any) -> None:
+    """One text, two encoders -- and the substitution is only admissible if they are equal.
+
+    This is the whole claim ``adcp-client-python-pcqy``'s repair rests on, so it is graded
+    as an EQUALITY against the library's own function and not as a property of the
+    predicate: a value the predicate sends to the C encoder must come back with the text
+    ``encode_canonical_json`` would have produced, and a value it declines must come back
+    with that text too, because the decline IS a call to the library.
+    """
+    import hypothesis_jsonschema._encode as library
+
+    shipped = library.encode_canonical_json
+    with harness.the_canonical_encoding_is_not_rebuilt_in_python() as canonical:
+        assert canonical(value) == shipped(value)
+
+
+def test_a_float_is_never_rendered_by_the_c_encoder() -> None:
+    """The predicate's own claim, stated over the one difference between the encoders.
+
+    ``1.0`` is written ``1`` by the library and ``1.0`` by the C encoder, so a value
+    holding a float MUST be declined.  Graded by the predicate rather than by the texts,
+    because the texts being equal is what the test above asserts and this one asserts WHY.
+    """
+    assert harness._c_encoder_is_canonical({"a": 1, "b": ["x", None, True]})
+    assert not harness._c_encoder_is_canonical({"a": 1.0})
+    assert not harness._c_encoder_is_canonical({"a": [{"b": 2.5}]})
+    assert not harness._c_encoder_is_canonical({1.0: "x"})
+    assert not harness._c_encoder_is_canonical({"a": (1, 2)}), "a tuple is not a list here"
+
+
+def test_every_namespace_the_library_resolves_the_canonical_encoder_through_is_rebound() -> None:
+    """**The set, read off the library's own import lines rather than maintained by hand.**
+
+    ``encode_canonical_json`` is defined in ``_encode`` and imported BY NAME elsewhere, so
+    a module that imports it and is missing from
+    ``harness._CANONICAL_ENCODING_SITES`` keeps the pure-Python encoder with nothing red to
+    say so.  This reads the library's source for the modules that bind the name and asserts
+    the tuple covers them.
+    """
+    import pathlib
+
+    import hypothesis_jsonschema
+
+    root = pathlib.Path(hypothesis_jsonschema.__file__).parent
+    binds = {
+        path.stem
+        for path in root.glob("*.py")
+        if "encode_canonical_json" in path.read_text()
+    }
+    rebound = {site.__name__.rsplit(".", 1)[-1] for site in harness._CANONICAL_ENCODING_SITES}
+    assert binds <= rebound, f"these modules bind the name and are not rebound: {binds - rebound}"
+
+
+def test_the_canonical_encoding_is_installed_for_one_call_and_restored_even_on_a_raise() -> None:
+    """The lifetime, which is the one thing separating this from patching the library."""
+    import hypothesis_jsonschema._canonicalise as canon
+    import hypothesis_jsonschema._encode as enc
+    import hypothesis_jsonschema._from_schema as frm
+
+    before = (enc.encode_canonical_json, canon.encode_canonical_json, frm.encode_canonical_json)
+    assert len(set(map(id, before))) == 1, "the three names are one function before the sharing"
+    with harness.the_canonical_encoding_is_not_rebuilt_in_python():
+        assert enc.encode_canonical_json is not before[0]
+        assert canon.encode_canonical_json is enc.encode_canonical_json
+        assert frm.encode_canonical_json is enc.encode_canonical_json
+    assert (enc.encode_canonical_json, canon.encode_canonical_json,
+            frm.encode_canonical_json) == before
+
+    with pytest.raises(RuntimeError), harness.the_canonical_encoding_is_not_rebuilt_in_python():
+        raise RuntimeError("the body raised")
+    assert enc.encode_canonical_json is before[0], (
+        "a raise must not leave the library patched"
+    )
+
+
+def test_the_grade_installs_the_canonical_encoding_with_the_other_sharings() -> None:
+    """``shared_within_one_grade`` is the one door, so the fifth sharing arrives there.
+
+    Asserted against the library's own name rather than by counting the contexts: what the
+    caller needs is that a draw opened through this function renders canonical text through
+    the C encoder, and the name is where that is visible.
+    """
+    import hypothesis_jsonschema._encode as enc
+
+    before = enc.encode_canonical_json
+    with harness.shared_within_one_grade():
+        assert enc.encode_canonical_json is not before, (
+            "a grade must install the canonical encoding"
+        )
+    assert enc.encode_canonical_json is before
+
+
+# --------------------------------------------------------------------------- #
+# the memo's copy clause, decided off the value and not by a second rendering
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    "value",
+    [
+        {"a": 1},
+        {"a": [1, 2, {"b": None}]},
+        {"a": 2.5},
+        {"a": float("inf")},
+        {"a": -0.0},
+        {},
+        [],
+        {"a": True},
+        {1: "x"},
+        {"a": (1, 2)},
+        {"a": float("nan")},
+        {"a": {1.5: "x"}},
+    ],
+    ids=lambda v: repr(v)[:30],
+)
+def test_round_trips_answers_what_reading_the_text_back_would_answer(value: Any) -> None:
+    """The predicate against the ``json.loads(blob) == value`` it replaced, value by value.
+
+    ``_round_trips`` stopped parsing its own output (``adcp-client-python-pcqy``), so the
+    obligation is that the cheaper answer is the SAME answer.  The control is the old
+    expression, written out here, so the two are compared rather than one of them trusted.
+    """
+    try:
+        blob = json.dumps(value)
+        read_back_is_equal = json.loads(blob) == value
+    except (TypeError, ValueError):
+        blob, read_back_is_equal = None, False
+
+    answer = harness._round_trips(value)
+    assert (answer is not None) == read_back_is_equal
+    if answer is not None:
+        assert answer == blob
+
+
+# --------------------------------------------------------------------------- #
 # the DOCUMENT's own statement of a valid instance: `examples`
 # --------------------------------------------------------------------------- #
 def test_the_node_s_own_examples_answer_the_accepts_check_and_are_counted_apart() -> None:

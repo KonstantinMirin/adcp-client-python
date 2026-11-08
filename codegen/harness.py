@@ -100,6 +100,7 @@ from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException
 from hypothesis.internal.conjecture.engine import BUFFER_SIZE as _HYPOTHESIS_BUFFER_SIZE
 from hypothesis_jsonschema import _canonicalise as _hjs_canon
+from hypothesis_jsonschema import _encode as _hjs_encode
 from hypothesis_jsonschema import _from_schema as _hjs_from
 from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
@@ -1740,6 +1741,42 @@ def canonicalisation_shared_within_one_call() -> Iterator[dict[bytes, Any]]:
     draws it has been given: four workers reached 28.8 / 28.3 / 17.6 / 9.9 GB on one
     domain.  It is not a cap and it is not a budget -- nothing is bounded, evicted or
     skipped; the process returns memory it has already freed.
+
+    **THE KEY IS NOT KEYED ON IDENTITY, AND THAT IS A MEASUREMENT AND NOT AN OVERSIGHT**
+    (``adcp-client-python-pcqy``).  The row that reads this memo as quadratic reads the
+    profile's hot frame -- 33.0 s of tottime in ``json/encoder.py:_iterencode_dict`` --
+    as belonging to the call site that makes the most ``json.dumps`` calls, which is this
+    one.  It cannot: ``json.dumps`` with no ``cls`` takes the C encoder
+    (``json/encoder.py:245``), and that frame is the PURE-PYTHON one, reachable in this
+    library from ``encode_canonical_json`` alone
+    (:func:`the_canonical_encoding_is_not_rebuilt_in_python` carries it).  Timed at the
+    call site instead, on ``media-buy/get-media-buys-response.json#``, one draw, 60 s:
+    **this key is 3.58 s of 61.5 s**, 65,541 calls rendering 1.09 GB through the C
+    encoder, against 18.69 s for ``encode_canonical_json`` and 20.46 s for the metaschema
+    walk ``merged`` asks for.
+
+    And the two cheaper keys the row proposes are both refuted on the same pair:
+
+    * **IDENTITY IS SOUND HERE AND IT IS NOT SUFFICIENT.**  Instrumented with every
+      argument held alive so no address could be reused: 64,759 calls, 3,790 distinct
+      CONTENTS and **55,992 distinct ``id``s** -- so identity answers 8,767 of the 60,969
+      repetitions the content key answers, 13.5%.  The reason is in the library's second
+      line: ``canonicalish`` REBUILDS its argument (``json.loads(encode_canonical_json
+      (schema))``, ``_canonicalise.py:251``) before recursing, so every child the recursion
+      presents is a fresh object with the same content.  0 of the 55,992 ``id``s was ever
+      seen holding two different contents, which is what makes identity sound -- and the
+      docstring above measures what losing 86.5% of the hits costs: "no sharing at all,
+      >600.0 s, stopped".
+    * **THERE IS NO POINTER TO KEY ON** at 81% of the calls.  By caller: 41,460 of 63,673
+      arrive from ``merged``'s own ``canonicalish(s) for s in schemas``
+      (``_canonicalise.py:631``) and 10,125 from ``merged``'s result
+      (``_canonicalise.py:849``) -- schemas the library CONSTRUCTS as intersections, which
+      are at no pointer of any document.  ``codegen.bundle``'s :data:`~codegen.bundle.
+      Origins` can name a node of the RECORD; it cannot name a conjunction's merge.
+
+    So what was removed here is the work that was actually measurable --
+    :func:`_round_trips`' second rendering -- and the key is left as the C encoder renders
+    it, with the figures above in place of the reading they refute.
     """
     memo: dict[bytes, tuple[bytes | None, Any]] = {}
     uncached = _hjs_canon.canonicalish
@@ -1773,20 +1810,90 @@ def canonicalisation_shared_within_one_call() -> Iterator[dict[bytes, Any]]:
         _release_freed_pages()
 
 
+def _is_a_plain_json_tree(value: Any, *, floats_are_admitted: bool) -> bool:
+    """Is ``value`` built only of ``dict``, ``list`` and JSON's own scalars, EXACTLY?
+
+    **ONE WALK, asked by the two predicates that need it**, and the reason it is one is
+    that the rule they share is the whole rule and the rule they differ on is one line:
+    :func:`_c_encoder_is_canonical` refuses a ``float`` outright and
+    :func:`_json_text_stands_in_for` admits every float but NaN.
+
+    **EXACT TYPES AND NOT ``isinstance``, which is a decision and not a shortcut.**  The
+    subject is always a ``canonicalish`` result or an argument the library is about to
+    canonicalise -- a tree that came out of ``json.loads`` -- and both callers are
+    CONSERVATIVE: a ``False`` here sends the value to the answer that was given before
+    either predicate existed (the library's own encoder; the object held and deep-copied).
+    So a ``dict`` subclass, an ``IntEnum``, a ``tuple`` or a ``Decimal`` is refused rather
+    than reasoned about, and no answer can turn on a type this walk guessed wrong about.
+    Measured: ``isinstance`` over the same walk cost 270 us a call against 151 us, on a
+    pair whose whole budget is the thing in question.
+
+    Iterative rather than recursive: the depth is the document's, and a recursion limit is
+    not a thing this predicate is allowed to have an opinion about.
+    """
+    stack: list[Any] = [value]
+    while stack:
+        here = stack.pop()
+        kind = type(here)
+        if kind is dict:
+            for key, below in here.items():
+                if type(key) is not str:
+                    return False
+                stack.append(below)
+        elif kind is list:
+            stack.extend(here)
+        elif kind is str or kind is int or kind is bool or here is None:
+            continue
+        elif kind is float:
+            if not floats_are_admitted or here != here:  # noqa: PLR0124 -- NaN only
+                return False
+        else:
+            return False
+    return True
+
+
+#: **THE THREE THINGS JSON TEXT CANNOT STAND IN FOR**, which is the whole of what
+#: :func:`_round_trips` has to decide and the reason it no longer decides it by reading the
+#: text back.  ``json.dumps`` has already screened the TYPES it declines, so what is left
+#: is the values it accepts and renders as something else:
+#:
+#: * a dict key that is not a ``str`` -- ``{1: x}`` is written ``{"1": x}``, so the key
+#:   comes back a different value (and two keys that render alike COLLIDE);
+#: * a ``tuple`` -- written as an array, so it comes back a ``list``, which is not equal
+#:   to it;
+#: * a NaN -- written ``NaN`` and read back as a float that is not equal to itself.
+#:
+#: Every other PLAIN value ``json.dumps`` accepts comes back equal: ``bool`` and ``None``
+#: are their own spellings, an infinity is written ``Infinity`` and read back equal to
+#: itself, and ``-0.0`` keeps its sign.  So the predicate is a walk over the value, and the
+#: ``json.loads`` plus the deep ``==`` that used to answer it are gone.
+def _json_text_stands_in_for(value: Any) -> bool:
+    """Would ``json.loads(json.dumps(value))`` equal ``value``?  Decided off the value."""
+    return _is_a_plain_json_tree(value, floats_are_admitted=True)
+
+
 def _round_trips(value: Any) -> str | None:
     """``value`` as JSON text if reading that text back yields ``value``, else ``None``.
 
     The copy clause of :func:`canonicalisation_shared_within_one_call`, stated as a
     predicate so the fallback is readable: ``None`` means "this value is not a thing JSON
     text can stand in for", and the one caller then holds the object and deep-copies it.
-    ``==`` and not a type walk, because what the caller needs is that the value handed
-    back equals the one ``canonicalish`` produced, which is exactly what ``==`` says.
+
+    **IT NO LONGER ANSWERS BY RENDERING THE VALUE TWICE, which is measured and not a
+    tidiness** (``adcp-client-python-pcqy``).  The predicate used to be
+    ``json.loads(blob) == value``: a second full parse that allocates the whole tree again
+    and a deep ``==`` over both copies, on every result the memo stores.  Measured on
+    ``media-buy/get-media-buys-response.json#``, one draw, 60 s, timed at the call site:
+    3,794 calls spent 1.42 s in the ``dumps`` the entry NEEDS and 1.86 s in the ``loads``
+    it did not, plus the compare.  :func:`_json_text_stands_in_for` decides the same
+    question off the value alone, and the comment above it carries the enumeration that
+    makes the two answers the same one.
     """
     try:
         blob = json.dumps(value)
     except (TypeError, ValueError):
         return None
-    return blob if json.loads(blob) == value else None
+    return blob if _json_text_stands_in_for(value) else None
 
 
 @contextmanager
@@ -1833,6 +1940,94 @@ def validator_classes_shared_within_one_call() -> Iterator[Any]:
         yield unbounded
     finally:
         module[name] = bounded
+
+
+#: **EVERY NAMESPACE THE LIBRARY RESOLVES ``encode_canonical_json`` THROUGH.**  It is
+#: defined in ``_encode`` and imported BY NAME into three other modules, so a rebinding on
+#: the defining module alone reaches ``_encode.sort_key`` and nothing else.  Written as the
+#: set rather than as four lines at the call site, because a module added to the library
+#: and missed here is a call that keeps the slow encoder and no test that says so --
+#: ``tests/test_harness_halves.py`` reads this tuple back against the library's own
+#: ``from ._encode import`` lines.
+_CANONICAL_ENCODING_SITES = (_hjs_encode, _hjs_canon, _hjs_from)
+
+
+def _c_encoder_is_canonical(value: Any) -> bool:
+    """Does ``json``'s C encoder render ``value`` exactly as the library's own would?
+
+    :func:`the_canonical_encoding_is_not_rebuilt_in_python` carries the measurement; this
+    is the predicate that makes the substitution EXACT rather than close.  The two
+    encoders are the same stdlib encoder with one override --
+    ``CanonicalisingJsonEncoder._floatstr`` writes an integer-valued float as an integer
+    (``_encode.py:19``) -- and ``_floatstr`` is reached for a ``float`` and for nothing
+    else.  So the texts differ only where a ``float`` is reachable, at a value or at a KEY,
+    and anything that is not a plain ``dict``/``list``/``str``/``int``/``bool``/``None`` is
+    refused here rather than reasoned about: a subclass, a tuple, a ``Decimal`` are all
+    handed to the library's own encoder, which is what answered before this function
+    existed.
+    """
+    return _is_a_plain_json_tree(value, floats_are_admitted=False)
+
+
+@contextmanager
+def the_canonical_encoding_is_not_rebuilt_in_python() -> Iterator[Any]:
+    """Take the C encoder where its text is the library's text, for the duration of ONE check.
+
+    **THE LARGEST SINGLE COST ON THE TWO PAIRS §8's RESIDUE NAMES, and the one the
+    profile's hot frame was being read as something else** (``adcp-client-python-pcqy``).
+    ``cProfile`` on ``one_instance`` over ``media-buy/get-media-buys-response.json#`` puts
+    33.0 s of tottime in ``json/encoder.py:_iterencode_dict`` -- the PURE-PYTHON encoder --
+    and the natural reading is that it belongs to whichever call site makes the most
+    ``json.dumps`` calls.  It does not.  ``json.dumps`` with no ``cls`` takes the C encoder
+    (``json/encoder.py:245``: ``c_make_encoder`` whenever ``_one_shot`` and no ``indent``),
+    so NONE of this module's own ``dumps`` calls can reach that frame.
+    ``CanonicalisingJsonEncoder.iterencode`` calls ``_make_iterencode`` UNCONDITIONALLY
+    (``_encode.py:36``), so ``encode_canonical_json`` -- and only it -- renders every
+    subtree through a Python generator, one frame per node.
+
+    **Timed at the call site rather than inferred from the profile**, same pair, one draw,
+    60 s, each ``encode_canonical_json`` call rendered BOTH ways and the texts compared:
+
+    ========================================  =========  ==========  ============
+    8,350 ``encode_canonical_json`` calls       seconds   bytes out    texts agree
+    ========================================  =========  ==========  ============
+    the library's encoder (``_make_iterencode``)  17.26          --             --
+    ``json.dumps(value, sort_keys=True)`` (C)      2.53   same text   8,350/8,350
+    :func:`_c_encoder_is_canonical`                2.27          --             --
+    ========================================  =========  ==========  ============
+
+    6.8x on the rendering, 3.6x with the predicate that makes it exact, and **0 of the
+    8,350 values held a float at all** -- which is what the substitution rests on and why
+    it is a predicate and not an assumption: a value that holds one is handed straight to
+    the library's own encoder, unchanged.
+
+    **WHY A SHARING AND NOT A PATCH.**  Nothing is rebound at import time, so a caller
+    that did not ask for it gets the library exactly as it ships, and the rebinding is
+    undone on exit including on an exception -- the same lifetime rule
+    :func:`canonicalisation_shared_within_one_call` and
+    :func:`validator_classes_shared_within_one_call` are held to.  This one holds no
+    state at all: there is no memo to size and nothing to drop, because what it changes is
+    WHICH encoder renders a text and not whether the text is kept.
+
+    **AND IT IS NOT A BUDGET**, which §9 is the reason to say out loud: no draw is cut, no
+    entry evicted, no pair skipped and no example count reduced.  The texts are equal
+    where the substitution applies, and :func:`_c_encoder_is_canonical` decides where it
+    applies by reading the value.
+    """
+    shipped = _hjs_encode.encode_canonical_json
+
+    def canonical(value: Any) -> str:
+        if _c_encoder_is_canonical(value):
+            return json.dumps(value, sort_keys=True)
+        return shipped(value)
+
+    for site in _CANONICAL_ENCODING_SITES:
+        site.encode_canonical_json = canonical
+    try:
+        yield canonical
+    finally:
+        for site in _CANONICAL_ENCODING_SITES:
+            site.encode_canonical_json = shipped
 
 
 @contextmanager
@@ -2072,7 +2267,7 @@ def shared_within_one_grade() -> Any:
 
     A grade is one check: :func:`check_accepts`' draw opens this, and so does
     :func:`one_instance`, which is where every DERIVED draw in this module arrives.  It is
-    a no-op at the inner of those two frames, so the four sharings are installed once
+    a no-op at the inner of those two frames, so the sharings are installed once
     however deep the nesting goes.
 
     **IT IS WHERE THE THREE SHARINGS ALREADY WERE, with a fourth added and the
@@ -2080,20 +2275,24 @@ def shared_within_one_grade() -> Any:
     :func:`a_strategy_is_built_once_per_node` -- is the one that removes the repetition
     the other three could not reach, and it is this function's whole reason for existing
     as a name: the two call sites used to spell the three contexts out, so a fourth would
-    have had to be added in both places and could drift between them.
+    have had to be added in both places and could drift between them.  The fifth --
+    :func:`the_canonical_encoding_is_not_rebuilt_in_python` -- arrived through this name
+    and not through either call site, which is the saving that name was created for.
 
     **NOT OPENED AT :func:`check_pair`, which is a measured decision**: that function's
     own comment carries it -- a pair-wide lifetime is 9x the memory for 15% of the leaf
     time on the one pair where the difference is visible, on a suite whose measured
     ceiling is memory.
 
-    **The order the four go on is load-bearing in one place.**
+    **The order is load-bearing in one place.**
     :func:`a_strategy_is_built_once_per_node` goes on FIRST, so that
     :func:`a_combinator_is_covered_and_never_enumerated` -- which reads ``__from_schema``
     out of the library at its own entry -- reaches the memoised one, and the mutual
     recursion between the two stays inside both memos.
+    :func:`the_canonical_encoding_is_not_rebuilt_in_python` is order-free: it rebinds a
+    LEAF, so nothing it changes is read at another sharing's entry.
 
-    Re-entrant at its own door, which is the one way it differs from the four it composes:
+    Re-entrant at its own door, which is the one way it differs from the five it composes:
     a nested :func:`a_combinator_is_covered_and_never_enumerated` deliberately installs a
     second cover (``tests/test_harness_halves.py`` asserts it), because what that function
     promises is a lifetime of one call.  What this one promises is that the INNER frame
@@ -2105,6 +2304,7 @@ def shared_within_one_grade() -> Any:
     stack.enter_context(a_strategy_is_built_once_per_node())
     stack.enter_context(canonicalisation_shared_within_one_call())
     stack.enter_context(validator_classes_shared_within_one_call())
+    stack.enter_context(the_canonical_encoding_is_not_rebuilt_in_python())
     stack.enter_context(a_combinator_is_covered_and_never_enumerated())
     return stack
 
