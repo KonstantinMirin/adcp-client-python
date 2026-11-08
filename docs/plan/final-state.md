@@ -167,6 +167,23 @@ A payload offered to a union base resolves to its branch, for every payload the 
 The dispatch key is one that **determines** the branch, which requires the document to guarantee
 its presence in every instance it admits — pinning a key is not determining it.
 
+**AND EVERY REFUSAL NAMES WHERE.** A union is emitted as a base and one class per branch precisely
+so that a caller learns *which field* was wrong — so a refusal that reports the combinator at the
+root and discards the path has thrown away the thing the structure was built to carry. **The
+location is not diagnostics, it is the wire**: it becomes the `field` of the error the SDK hands
+back, and a caller who receives `loc=()` is told only that something, somewhere, did not match.
+
+**AND IT IS THE WHOLE PATH, THROUGH EVERY HOP.** `('packages', 0, 'targeting_overlay',
+'geo_countries', 0)` crosses a list index, a nested model and a second list. A dispatch that
+prepends its own position while losing the branch's inner path satisfies a one-level union and
+fails the only case anyone meets. **The branch's own error is the answer; the dispatch's job is to
+carry it outward, never to replace it with one of its own.**
+
+**AND THE "NO BRANCH DETERMINED" REFUSAL OWES A LOCATION TOO.** The clause below gives that refusal
+a good sentence — the branch it would have chosen, the absent discriminator, the document's own
+words — and a good sentence at no position is still a caller who cannot find the field. The
+message and the location are separate obligations and neither excuses the other.
+
 **AND WHERE THE DOCUMENT DETERMINES NO BRANCH, THE DISPATCH REFUSES AND SAYS SO.** A union whose
 document states no discriminator and whose branches overlap admits one payload at many branches at
 once — so there is no branch to resolve to, and a structural first match is a **guess wearing a
