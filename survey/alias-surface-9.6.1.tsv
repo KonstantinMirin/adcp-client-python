@@ -139,14 +139,14 @@ AnyOf1	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does no
 AnyOf2	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 AppItem	RELOCATED	adcp.types.compat	adcp.types.core.AppItem	word	identity	upstream spells it at adcp.types.domains.core, adcp.types.domains.core.app_item
 ApplicablePackageId	RENAMED	adcp.types.compat	adcp.types.core.ApplicablePackageID	word-recased	document	ours is ApplicablePackageID
-AppliesTo	RELOCATED	adcp.types.compat	adcp.types.core.AppliesTo	word	none	upstream spells it at adcp.types.domains.core, adcp.types.domains.core.wholesale_feed_event
+AppliesTo	RELOCATED	adcp.types.compat	adcp.types.core.WholesaleFeedEventAppliesTo	word	none	upstream spells it at adcp.types.domains.core, adcp.types.domains.core.wholesale_feed_event
 AppliesTo1	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 AppliesTo2	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 Artifact	RELOCATED	adcp.types.compat	adcp.types.content_standards.Artifact	word	identity	upstream spells it at adcp.types, adcp.types.domains.content_standards.artifact, adcp.types.domains.content_standards.artifact_webhook_payload
 ArtifactRef	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 ArtifactWebhookPayload	RELOCATED	adcp.types.compat	adcp.types.content_standards.ArtifactWebhookPayload	word	identity	upstream spells it at adcp, adcp.types, adcp.types.domains.content_standards
 AssessmentStatus	RELOCATED	adcp.types.compat	adcp.types.enums.AssessmentStatus	word	identity	upstream spells it at adcp.types.domains.enums, adcp.types.domains.enums.assessment_status
-AssetAccess	RELOCATED	adcp.types.compat	adcp.types.content_standards.AssetAccess	word	none	upstream spells it at adcp.types.domains.content_standards, adcp.types.domains.content_standards.artifact
+AssetAccess	RELOCATED	adcp.types.compat	adcp.types.content_standards.ArtifactAssetAccess	word	none	upstream spells it at adcp.types.domains.content_standards, adcp.types.domains.content_standards.artifact
 AssetAccess1	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 AssetAccess2	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 AssetAccess3	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
@@ -534,7 +534,7 @@ CheckGovernanceRequest	RELOCATED	adcp.types.compat	adcp.types.governance.CheckGo
 CheckGovernanceRequest2	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 CheckGovernanceRequest3	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 CheckGovernanceResponse	RELOCATED	adcp.types.compat	adcp.types.governance.CheckGovernanceResponse	word	identity	upstream spells it at adcp, adcp.client, adcp.server.governance
-ClaimEntry	RELOCATED	adcp.types.compat	adcp.types.brand.ClaimEntry	word	none	upstream spells it at adcp.types.domains.brand, adcp.types.domains.brand.verify_brand_claims_request
+ClaimEntry	RELOCATED	adcp.types.compat	adcp.types.brand.VerifyBrandClaimsRequestBulkClaimEntry	word	none	upstream spells it at adcp.types.domains.brand, adcp.types.domains.brand.verify_brand_claims_request
 Cloud	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 CloudStorageProtocol	RELOCATED	adcp.types.compat	adcp.types.enums.CloudStorageProtocol	word	identity	upstream spells it at adcp.types.domains.bundled.protocol.get_adcp_capabilities_response, adcp.types.domains.enums, adcp.types.domains.enums.cloud_storage_protocol
 CoBranding	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
@@ -1820,7 +1820,7 @@ Result15	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does 
 Result2	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 Result3	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 Result5	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
-ResultEntry	RELOCATED	adcp.types.compat	adcp.types.brand.ResultEntry	word	none	upstream spells it at adcp.types.domains.brand, adcp.types.domains.brand.verify_brand_claims_response
+ResultEntry	RELOCATED	adcp.types.compat	adcp.types.brand.VerifyBrandClaimsResponseBulkResultEntry	word	none	upstream spells it at adcp.types.domains.brand, adcp.types.domains.brand.verify_brand_claims_response
 ResultEntry1	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 ResultEntry2	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 Results	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give

@@ -286,6 +286,7 @@ from ._schemas.core.attestation_reference import (
 )
 from ._schemas.core.attestation_reference import AttestationReference as AttestationReference
 from ._schemas.core.attestation_reference import EmbeddedCredential as AttestationReferenceEmbeddedCredential
+from ._schemas.core.attestation_reference import Locator as AttestationReferenceLocator
 from ._schemas.core.attestation_reference import ValidityHint as AttestationReferenceValidityHint
 from ._schemas.core.attestation_reference import VerifyAgent as AttestationReferenceVerifyAgent
 from ._schemas.core.attestation_subject import AttestationAgentSubject as AttestationAgentSubject
@@ -583,6 +584,7 @@ from ._schemas.core.creative_localization_readback import TargetLocalizationRead
 from ._schemas.core.creative_localization_readback import (
     UnmatchedLocaleAction as CreativeLocalizationReadbackUnmatchedLocaleAction,
 )
+from ._schemas.core.creative_localization_readback import VariantsItem as CreativeLocalizationReadbackVariantsItem
 from ._schemas.core.creative_manifest import CreativeManifest as CreativeManifest
 from ._schemas.core.creative_operation_format_declaration import (
     CreativeOperationFormatDeclaration as CreativeOperationFormatDeclaration,
@@ -679,6 +681,7 @@ from ._schemas.core.demographic_targeting_intent import DemographicTargetingInte
 from ._schemas.core.demographic_targeting_resolution import (
     DemographicTargetingResolution as DemographicTargetingResolution,
 )
+from ._schemas.core.demographic_targeting_resolution import Execution as DemographicTargetingResolutionExecution
 from ._schemas.core.demographic_targeting_resolution import ExecutionContinuousBounds as ExecutionContinuousBounds
 from ._schemas.core.demographic_targeting_resolution import ExecutionEnumeratedIntervals as ExecutionEnumeratedIntervals
 from ._schemas.core.demographic_targeting_resolution import ExecutionSignals as ExecutionSignals
@@ -761,6 +764,7 @@ from ._schemas.core.format import BaseIndividualAsset as FormatBaseIndividualAss
 from ._schemas.core.format import Dimensions as FormatRendersItemDimensions
 from ._schemas.core.format import DisclosureCapabilitiesItem as FormatDisclosureCapabilitiesItem
 from ._schemas.core.format import Format as Format
+from ._schemas.core.format import FormatAssetsItem as FormatAssetsItem
 from ._schemas.core.format import FormatCard as FormatFormatCard
 from ._schemas.core.format import FormatCardDetailed as FormatFormatCardDetailed
 from ._schemas.core.format import GroupAudioAsset as GroupAudioAsset
@@ -809,6 +813,7 @@ from ._schemas.core.format import RendersItem as FormatRendersItem
 from ._schemas.core.format import RendersItemDimensions as RendersItemDimensions
 from ._schemas.core.format import RendersItemParametersFromFormatId as RendersItemParametersFromFormatId
 from ._schemas.core.format import RepeatableGroupAsset as RepeatableGroupAsset
+from ._schemas.core.format import RepeatableGroupAssetAssetsItem as RepeatableGroupAssetAssetsItem
 from ._schemas.core.format import Responsive as FormatRendersItemDimensionsResponsive
 from ._schemas.core.format import SelectionMode as RepeatableGroupAssetSelectionMode
 from ._schemas.core.format_id import FormatReferenceStructuredObject as FormatReferenceStructuredObject
@@ -849,7 +854,11 @@ from ._schemas.core.geo_place_resolver import GeographicPlaceResolver as Geograp
 from ._schemas.core.geo_place_support import GeographicPlaceSystemSupport as GeographicPlaceSystemSupport
 from ._schemas.core.geo_place_system import GeographicPlaceIdentifierSystem as GeographicPlaceIdentifierSystem
 from ._schemas.core.geo_place_type import GeographicPlaceType as GeographicPlaceType
+from ._schemas.core.geo_region_requirement import CountriesValue as GeographicRegionRequirementCountriesValue
+from ._schemas.core.geo_region_requirement import CountriesValueAllValues as CountriesValueAllValues
+from ._schemas.core.geo_region_requirement import CountriesValueValues as CountriesValueValues
 from ._schemas.core.geo_region_requirement import GeographicRegionRequirement as GeographicRegionRequirement
+from ._schemas.core.geo_region_support import CountriesValue as GeographicRegionSupportCountriesValue
 from ._schemas.core.geo_region_support import GeographicRegionSupport as GeographicRegionSupport
 from ._schemas.core.geo_region_support import ObjAllValues as ObjAllValues
 from ._schemas.core.geo_region_support import ObjValues as ObjValues
@@ -973,13 +982,16 @@ from ._schemas.core.optimization_goal import OptimizationGoalEvent as Optimizati
 from ._schemas.core.optimization_goal import (
     OptimizationGoalEventAttributionWindow as OptimizationGoalEventAttributionWindow,
 )
+from ._schemas.core.optimization_goal import OptimizationGoalEventTarget as OptimizationGoalEventTarget
 from ._schemas.core.optimization_goal import OptimizationGoalEventTargetCostPer as OptimizationGoalEventTargetCostPer
 from ._schemas.core.optimization_goal import OptimizationGoalMetric as OptimizationGoalMetric
+from ._schemas.core.optimization_goal import OptimizationGoalMetricTarget as OptimizationGoalMetricTarget
 from ._schemas.core.optimization_goal import OptimizationGoalMetricTargetCostPer as OptimizationGoalMetricTargetCostPer
 from ._schemas.core.optimization_goal import (
     OptimizationGoalMetricTargetThresholdRate as OptimizationGoalMetricTargetThresholdRate,
 )
 from ._schemas.core.optimization_goal import OptimizationGoalVendorMetric as OptimizationGoalVendorMetric
+from ._schemas.core.optimization_goal import OptimizationGoalVendorMetricTarget as OptimizationGoalVendorMetricTarget
 from ._schemas.core.optimization_goal import (
     OptimizationGoalVendorMetricTargetCostPer as OptimizationGoalVendorMetricTargetCostPer,
 )
@@ -1049,6 +1061,9 @@ from ._schemas.core.package_signal_targeting_groups import PackageSignalTargetin
 from ._schemas.core.package_targeting_resolution import PackageTargetingResolution as PackageTargetingResolution
 from ._schemas.core.pagination_request import PaginationRequest as PaginationRequest
 from ._schemas.core.pagination_response import PaginationResponse as PaginationResponse
+from ._schemas.core.performance_feedback import Metric as PerformanceFeedbackMetric
+from ._schemas.core.performance_feedback import MetricStandard as MetricStandard
+from ._schemas.core.performance_feedback import MetricVendor as MetricVendor
 from ._schemas.core.performance_feedback import PerformanceFeedback as PerformanceFeedback
 from ._schemas.core.performance_feedback import Status as PerformanceFeedbackStatus
 from ._schemas.core.performance_feedback_assertion import (
@@ -1056,7 +1071,6 @@ from ._schemas.core.performance_feedback_assertion import (
 )
 from ._schemas.core.performance_feedback_assertion import Evidence as PerformanceFeedbackAssertionEvidence
 from ._schemas.core.performance_feedback_assertion import PerformanceFeedbackAssertion as PerformanceFeedbackAssertion
-from ._schemas.core.performance_feedback_metric import PerformanceFeedbackMetric as PerformanceFeedbackMetric
 from ._schemas.core.performance_feedback_metric import (
     PerformanceFeedbackMetricStandard as PerformanceFeedbackMetricStandard,
 )
@@ -1189,10 +1203,16 @@ from ._schemas.core.product import TrustedMatch as ProductTrustedMatch
 from ._schemas.core.product_allocation import ProductAllocation as ProductAllocation
 from ._schemas.core.product_allowed_action import ProductAllowedAction as ProductAllowedAction
 from ._schemas.core.product_audience_evidence_requirements import (
+    AcceptedAttestationIssuersItem as ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItem,
+)
+from ._schemas.core.product_audience_evidence_requirements import (
     AcceptedAttestationIssuersItemAgent as AcceptedAttestationIssuersItemAgent,
 )
 from ._schemas.core.product_audience_evidence_requirements import (
     AcceptedAttestationIssuersItemBrand as AcceptedAttestationIssuersItemBrand,
+)
+from ._schemas.core.product_audience_evidence_requirements import (
+    AcceptedAttestationIssuersItemOrigin as AcceptedAttestationIssuersItemOrigin,
 )
 from ._schemas.core.product_audience_evidence_requirements import (
     EvidencePresence as ProductAudienceEvidenceRequirementsEvidencePresence,
@@ -1224,6 +1244,7 @@ from ._schemas.core.product_execution_requirement import (
     EventSourceExecutionRequirement as EventSourceExecutionRequirement,
 )
 from ._schemas.core.product_execution_requirement import ProductExecutionRequirement as ProductExecutionRequirement
+from ._schemas.core.product_filters import AudienceActivationMethodsItem as ProductFiltersAudienceActivationMethodsItem
 from ._schemas.core.product_filters import (
     AudienceActivationMethodsItemCleanRoom as AudienceActivationMethodsItemCleanRoom,
 )
@@ -1235,6 +1256,9 @@ from ._schemas.core.product_filters import (
 )
 from ._schemas.core.product_filters import (
     AudienceActivationMethodsItemPlatformDistribution as AudienceActivationMethodsItemPlatformDistribution,
+)
+from ._schemas.core.product_filters import (
+    AudienceActivationMethodsItemSyncAudiences as AudienceActivationMethodsItemSyncAudiences,
 )
 from ._schemas.core.product_filters import (
     AudienceActivationMethodsItemTmpIdentityMatch as AudienceActivationMethodsItemTmpIdentityMatch,
@@ -1593,6 +1617,9 @@ from ._schemas.core.reporting_reliability_statistics import (
 from ._schemas.core.reporting_report_definition import Aggregation as ReportingReportDefinitionMetricsItemAggregation
 from ._schemas.core.reporting_report_definition import Calendar as ReportingReportDefinitionCalendar
 from ._schemas.core.reporting_report_definition import (
+    FinalityPoliciesItem as ReportingReportDefinitionFinalityPoliciesItem,
+)
+from ._schemas.core.reporting_report_definition import (
     FinalityPoliciesItemContractualCutoff as FinalityPoliciesItemContractualCutoff,
 )
 from ._schemas.core.reporting_report_definition import (
@@ -1633,6 +1660,7 @@ from ._schemas.core.reporting_verification import NativeCommitEvidence as Report
 from ._schemas.core.reporting_verification import (
     ObservedThrough as ReportingVerificationNativeCommitEvidenceObservedThrough,
 )
+from ._schemas.core.reporting_verification import PhysicalChecksumsItem as ReportingVerificationPhysicalChecksumsItem
 from ._schemas.core.reporting_verification import ReportingVerification as ReportingVerification
 from ._schemas.core.reporting_verification import SHA256PhysicalChecksum as SHA256PhysicalChecksum
 from ._schemas.core.reporting_verification import SHA512PhysicalChecksum as SHA512PhysicalChecksum
@@ -1682,6 +1710,7 @@ from ._schemas.core.requirements.css_asset_requirements import CSSAssetRequireme
 from ._schemas.core.requirements.daast_asset_requirements import DAASTAssetRequirements as DAASTAssetRequirements
 from ._schemas.core.requirements.html_asset_requirements import HTMLAssetRequirements as HTMLAssetRequirements
 from ._schemas.core.requirements.html_asset_requirements import Sandbox as HTMLAssetRequirementsSandbox
+from ._schemas.core.requirements.image_asset_requirements import Bleed as ImageAssetRequirementsBleed
 from ._schemas.core.requirements.image_asset_requirements import BleedBottomLeftRightTop as BleedBottomLeftRightTop
 from ._schemas.core.requirements.image_asset_requirements import BleedUniform as BleedUniform
 from ._schemas.core.requirements.image_asset_requirements import ColorSpace as ImageAssetRequirementsColorSpace
@@ -1990,7 +2019,7 @@ from ._schemas.core.webhook_challenge_response import WebhookChallengeResponse a
 from ._schemas.core.wholesale_feed_event import (
     AffectedEntityType as WholesaleFeedEventWholesaleFeedBulkChangeFeedPayloadAffectedEntityType,
 )
-from ._schemas.core.wholesale_feed_event import AppliesTo as AppliesTo
+from ._schemas.core.wholesale_feed_event import AppliesTo as WholesaleFeedEventAppliesTo
 from ._schemas.core.wholesale_feed_event import AppliesToAccount as AppliesToAccount
 from ._schemas.core.wholesale_feed_event import AppliesToPublic as AppliesToPublic
 from ._schemas.core.wholesale_feed_event import EntityType as WholesaleFeedEventEntityType
@@ -2063,6 +2092,7 @@ __all__ = [
     'AcceptancePolicyProfileIDs',
     'AcceptedAttestationIssuersItemAgent',
     'AcceptedAttestationIssuersItemBrand',
+    'AcceptedAttestationIssuersItemOrigin',
     'Account',
     'AccountAuthorization',
     'AccountChange',
@@ -2153,7 +2183,6 @@ __all__ = [
     'AppItem',
     'AppItemPlatform',
     'ApplicablePackageID',
-    'AppliesTo',
     'AppliesToAccount',
     'AppliesToPublic',
     'AssetRequirements',
@@ -2211,6 +2240,7 @@ __all__ = [
     'AttestationOriginIssuer',
     'AttestationReference',
     'AttestationReferenceEmbeddedCredential',
+    'AttestationReferenceLocator',
     'AttestationReferenceValidityHint',
     'AttestationReferenceVerifyAgent',
     'AttestationResourceSubject',
@@ -2224,6 +2254,7 @@ __all__ = [
     'AudienceActivationMethodsItemDatasetQuery',
     'AudienceActivationMethodsItemFileTransfer',
     'AudienceActivationMethodsItemPlatformDistribution',
+    'AudienceActivationMethodsItemSyncAudiences',
     'AudienceActivationMethodsItemTmpIdentityMatch',
     'AudienceCharacteristic',
     'AudienceCharacteristicRange',
@@ -2431,6 +2462,8 @@ __all__ = [
     'ControlMediaBuyResponseSubmitted',
     'CoordinatedPlacementsFormatDeclaration',
     'Countries',
+    'CountriesValueAllValues',
+    'CountriesValueValues',
     'CountryCode',
     'CountrySupport',
     'CountrySupportMaxValuesPerPackage',
@@ -2458,6 +2491,7 @@ __all__ = [
     'CreativeLocalizationReadback',
     'CreativeLocalizationReadbackLocaleFallbacksItem',
     'CreativeLocalizationReadbackUnmatchedLocaleAction',
+    'CreativeLocalizationReadbackVariantsItem',
     'CreativeLocalizationSource',
     'CreativeLocalizationTargetVariantsItem',
     'CreativeManifest',
@@ -2552,6 +2586,7 @@ __all__ = [
     'DemographicTargetingIntent',
     'DemographicTargetingIntentAge',
     'DemographicTargetingResolution',
+    'DemographicTargetingResolutionExecution',
     'Deployment',
     'DeploymentAgent',
     'DeploymentPlatform',
@@ -2632,6 +2667,7 @@ __all__ = [
     'ForecastVendorMetricValue',
     'Format',
     'FormatAccessibility',
+    'FormatAssetsItem',
     'FormatBaseGroupAsset',
     'FormatBaseIndividualAsset',
     'FormatDisclosureCapabilitiesItem',
@@ -2677,7 +2713,9 @@ __all__ = [
     'GeographicPlaceSystemSupport',
     'GeographicPlaceType',
     'GeographicRegionRequirement',
+    'GeographicRegionRequirementCountriesValue',
     'GeographicRegionSupport',
+    'GeographicRegionSupportCountriesValue',
     'GetCreativeFeaturesAsyncSubmitted',
     'GetGeographicPlaceResolutionRequest',
     'GetGeographicPlaceResolutionResponse',
@@ -2724,6 +2762,7 @@ __all__ = [
     'Ids',
     'ImageAsset',
     'ImageAssetRequirements',
+    'ImageAssetRequirementsBleed',
     'ImageAssetRequirementsColorSpace',
     'ImageAssetRequirementsFormatsItem',
     'ImageCarouselFormatDeclaration',
@@ -2832,6 +2871,8 @@ __all__ = [
     'MediaBuyFrequencyCapRequirement',
     'MediaBuyFrequencyCapSupport',
     'MediaBuyTermsReference',
+    'MetricStandard',
+    'MetricVendor',
     'MetroRequirement',
     'MetroRequirementSystems',
     'MetroSupport',
@@ -2864,15 +2905,18 @@ __all__ = [
     'OptimizationGoalEvent',
     'OptimizationGoalEventAttributionWindow',
     'OptimizationGoalEventEventSourcesItem',
+    'OptimizationGoalEventTarget',
     'OptimizationGoalEventTargetCostPer',
     'OptimizationGoalMetric',
     'OptimizationGoalMetricMetric',
+    'OptimizationGoalMetricTarget',
     'OptimizationGoalMetricTargetCostPer',
     'OptimizationGoalMetricTargetFrequency',
     'OptimizationGoalMetricTargetFrequencyWindow',
     'OptimizationGoalMetricTargetThresholdRate',
     'OptimizationGoalMetricVendor',
     'OptimizationGoalVendorMetric',
+    'OptimizationGoalVendorMetricTarget',
     'OptimizationGoalVendorMetricTargetCostPer',
     'OptimizationGoalVendorMetricTargetThresholdRate',
     'OutcomeMeasurement',
@@ -3027,6 +3071,7 @@ __all__ = [
     'ProductAllowedAction',
     'ProductAudienceActivation',
     'ProductAudienceEvidenceRequirements',
+    'ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItem',
     'ProductAudienceEvidenceRequirementsEvidencePresence',
     'ProductAudienceEvidenceRequirementsMaximumAge',
     'ProductAudienceEvidenceRequirementsMaximumAgeUnit',
@@ -3043,6 +3088,7 @@ __all__ = [
     'ProductDeliveryMeasurement',
     'ProductExecutionRequirement',
     'ProductFilters',
+    'ProductFiltersAudienceActivationMethodsItem',
     'ProductFiltersGeoProximityItem',
     'ProductFiltersKeywordsItem',
     'ProductFiltersMetrosItem',
@@ -3196,6 +3242,7 @@ __all__ = [
     'RendersItemDimensions',
     'RendersItemParametersFromFormatId',
     'RepeatableGroupAsset',
+    'RepeatableGroupAssetAssetsItem',
     'RepeatableGroupAssetSelectionMode',
     'ReplaceTargetingValue',
     'ReportingAdjustment',
@@ -3275,6 +3322,7 @@ __all__ = [
     'ReportingReliabilityStatisticsReportingReliabilityMeasurementPeriod',
     'ReportingReportDefinition',
     'ReportingReportDefinitionCalendar',
+    'ReportingReportDefinitionFinalityPoliciesItem',
     'ReportingReportDefinitionMetricsItem',
     'ReportingReportDefinitionMetricsItemAggregation',
     'ReportingReportDefinitionReportCalendarTimezoneBasis',
@@ -3301,6 +3349,7 @@ __all__ = [
     'ReportingVerification',
     'ReportingVerificationNativeCommitEvidence',
     'ReportingVerificationNativeCommitEvidenceObservedThrough',
+    'ReportingVerificationPhysicalChecksumsItem',
     'ReportingVerificationProfile',
     'ReportingVerificationProfileSet',
     'ReportingVerificationVerificationPath',
@@ -3554,6 +3603,7 @@ __all__ = [
     'WebhookChallenge',
     'WebhookChallengeResponse',
     'WholesaleFeedEvent',
+    'WholesaleFeedEventAppliesTo',
     'WholesaleFeedEventEntityType',
     'WholesaleFeedEventEventType',
     'WholesaleFeedEventProductCreatedProduct',

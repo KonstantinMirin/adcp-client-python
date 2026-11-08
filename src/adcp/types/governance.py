@@ -14,6 +14,7 @@ document added upstream appears here with nothing edited.
 from __future__ import annotations
 
 from ._schemas.governance.accepted_governance_agents import AcceptedGovernanceAgents as AcceptedGovernanceAgents
+from ._schemas.governance.accepted_governance_agents import AnyOfItem as AcceptedGovernanceAgentsAnyOfItem
 from ._schemas.governance.accepted_governance_agents import AnyOfItemAgentUrl as AnyOfItemAgentUrl
 from ._schemas.governance.accepted_governance_agents import AnyOfItemVerification as AnyOfItemVerification
 from ._schemas.governance.attribute_definition import AttributeDefinition as AttributeDefinition
@@ -191,6 +192,7 @@ from ._schemas.governance.sync_plans_response import SyncPlansResponse as SyncPl
 
 __all__ = [
     'AcceptedGovernanceAgents',
+    'AcceptedGovernanceAgentsAnyOfItem',
     'AnyOfItemAgentUrl',
     'AnyOfItemVerification',
     'AttributeDefinition',

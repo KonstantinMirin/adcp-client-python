@@ -14,10 +14,11 @@ document added upstream appears here with nothing edited.
 from __future__ import annotations
 
 from ._schemas.content_standards.artifact import Artifact as Artifact
-from ._schemas.content_standards.artifact import AssetAccess as AssetAccess
+from ._schemas.content_standards.artifact import AssetAccess as ArtifactAssetAccess
 from ._schemas.content_standards.artifact import AssetAccessBearerToken as AssetAccessBearerToken
 from ._schemas.content_standards.artifact import AssetAccessServiceAccount as AssetAccessServiceAccount
 from ._schemas.content_standards.artifact import AssetAccessSignedUrl as AssetAccessSignedUrl
+from ._schemas.content_standards.artifact import AssetsItem as ArtifactAssetsItem
 from ._schemas.content_standards.artifact import AssetsItemAudio as AssetsItemAudio
 from ._schemas.content_standards.artifact import AssetsItemAudioTranscriptFormat as AssetsItemAudioTranscriptFormat
 from ._schemas.content_standards.artifact import (
@@ -154,7 +155,9 @@ from ._schemas.content_standards.validate_content_delivery_response import (
 
 __all__ = [
     'Artifact',
+    'ArtifactAssetAccess',
     'ArtifactAssetAccessServiceAccountProvider',
+    'ArtifactAssetsItem',
     'ArtifactAssetsItemAudioTranscriptSource',
     'ArtifactAssetsItemTextContentFormat',
     'ArtifactAssetsItemTextRole',
@@ -164,7 +167,6 @@ __all__ = [
     'ArtifactWebhookPayload',
     'ArtifactWebhookPayloadArtifactsItem',
     'ArtifactWebhookPayloadPagination',
-    'AssetAccess',
     'AssetAccessBearerToken',
     'AssetAccessServiceAccount',
     'AssetAccessSignedUrl',

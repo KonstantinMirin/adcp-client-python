@@ -369,6 +369,7 @@ from ._schemas.media_buy.get_products_request import GetProductsRequest as GetPr
 from ._schemas.media_buy.get_products_request import ObjScopeAsk as ObjScopeAsk
 from ._schemas.media_buy.get_products_request import ObjScopeProductIdActionAsk as ObjScopeProductIdActionAsk
 from ._schemas.media_buy.get_products_request import ObjScopeProposalIdActionAsk as ObjScopeProposalIdActionAsk
+from ._schemas.media_buy.get_products_request import RefineItem as GetProductsRequestRefineItem
 from ._schemas.media_buy.get_products_request import (
     RefineItemProductAction as GetProductsRequestRefineItemProductAction,
 )
@@ -384,6 +385,7 @@ from ._schemas.media_buy.get_products_response import (
 from ._schemas.media_buy.get_products_response import FilterDiagnostics as GetProductsResponseFilterDiagnostics
 from ._schemas.media_buy.get_products_response import GetProductsResponse as GetProductsResponse
 from ._schemas.media_buy.get_products_response import IncompleteItem as GetProductsResponseIncompleteItem
+from ._schemas.media_buy.get_products_response import RefinementAppliedItem as GetProductsResponseRefinementAppliedItem
 from ._schemas.media_buy.get_products_response import RefinementAppliedItemProduct as RefinementAppliedItemProduct
 from ._schemas.media_buy.get_products_response import RefinementAppliedItemProposal as RefinementAppliedItemProposal
 from ._schemas.media_buy.get_products_response import RefinementAppliedItemRequest as RefinementAppliedItemRequest
@@ -471,11 +473,14 @@ from ._schemas.media_buy.media_buy_delivery_webhook_result import (
 from ._schemas.media_buy.media_buy_delivery_webhook_result import (
     Totals as MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemTotals,
 )
+from ._schemas.media_buy.outcome_target import Goal as OutcomeTargetGoal
 from ._schemas.media_buy.outcome_target import GoalEvent as GoalEvent
 from ._schemas.media_buy.outcome_target import GoalMetric as GoalMetric
 from ._schemas.media_buy.outcome_target import OutcomeTarget as OutcomeTarget
 from ._schemas.media_buy.package_control import PackageControl as PackageControl
 from ._schemas.media_buy.package_request import Bidding as PackageRequestBidding
+from ._schemas.media_buy.package_request import CommittedMetricsItem as PackageRequestCommittedMetricsItem
+from ._schemas.media_buy.package_request import CommittedMetricsItemStandard as CommittedMetricsItemStandard
 from ._schemas.media_buy.package_request import CommittedMetricsItemVendor as CommittedMetricsItemVendor
 from ._schemas.media_buy.package_request import CreativesItem as PackageRequestCreativesItem
 from ._schemas.media_buy.package_request import PackageRequest as PackageRequest
@@ -502,6 +507,22 @@ from ._schemas.media_buy.product_purchase import ProductPurchase as ProductPurch
 from ._schemas.media_buy.product_purchase import StartTime as StartTime
 from ._schemas.media_buy.product_purchase_input import ProductPurchaseInput as ProductPurchaseInput
 from ._schemas.media_buy.product_refinement import ProductRefinementRequests as ProductRefinementRequests
+from ._schemas.media_buy.product_refinement import ProductRefinementRequestsItem as ProductRefinementRequestsItem
+from ._schemas.media_buy.product_refinement import (
+    ProductRefinementRequestsItemProduct as ProductRefinementRequestsItemProduct,
+)
+from ._schemas.media_buy.product_refinement import (
+    ProductRefinementRequestsItemProductAction as ProductRefinementRequestsItemProductAction,
+)
+from ._schemas.media_buy.product_refinement import (
+    ProductRefinementRequestsItemProposal as ProductRefinementRequestsItemProposal,
+)
+from ._schemas.media_buy.product_refinement import (
+    ProductRefinementRequestsItemProposalAction as ProductRefinementRequestsItemProposalAction,
+)
+from ._schemas.media_buy.product_refinement import (
+    ProductRefinementRequestsItemRequest as ProductRefinementRequestsItemRequest,
+)
 from ._schemas.media_buy.proposal_budget_constraint import ProposalBudgetConstraint as ProposalBudgetConstraint
 from ._schemas.media_buy.proposal_decline import ProposalDecline as ProposalDecline
 from ._schemas.media_buy.proposal_refinement import Action as ProposalRefinementAction
@@ -607,6 +628,9 @@ from ._schemas.media_buy.request_proposals_response import (
 from ._schemas.media_buy.request_proposals_response import Outcome as RequestProposalsResponseOutcome
 from ._schemas.media_buy.request_proposals_response import ProposalsItem as RequestProposalsResponseProposalsItem
 from ._schemas.media_buy.request_proposals_response import (
+    PurchaseContinuation as RequestProposalsResponsePurchaseContinuation,
+)
+from ._schemas.media_buy.request_proposals_response import (
     PurchaseContinuationLegacyCreate as PurchaseContinuationLegacyCreate,
 )
 from ._schemas.media_buy.request_proposals_response import (
@@ -681,6 +705,7 @@ from ._schemas.media_buy.sync_reporting_receipts_response import (
     RecordedReportingAdjustmentReceipt as RecordedReportingAdjustmentReceipt,
 )
 from ._schemas.media_buy.sync_reporting_receipts_response import RecordedReportingReceipt as RecordedReportingReceipt
+from ._schemas.media_buy.sync_reporting_receipts_response import ResultsItem as SyncReportingReceiptsResponseResultsItem
 from ._schemas.media_buy.sync_reporting_receipts_response import (
     SyncReportingReceiptsResponse as SyncReportingReceiptsResponse,
 )
@@ -702,6 +727,7 @@ from ._schemas.media_buy.sync_reporting_status_response import (
 from ._schemas.media_buy.sync_reporting_status_response import (
     RecordedReportingConsumerStatus as RecordedReportingConsumerStatus,
 )
+from ._schemas.media_buy.sync_reporting_status_response import ResultsItem as SyncReportingStatusResponseResultsItem
 from ._schemas.media_buy.sync_reporting_status_response import (
     SyncReportingStatusResponse as SyncReportingStatusResponse,
 )
@@ -825,6 +851,7 @@ __all__ = [
     'CommittedMediaBuyPurchaseBindingsItem',
     'CommittedMediaBuyWarningsItem',
     'CommittedMediaBuyWarningsItemCode',
+    'CommittedMetricsItemStandard',
     'CommittedMetricsItemVendor',
     'CommittedProposalExecution',
     'CompatibilityPurchaseCoordinatorInput',
@@ -921,6 +948,7 @@ __all__ = [
     'GetProductsRejected',
     'GetProductsRequest',
     'GetProductsRequestBuyingMode',
+    'GetProductsRequestRefineItem',
     'GetProductsRequestRefineItemProductAction',
     'GetProductsRequestRefineItemProposalAction',
     'GetProductsRequestTimeBudget',
@@ -932,6 +960,7 @@ __all__ = [
     'GetProductsResponseIncompleteItem',
     'GetProductsResponseIncompleteItemEstimatedWait',
     'GetProductsResponseIncompleteItemScope',
+    'GetProductsResponseRefinementAppliedItem',
     'GetProductsSubmitted',
     'GetProductsWorking',
     'GetReportingStatusRequest',
@@ -978,10 +1007,12 @@ __all__ = [
     'OperationalFailure',
     'OptimizationGoals',
     'OutcomeTarget',
+    'OutcomeTargetGoal',
     'PackageControl',
     'PackageCountConstraints',
     'PackageRequest',
     'PackageRequestBidding',
+    'PackageRequestCommittedMetricsItem',
     'PackageRequestCreativesItem',
     'PackageUpdate',
     'PackagesItemIndicatorsItemType',
@@ -995,6 +1026,12 @@ __all__ = [
     'ProductPurchase',
     'ProductPurchaseInput',
     'ProductRefinementRequests',
+    'ProductRefinementRequestsItem',
+    'ProductRefinementRequestsItemProduct',
+    'ProductRefinementRequestsItemProductAction',
+    'ProductRefinementRequestsItemProposal',
+    'ProductRefinementRequestsItemProposalAction',
+    'ProductRefinementRequestsItemRequest',
     'ProductResponseFields',
     'ProductResponseFieldsItem',
     'ProposalBudgetConstraint',
@@ -1057,6 +1094,7 @@ __all__ = [
     'RequestProposalsResponseProductsAvailableCompleted',
     'RequestProposalsResponseProposalsItem',
     'RequestProposalsResponseProposedCompleted',
+    'RequestProposalsResponsePurchaseContinuation',
     'RequestProposalsResponsePurchaseContinuationLegacyCreateLossesItem',
     'RequestProposalsResponsePurchaseContinuationLegacyCreateSourceAdcpVersion',
     'RequestProposalsResponseRejectedCompleted',
@@ -1113,9 +1151,11 @@ __all__ = [
     'SyncReportingReceiptsRequestAdjustmentReceiptsItem',
     'SyncReportingReceiptsRequestReceiptsItem',
     'SyncReportingReceiptsResponse',
+    'SyncReportingReceiptsResponseResultsItem',
     'SyncReportingStatusRequest',
     'SyncReportingStatusRequestStatusesItem',
     'SyncReportingStatusResponse',
+    'SyncReportingStatusResponseResultsItem',
     'UnavailableLookup',
     'UnavailableLookupAdcpError',
     'UnavailableLookupErrorsItem',

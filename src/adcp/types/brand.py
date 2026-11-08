@@ -204,12 +204,18 @@ from ._schemas.brand.verify_brand_claim_request import ObjPropertyUseCase as Ver
 from ._schemas.brand.verify_brand_claim_request import ObjTypeIdentifierStoreRegion as VerifyPropertyClaimClaimProperty
 from ._schemas.brand.verify_brand_claim_request import Store as VerifyPropertyClaimClaimPropertyStore
 from ._schemas.brand.verify_brand_claim_request import VerifyBrandClaimRequest as VerifyBrandClaimRequest
-from ._schemas.brand.verify_brand_claim_request import VerifyParentClaim as VerifyParentClaim
+from ._schemas.brand.verify_brand_claim_request import VerifyBrandClaimRequestParent as VerifyBrandClaimRequestParent
+from ._schemas.brand.verify_brand_claim_request import (
+    VerifyBrandClaimRequestProperty as VerifyBrandClaimRequestProperty,
+)
+from ._schemas.brand.verify_brand_claim_request import (
+    VerifyBrandClaimRequestSubsidiary as VerifyBrandClaimRequestSubsidiary,
+)
+from ._schemas.brand.verify_brand_claim_request import (
+    VerifyBrandClaimRequestTrademark as VerifyBrandClaimRequestTrademark,
+)
 from ._schemas.brand.verify_brand_claim_request import VerifyParentClaimClaim as VerifyParentClaimClaim
-from ._schemas.brand.verify_brand_claim_request import VerifyPropertyClaim as VerifyPropertyClaim
-from ._schemas.brand.verify_brand_claim_request import VerifySubsidiaryClaim as VerifySubsidiaryClaim
 from ._schemas.brand.verify_brand_claim_request import VerifySubsidiaryClaimClaim as VerifySubsidiaryClaimClaim
-from ._schemas.brand.verify_brand_claim_request import VerifyTrademarkClaim as VerifyTrademarkClaim
 from ._schemas.brand.verify_brand_claim_request import VerifyTrademarkClaimClaim as VerifyTrademarkClaimClaim
 from ._schemas.brand.verify_brand_claim_response import (
     ClaimType as VerifyBrandClaimResponseSignedSuccessPayloadClaimType,
@@ -222,10 +228,14 @@ from ._schemas.brand.verify_brand_claim_response import (
 from ._schemas.brand.verify_brand_claim_response import VerifyBrandClaimError as VerifyBrandClaimError
 from ._schemas.brand.verify_brand_claim_response import VerifyBrandClaimResponse as VerifyBrandClaimResponse
 from ._schemas.brand.verify_brand_claim_response import VerifyBrandClaimSuccess as VerifyBrandClaimSuccess
-from ._schemas.brand.verify_brand_claims_request import ClaimEntry as ClaimEntry
+from ._schemas.brand.verify_brand_claims_request import ClaimEntry as VerifyBrandClaimsRequestBulkClaimEntry
+from ._schemas.brand.verify_brand_claims_request import ClaimEntryParent as ClaimEntryParent
+from ._schemas.brand.verify_brand_claims_request import ClaimEntryProperty as ClaimEntryProperty
+from ._schemas.brand.verify_brand_claims_request import ClaimEntrySubsidiary as ClaimEntrySubsidiary
+from ._schemas.brand.verify_brand_claims_request import ClaimEntryTrademark as ClaimEntryTrademark
 from ._schemas.brand.verify_brand_claims_request import VerifyBrandClaimsRequestBulk as VerifyBrandClaimsRequestBulk
 from ._schemas.brand.verify_brand_claims_response import Payload as VerifyBrandClaimsResponseBulkSignedResponsePayload
-from ._schemas.brand.verify_brand_claims_response import ResultEntry as ResultEntry
+from ._schemas.brand.verify_brand_claims_response import ResultEntry as VerifyBrandClaimsResponseBulkResultEntry
 from ._schemas.brand.verify_brand_claims_response import SignedResponse as VerifyBrandClaimsResponseBulkSignedResponse
 from ._schemas.brand.verify_brand_claims_response import (
     SignedSuccessPayload as VerifyBrandClaimsResponseBulkSignedSuccessPayload,
@@ -355,7 +365,10 @@ __all__ = [
     'BrandDiscoveryVisualGuidelines',
     'BrandDiscoveryVisualGuidelinesTypeScale',
     'BrandId',
-    'ClaimEntry',
+    'ClaimEntryParent',
+    'ClaimEntryProperty',
+    'ClaimEntrySubsidiary',
+    'ClaimEntryTrademark',
     'ColorRefName',
     'ColorRefSurface',
     'ColorRefValue',
@@ -398,7 +411,6 @@ __all__ = [
     'LocalizedStringList',
     'LocalizedStringListEntry',
     'LogoId',
-    'ResultEntry',
     'RevocationNotification',
     'RightsPricingOption',
     'RightsTerms',
@@ -420,6 +432,10 @@ __all__ = [
     'VerificationStatus',
     'VerifyBrandClaimError',
     'VerifyBrandClaimRequest',
+    'VerifyBrandClaimRequestParent',
+    'VerifyBrandClaimRequestProperty',
+    'VerifyBrandClaimRequestSubsidiary',
+    'VerifyBrandClaimRequestTrademark',
     'VerifyBrandClaimResponse',
     'VerifyBrandClaimResponseSignedResponse',
     'VerifyBrandClaimResponseSignedResponsePayload',
@@ -428,21 +444,19 @@ __all__ = [
     'VerifyBrandClaimSuccess',
     'VerifyBrandClaimsError',
     'VerifyBrandClaimsRequestBulk',
+    'VerifyBrandClaimsRequestBulkClaimEntry',
     'VerifyBrandClaimsResponseBulk',
+    'VerifyBrandClaimsResponseBulkResultEntry',
     'VerifyBrandClaimsResponseBulkSignedResponse',
     'VerifyBrandClaimsResponseBulkSignedResponsePayload',
     'VerifyBrandClaimsResponseBulkSignedSuccessPayload',
     'VerifyBrandClaimsResultError',
     'VerifyBrandClaimsResultSuccess',
     'VerifyBrandClaimsSuccess',
-    'VerifyParentClaim',
     'VerifyParentClaimClaim',
-    'VerifyPropertyClaim',
     'VerifyPropertyClaimClaim',
     'VerifyPropertyClaimClaimProperty',
     'VerifyPropertyClaimClaimPropertyStore',
-    'VerifySubsidiaryClaim',
     'VerifySubsidiaryClaimClaim',
-    'VerifyTrademarkClaim',
     'VerifyTrademarkClaimClaim',
 ]

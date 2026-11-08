@@ -489,12 +489,49 @@ def _the_domains_exports(
             into = grown.setdefault(known, {})
             for symbol, takers in held.items():
                 into.setdefault(symbol, set()).update(takers)
-        census = {
+        settled = {
             known: {symbol: frozenset(docs) for symbol, docs in held.items()}
             for known, held in grown.items()
         }
         if not shared:
-            return census
+            return settled
+        # **AND A ROUND THAT ADDED NO TAKER IS THE FIXED POINT, which is what makes this
+        # loop terminate BY CONSTRUCTION rather than by the collisions happening to be
+        # resolvable.**  ``docs/plan/architecture.md`` §9: "combinatorial explosion and
+        # unbounded recursion are defects of the approach, not costs to control."  The
+        # paragraph above argues termination from the accumulation being monotone and the
+        # name space finite, and that argument is sound only while a round can still
+        # MOVE a name; a collision the naming rules cannot resolve stops the growth and
+        # leaves ``shared`` true, and this loop then re-ran an identical round forever.
+        #
+        # **MEASURED, AND IT IS WHAT BLOCKED ``adcp-client-python-ycfa`` FOR TWO LANES.**
+        # ``lower.union.branches_are_all_classes`` gives
+        # ``core/performance-feedback.json#/properties/metric`` a base, which reading 6's
+        # inner-export clause (``lower.names.THE_INNER_EXPORT``) publishes as
+        # ``core.PerformanceFeedbackMetric`` -- the name ``core/performance-feedback-
+        # metric.json``'s ROOT already holds.  Neither can move: that clause makes the
+        # word "a function of the document's own path and of nothing else" precisely so a
+        # domain's contents cannot move it, and a root is §4's chain of one.  So a
+        # six-document emission ran **20 s per round without end** (killed at round 60),
+        # which is the ">600 s, >13x" that bead recorded as a catalogue-pass cost and
+        # which profiling and a ``py-spy`` dump on the live process both show it is not:
+        # the catalogue pass is 8.4 s over the whole bundle and is re-run once per round.
+        #
+        # The census is the ONLY input to a round, so a census that did not grow hands the
+        # next round the very arguments this one had and the walk is deterministic: the
+        # answer cannot change again and re-deriving it cannot be anything but the same
+        # answer.  Returning here is therefore not a budget and not a cap -- there is no
+        # number to tune -- it is the fixed point, reached.  Wherever the old condition
+        # terminated this one returns the same census, because growth is what the old one
+        # needed in order to reach ``not shared`` at all.
+        #
+        # **AN UNRESOLVED COLLISION IS NOW A FACT A GATE CAN SEE** rather than a hang, and
+        # that is the point of stopping: ``tests/test_the_domain_surface.py`` grades the
+        # export set, so a domain naming two declarations alike is reported by the test
+        # written for it instead of consuming the run that would have reported it.
+        if settled == census:
+            return settled
+        census = settled
 
 
 def module_name(document: str) -> str:

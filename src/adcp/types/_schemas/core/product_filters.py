@@ -27,7 +27,7 @@ from ..enums.sponsored_placement_type import SponsoredPlacementType
 from ..enums.transport_mode import TransportMode
 from ..enums.video_placement_type import VideoPlacementType
 from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
-from .audience_activation_method import AdCPAudienceSync, DirectionsItem, ObjAgentUrl
+from .audience_activation_method import DirectionsItem, ObjAgentUrl
 from .audience_evidence_requirements import AudienceEvidenceRequirements
 from .brand_ref import BrandReference
 from .budget_range import BudgetRange
@@ -76,7 +76,28 @@ class ObjProvidersResponseTypes(AdCPBaseModel):
     response_types: Annotated[list[TMPResponseType] | None, Field(description="Filter to products supporting specific TMP response types (e.g., 'activation', 'creative', 'catalog_items'). Products must support at least one of the listed types.", min_length=1), OmittedNotNull] = None
 
 
-class AudienceActivationMethodsItemTmpIdentityMatch(AdCPBaseModel):
+class AudienceActivationMethodsItem(BranchDispatchMixin, AdCPBaseModel):
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "pattern"
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
+
+
+class AudienceActivationMethodsItemSyncAudiences(AudienceActivationMethodsItem):
+    """
+    Filter by AdCP audience sync path.
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/0')
+    pattern: Literal['sync_audiences']
+
+
+class AudienceActivationMethodsItemTmpIdentityMatch(AudienceActivationMethodsItem):
     """
     Filter by TMP identity-match path, optionally pinned to a specific buyer agent.
     """
@@ -88,7 +109,7 @@ class AudienceActivationMethodsItemTmpIdentityMatch(AdCPBaseModel):
     buyer_agent: Annotated[ObjAgentUrl | None, Field(description='Require this buyer agent on tmp_identity_match entries. Buyers typically filter on their own agent_url.'), OmittedNotNull] = None
 
 
-class AudienceActivationMethodsItemFileTransfer(AdCPBaseModel):
+class AudienceActivationMethodsItemFileTransfer(AudienceActivationMethodsItem):
     """
     Filter by bucket-addressed file exchange, optionally pinning transport, directions, or vendor.
     """
@@ -105,7 +126,7 @@ class AudienceActivationMethodsItemFileTransfer(AdCPBaseModel):
     vendor: Annotated[BrandReference | None, Field(description="Require the method's vendor to match this reference."), OmittedNotNull] = None
 
 
-class AudienceActivationMethodsItemDatasetQuery(AdCPBaseModel):
+class AudienceActivationMethodsItemDatasetQuery(AudienceActivationMethodsItem):
     """
     Filter by vendor-mediated dataset query path.
     """
@@ -117,7 +138,7 @@ class AudienceActivationMethodsItemDatasetQuery(AdCPBaseModel):
     vendor: Annotated[BrandReference | None, Field(description="Require the method's vendor to match this reference."), OmittedNotNull] = None
 
 
-class AudienceActivationMethodsItemCleanRoom(AdCPBaseModel):
+class AudienceActivationMethodsItemCleanRoom(AudienceActivationMethodsItem):
     """
     Filter by clean-room path.
     """
@@ -129,7 +150,7 @@ class AudienceActivationMethodsItemCleanRoom(AdCPBaseModel):
     vendor: Annotated[BrandReference | None, Field(description="Require the method's vendor to match this reference."), OmittedNotNull] = None
 
 
-class AudienceActivationMethodsItemPlatformDistribution(AdCPBaseModel):
+class AudienceActivationMethodsItemPlatformDistribution(AudienceActivationMethodsItem):
     """
     Filter by platform distribution path.
     """
@@ -139,6 +160,10 @@ class AudienceActivationMethodsItemPlatformDistribution(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/5')
     pattern: Literal['platform_distribution']
     vendor: Annotated[BrandReference | None, Field(description="Require the method's vendor to match this reference."), OmittedNotNull] = None
+
+
+AudienceActivationMethodsItem._branch_models = (AudienceActivationMethodsItemSyncAudiences, AudienceActivationMethodsItemTmpIdentityMatch, AudienceActivationMethodsItemFileTransfer, AudienceActivationMethodsItemDatasetQuery, AudienceActivationMethodsItemCleanRoom, AudienceActivationMethodsItemPlatformDistribution,)
+AudienceActivationMethodsItem.model_rebuild(force=True)
 
 
 class RequiredGeoTargetingItem(AdCPBaseModel):
@@ -299,7 +324,7 @@ class ProductFilters(AdCPBaseModel):
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(description='Filter social-product metadata by declared placement surfaces (feed, stories, short_video, explore, or search). A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested surface; buyers needing an exact public placement use targeting_overlay.placement_selection. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     required_axe_integrations: Annotated[list[HttpUrl] | None, Field(description='Deprecated: Use trusted_match filter instead. Filter to products executable through specific agentic ad exchanges. URLs are canonical identifiers.', min_length=1), OmittedNotNull] = None
     trusted_match: Annotated[ObjProvidersResponseTypes | None, Field(description='Filter products by Trusted Match Protocol capabilities. Only products with matching TMP support are returned.'), OmittedNotNull] = None
-    audience_activation_methods: Annotated[list[AdCPAudienceSync | AudienceActivationMethodsItemTmpIdentityMatch | AudienceActivationMethodsItemFileTransfer | AudienceActivationMethodsItemDatasetQuery | AudienceActivationMethodsItemCleanRoom | AudienceActivationMethodsItemPlatformDistribution] | None, Field(description="Filter to products whose audience_activation.methods matches at least one requested entry (OR across entries). Within an entry every specified field must match (AND); omitted optional fields are wildcards; directions matches on non-empty intersection, and a method that omits directions matches any requested directions; vendor matches on domain, plus brand_id when specified. Fields inapplicable to the requested pattern (e.g. transport on a clean_room entry) make that entry unsatisfiable. Sellers MUST exclude products with no audience_activation declaration when this filter is present; exclusions MAY be reported via filter_diagnostics.excluded_by. Experimental: part of the media_buy.audience_activation surface — buyers SHOULD check the seller's experimental_features before filtering on it; sellers that do not list the feature ignore this filter.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    audience_activation_methods: Annotated[list[AudienceActivationMethodsItem] | None, Field(description="Filter to products whose audience_activation.methods matches at least one requested entry (OR across entries). Within an entry every specified field must match (AND); omitted optional fields are wildcards; directions matches on non-empty intersection, and a method that omits directions matches any requested directions; vendor matches on domain, plus brand_id when specified. Fields inapplicable to the requested pattern (e.g. transport on a clean_room entry) make that entry unsatisfiable. Sellers MUST exclude products with no audience_activation declaration when this filter is present; exclusions MAY be reported via filter_diagnostics.excluded_by. Experimental: part of the media_buy.audience_activation surface — buyers SHOULD check the seller's experimental_features before filtering on it; sellers that do not list the feature ignore this filter.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     required_features: Annotated[MediaBuyFeatures | None, Field(description='Filter to products from sellers supporting specific protocol features. Only features set to true are used for filtering.'), OmittedNotNull] = None
     required_geo_targeting: Annotated[list[RequiredGeoTargetingItem] | None, Field(description='DEPRECATED. Use get_products.required_overlay_support, which is product-scoped and applies consistently to geographic and non-geographic targeting dimensions.', min_length=1), OmittedNotNull] = None
     signal_targeting: Annotated[list[SignalTargetingItem] | None, Field(description='DEPRECATED legacy signal-option eligibility filter. Retained get_products handlers MUST preserve the signal identity, value predicate, and requested include/exclude capability. This does not activate delivery targeting. Native buyers use criteria.targeting_overlay.signal_targeting_groups only for concrete delivery selections, preserving exclusion through group operators; copying targeting_mode into targeting_overlay.signal_targeting does not preserve it.', min_length=1), OmittedNotNull] = None
