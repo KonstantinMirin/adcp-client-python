@@ -1,0 +1,117 @@
+# Upstream's own test files that grade THEIR GENERATOR or THEIR GENERATED TREE, and so
+# are not about SDK behaviour.  104 of upstream 9.6.1's 681 `test_*.py`; the remaining 577
+# are the behavioural population every drop-in figure is stated over.
+#
+# WHY THIS IS DATA AND NOT A RULE.  There is no predicate over a path that separates
+# `test_versioned_bases_codegen.py` from `test_versioned_models.py`; the set was read file by
+# file when the first drop-in tree was built by hand, and a regeneration that re-derived it
+# by keyword would move the denominator silently.  So it is DECLARED here, in this
+# repository, where `final-state.md`'s rule puts every population a figure is over -- and
+# `survey/regenerate.py` refuses to build if a path here is not a file of upstream's.
+#
+# A figure over a different population is a different figure: 577 files -> 15,628 collected
+# on the trees `moveit`, `close`, `gap` and `jgsf` measured.
+tests/conformance/reporting/test_reporting_buyer_submission_packaging.py
+tests/conformance/reporting/test_reporting_feed_packaging.py
+tests/conformance/reporting/test_reporting_feed_transports.py
+tests/conformance/reporting/test_reporting_materializer_packaging.py
+tests/conformance/reporting/test_reporting_row_storage_pg.py
+tests/conformance/signing/test_revocation_fetcher.py
+tests/conformance/signing/test_verifier_body_strict.py
+tests/conformance/test_wire_round_trip.py
+tests/test_a2a_protobuf_compat.py
+tests/test_a2a_server.py
+tests/test_account_reference_request_fields.py
+tests/test_adopter_public_paths.py
+tests/test_asset_aliases_stable.py
+tests/test_auth_credential_parity.py
+tests/test_auth_middleware.py
+tests/test_auth_per_leg_headers.py
+tests/test_auth_principal_resolver.py
+tests/test_authorized_agents_public_surface.py
+tests/test_backward_compat.py
+tests/test_canceled_literal_default.py
+tests/test_canonical_creatives_rc3.py
+tests/test_canonical_models_are_subclasses.py
+tests/test_canonical_override_field_types.py
+tests/test_canonical_removed_fields.py
+tests/test_canonical_validator_parity.py
+tests/test_ci_scope.py
+tests/test_client.py
+tests/test_code_generation.py
+tests/test_codegen_contract_compatibility.py
+tests/test_codegen_deprecation_contract.py
+tests/test_codegen_invariants.py
+tests/test_collision_aliases.py
+tests/test_collision_guard.py
+tests/test_constrained_array_empty_arms.py
+tests/test_decisioning_capabilities_submodule.py
+tests/test_decisioning_context_state_resolve.py
+tests/test_decisioning_dispatch.py
+tests/test_decisioning_serve.py
+tests/test_delivery_manifest_readback.py
+tests/test_discriminated_unions.py
+tests/test_error_code_conformance.py
+tests/test_export_surface_is_derived.py
+tests/test_extra_policy.py
+tests/test_forward_compat_assets.py
+tests/test_forward_compat_format_kind.py
+tests/test_generate_types_safety.py
+tests/test_generated_enum_strenum.py
+tests/test_generated_hierarchy.py
+tests/test_generated_poc_alias.py
+tests/test_geo_place_system_keys.py
+tests/test_handler_typevar.py
+tests/test_import_layering.py
+tests/test_import_memory.py
+tests/test_lazy_platform_router.py
+tests/test_lazy_rebuild.py
+tests/test_lazy_types.py
+tests/test_legacy_adapter_registry.py
+tests/test_legacy_only_creative_surfaces.py
+tests/test_legacy_schema_bundle_v2_5.py
+tests/test_legacy_surface_names_every_arm.py
+tests/test_literal_discriminator_defaults.py
+tests/test_mcp_schema_drift.py
+tests/test_mcp_schema_materialization.py
+tests/test_migrate_v3_to_v4.py
+tests/test_nested_no_explicit_null_round_trip.py
+tests/test_notification_outbox_artifacts.py
+tests/test_open_format_kind_vocabulary.py
+tests/test_pg_idempotency_backend.py
+tests/test_platform_router.py
+tests/test_post_generate_no_explicit_null.py
+tests/test_post_generate_wire_types.py
+tests/test_projection_catalog_adapters_rc3.py
+tests/test_protocol_envelope_inheritance.py
+tests/test_public_api.py
+tests/test_publisher_selector_xor_autoenforce.py
+tests/test_rc3_reporting_aliases.py
+tests/test_redeclared_fields_inherit.py
+tests/test_registry.py
+tests/test_registry_types_drift.py
+tests/test_reporting_capability_models.py
+tests/test_reporting_selector_generation.py
+tests/test_reporting_storage_boundary.py
+tests/test_scalar_roots.py
+tests/test_schema_datetime_formats.py
+tests/test_schema_loader_reachable_registry.py
+tests/test_schemas_version_pin.py
+tests/test_seller_agent_storyboard.py
+tests/test_serve_validation_default.py
+tests/test_strict_validation_env.py
+tests/test_sync_schemas.py
+tests/test_sync_schemas_signed_release.py
+tests/test_targeting_overlay_compat.py
+tests/test_task_message_lattice.py
+tests/test_task_options.py
+tests/test_tenant_registry.py
+tests/test_type_aliases.py
+tests/test_type_coercion.py
+tests/test_type_guards.py
+tests/test_type_validation_helpers.py
+tests/test_unknown_field_policy_server.py
+tests/test_version_scoped_models.py
+tests/test_versioned_bases.py
+tests/test_versioned_bases_codegen.py
+tests/test_wire_types.py
