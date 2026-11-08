@@ -147,7 +147,7 @@ from adcp.types.brand import BrandDiscoveryTypeScaleEntry as TypeScaleEntry
 from adcp.types.brand import BrandDiscoveryTypeScaleEntryTextTransform as TextTransform
 from adcp.types.brand import BrandDiscoveryVisualGuidelinesTypeScale as TypeScale
 from adcp.types.brand import BrandId as BrandId
-from adcp.types.brand import ClaimEntry as ClaimEntry
+from adcp.types.brand import VerifyBrandClaimsRequestBulkClaimEntry as ClaimEntry
 from adcp.types.brand import ColorValue as ColorValue
 from adcp.types.brand import CreativeApprovalRequest as CreativeApprovalRequest
 from adcp.types.brand import CreativeApprovalResponse as CreativeApprovalResponse
@@ -167,7 +167,7 @@ from adcp.types.brand import LocalizedScalar as LocalizedScalar
 from adcp.types.brand import LocalizedStringList as LocalizedStringList
 from adcp.types.brand import LocalizedStringListEntry as LocalizedStringListEntry
 from adcp.types.brand import LogoId as LogoId
-from adcp.types.brand import ResultEntry as ResultEntry
+from adcp.types.brand import VerifyBrandClaimsResponseBulkResultEntry as ResultEntry
 from adcp.types.brand import RevocationNotification as RevocationNotification
 from adcp.types.brand import RightsPricingOption as RightsPricingOption
 from adcp.types.brand import RightsTerms as RightsTerms
@@ -226,7 +226,7 @@ from adcp.types.content_standards import ArtifactAssetsItemAudioTranscriptSource
 from adcp.types.content_standards import ArtifactAssetsItemTextContentFormat as ContentFormat
 from adcp.types.content_standards import ArtifactAssetsItemVideoTranscriptSource as TranscriptSource
 from adcp.types.content_standards import ArtifactWebhookPayload as ArtifactWebhookPayload
-from adcp.types.content_standards import AssetAccess as AssetAccess
+from adcp.types.content_standards import ArtifactAssetAccess as AssetAccess
 from adcp.types.content_standards import AssetsItemAudioTranscriptFormat as TranscriptFormat
 from adcp.types.content_standards import CalibrateContentRequest as CalibrateContentRequest
 from adcp.types.content_standards import CalibrateContentResponse as CalibrateContentResponse
@@ -289,7 +289,7 @@ from adcp.types.core import AgenticAdvertisingOrgVerificationTokenClaims as Agen
 from adcp.types.core import AppItem as AppItem
 from adcp.types.core import AppItemPlatform as Platform
 from adcp.types.core import ApplicablePackageID as ApplicablePackageId
-from adcp.types.core import AppliesTo as AppliesTo
+from adcp.types.core import WholesaleFeedEventAppliesTo as AppliesTo
 from adcp.types.core import AssetRequirements as AssetRequirements
 from adcp.types.core import AssetVariant as AssetVariant
 from adcp.types.core import AttestationCapabilities as AttestationCapabilities

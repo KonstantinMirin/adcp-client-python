@@ -29,6 +29,9 @@ from ._schemas.protocol.get_adcp_capabilities_response import (
     AccountIdentityUpdatesUnsupported as AccountIdentityUpdatesUnsupported,
 )
 from ._schemas.protocol.get_adcp_capabilities_response import (
+    AccountNotifications as GetAdCPCapabilitiesResponseAccountNotifications,
+)
+from ._schemas.protocol.get_adcp_capabilities_response import (
     AccountNotificationsSupported as AccountNotificationsSupported,
 )
 from ._schemas.protocol.get_adcp_capabilities_response import (
@@ -70,8 +73,12 @@ from ._schemas.protocol.get_adcp_capabilities_response import (
     CapabilityChanges as GetAdCPCapabilitiesResponseAdcpCapabilityChanges,
 )
 from ._schemas.protocol.get_adcp_capabilities_response import (
+    CapabilityChangesNotifications as GetAdCPCapabilitiesResponseAdcpCapabilityChangesNotifications,
+)
+from ._schemas.protocol.get_adcp_capabilities_response import (
     CapabilityReportingDeliveryMethod as GetAdCPCapabilitiesResponseCapabilityReportingDeliveryMethod,
 )
+from ._schemas.protocol.get_adcp_capabilities_response import ChangeFeed as GetAdCPCapabilitiesResponseAccountChangeFeed
 from ._schemas.protocol.get_adcp_capabilities_response import (
     ComplianceTesting as GetAdCPCapabilitiesResponseComplianceTesting,
 )
@@ -130,9 +137,13 @@ from ._schemas.protocol.get_adcp_capabilities_response import Governance as GetA
 from ._schemas.protocol.get_adcp_capabilities_response import (
     GovernanceEnforcement as GetAdCPCapabilitiesResponseAdcpGovernanceEnforcement,
 )
+from ._schemas.protocol.get_adcp_capabilities_response import Idempotency as GetAdCPCapabilitiesResponseAdcpIdempotency
 from ._schemas.protocol.get_adcp_capabilities_response import IdempotencySupported as IdempotencySupported
 from ._schemas.protocol.get_adcp_capabilities_response import IdempotencyUnsupported as IdempotencyUnsupported
 from ._schemas.protocol.get_adcp_capabilities_response import Identity as GetAdCPCapabilitiesResponseIdentity
+from ._schemas.protocol.get_adcp_capabilities_response import (
+    IdentityUpdates as GetAdCPCapabilitiesResponseAccountIdentityUpdates,
+)
 from ._schemas.protocol.get_adcp_capabilities_response import (
     KeyOrigins as GetAdCPCapabilitiesResponseIdentityKeyOrigins,
 )
@@ -272,6 +283,9 @@ from ._schemas.protocol.get_adcp_capabilities_response import (
 from ._schemas.protocol.get_adcp_capabilities_response import (
     Targeting as GetAdCPCapabilitiesResponseMediaBuyExecutionTargeting,
 )
+from ._schemas.protocol.get_adcp_capabilities_response import (
+    TasksItem as GetAdCPCapabilitiesResponseAdcpGovernanceEnforcementTasksItem,
+)
 from ._schemas.protocol.get_adcp_capabilities_response import TasksItemAcceptProposal as TasksItemAcceptProposal
 from ._schemas.protocol.get_adcp_capabilities_response import TasksItemAcquireRights as TasksItemAcquireRights
 from ._schemas.protocol.get_adcp_capabilities_response import TasksItemActivateSignal as TasksItemActivateSignal
@@ -312,6 +326,7 @@ from ._schemas.protocol.get_principal_response import GetPrincipalResponse as Ge
 from ._schemas.protocol.get_principal_response import (
     RecognizedPrincipalWithoutStandingConfiguration as RecognizedPrincipalWithoutStandingConfiguration,
 )
+from ._schemas.protocol.get_principal_response import Result as GetPrincipalResponseResult
 from ._schemas.protocol.get_principal_response import UnconfiguredPrincipal as UnconfiguredPrincipal
 from ._schemas.protocol.get_task_status_request import GetTaskStatusRequest as GetTaskStatusRequest
 from ._schemas.protocol.get_task_status_response import GetTaskStatusResponse as GetTaskStatusResponse
@@ -339,6 +354,7 @@ from ._schemas.protocol.sync_principal_response import (
     AppliedPrincipalConfigurationAction as AppliedPrincipalConfigurationAction,
 )
 from ._schemas.protocol.sync_principal_response import FailedPrincipalSync as FailedPrincipalSync
+from ._schemas.protocol.sync_principal_response import Result as SyncPrincipalResponseResult
 from ._schemas.protocol.sync_principal_response import SyncPrincipalResponse as SyncPrincipalResponse
 from ._schemas.protocol.sync_principal_response import ValidatedPrincipalDryRun as ValidatedPrincipalDryRun
 from ._schemas.protocol.sync_principal_response import ValidatedPrincipalDryRunAction as ValidatedPrincipalDryRunAction
@@ -368,9 +384,15 @@ __all__ = [
     'GetAdCPCapabilitiesRequestProtocolsItem',
     'GetAdCPCapabilitiesResponse',
     'GetAdCPCapabilitiesResponseAccount',
+    'GetAdCPCapabilitiesResponseAccountChangeFeed',
+    'GetAdCPCapabilitiesResponseAccountIdentityUpdates',
+    'GetAdCPCapabilitiesResponseAccountNotifications',
     'GetAdCPCapabilitiesResponseAdcp',
     'GetAdCPCapabilitiesResponseAdcpCapabilityChanges',
+    'GetAdCPCapabilitiesResponseAdcpCapabilityChangesNotifications',
     'GetAdCPCapabilitiesResponseAdcpGovernanceEnforcement',
+    'GetAdCPCapabilitiesResponseAdcpGovernanceEnforcementTasksItem',
+    'GetAdCPCapabilitiesResponseAdcpIdempotency',
     'GetAdCPCapabilitiesResponseAdcpPrincipal',
     'GetAdCPCapabilitiesResponseAdcpPrincipalReportingDestinationOfferingsItem',
     'GetAdCPCapabilitiesResponseAdcpPrincipalReportingDestinationOfferingsItemPattern',
@@ -455,6 +477,7 @@ __all__ = [
     'GetAdCPCapabilitiesResponseWholesaleFeedWebhooks',
     'GetPrincipalRequest',
     'GetPrincipalResponse',
+    'GetPrincipalResponseResult',
     'GetTaskStatusRequest',
     'GetTaskStatusResponse',
     'IdempotencySupported',
@@ -472,6 +495,7 @@ __all__ = [
     'SyncPrincipalRequestConfiguration',
     'SyncPrincipalRequestConfigurationNotificationConfigsItem',
     'SyncPrincipalResponse',
+    'SyncPrincipalResponseResult',
     'TasksItemAcceptProposal',
     'TasksItemAcquireRights',
     'TasksItemActivateSignal',

@@ -147,6 +147,9 @@ from ._schemas.creative.sync_creatives_async_response_input_required import (
 )
 from ._schemas.creative.sync_creatives_async_response_submitted import SyncCreativesSubmitted as SyncCreativesSubmitted
 from ._schemas.creative.sync_creatives_async_response_working import SyncCreativesWorking as SyncCreativesWorking
+from ._schemas.creative.sync_creatives_request import (
+    AssignmentOperationsItem as SyncCreativesRequestAssignmentOperationsItem,
+)
 from ._schemas.creative.sync_creatives_request import AssignmentsItem as SyncCreativesRequestAssignmentsItem
 from ._schemas.creative.sync_creatives_request import AssignOrUpdate as AssignOrUpdate
 from ._schemas.creative.sync_creatives_request import CreativesItem as SyncCreativesRequestCreativesItem
@@ -260,6 +263,7 @@ __all__ = [
     'SyncCreativesInputRequired',
     'SyncCreativesInputRequiredReason',
     'SyncCreativesRequest',
+    'SyncCreativesRequestAssignmentOperationsItem',
     'SyncCreativesRequestAssignmentsItem',
     'SyncCreativesRequestCreativesItem',
     'SyncCreativesResponse',

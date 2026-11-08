@@ -7,13 +7,29 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 from ..core.canonical_format_kind import CanonicalFormatKind
 
 
-class V1PatternFormatIdGlob(AdCPBaseModel):
+class V1Pattern(BranchDispatchMixin, AdCPBaseModel):
+    """
+    Match pattern. Carries either format_id_glob OR structural, not both.
+    """
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['format_id_glob'], 'properties': {'format_id_glob': {'type': 'string', 'description': "Glob pattern matched against v1 format_id.id. Examples: 'iab_mrec_300x250', 'iab_leaderboard_*', 'meta_*_reels'."}}}, {'required': ['structural'], 'properties': {'structural': {'type': 'object', 'description': "Structural match against the format's slot shape, asset types, and version constraints.", 'properties': {'asset_types': {'type': 'array', 'items': {'type': 'string'}, 'description': "Set of asset_type values that must appear in the format's slots (in any order, any count)."}, 'vast_versions': {'type': 'array', 'items': {'type': 'string'}, 'description': "VAST version constraints. Strings like '>=4.0', '4.x', '4.2'."}, 'daast_versions': {'type': 'array', 'items': {'type': 'string'}}, 'dimensions': {'type': 'object', 'properties': {'width': {'type': 'integer'}, 'height': {'type': 'integer'}}}}, 'additionalProperties': True}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
+    )
+
+
+class V1PatternFormatIdGlob(V1Pattern):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf/0')
     format_id_glob: Annotated[str, Field(description="Glob pattern matched against v1 format_id.id. Examples: 'iab_mrec_300x250', 'iab_leaderboard_*', 'meta_*_reels'.")]
 
@@ -38,9 +54,13 @@ class Structural(AdCPBaseModel):
     dimensions: Annotated[Dimensions | None, OmittedNotNull] = None
 
 
-class V1PatternStructural(AdCPBaseModel):
+class V1PatternStructural(V1Pattern):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf/1')
     structural: Annotated[Structural, Field(description="Structural match against the format's slot shape, asset types, and version constraints.")]
+
+
+V1Pattern._branch_models = (V1PatternFormatIdGlob, V1PatternStructural,)
+V1Pattern.model_rebuild(force=True)
 
 
 class Transform(StrEnum):
@@ -75,7 +95,7 @@ class MappingsItem(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['format_id_glob'], 'properties': {'format_id_glob': {'type': 'string', 'description': "Glob pattern matched against v1 format_id.id. Examples: 'iab_mrec_300x250', 'iab_leaderboard_*', 'meta_*_reels'."}}}, {'required': ['structural'], 'properties': {'structural': {'type': 'object', 'description': "Structural match against the format's slot shape, asset types, and version constraints.", 'properties': {'asset_types': {'type': 'array', 'items': {'type': 'string'}, 'description': "Set of asset_type values that must appear in the format's slots (in any order, any count)."}, 'vast_versions': {'type': 'array', 'items': {'type': 'string'}, 'description': "VAST version constraints. Strings like '>=4.0', '4.x', '4.2'."}, 'daast_versions': {'type': 'array', 'items': {'type': 'string'}}, 'dimensions': {'type': 'object', 'properties': {'width': {'type': 'integer'}, 'height': {'type': 'integer'}}}}, 'additionalProperties': True}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
     )
-    v1_pattern: Annotated[V1PatternFormatIdGlob | V1PatternStructural, Field(description='Match pattern. Carries either format_id_glob OR structural, not both.')]
+    v1_pattern: Annotated[V1Pattern, Field(description='Match pattern. Carries either format_id_glob OR structural, not both.')]
     v2: V2
     deprecated: Annotated[bool | None, Field(description='When true, this mapping is retained for backward-compatibility but should not be used for new mappings. SDKs SHOULD emit lint warnings when matching a deprecated entry.'), OmittedNotNull] = False
     notes: Annotated[str | None, Field(description='Optional human-readable explanation, examples, or rationale.'), OmittedNotNull] = None

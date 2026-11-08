@@ -6,14 +6,13 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, HttpUrl
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
-from .attestation_issuer import AttestationOriginIssuer
 from .audience_evidence import EvidenceType
 from .brand_key import BrandKey
 from .duration import Duration
@@ -59,7 +58,17 @@ class MaximumAge(Duration):
     unit: Annotated[Unit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
 
 
-class AcceptedAttestationIssuersItemBrand(AdCPBaseModel):
+class AcceptedAttestationIssuersItem(BranchDispatchMixin, AdCPBaseModel):
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "type"
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
+
+
+class AcceptedAttestationIssuersItemBrand(AcceptedAttestationIssuersItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -69,7 +78,7 @@ class AcceptedAttestationIssuersItemBrand(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
-class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
+class AcceptedAttestationIssuersItemAgent(AcceptedAttestationIssuersItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -77,6 +86,20 @@ class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
     type: Literal['agent']
     agent_url: HttpUrl
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+
+
+class AcceptedAttestationIssuersItemOrigin(AcceptedAttestationIssuersItem):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/2')
+    type: Literal['origin']
+    origin: HttpUrl
+    ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+
+
+AcceptedAttestationIssuersItem._branch_models = (AcceptedAttestationIssuersItemBrand, AcceptedAttestationIssuersItemAgent, AcceptedAttestationIssuersItemOrigin,)
+AcceptedAttestationIssuersItem.model_rebuild(force=True)
 
 
 class ProductAudienceEvidenceRequirements(AdCPBaseModel):
@@ -110,7 +133,7 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     maximum_age: Annotated[MaximumAge | None, OmittedNotNull] = None
     methodology_documentation_required: Annotated[bool | None, OmittedNotNull] = False
     independent_attestation_required: Annotated[bool | None, OmittedNotNull] = False
-    accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItemBrand | AcceptedAttestationIssuersItemAgent | AttestationOriginIssuer] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

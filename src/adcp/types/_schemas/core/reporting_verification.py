@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     PhysicalChecksumsItemSHA512PhysicalChecksumValue,
@@ -32,7 +32,17 @@ class VerificationPath(StrEnum):
     destination = MemberAlias('DESTINATION')
 
 
-class SHA256PhysicalChecksum(AdCPBaseModel):
+class PhysicalChecksumsItem(BranchDispatchMixin, AdCPBaseModel):
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-verification.json', pointer='#/properties/physical_checksums/items')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "algorithm"
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
+
+
+class SHA256PhysicalChecksum(PhysicalChecksumsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -42,7 +52,7 @@ class SHA256PhysicalChecksum(AdCPBaseModel):
     value: ReportingAdjustmentReceiptObservedAdjustmentSha256
 
 
-class SHA512PhysicalChecksum(AdCPBaseModel):
+class SHA512PhysicalChecksum(PhysicalChecksumsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -50,6 +60,10 @@ class SHA512PhysicalChecksum(AdCPBaseModel):
     object_ref: ReportingFileObjectReference
     algorithm: Literal['sha512']
     value: PhysicalChecksumsItemSHA512PhysicalChecksumValue
+
+
+PhysicalChecksumsItem._branch_models = (SHA256PhysicalChecksum, SHA512PhysicalChecksum,)
+PhysicalChecksumsItem.model_rebuild(force=True)
 
 
 class ObservedThrough(StrEnum):
@@ -91,7 +105,7 @@ class ReportingVerification(AdCPBaseModel):
     row_count: Annotated[NonNegativeInt, Field(description='Verified row count. Zero explicitly distinguishes an empty committed revision from a missing revision.')]
     control_totals: Annotated[list[ReportingControlTotal], Field(description='Profile-defined totals recomputed through verification_path. Names MUST be unique.', json_schema_extra={'uniqueItems': True})]
     canonical_content_digest: Annotated[ReportingCanonicalContentDigest | None, OmittedNotNull] = None
-    physical_checksums: Annotated[list[SHA256PhysicalChecksum | SHA512PhysicalChecksum] | None, Field(description='Method-specific byte/object checksums. Different encodings of the same logical revision normally have different values.', min_length=1), OmittedNotNull] = None
+    physical_checksums: Annotated[list[PhysicalChecksumsItem] | None, Field(description='Method-specific byte/object checksums. Different encodings of the same logical revision normally have different values.', min_length=1), OmittedNotNull] = None
     native_commit_evidence: Annotated[NativeCommitEvidence | None, Field(description='Provider-native immutable version evidence observed through the named consumer or destination path.'), OmittedNotNull] = None
 
 

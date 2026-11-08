@@ -1854,9 +1854,20 @@ def shape_states(
     names = bundle.named_nodes(admitted.dir)
     for document in stating(admitted.dir, documents):
         doc = admitted.document(document)
-        unreferenced = tuple(
-            sorted(bundle.section_entries(doc) - names.get(document, frozenset()))
-        )
+        #: The pointers of THIS document that a ``$ref`` names, as the SET the question
+        #: below is asked of rather than a sequence it is searched through.
+        #:
+        #: **ONE INDEX PER DOCUMENT AND NOT A SCAN PER POSITION**, which is
+        #: ``docs/plan/architecture.md`` §9's rule -- "a check's cost is linear in the
+        #: document's nodes, each visited once" -- and is what
+        #: :attr:`Shaped.keeps_a_named_node` read the other way round: it tested every
+        #: descendant reference of the position against every named pointer of the
+        #: document, which is ``O(nodes x names)`` at each of the document's catalogued
+        #: positions.  Inverted, the reference is SPLIT once and the name is LOOKED UP,
+        #: which is the same answer in one pass.  :attr:`Shaped.is_a_named_node` asks the
+        #: same set the same question and reads the same index.
+        named_here = names.get(document, frozenset())
+        unreferenced = tuple(sorted(bundle.section_entries(doc) - named_here))
         #: Every pointer of this document at which a RULE holds its subschema, as the
         #: prefixes a descendant of one is recognised by.  The POSITION is the descent
         #: column's (``bundle.nodes_at``) and not a reading of the pointer string, which
@@ -1904,10 +1915,9 @@ def shape_states(
                 key=admitted.key(document, stated),
                 title=title if isinstance(title, str) and title.strip() else None,
                 keeps_a_named_node=any(
-                    bundle.split_ref(spelled) == ("", named)
+                    (split := bundle.split_ref(spelled))[0] == "" and split[1] in named_here
                     for _, sub in bundle.nodes(stated)
                     if isinstance(spelled := sub.get("$ref"), str)
-                    for named in names.get(document, frozenset())
                 ),
                 of_a_root_union=(
                     position is keywords.Position.BRANCH and pointer.count("/") == 2
@@ -1921,7 +1931,7 @@ def shape_states(
                     or position is keywords.Position.CONJ
                     or bool(PREDICATED.intersection(pointer.split("/")))
                 ),
-                is_a_named_node=pointer in names.get(document, frozenset()),
+                is_a_named_node=pointer in named_here,
             )
 
 

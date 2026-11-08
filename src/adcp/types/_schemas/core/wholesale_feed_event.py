@@ -79,7 +79,20 @@ class WholesaleFeedEvent(BranchDispatchMixin, AdCPBaseModel):
     payload: Annotated[dict[str, Any], Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class AppliesToPublic(AdCPBaseModel):
+class AppliesTo(BranchDispatchMixin, AdCPBaseModel):
+    """
+    Declares which cache layer this event invalidates. See specs/wholesale-feed-webhooks.md §Cache layering and event scoping.
+    """
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/$defs/appliesTo')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "scope"
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
+
+
+class AppliesToPublic(AppliesTo):
     """
     Public layer — invalidate the public-layer cache for the entity; all account overlays referencing that public version are also stale.
     """
@@ -90,7 +103,7 @@ class AppliesToPublic(AdCPBaseModel):
     scope: Literal['public']
 
 
-class AppliesToAccount(AdCPBaseModel):
+class AppliesToAccount(AppliesTo):
     """
     Account overlay — invalidate the named account overlays only; public layer unaffected. The seller MAY omit account_ids when the affected set is competitively sensitive, but MUST ensure account-scoped webhook fan-out only delivers changes to subscribers authorized for the affected account overlays.
     """
@@ -102,7 +115,8 @@ class AppliesToAccount(AdCPBaseModel):
     account_ids: Annotated[list[str] | None, Field(description="Optional. When present, names the accounts whose overlays are affected. When omitted, subscribers infer that their own principal's overlay is affected (they received the event because the per-subscriber scope filter routed it to them).", min_length=1), OmittedNotNull] = None
 
 
-AppliesTo = Annotated[AppliesToPublic | AppliesToAccount, Field(description='Declares which cache layer this event invalidates. See specs/wholesale-feed-webhooks.md §Cache layering and event scoping.')]
+AppliesTo._branch_models = (AppliesToPublic, AppliesToAccount,)
+AppliesTo.model_rebuild(force=True)
 
 
 class WholesaleFeedEventProductCreatedProductPayload(AdCPBaseModel):

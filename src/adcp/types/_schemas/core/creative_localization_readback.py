@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import BrandDiscoveryAgentId, NonEmptyList, StrMinLen1MaxLen255
 
@@ -33,10 +33,20 @@ class LocaleFallbacksItem(AdCPBaseModel):
     locale_variant_id: StrMinLen1MaxLen255
 
 
+class VariantsItem(BranchDispatchMixin, AdCPBaseModel):
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-localization-readback.json', pointer='#/properties/variants/items')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "role"
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
+
+
 ResolvedAssets = Annotated[dict[BrandDiscoveryAgentId, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Complete resolved assets for this locale, keyed by creative slot.', min_length=1)]
 
 
-class SourceLocalizationReadback(AdCPBaseModel):
+class SourceLocalizationReadback(VariantsItem):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -50,7 +60,7 @@ class SourceLocalizationReadback(AdCPBaseModel):
     assets: ResolvedAssets
 
 
-class TargetLocalizationReadback(AdCPBaseModel):
+class TargetLocalizationReadback(VariantsItem):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -62,6 +72,10 @@ class TargetLocalizationReadback(AdCPBaseModel):
     locale: LanguageTag
     role: Literal['target']
     assets: ResolvedAssets
+
+
+VariantsItem._branch_models = (SourceLocalizationReadback, TargetLocalizationReadback,)
+VariantsItem.model_rebuild(force=True)
 
 
 class CreativeLocalizationReadback(AdCPBaseModel):
@@ -80,7 +94,7 @@ class CreativeLocalizationReadback(AdCPBaseModel):
     unmatched_locale_action: Annotated[UnmatchedLocaleAction, Field(description='Final action after strict Lookup and explicit locale_fallbacks both miss.')]
     locale_matching: Annotated[Literal['rfc4647_lookup'], Field(description="Strict RFC 4647 section 3.4 Lookup applied to an ordered language-preference list supplied by the seller's serving environment. AdCP does not carry or define how that list is derived. The seller progressively truncates each requested range and matches only an available canonical tag equal to that range; it does not prefix-match sibling regional tags.")]
     locale_fallbacks: Annotated[list[LocaleFallbacksItem] | None, Field(description='Exact buyer-declared language-family substitutions preserved from sync. For each requested preference, rules are checked from the most specific progressively truncated range to the least specific only after strict Lookup finds no equal available tag for that preference.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=1), OmittedNotNull] = None
-    variants: Annotated[list[SourceLocalizationReadback | TargetLocalizationReadback], Field(description='The source variant followed by every target variant, or only the source for monolingual topology. Assets are fully resolved after source inheritance. The enclosing creative status applies to the set as a whole.', json_schema_extra={'uniqueItems': True}, max_length=51, min_length=1)]
+    variants: Annotated[list[VariantsItem], Field(description='The source variant followed by every target variant, or only the source for monolingual topology. Assets are fully resolved after source inheritance. The enclosing creative status applies to the set as a whole.', json_schema_extra={'uniqueItems': True}, max_length=51, min_length=1)]
 
 
 __all__ = ["CreativeLocalizationReadback", "ResolvedAssets"]

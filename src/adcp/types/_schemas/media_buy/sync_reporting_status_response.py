@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrIdempotencyKey
 from adcp.types.envelopes import AdcpResponse
 
@@ -15,6 +15,16 @@ from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.reporting_consumer_status import ReportingConsumerStatus
 from ..core.version_envelope import AdCPVersionEnvelope
+
+
+class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#/properties/results/items')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "result"
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
 
 
 class RecordedReportingConsumerStatusConsumerStatus(ReportingConsumerStatus):
@@ -28,7 +38,7 @@ class RecordedReportingConsumerStatusConsumerStatus(ReportingConsumerStatus):
     recorded_at: Annotated[AwareDatetime, Field(description='When the seller durably recorded this immutable statement.')]
 
 
-class RecordedReportingConsumerStatus(AdCPBaseModel):
+class RecordedReportingConsumerStatus(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -40,7 +50,7 @@ class RecordedReportingConsumerStatus(AdCPBaseModel):
 UnchangedReportingConsumerStatusConsumerStatus = RecordedReportingConsumerStatusConsumerStatus
 
 
-class UnchangedReportingConsumerStatus(AdCPBaseModel):
+class UnchangedReportingConsumerStatus(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -49,7 +59,7 @@ class UnchangedReportingConsumerStatus(AdCPBaseModel):
     consumer_status: UnchangedReportingConsumerStatusConsumerStatus
 
 
-class FailedReportingConsumerStatus(AdCPBaseModel):
+class FailedReportingConsumerStatus(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -57,6 +67,10 @@ class FailedReportingConsumerStatus(AdCPBaseModel):
     result: Literal['failed']
     reporting_status_id: StrIdempotencyKey
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
+
+
+ResultsItem._branch_models = (RecordedReportingConsumerStatus, UnchangedReportingConsumerStatus, FailedReportingConsumerStatus,)
+ResultsItem.model_rebuild(force=True)
 
 
 class SyncReportingStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -68,7 +82,7 @@ class SyncReportingStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#')
     status: Annotated[Literal['completed'], Field(description='Status batches complete synchronously with one result per submitted statement.')]
-    results: Annotated[list[RecordedReportingConsumerStatus | UnchangedReportingConsumerStatus | FailedReportingConsumerStatus], Field(max_length=100, min_length=1)]
+    results: Annotated[list[ResultsItem], Field(max_length=100, min_length=1)]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

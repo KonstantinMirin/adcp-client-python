@@ -21,6 +21,9 @@ from ._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistry as AdCPAgentsAuthorizationCommunityFormatRegistry,
 )
 from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItem as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItem,
+)
+from ._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties,
 )
 from ._schemas.adagents import (
@@ -40,6 +43,27 @@ from ._schemas.adagents import (
 )
 from ._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistryBranch0 as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItem as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItem,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemInlineProperties as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemInlineProperties,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyIds as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyIds,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyTags as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyTags,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPublisherProperties as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPublisherProperties,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalIds as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalIds,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalTags as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalTags,
 )
 from ._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistryCollections as AdCPAgentsAuthorizationCommunityFormatRegistryCollections,
@@ -89,6 +113,7 @@ __all__ = [
     'AdCPAgentsAuthorization',
     'AdCPAgentsAuthorizationAuthoritativeLocation',
     'AdCPAgentsAuthorizationCommunityFormatRegistry',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItem',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags',
@@ -96,6 +121,13 @@ __all__ = [
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags',
     'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItem',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemInlineProperties',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyIds',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyTags',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPublisherProperties',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalIds',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalTags',
     'AdCPAgentsAuthorizationCommunityFormatRegistryCollections',
     'AdCPAgentsAuthorizationCommunityFormatRegistryContact',
     'AdCPAgentsAuthorizationCommunityFormatRegistryFormats',

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, StrMinLen1
 
@@ -14,7 +14,20 @@ from ..enums.event_type import EventType
 from ..enums.forecastable_metric import ForecastableMetric
 
 
-class GoalMetric(AdCPBaseModel):
+class Goal(BranchDispatchMixin, AdCPBaseModel):
+    """
+    The outcome to plan against: a seller-tracked delivery metric or an advertiser conversion event.
+    """
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/outcome-target.json', pointer='#/properties/goal')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "kind"
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
+
+
+class GoalMetric(Goal):
     """
     Plan against a seller-tracked delivery metric. The response forecast carries this metric as a key in points' metrics.
     """
@@ -26,7 +39,7 @@ class GoalMetric(AdCPBaseModel):
     metric: Annotated[ForecastableMetric, Field(description='Delivery metric to plan for, in the same vocabulary forecast points report.')]
 
 
-class GoalEvent(AdCPBaseModel):
+class GoalEvent(Goal):
     """
     Plan against an advertiser conversion event. The response forecast carries this event type as a key in points' metrics.
     """
@@ -42,6 +55,10 @@ class GoalEvent(AdCPBaseModel):
     custom_event_name: Annotated[StrMinLen1 | None, Field(description="Required when event_type is 'custom'. Platform-specific name for the custom event."), OmittedNotNull] = None
 
 
+Goal._branch_models = (GoalMetric, GoalEvent,)
+Goal.model_rebuild(force=True)
+
+
 class OutcomeTarget(AdCPBaseModel):
     """
     Reverse-forecast planning input: a goal plus a volume, a cost_per target, or both (at least one). Goals use the forecastable-metric and event-type vocabularies, so forecast points always carry the goal's metric or event key in metrics, with forecast_range_unit 'clicks' or 'conversions' where those units apply. volume and cost_per define the request shapes and answers, which travel on proposals. list_products returns no proposals, so there the field is inert for every seller, declaring or not: it does not filter or rank products, produces no answer, and MUST NOT cause a rejection beyond schema validation. On request_proposals and proposal refinement, sellers not declaring media_buy.outcome_target MUST reject the field with UNSUPPORTED_FEATURE rather than silently ignore it; declaring sellers MAY reject a goal they cannot plan against at all (for example 'spend', which restates budget) with INVALID_REQUEST naming criteria.outcome_target.goal. A planning input, not a delivery guarantee: obligations arise only at proposal finalization.
@@ -53,7 +70,7 @@ class OutcomeTarget(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('volume',), ('cost_per',)), 'anyOf'),
     )
-    goal: Annotated[GoalMetric | GoalEvent, Field(description='The outcome to plan against: a seller-tracked delivery metric or an advertiser conversion event.')]
+    goal: Annotated[Goal, Field(description='The outcome to plan against: a seller-tracked delivery metric or an advertiser conversion event.')]
     volume: Annotated[FloatGt0 | None, Field(description="Desired total volume of the goal's metric or event across the planned flight. Alone, the seller solves for budget and answers with total_budget_guidance and a forecast. With cost_per, the seller plans toward the volume at the cost: under a cap it SHOULD keep the buyer's amount and forecast the lower volume it can deliver, unless no volume can be planned at that amount; under a target the ask is plannable when the seller can forecast the volume around it."), OmittedNotNull] = None
     cost_per: Annotated[OutcomeTargetCostPer | None, OmittedNotNull] = None
 

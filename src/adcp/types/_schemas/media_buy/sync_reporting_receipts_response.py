@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrIdempotencyKey
 from adcp.types.envelopes import AdcpResponse
 
@@ -16,6 +16,16 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.reporting_adjustment_receipt import ReportingAdjustmentReceipt
 from ..core.reporting_receipt import ReportingReceipt
 from ..core.version_envelope import AdCPVersionEnvelope
+
+
+class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "anyOf"
 
 
 class RecordedReportingReceiptReceipt(ReportingReceipt):
@@ -29,7 +39,7 @@ class RecordedReportingReceiptReceipt(ReportingReceipt):
     received_at: AwareDatetime
 
 
-class RecordedReportingReceipt(AdCPBaseModel):
+class RecordedReportingReceipt(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -41,7 +51,7 @@ class RecordedReportingReceipt(AdCPBaseModel):
 UnchangedReportingReceiptReceipt = RecordedReportingReceiptReceipt
 
 
-class UnchangedReportingReceipt(AdCPBaseModel):
+class UnchangedReportingReceipt(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -61,7 +71,7 @@ class RecordedReportingAdjustmentReceiptAdjustmentReceipt(ReportingAdjustmentRec
     received_at: AwareDatetime
 
 
-class RecordedReportingAdjustmentReceipt(AdCPBaseModel):
+class RecordedReportingAdjustmentReceipt(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -73,7 +83,7 @@ class RecordedReportingAdjustmentReceipt(AdCPBaseModel):
 UnchangedReportingAdjustmentReceiptAdjustmentReceipt = RecordedReportingAdjustmentReceiptAdjustmentReceipt
 
 
-class UnchangedReportingAdjustmentReceipt(AdCPBaseModel):
+class UnchangedReportingAdjustmentReceipt(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -82,7 +92,7 @@ class UnchangedReportingAdjustmentReceipt(AdCPBaseModel):
     adjustment_receipt: UnchangedReportingAdjustmentReceiptAdjustmentReceipt
 
 
-class FailedReportingReceipt(AdCPBaseModel):
+class FailedReportingReceipt(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -90,6 +100,10 @@ class FailedReportingReceipt(AdCPBaseModel):
     result: Literal['failed']
     reporting_receipt_id: StrIdempotencyKey
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
+
+
+ResultsItem._branch_models = (RecordedReportingReceipt, UnchangedReportingReceipt, RecordedReportingAdjustmentReceipt, UnchangedReportingAdjustmentReceipt, FailedReportingReceipt,)
+ResultsItem.model_rebuild(force=True)
 
 
 class SyncReportingReceiptsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -101,7 +115,7 @@ class SyncReportingReceiptsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpR
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#')
     status: Annotated[Literal['completed'], Field(description='Receipt batches complete synchronously with one result per submitted receipt.')]
-    results: Annotated[list[RecordedReportingReceipt | UnchangedReportingReceipt | RecordedReportingAdjustmentReceipt | UnchangedReportingAdjustmentReceipt | FailedReportingReceipt], Field(max_length=100, min_length=1)]
+    results: Annotated[list[ResultsItem], Field(max_length=100, min_length=1)]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

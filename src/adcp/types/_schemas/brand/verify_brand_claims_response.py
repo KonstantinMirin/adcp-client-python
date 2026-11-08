@@ -36,7 +36,20 @@ class VerifyBrandClaimsResponseBulk(BranchDispatchMixin, AdCPVersionEnvelope, Pr
         return "oneOf"
 
 
-class VerifyBrandClaimsResultSuccess(AdCPBaseModel):
+class ResultEntry(BranchDispatchMixin, AdCPBaseModel):
+    """
+    One entry in `results[]`. Either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only). Mirrors the single-target `verify_brand_claim` response success arm shape.
+    """
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claims-response.json', pointer='#/definitions/result_entry')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
+
+
+class VerifyBrandClaimsResultSuccess(ResultEntry):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -50,7 +63,7 @@ class VerifyBrandClaimsResultSuccess(AdCPBaseModel):
     context_note: Annotated[StrMaxLen500 | None, Field(description='Public — free-text context the brand chooses to surface.'), OmittedNotNull] = None
 
 
-class VerifyBrandClaimsResultError(AdCPBaseModel):
+class VerifyBrandClaimsResultError(ResultEntry):
     """
     Per-claim failure carried inline so a batch can return partial results. Distinct from the batch-level errors arm.
     """
@@ -64,7 +77,8 @@ class VerifyBrandClaimsResultError(AdCPBaseModel):
     error: Error
 
 
-ResultEntry = Annotated[VerifyBrandClaimsResultSuccess | VerifyBrandClaimsResultError, Field(description='One entry in `results[]`. Either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only). Mirrors the single-target `verify_brand_claim` response success arm shape.')]
+ResultEntry._branch_models = (VerifyBrandClaimsResultSuccess, VerifyBrandClaimsResultError,)
+ResultEntry.model_rebuild(force=True)
 
 
 class SignedSuccessPayload(AdCPBaseModel):
