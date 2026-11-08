@@ -1817,6 +1817,27 @@ demanded it — and the answer is none of the ten. Where a `$ref` cycle is survi
 the cycle is to be **detected once and the node memoised**; this project has already found 189
 refusals that were a single reference loop.
 
+**AND A NODE'S IDENTITY IS ITS POINTER, NEVER ITS TEXT.** Serialising a structure to key it, hash
+it or compare it **re-derives what the walk already carries** — every node has a document and a
+JSON pointer, and that pair names it exactly. Text does not: it costs the whole subtree to produce,
+it is a different string for two nodes that are the same node reached twice, and it is the same
+string for two nodes that merely look alike.
+
+**THIS IS THE CASE THE LINEARITY RULE EXISTS FOR, because the cost is invisible at the call site.**
+A hash key reads as O(1) and is O(subtree) underneath, so a walk that keys each node on its own
+serialisation pays the sum of every subtree — quadratic in the document and worse with depth.
+Measured on one 700 KB record: ~100,000 serialisations and 336 million encoder calls inside a
+single check that never terminated, with the same work also accounting for the memory.
+
+**AND THE IDIOM ARRIVES INDEPENDENTLY, WHICH IS WHY IT IS A RULE AND NOT A BUG.** Three sites
+reached for it separately — a memo's key, a storability test, and a library's canonical form — none
+of them wanting JSON and each wanting *which node is this*. **A memo added to make a check cheaper
+became the most expensive thing in it**, and its own docstring recorded the memory problem it was
+written to solve.
+
+**Decided by** no serialisation being reachable from the grading path, with the library's own two
+named as the exception and nothing of ours beside them.
+
 **MEMOISATION HERE IS THE DESIGN AND NOT AN OPTIMISATION.** One answer per node per document, keyed
 on the pointer, is what makes the cost linear and the budget unnecessary. The largest single saving
 this suite has had was exactly that — a per-pair grade left uncached beneath a cached whole-set
