@@ -106,6 +106,11 @@ SHAPES = ("", "list", "dict", "union", "alias", "literal")
 #: ``root`` and nothing else.
 ROOT_BASES = ("AdCPRootModel", "RootModel", "AdCPBaseRootModel")
 
+#: One ELEMENT of a model's identity as both readers hand it to :func:`model`:
+#: ``(wire name, shape, the value it pins as a 0- or 1-tuple, required)``.  Named because
+#: four readers spell it and a tuple written out four times is four places it can drift.
+Element = tuple[str, str, tuple[Any, ...], bool]
+
 
 def digest(structure: Mapping[str, Any] | None) -> str:
     """One structure's canonical digest, or ``""`` where it has no structural identity."""
@@ -188,8 +193,8 @@ def _unwrap(ann: ast.expr) -> tuple[ast.expr | None, bool]:
     # itself forever: ``_arms`` returns a non-union node as its own single arm, so the
     # one-arm case is both "a union with its null arm dropped" and "not a union at all".
     if len(rest) == 1 and rest[0] is not ann:
-        inner, deeper = _unwrap(rest[0])
-        return inner, nullable or deeper
+        stripped, deeper = _unwrap(rest[0])
+        return stripped, nullable or deeper
     if len(arms) > 1:
         return ann, nullable
     return rest[0], nullable
@@ -270,6 +275,8 @@ def _value_lists(module: ast.Module) -> dict[str, list[Any]]:
         # **BOTH SPELLINGS OF A MODULE CONSTANT, because §3a writes the ANNOTATED one** --
         # ``_VALUES_COST_PER_THRESHOLD_RATE: tuple[str, ...] = (...)`` -- and a reader that
         # took ``ast.Assign`` alone found none of the four vocabulary modules' lists.
+        target: str
+        value: ast.expr | None
         if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             target, value = node.target.id, node.value
         elif (
@@ -341,7 +348,7 @@ def from_source(
     for node in parsed.body:
         if not isinstance(node, ast.ClassDef):
             continue
-        fields: dict[str, tuple[str, str, tuple[Any, ...], bool]] = {}
+        fields: dict[str, Element] = {}
         members: list[Any] = []
         for stmt in node.body:
             if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
@@ -366,10 +373,12 @@ def from_source(
             "members": members,
         }
 
-    def folded(word: str, stack: frozenset[str]) -> dict[str, tuple[str, str, tuple, bool]]:
+    def folded(
+        word: str, stack: frozenset[str]
+    ) -> dict[str, tuple[str, str, tuple[Any, ...], bool]]:
         if word in stack or word not in declared:
             return {}
-        out: dict[str, tuple[str, str, tuple, bool]] = {}
+        out: dict[str, Element] = {}
         for base in declared[word]["bases"]:
             out.update(folded(base, stack | {word}))
         out.update(declared[word]["own"])
@@ -428,10 +437,12 @@ def from_declarations(
     """
     classes = {d.name: d for d in declarations if isinstance(d, ir.ClassDecl)}
 
-    def folded(symbol: str, stack: frozenset[str]) -> dict[str, tuple[str, str, tuple, bool]]:
+    def folded(
+        symbol: str, stack: frozenset[str]
+    ) -> dict[str, tuple[str, str, tuple[Any, ...], bool]]:
         if symbol in stack or symbol not in classes:
             return {}
-        out: dict[str, tuple[str, str, tuple, bool]] = {}
+        out: dict[str, Element] = {}
         for base in classes[symbol].bases:
             if base.local:
                 out.update(folded(base.path, stack | {symbol}))
@@ -583,8 +594,9 @@ def published(path: Path = PUBLISHED) -> dict[str, dict[str, dict[str, Any] | No
     needs: "a callee that needs the set of a bundle's documents ... must be TOLD it, not go
     and find it."
     """
-    blob = json.loads(path.read_text())
-    return blob["modules"]
+    blob: dict[str, Any] = json.loads(path.read_text())
+    modules: dict[str, dict[str, dict[str, Any] | None]] = blob["modules"]
+    return modules
 
 
 def provenance(path: Path = PUBLISHED) -> dict[str, Any]:

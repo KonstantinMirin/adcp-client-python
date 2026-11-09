@@ -34,6 +34,7 @@ import sys
 import tarfile
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -88,14 +89,14 @@ def describe(revision: str, repo: Path) -> str:
     ).stdout.strip()
 
 
-def index(revision: str, repo: Path) -> dict:
+def index(revision: str, repo: Path) -> dict[str, Any]:
     """The whole index: the header that says what it was read from, and the structures."""
     sources = tree_of(revision, repo)
     modules = {
         module: {word: blob for word, blob in structure.from_source(text).items()}
         for module, text in sorted(sources.items())
     }
-    kinds: collections.Counter = collections.Counter(
+    kinds: collections.Counter[str] = collections.Counter(
         (blob or {}).get("kind", "none") for words in modules.values() for blob in words.values()
     )
     return {
