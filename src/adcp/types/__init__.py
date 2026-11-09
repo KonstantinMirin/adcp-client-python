@@ -115,15 +115,16 @@ def __getattr__(name: str) -> object:
     name with no schema subject gets a migration note and never a class", and an
     ``ImportError`` a reader can act on rather than a class that silently is not theirs.
     """
-    if name == "compat" or (name.startswith("__") and name != "__all__"):
+    if name in _NOT_ROUTED or (name.startswith("__") and name != "__all__"):
         # Not routed through the alias module.  A dunder probe (``__path__`` during a
         # partial import, ``__wrapped__``, ``__bases__``) must stay an ``AttributeError``
         # and must not import a thousand names to answer one -- and ``compat`` itself must
         # stay one so that the import system goes on to import the SUBMODULE.
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     compat = _alias_module()
+    adapter = _adapter_module()
     if name == "__all__":
-        return sorted({*compat.__all__, *compat.__adcp_flat_only__})
+        return sorted({*compat.__all__, *compat.__adcp_flat_only__, *adapter.__all__})
     try:
         return getattr(compat, name)
     except AttributeError:
@@ -133,6 +134,18 @@ def __getattr__(name: str) -> object:
         import importlib
 
         return getattr(importlib.import_module(where), name)
+    # **AND THE FLAT SURFACE OWES WHAT UPSTREAM'S OWN MACHINERY IMPORTS FROM IT, which the
+    # alias table could not see**: `survey/alias_surface.py` ranges over upstream's public
+    # type surface, and 171 of the pairs upstream's kept code writes at module scope are
+    # flat names it does not reach -- their generator's union-branch disambiguations, the
+    # inner nodes of a document, a union they flattened.  `_adapter` is
+    # `survey/adapter_surface.py`'s output for those, keyed on the DOCUMENT and the word the
+    # document gives, and it is consulted after the table so no name the table decided can
+    # be overridden here.
+    try:
+        return getattr(adapter, name)
+    except AttributeError:
+        pass
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}; the generated surface is "
         f"adcp.types.<domain> and the upstream spellings are this namespace's -- see "
@@ -153,7 +166,40 @@ def _alias_module():
     return importlib.import_module("adcp.types.compat")
 
 
+#: The submodules :func:`__getattr__` must NOT answer, so the import system goes on to
+#: import them.  Both are alias layers of this package and both are reached by
+#: ``import_module`` below rather than by an attribute.
+_NOT_ROUTED = ("compat", "_adapter")
+
+
+def _adapter_module():
+    """``adcp.types._adapter``, reached the same way and for the same reason.
+
+    **AND ITS ABSENCE IS NOT AN ERROR ON THIS PACKAGE.**  The adapter is generated, from a
+    run that has upstream's wheel to measure against; a tree that has emitted its classes
+    and not yet generated it must still import, and the degradation that is correct is "no
+    extra flat name", never "``adcp.types`` raises".  Measured: without this, the generating
+    run's own census cannot resolve a single flat name -- every pair reports
+    ``ModuleNotFoundError`` instead of ``AttributeError``, the demand reads EMPTY, and the
+    instrument writes an empty adapter over a full one.
+    """
+    import importlib
+    import types as _types
+
+    try:
+        return importlib.import_module("adcp.types._adapter")
+    except ModuleNotFoundError:
+        shim = _types.ModuleType("adcp.types._adapter")
+        shim.__all__ = []
+        return shim
+
+
 def __dir__() -> list[str]:
     """This package's own names plus every upstream spelling the alias layer decides."""
     compat = _alias_module()
-    return sorted(set(globals()) | set(compat.__all__) | set(compat.__adcp_flat_only__))
+    return sorted(
+        set(globals())
+        | set(compat.__all__)
+        | set(compat.__adcp_flat_only__)
+        | set(_adapter_module().__all__)
+    )
