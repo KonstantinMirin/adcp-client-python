@@ -860,6 +860,25 @@ def write_modules(rows: list[dict], out: Path, version: str) -> dict[str, tuple[
     for module, group in sorted(by_module.items()):
         leaf = "_adapter" if module == "adcp.types" else module.rpartition(".")[2]
         target = out / f"{leaf}.py"
+        #: **THIS SKIP IS A KNOWN DEFECT AND IT IS THE SAFER OF TWO** -- see
+        #: `adcp-client-python`'s row on the adapter writer.  Skipping a target that
+        #: exists means this instrument CANNOT ADD A NAME to a module it has already
+        #: written: a schema bump leaves every adapter module at its old contents while
+        #: the table beside it moves, and nothing says so.  That contradicts the claim
+        #: this module makes about being derived.
+        #:
+        #: It is nevertheless kept, because removing it today is WORSE.  Five of the
+        #: paths this writer targets -- `_legacy_assets`, `_scalar`, `_str_enum`,
+        #: `_wire`, `error_narrowing` -- now hold upstream's own HAND-WRITTEN machinery,
+        #: restored byte for byte, and this writer has no idea: measured, the only
+        #: mention of `survey/upstream_machinery.py`'s classification anywhere in this
+        #: file is this comment.  Without the skip, a re-run silently overwrites restored
+        #: source with generated re-exports.
+        #:
+        #: The repair is BOTH halves together and neither alone: exclude a module the
+        #: machinery classification marks `restored` from `rows` upstream of here, and
+        #: then drop the skip.  Until both land, a schema bump needs this file's output
+        #: deleted by hand and the restored five put back.
         if module != "adcp.types" and target.exists():
             written[module] = (0, 0)
             continue

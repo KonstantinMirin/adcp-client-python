@@ -1,0 +1,50 @@
+# survey/upstream_machinery.py over upstream 4ed0bce87
+module	upstream_path	lines	adcp_types_imports	src	src_all	tests	generated_header	verdict	here_now	why
+_eager	src/adcp/types/_eager.py	2115	36	0	2	3	0	LIVE-TRANSITIVELY	absent	no direct source importer; 2 importers inside types/
+_ergonomic	src/adcp/types/_ergonomic.py	705	41	0	0	0	1	GENERATED-STAYS-DELETED	absent	upstream's own header names the generator
+_forward_compat	src/adcp/types/_forward_compat.py	616	39	0	1	1	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
+_generated	src/adcp/types/_generated.py	6687	1038	2	6	12	1	GENERATED-STAYS-DELETED	absent	upstream's own header names the generator
+_generated_poc_alias	src/adcp/types/_generated_poc_alias.py	291	0	0	0	1	0	TEST-ONLY-DELETE	absent	0 source importers, 1 test importers: a curated topic module
+_geo_place_keys	src/adcp/types/_geo_place_keys.py	36	0	0	1	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
+_legacy_assets	src/adcp/types/_legacy_assets.py	85	1	3	4	0	0	LIVE-RESTORE	restored	3 source importers outside types/
+_partial	src/adcp/types/_partial.py	48	1	0	6	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 6 importers inside types/
+_product_format_declaration	src/adcp/types/_product_format_declaration.py	102	0	0	1	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
+_scalar	src/adcp/types/_scalar.py	264	0	1	134	2	0	LIVE-RESTORE	restored	1 source importers outside types/
+_str_enum	src/adcp/types/_str_enum.py	19	0	1	520	1	0	LIVE-RESTORE	restored	1 source importers outside types/
+_wire	src/adcp/types/_wire.py	384	0	1	2	1	0	LIVE-RESTORE	restored	1 source importers outside types/
+aliases	src/adcp/types/aliases.py	2709	170	1	4	9	1	GENERATED-STAYS-DELETED	adapter-module	upstream's own header names the generator
+base	src/adcp/types/base.py	1031	15	3	792	20	0	LIVE-RESTORE	adapter-module	3 source importers outside types/
+buyer	src/adcp/types/buyer.py	158	3	0	2	3	0	LIVE-TRANSITIVELY	absent	no direct source importer; 2 importers inside types/
+canonical_creative	src/adcp/types/canonical_creative.py	1386	43	2	4	13	0	LIVE-RESTORE	adapter-module	2 source importers outside types/
+canonical_decl	src/adcp/types/canonical_decl.py	280	7	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
+capabilities	src/adcp/types/capabilities.py	292	17	2	3	2	0	LIVE-RESTORE	adapter-module	2 source importers outside types/
+coercion	src/adcp/types/coercion.py	217	0	0	1	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
+core	src/adcp/types/core.py	444	0	20	21	55	0	LIVE-RESTORE	ours	20 source importers outside types/
+creative	src/adcp/types/creative.py	194	3	0	2	3	0	LIVE-TRANSITIVELY	ours	no direct source importer; 2 importers inside types/
+error_details	src/adcp/types/error_details.py	254	53	0	1	2	1	GENERATED-STAYS-DELETED	ours	upstream's own header names the generator
+error_narrowing	src/adcp/types/error_narrowing.py	307	0	2	2	2	0	LIVE-RESTORE	restored	2 source importers outside types/
+guards	src/adcp/types/guards.py	485	3	1	3	1	0	LIVE-RESTORE	adapter-module	1 source importers outside types/
+legacy	src/adcp/types/legacy.py	247	47	19	22	25	0	LIVE-RESTORE	adapter-module	19 source importers outside types/
+media_buy	src/adcp/types/media_buy.py	214	3	0	2	2	0	LIVE-TRANSITIVELY	ours	no direct source importer; 2 importers inside types/
+media_buy_status_helpers	src/adcp/types/media_buy_status_helpers.py	26	0	0	4	0	0	LIVE-TRANSITIVELY	restored	no direct source importer; 4 importers inside types/
+mypy_plugin	src/adcp/types/mypy_plugin.py	39	0	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
+projections	src/adcp/types/projections.py	242	4	1	2	1	0	LIVE-RESTORE	absent	1 source importers outside types/
+protocol	src/adcp/types/protocol.py	172	3	0	2	2	0	LIVE-TRANSITIVELY	ours	no direct source importer; 2 importers inside types/
+registry	src/adcp/types/registry.py	2051	1	4	5	5	1	GENERATED-STAYS-DELETED	adapter-module	upstream's own header names the generator
+response_dispatch	src/adcp/types/response_dispatch.py	135	0	0	5	2	0	LIVE-TRANSITIVELY	absent	no direct source importer; 5 importers inside types/
+seller	src/adcp/types/seller.py	138	3	0	2	1	0	LIVE-TRANSITIVELY	absent	no direct source importer; 2 importers inside types/
+signals	src/adcp/types/signals.py	115	3	0	2	0	0	LIVE-TRANSITIVELY	ours	no direct source importer; 2 importers inside types/
+v30	src/adcp/types/v30.py	5	1	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
+v31	src/adcp/types/v31.py	5	1	0	0	2	0	TEST-ONLY-DELETE	absent	0 source importers, 2 test importers: a curated topic module
+v32	src/adcp/types/v32.py	5	1	0	0	4	0	TEST-ONLY-DELETE	absent	0 source importers, 4 test importers: a curated topic module
+validation	src/adcp/types/validation.py	48	0	0	1	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
+variants	src/adcp/types/variants.py	52	0	0	2	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 2 importers inside types/
+versioned	src/adcp/types/versioned.py	611	0	0	10	3	0	LIVE-TRANSITIVELY	absent	no direct source importer; 10 importers inside types/
+versioned_bases.__init__	src/adcp/types/versioned_bases/__init__.py	5	0	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
+versioned_bases._runtime	src/adcp/types/versioned_bases/_runtime.py	73	1	0	3	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 3 importers inside types/
+versioned_bases._v30	src/adcp/types/versioned_bases/_v30.py	8861	0	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
+versioned_bases._v31	src/adcp/types/versioned_bases/_v31.py	41189	0	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
+versioned_bases._v32	src/adcp/types/versioned_bases/_v32.py	30362	0	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
+versioned_bases.v30	src/adcp/types/versioned_bases/v30.py	18	1	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
+versioned_bases.v31	src/adcp/types/versioned_bases/v31.py	18	1	0	0	2	0	TEST-ONLY-DELETE	absent	0 source importers, 2 test importers: a curated topic module
+versioned_bases.v32	src/adcp/types/versioned_bases/v32.py	18	1	0	0	2	0	TEST-ONLY-DELETE	absent	0 source importers, 2 test importers: a curated topic module
