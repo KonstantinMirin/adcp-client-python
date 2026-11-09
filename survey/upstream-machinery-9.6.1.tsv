@@ -5,7 +5,7 @@ _ergonomic	src/adcp/types/_ergonomic.py	705	41	0	0	0	1	GENERATED-STAYS-DELETED	a
 _forward_compat	src/adcp/types/_forward_compat.py	616	39	0	1	1	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
 _generated	src/adcp/types/_generated.py	6687	1038	2	6	12	1	GENERATED-STAYS-DELETED	absent	upstream's own header names the generator
 _generated_poc_alias	src/adcp/types/_generated_poc_alias.py	291	0	0	0	1	0	TEST-ONLY-DELETE	absent	0 source importers, 1 test importers: a curated topic module
-_geo_place_keys	src/adcp/types/_geo_place_keys.py	36	0	0	1	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
+_geo_place_keys	src/adcp/types/_geo_place_keys.py	36	0	0	1	0	0	LIVE-TRANSITIVELY	restored	no direct source importer; 1 importers inside types/
 _legacy_assets	src/adcp/types/_legacy_assets.py	85	1	3	4	0	0	LIVE-RESTORE	restored	3 source importers outside types/
 _partial	src/adcp/types/_partial.py	48	1	0	6	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 6 importers inside types/
 _product_format_declaration	src/adcp/types/_product_format_declaration.py	102	0	0	1	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
@@ -13,7 +13,7 @@ _scalar	src/adcp/types/_scalar.py	264	0	1	134	2	0	LIVE-RESTORE	restored	1 source
 _str_enum	src/adcp/types/_str_enum.py	19	0	1	520	1	0	LIVE-RESTORE	restored	1 source importers outside types/
 _wire	src/adcp/types/_wire.py	384	0	1	2	1	0	LIVE-RESTORE	restored	1 source importers outside types/
 aliases	src/adcp/types/aliases.py	2709	170	1	4	9	1	GENERATED-STAYS-DELETED	adapter-module	upstream's own header names the generator
-base	src/adcp/types/base.py	1031	15	3	792	20	0	LIVE-RESTORE	adapter-module	3 source importers outside types/
+base	src/adcp/types/base.py	1031	15	3	792	20	0	LIVE-RESTORE	restored	3 source importers outside types/
 buyer	src/adcp/types/buyer.py	158	3	0	2	3	0	LIVE-TRANSITIVELY	absent	no direct source importer; 2 importers inside types/
 canonical_creative	src/adcp/types/canonical_creative.py	1386	43	2	4	13	0	LIVE-RESTORE	adapter-module	2 source importers outside types/
 canonical_decl	src/adcp/types/canonical_decl.py	280	7	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
