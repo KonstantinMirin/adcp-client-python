@@ -131,6 +131,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import structural_signature as ss  # noqa: E402
+import upstream_machinery as um  # noqa: E402
 
 OUR_GEN = "adcp.types._schemas"
 THEIR_GEN = "adcp.types.domains"
@@ -176,11 +177,20 @@ def dump_ours(out_path: Path) -> None:
 
     declarations: dict[str, dict] = {}
     unreadable: dict[str, str] = {}
+    #: **WHICH DECLARATION AN OBJECT ON A PUBLIC MODULE IS, BY IDENTITY.**  A class answers
+    #: that with `__module__` and `__qualname__`; a type ALIAS has neither, so the public
+    #: path of `core/experimental-feature-id.json`'s root was invisible and the adapter
+    #: imported it from `adcp.types._schemas` -- a PRIVATE path, in a generated module whose
+    #: whole purpose is to be the supported spelling.  A re-export binds the same object, so
+    #: `id()` is the reading, and it is exact where equality would not be: two `Annotated`
+    #: aliases over one type compare equal and are different declarations.
+    by_id: dict[int, str] = {}
 
     def add(mod_name: str, word: str, obj: object) -> None:
         key = f"{mod_name}.{word}"
         if key in declarations:
             return
+        by_id.setdefault(id(obj), key)
         method, schema, note = ss.signature(obj)
         branch = obj.__dict__.get("_branch_models") or () if isinstance(obj, type) else ()
         declarations[key] = {
@@ -195,6 +205,15 @@ def dump_ours(out_path: Path) -> None:
         }
 
     def record(mod_name: str, mod: object) -> None:
+        # **AN ADAPTER OF OURS DECLARES NOTHING, SO NOTHING IS RECORDED FROM IT.**  The
+        # class arm below is already safe -- a re-exported class still names its own
+        # `__module__` -- but a type ALIAS has no module of its own, so the `__all__` arm
+        # recorded `adcp.types.capabilities.ExperimentalFeature` as a DECLARATION the moment
+        # this writer bound that name, and the next run's word and signature indexes then
+        # carried its own last output as a candidate.  Measured: one declaration on the run
+        # after the write, and the count is stable across two runs with this clause.
+        if getattr(mod, MARKER, None) is not None:
+            return
         for attr, obj in list(vars(mod).items()):
             if isinstance(obj, type) and getattr(obj, "__module__", None) == mod_name:
                 add(mod_name, obj.__qualname__, obj)
@@ -208,7 +227,6 @@ def dump_ours(out_path: Path) -> None:
             obj = getattr(mod, word, None)
             if obj is not None and not isinstance(obj, type):
                 add(mod_name, word, obj)
-
     for mod_name in modules:
         try:
             record(mod_name, importlib.import_module(mod_name))
@@ -221,12 +239,26 @@ def dump_ours(out_path: Path) -> None:
             unreadable[mod_name] = f"{type(exc).__name__}: {exc}"
             continue
         record(mod_name, mod)
-        for attr, obj in list(vars(mod).items()):
-            if attr.startswith("_") or not isinstance(obj, type):
-                continue
-            key = f"{getattr(obj, '__module__', '')}.{getattr(obj, '__qualname__', '')}"
-            if key in declarations:
-                declarations[key]["public"].append([mod_name, attr])
+        # **AN ADAPTER OF OURS IS NOT A PUBLIC HOME FOR A DECLARATION.**  A module carrying
+        # :data:`MARKER` restates upstream's words and declares nothing, so recording it as
+        # a `public` path makes this writer's own last output an input to its next run: the
+        # statement for `CpmAuctionPricingOption` named `adcp.types.compat` -- the OTHER
+        # alias layer -- rather than the emitted `adcp.types.pricing_options`, which is one
+        # adapter importing another and is a second answer to one question.  Measured: 31
+        # rows of the table were reaching an alias layer that way, and all 31 now name the
+        # module the compiler wrote -- the same rule `demand` reads one layer down, and what
+        # makes a second run of the writer reproduce the first.
+        if getattr(mod, MARKER, None) is None:
+            for attr, obj in list(vars(mod).items()):
+                if attr.startswith("_"):
+                    continue
+                key = (
+                    f"{getattr(obj, '__module__', '')}.{getattr(obj, '__qualname__', '')}"
+                    if isinstance(obj, type)
+                    else by_id.get(id(obj), "")
+                )
+                if key in declarations:
+                    declarations[key]["public"].append([mod_name, attr])
 
     out_path.write_text(
         json.dumps(
@@ -444,7 +476,6 @@ class Join:
         self.version = theirs["version"]
         self._values: dict[str, frozenset[str]] = {}
         self._roots: dict[str, str] = {}
-
         self.their_modules = {m for r in theirs["declarations"].values() for m in r["modules"]}
         self.at: dict[tuple[str, str], list[str]] = collections.defaultdict(list)
         self.their_word: dict[str, set[str]] = collections.defaultdict(set)
@@ -837,50 +868,93 @@ def __getattr__(name: str) -> object:
 '''
 
 
-def write_modules(rows: list[dict], out: Path, version: str) -> dict[str, tuple[int, int]]:
+def owner(target: Path, restored: frozenset[Path]) -> str | None:
+    """Who holds this path, where it is NOT this writer's to write: the reason, or `None`.
+
+    **THE WRITER OWNS A PATH THAT IS ABSENT OR THAT CARRIES ITS OWN MARKER, AND NOTHING
+    ELSE.**  Read as a predicate over the path rather than as "the file exists", which is
+    the distinction `adcp-client-python-smzq` is about: `target.exists()` is true of the
+    writer's OWN last output, so skipping on it meant the instrument could never ADD A NAME
+    to a module it had written -- a schema bump moved the table beside it and left every
+    adapter module at its old contents, with nothing saying so.  The two clauses here are
+    the two things that skip was standing in for, each said as what it actually is:
+
+    * **upstream's own file, restored** (`survey/upstream_machinery.restored_paths`): the
+      bytes at the path are upstream's at the commit the classification names.  Measured on
+      this tree: six paths, and five of them -- `_legacy_assets`, `_scalar`, `_str_enum`,
+      `_wire`, `error_narrowing` -- are paths this writer's own demand names.  Derived from
+      the classification and never listed, so a module restored tomorrow is protected
+      without this file changing.
+    * **a module of OURS**: a path that exists, carries no marker of an adapter, and is not
+      upstream's restored file either -- which is our EMITTED domain surface
+      (`adcp.types.core` is a document's module of ours AND the name of a hand-written
+      machinery module of theirs) or any other hand-authored module of the layer.  Where
+      their path is already ours, ours wins (`survey/dropin/_dropin.py`'s own rule), read
+      here at file granularity because this writes FILES and not a loader.
+
+    Neither clause reads a module NAME, because the hazard is a path: upstream's
+    `versioned_bases/_runtime.py` and our `_runtime.py` are two files whose module leaf is
+    one word, and a name-keyed exclusion would protect ours as though it were theirs.
+
+    And a third clause, which is this writer's own reach rather than someone's ownership:
+    **a module no DIRECTORY of the layer can hold is not a file this writer can write.**
+    The demand names 16 pairs under `adcp.types.domains`, a package served by a FINDER
+    (`adcp/types/domains/__init__.py` binds `<mirror>.<rest>` to the built module
+    `adcp.types._schemas.<rest>`) and holding no submodule files at all; writing
+    `domains/core/format.py` would put a file where a loader answers.  Those rows are
+    reported with this reason and left to the lanes that own the names.
+    """
+    if target.resolve() in restored:
+        return "upstream's own file, restored"
+    if not target.parent.is_dir():
+        return f"no directory at {target.parent.name}/ -- the module is served by a loader"
+    if not target.exists():
+        return None
+    if MARKER in target.read_text():
+        return None
+    return "a module of ours, which this writer did not write"
+
+
+def write_modules(
+    rows: list[dict], out: Path, version: str, restored: frozenset[Path] | None = None
+) -> tuple[dict[str, tuple[int, int]], dict[str, str]]:
     """One module per upstream module the demand names, with its names and its refusals.
 
-    **A MODULE OF OURS IS NEVER OVERWRITTEN.**  `adcp.types.core` is a domain module of ours
-    AND the name of a hand-written machinery module of theirs, and the domain module is
-    EMITTED -- `codegen/emit.py` writes it from the compiler's own record of what it
-    exported, and a gate reads it byte for byte.  So where their path is already ours, ours
-    wins and the names only theirs carried are reported rather than served; see
-    `survey/dropin/_dropin.py`'s "where a path is ours, ours wins", read here at file
-    granularity because this writes FILES and not a loader.
+    **A PATH THIS WRITER DOES NOT OWN IS NEVER WRITTEN, AND A PATH IT OWNS IS REWRITTEN**
+    (:func:`owner`, and `adcp-client-python-smzq` for the defect that is).  Those are the
+    two halves of one repair and neither works alone: without the ownership reading a
+    re-run overwrites upstream's restored machinery with generated re-exports, and with a
+    blanket "the target exists" skip the instrument cannot add a name to its own module and
+    stops being derived at the first schema bump.  A refusal is REPORTED with its reason
+    (:func:`main` prints it) rather than recorded as a module written with no names.
 
     The FLAT namespace is written to `_adapter.py` for the same reason: `adcp.types`'s own
     `__init__` is the package, it is hand-written on purpose ("a package's own `__init__` IS
     the package, so it is bound before `__path__` is consulted"), and it resolves a flat name
     through a module rather than carrying a list.
     """
+    #: Measured live by default (`survey/upstream_machinery.restored_paths`) and a PARAMETER
+    #: so the gate can hand this function a tree of its own: the one thing worth proving
+    #: about the clause is that a run targeting a restored path leaves its bytes alone, and
+    #: a check that proved it against `src/adcp/types` would destroy the tree when it failed.
+    restored = um.restored_paths() if restored is None else restored
     by_module: dict[str, list[dict]] = collections.defaultdict(list)
     for row in rows:
         by_module[row["module"]].append(row)
     written: dict[str, tuple[int, int]] = {}
+    refused_paths: dict[str, str] = {}
     for module, group in sorted(by_module.items()):
-        leaf = "_adapter" if module == "adcp.types" else module.rpartition(".")[2]
-        target = out / f"{leaf}.py"
-        #: **THIS SKIP IS A KNOWN DEFECT AND IT IS THE SAFER OF TWO** -- see
-        #: `adcp-client-python`'s row on the adapter writer.  Skipping a target that
-        #: exists means this instrument CANNOT ADD A NAME to a module it has already
-        #: written: a schema bump leaves every adapter module at its old contents while
-        #: the table beside it moves, and nothing says so.  That contradicts the claim
-        #: this module makes about being derived.
-        #:
-        #: It is nevertheless kept, because removing it today is WORSE.  Five of the
-        #: paths this writer targets -- `_legacy_assets`, `_scalar`, `_str_enum`,
-        #: `_wire`, `error_narrowing` -- now hold upstream's own HAND-WRITTEN machinery,
-        #: restored byte for byte, and this writer has no idea: measured, the only
-        #: mention of `survey/upstream_machinery.py`'s classification anywhere in this
-        #: file is this comment.  Without the skip, a re-run silently overwrites restored
-        #: source with generated re-exports.
-        #:
-        #: The repair is BOTH halves together and neither alone: exclude a module the
-        #: machinery classification marks `restored` from `rows` upstream of here, and
-        #: then drop the skip.  Until both land, a schema bump needs this file's output
-        #: deleted by hand and the restored five put back.
-        if module != "adcp.types" and target.exists():
-            written[module] = (0, 0)
+        # **THE WHOLE MODULE PATH AND NOT ITS LEAF.**  A leaf collapses
+        # `adcp.types.domains.core.format` onto `format.py` beside `capabilities.py`, which
+        # is a file at a path no module names; the demand reached a nested module for the
+        # first time on this branch and the flattening would have written four such files.
+        rest = module[len("adcp.types") :].lstrip(".")
+        target = (
+            out / "_adapter.py" if not rest else out.joinpath(*rest.split(".")).with_suffix(".py")
+        )
+        held = owner(target, restored)
+        if held is not None:
+            refused_paths[module] = f"{target.name}: {held}"
             continue
         statements: list[str] = []
         unions: list[str] = []
@@ -940,7 +1014,7 @@ def write_modules(rows: list[dict], out: Path, version: str) -> dict[str, tuple[
         )
         target.write_text(body)
         written[module] = (len(names), len(refused))
-    return written
+    return written, refused_paths
 
 
 # --------------------------------------------------------------------------- main
@@ -1035,9 +1109,11 @@ def main() -> None:
     if args.report:
         args.report.write_text(json.dumps({"version": join.version, "rows": rows}, indent=1))
     if args.write:
-        written = write_modules(rows, args.write, join.version)
+        written, refused_paths = write_modules(rows, args.write, join.version)
         for module, n in sorted(written.items()):
             print(f"  wrote {module:34} {n[0]:5} names, {n[1]:4} refused")
+        for module, why in sorted(refused_paths.items()):
+            print(f"  NOT WRITTEN {module:28} {why}")
 
 
 if __name__ == "__main__":

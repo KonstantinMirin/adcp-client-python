@@ -35,12 +35,6 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
-from adcp.types.compat import Avatar as Avatar
-from adcp.types.compat import IdempotencySupported as Idempotency
-from adcp.types.compat import IdempotencySupported as IdempotencySupported
-from adcp.types.compat import IdempotencyUnsupported as IdempotencyUnsupported
-from adcp.types.compat import Video as Video
-from adcp.types.compat import Voice as Voice
 from adcp.types.core import PreviewRendererMetadataRenderingOrigin as CapabilitiesPreviewRenderingOrigin
 from adcp.types.protocol import GetAdCPCapabilitiesResponseAccount as CapabilitiesAccount
 from adcp.types.protocol import GetAdCPCapabilitiesResponseAdcp as Adcp
@@ -79,10 +73,16 @@ from adcp.types.protocol import GetAdCPCapabilitiesResponseSponsoredIntelligence
 from adcp.types.protocol import GetAdCPCapabilitiesResponseSponsoredIntelligenceEndpoint as Endpoint
 from adcp.types.protocol import GetAdCPCapabilitiesResponseSupportedProtocolsItem as SupportedProtocol
 from adcp.types.protocol import GetAdCPCapabilitiesResponseWebhookSigning as WebhookSigning
+from adcp.types.protocol import IdempotencySupported as Idempotency
+from adcp.types.protocol import IdempotencySupported as IdempotencySupported
+from adcp.types.protocol import IdempotencyUnsupported as IdempotencyUnsupported
+from adcp.types.sponsored_intelligence import Avatar as Avatar
 from adcp.types.sponsored_intelligence import SICapabilitiesA2ui as A2ui
 from adcp.types.sponsored_intelligence import SICapabilitiesCommerce as Commerce
 from adcp.types.sponsored_intelligence import SICapabilitiesComponents as Components
 from adcp.types.sponsored_intelligence import SICapabilitiesModalities as Modalities
+from adcp.types.sponsored_intelligence import Video as Video
+from adcp.types.sponsored_intelligence import Voice as Voice
 
 __all__ = [
     "A2ui",

@@ -35,8 +35,6 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
-from adcp.types._schemas.core.property_id import PropertyID as PropertyId
-from adcp.types._schemas.core.property_tag import PropertyTag as PropertyTag
 from adcp.types.account import GetAccountFinancialsError as GetAccountFinancialsErrorResponse
 from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsResponse1
 from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsSuccessResponse
@@ -54,13 +52,6 @@ from adcp.types.brand import GetBrandIdentitySuccess as GetBrandIdentitySuccessR
 from adcp.types.brand import GetRightsError as GetRightsErrorResponse
 from adcp.types.brand import GetRightsSuccess as GetRightsResponse1
 from adcp.types.brand import GetRightsSuccess as GetRightsSuccessResponse
-from adcp.types.compat import GetCreativeDeliveryRequest as GetCreativeDeliveryByBuyerRefRequest
-from adcp.types.compat import GetCreativeDeliveryRequest as GetCreativeDeliveryByCreativeRequest
-from adcp.types.compat import GetCreativeDeliveryRequest as GetCreativeDeliveryByMediaBuyRequest
-from adcp.types.compat import ProvidePerformanceFeedbackRequest as ProvidePerformanceFeedbackByBuyerRefRequest
-from adcp.types.compat import ProvidePerformanceFeedbackRequest as ProvidePerformanceFeedbackByMediaBuyRequest
-from adcp.types.compat import SiSendMessageRequest as SiSendActionResponseRequest
-from adcp.types.compat import SiSendMessageRequest as SiSendTextMessageRequest
 from adcp.types.compliance import ListScenariosSuccess as ComplyTestControllerResponse1
 from adcp.types.content_standards import CalibrateContentResponseVerdict as CalibrateContentResponse1
 from adcp.types.content_standards import CalibrateContentResponseVerdict as CalibrateContentSuccessResponse
@@ -94,9 +85,14 @@ from adcp.types.core import Destination as Destination
 from adcp.types.core import DestinationAgent as AgentDestination
 from adcp.types.core import DestinationPlatform as PlatformDestination
 from adcp.types.core import PricingOption as PricingOption
+from adcp.types.core import PropertyID as PropertyId
+from adcp.types.core import PropertyTag as PropertyTag
 from adcp.types.core import PublisherPropertySelectorAll as PublisherPropertiesAll
 from adcp.types.core import PublisherPropertySelectorById as PublisherPropertiesById
 from adcp.types.core import PublisherPropertySelectorByTag as PublisherPropertiesByTag
+from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByBuyerRefRequest
+from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByCreativeRequest
+from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByMediaBuyRequest
 from adcp.types.creative import GetCreativeFeaturesError as GetCreativeFeaturesErrorResponse
 from adcp.types.creative import GetCreativeFeaturesResponseSuccess as GetCreativeFeaturesResponse1
 from adcp.types.creative import GetCreativeFeaturesResponseSuccess as GetCreativeFeaturesSuccessResponse
@@ -112,6 +108,8 @@ from adcp.types.media_buy import LogEventError as LogEventErrorResponse
 from adcp.types.media_buy import LogEventSuccess as LogEventResponse1
 from adcp.types.media_buy import LogEventSuccess as LogEventSuccessResponse
 from adcp.types.media_buy import ProvidePerformanceFeedbackError as ProvidePerformanceFeedbackErrorResponse
+from adcp.types.media_buy import ProvidePerformanceFeedbackRequest as ProvidePerformanceFeedbackByBuyerRefRequest
+from adcp.types.media_buy import ProvidePerformanceFeedbackRequest as ProvidePerformanceFeedbackByMediaBuyRequest
 from adcp.types.media_buy import ProvidePerformanceFeedbackSuccess as ProvidePerformanceFeedbackResponse1
 from adcp.types.media_buy import ProvidePerformanceFeedbackSuccess as ProvidePerformanceFeedbackSuccessResponse
 from adcp.types.media_buy import SyncAudiencesError as SyncAudiencesErrorResponse
@@ -130,6 +128,8 @@ from adcp.types.signals import ActivateSignalSuccess as ActivateSignalResponse1
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalSuccessResponse
 from adcp.types.signals import GetSignalsRequest as GetSignalsDiscoveryRequest
 from adcp.types.signals import GetSignalsRequest as GetSignalsLookupRequest
+from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendActionResponseRequest
+from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendTextMessageRequest
 
 __all__ = [
     "AccountReferenceById",
