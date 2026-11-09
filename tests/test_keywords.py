@@ -691,6 +691,18 @@ def test_the_census_is_blind_to_a_collection_naming_an_unlisted_keyword() -> Non
     so it is not done here: this test is the blind spot WRITTEN DOWN, and it reddens if the
     list is completed -- which is the point at which the sites it hides need rows of their
     own.  ``adcp-client-python-3be.8`` reports it.
+
+    **A THIRD SITE ARRIVES WITH ``adcp-client-python-hzio.3`` AND IT IS NAMED RATHER THAN
+    ABSORBED.**  ``codegen.verify.witness.CONSTANT_COST`` is one half of a partition over the
+    draft's own keyword readings -- the keywords whose error message renders a BOUND or a KEY
+    NAME, so its cost is constant and the library's reading is kept -- and it names
+    ``multipleOf``, which is the one keyword this census's list does not carry.  So the
+    collection has more than ``FLOOR`` draft-07 keywords and not ALL of them, which is
+    exactly the shape the census drops.  **It is not derivable away:** the partition is a
+    DECISION about each keyword and a derived half would decide nothing, which is the whole
+    reason ``codegen/verify/witness.py`` carries both halves and
+    ``tests/test_witness_construction.py`` asserts they cover the draft exactly.  The set
+    below stays an exact sorted list so a FOURTH site cannot arrive quietly.
     """
     from survey import arch_audit
 
@@ -721,4 +733,4 @@ def test_the_census_is_blind_to_a_collection_naming_an_unlisted_keyword() -> Non
             and len([v for v in vals if v in arch_audit.DRAFT07]) != len(vals)
         }
     )
-    assert hidden == ["codegen.harness", "codegen.ir"], hidden
+    assert hidden == ["codegen.harness", "codegen.ir", "codegen.verify.witness"], hidden

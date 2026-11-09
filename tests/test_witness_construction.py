@@ -44,6 +44,25 @@ from codegen.verify import witness
 
 MODULE = pathlib.Path(witness.__file__)
 
+
+#: **EVERY ITEM OF THIS MODULE GOES TO ONE WORKER, and the reason is MEASURED.**
+#:
+#: ``tests/constructed.whole()`` is one warmed :class:`codegen.verify.witness.Construction`
+#: over all 1,059 records -- 272,262 memo entries, 215,019 pinned nodes, 1,051 validators,
+#: about 660 MB resident -- and it is held PER PROCESS, so a module whose items spread
+#: across the workers builds it once per worker.  That is fine for a handful of items and it
+#: is not fine for 1,059: the obligation
+#: :func:`test_the_document_admits_the_value_built_for_its_own_root` is one item per
+#: document, so without this mark every worker takes some of them and every worker pays the
+#: 660 MB.  **I measured that the hard way -- the suite was OOM-killed at 83% inside a 20 GB
+#: cgroup at ``-n 4``, with ``oom_kill`` in ``/proc/vmstat`` going 73 -> 75.**
+#:
+#: ``--dist=loadgroup`` in ``pyproject.toml`` is what reads this, and
+#: ``tests/test_emit.py``'s ``GRADED_REPORTS_GROUP`` is the same rule for the same reason one
+#: derivation over.  The name is shared with ``tests/test_witness_mutations.py`` because the
+#: two modules read ONE construction: two groups would be two of them.
+pytestmark = pytest.mark.xdist_group("constructed")
+
 #: A record whose ``$ref`` cycle is reached through an OPTIONAL property, so the
 #: construction closes it by omitting the reference.
 OPTIONAL_CYCLE = {
