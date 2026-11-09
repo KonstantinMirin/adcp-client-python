@@ -6981,7 +6981,25 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
         f"{emit.SURFACE}/{emit.module_domain(module)}.py"
         for module, exported in out.surface.items()
         if exported
-    } | {f"{emit.SURFACE}/__init__.py"}
+    } | {f"{emit.SURFACE}/__init__.py", f"{emit.SURFACE}/{emit.FLAT}.py"}
+    # **THE CROSS-DOMAIN CONSOLIDATION IS ONE MORE FILE OF THAT PACKAGE AND IS COMPARED
+    # THE SAME WAY** (``emit.FLAT``, ``adcp-client-python-qpo4``, 2026-11-09).  It is the
+    # UNION of the per-domain aggregators above -- derived from the same ``out.surface``
+    # record, so a domain that stops being emitted takes its words out of the union with
+    # nothing edited -- and its whole reason for being the compiler's rather than a
+    # hand-written list is the compare on the next line: a list of 3,219 names maintained
+    # by hand goes stale on the next bundle and nothing says so.
+    #
+    # It is keyed off ``emit.FLAT`` and not spelled here, and it is NOT derived from the
+    # export record the way the domains are, because it is exactly ONE file whatever the
+    # record holds -- a run over a bundle that emits nothing still writes an empty
+    # consolidation, for the reason the alias module beside it is always written.
+    #
+    # **And it has no public composition, which is what separates it from the 23.**  A
+    # domain's aggregator is composed at ``adcp/types/<domain>.py`` because the domain path
+    # is what §1 gives a class; the consolidation is a FLAT spelling, which §1 does not give
+    # a public module, so the only thing that reads it is ``adcp.types.__getattr__``.
+    # ``tests_emit/test_the_public_domain_path.py`` is where that asymmetry is stated.
     # The compatibility mirror of v9.6's module layout (``codegen/mirror``) is the fourth
     # kind, and it is the one that is a function of NEITHER the run nor the bundle: its
     # mapping is one prefix substitution evaluated at import time, so it names no document

@@ -154,12 +154,18 @@ def __getattr__(name: str) -> object:
     compat = _alias_module()
     adapter = _adapter_module()
     if name == "__all__":
+        # ``_flat.__all__`` is in here and costs nothing a consult of this list does not
+        # already pay: ``compat`` itself imports all 23 domain aggregators -- measured,
+        # 1,051 ``_schemas`` modules and 381 MiB -- so by the time ``__all__`` is asked for,
+        # the tree ``_flat`` names is already in ``sys.modules``.  The saving the facade
+        # exists for is paid at ``import adcp.types``, which touches none of the four.
         return sorted(
             {
                 *compat.__all__,
                 *compat.__adcp_flat_only__,
                 *adapter.__all__,
                 *_restored_module().__all__,
+                *_flat_module().__all__,
             }
         )
     try:
@@ -194,6 +200,28 @@ def __getattr__(name: str) -> object:
     # alias table or the adapter decided is overridden.
     try:
         return getattr(_restored_module(), name)
+    except AttributeError:
+        pass
+    # **AND THE FLAT SURFACE OWES EVERY WORD THIS COMPILER ITSELF EMITTED, which is the
+    # layer that was deleted and not replaced** (``adcp-client-python-qpo4``, 2026-11-09).
+    # ``adcp.types._surface._flat`` is ``codegen/emit.py``'s CROSS-DOMAIN consolidation --
+    # the union of the 23 per-domain aggregators, emitted from the same ``Emitted.surface``
+    # record they are and compared byte for byte like them.  Without it a name our own walk
+    # exported raised here unless some table happened to mention it: measured on bundle
+    # 3.2, the aggregators publish 3,220 words and the four layers above served 1,183.
+    #
+    # CONSULTED LAST, after the table, the adapter and the restored modules, so nothing any
+    # of them decided is overridden -- an upstream spelling the alias table points at one
+    # class keeps that class even where our walk emits the same word elsewhere.  And it is
+    # the one layer that can be reached WITHOUT a table, which is why it is also the one
+    # that must not be reached first.
+    #
+    # **A word two domains publish is NOT here**, and that is the module declining rather
+    # than this line choosing: ``_flat.__adcp_ambiguous__`` names it and its domains, and
+    # the error below -- which says the generated surface is ``adcp.types.<domain>`` -- is
+    # the true answer for a word whose document the caller has not named.
+    try:
+        return getattr(_flat_module(), name)
     except AttributeError:
         pass
     raise AttributeError(
@@ -236,6 +264,41 @@ def _restored_module():
     return importlib.import_module("adcp.types._restored")
 
 
+def _flat_module():
+    """``adcp.types._surface._flat``, reached the same way and for the same reason.
+
+    The compiler's own cross-domain consolidation of the per-domain aggregators.  Imported
+    on a MISS of all four layers above and **never while this package's body runs**, which
+    is the whole of why the facade can carry 3,220 names at no import cost: this module
+    DOES pull the generated graph -- it names every word the walk exported, so importing it
+    imports all 23 aggregators and through them ``adcp.types._schemas`` -- and the
+    emitted tree holds 146 ``model_rebuild(force=True)`` calls that cost nothing only
+    because nothing is built until a name is asked for (CLAUDE.md #1694).
+
+    So the import is on the attribute and not on the package, exactly as
+    :func:`_restored_module`'s is, and for the stronger version of the same reason:
+    ``tests/fresh.py`` grades a fresh tree by putting its directory in front of
+    ``adcp.types.__path__``, and a star import here would bind the COMMITTED tree's
+    classes while this package's body ran -- before ``tests/conftest.py`` could put the
+    fresh one there.  Measured before the facade was lazy: the suite reports "the generated
+    half of adcp.types is already bound outside the fresh tree" and grades the artifact.
+
+    **ITS ABSENCE IS NOT AN ERROR ON THIS PACKAGE**, for :func:`_adapter_module`'s reason:
+    it is generated, and a tree that has not run the compiler must still import.  The
+    degradation that is correct is "no extra flat name", never "``adcp.types`` raises".
+    """
+    import importlib
+    import types as _types
+
+    try:
+        return importlib.import_module("adcp.types._surface._flat")
+    except ModuleNotFoundError:
+        shim = _types.ModuleType("adcp.types._surface._flat")
+        shim.__all__ = []
+        shim.__adcp_ambiguous__ = {}
+        return shim
+
+
 def _adapter_module():
     """``adcp.types._adapter``, reached the same way and for the same reason.
 
@@ -267,4 +330,5 @@ def __dir__() -> list[str]:
         | set(compat.__adcp_flat_only__)
         | set(_adapter_module().__all__)
         | set(_restored_module().__all__)
+        | set(_flat_module().__all__)
     )

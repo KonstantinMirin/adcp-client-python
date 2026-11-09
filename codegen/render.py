@@ -2100,6 +2100,108 @@ def domain_module(domain: str, held: Mapping[str, Sequence[tuple[str, str]]]) ->
     return "\n".join([*lines, *_import_section((), body, reexports), body])
 
 
+def flat_surface(
+    held: Mapping[str, str],
+    ambiguous: Mapping[str, Sequence[str]] = {},
+) -> str:
+    """The text of ``adcp/types/_surface/_flat.py``: the CROSS-DOMAIN consolidation.
+
+    ``held`` is the word every domain aggregator publishes, keyed on the word and valued
+    at the ONE domain that publishes it; ``ambiguous`` is the words more than one domain
+    publishes, valued at every domain that does.  Both are
+    ``emit.domain_modules``' decision, derived from the same ``Emitted.surface`` record
+    the per-domain aggregators are, so this module is that union and never a second list.
+
+    **IT IS ONE LEVEL UP FROM :func:`domain_module` AND NOTHING ELSE.**  A domain
+    aggregator re-exports one domain's names out of the private per-document tree; this
+    re-exports every domain aggregator's names out of the aggregators.  ``from .<domain>
+    import <word> as <word>`` -- a SIBLING relative import, one dot, because ``_flat`` sits
+    in ``_surface/`` beside the module it reads -- so the object bound here is the one the
+    aggregator bound, which is the one the private module built.  Three spellings of a
+    class and still one object: ``adcp.types.core.Account is
+    adcp.types._surface.core.Account is adcp.types._surface._flat.Account``.
+
+    **WHY A FLAT CONSOLIDATION EXISTS AT ALL, and it is not §1's second path.**  §1 gives
+    a class ONE path a consumer writes and that path is the domain's.  This module is not
+    one: it is private, under the package the compiler owns outright (``emit.SURFACE``),
+    and the only thing that reads it is ``adcp.types.__getattr__`` -- the lazy
+    compatibility facade reading 10 states, whose subject is "the import an application has
+    already written".  An application that wrote ``from adcp.types import Account`` is owed
+    an answer, and before this module the flat facade could answer only from the alias
+    table, the adapter and the restored modules; a name our own walk emitted and no table
+    mentioned raised ``AttributeError``.  Measured on the bundle this landed against:
+    the aggregators carried 3,220 words and the flat facade served 1,183 of them.
+
+    **A WORD TWO DOMAINS PUBLISH IS DECLINED AND NAMED, never resolved to a winner.**
+    ``adcp.types.<domain>.<Name>`` is unique per domain and the surface gate holds that
+    (``tests_emit/test_the_domain_surface.py``), but nothing makes a word unique ACROSS
+    domains -- ``core/audience-source.json`` and ``enums/audience-source.json`` are two
+    documents and two classes, and a flat namespace has one slot for the word.  Binding
+    either would hand a consumer a class whose document they did not name and which
+    ``isinstance`` would be false against; binding "whichever import ran last" is that same
+    defect decided by file order.  So an ambiguous word gets NO binding here and is written
+    into ``__adcp_ambiguous__``, which is the module saying what it declined and where the
+    two paths are -- a reader who asks for it at the flat facade gets the facade's own
+    ``AttributeError`` naming ``adcp.types.<domain>`` as the surface, which is the one
+    answer that is true.
+
+    **The literal ``__all__``, for :func:`domain_module`'s reason** -- §1 asks for the
+    surface stated and the ``X as X`` form is what a type checker reads as an export -- and
+    the measured one: under mypy ``--strict`` a star import re-exported through a module
+    reveals the real class even with ``--no-implicit-reexport``, where a module-level
+    ``__getattr__`` reveals ``Any``.  Written from one ``held``, so the list and the imports
+    cannot disagree.
+    """
+    lines = [
+        '"""Every word the domain aggregators publish, consolidated into one namespace.',
+        "",
+        "Nothing here is a path a consumer writes and nothing here is declared: each name is",
+        "re-exported from the domain aggregator beside this module, which re-exported it from",
+        "the private module the document compiled to.  The object is the one the runtime",
+        "validates into -- ``isinstance`` against a name imported from here is true.",
+        "",
+        "The one reader is ``adcp.types.__getattr__``, the lazy compatibility facade: an",
+        "application that wrote ``from adcp.types import <Name>`` is owed an answer for every",
+        "name this compiler emitted, and the per-domain aggregators cannot give it one",
+        "because the flat spelling names no domain.  The PUBLIC path for every name here is",
+        "still ``adcp.types.<domain>``.",
+        "",
+        "Generated from the compiler's own record of what it exported, so a document added",
+        "upstream appears here with nothing edited.  A word more than one domain publishes is",
+        "DECLINED rather than resolved to a winner and is named in ``__adcp_ambiguous__``:",
+        "a flat namespace has one slot for the word, the domains have two classes, and",
+        "picking one would hand a consumer a class whose document they did not name.",
+        '"""',
+        "",
+    ]
+    declined = "\n".join(
+        [
+            "#: The words more than one domain publishes, and the domains that publish each.",
+            "#: Bound nowhere in this module -- the public ``adcp.types.<domain>`` path is the",
+            "#: only one that can say which of the two a caller meant.",
+            "__adcp_ambiguous__: dict[str, tuple[str, ...]] = {",
+            *(
+                f"    {word!r}: {tuple(sorted(ambiguous[word]))!r},"
+                for word in sorted(ambiguous, key=_export_key)
+            ),
+            "}",
+            "",
+        ]
+    )
+    body = "\n".join(
+        [
+            "__all__ = [",
+            *(f"    {word!r}," for word in sorted(held, key=_export_key)),
+            "]",
+            "",
+            "",
+            declined,
+        ]
+    )
+    reexports = [(f".{held[word]}", word, word) for word in sorted(held, key=_export_key)]
+    return "\n".join([*lines, *_import_section((), body, reexports), body])
+
+
 def surface_package() -> str:
     """The text of ``adcp/types/_surface/__init__.py``: a docstring and NO name.
 
