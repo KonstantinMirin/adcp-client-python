@@ -1872,9 +1872,17 @@ def emit(
     #: document -> pointer -> the L2 entry that position RESTATES
     #: (``compiler.Module.objects``).  36 positions over 17 documents for this bundle's 17
     #: named object types.  **Collected LAST and merged FIRST**: this layer's own screen is
-    #: L2A's collected positions and ``catalogue.collect_shapes`` derives it, so the call
-    #: reads the same whatever order it is written in; the three tables are then merged L2,
-    #: L2C, L2A, so the reading of a position the document applies a named type at stands.
+    #: L2A's collected positions, which the line above has already collected and recorded
+    #: on ``admitted`` (``catalogue.Admitted.screens``); the three tables are then merged
+    #: L2, L2C, L2A, so the reading of a position the document applies a named type at
+    #: stands.
+    #:
+    #: **THE ORDER OF THESE TWO LINES IS THE WHOLE OF WHY L2A IS COLLECTED ONCE**
+    #: (``adcp-client-python-lqun``, defect 2).  The VALUE is order-free -- L2 derives the
+    #: screen itself where it is absent -- but the COST is not: L2A recorded on ``admitted``
+    #: by the line above is a screen L2 reads, and L2 reached first would collect L2C and
+    #: L2A over the whole bundle a second time.  Measured before the screen was recorded by
+    #: the layer that collects it: 1,218 of this pass's 4,852 keys were the duplicate.
     l2 = catalogue.collect_shapes(admitted, "L2", standing)
     restating_objects = l2.restating()
     for document, row in l2c.restating().items():
