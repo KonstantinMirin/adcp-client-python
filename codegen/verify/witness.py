@@ -1397,14 +1397,81 @@ class Construction:
         object, so the answer cannot go stale, and the entry PINS the node: an identity key
         over an unpinned temporary is the defect §9's identity rule names, and nothing here
         can acquire it while every node the walk has seen is held.
+
+        **AND THE RECORD'S OWN STORAGE HOP IS TAKEN MID-WALK WHERE -- AND ONLY WHERE -- THE
+        PLAIN DEREFERENCE WOULD RAISE** (:meth:`_hoisted`).  ``codegen.bundle.record`` stores
+        each distinct subtree once and writes a reference at every other occurrence, so a
+        pointer whose own text walks INTO a hoisted subtree walks into the reference instead,
+        and the segment after it has no key to index.  ``adcp.types._base.through_the_store``
+        is "the one hop that makes the hoisting invisible to a pointer" and
+        ``applied_schema`` takes it before every segment for exactly this reason; this method
+        took it only at the foot (:meth:`through`), so the two disagreed about which pointers
+        the record holds.
+
+        **Gated so that nothing which resolves today moves**, which is ``applied_schema``'s
+        own discipline at its own substitution clause: a pointer the plain walk reaches takes
+        the plain walk, and a pointer NEITHER walk reaches still raises -- so a class stamped
+        at a position the record does not hold stays loud.  Measured: one of the five
+        ``adcp-client-python-hzio.15`` names,
+        ``media-buy/refine-proposals-response.json#/properties/results/items/oneOf/0/properties/proposals/items``,
+        is a pointer the record HOLDS through one such hop and the other four are not.
         """
         key = (document, pointer)
         held = self._nodes.get(key, _MISSING)
         if held is _MISSING:
-            held = bundle.node_at(self._records[document], pointer)
+            try:
+                held = bundle.node_at(self._records[document], pointer)
+            except (KeyError, IndexError, TypeError, ValueError):
+                held = self._hoisted(document, pointer)
             self._nodes[key] = held
             self.counters.reached += 1
         return held
+
+    def _hoisted(self, document: str, pointer: str) -> Any:
+        """``pointer`` dereferenced with the record's own storage hop taken before each segment.
+
+        One segment at a time, each read through :meth:`through`, because the hoisting is the
+        record's storage decision and not a statement the document makes -- "it carries
+        nothing and answers nothing".  The pointer that comes out is the document's own
+        pointer and the node is the document's own node; nothing is composed and nothing is
+        minted, which is what keeps §9's identity rule satisfiable here.
+
+        It RAISES where the hop does not reach either -- the only caller is :meth:`node`'s own
+        fallback and a position neither walk holds is a finding
+        (``adcp-client-python-hzio.15``) rather than something to answer with an empty schema.
+
+        **IT READS THE RECORD DIRECTLY AND NOT THROUGH :meth:`node`**, which is not a
+        micro-decision: :meth:`node` is this method's own caller, so settling a segment
+        through it would re-enter here at the same pointer and recur without bound.  Measured
+        the hard way -- ``RecursionError`` at 195 pairs and a monotonicity the gate caught.
+        """
+        record = self._records[document]
+        at = ""
+        for part in [p for p in pointer.lstrip("/").split("/") if p]:
+            at = f"{self._settles(document, record, at)}/{part}"
+        return bundle.node_at(record, self._settles(document, record, at))
+
+    def _settles(self, document: str, record: Mapping[str, Any], at: str) -> str:
+        """``at`` with the record's own storage reference followed, as a POINTER.
+
+        :meth:`through`'s reading without the memo, because its caller is :meth:`node` and
+        this one is :meth:`node`'s own fallback.  One hop suffices for any record
+        ``codegen.bundle.record`` can write and :data:`_STORE_HOPS` is the same unreachable
+        bound and the same reason that method carries: the alternative to raising on a cycle
+        is a hang.
+        """
+        for _ in range(_STORE_HOPS):
+            node = bundle.node_at(record, at)
+            if not (isinstance(node, Mapping) and len(node) == 1):
+                return at
+            ref = node.get("$ref")
+            if not isinstance(ref, str):
+                return at
+            target = _local(ref)
+            if target is None:
+                return at
+            at = target
+        raise RecursionError(f"{document}{at}: a storage reference does not settle")
 
     def through(self, document: str, pointer: str) -> tuple[str, Any]:
         """The pointer a SOLE ``$ref`` node forwards to, with the node there -- or ``_MISSING``.
