@@ -123,9 +123,19 @@ MODEL_LAYER_EXCEPTIONS: dict[str, str] = {}
 
 #: The VERIFIER, by path under ``codegen/``.  It grades an emitted class, so it reads
 #: the emitted package and therefore pydantic: §8 exempts ``verify/`` by name, and
-#: these two files are today's spelling of it.  ``harness.py`` runs the three checks
+#: these files are today's spelling of it.  ``harness.py`` runs the three checks
 #: and ``dump_exemptions.py`` holds what the dump check strikes.
-VERIFIER = frozenset({"harness.py", "dump_exemptions.py"})
+#:
+#: **``verify/`` IS THE NAME §8 AND §9 BOTH USE, and it arrives with
+#: ``adcp-client-python-hzio.1``** -- ``codegen/verify/witness.py`` constructs the admitted
+#: value and its mutations, which §9 names in exactly those words ("``witness.py``
+#: constructs the valid instance and its mutations from the record and offers them to the
+#: class").  The entry is the PREFIX rather than each file, because the section exempts the
+#: directory and a module added under it is the verifier whatever it is called; §9's import
+#: rule below then ranges over every one of them, which is the half that matters -- a new
+#: module that reached ``codegen.lower`` would redden
+#: :func:`test_the_verifier_does_not_import_the_walk` by name.
+VERIFIER = frozenset({"harness.py", "dump_exemptions.py", "verify/"})
 
 #: §9's permitted import set for the verifier, under ``codegen``.  ``codegen.keywords``
 #: is the DECLARATION -- §9 names it first, for the folded facts and the rungs, and §9's
@@ -217,6 +227,18 @@ def _modules() -> list[Path]:
 
 def _rel(path: Path) -> str:
     return str(path.relative_to(PKG))
+
+
+def _named_by(rel: str, names: Collection[str]) -> bool:
+    """Is this module one of a set that names files AND directories.
+
+    :data:`VERIFIER` names ``verify/`` as a PREFIX, because §8 and §9 both exempt the
+    DIRECTORY and a module added under it is the verifier whatever it is called -- the same
+    spelling :data:`SECTION_8_BANS` already uses for ``lower/`` and ``schema/``.  One
+    reading of it, here, so the four populations derived from that set cannot come to
+    disagree about whether a path is in it.
+    """
+    return rel in names or any(rel.startswith(name) for name in names if name.endswith("/"))
 
 
 def _package_of(path: Path) -> tuple[str, ...]:
@@ -322,7 +344,8 @@ def test_each_rule_has_a_population_and_the_file_sets_are_real() -> None:
     """
     present = {_rel(p) for p in _modules()}
     assert RENDERER <= present, RENDERER - present
-    assert VERIFIER <= present, VERIFIER - present
+    unmatched = {rel for rel in VERIFIER if not any(_named_by(p, {rel}) for p in present)}
+    assert not unmatched, unmatched
     assert set(MODEL_LAYER_EXCEPTIONS) <= present, set(MODEL_LAYER_EXCEPTIONS) - present
     assert _walk_population(), "§8 is graded over no module"
     assert _verifier_population(), "§9 is graded over no module"
@@ -360,11 +383,11 @@ def test_section_8_bans_the_model_layer_where_the_section_names_it() -> None:
 def _walk_population() -> list[Path]:
     """Every module §8 bans the model layer in: the package less the renderer and the
     verifier, which are the two sides of that boundary."""
-    return [p for p in _modules() if _rel(p) not in RENDERER | VERIFIER]
+    return [p for p in _modules() if not _named_by(_rel(p), RENDERER | VERIFIER)]
 
 
 def _verifier_population() -> list[Path]:
-    return [p for p in _modules() if _rel(p) in VERIFIER]
+    return [p for p in _modules() if _named_by(_rel(p), VERIFIER)]
 
 
 @pytest.mark.parametrize("path", _walk_population(), ids=_rel)
@@ -1408,7 +1431,7 @@ def test_a_refusal_is_a_value_and_no_module_raises_or_catches_one() -> None:
     unexpected = {
         rel: sorted(names - MAY_RAISE)
         for rel, names in raised.items()
-        if rel not in VERIFIER and names - MAY_RAISE
+        if not _named_by(rel, VERIFIER) and names - MAY_RAISE
     }
     assert unexpected == {}, (
         f"{unexpected} raise an exception the design does not name.  A refusal is a "
@@ -1520,10 +1543,15 @@ def test_the_decision_layer_reaches_no_module_of_the_run_transitively() -> None:
             if edge not in command and edge.startswith("codegen"):
                 command.add(edge)
                 queue.append(edge)
-    assert THE_RUN - {"codegen.__main__"} <= command, (
-        f"THE_RUN names a module the command does not reach: "
-        f"{sorted(THE_RUN - {'codegen.__main__'} - command)}"
-    )
+    # A name the command does not reach is ON DISK or it is a typo, and the two are told
+    # apart by the tree rather than by the import graph.  ``codegen.verify`` is the case
+    # that forces the distinction (``adcp-client-python-hzio.1``): the verifier's new
+    # package is reached by the SUITE and not by the run, which is what §9 asks for -- the
+    # compiler does not import the thing that grades it -- so requiring the command to
+    # reach it would be requiring the inversion this file exists to forbid.
+    present = {_module_name(path) for path in _modules()}
+    missing = sorted(THE_RUN - {"codegen.__main__"} - command - present)
+    assert not missing, f"THE_RUN names a module that neither the command nor the tree has: {missing}"
 
 
 def test_the_lowering_seam_raises_nothing_but_a_build_failure() -> None:
@@ -1617,7 +1645,7 @@ def test_the_refusal_rule_is_not_vacuous(tmp_path: Path) -> None:
     live = {
         node.exc.func.id
         for path in _modules()
-        if _rel(path) not in VERIFIER
+        if not _named_by(_rel(path), VERIFIER)
         for node in ast.walk(ast.parse(path.read_text()))
         if isinstance(node, ast.Raise)
         and isinstance(node.exc, ast.Call)

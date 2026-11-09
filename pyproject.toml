@@ -411,6 +411,11 @@ files = [
     "codegen/constraints.py",
     "codegen/render.py",
     "codegen/dump_exemptions.py",
+    # The VERIFIER's new package (``adcp-client-python-hzio.1``).  ``harness.py`` is the one
+    # file this list deliberately omits -- ruff's first finding there is a live ``F821`` --
+    # and ``codegen/verify/`` is checked from its first commit rather than inheriting that
+    # omission: a list that grows a module it does not check is a gate shrinking silently.
+    "codegen/verify",
     "codegen/__main__.py",
     "src/adcp",
 ]
