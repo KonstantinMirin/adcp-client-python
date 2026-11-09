@@ -48,4 +48,7 @@ class SISendMessageRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiSendMessageRequest = SISendMessageRequest
+
+
 __all__ = ["SISendMessageRequest"]

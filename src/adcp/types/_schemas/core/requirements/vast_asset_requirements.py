@@ -29,4 +29,7 @@ class VASTAssetRequirements(AdCPBaseModel):
     media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for the alternative MediaFile renditions in each applicable resolved InLine linear creative.'), OmittedNotNull] = None
 
 
+VastAssetRequirements = VASTAssetRequirements
+
+
 __all__ = ["VASTAssetRequirements"]

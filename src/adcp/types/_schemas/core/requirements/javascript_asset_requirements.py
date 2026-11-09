@@ -37,4 +37,7 @@ class JavaScriptAssetRequirements(AdCPBaseModel):
     allowed_external_domains: Annotated[list[StrFormatHostname] | None, Field(description='List of domains the JavaScript may reference for external resources. Only applicable when external_resources_allowed is true.'), OmittedNotNull] = None
 
 
+JavascriptAssetRequirements = JavaScriptAssetRequirements
+
+
 __all__ = ["JavaScriptAssetRequirements"]

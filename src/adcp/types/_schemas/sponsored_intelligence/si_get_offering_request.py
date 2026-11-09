@@ -30,4 +30,7 @@ class SIGetOfferingRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiGetOfferingRequest = SIGetOfferingRequest
+
+
 __all__ = ["SIGetOfferingRequest"]

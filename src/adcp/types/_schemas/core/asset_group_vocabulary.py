@@ -16,4 +16,7 @@ The registry covers everything the buyer ships in the manifest's `assets` map â€
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/asset-group-vocabulary.json', pointer='#')
 
 
+AdcpAssetGroupVocabularyRegistry = AdCPAssetGroupVocabularyRegistry
+
+
 __all__ = ["AdCPAssetGroupVocabularyRegistry"]

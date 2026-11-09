@@ -43,4 +43,7 @@ class SIComponentCatalog(AdCPBaseModel):
     components: Annotated[list[ComponentsItem] | None, Field(description='Available component types'), OmittedNotNull] = None
 
 
+SiComponentCatalog = SIComponentCatalog
+
+
 __all__ = ["SIComponentCatalog"]

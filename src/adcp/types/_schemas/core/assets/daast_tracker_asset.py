@@ -36,4 +36,7 @@ class DAASTTrackerAsset(AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance.'), OmittedNotNull] = None
 
 
+DaastTrackerAsset = DAASTTrackerAsset
+
+
 __all__ = ["DAASTTrackerAsset"]

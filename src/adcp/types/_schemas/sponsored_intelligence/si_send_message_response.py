@@ -109,4 +109,7 @@ class SISendMessageResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiSendMessageResponse = SISendMessageResponse
+
+
 __all__ = ["SISendMessageResponse"]

@@ -81,4 +81,7 @@ class CanonicalFormatVASTVideo(CanonicalFormatBase):
     ssl_required: Annotated[bool | None, OmittedNotNull] = None
 
 
+CanonicalFormatVastVideo = CanonicalFormatVASTVideo
+
+
 __all__ = ["CanonicalFormatVASTVideo"]

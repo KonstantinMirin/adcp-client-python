@@ -19,4 +19,7 @@ class AcceptancePolicyProfileIDs(AdCPRootModel):
     )
 
 
+AcceptancePolicyProfileIds = AcceptancePolicyProfileIDs
+
+
 __all__ = ["AcceptancePolicyProfileIDs"]

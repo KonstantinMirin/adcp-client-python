@@ -176,4 +176,7 @@ class AdCPSpecialism(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "AdCPSpecialism", AdCPSpecialism)
 
 
+AdcpSpecialism = AdCPSpecialism
+
+
 __all__ = ["AdCPSpecialism"]

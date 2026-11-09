@@ -62,4 +62,7 @@ class DAASTTrackingEvent(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "DAASTTrackingEvent", DAASTTrackingEvent)
 
 
+DaastTrackingEvent = DAASTTrackingEvent
+
+
 __all__ = ["DAASTTrackingEvent"]

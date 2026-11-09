@@ -1067,6 +1067,19 @@ class Emitted:
     #: ``None`` where this run cannot say which one it is (:func:`_declaring_module`) --
     #: an answer a reader reports rather than one it fills in.
     binds: dict[str, dict[str, tuple[str | None, str]]] = field(default_factory=dict)
+    #: **MODULE** -> ``ir.Module.recased``: upstream's own spelling of a title -> the
+    #: symbol of ours it binds (``lower_names.UPSTREAM_TITLE_CASE``).  Keyed on the module
+    #: for :attr:`surface`'s reason and written beside :attr:`binds`.
+    #:
+    #: **A SECOND KIND OF BINDING AND NOT A WIDENING OF THE FIRST.**  :attr:`binds` is
+    #: keyed on the positions of the document -- every entry there is a position that
+    #: references a class §1 asks the one-path question about -- and no position is behind
+    #: one of these: it is a second SPELLING of a position that already has its name, so
+    #: it has no pointer, it is on no export set, and the domain surface never sees it.
+    #: A gate counting the tree's class objects against the names bound to them needs this
+    #: record and :attr:`adopted` both, which is what ``tests_emit/
+    #: test_one_node_is_one_declaration.py`` reads it for.
+    recased: dict[str, dict[str, str]] = field(default_factory=dict)
     #: Section 5's ``default`` row, the REPORTED half: ``document -> {pointer -> the
     #: value dropped}``, for a default the document states on a REQUIRED property.
     #: Dropping it changes no accepted set -- the key is in every admitted instance,
@@ -2845,6 +2858,11 @@ def emit(
             symbol: (_declaring_module(document, names, bound, abroad[document]), names)
             for symbol, names in bound.binds.items()
         }
+        # Upstream's own spellings beside them, same pass and same reason
+        # (:attr:`Emitted.recased`, ``lower_names.UPSTREAM_TITLE_CASE``).  Recorded for
+        # every module so that absence means "no title of this module recases", which is
+        # what lets a reader range over the record instead of over the whole tree.
+        out.recased[module_path(document)] = dict(bound.recased)
         if mod.drops:
             out.drops[document] = dict(mod.drops)
         if mod.carries_nothing:

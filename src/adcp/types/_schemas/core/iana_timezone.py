@@ -17,4 +17,7 @@ IANATimezoneIdentifier = Annotated[Annotated[StrIANATimezoneIdentifier, AfterVal
 strict_validate = strict_alias(__adcp_schema__, "IANATimezoneIdentifier", IANATimezoneIdentifier)
 
 
+IanaTimezoneIdentifier = IANATimezoneIdentifier
+
+
 __all__ = ["IANATimezoneIdentifier"]

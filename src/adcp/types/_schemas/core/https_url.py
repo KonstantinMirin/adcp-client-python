@@ -16,4 +16,7 @@ HTTPSURL = Annotated[AdCPUrl, Field(description='A URL whose scheme is https. Ex
 strict_validate = strict_alias(__adcp_schema__, "HTTPSURL", HTTPSURL)
 
 
+HttpsUrl = HTTPSURL
+
+
 __all__ = ["HTTPSURL"]

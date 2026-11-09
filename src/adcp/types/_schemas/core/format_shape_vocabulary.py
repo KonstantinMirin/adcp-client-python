@@ -27,4 +27,7 @@ Without this contract, every promotion event silently breaks adopter code branch
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format-shape-vocabulary.json', pointer='#')
 
 
+AdcpFormatShapeVocabularyRegistry = AdCPFormatShapeVocabularyRegistry
+
+
 __all__ = ["AdCPFormatShapeVocabularyRegistry"]

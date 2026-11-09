@@ -17,4 +17,7 @@ MediaBuyAvailableActionID = Annotated[MediaBuyValidAction | Literal['update_medi
 strict_validate = strict_alias(__adcp_schema__, "MediaBuyAvailableActionID", MediaBuyAvailableActionID)
 
 
+MediaBuyAvailableActionId = MediaBuyAvailableActionID
+
+
 __all__ = ["MediaBuyAvailableActionID"]

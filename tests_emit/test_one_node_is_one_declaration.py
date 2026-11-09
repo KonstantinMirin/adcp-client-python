@@ -545,6 +545,17 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
     node has positions").  If a later row makes the walk mint a second CLASS at an adopting
     position, the tree's binding count rises while the run's adoption record does not, and
     this is the equality that breaks.
+
+    **AND THE SECOND KIND OF SECOND NAME IS ON THE SAME EQUALITY AND NOT BESIDE IT**
+    (``lower/names.UPSTREAM_TITLE_CASE``, ``Emitted.recased``).  A document ROOT whose
+    title carries an acronym is spelled one way by this compiler and was spelled another
+    by upstream's, and the module binds upstream's beside ours -- so the tree has names
+    bound beyond the class they name for a second REASON.  ``Emitted.recased`` is the
+    run's record of exactly those, read here as the second term of the union, which is
+    what keeps the equality an equality: a recasing the tree carries and the run did not
+    record is as red as an adoption's missing name, and so is the reverse.  It is NOT an
+    allowance -- nothing is subtracted, and a binding neither record accounts for still
+    fails.
     """
     first = _a_class("First", "a.module", SchemaRef(document="a.json", pointer="#"))
     second = _a_class("Second", "a.module", SchemaRef(document="a.json", pointer="#/x"))
@@ -560,6 +571,7 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
     document_at = {written: document for document, written in out.emitted.items()}
     named_twice: set[tuple[str, str]] = set()
     renamed_adoptions: set[tuple[str, str]] = set()
+    recased: set[tuple[str, str]] = set()
     for name in modules_of(pkg):
         imported = importlib.import_module(name)
         objects = {id(cls) for cls in declarations_in(imported)}
@@ -571,6 +583,16 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
         document = document_at.get(name)
         if document is None:
             continue
+        # **Keyed on the MODULE and not on the document, which is how the run records a
+        # recasing** -- it is not a position of the document, so there is no pointer to
+        # reach it by (``Emitted.recased``).  ``emit.module_path`` is the key's own
+        # spelling, a bundle-relative path, which is why the dotted module name is turned
+        # back into a document first.  A word the record names and the tree does not carry
+        # as a class is left out of this term, so the equality below reports it.
+        for word in out.recased.get(emit.module_path(document), {}):
+            bound = getattr(imported, word, None)
+            if isinstance(bound, type) and id(bound) in objects:
+                recased.add((name, word))
         for pointer, adopted in out.adopted[document].items():
             derived = out.declared[document][pointer]
             if derived == adopted:
@@ -580,9 +602,19 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
                 renamed_adoptions.add((name, derived))
 
     claimed("names bound beyond the class they name", named_twice)
-    assert named_twice == renamed_adoptions, {
-        "a second name with no adoption behind it": sorted(named_twice - renamed_adoptions),
-        "an adoption whose second name the tree does not carry": sorted(renamed_adoptions - named_twice),
+    claimed("second names the run recorded as an adoption's", renamed_adoptions)
+    claimed("second names the run recorded as upstream's own spelling", recased)
+    accounted = renamed_adoptions | recased
+    assert named_twice == accounted, {
+        "a second name with neither an adoption nor a recasing behind it": sorted(
+            named_twice - accounted
+        ),
+        "an adoption whose second name the tree does not carry": sorted(
+            renamed_adoptions - named_twice
+        ),
+        "a recasing the record names and the tree does not carry": sorted(
+            recased - named_twice
+        ),
     }
 
 

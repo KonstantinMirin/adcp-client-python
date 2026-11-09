@@ -531,4 +531,7 @@ AdCPAsyncResponseData._branch_models = (AdCPAsyncResponseDataGetProductsResponse
 AdCPAsyncResponseData.model_rebuild(force=True)
 
 
+AdcpAsyncResponseData = AdCPAsyncResponseData
+
+
 __all__ = ["AdCPAsyncResponseData"]

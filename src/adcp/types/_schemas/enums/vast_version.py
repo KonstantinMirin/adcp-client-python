@@ -28,4 +28,7 @@ class VASTVersion(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "VASTVersion", VASTVersion)
 
 
+VastVersion = VASTVersion
+
+
 __all__ = ["VASTVersion"]

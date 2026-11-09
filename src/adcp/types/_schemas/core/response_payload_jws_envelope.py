@@ -50,4 +50,7 @@ class ResponsePayloadJWSEnvelope(AdCPBaseModel):
     signature: Annotated[ResponsePayloadJWSEnvelopeProtected, Field(description='Base64url-encoded JWS signature over the protected header and canonicalized payload.')]
 
 
+ResponsePayloadJwsEnvelope = ResponsePayloadJWSEnvelope
+
+
 __all__ = ["ResponsePayload", "ResponsePayloadJWSEnvelope"]

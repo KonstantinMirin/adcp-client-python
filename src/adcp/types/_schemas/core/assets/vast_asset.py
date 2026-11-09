@@ -66,4 +66,7 @@ VASTAsset._branch_models = (VASTAssetUrl, VASTAssetInline,)
 VASTAsset.model_rebuild(force=True)
 
 
+VastAsset = VASTAsset
+
+
 __all__ = ["VASTAsset"]

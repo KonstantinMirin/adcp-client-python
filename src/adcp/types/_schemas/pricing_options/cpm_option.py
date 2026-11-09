@@ -37,4 +37,7 @@ class CPMPricingOption(AdCPBaseModel):
     eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
+CpmPricingOption = CPMPricingOption
+
+
 __all__ = ["CPMPricingOption"]

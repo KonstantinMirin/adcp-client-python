@@ -18,4 +18,7 @@ class HTTPMethod(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "HTTPMethod", HTTPMethod)
 
 
+HttpMethod = HTTPMethod
+
+
 __all__ = ["HTTPMethod"]

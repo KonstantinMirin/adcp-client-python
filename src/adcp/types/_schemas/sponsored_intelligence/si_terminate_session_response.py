@@ -73,4 +73,7 @@ class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResp
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiTerminateSessionResponse = SITerminateSessionResponse
+
+
 __all__ = ["SITerminateSessionResponse"]

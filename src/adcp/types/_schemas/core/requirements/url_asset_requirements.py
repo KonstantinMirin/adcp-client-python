@@ -50,4 +50,7 @@ class URLAssetRequirements(AdCPBaseModel):
     macro_support: Annotated[bool | None, Field(description="Coarse slot gate for macro-bearing URLs. `false` is a hard prohibition on macro tokens. `true` permits tokens but does not prove any dialect semantic, resolver, context, or encoding capability; exact support comes from the selected format option's macro_resolution_capabilities."), OmittedNotNull] = None
 
 
+UrlAssetRequirements = URLAssetRequirements
+
+
 __all__ = ["URLAssetRequirements"]

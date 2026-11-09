@@ -52,4 +52,7 @@ class URLAsset(AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
+UrlAsset = URLAsset
+
+
 __all__ = ["URLAsset"]

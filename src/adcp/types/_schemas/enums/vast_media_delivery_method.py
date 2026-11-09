@@ -20,4 +20,7 @@ class VASTMediaDeliveryMethod(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "VASTMediaDeliveryMethod", VASTMediaDeliveryMethod)
 
 
+VastMediaDeliveryMethod = VASTMediaDeliveryMethod
+
+
 __all__ = ["VASTMediaDeliveryMethod"]

@@ -86,4 +86,7 @@ DAASTAsset._branch_models = (DAASTAssetUrl, DAASTAssetInline,)
 DAASTAsset.model_rebuild(force=True)
 
 
+DaastAsset = DAASTAsset
+
+
 __all__ = ["DAASTAsset"]

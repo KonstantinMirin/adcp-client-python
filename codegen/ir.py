@@ -821,6 +821,24 @@ class Module:
     #: Keyed by SYMBOL for :attr:`exports`' reason, and the value is a symbol too, so a
     #: failure can name what the binding reaches.
     binds: Mapping[str, str] = field(default_factory=dict)
+    #: **UPSTREAM's own spelling of a title -> the symbol of OURS it binds**
+    #: (``lower/names.UPSTREAM_TITLE_CASE``).  Their generator spelled a title with
+    #: ``str.title()`` and ours leaves an acronym standing, so ``AdCPAsyncResponseData``
+    #: here was ``AdcpAsyncResponseData`` there; where the two differ the module binds
+    #: theirs beside ours, and this is the run's record of which names those are.
+    #:
+    #: **A SUBSET of :attr:`binds` in kind and not in membership, which is why it is its
+    #: own field.**  ``binds`` is keyed on the POSITIONS of this document -- §1's "a
+    #: position that references a class does not name it" -- and no position is behind one
+    #: of these: the name is a second spelling of a position that already has its own, so
+    #: there is no pointer to key it by and nothing of §1's one-path question to ask about
+    #: it.  A reader counting DECLARATIONS needs both records and must not take either for
+    #: the other.
+    #:
+    #: Empty for every module whose titles upstream's normalisation spells exactly as
+    #: ours does, which is the identity case stated by absence rather than by an entry
+    #: saying so.
+    recased: Mapping[str, str] = field(default_factory=dict)
 
 
 def symbols(decided: TypeRef) -> set[str]:

@@ -53,4 +53,7 @@ class SIUIElement(AdCPBaseModel):
     data: Annotated[dict[str, Any] | None, Field(description='Component-specific data'), OmittedNotNull] = None
 
 
+SiUiElement = SIUIElement
+
+
 __all__ = ["SIUIElement"]

@@ -54,4 +54,7 @@ SignalID._branch_models = (SignalIDCatalog, SignalIDAgent,)
 SignalID.model_rebuild(force=True)
 
 
+SignalId = SignalID
+
+
 __all__ = ["SignalID"]

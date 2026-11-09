@@ -76,4 +76,7 @@ class DAASTTrackerConstraints(AdCPBaseModel):
     daast_versions: Annotated[DaastVersions | None, OmittedNotNull] = None
 
 
+DaastTrackerConstraints = DAASTTrackerConstraints
+
+
 __all__ = ["DAASTTrackerConstraints", "DaastEvent", "DaastOffset", "DaastTarget", "DaastVersions"]

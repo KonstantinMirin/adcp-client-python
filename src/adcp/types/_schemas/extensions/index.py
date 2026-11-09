@@ -12,4 +12,7 @@ class AdCPExtensionRegistry(AdCPRootModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='extensions/index.json', pointer='#')
 
 
+AdcpExtensionRegistry = AdCPExtensionRegistry
+
+
 __all__ = ["AdCPExtensionRegistry"]

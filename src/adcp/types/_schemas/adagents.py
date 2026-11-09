@@ -493,4 +493,7 @@ AdCPAgentsAuthorization._branch_models = (AdCPAgentsAuthorizationAuthoritativeLo
 AdCPAgentsAuthorization.model_rebuild(force=True)
 
 
+AdcpAgentsAuthorization = AdCPAgentsAuthorization
+
+
 __all__ = ["AdCPAgentsAuthorization"]

@@ -36,4 +36,7 @@ class SISessionStatus(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "SISessionStatus", SISessionStatus)
 
 
+SiSessionStatus = SISessionStatus
+
+
 __all__ = ["SISessionStatus"]

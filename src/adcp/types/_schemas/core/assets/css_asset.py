@@ -24,4 +24,7 @@ class CSSAsset(AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
+CssAsset = CSSAsset
+
+
 __all__ = ["CSSAsset"]

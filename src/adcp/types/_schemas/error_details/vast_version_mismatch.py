@@ -105,4 +105,7 @@ VASTVersionMismatchDetails._branch_models = (AssetOutsideAcceptedVersionIntersec
 VASTVersionMismatchDetails.model_rebuild(force=True)
 
 
+VastVersionMismatchDetails = VASTVersionMismatchDetails
+
+
 __all__ = ["VASTVersionMismatchDetails"]

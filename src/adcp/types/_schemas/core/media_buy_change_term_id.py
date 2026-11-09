@@ -16,4 +16,7 @@ MediaBuyChangeTermID = Annotated[StrMediaBuyChangeTermID, Field(description='The
 strict_validate = strict_alias(__adcp_schema__, "MediaBuyChangeTermID", MediaBuyChangeTermID)
 
 
+MediaBuyChangeTermId = MediaBuyChangeTermID
+
+
 __all__ = ["MediaBuyChangeTermID"]

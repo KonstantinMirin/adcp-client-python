@@ -31,4 +31,7 @@ class SIContextUse(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "SIContextUse", SIContextUse)
 
 
+SiContextUse = SIContextUse
+
+
 __all__ = ["SIContextUse"]

@@ -20,4 +20,7 @@ class DAASTVersion(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "DAASTVersion", DAASTVersion)
 
 
+DaastVersion = DAASTVersion
+
+
 __all__ = ["DAASTVersion"]

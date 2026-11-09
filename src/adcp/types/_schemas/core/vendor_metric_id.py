@@ -16,4 +16,7 @@ VendorMetricID = Annotated[StrVendorMetricID, Field(description="Identifier for 
 strict_validate = strict_alias(__adcp_schema__, "VendorMetricID", VendorMetricID)
 
 
+VendorMetricId = VendorMetricID
+
+
 __all__ = ["VendorMetricID"]

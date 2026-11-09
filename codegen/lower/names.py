@@ -253,6 +253,36 @@ THE_INNER_EXPORT = (
 # --------------------------------------------------------------------------- #
 # §4's name rules
 # --------------------------------------------------------------------------- #
+def title_words(title: str) -> list[str]:
+    """One title's WORDS: its maximal alphanumeric runs, in order.
+
+    The one reading of "a word of a title" in this compiler, because two readers ask and
+    they must not disagree about where a word ends: :func:`class_name` spells OUR name
+    from them and :func:`upstream_class_name` spells the one upstream's generator
+    published from the same ones (:data:`UPSTREAM_TITLE_CASE`).  A second splitter would
+    make the two spellings answers about two different word sets, and the whole claim of
+    the second function is that it differs from the first in the CASING and in nothing
+    else.
+
+    ``str.isalnum`` and not a character class, so a title's non-ASCII letter is a letter:
+    ``trusted-match/identity-match-response.json`` titles itself "Identity Match Response
+    (Router -> Publisher)" with a real arrow, and the arrow is a separator either way --
+    but a bundle writing an accented word would have it swallowed by an ASCII class and
+    kept by this one.
+    """
+    words: list[str] = []
+    cur = ""
+    for ch in title:
+        if ch.isalnum():
+            cur += ch
+        elif cur:
+            words.append(cur)
+            cur = ""
+    if cur:
+        words.append(cur)
+    return words
+
+
 def class_name(title: str) -> str:
     """``pascal_case`` that keeps an acronym: only the first letter of a word is
     touched, so ``TMPX Chunk`` stays ``TMPXChunk`` and does not become
@@ -267,17 +297,100 @@ def class_name(title: str) -> str:
     their parent -- §4 names a pinned branch ``<Base><Const>`` -- so the segment is
     ``True`` and the name is not.
     """
-    words: list[str] = []
-    cur = ""
-    for ch in title:
-        if ch.isalnum():
-            cur += ch
-        elif cur:
-            words.append(cur)
-            cur = ""
-    if cur:
-        words.append(cur)
-    return "".join(w[:1].upper() + w[1:] for w in words)
+    return "".join(w[:1].upper() + w[1:] for w in title_words(title))
+
+
+#: **UPSTREAM's own normalisation of a title, which is where ``Adcp``, ``Mcp`` and ``Si``
+#: came from.**  QUOTED by the checks that grade it
+#: (``tests_emit/test_the_published_spelling_is_emitted.py``), for
+#: :data:`COLLISION_SCOPE`'s reason: the sentence the code states and the sentence a
+#: failure reports against are one string.
+#:
+#: :func:`class_name` touches a word's FIRST letter and leaves the rest, so an acronym the
+#: bundle writes survives.  ``datamodel-code-generator`` spelled the same title with
+#: Python's own ``str.title()`` over the same words -- first letter up, the REST DOWN --
+#: which flattens one: ``AdCP Async Response Data`` is ``AdCPAsyncResponseData`` here and
+#: was ``AdcpAsyncResponseData`` there.  The schema decides and the schema's title carries
+#: the acronym, so OURS is the faithful spelling and THEIRS is the one an application
+#: already imports -- which is a NAME owed, never a second type.
+UPSTREAM_TITLE_CASE = (
+    "upstream's generator spelled a DOCUMENT ROOT's name with Python's own str.title() "
+    "over the title's words -- each word's first letter UP and the REST DOWN -- where "
+    "class_name touches the first letter alone and leaves an acronym standing.  Where the "
+    "two spellings of ONE title differ, the emitted module BINDS upstream's beside ours: "
+    "an alias is a name and never a second type, so isinstance and __adcp_schema__ are "
+    "unaffected and no declaration is added.  A title of ONE word states a class name "
+    "rather than a phrase a generator re-cased, and upstream published it verbatim, so "
+    "the normalisation is not re-applied to it.  The ROOT is the whole population, "
+    "because a nested model is the one upstream named from its FIELD PATH and not from "
+    "its title: measured against upstream's own emitted tree, its module carries this "
+    "spelling for 101 of the 101 roots the rule fires on and for 0 of the 11 titled "
+    "BRANCHES it would fire on"
+)
+
+
+def upstream_class_name(title: str) -> str | None:
+    """Upstream's published spelling of ``title``, or ``None`` where it is ours already.
+
+    :data:`UPSTREAM_TITLE_CASE` is the rule and this is the whole of it.  ``str.title()``
+    per word and not ``w[:1].upper() + w[1:].lower()``, because the two disagree wherever
+    a word carries a DIGIT and upstream's surface settles it: ``A2UI Component`` is
+    ``A2UiComponent`` there, which is ``"A2UI".title()``, and the hand-rolled spelling
+    would say ``A2ui``.
+
+    **A title of ONE word is left alone, and that clause is measured rather than
+    aesthetic.**  Re-applying the normalisation to one makes a class name the document
+    STATES into mush -- ``AssetVariant`` into ``Assetvariant`` -- and upstream published
+    ``AssetVariant``, so the rule would contradict the artifact it is a claim about.  Two
+    of bundle 3.2's titles are single words and that one is the only contradiction among
+    them; a phrase is what a generator re-cases, and a word is what it carries.
+
+    **DERIVED FROM THE TITLE AND GRADED AGAINST UPSTREAM'S OWN ARTIFACT**, which is what
+    makes this a rule rather than a census: nothing here reads a list of names, and
+    upstream's emitted tree is what the claim is checked against afterwards.  Over the
+    published 3.2 bundle, by::
+
+        PYTHONPATH=.:src ./.venv/bin/python -c "
+        import json, pathlib
+        from codegen.lower.names import class_name, upstream_class_name
+        up = {n.lower(): n for n in
+              pathlib.Path('survey/upstream-flat-surface-9.6.1.txt').read_text().split()}
+        fires = agree = against = 0
+        for p in sorted(pathlib.Path('schemas/cache/3.2').rglob('*.json')):
+            t = json.loads(p.read_text()).get('title')
+            if not isinstance(t, str):
+                continue
+            ours, theirs = class_name(t), upstream_class_name(t)
+            if theirs is None:
+                continue
+            fires += 1
+            seen = up.get(ours.lower())
+            if seen is None:
+                continue
+            agree += seen == theirs
+            against += seen != theirs
+        print(fires, agree, against)"
+
+    the rule fires on **125** titles of the bundle; of the **68** whose spelling the
+    committed record of upstream's flat surface carries up to case, it reproduces
+    upstream's exactly **68** times and contradicts it **0** times.  The stronger reading
+    is against upstream's tree itself, which this repository's own history holds at
+    ``2954b258b`` (``git archive 2954b258b src/adcp/types/domains``): per MODULE, for the
+    positions this rule reaches, upstream's counterpart declares or binds this spelling
+    **101** times out of **101** and ours **0** times
+    (``tests_emit/test_the_published_spelling_is_emitted.py``).
+
+    The names that record does not carry are the half a hand list of what today's census
+    happens to import could never have: a document whose title gains an acronym tomorrow
+    is covered by the same sentence.
+    """
+    words = title_words(title)
+    if len(words) < 2:
+        return None
+    theirs = "".join(w.title() for w in words)
+    if theirs == class_name(title) or not theirs.isidentifier() or _keyword.iskeyword(theirs):
+        return None
+    return theirs
 
 
 def _suffixed(chain: tuple[str, ...], suffix: str) -> tuple[str, ...]:
@@ -1838,6 +1951,58 @@ def the_surface_exports(
     return None
 
 
+def the_published_spellings(
+    hops: Mapping[str, Hop],
+    symbols: Mapping[str, str],
+    root: str,
+    occupied: frozenset[str],
+) -> dict[str, str]:
+    """:data:`UPSTREAM_TITLE_CASE` over one module: upstream's spelling -> OUR symbol.
+
+    **THE POPULATION IS THE DOCUMENT ROOT, and that is MEASURED and not a convenience.**
+    A :class:`Root` and a titled :class:`Branch` are the only two positions this compiler
+    names from a phrase the bundle wrote -- a property KEY, an element and a mapping value
+    are spelled from a snake-case key, where ``str.title()`` and :func:`class_name` agree
+    by construction -- so the branch was the natural second arm.  Upstream's own tree
+    refutes it: graded per module against ``2954b258b``, its counterpart module carries
+    this spelling for **101 of the 101** roots the rule fires on and for **0 of the 11**
+    titled branches, and OURS for none of either.  Upstream named a NESTED model from the
+    field path it is reached through, so a title's normalisation is a claim about a name
+    that generator never minted there, and minting one would be this rule inventing 11
+    spellings nobody published.  ``tests_emit/test_the_published_spelling_is_emitted.py``
+    is where both halves of that are asserted, so the branch arm cannot return unnoticed.
+
+    **THE GUARD IS THAT OUR SYMBOL IS STILL THE TITLE'S OWN NAME, and it is what keeps
+    this a rule about a title rather than a guess about a spelling.**  §4's collision rule
+    can lengthen a position past its title, and the emitted symbol is then not what the
+    title derives -- so upstream's normalisation of that title would be a claim about a
+    name neither compiler gave this position, and the rule says nothing.
+    :func:`spelling`'s keyword suffix is screened out by the same equality, with no second
+    reading of what a keyword is.
+
+    ``root`` is :attr:`codegen.ir.Module.root`, which is the symbol the root resolves to
+    where this module DECLARES nothing at ``""`` -- §3a's repeated-DOCUMENT layer, where a
+    non-home member re-exports the home's class.  Upstream's spelling is owed at that
+    module too: the machinery imports it from the module its own layout put the document
+    at, and the ``bundled/`` and ``mcp/2026-07-28/`` members of ``protocol/`` and
+    ``sponsored-intelligence/`` are exactly such positions.
+
+    ``occupied`` is every name the module's namespace already holds -- the symbols it
+    declares, the symbols it imports, and the renderer's own carriers.  A word one of
+    those has taken is NOT bound, and that is not a drop: the name already resolves in
+    this module to something else, and shadowing a declaration to publish a second
+    spelling of a third class is the one outcome worse than the absence.
+    """
+    hop = hops.get("")
+    if not isinstance(hop, Root):
+        return {}
+    ours = symbols.get("") or root
+    theirs = upstream_class_name(hop.title)
+    if not ours or theirs is None or theirs in occupied or ours != class_name(hop.title):
+        return {}
+    return {theirs: ours}
+
+
 def assign(
     mod: Module,
     carriers: frozenset[str] = frozenset(),
@@ -2084,6 +2249,20 @@ def assign(
     symbols: dict[str, str] = dict(spelled)
     for pointer, declares in takes.items():
         symbols[pointer] = symbols[declares]
+    #: :data:`UPSTREAM_TITLE_CASE` over this module, read AFTER the names are settled
+    #: because the rule's own guard is that the emitted symbol still IS the title's name
+    #: (:func:`the_published_spellings`).  Asked of a finished table rather than mixed
+    #: into the spelling, so nothing here can move a declaration's name: what it produces
+    #: is a BINDING, and the collision rule has already decided every symbol it binds.
+    recased = the_published_spellings(
+        mod.hops,
+        symbols,
+        mod.root,
+        frozenset(symbols.values())
+        | carriers
+        | {symbol for _, symbol in mod.imports}
+        | {symbols.get("", mod.root)},
+    )
     return ir.Module(
         document=mod.document,
         # **The walk's own root symbol where nothing is DECLARED at the root**, which is
@@ -2099,12 +2278,31 @@ def assign(
         # named from its MEMBERS and the enumerations it serves are named from their
         # positions -- two derivations that do not interact, so the order is the one that
         # lets each read a finished input.
-        declarations=the_value_lists(
-            tuple(
-                _bound(d, symbols)
-                for i, d in enumerate(mod.declarations)
-                if i not in degenerate
-            )
+        declarations=(
+            *the_value_lists(
+                tuple(
+                    _bound(d, symbols)
+                    for i, d in enumerate(mod.declarations)
+                    if i not in degenerate
+                )
+            ),
+            # **Upstream's spelling, LAST and as the one alias statement this emitter
+            # has** (:data:`UPSTREAM_TITLE_CASE`).  An ``ir.AliasDecl`` holding a bare
+            # local symbol is what :func:`adopt` already declares for §4's content dedup,
+            # and the renderer writes ``X = TheClass`` for it -- the class by IDENTITY, so
+            # ``isinstance`` holds and a type checker follows it.  There is no second
+            # alias spelling here and no new declaration: :func:`names_a_declaration` is
+            # the predicate that says so, and :attr:`codegen.ir.Module.recased` is where
+            # the run records it.
+            #
+            # At the END of the module rather than beside the class it names, because a
+            # name the bundle did not choose is not part of the document's own reading
+            # order -- and the block is sorted, so a bundle that adds a title does not
+            # move a line of any other module.
+            *(
+                ir.AliasDecl(word, ir.TypeRef(symbol, local=True))
+                for word, symbol in sorted(recased.items())
+            ),
         ),
         imports=frozenset(mod.imports),
         symbols=symbols,
@@ -2136,4 +2334,7 @@ def assign(
             for pointer, named in binds.items()
             if pointer in symbols
         },
+        # Upstream's spellings beside them, as the run's own record of the one kind of
+        # binding no POSITION of the document is behind (:attr:`codegen.ir.Module.recased`).
+        recased=recased,
     )

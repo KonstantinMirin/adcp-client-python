@@ -27,4 +27,7 @@ class DAASTAssetRequirements(AdCPBaseModel):
     daast_versions: Annotated[DaastVersions | None, Field(description='Accepted DAAST version set for this asset requirement.'), OmittedNotNull] = None
 
 
+DaastAssetRequirements = DAASTAssetRequirements
+
+
 __all__ = ["DAASTAssetRequirements"]

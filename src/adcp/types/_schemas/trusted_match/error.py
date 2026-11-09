@@ -43,4 +43,7 @@ class TMPError(AdCPBaseModel):
     message: Annotated[str | None, Field(description='Human-readable error description for debugging'), OmittedNotNull] = None
 
 
+TmpError = TMPError
+
+
 __all__ = ["TMPError"]

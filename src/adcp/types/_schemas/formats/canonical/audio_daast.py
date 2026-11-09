@@ -36,4 +36,7 @@ class CanonicalFormatDAASTAudio(CanonicalFormatBase):
     companion_image_required: Annotated[bool | None, OmittedNotNull] = None
 
 
+CanonicalFormatDaastAudio = CanonicalFormatDAASTAudio
+
+
 __all__ = ["CanonicalFormatDAASTAudio"]

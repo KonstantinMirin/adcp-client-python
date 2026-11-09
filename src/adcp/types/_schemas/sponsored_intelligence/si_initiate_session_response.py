@@ -51,4 +51,7 @@ class SIInitiateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRespo
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiInitiateSessionResponse = SIInitiateSessionResponse
+
+
 __all__ = ["SIInitiateSessionResponse"]

@@ -24,4 +24,7 @@ class URLAssetType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "URLAssetType", URLAssetType)
 
 
+UrlAssetType = URLAssetType
+
+
 __all__ = ["URLAssetType"]

@@ -65,4 +65,7 @@ class CanonicalFormatHTML5Banner(CanonicalFormatBase):
     ssl_required: Annotated[bool | None, OmittedNotNull] = None
 
 
+CanonicalFormatHtml5Banner = CanonicalFormatHTML5Banner
+
+
 __all__ = ["CanonicalFormatHTML5Banner"]

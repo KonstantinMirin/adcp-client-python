@@ -21,4 +21,7 @@ class SLAWindow(AdCPBaseModel):
     completion_max: Annotated[SLAWindowCompletionMax | None, Field(description='Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.'), OmittedNotNull] = None
 
 
+SlaWindow = SLAWindow
+
+
 __all__ = ["SLAWindow"]
