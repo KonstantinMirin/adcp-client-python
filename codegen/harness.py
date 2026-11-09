@@ -432,13 +432,6 @@ _OWN_INSTANCE = frozenset(
     {Position.PROP, Position.ELEM, Position.MAPV, Position.KEY, Position.DEF}
 )
 
-#: How deep the transparent walk follows a reference before it stops looking.  The bundle's
-#: reference graph is a DAG with diamonds rather than a tree (``bundle._Where``), so the
-#: guard that terminates the walk is the visited SET below and this is only a bound on an
-#: unreasonable answer.
-_FIXTURE_DEPTH = 12
-
-
 #: "There is no fixture for this position", told apart from a fixture that IS JSON
 #: ``null`` -- which a document can admit, so ``None`` cannot carry both answers.
 #: :class:`_Draws` records the same defect one key space over, where ``[None]`` meant both
@@ -942,6 +935,27 @@ def referring_positions(
     it while any branch survives, and because it is the case the rule is stated about: a
     root with 42 referenced branches is 42 fixtures, and ``core/async-response-data.json``
     is that root.
+
+    **THE WALK TERMINATES ON THE POINTER AND CARRIES NO DEPTH BOUND**
+    (``docs/plan/architecture.md`` §9, ``adcp-client-python-hzio.6``).  It has exactly two
+    kinds of hop and each terminates for its own reason: a ``$ref`` hop is closed by
+    ``seen``, which is the set of ``(document, pointer)`` pairs already in progress -- the
+    reference graph is a DAG with diamonds and a cycle reaching a pointer already on it is
+    a back edge -- and a plain subschema descent walks the raw document's own tree, which
+    is finite.  So neither needs a number.
+
+    **A bound stood here (``_FIXTURE_DEPTH = 12``) and its comment called ``seen`` the
+    terminator and itself "only a bound on an unreasonable answer".  That was refuted by
+    measurement**: raised to 10,000 over the whole bundle, the answer MOVED at 73 of the
+    4,567 raw nodes that have a fixture position at all, and
+    ``core/creative-representation.json#`` went from 79 positions to 144 -- so the bound
+    was the terminator, 65 fixture positions at one node were silently dropped, and every
+    dropped position is a subtree the accepts draw paid in full.  ``seen`` did not reach
+    them because it is consulted on the reference hop alone; what the 12 was cutting was
+    the PLAIN descent, which needs no cutting.
+    ``tests/test_no_cap_is_on_the_grading_path.py`` is the gate: it asserts that this walk
+    returns a position whose relative pointer is deeper than any bound that stood here,
+    read off the ANSWER rather than from a second copy of the walk.
     """
     out: list[Referring] = []
 
@@ -950,8 +964,8 @@ def referring_positions(
         inside = at.lstrip("#")
         return raw if not inside else bundle.node_at(raw, inside)
 
-    def walk(node: Any, rel: str, own: bool, home: str, seen: frozenset, depth: int) -> None:
-        if not isinstance(node, Mapping) or depth > _FIXTURE_DEPTH:
+    def walk(node: Any, rel: str, own: bool, home: str, seen: frozenset) -> None:
+        if not isinstance(node, Mapping):
             return
         ref = node.get("$ref")
         if isinstance(ref, str):
@@ -969,7 +983,7 @@ def referring_positions(
                 inner = node_at(target, at)
             except Exception:  # noqa: BLE001 -- a pointer the document does not hold
                 return
-            walk(inner, rel, own, target, seen | {(target, at)}, depth + 1)
+            walk(inner, rel, own, target, seen | {(target, at)})
             return
         for keyword, suffix, sub, position in bundle.subschemas(node):
             walk(
@@ -978,14 +992,13 @@ def referring_positions(
                 position in _OWN_INSTANCE or keyword == "anyOf",
                 home,
                 seen,
-                depth + 1,
             )
 
     try:
         start = node_at(document, pointer)
     except Exception:  # noqa: BLE001 -- a pointer the raw document does not hold
         return ()
-    walk(start, "", False, document, frozenset({(document, pointer)}), 0)
+    walk(start, "", False, document, frozenset({(document, pointer)}))
     return tuple(out)
 
 
