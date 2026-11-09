@@ -31,4 +31,7 @@ class DOOHMotionType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "DOOHMotionType", DOOHMotionType)
 
 
+DoohMotionType = DOOHMotionType
+
+
 __all__ = ["DOOHMotionType"]

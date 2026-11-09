@@ -36,4 +36,7 @@ class TMPResponseType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "TMPResponseType", TMPResponseType)
 
 
+TmpResponseType = TMPResponseType
+
+
 __all__ = ["TMPResponseType"]

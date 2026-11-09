@@ -26,4 +26,7 @@ class GOPType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "GOPType", GOPType)
 
 
+GopType = GOPType
+
+
 __all__ = ["GOPType"]

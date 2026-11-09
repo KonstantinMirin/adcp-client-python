@@ -86,4 +86,7 @@ TMPProviderRegistration._branch_models = (TMPProviderRegistrationContextMatch, T
 TMPProviderRegistration.model_rebuild(force=True)
 
 
+TmpProviderRegistration = TMPProviderRegistration
+
+
 __all__ = ["TMPProviderRegistration"]

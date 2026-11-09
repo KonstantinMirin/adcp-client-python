@@ -28,4 +28,7 @@ class CTVAdExperience(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "CTVAdExperience", CTVAdExperience)
 
 
+CtvAdExperience = CTVAdExperience
+
+
 __all__ = ["CTVAdExperience"]

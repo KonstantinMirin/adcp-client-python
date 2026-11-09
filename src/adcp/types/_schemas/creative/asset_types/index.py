@@ -12,4 +12,7 @@ class AdCPAssetTypeRegistry(AdCPRootModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/asset-types/index.json', pointer='#')
 
 
+AdcpAssetTypeRegistry = AdCPAssetTypeRegistry
+
+
 __all__ = ["AdCPAssetTypeRegistry"]

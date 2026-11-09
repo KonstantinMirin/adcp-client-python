@@ -23,4 +23,7 @@ class AdCPVersionEnvelope(AdCPBaseModel):
     adcp_major_version: Annotated[AdcpMajorVersion | None, Field(description="DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version."), OmittedNotNull] = None
 
 
+AdcpVersionEnvelope = AdCPVersionEnvelope
+
+
 __all__ = ["AdCPVersionEnvelope", "AdcpMajorVersion", "AdcpVersion"]

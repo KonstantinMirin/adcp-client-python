@@ -40,4 +40,7 @@ class GetAdCPCapabilitiesRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+GetAdcpCapabilitiesRequest = GetAdCPCapabilitiesRequest
+
+
 __all__ = ["GetAdCPCapabilitiesRequest"]

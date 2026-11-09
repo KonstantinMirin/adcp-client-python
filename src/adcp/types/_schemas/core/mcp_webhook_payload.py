@@ -40,4 +40,7 @@ class MCPWebhookPayload(AdCPBaseModel):
     result: Annotated[AdCPAsyncResponseData | None, Field(description='Task-specific payload matching the status. For completed/failed, contains the full task response. For working/input-required/submitted, contains status-specific data. This is the data layer that AdCP specs - same structure used in A2A status.message.parts[].data.'), OmittedNotNull] = None
 
 
+McpWebhookPayload = MCPWebhookPayload
+
+
 __all__ = ["MCPWebhookPayload"]

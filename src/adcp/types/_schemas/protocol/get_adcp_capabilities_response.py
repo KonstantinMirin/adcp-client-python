@@ -1690,4 +1690,7 @@ class GetAdCPCapabilitiesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     wholesale_feed_webhooks: Annotated[WholesaleFeedWebhooks | None, Field(description='Per-agent wholesale product-feed and wholesale signals-feed webhook capabilities. Consumers register durable sync_accounts notification subscribers and receive actual product.*, signal.*, or wholesale_feed.bulk_change payloads without polling. Product mirrors bootstrap and repair through list_products(if_feed_version); signal mirrors use get_signals(if_wholesale_feed_version). Deprecated wholesale get_products remains the 3.x product compatibility path. Webhook emission MUST apply the same caller/account authorization and cache-scope predicate as the corresponding read.'), OmittedNotNull] = None
 
 
+GetAdcpCapabilitiesResponse = GetAdCPCapabilitiesResponse
+
+
 __all__ = ["BudgetCappingTimezoneBasis", "CapabilityReportingDeliveryMethod", "GetAdCPCapabilitiesResponse"]

@@ -75,4 +75,7 @@ class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiGetOfferingResponse = SIGetOfferingResponse
+
+
 __all__ = ["SIGetOfferingResponse"]

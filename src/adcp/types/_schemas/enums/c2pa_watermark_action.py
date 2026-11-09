@@ -26,4 +26,7 @@ class C2PAWatermarkAction(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "C2PAWatermarkAction", C2PAWatermarkAction)
 
 
+C2PaWatermarkAction = C2PAWatermarkAction
+
+
 __all__ = ["C2PAWatermarkAction"]

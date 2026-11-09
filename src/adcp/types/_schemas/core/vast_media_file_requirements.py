@@ -39,4 +39,7 @@ class VASTMediaFileRequirements(AdCPBaseModel):
     max_file_size_bytes: Annotated[IntMin1 | None, Field(description='Maximum accepted MediaFile size in exact bytes. `MediaFile@fileSize`, when present, is expressed in bytes; a receiver MAY verify it against safely fetched media bytes and MUST use the verified byte count if the values disagree.'), OmittedNotNull] = None
 
 
+VastMediafileRequirements = VASTMediaFileRequirements
+
+
 __all__ = ["VASTMediaFileRequirements"]

@@ -26,4 +26,7 @@ class WCAGLevel(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "WCAGLevel", WCAGLevel)
 
 
+WcagLevel = WCAGLevel
+
+
 __all__ = ["WCAGLevel"]

@@ -71,4 +71,7 @@ class UIDType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "UIDType", UIDType)
 
 
+UidType = UIDType
+
+
 __all__ = ["UIDType"]

@@ -87,4 +87,7 @@ class SISponsoredContextReceipt(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiSponsoredContextReceipt = SISponsoredContextReceipt
+
+
 __all__ = ["SISponsoredContextReceipt"]

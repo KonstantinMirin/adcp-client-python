@@ -23,4 +23,7 @@ class A2UIComponent(AdCPBaseModel):
     component: Annotated[dict[str, ComponentValue], Field(description='Component definition (keyed by component type)', max_length=1, min_length=1)]
 
 
+A2UiComponent = A2UIComponent
+
+
 __all__ = ["A2UIComponent"]

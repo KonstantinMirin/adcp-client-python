@@ -16,4 +16,7 @@ BrandID = Annotated[BrandDiscoveryAgentId, Field(description='Identifier for a b
 strict_validate = strict_alias(__adcp_schema__, "BrandID", BrandID)
 
 
+BrandId = BrandID
+
+
 __all__ = ["BrandID"]

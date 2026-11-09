@@ -27,4 +27,7 @@ class JavaScriptAsset(AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
+JavascriptAsset = JavaScriptAsset
+
+
 __all__ = ["JavaScriptAsset"]

@@ -36,4 +36,7 @@ class HTMLAsset(AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 
+HtmlAsset = HTMLAsset
+
+
 __all__ = ["HTMLAsset"]

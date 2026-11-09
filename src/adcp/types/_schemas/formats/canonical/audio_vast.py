@@ -38,4 +38,7 @@ class CanonicalFormatVASTAudio(CanonicalFormatBase):
     companion_image_required: Annotated[bool | None, Field(description='Whether the resolved VAST audio ad must include a companion creative.'), OmittedNotNull] = None
 
 
+CanonicalFormatVastAudio = CanonicalFormatVASTAudio
+
+
 __all__ = ["CanonicalFormatVASTAudio"]

@@ -25,4 +25,7 @@ class A2UISurface(AdCPBaseModel):
     dataModel: Annotated[dict[str, Any] | None, Field(description='Application data that components can bind to'), OmittedNotNull] = None
 
 
+A2UiSurface = A2UISurface
+
+
 __all__ = ["A2UISurface"]

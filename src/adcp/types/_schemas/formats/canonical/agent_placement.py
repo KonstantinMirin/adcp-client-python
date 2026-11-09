@@ -46,4 +46,7 @@ class CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement(CanonicalFormatBa
     disclosure_required: Annotated[bool | None, Field(description='Whether the surface must include an explicit sponsorship disclosure label.'), OmittedNotNull] = None
 
 
+CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement = CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement
+
+
 __all__ = ["CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement"]

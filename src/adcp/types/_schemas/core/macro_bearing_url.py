@@ -16,4 +16,7 @@ MacroBearingURL = Annotated[StrFormatUriTemplate | HttpUrl | StrMacroBearingURL,
 strict_validate = strict_alias(__adcp_schema__, "MacroBearingURL", MacroBearingURL)
 
 
+MacroBearingUrl = MacroBearingURL
+
+
 __all__ = ["MacroBearingURL"]

@@ -38,4 +38,7 @@ class SIInitiateSessionRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiInitiateSessionRequest = SIInitiateSessionRequest
+
+
 __all__ = ["SIInitiateSessionRequest"]

@@ -80,4 +80,7 @@ class SIIdentity(AdCPBaseModel):
     anonymous_session_id: Annotated[str | None, Field(description='Session ID for anonymous users (when consent_granted is false)'), OmittedNotNull] = None
 
 
+SiIdentity = SIIdentity
+
+
 __all__ = ["SIIdentity"]

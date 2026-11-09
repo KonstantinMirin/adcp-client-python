@@ -77,4 +77,7 @@ class SITerminateSessionRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiTerminateSessionRequest = SITerminateSessionRequest
+
+
 __all__ = ["SITerminateSessionRequest"]

@@ -34,4 +34,7 @@ class A2UIUserAction(AdCPBaseModel):
     timestamp: Annotated[AwareDatetime | None, Field(description='When the action occurred'), OmittedNotNull] = None
 
 
+A2UiUserAction = A2UIUserAction
+
+
 __all__ = ["A2UIUserAction"]

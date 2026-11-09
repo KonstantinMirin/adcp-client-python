@@ -16,4 +16,7 @@ CreativeRevisionID = Annotated[StrMinLen1MaxLen255, Field(description='Buyer-ass
 strict_validate = strict_alias(__adcp_schema__, "CreativeRevisionID", CreativeRevisionID)
 
 
+CreativeRevisionId = CreativeRevisionID
+
+
 __all__ = ["CreativeRevisionID"]

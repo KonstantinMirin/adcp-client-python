@@ -61,4 +61,7 @@ class MatchIDType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "MatchIDType", MatchIDType)
 
 
+MatchIdType = MatchIDType
+
+
 __all__ = ["MatchIDType"]

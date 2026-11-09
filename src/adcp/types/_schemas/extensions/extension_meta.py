@@ -27,4 +27,7 @@ class AdCPExtensionFileSchema(AdCPBaseModel):
     id: Annotated[Any, Field(alias='$id')]
 
 
+AdcpExtensionFileSchema = AdCPExtensionFileSchema
+
+
 __all__ = ["AdCPExtensionFileSchema"]

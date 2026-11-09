@@ -21,4 +21,7 @@ class TMPXChunk(AdCPBaseModel):
     value: Annotated[StrMinLen1MaxLen1024, Field(description="Opaque, URL-safe wire string the publisher substitutes verbatim into the destination the publisher's mapping resolves for this `(provider_id, slot_id)` pair. Publishers MUST NOT parse, decode, or transform this value.")]
 
 
+TmpxChunk = TMPXChunk
+
+
 __all__ = ["TMPXChunk"]

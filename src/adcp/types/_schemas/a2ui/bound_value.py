@@ -81,4 +81,7 @@ A2UIBoundValue._branch_models = (A2UIBoundValueLiteralString, A2UIBoundValueLite
 A2UIBoundValue.model_rebuild(force=True)
 
 
+A2UiBoundValue = A2UIBoundValue
+
+
 __all__ = ["A2UIBoundValue"]

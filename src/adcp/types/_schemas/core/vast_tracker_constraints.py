@@ -113,4 +113,7 @@ class VASTTrackerConstraints(AdCPBaseModel):
     vast_versions: Annotated[VastVersions | None, OmittedNotNull] = None
 
 
+VastTrackerConstraints = VASTTrackerConstraints
+
+
 __all__ = ["VASTTrackerConstraints", "VastEvent", "VastOffset", "VastTarget", "VastVersions"]

@@ -16,4 +16,7 @@ ApplicablePackageID = Annotated[StrMinLen1, Field(description='A package identif
 strict_validate = strict_alias(__adcp_schema__, "ApplicablePackageID", ApplicablePackageID)
 
 
+ApplicablePackageId = ApplicablePackageID
+
+
 __all__ = ["ApplicablePackageID"]

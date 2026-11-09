@@ -16,4 +16,7 @@ PropertyID = Annotated[BrandDiscoveryAgentId, Field(description='Identifier for 
 strict_validate = strict_alias(__adcp_schema__, "PropertyID", PropertyID)
 
 
+PropertyId = PropertyID
+
+
 __all__ = ["PropertyID"]

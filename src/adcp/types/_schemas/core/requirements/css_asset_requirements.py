@@ -20,4 +20,7 @@ class CSSAssetRequirements(AdCPBaseModel):
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes'), OmittedNotNull] = None
 
 
+CssAssetRequirements = CSSAssetRequirements
+
+
 __all__ = ["CSSAssetRequirements"]

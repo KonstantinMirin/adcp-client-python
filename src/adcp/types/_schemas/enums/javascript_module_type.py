@@ -22,4 +22,7 @@ class JavaScriptModuleType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "JavaScriptModuleType", JavaScriptModuleType)
 
 
+JavascriptModuleType = JavaScriptModuleType
+
+
 __all__ = ["JavaScriptModuleType"]

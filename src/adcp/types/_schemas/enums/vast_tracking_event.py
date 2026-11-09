@@ -88,4 +88,7 @@ class VASTTrackingEvent(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "VASTTrackingEvent", VASTTrackingEvent)
 
 
+VastTrackingEvent = VASTTrackingEvent
+
+
 __all__ = ["VASTTrackingEvent"]

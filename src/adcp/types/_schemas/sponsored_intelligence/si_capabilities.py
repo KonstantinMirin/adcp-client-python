@@ -115,4 +115,7 @@ class SICapabilities(AdCPBaseModel):
     mcp_apps: Annotated[bool | None, Field(description='Supports MCP Apps for rendering A2UI surfaces in iframes'), OmittedNotNull] = False
 
 
+SiCapabilities = SICapabilities
+
+
 __all__ = ["SICapabilities"]

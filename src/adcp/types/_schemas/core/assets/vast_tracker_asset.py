@@ -49,4 +49,7 @@ class VASTTrackerAsset(AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance.'), OmittedNotNull] = None
 
 
+VastTrackerAsset = VASTTrackerAsset
+
+
 __all__ = ["VASTTrackerAsset"]

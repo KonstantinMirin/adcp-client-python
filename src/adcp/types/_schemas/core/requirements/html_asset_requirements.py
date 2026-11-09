@@ -38,4 +38,7 @@ class HTMLAssetRequirements(AdCPBaseModel):
     allowed_external_domains: Annotated[list[StrFormatHostname] | None, Field(description='List of domains the HTML creative may reference for external resources. Only applicable when external_resources_allowed is true.'), OmittedNotNull] = None
 
 
+HtmlAssetRequirements = HTMLAssetRequirements
+
+
 __all__ = ["HTMLAssetRequirements"]

@@ -40,4 +40,7 @@ class ContentIDType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "ContentIDType", ContentIDType)
 
 
+ContentIdType = ContentIDType
+
+
 __all__ = ["ContentIDType"]

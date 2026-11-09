@@ -16,4 +16,7 @@ ExperimentalFeatureID = Annotated[StrExperimentalFeatureID, Field(description='D
 strict_validate = strict_alias(__adcp_schema__, "ExperimentalFeatureID", ExperimentalFeatureID)
 
 
+ExperimentalFeatureId = ExperimentalFeatureID
+
+
 __all__ = ["ExperimentalFeatureID"]

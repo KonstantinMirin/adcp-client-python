@@ -149,4 +149,7 @@ class SISponsoredContext(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+SiSponsoredContext = SISponsoredContext
+
+
 __all__ = ["SISponsoredContext"]

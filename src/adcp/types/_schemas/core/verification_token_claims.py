@@ -66,4 +66,7 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
     protocol_version: Annotated[str | None, OmittedNotNull] = None
 
 
+AgenticadvertisingOrgVerificationTokenClaims = AgenticAdvertisingOrgVerificationTokenClaims
+
+
 __all__ = ["AgenticAdvertisingOrgVerificationTokenClaims", "VerificationMode", "VerificationTokenGradingProfile"]

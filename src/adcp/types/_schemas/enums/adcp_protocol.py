@@ -51,4 +51,7 @@ class AdCPProtocol(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "AdCPProtocol", AdCPProtocol)
 
 
+AdcpProtocol = AdCPProtocol
+
+
 __all__ = ["AdCPProtocol"]

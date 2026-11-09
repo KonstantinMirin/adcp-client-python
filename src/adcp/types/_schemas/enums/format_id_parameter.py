@@ -22,4 +22,7 @@ class FormatIDParameter(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "FormatIDParameter", FormatIDParameter)
 
 
+FormatIdParameter = FormatIDParameter
+
+
 __all__ = ["FormatIDParameter"]

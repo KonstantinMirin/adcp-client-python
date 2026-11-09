@@ -16,4 +16,7 @@ ReportingDeliveryOfferingID = Annotated[ReportingCanonicalizationContractGoldenV
 strict_validate = strict_alias(__adcp_schema__, "ReportingDeliveryOfferingID", ReportingDeliveryOfferingID)
 
 
+ReportingDeliveryOfferingId = ReportingDeliveryOfferingID
+
+
 __all__ = ["ReportingDeliveryOfferingID"]
