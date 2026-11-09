@@ -861,6 +861,26 @@ BY_NAME = bundle.HELD_BY_NAME - SECTIONS
 #: to say "the same node, N hops up" rather than recurse.
 CYCLE = "<cycle>"
 
+#: **A DECIDED KEY: what :meth:`Admitted.of` answers, and it is a STRUCTURE** (§9: "a
+#: node's identity is its pointer, never its text" -- and where a key is what identifies
+#: a group of nodes, the same sentence forbids rendering the structure to make one).
+#:
+#: THREE SHAPES, one per kind of node, and the union is exact rather than widened to
+#: ``object``: a SCHEMA node keys as one ``(keyword, value)`` pair per keyword it states in
+#: sorted keyword order, a LIST as ``("[]", its members' keys)``, and a SCALAR as its own
+#: JSON -- which is a value and not a rendering of a structure, so the rule is kept.  Every
+#: member is hashable and ``==`` on it is the equality the layers group by, so **nothing has
+#: to be serialised to key it**: :attr:`ScalarEntry.key` one layer down has been a tuple all
+#: along, and this is L2 and L3 saying the same thing.
+#:
+#: **TWO OF THEM HAVE NO ORDER BETWEEN THEM**, which is the one thing a reader has to carry:
+#: a ``sorted()`` over decided keys would have to RENDER them to compare, which is the
+#: serialisation this type exists to end, so every reader orders by the POSITION instead.
+#:
+#: :meth:`Admitted.key` renders one, for the single reader that needs BYTES rather than a
+#: key -- :func:`admitted_identities`, which feeds ``sha256``.
+DecidedKey = tuple[tuple[str, object], ...] | tuple[str, tuple[object, ...]] | str
+
 
 class Admitted:
     """**A LAYER'S KEY: exactly what changes the set of admitted instances** (§3a, 2026-11-03).
@@ -927,7 +947,9 @@ class Admitted:
         #: and every key of every entry of all four layers is byte-identical either way
         #: (``tests/test_catalogue.py::test_resolving_a_reference_is_memoised_and_the_keys_
         #: are_the_same``).
-        self._targets: dict[tuple[tuple[str, str], tuple[tuple[str, str], ...]], object] = {}
+        self._targets: dict[
+            tuple[tuple[str, str], tuple[tuple[str, str], ...]], DecidedKey
+        ] = {}
         #: The document set a collection ranged over -> L2A's collected positions over it,
         #: which is L2's own screen (:func:`shape_states`' ``applied``).  **PUBLIC, unlike
         #: the three memos above**, because :func:`collect_applied` is what fills it: it is
@@ -999,8 +1021,10 @@ class Admitted:
             return None
         return (at[0], found, (*stack, at))
 
-    def of(self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()) -> object:
-        """The decided key of one node, as a hashable structure.
+    def of(
+        self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()
+    ) -> DecidedKey:
+        """The decided key of one node, as a hashable structure (:data:`DecidedKey`).
 
         **A ``$ref`` RESOLVES INTO THIS KEY AND STAYS A MEMBER OF IT**, which is a
         DECLARATION's identity and is not admission-equivalence: a reference is a position
@@ -1051,7 +1075,28 @@ class Admitted:
         return tuple(out)
 
     def key(self, document: str, node: object) -> str:
-        """:meth:`of` as one string, which is what an entry is keyed on."""
+        """:meth:`of` RENDERED, for the one reader that needs BYTES rather than a key.
+
+        **A DICT KEY NEEDS NO TEXT AND NO LONGER ASKS FOR IT HERE** (§9: "no structure is
+        serialised to identify itself"; ``adcp-client-python-g5dx``).  :meth:`of` already
+        answers with a hashable structure, so every caller that GROUPS positions keys on
+        that structure (:data:`DecidedKey`, :attr:`Shaped.key`) and this method has one
+        caller left: :func:`admitted_identities`, which hands the bytes to ``sha256``.
+
+        **Measured, and it is why the distinction is drawn.**  This ``repr`` was the
+        second-largest allocating location in the whole run -- 30.98 GB, 16.08% of
+        everything allocated -- and 881 of the 1,382 samples underneath it arrived from
+        :func:`shape_states`, where the text was built, hashed into a dict and dropped
+        unread.  With it off that path the four structural collections take 4.9 s against
+        7.4 s, and every entry, every group and every home is identical.
+
+        **What is NOT removed, and why it cannot be here**: :meth:`decide`'s ``UNORDERED``
+        arm renders each branch to sort a list of heterogeneous members, and that rendering
+        is a MEMBER OF THE KEY's value rather than a step on the way to one.  Taking it out
+        moves what the key equals -- which moves the digest this method feeds and the
+        groups the emitted tree is formed from -- so it is a decision about the key and not
+        a cost to be optimised away.  ``adcp-client-python-hzio.4`` carries it.
+        """
         return repr(self.of(document, node))
 
     def stating(
@@ -1130,7 +1175,9 @@ class Resolved(Admitted):
     open question and the owner's; it is filed, not answered here.
     """
 
-    def of(self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()) -> object:
+    def of(
+        self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()
+    ) -> DecidedKey:
         """:meth:`Admitted.of` with the resolution SPLICED IN, and memoised on the hop.
 
         **THE MEMO IS :attr:`Admitted._targets` AND IT IS READ HERE BECAUSE IT CANNOT BE
@@ -1341,8 +1388,15 @@ class Shaped:
     document: str
     pointer: str
     position: keywords.Position
-    #: The decided key (:class:`Admitted`).
-    key: str
+    #: The decided key (:meth:`Admitted.of`) **as the hashable structure it already is, and
+    #: never a rendering of one** (§9: "no structure is serialised to identify itself";
+    #: ``adcp-client-python-g5dx``).  Grouping is all this field is for, ``of``'s answer is
+    #: hashable, and :attr:`ScalarEntry.key` one layer down is already a tuple -- so a
+    #: ``repr`` here was a serialisation nothing read as text.  Measured: it allocated
+    #: 30.98 GB over one run, 16.08% of everything the run allocated, and the four
+    #: structural collections take 7.4 s with it and 4.9 s without, every entry and every
+    #: group identical either way.
+    key: DecidedKey
     #: The node's own ``title``, or ``None``.  §3a's naming rule reads this and nothing
     #: else -- "a description states what a thing IS, not what it is CALLED, so it mints no
     #: name".
@@ -1469,7 +1523,7 @@ class ShapeEntry:
     there REPLACES a derived name with a stated one.
     """
 
-    key: str
+    key: DecidedKey
     #: The ``title`` the bundle states, or ``None`` where it titles this structure at no
     #: position -- which is §4's steps 2 and 3 instead, and :attr:`name` is what they
     #: derive.
@@ -1607,7 +1661,7 @@ class ShapeConflict:
     and is :func:`the_name`'s own reading.
     """
 
-    key: str
+    key: DecidedKey
     titles: tuple[str, ...]
     positions: tuple[Shaped, ...]
 
@@ -1658,7 +1712,7 @@ class Shapes:
     #: key -> the entry, for every structure this layer COLLECTS: stated in more than one
     #: document, and named either by the one title the bundle gives it or -- where the
     #: bundle titles it at no position -- by §4's steps 2 and 3 from the structure itself.
-    entries: Mapping[str, ShapeEntry]
+    entries: Mapping[DecidedKey, ShapeEntry]
     #: The structures stated in more than one document that this layer declines to collect
     #: FOR WANT OF A TITLE.  Empty at L2, where the same structures are :attr:`entries`
     #: named from themselves; at L3 it is every untitled group, by the derivation in the
@@ -1934,7 +1988,7 @@ def shape_states(
                 document=document,
                 pointer=pointer,
                 position=position,
-                key=admitted.key(document, stated),
+                key=admitted.of(document, stated),
                 title=title if isinstance(title, str) and title.strip() else None,
                 keeps_a_named_node=any(
                     bundle.split_ref(spelled) == ("", named)
@@ -2207,13 +2261,13 @@ def collect_shapes(
         applied: Collection[tuple[str, str]] = admitted.screens[held]
     else:
         applied = ()
-    grouped: dict[str, list[Shaped]] = {}
+    grouped: dict[DecidedKey, list[Shaped]] = {}
     every: list[Shaped] = []
     for position in shape_states(admitted, layer, documents, applied):
         every.append(position)
         grouped.setdefault(position.key, []).append(position)
 
-    entries: dict[str, ShapeEntry] = {}
+    entries: dict[DecidedKey, ShapeEntry] = {}
     untitled: list[tuple[Shaped, ...]] = []
     conflicting: list[ShapeConflict] = []
     restated: list[tuple[Shaped, ...]] = []
@@ -2223,7 +2277,7 @@ def collect_shapes(
     #: layer collects.  Read in one pass BEFORE the names are derived, because §4's
     #: first-fit is a statement about the whole set: a step-2 candidate two entries derive
     #: identifies neither, and that cannot be known one entry at a time.
-    collecting: dict[str, tuple[str | None, Shaped]] = {}
+    collecting: dict[DecidedKey, tuple[str | None, Shaped]] = {}
 
     for key, group in grouped.items():
         if len(group) < 2:
@@ -2267,7 +2321,7 @@ def collect_shapes(
 
     #: §4's step 2 per group, and then its first-fit rule over the whole layer: a name two
     #: groups derive is taken by neither.
-    candidate = {
+    candidate: dict[DecidedKey, str | None] = {
         key: structure_in_words(at.fields) if title is None else None
         for key, (title, at) in collecting.items()
     }
@@ -2333,7 +2387,7 @@ class Applied:
     #: union and ``at`` is the home re-decided over it.  A :class:`ShapeEntry` and not a
     #: kind of its own, so :attr:`ShapeEntry.restating`'s five screens and
     #: :func:`shape_declared_at`'s one home rule are the same code here as at L2C.
-    entries: dict[str, ShapeEntry]
+    entries: dict[DecidedKey, ShapeEntry]
     #: The censused positions at which no class is declared at all
     #: (:attr:`Shaped.declares_no_class`) -- at this layer every one of them is a CONJ,
     #: which is §5's ``allOf`` row: a conjunct's properties are declared on the node
@@ -2437,7 +2491,7 @@ def collect_applied(
     every: list[Shaped] = []
     undeclared: list[Shaped] = []
     unmatched: list[Shaped] = []
-    joining: dict[str, list[Shaped]] = {}
+    joining: dict[DecidedKey, list[Shaped]] = {}
     for position in shape_states(admitted, "L2A", documents):
         every.append(position)
         entry = collected.get(position.key)
@@ -2455,7 +2509,7 @@ def collect_applied(
             continue
         joining.setdefault(position.key, []).append(position)
 
-    entries: dict[str, ShapeEntry] = {}
+    entries: dict[DecidedKey, ShapeEntry] = {}
     for key, found in joining.items():
         entry = collected[key]
         union = (*entry.positions, *found)

@@ -754,7 +754,7 @@ def test_every_repeated_array_type_is_owned_by_a_layer_beneath_it(
     """
     import collections as _collections
 
-    groups: dict[str, list[catalogue.Shaped]] = {}
+    groups: dict[catalogue.DecidedKey, list[catalogue.Shaped]] = {}
     for position in l3.positions:
         groups.setdefault(position.key, []).append(position)
     cross = claimed(
@@ -778,7 +778,10 @@ def test_every_repeated_array_type_is_owned_by_a_layer_beneath_it(
             owners["a reference (§5)"] += 1
         elif isinstance(element.get("properties"), dict) and element["properties"]:
             owners["an object (L2)"] += 1
-            if admitted.key(position.document, element) not in l2_keys:
+            # ``of`` and never ``key``: a decided key is the hashable STRUCTURE
+            # (``catalogue.DecidedKey``) and ``key`` renders one for the digest, so
+            # comparing a rendering against ``Shaped.key`` compares two different things.
+            if admitted.of(position.document, element) not in l2_keys:
                 unowned[f"{position.document}{position.pointer}"] = "object, not an L2 position"
         elif "enum" in element:
             owners["an enumeration (L0)"] += 1
@@ -885,7 +888,7 @@ def test_the_applied_layer_joins_only_a_type_the_bundle_already_names(
         for entry in l2a.entries.values()
         for position in entry.positions
         if (position.document, position.pointer) in l2a.collected
-        and admitted.key(
+        and admitted.of(
             position.document,
             bundle.node_at(admitted.document(position.document), position.pointer),
         )
@@ -939,18 +942,24 @@ def test_resolving_a_reference_is_memoised_and_the_keys_are_the_same(
         admitted = catalogue.Admitted(BUNDLE)
         if not memoised:
             admitted._targets = _Nothing()
+        #: **Ordered by the POSITION and never by the key**, which is the same fact
+        #: ``catalogue.DecidedKey`` states: a decided key is a heterogeneous structure,
+        #: two of them have no order between each other, and a sort that reached for one
+        #: would have to RENDER them -- the serialisation §9 forbids, arriving in a test.
+        #: A position's ``(document, pointer)`` and an entry's home both name a row
+        #: uniquely, so the row order is total without any of that.
         out: dict[str, object] = {
             layer: sorted(
-                (p.document, p.pointer, p.key)
+                ((p.document, p.pointer), p.key)
                 for p in catalogue.shape_states(admitted, layer)
             )
             for layer in ("L2", "L2C", "L3")
         }
         composed = catalogue.collect_shapes(admitted, "L2C", standing)
         applied = catalogue.collect_applied(admitted, composed, standing)
-        out["L2A"] = sorted((p.document, p.pointer, p.key) for p in applied.positions)
+        out["L2A"] = sorted(((p.document, p.pointer), p.key) for p in applied.positions)
         out["entries"] = sorted(
-            (key, entry.title, entry.at.document, entry.at.pointer)
+            ((entry.at.document, entry.at.pointer), key, entry.title)
             for key, entry in applied.entries.items()
         )
         return out
@@ -961,7 +970,7 @@ def test_resolving_a_reference_is_memoised_and_the_keys_are_the_same(
         [
             f"{layer} {at[0]}{at[1]}"
             for layer in ("L2", "L2C", "L3", "L2A")
-            for at in with_memo[layer]  # type: ignore[union-attr]
+            for at, _key in with_memo[layer]  # type: ignore[union-attr]
         ],
     )
     without = censused(memoised=False)
