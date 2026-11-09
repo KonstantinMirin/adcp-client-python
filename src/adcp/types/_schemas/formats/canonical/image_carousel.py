@@ -48,4 +48,7 @@ class CanonicalFormatImageCarousel(CanonicalFormatBase):
     ssl_required: Annotated[bool | None, OmittedNotNull] = None
 
 
+AllowedCardMediaAssetType = AllowedCardMediaAssetTypesItem
+
+
 __all__ = ["CanonicalFormatImageCarousel"]

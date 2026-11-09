@@ -91,4 +91,19 @@ class SyncPlansResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Category = CategoriesItem
+
+
+Plan = PlansItem
+
+
+ResolvedPolicy = ResolvedPoliciesItem
+
+
+Status = PlansItemStatus
+
+
+Status51 = CategoriesItemStatus
+
+
 __all__ = ["SyncPlansResponse"]

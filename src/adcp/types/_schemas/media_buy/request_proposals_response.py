@@ -211,4 +211,7 @@ RequestProposalsResponse._branch_models = (RequestProposalsResponseProposedCompl
 RequestProposalsResponse.model_rebuild(force=True)
 
 
+Loss = LossesItem
+
+
 __all__ = ["RequestProposalsResponse"]

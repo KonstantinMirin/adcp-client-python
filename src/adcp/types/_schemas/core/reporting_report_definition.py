@@ -157,4 +157,16 @@ class ReportingReportDefinition(AdCPBaseModel):
     finality_policies: Annotated[list[FinalityPoliciesItemSourceFinal | FinalityPoliciesItemContractualCutoff | FinalityPoliciesItemStabilized], Field(min_length=1)]
 
 
+FinalityPolicies = FinalityPoliciesItemSourceFinal
+
+
+FinalityPolicies1 = FinalityPoliciesItemContractualCutoff
+
+
+FinalityPolicies2 = FinalityPoliciesItemStabilized
+
+
+Metric = MetricsItem
+
+
 __all__ = ["ReportCalendarTimezoneBasis", "ReportingReportDefinition"]

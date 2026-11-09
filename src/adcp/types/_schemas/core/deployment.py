@@ -56,4 +56,10 @@ Deployment._branch_models = (DeploymentPlatform, DeploymentAgent,)
 Deployment.model_rebuild(force=True)
 
 
+Deployment1 = DeploymentPlatform
+
+
+Deployment2 = DeploymentAgent
+
+
 __all__ = ["Deployment"]

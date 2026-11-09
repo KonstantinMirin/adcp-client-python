@@ -66,4 +66,7 @@ class InsertionOrder(AdCPBaseModel):
     requires_signature: Annotated[bool, Field(description='Whether the buyer must accept this IO before creating a media buy. When true, create_media_buy requires an io_acceptance referencing this io_id.')]
 
 
+PaymentTerms = TermsPaymentTerms
+
+
 __all__ = ["InsertionOrder"]

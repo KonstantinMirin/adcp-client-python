@@ -94,4 +94,7 @@ class RealEstateItem(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+PropertyType = RealEstateItemPropertyType
+
+
 __all__ = ["RealEstateItem"]

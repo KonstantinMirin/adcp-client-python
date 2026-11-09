@@ -51,4 +51,10 @@ MissingMetric._branch_models = (ObjScopeMetricIdQualifier, MissingMetricVendor,)
 MissingMetric.model_rebuild(force=True)
 
 
+MissingMetric1 = ObjScopeMetricIdQualifier
+
+
+MissingMetric2 = MissingMetricVendor
+
+
 __all__ = ["MissingMetric"]

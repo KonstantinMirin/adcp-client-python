@@ -71,4 +71,13 @@ SignalTargetingExpression._branch_models = (SignalTargetingExpressionBinary, Sig
 SignalTargetingExpression.model_rebuild(force=True)
 
 
+SignalTargetingExpression1 = SignalTargetingExpressionBinary
+
+
+SignalTargetingExpression2 = SignalTargetingExpressionCategorical
+
+
+SignalTargetingExpression3 = SignalTargetingExpressionNumeric
+
+
 __all__ = ["SignalTargetingExpression"]

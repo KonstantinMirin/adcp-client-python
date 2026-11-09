@@ -55,4 +55,10 @@ AudienceSource._branch_models = (Dataset, PlatformSegment,)
 AudienceSource.model_rebuild(force=True)
 
 
+AudienceSource1 = Dataset
+
+
+AudienceSource2 = PlatformSegment
+
+
 __all__ = ["AudienceSource"]

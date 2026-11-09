@@ -131,4 +131,13 @@ SyncCreativesResponse._branch_models = (SyncCreativesSuccess, SyncCreativesError
 SyncCreativesResponse.model_rebuild(force=True)
 
 
+Creative = CreativesItem
+
+
+SyncCreativesResponse1 = SyncCreativesSuccess
+
+
+SyncCreativesResponse2 = SyncCreativesError
+
+
 __all__ = ["SyncCreativesResponse"]

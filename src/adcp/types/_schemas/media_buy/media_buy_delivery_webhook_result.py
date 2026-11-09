@@ -156,4 +156,13 @@ class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+MediaBuyDelivery = MediaBuyDeliveriesItem
+
+
+NotificationType = MediaBuyDeliveryWebhookResultNotificationType
+
+
+ReportingPeriod = ObjStartEndTimezone
+
+
 __all__ = ["MediaBuyDeliveryWebhookResult"]

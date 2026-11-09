@@ -90,4 +90,7 @@ class PreviewCreativeRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Request = RequestsItem
+
+
 __all__ = ["PreviewCreativeRequest"]

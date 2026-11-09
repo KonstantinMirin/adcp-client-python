@@ -36,4 +36,7 @@ class DeadlinePolicy(AdCPBaseModel):
     business_days_only: Annotated[bool | None, Field(description='When true, lead_days counts business days (Mon-Fri) rather than calendar days. Defaults to false.'), OmittedNotNull] = False
 
 
+MaterialStage = MaterialStagesItem
+
+
 __all__ = ["DeadlinePolicy"]

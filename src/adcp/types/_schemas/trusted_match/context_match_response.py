@@ -63,4 +63,10 @@ class ContextMatchResponseRouterPublisher(AdCPVersionEnvelope, ProtocolEnvelope)
     signals_by_provider: Annotated[dict[ContextMatchResponseRouterPublisherSignalsByProvider, SignalsByProviderValue] | None, Field(description="Router-authored map of provider targeting pairs, keyed by the publisher-assigned provider_id from provider registration. For every provider response containing a non-empty signals.targeting_kvs list, the router copies the complete list unchanged into that provider's bucket. The router derives the map key from its registration and MUST ignore or reject provider-supplied signals_by_provider data. A provider with no targeting pairs is omitted. Publishers resolve each (provider_id, key) tuple to a local ad-server destination and drop tuples that have no local mapping.", min_length=1), OmittedNotNull] = None
 
 
+SignalsByProvider = SignalsByProviderValue
+
+
+TargetingKv = ObjKeyValue
+
+
 __all__ = ["ContextMatchResponseRouterPublisher", "ContextMatchResponseRouterPublisherTargetingKvs"]

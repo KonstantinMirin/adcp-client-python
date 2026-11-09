@@ -103,4 +103,7 @@ class CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven(CanonicalFormatB
     ctv_ad_experience: Annotated[CTVAdExperience | None, Field(description='CTV experience this option serves. On `sponsored_placement`: `menu` (sponsored app/content tiles and rows whose assets derive from a catalog listing — Fire-TV-tile pattern), `squeezeback`, and `in_scene` (seller-composited brand integrations produced from the catalog/brief rather than a buyer wire creative). Asset-bundle menu heroes route to `native_in_feed`.'), OmittedNotNull] = None
 
 
+SupportedIdType = SupportedIdTypesItem
+
+
 __all__ = ["CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven"]

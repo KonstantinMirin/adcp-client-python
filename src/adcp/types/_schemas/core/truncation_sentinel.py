@@ -32,4 +32,7 @@ class TruncationSentinel(AdCPBaseModel):
     truncation: Annotated[Truncation, Field(alias='_truncation', description='Truncation envelope. The leading underscore is a deliberate signal that this property is a control marker and not a payload field — the natural value being surfaced will not have a `_truncation` key. `additionalProperties: true` so future revisions of this contract can add classification fields without a forward-compat break.')]
 
 
+FieldTruncation = Truncation
+
+
 __all__ = ["TruncationSentinel"]

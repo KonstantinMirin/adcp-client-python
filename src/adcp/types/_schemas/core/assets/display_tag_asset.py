@@ -151,4 +151,13 @@ DisplayTagAsset._branch_models = (TagURL, InlineMarkup, PairedRedirect,)
 DisplayTagAsset.model_rebuild(force=True)
 
 
+DisplayTagAsset4 = TagURL
+
+
+DisplayTagAsset5 = InlineMarkup
+
+
+DisplayTagAsset6 = PairedRedirect
+
+
 __all__ = ["DisplayTagAsset"]

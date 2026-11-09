@@ -85,4 +85,7 @@ class VideoAssetRequirements(AdCPBaseModel):
     true_peak_dbfs: Annotated[float | None, Field(description='Maximum true peak level in dBFS (e.g., -2 for broadcast)'), OmittedNotNull] = None
 
 
+AudioCodec = AudioCodecsItem
+
+
 __all__ = ["VideoAssetRequirements"]

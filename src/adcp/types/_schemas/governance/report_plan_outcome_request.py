@@ -95,4 +95,7 @@ class ReportPlanOutcomeRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Package = PackagesItem
+
+
 __all__ = ["ReportPlanOutcomeRequest"]

@@ -118,4 +118,7 @@ class SICapabilities(AdCPBaseModel):
 SiCapabilities = SICapabilities
 
 
+StandardEnum = StandardItem
+
+
 __all__ = ["SICapabilities"]

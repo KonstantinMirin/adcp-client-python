@@ -625,4 +625,148 @@ class Format(AdCPBaseModel):
     canonical_parameters: Annotated[Annotated[ProductFormatDeclaration, AfterValidator(ForbiddenGroups((('tracker_execution_contract',), ('tracker_execution_contract_digest',))))] | None, Field(description="**DEPRECATED in 3.1. Removed at 4.0.** Use `v1_format_ref` on the v2 `ProductFormatDeclaration` instead — the seller authors a v2 declaration (in `Product.format_options` or `creative.supported_formats`) and links it back to this v1 format via `v1_format_ref: { agent_url, id }`. The directional link from v2 → v1 is the same fact as `canonical_parameters` without the parallel-shape drift surface (v1 file and `canonical_parameters` were two declarations of the same thing; hand-authored, drifting silently).\n\nMigration: every seller currently authoring `canonical_parameters` SHOULD migrate to authoring a v2 declaration on the corresponding product (or capability) with `v1_format_ref` pointing back at this v1 format. v1 files become pure v1 again — no v2-shape mirroring.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* When `canonical` is set, this field carries the full ProductFormatDeclaration that the SDK projects this v1 format into. The `format_kind` MUST equal the `canonical` field value (validators enforce). When set, this is the authoritative source for SDK v1→v2 projection — the registry's structural-match parameter inference is bypassed. SDKs reading 3.1 catalogs MUST continue to honor `canonical_parameters` when present; 4.0+ SDKs MAY reject the field. New code SHOULD NOT emit this field. Seller execution authority is never projected through this deprecated field, so tracker_execution_contract and tracker_execution_contract_digest are forbidden.\n\n**Drift contract (still normative while supported).** Hand-authored `canonical_parameters` MUST satisfy the *narrows* relation against this v1 format's `requirements` and `assets[*]` shape (see canonical-formats.mdx 'Narrows — formal definition'). SDKs that read this v1 file SHOULD lint-time check the equivalence at build/load and emit `FORMAT_PROJECTION_FAILED` if the two disagree."), OmittedNotNull] = None
 
 
+Assets = IndividualImageAsset
+
+
+Assets10 = IndividualAudioAsset
+
+
+Assets11 = IndividualTextAsset
+
+
+Assets12 = IndividualMarkdownAsset
+
+
+Assets13 = IndividualHtmlAsset
+
+
+Assets14 = IndividualCssAsset
+
+
+Assets15 = IndividualJavaScriptAsset
+
+
+Assets16 = IndividualZipAsset
+
+
+Assets17 = IndividualVastAsset
+
+
+Assets18 = IndividualDaastAsset
+
+
+Assets19 = IndividualUrlAsset
+
+
+Assets20 = IndividualWebhookAsset
+
+
+Assets21 = IndividualBriefAsset
+
+
+Assets22 = IndividualCatalogAsset
+
+
+Assets23 = IndividualDisplayTagAsset
+
+
+Assets24 = IndividualPublishedPostAsset
+
+
+Assets25 = IndividualCardAsset
+
+
+Assets26 = IndividualPixelTrackerAsset
+
+
+Assets27 = IndividualVastTrackerAsset
+
+
+Assets28 = IndividualDaastTrackerAsset
+
+
+Assets29 = RepeatableGroupAsset
+
+
+Assets31 = GroupImageAsset
+
+
+Assets32 = GroupVideoAsset
+
+
+Assets33 = GroupAudioAsset
+
+
+Assets34 = GroupTextAsset
+
+
+Assets35 = GroupMarkdownAsset
+
+
+Assets36 = GroupHtmlAsset
+
+
+Assets37 = GroupCssAsset
+
+
+Assets38 = GroupJavaScriptAsset
+
+
+Assets39 = GroupZipAsset
+
+
+Assets40 = GroupVastAsset
+
+
+Assets41 = GroupDaastAsset
+
+
+Assets42 = GroupUrlAsset
+
+
+Assets43 = GroupWebhookAsset
+
+
+Assets44 = GroupBriefAsset
+
+
+Assets45 = GroupCatalogAsset
+
+
+Assets46 = GroupDisplayTagAsset
+
+
+Assets47 = GroupPublishedPostAsset
+
+
+Assets48 = GroupCardAsset
+
+
+Assets49 = GroupPixelTrackerAsset
+
+
+Assets50 = GroupVastTrackerAsset
+
+
+Assets51 = GroupDaastTrackerAsset
+
+
+Assets9 = IndividualVideoAsset
+
+
+DisclosureCapability = DisclosureCapabilitiesItem
+
+
+Renders = RendersItemDimensions
+
+
+Renders1 = RendersItemParametersFromFormatId
+
+
+UnknownFormatAsset = BaseIndividualAsset
+
+
+UnknownGroupAsset = BaseGroupAsset
+
+
 __all__ = ["BaseGroupAsset", "BaseIndividualAsset", "Format"]

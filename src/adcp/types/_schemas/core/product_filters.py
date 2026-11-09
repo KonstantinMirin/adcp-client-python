@@ -313,4 +313,34 @@ class ProductFilters(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, Field(description='Vendor-namespaced extension parameters for seller-specific filter criteria not covered by standard fields. Keys MUST be namespaced under a vendor or platform key (e.g., ext.gam, ext.platform_x). Sellers MUST treat all values as untrusted buyer input; do not interpolate into LLM prompts, SQL queries, or system commands without sanitization. Persistent use of an extension key across multiple buyers is a signal to propose standardization.'), OmittedNotNull] = None
 
 
+AudienceActivationMethods1 = AudienceActivationMethodsItemTmpIdentityMatch
+
+
+AudienceActivationMethods2 = AudienceActivationMethodsItemFileTransfer
+
+
+AudienceActivationMethods3 = AudienceActivationMethodsItemDatasetQuery
+
+
+AudienceActivationMethods4 = AudienceActivationMethodsItemCleanRoom
+
+
+AudienceActivationMethods5 = AudienceActivationMethodsItemPlatformDistribution
+
+
+Keyword = KeywordsItem
+
+
+Metro = ObjSystemCode
+
+
+Provider = ProvidersItem
+
+
+RequiredVendorMetric = RequiredVendorMetricsItem
+
+
+TrustedMatch = ObjProvidersResponseTypes
+
+
 __all__ = ["ProductFilters"]

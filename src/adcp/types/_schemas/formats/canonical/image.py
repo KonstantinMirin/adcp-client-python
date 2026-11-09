@@ -100,4 +100,10 @@ class CanonicalFormatImage(CanonicalFormatBase):
     activation_methods: Annotated[list[CreativeActivationMethod] | None, Field(description='Viewer activation mechanisms this option offers (e.g. `qr_code` on a pause frame). Activations are engagement events, not impressions.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
+ImageFormat = ImageFormatsItem
+
+
+Size = SizesItem
+
+
 __all__ = ["CanonicalFormatImage"]

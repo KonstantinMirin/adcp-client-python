@@ -108,4 +108,7 @@ class BusinessEntity(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Contact = ContactsItem
+
+
 __all__ = ["BusinessEntity"]

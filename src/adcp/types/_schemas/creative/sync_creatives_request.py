@@ -119,4 +119,19 @@ class SyncCreativesRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Assignment = AssignmentsItem
+
+
+AssignmentOperations1 = AssignOrUpdate
+
+
+AssignmentOperations2 = Unassign
+
+
+AssignmentOperations3 = ReplaceAssignment
+
+
+Creative = CreativesItem
+
+
 __all__ = ["SyncCreativesRequest"]

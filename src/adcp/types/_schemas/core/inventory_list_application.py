@@ -101,4 +101,10 @@ InventoryListApplication._branch_models = (PropertyListApplication, CollectionLi
 InventoryListApplication.model_rebuild(force=True)
 
 
+InventoryListApplication1 = PropertyListApplication
+
+
+InventoryListApplication2 = CollectionListApplication
+
+
 __all__ = ["InventoryListApplication"]

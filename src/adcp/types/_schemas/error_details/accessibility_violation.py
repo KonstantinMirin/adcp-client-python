@@ -61,4 +61,7 @@ class AccessibilityViolationDetails(AdCPBaseModel):
     truncated: Annotated[bool | None, Field(description='True when the producer omitted additional violations or remediation text to keep the complete serialized error within the 4096-byte transport safety limit. Omission means false.'), OmittedNotNull] = None
 
 
+Violation = ViolationsItem
+
+
 __all__ = ["AccessibilityViolationDetails"]

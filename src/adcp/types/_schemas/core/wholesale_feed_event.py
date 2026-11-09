@@ -404,4 +404,37 @@ WholesaleFeedEvent._branch_models = (WholesaleFeedEventProductCreatedProduct, Wh
 WholesaleFeedEvent.model_rebuild(force=True)
 
 
+AppliesTo1 = AppliesToPublic
+
+
+AppliesTo2 = AppliesToAccount
+
+
+EventType = WholesaleFeedEventType
+
+
+Payload = WholesaleFeedEventProductPricedProductPayload
+
+
+Payload17 = WholesaleFeedEventProductCreatedProductPayload
+
+
+Payload18 = WholesaleFeedEventProductUpdatedProductPayload
+
+
+Payload20 = WholesaleFeedEventProductRemovedProductPayload
+
+
+Payload21 = WholesaleFeedEventSignalCreatedSignalPayload
+
+
+Payload22 = WholesaleFeedEventSignalUpdatedSignalPayload
+
+
+Payload23 = WholesaleFeedEventSignalPricedSignalPayload
+
+
+Payload24 = WholesaleFeedEventSignalRemovedSignalPayload
+
+
 __all__ = ["AppliesTo", "RemovalReason", "Signal", "WholesaleFeedEvent"]

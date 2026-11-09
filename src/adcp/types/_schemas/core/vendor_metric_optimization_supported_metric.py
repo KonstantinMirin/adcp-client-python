@@ -37,4 +37,7 @@ class VendorMetricOptimizationSupportedMetric(AdCPBaseModel):
     supported_targets: Annotated[list[SupportedTargetsItem] | None, Field(description='Target kinds available for `vendor_metric` goals against this `(vendor, metric_id)` pair. Values match `target.kind` on the optimization goal. `cost_per` — target cost per metric unit (e.g., $0.05 per attention-second). `threshold_rate` — minimum per-impression value (e.g., attention_score ≥ 70). Only these target kinds are accepted — goals with unlisted target kinds will be rejected. A goal without a target implicitly maximizes the metric within budget — no declaration needed for that mode. When omitted, buyers can still set target-less vendor_metric goals.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 
 
+SupportedTarget = SupportedTargetsItem
+
+
 __all__ = ["VendorMetricOptimizationSupportedMetric"]

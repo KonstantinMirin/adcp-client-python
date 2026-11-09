@@ -52,4 +52,10 @@ class PolicyCategoryDefinition(AdCPBaseModel):
     related_categories: Annotated[list[str] | None, Field(description="Categories that frequently co-occur (e.g., 'children_directed' often appears with 'age_restricted')."), OmittedNotNull] = None
 
 
+Facet = FacetsItem
+
+
+RegulatoryFramework = RegulatoryFrameworksItem
+
+
 __all__ = ["PolicyCategoryDefinition"]

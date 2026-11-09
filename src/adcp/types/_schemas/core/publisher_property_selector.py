@@ -80,4 +80,13 @@ PublisherPropertySelector._branch_models = (PublisherPropertySelectorAll, Publis
 PublisherPropertySelector.model_rebuild(force=True)
 
 
+PublisherPropertySelector1 = PublisherPropertySelectorAll
+
+
+PublisherPropertySelector2 = PublisherPropertySelectorById
+
+
+PublisherPropertySelector3 = PublisherPropertySelectorByTag
+
+
 __all__ = ["PublisherPropertySelector"]

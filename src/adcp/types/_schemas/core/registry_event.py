@@ -801,4 +801,31 @@ RegistryEvent._branch_models = (RegistryEventPropertyCreatedProperty, RegistryEv
 RegistryEvent.model_rebuild(force=True)
 
 
+EventType = RegistryEventEventType
+
+
+Payload1 = RegistryEventPropertyStalePropertyPayload
+
+
+Payload2 = RegistryEventPropertyReactivatedPropertyPayload
+
+
+Payload5 = RegistryEventAgentRemovedAgentPayload
+
+
+Payload6 = RegistryEventAgentProfileUpdatedAgentPayload
+
+
+Payload8 = RegistryEventAgentVerificationEarnedAgentPayload
+
+
+Payload9 = RegistryEventAgentVerificationLostAgentPayload
+
+
+Storyboard = StoryboardsItem
+
+
+Tracks = TracksValue
+
+
 __all__ = ["AgentProfilePayload", "AuthorizationPayload", "ChangedFields", "Classification", "CollectionIdentifier", "CollectionPayload", "CompliancePayload", "ComplianceStatus", "Countries", "PropertyPayload", "PropertySource", "PublisherAdagentsPayload", "RegistryEvent", "StoryboardStatus", "StringArray"]

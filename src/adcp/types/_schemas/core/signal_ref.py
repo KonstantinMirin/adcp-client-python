@@ -76,4 +76,13 @@ SignalRef._branch_models = (SignalRefProduct, SignalRefDataProvider, SignalRefSi
 SignalRef.model_rebuild(force=True)
 
 
+SignalRef1 = SignalRefProduct
+
+
+SignalRef2 = SignalRefDataProvider
+
+
+SignalRef3 = SignalRefSignalSource
+
+
 __all__ = ["SignalRef"]

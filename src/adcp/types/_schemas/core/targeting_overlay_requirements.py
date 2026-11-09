@@ -162,4 +162,22 @@ class TargetingOverlayRequirements(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+BrowserRequirement1 = BrowserRequirementFamilies
+
+
+DaypartRequirement1 = DaypartRequirementTimezoneModes
+
+
+Demographics = TargetingOverlayRequirementsDemographicsAge
+
+
+GeoProximity = TargetingOverlayRequirementsGeoProximity
+
+
+KeywordRequirement1 = KeywordRequirementSupportedMatchTypes
+
+
+MetroRequirement1 = MetroRequirementSystems
+
+
 __all__ = ["BrowserRequirement", "DaypartRequirement", "KeywordRequirement", "MetroRequirement", "TargetingOverlayRequirements", "TargetingOverlayRequirementsRequired"]

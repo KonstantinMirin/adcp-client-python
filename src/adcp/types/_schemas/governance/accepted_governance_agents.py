@@ -48,4 +48,10 @@ class AcceptedGovernanceAgents(AdCPBaseModel):
     any_of: Annotated[list[AnyOfItemAgentUrl | AnyOfItemVerification], Field(min_length=1)]
 
 
+AnyOf1 = AnyOfItemAgentUrl
+
+
+AnyOf2 = AnyOfItemVerification
+
+
 __all__ = ["AcceptedGovernanceAgents"]

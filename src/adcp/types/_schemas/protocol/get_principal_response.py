@@ -73,4 +73,16 @@ class GetPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Result = UnconfiguredPrincipal
+
+
+Result2 = CurrentPrincipalConfiguration
+
+
+Result3 = RecognizedPrincipalWithoutStandingConfiguration
+
+
+Result5 = FailedPrincipalRead
+
+
 __all__ = ["GetPrincipalResponse"]

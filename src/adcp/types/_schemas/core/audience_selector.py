@@ -98,4 +98,16 @@ AudienceSelector._branch_models = (AudienceSelectorSignalBinary, AudienceSelecto
 AudienceSelector.model_rebuild(force=True)
 
 
+AudienceSelector1 = AudienceSelectorSignalBinary
+
+
+AudienceSelector2 = AudienceSelectorSignalCategorical
+
+
+AudienceSelector3 = AudienceSelectorSignalNumeric
+
+
+AudienceSelector4 = AudienceSelectorDescription
+
+
 __all__ = ["AudienceSelector"]

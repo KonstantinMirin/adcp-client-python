@@ -148,4 +148,10 @@ SyncAccountsResponse._branch_models = (SyncAccountsSuccess, SyncAccountsError,)
 SyncAccountsResponse.model_rebuild(force=True)
 
 
+SyncAccountsResponse1 = SyncAccountsSuccess
+
+
+SyncAccountsResponse2 = SyncAccountsError
+
+
 __all__ = ["SyncAccountsResponse"]

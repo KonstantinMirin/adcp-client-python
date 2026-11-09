@@ -52,4 +52,10 @@ CanonicalAccountReference._branch_models = (CanonicalAccountReferenceAccountId, 
 CanonicalAccountReference.model_rebuild(force=True)
 
 
+CanonicalAccountReference1 = CanonicalAccountReferenceAccountId
+
+
+CanonicalAccountReference2 = CanonicalAccountReferenceBrandOperator
+
+
 __all__ = ["CanonicalAccountReference"]

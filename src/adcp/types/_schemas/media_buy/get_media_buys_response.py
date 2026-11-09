@@ -357,4 +357,13 @@ class GetMediaBuysResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+CreativeApproval = CreativeApprovalsItem
+
+
+MediaBuy = MediaBuysItem
+
+
+Package = PackagesItem
+
+
 __all__ = ["GetMediaBuysResponse"]

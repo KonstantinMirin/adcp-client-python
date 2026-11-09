@@ -77,4 +77,16 @@ BaseCollectionSource._branch_models = (DistributionIDsSource, PublisherCollectio
 BaseCollectionSource.model_rebuild(force=True)
 
 
+BaseCollectionSource1 = DistributionIDsSource
+
+
+BaseCollectionSource2 = PublisherCollectionsSource
+
+
+BaseCollectionSource3 = PublisherGenresSource
+
+
+Identifier = IdentifiersItem
+
+
 __all__ = ["BaseCollectionSource"]

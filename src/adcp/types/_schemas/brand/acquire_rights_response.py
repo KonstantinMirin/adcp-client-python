@@ -137,4 +137,16 @@ AcquireRightsResponse._branch_models = (AcquireRightsAcquired, AcquireRightsPend
 AcquireRightsResponse.model_rebuild(force=True)
 
 
+AcquireRightsResponse1 = AcquireRightsAcquired
+
+
+AcquireRightsResponse2 = AcquireRightsPendingApproval
+
+
+AcquireRightsResponse3 = AcquireRightsRejected
+
+
+AcquireRightsResponse4 = AcquireRightsError
+
+
 __all__ = ["AcquireRightsResponse"]

@@ -44,4 +44,10 @@ BudgetAllocation._branch_models = (BudgetAllocationFixed, BudgetAllocationSeller
 BudgetAllocation.model_rebuild(force=True)
 
 
+BudgetAllocation1 = BudgetAllocationFixed
+
+
+BudgetAllocation2 = BudgetAllocationSellerOptimized
+
+
 __all__ = ["BudgetAllocation"]

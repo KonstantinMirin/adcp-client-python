@@ -114,4 +114,13 @@ GetMediaBuyArtifactsResponse._branch_models = (GetMediaBuyArtifactsResponseArtif
 GetMediaBuyArtifactsResponse.model_rebuild(force=True)
 
 
+BrandContext = ObjBrandIdSkuId
+
+
+GetMediaBuyArtifactsResponse1 = GetMediaBuyArtifactsResponseArtifactsMediaBuyId
+
+
+GetMediaBuyArtifactsResponse2 = GetMediaBuyArtifactsResponseErrors
+
+
 __all__ = ["GetMediaBuyArtifactsResponse"]

@@ -89,4 +89,13 @@ DAASTAsset.model_rebuild(force=True)
 DaastAsset = DAASTAsset
 
 
+DaastAsset3 = DAASTAssetUrl
+
+
+DaastAsset4 = DAASTAssetInline
+
+
+Location13 = Location
+
+
 __all__ = ["DAASTAsset"]

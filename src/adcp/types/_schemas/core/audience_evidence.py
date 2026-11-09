@@ -128,4 +128,7 @@ class AudienceEvidence(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+AttestationRef = AttestationRefsItem
+
+
 __all__ = ["AudienceEvidence"]

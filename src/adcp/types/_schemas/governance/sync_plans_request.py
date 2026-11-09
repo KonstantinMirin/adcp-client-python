@@ -204,4 +204,16 @@ class SyncPlansRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Allocations = AllocationsValue
+
+
+Budget2 = BudgetReallocationUnlimited
+
+
+Delegation = DelegationsItem
+
+
+MixTargets = MixTargetsValue
+
+
 __all__ = ["SyncPlansRequest"]

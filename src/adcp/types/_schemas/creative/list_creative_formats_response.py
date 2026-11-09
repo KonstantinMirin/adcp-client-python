@@ -41,4 +41,7 @@ class ListCreativeFormatsResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnve
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+CreativeAgent = CreativeAgentsItem
+
+
 __all__ = ["ListCreativeFormatsResponseCreativeAgent"]

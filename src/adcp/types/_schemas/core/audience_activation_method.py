@@ -140,4 +140,31 @@ AudienceActivationMethod._branch_models = (AdCPAudienceSync, TMPIdentityMatch, A
 AudienceActivationMethod.model_rebuild(force=True)
 
 
+AudienceActivationMethod1 = AdCPAudienceSync
+
+
+AudienceActivationMethod2 = TMPIdentityMatch
+
+
+AudienceActivationMethod3 = AudienceActivationMethodFileTransfer
+
+
+AudienceActivationMethod4 = DatasetQuery
+
+
+AudienceActivationMethod5 = CleanRoom
+
+
+AudienceActivationMethod6 = PlatformDistribution
+
+
+BuyerAgent = ObjAgentUrl
+
+
+ConsumerIdentity = ConsumerIdentitiesItem
+
+
+Direction = DirectionsItem
+
+
 __all__ = ["AudienceActivationMethod"]

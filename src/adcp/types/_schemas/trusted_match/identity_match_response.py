@@ -41,4 +41,7 @@ class IdentityMatchResponseRouterPublisher(AdCPVersionEnvelope, ProtocolEnvelope
     tmpx_providers: Annotated[dict[ContextMatchResponseRouterPublisherSignalsByProvider, TmpxProvidersValue] | None, Field(description="Router-populated: ordered TMPX chunk/value pairs grouped by the originating identity provider's `provider_id`. Each entry's `chunks[]` is a copy of the provider's emitted `tmpx_chunks` list, in the same order. Each chunk carries a provider-local `slot_id` (from the provider's registered `tmpx_slots`) and an opaque URL-safe `value`; the publisher's deployment configuration (see publisher-tmpx-config.json) resolves each `(provider_id, slot_id)` pair to the ad-server macro name, targeting key, VAST substitution, or play-log field for that surface. The protocol carries values and attribution only. Required by router conformance when any identity provider emitted TMPX in this request; collapsing per-provider tokens into a single string loses attribution and breaks per-provider impression accounting. Map keys MUST match the provider_id charset registered in provider-registration.json (enforced by `propertyNames`). Publishers MUST NOT parse, decode, or transform any chunk's `value` — each is an opaque URL-safe wire string substituted verbatim into the mapped destination."), OmittedNotNull] = None
 
 
+TmpxProviders = TmpxProvidersValue
+
+
 __all__ = ["IdentityMatchResponseRouterPublisher"]

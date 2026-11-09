@@ -109,4 +109,10 @@ TargetingModification._branch_models = (ReplaceTargetingValue, RemoveTargetingSe
 TargetingModification.model_rebuild(force=True)
 
 
+TargetingModification1 = ReplaceTargetingValue
+
+
+TargetingModification2 = RemoveTargetingSetValues
+
+
 __all__ = ["TargetingModification"]

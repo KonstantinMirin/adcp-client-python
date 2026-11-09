@@ -90,4 +90,10 @@ class SISponsoredContextReceipt(AdCPBaseModel):
 SiSponsoredContextReceipt = SISponsoredContextReceipt
 
 
+Status = HostReceiptStatus
+
+
+Status46 = DisclosureCommitmentStatus
+
+
 __all__ = ["SISponsoredContextReceipt"]

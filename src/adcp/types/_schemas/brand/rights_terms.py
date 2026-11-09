@@ -47,4 +47,7 @@ class RightsTerms(AdCPBaseModel):
     exclusivity: Annotated[RightsTermsExclusivity | None, Field(description='Exclusivity terms if applicable'), OmittedNotNull] = None
 
 
+Exclusivity = RightsTermsExclusivity
+
+
 __all__ = ["RightsTerms"]

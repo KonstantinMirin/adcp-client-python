@@ -182,4 +182,19 @@ PreviewCreativeResponse._branch_models = (PreviewCreativeSingleResponse, Preview
 PreviewCreativeResponse.model_rebuild(force=True)
 
 
+Preview3 = PreviewCreativeVariantResponsePreviewsItem
+
+
+PreviewCreativeResponse1 = PreviewCreativeSingleResponse
+
+
+PreviewCreativeResponse2 = PreviewCreativeBatchResponse
+
+
+PreviewCreativeResponse3 = PreviewCreativeVariantResponse
+
+
+Result = ResultsItem
+
+
 __all__ = ["PreviewCreativeResponse"]

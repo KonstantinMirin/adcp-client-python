@@ -149,4 +149,10 @@ class SyncAccountsRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Accounts = ProvisioningMode
+
+
+Accounts1 = SettingsUpdateMode
+
+
 __all__ = ["SyncAccountsRequest"]

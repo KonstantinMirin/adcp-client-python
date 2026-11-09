@@ -72,4 +72,7 @@ class CanonicalReportingCapabilities(AdCPBaseModel):
     measurement_windows: Annotated[list[MeasurementWindow] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
+VendorMetric = VendorMetricsItem
+
+
 __all__ = ["CanonicalReportingCapabilities"]

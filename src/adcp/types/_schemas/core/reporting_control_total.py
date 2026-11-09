@@ -53,4 +53,10 @@ ReportingControlTotal._branch_models = (IntegerReportingControlTotal, DecimalRep
 ReportingControlTotal.model_rebuild(force=True)
 
 
+ReportingControlTotal1 = IntegerReportingControlTotal
+
+
+ReportingControlTotal2 = DecimalReportingControlTotal
+
+
 __all__ = ["ReportingControlTotal"]

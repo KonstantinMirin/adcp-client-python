@@ -57,4 +57,7 @@ class SignalListing(AdCPBaseModel):
     demographic_predicate: Annotated[DemographicPredicate | None, Field(description='Machine-readable demographic meaning. For product-local signals this listing is authoritative; for data-provider and signal-source refs, any projected value MUST match the referenced authoritative definition. Signal names alone never establish demographic semantics.'), OmittedNotNull] = None
 
 
+Range = ObjMinMax
+
+
 __all__ = ["ObjMinMax", "SignalListing"]

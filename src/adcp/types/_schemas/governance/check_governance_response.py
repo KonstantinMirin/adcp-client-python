@@ -158,4 +158,13 @@ class CheckGovernanceResponse(AdCPVersionEnvelope, AdcpResponse):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Condition = ConditionsItem
+
+
+Finding = FindingsItem
+
+
+RuntimeAttestationEvaluation = RuntimeAttestationEvaluationsItem
+
+
 __all__ = ["CheckGovernanceResponse"]

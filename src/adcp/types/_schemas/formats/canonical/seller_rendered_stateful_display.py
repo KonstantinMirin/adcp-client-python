@@ -407,4 +407,13 @@ class CanonicalFormatSellerRenderedStatefulDisplay(CanonicalFormatBase):
     polite_load: Annotated[bool | None, Field(description="When true, non-initial assets load only after the host page's window load event (IAB LEAN subload boundary)."), OmittedNotNull] = None
 
 
+Breakpoint = BreakpointsItem
+
+
+State = StatesItem
+
+
+TransitionMode9 = TransitionsItemTransitionMode
+
+
 __all__ = ["CanonicalFormatSellerRenderedStatefulDisplay"]

@@ -32,4 +32,7 @@ class VideoBrief(AdCPBaseModel):
     segments: Annotated[list[SegmentsItem], Field(description="Ordered list of per-segment prompts that compose the generated video. The sum of `duration_ms` across segments should match the target video duration declared by the format declaration's `duration_ms_exact` or `duration_ms_range`.", min_length=1)]
 
 
+Segment = SegmentsItem
+
+
 __all__ = ["VideoBrief"]

@@ -68,4 +68,16 @@ class ValidateInputRequest(AdcpRequest):
     targets: Annotated[list[TargetsItem] | None, Field(description="Discriminated list of validation targets. Each entry mirrors the `target` shape on `validate-input-result.json` so the request/response wire shapes match exactly. Multi-target requests enable universal-creative scenarios where one manifest targets multiple sellers' format declarations in a single round-trip; the response carries one result per target in the same order.", max_length=50, min_length=1), OmittedNotNull] = None
 
 
+Targets1 = CanonicalFormatTarget
+
+
+Targets2 = ProductTarget
+
+
+Targets3 = ThirdPartyFormatTarget
+
+
+Targets4 = CreativeCapabilityTarget
+
+
 __all__ = ["ValidateInputRequest"]

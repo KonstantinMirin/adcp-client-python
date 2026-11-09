@@ -55,4 +55,7 @@ class CreativeVariant(DeliveryMetrics):
     generation_context: Annotated[GenerationContext | None, Field(description='Input signals that triggered generation of this variant (Tier 3). Describes why the platform created this specific variant. Platforms should provide summarized or anonymized signals rather than raw user input. For web contexts, may include page topic or URL. For conversational contexts, an anonymized content signal. For search, query category or intent. When the content context is managed through AdCP content standards, reference the artifact directly via the artifact field.'), OmittedNotNull] = None
 
 
+Artifact = GenerationContextArtifact
+
+
 __all__ = ["CreativeVariant"]

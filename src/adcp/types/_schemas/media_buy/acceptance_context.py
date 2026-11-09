@@ -48,4 +48,7 @@ class AcceptanceContext(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Subject = SubjectsItem
+
+
 __all__ = ["AcceptanceContext"]

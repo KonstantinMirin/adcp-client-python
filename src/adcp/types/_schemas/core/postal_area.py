@@ -177,4 +177,34 @@ PostalArea._branch_models = (PostalAreaCountrySystemValues, PostalAreaWithFusedS
 PostalArea.model_rebuild(force=True)
 
 
+PostalArea112 = PostalAreaUS
+
+
+PostalArea113 = PostalAreaGB
+
+
+PostalArea114 = PostalAreaCA
+
+
+PostalArea115 = PostalAreaPlz
+
+
+PostalArea116 = PostalAreaFRCodePostal
+
+
+PostalArea117 = PostalAreaAUPostcode
+
+
+PostalArea118 = PostalAreaBRCep
+
+
+PostalArea119 = PostalAreaINPin
+
+
+PostalArea120 = PostalAreaZAPostalCode
+
+
+PostalArea2 = PostalAreaWithFusedSystem
+
+
 __all__ = ["PostalArea"]

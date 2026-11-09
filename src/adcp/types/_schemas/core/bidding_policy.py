@@ -66,4 +66,7 @@ class BiddingPolicy(AdCPBaseModel):
     roas: Annotated[Roas | None, Field(description='Dimensionless return-on-ad-spend control bound to the same scope-specific primary goal rules as cost_per. The bound goal must be value-bearing; a fixed media-buy default requires a value-bearing primary goal on every inheriting package. Every referenced value-bearing event source MUST declare value_currencies containing the media-buy currency. The seller validates this at buy creation; each buy consumes only exact-currency records, while other declared currencies remain available to other buys. Sellers MUST NOT perform currency conversion.'), OmittedNotNull] = None
 
 
+Strength1 = RoasStrength
+
+
 __all__ = ["BiddingPolicy"]

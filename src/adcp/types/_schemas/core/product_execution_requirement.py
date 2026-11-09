@@ -92,4 +92,13 @@ ProductExecutionRequirement._branch_models = (EventSourceExecutionRequirement, C
 ProductExecutionRequirement.model_rebuild(force=True)
 
 
+ProductExecutionRequirement1 = EventSourceExecutionRequirement
+
+
+ProductExecutionRequirement2 = CatalogExecutionRequirement
+
+
+ProductExecutionRequirement3 = DownstreamConnectionExecutionRequirement
+
+
 __all__ = ["ProductExecutionRequirement"]

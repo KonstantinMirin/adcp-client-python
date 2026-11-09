@@ -64,4 +64,7 @@ class CPVPricingOption(AdCPBaseModel):
 CpvPricingOption = CPVPricingOption
 
 
+ViewThreshold1 = ViewThresholdDurationSeconds
+
+
 __all__ = ["CPVPricingOption"]

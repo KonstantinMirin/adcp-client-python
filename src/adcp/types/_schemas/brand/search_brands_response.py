@@ -134,4 +134,7 @@ SearchBrandsResponse._branch_models = (SearchBrandsSuccess, SearchBrandsError,)
 SearchBrandsResponse.model_rebuild(force=True)
 
 
+Logo = LogosItem
+
+
 __all__ = ["SearchBrandResult", "SearchBrandsResponse"]

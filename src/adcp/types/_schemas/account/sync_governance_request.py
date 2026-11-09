@@ -65,4 +65,10 @@ class SyncGovernanceRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Account = AccountsItem
+
+
+GovernanceAgent = GovernanceAgentsItem
+
+
 __all__ = ["SyncGovernanceRequest"]

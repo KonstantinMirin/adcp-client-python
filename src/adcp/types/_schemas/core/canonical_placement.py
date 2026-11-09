@@ -111,4 +111,10 @@ CanonicalProductPlacement._branch_models = (CanonicalProductPlacementPublisherRe
 CanonicalProductPlacement.model_rebuild(force=True)
 
 
+CanonicalProductPlacement1 = CanonicalProductPlacementPublisherRef
+
+
+CanonicalProductPlacement2 = CanonicalProductPlacementSellerInline
+
+
 __all__ = ["CanonicalDoohPlacementAttributes", "CanonicalDoohScreenResolution", "CanonicalProductPlacement"]

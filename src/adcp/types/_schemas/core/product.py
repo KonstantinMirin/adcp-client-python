@@ -347,4 +347,16 @@ class Product(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Provider = ProvidersItem
+
+
+Specification = SpecificationsItem
+
+
+SupportedTarget = MetricOptimizationSupportedTargetsItem
+
+
+SupportedTarget5 = ConversionTrackingSupportedTargetsItem
+
+
 __all__ = ["Product"]

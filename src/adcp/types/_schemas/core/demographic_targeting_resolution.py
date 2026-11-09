@@ -80,4 +80,13 @@ class DemographicTargetingResolution(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Execution = ExecutionContinuousBounds
+
+
+Execution1 = ExecutionEnumeratedIntervals
+
+
+Execution2 = ExecutionSignals
+
+
 __all__ = ["DemographicTargetingResolution"]

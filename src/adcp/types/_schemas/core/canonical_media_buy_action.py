@@ -149,4 +149,19 @@ CanonicalMediaBuyAction._branch_models = (CanonicalMediaBuyActionControlMediaBuy
 CanonicalMediaBuyAction.model_rebuild(force=True)
 
 
+Action = CanonicalMediaBuyActionControlMediaBuyAction
+
+
+Action3 = CanonicalMediaBuyActionRefineProposalsAction
+
+
+Action4 = CanonicalMediaBuyActionSyncCreativesAction
+
+
+CanonicalMediaBuyAction1 = CanonicalMediaBuyActionControlMediaBuy
+
+
+CanonicalMediaBuyAction2 = CanonicalMediaBuyActionRefineProposals
+
+
 __all__ = ["CanonicalMediaBuyAction"]

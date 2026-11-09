@@ -435,4 +435,22 @@ class GetPlanAuditLogsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRespon
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+ChannelAllocation = ChannelAllocationValue
+
+
+Entry = EntriesItem
+
+
+Escalation = EscalationsItem
+
+
+GovernedAction = GovernedActionsItem
+
+
+Plan = PlansItem
+
+
+RuntimeAttestation = RuntimeAttestationsItem
+
+
 __all__ = ["GetPlanAuditLogsResponse"]

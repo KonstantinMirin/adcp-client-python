@@ -110,4 +110,7 @@ class MacroDeclaration(AdCPBaseModel):
     unavailable_behavior: Annotated[UnavailableBehavior, Field(description='Action when the responsible actor has no value. Omission is legal only for a complete URL query-value occurrence; dialect sentinels require a cited dialect rule.')]
 
 
+Field1 = LocationField
+
+
 __all__ = ["LocationField", "MacroDeclaration"]

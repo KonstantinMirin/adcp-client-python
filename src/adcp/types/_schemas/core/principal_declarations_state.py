@@ -49,4 +49,7 @@ class PrincipalDeclarationsState(AdCPBaseModel):
     exclusions: Annotated[list[ExclusionsItem] | None, Field(description="Every declared value that is absent from the accepted intersection, with the seller's reason. Present whenever declared and accepted differ, so a buyer can see why a capability it relies on was not accepted instead of diffing the two sets.", max_length=64), OmittedNotNull] = None
 
 
+Exclusion = ExclusionsItem
+
+
 __all__ = ["PrincipalDeclarationsState"]

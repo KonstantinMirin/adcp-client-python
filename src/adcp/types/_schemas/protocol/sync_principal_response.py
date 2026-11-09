@@ -91,4 +91,19 @@ class SyncPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Action = AppliedPrincipalConfigurationAction
+
+
+Action33 = ValidatedPrincipalDryRunAction
+
+
+Result = ValidatedPrincipalDryRun
+
+
+Result13 = AppliedPrincipalConfiguration
+
+
+Result15 = FailedPrincipalSync
+
+
 __all__ = ["SyncPrincipalResponse"]

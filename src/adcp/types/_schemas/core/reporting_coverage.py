@@ -87,4 +87,7 @@ class ReportingCoverage(AdCPBaseModel):
     limitations: Annotated[list[LimitationsItem], Field(description='Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.')]
 
 
+Limitation = LimitationsItem
+
+
 __all__ = ["ReportingCoverage", "ReportingMediaBuyId", "ReportingPackageId"]

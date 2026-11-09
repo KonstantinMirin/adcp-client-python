@@ -63,4 +63,7 @@ GetContentStandardsResponse._branch_models = (GetContentStandardsResponseBranch0
 GetContentStandardsResponse.model_rebuild(force=True)
 
 
+GetContentStandardsResponse2 = GetContentStandardsResponseErrors
+
+
 __all__ = ["GetContentStandardsResponse"]

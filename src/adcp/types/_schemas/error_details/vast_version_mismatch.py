@@ -108,4 +108,7 @@ VASTVersionMismatchDetails.model_rebuild(force=True)
 VastVersionMismatchDetails = VASTVersionMismatchDetails
 
 
+VastVersionMismatchDetails3 = SupportedVersionsCompatibilityDetails
+
+
 __all__ = ["VASTVersionMismatchDetails"]

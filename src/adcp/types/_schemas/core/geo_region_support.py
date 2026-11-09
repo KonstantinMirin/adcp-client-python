@@ -48,4 +48,10 @@ class GeographicRegionSupport(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Countries = ObjAllValues
+
+
+Countries3 = ObjValues
+
+
 __all__ = ["GeographicRegionSupport"]

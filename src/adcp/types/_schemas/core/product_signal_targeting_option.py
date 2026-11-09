@@ -53,4 +53,7 @@ class ProductSignalTargetingOption(SignalListing):
     signal_ref: Annotated[SignalRef, Field(description="Canonical signal reference. Use scope 'product' for a product-local signal defined by this listing; use scope 'data_provider' with data_provider_domain for a signal defined in a data provider's published adagents.json signals[]; use scope 'signal_source' with signal_source_url for a source-native signal.")]
 
 
+AllowedTargetingMode = AllowedTargetingModesItem
+
+
 __all__ = ["ProductSignalTargetingOption"]

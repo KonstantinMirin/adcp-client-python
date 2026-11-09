@@ -277,4 +277,10 @@ class ListCreativesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+AssignedPackage = AssignedPackagesItem
+
+
+Creative = CreativesItem
+
+
 __all__ = ["ListCreativesResponse"]

@@ -86,4 +86,13 @@ ReportingDatasetShareDestination._branch_models = (ReportingDatasetShareDestinat
 ReportingDatasetShareDestination.model_rebuild(force=True)
 
 
+Provider = ObjDomain
+
+
+ReportingDatasetShareDestination1 = ReportingDatasetShareDestinationExisting
+
+
+ReportingDatasetShareDestination2 = ProvisionRecipient
+
+
 __all__ = ["ReportingCloud", "ReportingDatasetShareDestination"]

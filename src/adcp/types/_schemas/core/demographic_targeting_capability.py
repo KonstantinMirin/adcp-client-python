@@ -93,4 +93,10 @@ class DemographicTargetingCapability(AdCPBaseModel):
     age: Annotated[Age, Field(description='Age-targeting execution available for this product.')]
 
 
+ExecutionMode = ExecutionModesItem
+
+
+Interval = IntervalsItem
+
+
 __all__ = ["DemographicTargetingCapability"]

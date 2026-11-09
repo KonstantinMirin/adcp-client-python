@@ -46,4 +46,7 @@ class EventCustomData(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Content = ContentsItem
+
+
 __all__ = ["EventCustomData"]

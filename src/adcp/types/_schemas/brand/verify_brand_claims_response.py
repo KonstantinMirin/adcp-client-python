@@ -140,4 +140,16 @@ VerifyBrandClaimsResponseBulk._branch_models = (VerifyBrandClaimsSuccess, Verify
 VerifyBrandClaimsResponseBulk.model_rebuild(force=True)
 
 
+ResultEntry1 = VerifyBrandClaimsResultSuccess
+
+
+ResultEntry2 = VerifyBrandClaimsResultError
+
+
+VerifyBrandClaimsErrorResponse = VerifyBrandClaimsError
+
+
+VerifyBrandClaimsSignedSuccessPayload = SignedSuccessPayload
+
+
 __all__ = ["ResultEntry", "SignedResponse", "SignedSuccessPayload", "VerifyBrandClaimsResponseBulk"]

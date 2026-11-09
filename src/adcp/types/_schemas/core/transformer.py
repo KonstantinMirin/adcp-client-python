@@ -96,4 +96,7 @@ class Transformer(AdCPBaseModel):
     multiplicity: Annotated[Multiplicity | None, Field(description="Optional per-transformer fan-out limits that NARROW the agent-level get_adcp_capabilities `creative.multiplicity`. Same shape as the agent-level object. When present, this transformer's authoritative; its ceilings (max_creatives_limit / max_variants_limit) MUST NOT exceed the agent ceilings, and its variant_dimensions MUST be a subset of the agent's. Omit to inherit the agent-level capability unchanged."), OmittedNotNull] = None
 
 
+VariantDimension = VariantDimensionsItem
+
+
 __all__ = ["Transformer"]

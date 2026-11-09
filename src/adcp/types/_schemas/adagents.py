@@ -496,4 +496,13 @@ AdCPAgentsAuthorization.model_rebuild(force=True)
 AdcpAgentsAuthorization = AdCPAgentsAuthorization
 
 
+AdcpAgentsAuthorization1 = AdCPAgentsAuthorizationAuthoritativeLocation
+
+
+PropertyFeature = PropertyFeaturesItem
+
+
+RevokedPublisherDomain = RevokedPublisherDomainsItem
+
+
 __all__ = ["AdCPAgentsAuthorization"]

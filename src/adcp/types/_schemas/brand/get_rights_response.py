@@ -121,4 +121,19 @@ GetRightsResponse._branch_models = (GetRightsSuccess, GetRightsError,)
 GetRightsResponse.model_rebuild(force=True)
 
 
+Excluded = ExcludedItem
+
+
+GetRightsResponse1 = GetRightsSuccess
+
+
+GetRightsResponse2 = GetRightsError
+
+
+PreviewAsset = PreviewAssetsItem
+
+
+Right = RightsItem
+
+
 __all__ = ["GetRightsResponse"]

@@ -80,4 +80,10 @@ class DemographicReportingCapability(AdCPBaseModel):
     may_suppress_small_cells: Annotated[bool, Field(description='Whether privacy, policy, or measurement thresholds may suppress otherwise reportable demographic rows. When true, buyers must inspect by_demographic_suppressed before testing whether rows reconcile to package totals.')]
 
 
+Interval = IntervalsItem
+
+
+ReportingMode = ReportingModesItem
+
+
 __all__ = ["DemographicReportingCapability"]

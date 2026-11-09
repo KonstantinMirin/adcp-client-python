@@ -209,4 +209,55 @@ AcceptancePolicyRequirement._branch_models = (AcceptancePolicyRequirementCategor
 AcceptancePolicyRequirement.model_rebuild(force=True)
 
 
+AcceptancePolicyRequirement1 = AcceptancePolicyRequirementCategoryDeclaration
+
+
+AcceptancePolicyRequirement10 = AcceptancePolicyRequirementDisclosure
+
+
+AcceptancePolicyRequirement11 = AcceptancePolicyRequirementTargetingRestriction
+
+
+AcceptancePolicyRequirement12 = AcceptancePolicyRequirementCreativeRestriction
+
+
+AcceptancePolicyRequirement13 = AcceptancePolicyRequirementDestinationRestriction
+
+
+AcceptancePolicyRequirement14 = AcceptancePolicyRequirementFormatRestriction
+
+
+AcceptancePolicyRequirement15 = AcceptancePolicyRequirementTimeRestriction
+
+
+AcceptancePolicyRequirement16 = AcceptancePolicyRequirementTransparencyReporting
+
+
+AcceptancePolicyRequirement17 = AcceptancePolicyRequirementCustom
+
+
+AcceptancePolicyRequirement2 = AcceptancePolicyRequirementAdvertiserVerification
+
+
+AcceptancePolicyRequirement3 = AcceptancePolicyRequirementAdvertiserEligibility
+
+
+AcceptancePolicyRequirement4 = AcceptancePolicyRequirementFundingRestriction
+
+
+AcceptancePolicyRequirement5 = AcceptancePolicyRequirementCertification
+
+
+AcceptancePolicyRequirement6 = AcceptancePolicyRequirementLicense
+
+
+AcceptancePolicyRequirement7 = AcceptancePolicyRequirementPriorAuthorization
+
+
+AcceptancePolicyRequirement8 = AcceptancePolicyRequirementAccountSetup
+
+
+AcceptancePolicyRequirement9 = AcceptancePolicyRequirementSalesAssisted
+
+
 __all__ = ["AcceptancePolicyRequirement"]

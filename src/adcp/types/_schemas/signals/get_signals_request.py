@@ -126,4 +126,7 @@ class GetSignalsRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Field1 = FieldsItem
+
+
 __all__ = ["GetSignalsRequest"]

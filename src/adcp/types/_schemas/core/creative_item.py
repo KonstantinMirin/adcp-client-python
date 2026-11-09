@@ -48,4 +48,10 @@ CreativeItem._branch_models = (CreativeItemMedia, CreativeItemText,)
 CreativeItem.model_rebuild(force=True)
 
 
+CreativeItem1 = CreativeItemMedia
+
+
+CreativeItem2 = CreativeItemText
+
+
 __all__ = ["CreativeItem"]

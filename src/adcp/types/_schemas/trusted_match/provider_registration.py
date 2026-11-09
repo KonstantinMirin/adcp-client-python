@@ -89,4 +89,10 @@ TMPProviderRegistration.model_rebuild(force=True)
 TmpProviderRegistration = TMPProviderRegistration
 
 
+TmpProviderRegistration1 = TMPProviderRegistrationContextMatch
+
+
+TmpProviderRegistration2 = TMPProviderRegistrationIdentityMatch
+
+
 __all__ = ["TMPProviderRegistration"]

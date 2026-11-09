@@ -98,4 +98,13 @@ class ImageAssetRequirements(AdCPBaseModel):
     max_weight_grams: Annotated[MaxWeightGrams | None, Field(description='Maximum weight in grams for the finished physical piece (print inserts, flyers). Affects postage calculations and production constraints. Only applicable to print channels.'), OmittedNotNull] = None
 
 
+Bleed = BleedUniform
+
+
+Bleed1 = BleedBottomLeftRightTop
+
+
+Format = FormatsItem
+
+
 __all__ = ["ImageAssetRequirements"]

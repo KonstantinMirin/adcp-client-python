@@ -118,4 +118,13 @@ EvaluatorSpec._branch_models = (EvaluatorSpecExemplars, EvaluatorSpecEvaluatorId
 EvaluatorSpec.model_rebuild(force=True)
 
 
+EvaluatorSpec1 = EvaluatorSpecExemplars
+
+
+EvaluatorSpec2 = EvaluatorSpecEvaluatorId
+
+
+EvaluatorSpec3 = EvaluatorSpecAgentUrl
+
+
 __all__ = ["EvaluatorSpec"]

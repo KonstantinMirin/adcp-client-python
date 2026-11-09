@@ -80,4 +80,7 @@ class ReportPlanOutcomeResponse(AdCPVersionEnvelope, AdcpResponse):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Finding = FindingsItem
+
+
 __all__ = ["ReportPlanOutcomeResponse"]

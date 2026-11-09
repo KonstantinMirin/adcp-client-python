@@ -49,4 +49,10 @@ PlacementIdentity._branch_models = (PublisherCatalogPlacementIdentity, SellerInl
 PlacementIdentity.model_rebuild(force=True)
 
 
+PlacementIdentity1 = PublisherCatalogPlacementIdentity
+
+
+PlacementIdentity2 = SellerInlinePlacementIdentity
+
+
 __all__ = ["PlacementIdentity"]

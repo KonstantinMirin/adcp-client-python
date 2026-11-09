@@ -69,4 +69,7 @@ class ReportingAdjustment(AdCPBaseModel):
     created_at: AwareDatetime
 
 
+AccountingPeriod = ObjStartEnd
+
+
 __all__ = ["ReportingAdjustment"]

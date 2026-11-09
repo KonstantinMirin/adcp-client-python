@@ -69,4 +69,13 @@ DataProviderSignalSelector._branch_models = (DataProviderSignalSelectorAll, Data
 DataProviderSignalSelector.model_rebuild(force=True)
 
 
+DataProviderSignalSelector1 = DataProviderSignalSelectorAll
+
+
+DataProviderSignalSelector2 = DataProviderSignalSelectorById
+
+
+DataProviderSignalSelector3 = DataProviderSignalSelectorByTag
+
+
 __all__ = ["DataProviderSignalSelector"]

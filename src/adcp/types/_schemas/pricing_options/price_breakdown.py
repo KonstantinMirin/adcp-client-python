@@ -40,4 +40,7 @@ class PriceBreakdown(AdCPBaseModel):
     adjustments: Annotated[list[AdjustmentsItem], Field(description="Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price — fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.", max_length=20, min_length=1)]
 
 
+Adjustment = AdjustmentsItem
+
+
 __all__ = ["PriceBreakdown"]

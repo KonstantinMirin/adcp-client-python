@@ -101,4 +101,13 @@ ControlMediaBuyResponse._branch_models = (ControlApplied, ControlError, ControlS
 ControlMediaBuyResponse.model_rebuild(force=True)
 
 
+ControlMediaBuyResponse1 = ControlApplied
+
+
+ControlMediaBuyResponse2 = ControlError
+
+
+ControlMediaBuyResponse3 = ControlSubmitted
+
+
 __all__ = ["ControlMediaBuyResponse"]

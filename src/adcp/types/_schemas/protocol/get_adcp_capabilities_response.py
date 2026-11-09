@@ -1690,7 +1690,136 @@ class GetAdCPCapabilitiesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     wholesale_feed_webhooks: Annotated[WholesaleFeedWebhooks | None, Field(description='Per-agent wholesale product-feed and wholesale signals-feed webhook capabilities. Consumers register durable sync_accounts notification subscribers and receive actual product.*, signal.*, or wholesale_feed.bulk_change payloads without polling. Product mirrors bootstrap and repair through list_products(if_feed_version); signal mirrors use get_signals(if_wholesale_feed_version). Deprecated wholesale get_products remains the 3.x product compatibility path. Webhook emission MUST apply the same caller/account authorization and cache-scope predicate as the corresponding read.'), OmittedNotNull] = None
 
 
+Account = GetAdCPCapabilitiesResponseAccount
+
+
+Accreditation = AccreditationsItem
+
+
+AttributionWindow = AttributionWindowsItem
+
+
+AudienceEvidence = MediaBuyAudienceEvidence
+
+
+ChangeFeed = AccountChangeFeedSupported
+
+
+ContentStandards = MediaBuyContentStandards
+
+
+Features = SignalsFeatures
+
+
 GetAdcpCapabilitiesResponse = GetAdCPCapabilitiesResponse
+
+
+Idempotency = IdempotencySupported
+
+
+IdentityUpdates = AccountIdentityUpdatesSupported
+
+
+LifecycleTool = LifecycleToolsItem
+
+
+MediaBuy = GetAdCPCapabilitiesResponseMediaBuy
+
+
+Metric = MetricsItem
+
+
+Mode = TasksItemCreateMediaBuyModesItem
+
+
+Notifications = CapabilityChangeNotificationsSupported
+
+
+Notifications2 = AccountNotificationsSupported
+
+
+Operation = OperationsItem
+
+
+PerformanceFeedback = MediaBuyPerformanceFeedback
+
+
+PropagationSurface = PropagationSurfacesItem
+
+
+ProposalRefinement = MediaBuyProposalRefinement
+
+
+Range = PropertyFeaturesItemRange
+
+
+ReportingDestinationOffering = ReportingDestinationOfferingsItem
+
+
+Route = RoutesItem
+
+
+SupportedChange = SupportedChangesItem
+
+
+SupportedDimension = SupportedDimensionsItem
+
+
+SupportedFormat = SupportedFormatsItem
+
+
+SupportedIdentifierType = SupportedIdentifierTypesItem
+
+
+SupportedProtocol = SupportedProtocolsItem
+
+
+SupportedScope = SupportedScopesItem
+
+
+SupportedSection = SupportedSectionsItem
+
+
+SupportedTarget = SupportedTargetsItem
+
+
+Tasks1 = TasksItemCreateMediaBuy
+
+
+Tasks2 = TasksItemUpdateMediaBuy
+
+
+Tasks3 = TasksItemBuyProducts
+
+
+Tasks4 = TasksItemAcceptProposal
+
+
+Tasks5 = TasksItemControlMediaBuy
+
+
+Tasks6 = TasksItemBuildCreative
+
+
+Tasks7 = TasksItemActivateSignal
+
+
+Tasks8 = TasksItemAcquireRights
+
+
+Tasks9 = TasksItemUpdateRights
+
+
+Transport1 = TransportsItem
+
+
+Type6 = ProtocolTransportType
+
+
+VariantDimension = VariantDimensionsItem
+
+
+VendorMetricOptimization = MediaBuyVendorMetricOptimization
 
 
 __all__ = ["BudgetCappingTimezoneBasis", "CapabilityReportingDeliveryMethod", "GetAdCPCapabilitiesResponse"]

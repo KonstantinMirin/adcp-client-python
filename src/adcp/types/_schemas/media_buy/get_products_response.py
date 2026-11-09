@@ -193,4 +193,19 @@ class GetProductsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+ExcludedBy = ExcludedByValue
+
+
+RefinementApplied1 = RefinementAppliedItemRequest
+
+
+RefinementApplied2 = RefinementAppliedItemProduct
+
+
+RefinementApplied3 = RefinementAppliedItemProposal
+
+
+Status = RefinementAppliedItemRequestStatus
+
+
 __all__ = ["GetProductsResponse"]

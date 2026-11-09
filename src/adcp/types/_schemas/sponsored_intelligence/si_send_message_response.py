@@ -109,6 +109,9 @@ class SISendMessageResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Price = IntentPrice
+
+
 SiSendMessageResponse = SISendMessageResponse
 
 

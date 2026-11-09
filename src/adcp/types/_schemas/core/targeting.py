@@ -246,4 +246,10 @@ class TargetingOverlay(AdCPBaseModel):
     negative_keywords: Annotated[list[NegativeKeyword] | None, Field(description='Keywords to exclude from delivery. Queries matching these keywords will not trigger the ad. Each negative keyword is identified by the tuple (keyword, match_type). Seller must declare support in get_adcp_capabilities.', min_length=1), OmittedNotNull] = None
 
 
+Geometry = ObjTypeCoordinates
+
+
+StoreCatchment = StoreCatchmentsItem
+
+
 __all__ = ["AgeRestriction", "AudienceExclude", "AudienceInclude", "AxeExcludeSegment", "AxeIncludeSegment", "Browser", "BrowserExclude", "DaypartTargets", "DevicePlatformExclude", "DeviceTypeExclude", "GeoCountries", "GeoCountriesExclude", "GeoMetrosExclude", "GeoPlaces", "GeoPlacesExclude", "GeoPostalAreas", "GeoPostalAreasExclude", "GeoRegions", "GeoRegionsExclude", "StoreCatchments", "TargetingOverlay", "TargetingOverlayDevicePlatform", "TargetingOverlayDeviceType", "TargetingOverlayGeoProximity"]

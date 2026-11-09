@@ -44,4 +44,10 @@ ActivationKey._branch_models = (ActivationKeySegmentId, ActivationKeyKeyValue,)
 ActivationKey.model_rebuild(force=True)
 
 
+ActivationKey1 = ActivationKeySegmentId
+
+
+ActivationKey2 = ActivationKeyKeyValue
+
+
 __all__ = ["ActivationKey"]

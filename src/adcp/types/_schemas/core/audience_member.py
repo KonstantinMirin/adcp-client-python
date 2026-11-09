@@ -40,4 +40,7 @@ class AudienceMember(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Uid = UidsItem
+
+
 __all__ = ["AudienceMember"]

@@ -51,4 +51,10 @@ PerformanceFeedbackMetric._branch_models = (PerformanceFeedbackMetricStandard, P
 PerformanceFeedbackMetric.model_rebuild(force=True)
 
 
+PerformanceFeedbackMetric1 = PerformanceFeedbackMetricStandard
+
+
+PerformanceFeedbackMetric2 = PerformanceFeedbackMetricVendor
+
+
 __all__ = ["PerformanceFeedbackMetric"]

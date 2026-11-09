@@ -113,4 +113,7 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     ctv_ad_experience: Annotated[CTVAdExperience | None, Field(description='CTV experience this option serves. On `video_hosted` only `screensaver` is valid (ambient looping video the platform plays on idle). Other experiences route per the matrix in docs/creative/ctv-experiences.mdx; linear CTV video declares no experience.'), OmittedNotNull] = None
 
 
+AudioCodec = AudioCodecsItem
+
+
 __all__ = ["CanonicalFormatHostedVideo"]

@@ -122,4 +122,13 @@ class V1V2CanonicalFormatMappingRegistry(AdCPBaseModel):
     mappings: Annotated[list[MappingsItem], Field(description='Ordered list of v1 → v2 mappings. SDKs apply mappings in order and use the first match.')]
 
 
+ParameterMapping = ParameterMappingsItem
+
+
+V1Pattern = V1PatternFormatIdGlob
+
+
+V1Pattern1 = V1PatternStructural
+
+
 __all__ = ["V1V2CanonicalFormatMappingRegistry"]

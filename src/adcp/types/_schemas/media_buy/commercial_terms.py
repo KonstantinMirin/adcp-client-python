@@ -85,4 +85,7 @@ class CommercialTerms(AdCPBaseModel):
     change_terms: Annotated[list[MediaBuyChangeTerm] | None, Field(description='Binding buyer change rights included in the commercial envelope and therefore covered by terms_digest. Entries are uniquely keyed by action. When this field is present, an omitted action is not a negotiated change right. Omission of the entire field means legacy-unspecified rights, not a prohibition.', min_length=1), OmittedNotNull] = None
 
 
+ReportingCommitment = ReportingCommitmentsItem
+
+
 __all__ = ["CommercialTerms"]

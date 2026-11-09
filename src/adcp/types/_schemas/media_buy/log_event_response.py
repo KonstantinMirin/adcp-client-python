@@ -84,4 +84,13 @@ LogEventResponse._branch_models = (LogEventSuccess, LogEventError,)
 LogEventResponse.model_rebuild(force=True)
 
 
+LogEventResponse1 = LogEventSuccess
+
+
+LogEventResponse2 = LogEventError
+
+
+PartialFailure = PartialFailuresItem
+
+
 __all__ = ["LogEventResponse"]

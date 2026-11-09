@@ -70,4 +70,13 @@ class CanonicalFormatDisplayTag(CanonicalFormatBase):
     om_sdk_required: Annotated[bool | None, Field(description="Whether the buyer's tag must integrate IAB Open Measurement SDK for viewability."), OmittedNotNull] = None
 
 
+Size = SizesItem
+
+
+SupportedDeliveryType = SupportedDeliveryTypesItem
+
+
+SupportedTagType = SupportedTagTypesItem
+
+
 __all__ = ["CanonicalFormatDisplayTag"]

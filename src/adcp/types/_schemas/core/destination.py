@@ -46,4 +46,10 @@ Destination._branch_models = (DestinationPlatform, DestinationAgent,)
 Destination.model_rebuild(force=True)
 
 
+Destination1 = DestinationPlatform
+
+
+Destination2 = DestinationAgent
+
+
 __all__ = ["Destination"]

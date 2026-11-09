@@ -230,4 +230,10 @@ class Provenance(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Jurisdiction = JurisdictionsItem
+
+
+Watermark = WatermarksItem
+
+
 __all__ = ["Provenance"]

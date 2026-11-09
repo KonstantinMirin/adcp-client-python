@@ -56,4 +56,7 @@ class GetBrandIdentityRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Field1 = BrandIdentityField
+
+
 __all__ = ["GetBrandIdentityRequest"]

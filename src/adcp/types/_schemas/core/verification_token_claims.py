@@ -69,4 +69,7 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
 AgenticadvertisingOrgVerificationTokenClaims = AgenticAdvertisingOrgVerificationTokenClaims
 
 
+VerificationTokenMode = VerificationMode
+
+
 __all__ = ["AgenticAdvertisingOrgVerificationTokenClaims", "VerificationMode", "VerificationTokenGradingProfile"]

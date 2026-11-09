@@ -38,4 +38,7 @@ class CollectionDistribution(AdCPBaseModel):
     identifiers: Annotated[list[IdentifiersItem] | None, Field(description='Identifiers for the collection on this publisher, including publisher-scoped channel/EPG identifiers and platform-independent metadata identifiers', min_length=1), OmittedNotNull] = None
 
 
+Identifier = IdentifiersItem
+
+
 __all__ = ["CollectionDistribution"]
