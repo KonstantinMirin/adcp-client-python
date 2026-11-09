@@ -192,6 +192,29 @@ VERIFIER_MAY_IMPORT = frozenset(
         "codegen.bundle",
         "codegen.refusal",
         "codegen.dump_exemptions",
+        #: **THE VERIFIER'S OWN PACKAGE, and that is not a widening of what §9 forbids.**
+        #: §9's list is what the verifier may read OF THE COMPILER -- "Never
+        #: ``codegen.schema``, ``codegen.lower``, ``codegen.ir``, ``codegen.render``,
+        #: ``codegen.emit``" -- and its reason is that one body of code deciding what the
+        #: model states and what the document states "agrees with itself by construction, so
+        #: a defect in it is green on both sides".  ``codegen.verify`` is the OTHER side: it
+        #: is the verifier, named by :data:`VERIFIER` above and exempted by §8 under that
+        #: very name.  Forbidding it would not keep the walk out of the grade; it would only
+        #: force the verifier's two halves to spell one decision twice, which is the defect
+        #: §3 is about.
+        #:
+        #: ``adcp-client-python-hzio.3`` is the row that needed it: the table of keyword
+        #: readings whose MESSAGE no caller looks at
+        #: (``codegen.verify.witness.QUIET``) is read by
+        #: ``codegen/harness.py``'s ``conforms`` and by the construction's own screen, for
+        #: the same reason, and two tables would be two answers to one question.
+        #:
+        #: **The direction is still one-way and is still asserted.**
+        #: ``codegen.verify.witness`` imports ``codegen.bundle`` and ``codegen.keywords``
+        #: and nothing else of this package -- it does not import ``codegen.harness`` --
+        #: which the parametrisation over :data:`VERIFIER` reads for ``verify/`` as it reads
+        #: it for ``harness.py``.
+        "codegen.verify",
     }
 )
 
@@ -321,7 +344,14 @@ def _walk_violations(path: Path) -> list[str]:
     for name in _named(path):
         if not name.startswith("codegen."):
             continue
-        if name in VERIFIER_MAY_IMPORT:
+        #: A PACKAGE in the permitted set permits its modules, which is the reading
+        #: :data:`VERIFIER` already takes of ``verify/`` and the one :data:`MODEL_LAYER`
+        #: takes of its own entries.  Spelled with the dot so that a sibling whose name
+        #: merely starts with a permitted one -- ``codegen.verifier_notes`` -- is a
+        #: violation and not a near miss.
+        if name in VERIFIER_MAY_IMPORT or any(
+            name.startswith(one + ".") for one in VERIFIER_MAY_IMPORT
+        ):
             continue
         out.append(name)
     return sorted(set(out))

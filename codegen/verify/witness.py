@@ -63,6 +63,8 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import jsonschema
+import referencing.exceptions
+from jsonschema import _utils as _jsonschema_utils
 
 from codegen import bundle, keywords
 
@@ -164,6 +166,259 @@ _CONTAINERS = frozenset({"object", "array"})
 #: A sentinel for "this pointer has not been dereferenced", because ``None`` is a node a
 #: record can legitimately hold at a position a pointer names.
 _MISSING = object()
+
+
+# --------------------------------------------------------------------------- #
+# the document's validator: one per document, no message nobody reads, and the
+# resolution amortised  (``adcp-client-python-hzio.3``, evidence ``adcp-client-python-2i99``)
+# --------------------------------------------------------------------------- #
+#: What stands where an error message would, on every reading below.
+#:
+#: **Nothing in this module reads one.**  :meth:`Construction.refusals` reads
+#: ``error.validator`` and ``error.absolute_path``; :meth:`Construction.document_admits`
+#: reads ``error.validator`` alone.  ``adcp-client-python-2i99`` measured what the library
+#: nevertheless builds for them -- 17.0 GB of 192.6 GB allocated in one run, of which
+#: 12.103 GB is one line: a ``oneOf`` error whose message recursively ``repr``\\ s whole
+#: merged subschema dicts of ~16 KB each, 725,375 times, at ~43x ``_PyUnicodeWriter``
+#: realloc amplification.  **The check that wants a keyword asks for a keyword.**
+#:
+#: A CONSTANT and not an empty string, because an error that reaches a human by some path
+#: this module does not have should say why it carries nothing rather than carry nothing.
+#:
+#: **AND IT IS SHORT BECAUSE A LONG ONE IS THE SAME DEFECT SMALLER.**  Measured over this
+#: bundle's construction: the library's own messages on THIS path total 656,026 bytes over
+#: 15,778 errors -- 41 bytes each, because a shallow screen's errors are over small values --
+#: so a 110-byte explanation here cost 1,203,124 bytes and made the figure WORSE.  The
+#: sentence belongs in this comment, where it is written once; what the error carries is the
+#: pointer back to it.
+NO_MESSAGE = "unrendered (witness.NO_MESSAGE)"
+
+_equal = _jsonschema_utils.equal
+_ensure_list = _jsonschema_utils.ensure_list
+
+
+def _quiet_type(validator: Any, types: Any, instance: Any, schema: Any) -> Any:
+    if not any(validator.is_type(instance, word) for word in _ensure_list(types)):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_enum(validator: Any, enums: Any, instance: Any, schema: Any) -> Any:
+    if all(not _equal(each, instance) for each in enums):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_const(validator: Any, const: Any, instance: Any, schema: Any) -> Any:
+    if not _equal(instance, const):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_not(validator: Any, not_schema: Any, instance: Any, schema: Any) -> Any:
+    if validator.evolve(schema=not_schema).is_valid(instance):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_contains(validator: Any, contains: Any, instance: Any, schema: Any) -> Any:
+    if not validator.is_type(instance, "array"):
+        return
+    if not any(
+        validator.evolve(schema=contains).is_valid(element) for element in instance
+    ):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_any_of(validator: Any, anyOf: Any, instance: Any, schema: Any) -> Any:
+    all_errors: list[Any] = []
+    for index, subschema in enumerate(anyOf):
+        errs = list(validator.descend(instance, subschema, schema_path=index))
+        if not errs:
+            break
+        all_errors.extend(errs)
+    else:
+        yield jsonschema.ValidationError(NO_MESSAGE, context=all_errors)
+
+
+def _quiet_one_of(validator: Any, oneOf: Any, instance: Any, schema: Any) -> Any:
+    subschemas = enumerate(oneOf)
+    all_errors: list[Any] = []
+    for index, subschema in subschemas:
+        errs = list(validator.descend(instance, subschema, schema_path=index))
+        if not errs:
+            break
+        all_errors.extend(errs)
+    else:
+        yield jsonschema.ValidationError(NO_MESSAGE, context=all_errors)
+    # The library's own second clause, and the PROBES stay: a ``oneOf`` an instance
+    # satisfies through two branches is refused, and nothing but the probe decides that.
+    # What goes is the SENTENCE it was refused with.
+    if any(validator.evolve(schema=each).is_valid(instance) for _, each in subschemas):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+#: The keyword readings this module substitutes for the library's, **by the one property
+#: that puts them here: their message renders the INSTANCE or a SUBSCHEMA**, so its cost is
+#: the size of the value rather than a constant, and no caller in this module reads it.
+#:
+#: ``tests/test_witness_construction.py`` asserts two things about this table and neither
+#: is a restatement of it: that each entry agrees with the library's own reading on the set
+#: of ``(keyword, location)`` pairs over every value this construction builds, and that no
+#: keyword whose library message renders a whole value is MISSING from it -- read off
+#: ``inspect.getsource`` of the draft's own ``VALIDATORS``, so a library that grows one
+#: reddens here instead of quietly costing what this removes.
+QUIET: Mapping[str, Any] = {
+    "type": _quiet_type,
+    "enum": _quiet_enum,
+    "const": _quiet_const,
+    "not": _quiet_not,
+    "contains": _quiet_contains,
+    "anyOf": _quiet_any_of,
+    "oneOf": _quiet_one_of,
+}
+
+#: The keywords whose library message renders a BOUND or a KEY NAME and is therefore
+#: constant-cost, so they stay the library's.  Named rather than inferred, because the gate
+#: above partitions the draft's own keyword set and a keyword in neither half is a keyword
+#: nobody decided about.
+CONSTANT_COST = frozenset(
+    {
+        "maxItems",
+        "minItems",
+        "maxLength",
+        "minLength",
+        "maxProperties",
+        "minProperties",
+        "maximum",
+        "minimum",
+        "exclusiveMaximum",
+        "exclusiveMinimum",
+        "multipleOf",
+        "pattern",
+        "required",
+        "dependencies",
+        "additionalProperties",
+        "uniqueItems",
+    }
+)
+
+
+def _reading(cls: Any, counters: "Counters") -> Any:
+    """``cls`` with the three re-derivations ``adcp-client-python-2i99`` measured removed.
+
+    **ONE CLASS PER (DRAFT, CONSTRUCTION), built where the document is read**, so the memos
+    below live exactly as long as the :class:`Construction` that owns them and are dropped
+    with it.  Nothing here is a process global and nothing is patched at import time, which
+    is the lifetime rule ``codegen/harness.py``'s own sharings are held to.
+
+    **(1) THE ``$ref`` RESOLUTION IS AMORTISED.**  The library's own ``$ref`` reading calls
+    ``Resolver.lookup`` on every visit, and ``lookup`` does ``urldefrag(urljoin(...))`` and
+    then walks the pointer SEGMENT BY SEGMENT, building a ``Resource`` per segment, with no
+    memo anywhere: ``adcp-client-python-2i99`` counted 1,156,366 lookups in one run of the
+    population, every one of them re-deriving an answer about a bundle that is fixed at load
+    time.  The memo's key is ``(registry, base_uri, dynamic scope, ref)``, which is the whole
+    of what ``lookup`` reads -- so it is keyed on everything the answer depends on, which is
+    the defect ``Fixtures._pin``'s key had and this one does not.  ``Resolved`` is immutable
+    and the library's own, so a hit hands back the same object a miss would have built.
+    :attr:`Counters.lookups` and :attr:`Counters.lookup_hits` are the hit rate.
+
+    **(2) NO ``Resource`` IS BUILT TO ASK A NODE WITH NO ``$id`` WHETHER IT HAS ONE.**  The
+    library's ``descend`` builds ``specification.create_resource(schema)`` for every node of
+    every visit purely to call ``Resolver.in_subresource``, which returns ``self`` UNCHANGED
+    when the resource has no id -- 31,029,263 of 31,032,069 Resources in the measured
+    grading pass, 99.99%.  draft-07's id reading is ``$id`` where the node states one and ``None``
+    otherwise, so a node whose keys hold neither ``$id`` nor ``id`` cannot change the
+    resolver: this hands ``descend`` the resolver it would have arrived at and the Resource
+    is never built.  **The predicate is the library's own and not a guess about it** --
+    ``tests/test_witness_construction.py`` asserts that for every node of every record the
+    shortcut and ``in_subresource`` agree.
+
+    **(3) NO MESSAGE IS BUILT ON A PATH THIS MODULE'S CALLERS DISCARD** (:data:`QUIET`).
+    """
+    lookups: dict[tuple[Any, ...], Any] = {}
+    #: Pinned, which is the same argument :meth:`Construction.node` makes: a key over an
+    #: identity is sound only while the object it names is held, and the registry a
+    #: ``Resolved`` carries must outlive the key that names it.
+    pinned: list[Any] = []
+
+    def _ref(validator: Any, ref: str, instance: Any, schema: Any) -> Any:
+        resolver = validator._resolver
+        if resolver is None:  # the legacy resolver path, which this module never takes
+            yield from validator._validate_reference(ref=ref, instance=instance)
+            return
+        key = (id(resolver._registry), resolver._base_uri, resolver._previous, ref)
+        counters.lookups += 1
+        held = lookups.get(key)
+        if held is None:
+            try:
+                held = resolver.lookup(ref)
+            except referencing.exceptions.Unresolvable as err:
+                # The library's own wrapping, repeated here because a caller catching
+                # ``jsonschema``'s error by name must keep catching it: a reference the
+                # record could not resolve is a finding about the BUNDLE and it has to
+                # arrive wearing the name every other reader of this library expects.
+                raise jsonschema.exceptions._WrappedReferencingError(err) from err
+            lookups[key] = held
+            pinned.append(resolver._registry)
+        else:
+            counters.lookup_hits += 1
+        yield from validator.descend(instance, held.contents, resolver=held.resolver)
+
+    def skipped() -> None:
+        counters.resource_skipped += 1
+
+    return without_an_idless_resource(
+        jsonschema.validators.extend(cls, validators={**QUIET, "$ref": _ref}), skipped
+    )
+
+
+def without_an_idless_resource(cls: Any, counted: Any = None) -> Any:
+    """``cls`` with the ``Resource`` a node stating no ``$id`` does not need not built.
+
+    ``jsonschema``'s ``descend`` builds ``specification.create_resource(schema)`` for every
+    node of every visit and hands it to ``Resolver.in_subresource``, which returns ``self``
+    UNCHANGED when the resource has no id.  Measured over the suite's grading pass of this
+    tree: **31,029,263 of 31,032,069 Resources carry no ``$id`` at all -- 99.99%** -- and
+    each one exists to answer "this node has no ``$id``" once per visit
+    (``adcp-client-python-2i99``: *"create_resource + Resource.id + _legacy_dollar_id +
+    in_subresource = ~400 samples = 2.27% = 3.3 s + 414 MB, spent re-answering 'this node
+    has no $id' once per (node, instance) visit"*).
+
+    **The predicate is draft-07's own id reading and not a guess about it.**
+    ``_legacy_dollar_id`` answers ``None`` for a node that states no ``$id``, and
+    ``in_subresource`` returns the resolver unchanged for a ``None`` id -- so a node whose
+    keys hold neither ``$id`` nor ``id`` cannot move the resolver, and handing ``descend``
+    the resolver it would have arrived at is the same answer without the object.
+    ``tests/test_witness_construction.py`` asserts the agreement against the library over
+    every node of every record, so a draft whose id reading is not draft-07's reddens.
+
+    ``counted`` is called once per skip, or is ``None`` for a caller with no counter of its
+    own.  A CALLABLE and not a counter object, because the two callers keep their counts in
+    two places -- :class:`Counters` here and
+    :data:`codegen.harness.VALIDATOR_COUNTERS` there -- and this function has no business
+    knowing which.
+    """
+    library_descend = cls.descend
+
+    def descend(
+        self: Any,
+        instance: Any,
+        schema: Any,
+        path: Any = None,
+        schema_path: Any = None,
+        resolver: Any = None,
+    ) -> Any:
+        if (
+            resolver is None
+            and self._ref_resolver is None
+            and type(schema) is dict
+            and "$id" not in schema
+            and "id" not in schema
+        ):
+            if counted is not None:
+                counted()
+            resolver = self._resolver
+        return library_descend(self, instance, schema, path, schema_path, resolver)
+
+    cls.descend = descend
+    return cls
 
 
 class Source(enum.StrEnum):
@@ -285,6 +540,19 @@ class Counters:
     reasons: collections.Counter[str] = dataclasses.field(default_factory=collections.Counter)
     #: Why a mutation was discarded, by keyword.
     discards: collections.Counter[str] = dataclasses.field(default_factory=collections.Counter)
+
+    #: **ONE VALIDATOR PER DOCUMENT** (§9, ``adcp-client-python-hzio.3``): how many ROOT
+    #: validators this construction built.  ``validators == len(records)`` is the claim
+    #: stated as an equality rather than as prose, and a per-call construction would put it
+    #: at the number of calls instead.
+    validators: int = 0
+    #: ``(registry, base_uri, scope, ref) -> Resolved`` (:func:`_reading`).
+    #: ``lookup_hits / lookups`` is the hit rate the row owes a figure for.
+    lookups: int = 0
+    lookup_hits: int = 0
+    #: Visits that did NOT build a ``Resource`` to ask a node with no ``$id`` whether it has
+    #: one.  The library builds one per node per visit and discards 99.99% of them.
+    resource_skipped: int = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -445,6 +713,12 @@ class Construction:
     def __init__(self, records: Mapping[str, Mapping[str, Any]]) -> None:
         self._records = dict(records)
         self._validators: dict[str, Any] = {}
+        #: The validator CLASS this construction reads with, per draft the bundle declares
+        #: (:func:`_reading`).  One class per draft and not per document, because what the
+        #: class carries is the resolution memo and the quiet readings -- both of which are
+        #: this construction's and not one document's -- while what a DOCUMENT gets is one
+        #: INSTANCE of it, which is the registry and the resolver §9 names.
+        self._reading: dict[Any, Any] = {}
         self._memo: dict[Key, Built] = {}
         self._floors: dict[tuple[str, str], Built] = {}
         self._nodes: dict[tuple[str, str], Any] = {}
@@ -466,13 +740,26 @@ class Construction:
         registry: the global one carries every checker any draft defines, so it would
         assert ``uuid`` against a draft-07 document, which draft-07 does not define as a
         format -- the SDK inventing a constraint.
+
+        **AND THE READING IS :func:`_reading`'s AND NOT THE LIBRARY'S**
+        (``adcp-client-python-hzio.3``, evidence ``adcp-client-python-2i99``).  The root
+        construction is where ``jsonschema`` builds the ``Resource``, the ``Registry`` and
+        the ``Resolver``, so it is the one place that has to happen once per document; the
+        three repairs that make the per-NODE half linear -- the resolution memo, the
+        Resource that is not built, and the message that is not rendered -- travel on the
+        validator CLASS, which is why they are installed there and not here.
         """
         held = self._validators.get(document)
         if held is None:
             record = self._records[document]
             cls = jsonschema.validators.validator_for(record, jsonschema.Draft7Validator)
-            held = cls(record, format_checker=cls.FORMAT_CHECKER)
+            reading = self._reading.get(cls)
+            if reading is None:
+                reading = _reading(cls, self.counters)
+                self._reading[cls] = reading
+            held = reading(record, format_checker=reading.FORMAT_CHECKER)
             self._validators[document] = held
+            self.counters.validators += 1
         return held
 
     def node(self, document: str, pointer: str) -> Any:
