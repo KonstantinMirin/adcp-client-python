@@ -1123,10 +1123,35 @@ class Resolved(Admitted):
     """
 
     def of(self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()) -> object:
+        """:meth:`Admitted.of` with the resolution SPLICED IN, and memoised on the hop.
+
+        **THE MEMO IS :attr:`Admitted._targets` AND IT IS READ HERE BECAUSE IT CANNOT BE
+        READ WHERE IT IS WRITTEN FROM** (``adcp-client-python-lqun``, defect 1).
+        :meth:`Admitted.of`'s ``$ref`` arm holds the same memo under the same key, and on
+        this class it is DEAD CODE: this method resolves before delegating, so the resolved
+        reading reaching ``super().of`` no longer states a ``$ref`` and that arm is never
+        entered.  Instrumented over a whole :func:`admitted_identities` pass, ``_targets``
+        recorded ZERO hits and ZERO misses while its own docstring claimed a measured
+        saving -- the saving was real for :class:`Admitted` and nothing on the digest path
+        was collecting it.
+
+        **The key is the HOP and never the node**, which is §9's identity rule: ``at`` is
+        the ``(document, pointer)`` the reference names, ``stack`` is what the cycle arm
+        reads, and :meth:`reached` derives the node from the first alone -- so the pair
+        fixes every argument this call would be made with.  Keyed on ``id(node)`` instead
+        it reproduces every key byte-identically ONLY while the node is pinned: measured,
+        an unpinned temporary's address is reused and keys move silently.
+
+        Measured over the patched bundle's 1,059 documents: the identities pass 7.67 s ->
+        5.46 s, 11,521 hits over 42,028 distinct hops where there were none, and the
+        sha256 over every document identity UNCHANGED.
+        """
         resolved = self.reached(document, node, stack)
-        if resolved is not None:
-            return self.of(*resolved)
-        return super().of(document, node, stack)
+        if resolved is None:
+            return super().of(document, node, stack)
+        if (memo := (resolved[2][-1], stack)) not in self._targets:
+            self._targets[memo] = self.of(*resolved)
+        return self._targets[memo]
 
 
 def unreferenced(node: Any) -> Any:
