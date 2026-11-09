@@ -386,6 +386,16 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# THE IMPORT PATH IS PINNED HERE BECAUSE OTHERWISE IT IS DECIDED BY INSTALL ORDER.
+# The shared `.venv` is hardlink-shared across this project's `git worktree` checkouts,
+# and its editable `.pth` names ONE of them. With no `pythonpath` set, a bare `pytest`
+# resolved `adcp` through whichever worktree ran `pip install -e .` last -- so a lane
+# could grade ANOTHER lane's tree, and an A/B comparison could flip with nothing of its
+# own changed. That was observed, not theorised. Prepending the checkout's own paths
+# makes a bare run grade the checkout it was started in, which is the only reading a
+# worktree's result can honestly claim. It does not replace per-worktree bootstrapping
+# (see CLAUDE.md); it removes the silent failure when that has not happened.
+pythonpath = [".", "src"]
 asyncio_mode = "auto"
 markers = [
     "unit: Unit tests that don't require external services",
