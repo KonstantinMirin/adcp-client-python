@@ -154,7 +154,14 @@ def __getattr__(name: str) -> object:
     compat = _alias_module()
     adapter = _adapter_module()
     if name == "__all__":
-        return sorted({*compat.__all__, *compat.__adcp_flat_only__, *adapter.__all__})
+        return sorted(
+            {
+                *compat.__all__,
+                *compat.__adcp_flat_only__,
+                *adapter.__all__,
+                *_restored_module().__all__,
+            }
+        )
     try:
         return getattr(compat, name)
     except AttributeError:
@@ -174,6 +181,19 @@ def __getattr__(name: str) -> object:
     # be overridden here.
     try:
         return getattr(adapter, name)
+    except AttributeError:
+        pass
+    # **AND THE FLAT SURFACE OWES WHAT UPSTREAM'S RESTORED MACHINERY DECLARES, which no
+    # table over the bundle could reach**: ``adcp.types._restored`` is the flat spelling of
+    # the names upstream's own hand-written files declare -- ``MEDIA_BUY_LEGACY_STATUS_VALUES``
+    # is the measured case, a ``frozenset`` upstream derives by SUBTRACTION from the
+    # lifecycle enumeration and no document states.  Upstream serves these from their own
+    # ``_eager``, which is not restorable here -- 16 imports of the generated aggregator
+    # this branch deleted -- so the module names the restored MODULES and derives the names
+    # from each one's own ``__all__`` or declarations.  CONSULTED LAST, so nothing the
+    # alias table or the adapter decided is overridden.
+    try:
+        return getattr(_restored_module(), name)
     except AttributeError:
         pass
     raise AttributeError(
@@ -197,9 +217,23 @@ def _alias_module():
 
 
 #: The submodules :func:`__getattr__` must NOT answer, so the import system goes on to
-#: import them.  Both are alias layers of this package and both are reached by
+#: import them.  All three are compatibility layers of this package and each is reached by
 #: ``import_module`` below rather than by an attribute.
-_NOT_ROUTED = ("compat", "_adapter")
+_NOT_ROUTED = ("compat", "_adapter", "_restored")
+
+
+def _restored_module():
+    """``adcp.types._restored``, reached the same way and for the same reason.
+
+    The flat spelling of what upstream's own restored files declare.  Imported on a MISS
+    and never while this package's body runs: none of the six modules it reads imports
+    ``adcp.types``, so answering a name from here costs no generated import -- but the
+    import still happens at the moment a name is asked for rather than at this package's
+    own import, which is what keeps ``tests/fresh.py``'s binding ahead of it.
+    """
+    import importlib
+
+    return importlib.import_module("adcp.types._restored")
 
 
 def _adapter_module():
@@ -232,4 +266,5 @@ def __dir__() -> list[str]:
         | set(compat.__all__)
         | set(compat.__adcp_flat_only__)
         | set(_adapter_module().__all__)
+        | set(_restored_module().__all__)
     )
