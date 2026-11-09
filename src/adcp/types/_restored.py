@@ -44,16 +44,27 @@ import types
 #: The restored modules of ``adcp.types``, by MODULE.
 #:
 #: Upstream's own hand-written machinery, put back at upstream's own path byte for byte,
-#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Six today.
+#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Eight today.
 #: Written here because a shipped package cannot read a survey table, and held against
 #: that table by the gate named in this module's docstring -- so the authority is byte
 #: identity against upstream's commit and this tuple is the derivation's cached answer
 #: rather than its source.
+#:
+#: ``base`` and its leaf ``_geo_place_keys`` joined on `adcp-client-python-1zmw`, and what
+#: they add to the flat surface is the one thing worth reading twice: ``AdCPBaseModel`` is
+#: unbound on ``adcp.types`` today and binds here now, to UPSTREAM's class -- which under
+#: that ruling is the class ``adcp.types._base``'s own derives from, so the flat spelling,
+#: upstream's module path and every emitted model are one lineage and ``isinstance`` holds
+#: against any of the three.  The 10 names only upstream's ``base.py`` declares arrive with
+#: it (``defer_model_rebuild``, ``inherit_field``, ``NoExplicitNull``, ``WireUrl`` and the
+#: rest); nothing else in ``src/adcp/`` declares any of them.
 MODULES = (
+    "_geo_place_keys",
     "_legacy_assets",
     "_scalar",
     "_str_enum",
     "_wire",
+    "base",
     "error_narrowing",
     "media_buy_status_helpers",
 )
