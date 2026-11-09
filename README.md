@@ -289,7 +289,7 @@ Pre-configured agents (all include `.simple` accessor):
 
 See [examples/simple_api_demo.py](examples/simple_api_demo.py) for a complete comparison.
 
-> **Tip**: Import types from the main `adcp` package (e.g., `from adcp import GetProductsRequest`), from `adcp.types`, or from a curated partial module (`adcp.types.media_buy`, `.creative`, `.signals`, `.protocol`, `.buyer`, `.seller`); `adcp.types.domains.*` is public too, and is where a name several schemas declare is unambiguous. `import adcp` is lightweight; the generated type graph is built only when you import a type.
+> **Tip**: Import types from the main `adcp` package (e.g., `from adcp import GetProductsRequest`), from `adcp.types`, or from a domain surface (`adcp.types.media_buy`, `.creative`, `.signals`, `.protocol`, `.core`). The domain surfaces are the supported path for every generated class: each class is exported on exactly one of them. `import adcp` is lightweight; the generated type graph is built only when you import a type.
 
 ## Quick Start: Distributed Operations
 
@@ -380,7 +380,7 @@ the SDK's supported versions in the error details.
 - **[API Reference](https://adcontextprotocol.github.io/adcp-client-python/)** - Complete API documentation with type signatures and examples
 - **[Protocol Spec](https://github.com/adcontextprotocol/adcp)** - Ad Context Protocol specification
 - **[The type surface](docs/type-surface.md)** - Where a generated class lives, which spelling to import it by, and what `AdcpRequest` and `AdcpResponse` guarantee
-- **[How the type tree is generated](docs/design/type-generation.md)** - The generation pipeline, name derivation, the guards, and the generator pin
+- **[Type generation](docs/design/type-generation.md)** - The generator in this repository: the bundle, the override set, the catalogue pass, name derivation, the output surfaces, and how the generated types are verified against the schemas they came from
 - **[Handler authoring](docs/handler-authoring.md)** - Building an AdCP-compliant agent on `adcp.server`
 - **[Production seller path](docs/production-seller.md)** - Choose the server abstraction and wire durable multi-tenant tasks and webhook delivery
 - **[Validation contract](docs/validation-contract.md)** - Canonical wire validation versus structural Pydantic models
@@ -530,7 +530,7 @@ from adcp.types.buyer import GetProductsRequest, CpmPricingOption
 from adcp.types.seller import Offering, PropertyList, ContentStandards
 ```
 
-If a type you need isn't in `adcp.types`, open an issue — we'll add an alias. The `adcp.types.domains.*` modules are public and are where codegen defines every class, so they always have it; the caveat is the class NAMES, which codegen derives and renumbers (`Assets162`) — an alias is the stable spelling.
+If a type you need isn't in `adcp.types`, open an issue — we'll add an alias. Every generated class is exported on a domain surface (`adcp.types.<domain>`), so one of them always has it. Class names are derived from the schema document rather than from a position, so they are stable across unrelated bundle changes; see [Type generation](docs/design/type-generation.md).
 
 The six partial modules (`media_buy`, `creative`, `signals`, `protocol`, `buyer`, `seller`) are for curation and discoverability — they group types by domain and give you a smaller import surface. They are **not** a per-domain performance tier: the first AdCP type you touch through any of them builds the same single Pydantic graph.
 
@@ -594,7 +594,10 @@ See `examples/type_aliases_demo.py` for more examples.
 **Import guidelines:**
 - ✅ **DO**: Import from main package: `from adcp import GetProductsRequest`
 - ✅ **DO**: Use semantic aliases: `from adcp import CreateMediaBuySuccessResponse`
-- ⚠️ **AVOID**: Import a numbered generated class (`Assets5`, `Type11`) by any path — codegen renumbers them on every schema regeneration. `adcp.types.domains.<domain>.<schema>` itself is a supported import.
+- ✅ **DO**: Import from a domain surface: `from adcp.types.media_buy import GetProductsRequest`
+- ⚠️ **AVOID**: Import from the generated tree `adcp.types._schemas.<domain>.<document>` — it is private and may change between schema releases. Every class it declares is exported on a domain surface, which is the supported path.
+
+Generated class names are derived from the schema document — from a `title`, a document root, or the nearest titled ancestor and the node's key. They are not derived from a position, so an unrelated document entering the bundle does not rename a class.
 
 The main package exports provide a stable API while internal generated types may change.
 
