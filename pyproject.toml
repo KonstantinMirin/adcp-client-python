@@ -314,6 +314,22 @@ extend-exclude = [
     # datamodel-code-generator output; regenerate with
     # scripts/vendor_reporting_status_preview.py rather than hand-editing.
     "src/adcp/reporting/_preview/_generated_models/",
+    # THIS COMPILER'S OUTPUT, EXCLUDED ON THE POLICY THIS FILE ALREADY STATES.
+    # Generated code is not linted here: the black config excludes `/types/domains/`
+    # (the tree upstream's generator wrote) for the same reason, and the rule above
+    # excludes a vendored generator's output. The substitution moved the generated
+    # tree from `types/domains/` to `types/_schemas/`, and added the aggregators
+    # under `types/_surface/`, but the exclusion did not follow -- so `make lint`
+    # read 15,022 errors of which 14,843 were in these two directories. A style
+    # finding in a file the next compile overwrites cannot be acted on, and 98% noise
+    # is what makes the gate unreadable for the 179 findings that are real.
+    # The PUBLIC `src/adcp/types/<domain>.py` compositions are NOT excluded: they are
+    # hand-authored and are exactly where a real finding can live.
+    "src/adcp/types/_schemas/",
+    "src/adcp/types/_surface/",
+    # The materialised tree a grading run writes. A build artifact, untracked, and
+    # worth 13,966 findings on a bare `ruff check .` -- which is how a developer runs it.
+    ".adcp-cache/",
     "examples/",
     "scripts/",
 ]
