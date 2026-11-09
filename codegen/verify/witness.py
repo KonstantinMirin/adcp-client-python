@@ -567,6 +567,23 @@ CONJUNCT = frozenset(
 )
 UNIONS = keywords.combinators(keywords.Position.ROOT)
 
+#: **Every keyword whose subschema describes the SAME INSTANCE as the node stating it**, read
+#: off the same descent column: a conjunct (``CONJ``), a branch (``BRANCH``) and a RULE
+#: (``RULE`` -- a ``not``, an ``if`` and its two arms).
+#:
+#: :data:`SAME_INSTANCE` is this set WITHOUT ``not`` and ``if``, and the two answer different
+#: questions.  That one answers which hop of a POINTER keeps the conjunction travelling, and
+#: ``adcp.types._base.applied_schema`` -- which the subject must agree with -- resets at those
+#: two.  This answers which subschema OF A STATEMENT talks about the value the statement is
+#: about, and a ``not``'s subject and an ``if``'s condition both do.  :meth:`Construction._names`
+#: is the one reader, and it reads a statement's own text for KEY NAMES and nothing else.
+ABOUT_ONE_INSTANCE = frozenset(
+    k
+    for k, position in bundle.DESCENDS.items()
+    if position
+    in (keywords.Position.CONJ, keywords.Position.BRANCH, keywords.Position.RULE)
+)
+
 #: How many storage references :meth:`Construction.through` will follow before it calls the
 #: record a defect of its writer.  **NOT A CAP ON A CHECK** (``adcp-client-python-hzio.6``):
 #: a stored subtree is never itself a bare reference, so one hop suffices and this bound is
@@ -713,6 +730,13 @@ class Counters:
     #: branch per union the pointer passes through, so this is a figure about the pointers
     #: and never a budget.
     answered: int = 0
+
+    #: **How many values took a KEY to its own next case because a decider refused the
+    #: first** (:meth:`Construction._recased`).  The conditional's counterpart to the union
+    #: branch retry, and the figure that says how much of the population it serves -- a
+    #: reading with zero firings over the graded population is dead code by
+    #: ``adcp-client-python-hzio.7``'s own rule and this is where that shows.
+    recased: int = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -1986,6 +2010,13 @@ class Construction:
         LATER member of the node's own ``enum`` is a reading of the node and the exclusion
         is read off the sibling's own statement -- there is no search here and no solver.
 
+        **AND THE SAME READING AT A KEY A DECIDER READS** (:meth:`_recased`), which is this
+        clause's own sentence one level down: a ``not`` whose subject names a key is the
+        ``vast-tracker-asset`` shape with the ``enum`` at the CHILD instead of at the node,
+        and the loop above cannot reach it because an object node states no ``enum`` of its
+        own.  Where the deciders refuse the built object, the key the deciding statement
+        itself names takes its own next value class.
+
         **A value the node's own screen admits is never DELETED by a decider.**  Where no
         stated case satisfies them, the value comes back unchanged and the composition is
         graded where a composition is graded (:meth:`document_admits`).  The approximation
@@ -2019,6 +2050,9 @@ class Construction:
             reading = _patterned(read[0], _bound(nodes, "minLength") or 0, _bound(nodes, "maxLength"))
             if reading.held and not self.refusals(document, pointer, reading.value):
                 return reading
+        recased = self._recased(document, pointer, views, built)
+        if recased is not None:
+            return recased
         for where, _ in views:
             stated = self.node(document, where)
             members = stated.get("examples") if isinstance(stated, Mapping) else None
@@ -2037,6 +2071,132 @@ class Construction:
         return built if built.source is Source.APPROXIMATED else Built(
             None, Source.APPROXIMATED, built.reason or "no keyword states a value"
         )
+
+    def _recased(
+        self,
+        document: str,
+        pointer: str,
+        views: Sequence[tuple[str, tuple[str, ...]]],
+        built: Built,
+    ) -> Built | None:
+        """The built object with ONE key taken to its own next value class.
+
+        **THE CONDITIONAL'S AND THE NEGATION'S COUNTERPART TO THE UNION BRANCH RETRY**
+        (``adcp-client-python-hzio.13``: *"nothing varies an enum member at a key an ``if``
+        names"*).  :meth:`_picks` varies one union's branches because a value merged from a
+        union's first branch can be one a later branch also admits; the same is true of a key
+        whose first ``enum`` member is the member a ``not`` forbids or an ``if`` selects an
+        unsatisfiable consequent on, and nothing varied it.
+
+        **THE KEY IS READ OFF THE DECIDING STATEMENT'S OWN TEXT and the VALUE off the key's
+        own keywords**, so neither is a search.  :meth:`_names` answers which keys a statement
+        names; :meth:`classes` answers which values the key's node admits -- "every member of
+        an ``enum``, both sides of each bound and the bound itself", each already screened
+        against the key's own node.  There is no solver here and nothing is enumerated that
+        the document does not state.
+
+        **A SUM AND NOT A PRODUCT**, which is :meth:`_picks`' own rule at this keyword: one
+        key is varied at a time and the first candidate the node's screen admits and the
+        deciders accept is the answer, so the cost is the sum over the named keys of their own
+        class counts and never a cross-product over the object's keys.
+        ``docs/plan/architecture.md`` §9 calls that cross-product a defect of the approach
+        rather than a cost to control.
+
+        ``None`` where the deciders accept the value already, where the value is not an
+        object, or where no named key's own classes satisfy them -- and then the caller's
+        last clause stands: a value the node's own screen admits is never DELETED by a
+        decider.
+        """
+        if not built.held or not isinstance(built.value, Mapping):
+            return None
+        if not self._decides(document, views, built.value):
+            return None
+        for name in self._names(document, views, built.value):
+            describing = [
+                (f"{at}/properties/{bundle.escape_key(name)}", path)
+                for at, path in views
+                for node in [self.node(document, at)]
+                if isinstance(node, Mapping) and name in (node.get("properties") or {})
+            ]
+            if not describing:
+                continue
+            at, path = describing[0]
+            besides = tuple(p for p, _ in describing[1:])
+            for case in self.classes(document, at, (*path, *besides)):
+                if case.value == built.value.get(name):
+                    continue
+                candidate = {**built.value, name: case.value}
+                if self.refusals(document, pointer, candidate):
+                    continue
+                if not self._decides(document, views, candidate):
+                    self.counters.recased += 1
+                    return Built(candidate, Source.CONSTRUCTED)
+        return None
+
+    def _names(
+        self,
+        document: str,
+        views: Sequence[tuple[str, tuple[str, ...]]],
+        value: Any,
+    ) -> tuple[str, ...]:
+        """The keys the statements that REFUSE this value name, in the document's own order.
+
+        One statement at a time and only the ones that refuse: a decider the value already
+        satisfies says nothing about which key to vary, and asking it would widen the set for
+        no reading.  Then the keys are read off that statement's own subtree -- every
+        ``properties`` entry it declares and every ``required`` member it demands, following
+        the record's own storage reference and every subschema the ONE descent table names
+        (:func:`codegen.bundle.subschemas`), because a ``not`` states its subject through an
+        ``anyOf`` of ``$ref``\\ s as readily as inline and the key names are the same either
+        way.
+
+        **Terminating on the pointer set and not on a depth**, which is §9's own rule for a
+        walk in this module: a pointer already seen is not walked again, so the walk is
+        bounded by the statement's own subtree and no bound is introduced here.
+        """
+        out: list[str] = []
+        for at, _ in views:
+            node = self.node(document, at)
+            if not isinstance(node, Mapping):
+                continue
+            stated = {k: node[k] for k in ("oneOf", "anyOf", "not") if k in node}
+            if not stated:
+                continue
+            for keyword in stated:
+                refused = any(
+                    True
+                    for _ in self.validator(document)
+                    .evolve(schema={keyword: stated[keyword]})
+                    .iter_errors(value)
+                )
+                if not refused:
+                    continue
+                pending = [
+                    f"{at}{suffix}"
+                    for held, suffix, _, _ in bundle.subschemas(node)
+                    if held == keyword
+                ]
+                seen: set[str] = set()
+                while pending:
+                    where, held = self.through(document, pending.pop(0))
+                    if where in seen or not isinstance(held, Mapping):
+                        continue
+                    seen.add(where)
+                    for key in held.get("properties") or ():
+                        if key not in out:
+                            out.append(key)
+                    for key in held.get("required") or ():
+                        if isinstance(key, str) and key not in out:
+                            out.append(key)
+                    # Only the subschemas that talk about THIS instance: a
+                    # ``properties`` entry's own ``required`` is a statement about
+                    # another value and its key names are not this object's.
+                    pending.extend(
+                        f"{where}{suffix}"
+                        for inner, suffix, _, _ in bundle.subschemas(held)
+                        if inner in ABOUT_ONE_INSTANCE
+                    )
+        return tuple(out)
 
     def _views(
         self,
