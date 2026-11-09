@@ -6,7 +6,15 @@ PIP := $(shell if [ -f .venv/bin/pip ]; then echo .venv/bin/pip; else echo pip3;
 PYTEST := $(shell if [ -f .venv/bin/pytest ]; then echo .venv/bin/pytest; else echo pytest; fi)
 BLACK := $(shell if [ -f .venv/bin/black ]; then echo .venv/bin/black; else echo black; fi)
 RUFF := $(shell if [ -f .venv/bin/ruff ]; then echo .venv/bin/ruff; else echo ruff; fi)
-MYPY := $(shell if [ -f .venv/bin/mypy ]; then echo .venv/bin/mypy; else echo mypy; fi)
+# INVOKED AS A MODULE, BECAUSE A CONSOLE SCRIPT CARRIES A SHEBANG AND A SHEBANG GOES STALE.
+# The previous `-f .venv/bin/mypy` test passed on a file that could not execute: this
+# project's `.venv` is hardlink-shared across its worktrees, and `.venv/bin/mypy` carried
+# `#!/srv/ws/wt-10l6/.venv/bin/python3` -- a worktree that has been deleted. `make` then
+# reported `.venv/bin/mypy: No such file or directory` about the INTERPRETER while the
+# script itself sat right there, so the existence test could never catch it. `dmypy` is
+# broken the same way. `python -m` resolves the module through the interpreter already
+# chosen above and has no second path to go stale.
+MYPY := $(PYTHON) -m mypy
 UV := uv
 
 help: ## Show this help message
