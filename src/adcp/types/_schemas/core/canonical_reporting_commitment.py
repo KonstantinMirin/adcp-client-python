@@ -53,4 +53,10 @@ CanonicalReportingCommitment._branch_models = (CanonicalReportingCommitmentStand
 CanonicalReportingCommitment.model_rebuild(force=True)
 
 
+CanonicalReportingCommitment1 = CanonicalReportingCommitmentStandard
+
+
+CanonicalReportingCommitment2 = CanonicalReportingCommitmentVendor
+
+
 __all__ = ["CanonicalReportingCommitment"]

@@ -95,4 +95,10 @@ class ReportingVerification(AdCPBaseModel):
     native_commit_evidence: Annotated[NativeCommitEvidence | None, Field(description='Provider-native immutable version evidence observed through the named consumer or destination path.'), OmittedNotNull] = None
 
 
+PhysicalChecksums = SHA256PhysicalChecksum
+
+
+PhysicalChecksums1 = SHA512PhysicalChecksum
+
+
 __all__ = ["ReportingVerification"]

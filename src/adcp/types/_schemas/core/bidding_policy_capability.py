@@ -101,4 +101,7 @@ class BiddingPolicyCapability(AdCPBaseModel):
     package: Annotated[ScopeCapability | None, Field(description='Policies accepted as package-authored policies, including explicit automatic overrides.'), OmittedNotNull] = None
 
 
+Mode = ModesItem
+
+
 __all__ = ["BiddingPolicyCapability", "MaxBidWithCostPer", "MaxBidWithRoas", "PolicyProfile", "ScopeCapability"]

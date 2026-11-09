@@ -225,4 +225,16 @@ GetBrandIdentityResponse._branch_models = (GetBrandIdentitySuccess, GetBrandIden
 GetBrandIdentityResponse.model_rebuild(force=True)
 
 
+Asset = AssetsItem
+
+
+FontRole2 = GetBrandIdentityResponseFontRoleFamily
+
+
+GetBrandIdentityResponse2 = GetBrandIdentityError
+
+
+House = ObjDomainName
+
+
 __all__ = ["GetBrandIdentityResponse", "GetBrandIdentityResponseFontRole"]

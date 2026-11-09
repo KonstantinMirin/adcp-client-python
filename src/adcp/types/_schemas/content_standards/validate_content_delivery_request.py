@@ -39,4 +39,7 @@ class ValidateContentDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Record = RecordsItem
+
+
 __all__ = ["ValidateContentDeliveryRequest"]

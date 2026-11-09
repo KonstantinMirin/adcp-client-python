@@ -839,6 +839,25 @@ class Module:
     #: ours does, which is the identity case stated by absence rather than by an entry
     #: saying so.
     recased: Mapping[str, str] = field(default_factory=dict)
+    #: **UPSTREAM's PUBLISHED WORD for a position no title names -> the symbol of OURS it
+    #: binds, joined on STRUCTURE** (``codegen.structure.STRUCTURAL_IDENTITY``).
+    #: :attr:`recased` is the ROOT's answer and this is the complement: a union branch leaf,
+    #: an array element, a nested model or a nested enumeration, which upstream's generator
+    #: named from the field path and numbered by traversal order (``Assets``, ``Assets9``,
+    #: ``Fields``, ``Field1``).  No naming rule reproduces those -- measured, and refuted,
+    #: in ``adcp-client-python-zwqa`` -- so the word is READ off their published tree and
+    #: matched to ours by the resolved element set.
+    #:
+    #: **A NAME AND NEVER A SECOND TYPE, exactly as :attr:`recased` is**, and keyed by no
+    #: position for the same reason: the symbol it binds already has the name its own
+    #: position derives.
+    restructured: Mapping[str, str] = field(default_factory=dict)
+    #: **Every published word this module did NOT bind, beside the reason**
+    #: (``codegen.structure.REFUSALS``).  An ambiguous join is a defect to NAME and not one
+    #: to break by picking a side, so the refusals are a record of the run and not a
+    #: silence: a reader ranges over this instead of over upstream's tree, and a word that
+    #: stops being refused shows up as a row that left rather than as a count that moved.
+    unbound: Mapping[str, str] = field(default_factory=dict)
 
 
 def symbols(decided: TypeRef) -> set[str]:

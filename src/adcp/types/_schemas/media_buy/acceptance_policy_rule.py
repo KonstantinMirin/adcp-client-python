@@ -79,4 +79,7 @@ class AcceptancePolicyRule(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+AppliesToEnum = AppliesToItem
+
+
 __all__ = ["AcceptancePolicyRule"]

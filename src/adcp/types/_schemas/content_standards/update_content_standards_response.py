@@ -58,4 +58,10 @@ UpdateContentStandardsResponse._branch_models = (UpdateContentStandardsSuccess, 
 UpdateContentStandardsResponse.model_rebuild(force=True)
 
 
+UpdateContentStandardsResponse1 = UpdateContentStandardsSuccess
+
+
+UpdateContentStandardsResponse2 = UpdateContentStandardsError
+
+
 __all__ = ["UpdateContentStandardsResponse"]

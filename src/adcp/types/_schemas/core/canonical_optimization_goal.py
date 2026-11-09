@@ -154,4 +154,19 @@ CanonicalOptimizationGoal._branch_models = (CanonicalOptimizationGoalMetric, Can
 CanonicalOptimizationGoal.model_rebuild(force=True)
 
 
+CanonicalOptimizationGoal1 = CanonicalOptimizationGoalMetric
+
+
+CanonicalOptimizationGoal2 = CanonicalOptimizationGoalEvent
+
+
+CanonicalOptimizationGoal3 = CanonicalOptimizationGoalVendorMetric
+
+
+EventSource = EventSourcesItem
+
+
+Target10 = CanonicalOptimizationGoalEventTarget
+
+
 __all__ = ["CanonicalOptimizationGoal"]

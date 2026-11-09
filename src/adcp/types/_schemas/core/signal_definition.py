@@ -435,4 +435,28 @@ class SignalDefinition(AdCPBaseModel):
     dts_compliant_version: Annotated[str | None, Field(description='IAB Data Transparency Standard version this signal definition self-attests as satisfying, when applicable.'), OmittedNotNull] = None
 
 
+Channel = ChannelsItem
+
+
+DataSource = DataSourcesItem
+
+
+IdType = IdTypesItem
+
+
+MatchKey = MatchKeysItem
+
+
+Right = RightsItem
+
+
+SeedSource = ObjTypeProviderSigned
+
+
+Value = ObjIdPathModifiers
+
+
+ValueMapping = ValueMappingsItem
+
+
 __all__ = ["SignalDefinition"]

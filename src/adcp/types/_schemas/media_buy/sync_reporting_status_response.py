@@ -73,4 +73,13 @@ class SyncReportingStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Results = RecordedReportingConsumerStatus
+
+
+Results26 = UnchangedReportingConsumerStatus
+
+
+Results27 = FailedReportingConsumerStatus
+
+
 __all__ = ["SyncReportingStatusResponse"]

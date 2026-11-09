@@ -68,4 +68,13 @@ BasePropertySource._branch_models = (PublisherTagsSource, PublisherPropertyIDsSo
 BasePropertySource.model_rebuild(force=True)
 
 
+BasePropertySource1 = PublisherTagsSource
+
+
+BasePropertySource2 = PublisherPropertyIDsSource
+
+
+BasePropertySource3 = DirectIdentifiersSource
+
+
 __all__ = ["BasePropertySource"]

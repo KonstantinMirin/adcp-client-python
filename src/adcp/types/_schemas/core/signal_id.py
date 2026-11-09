@@ -57,4 +57,10 @@ SignalID.model_rebuild(force=True)
 SignalId = SignalID
 
 
+SignalId8 = SignalIDCatalog
+
+
+SignalId9 = SignalIDAgent
+
+
 __all__ = ["SignalID"]

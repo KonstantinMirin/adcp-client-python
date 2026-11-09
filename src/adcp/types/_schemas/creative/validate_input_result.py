@@ -100,4 +100,7 @@ class ValidateInputResult(AdCPBaseModel):
     macro_resolution_results: Annotated[list[MacroResolutionResult] | None, Field(description='Per-token compatibility against the selected target. Required or unsafe `unsupported`/`ambiguous` results make the target `validated_fail`; deliberate preservation for the declared downstream resolver may still pass.'), OmittedNotNull] = None
 
 
+Violation = ViolationsItem
+
+
 __all__ = ["ValidateInputResult"]

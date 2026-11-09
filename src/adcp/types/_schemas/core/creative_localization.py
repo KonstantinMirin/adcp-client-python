@@ -58,4 +58,7 @@ class CreativeLocalization(AdCPBaseModel):
     unmatched_locale_action: Annotated[UnmatchedLocaleAction, Field(description='Required seller behavior when neither strict RFC 4647 Lookup nor an explicit locale_fallbacks rule matches. serve_default serves default_locale_variant_id; do_not_serve makes this creative ineligible for that opportunity.')]
 
 
+TargetVariant = TargetVariantsItem
+
+
 __all__ = ["CreativeLocalization"]

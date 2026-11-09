@@ -84,4 +84,7 @@ class GetCreativeDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Creative = CreativesItem
+
+
 __all__ = ["GetCreativeDeliveryResponse"]

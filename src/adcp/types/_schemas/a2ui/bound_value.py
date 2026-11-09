@@ -84,4 +84,19 @@ A2UIBoundValue.model_rebuild(force=True)
 A2UiBoundValue = A2UIBoundValue
 
 
+A2UiBoundValue1 = A2UIBoundValueLiteralString
+
+
+A2UiBoundValue2 = A2UIBoundValueLiteralNumber
+
+
+A2UiBoundValue3 = A2UIBoundValueLiteralBoolean
+
+
+A2UiBoundValue4 = A2UIBoundValuePath
+
+
+A2UiBoundValue5 = A2UIBoundValueLiteralStringPath
+
+
 __all__ = ["A2UIBoundValue"]

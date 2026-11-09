@@ -84,4 +84,7 @@ class ReportingCapabilities(AdCPBaseModel):
     measurement_windows: Annotated[list[MeasurementWindow] | None, Field(description='Measurement maturation stages available for this product. Used by any channel where billing-grade data is produced in phases rather than arriving final on day one. Examples: broadcast/linear TV (Live → C3 → C7 DVR accumulation), DOOH (tentative plays → post-IVT/fraud-check final), digital with IVT filtering (raw → GIVT filtered → SIVT filtered), podcast (7-day downloads → 30-day downloads). Each window defines an accumulation period and expected data availability. When present, delivery reports reference a specific window_id. Sellers whose data is final on first delivery typically omit this.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
+VendorMetric = VendorMetricsItem
+
+
 __all__ = ["ReportingCapabilities"]

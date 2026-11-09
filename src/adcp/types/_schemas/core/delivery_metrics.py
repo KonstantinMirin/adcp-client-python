@@ -336,4 +336,19 @@ class DeliveryMetrics(AdCPBaseModel):
     vendor_metric_values: Annotated[list[VendorMetricValue] | None, Field(description="Reported values for vendor-defined metrics that the product's `reporting_capabilities.vendor_metrics` declared. Each entry carries the vendor (BrandRef), the metric identifier within the vendor's vocabulary, the value, optional unit, and `measurable_impressions` as the coverage denominator — vendor measurement is rarely 100% of delivered impressions, since vendors only score impressions where their SDK fires or their panel matches. When a declared vendor metric is omitted from this array, buyers infer no measurement happened (no integration). One row per `(vendor.domain, vendor.brand_id, metric_id, qualifier)` per reporting period — the same vendor metric MAY appear in multiple rows only when each carries a distinct qualifier (e.g., 7-day and 30-day attribution windows); sellers MUST de-duplicate before emission and MUST NOT emit two rows with the same tuple; buyers MAY treat duplicate rows as a seller-side conformance bug. The structured `vendor_metric_values` array is the recommended path for vendor metrics; `additionalProperties: true` on this parent object is preserved so existing free-form vendor emissions remain conformant during migration."), OmittedNotNull] = None
 
 
+Identifier = IdentifiersItem
+
+
+Panel = PanelsItem
+
+
+Posting = PostingsItem
+
+
+ReachWindow = ObjKindPeriod
+
+
+TimeBasedView = TimeBasedViewsItem
+
+
 __all__ = ["ByActionSourceItem", "ByEventTypeItem", "DeliveryMetrics", "DoohMetrics", "ObjKindPeriod", "OohMetrics", "QuartileData", "TimeBasedViewsItem", "Viewability"]

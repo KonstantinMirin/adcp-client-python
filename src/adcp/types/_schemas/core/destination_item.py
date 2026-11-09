@@ -72,4 +72,7 @@ class DestinationItem(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Location = ObjLatLng
+
+
 __all__ = ["DestinationItem"]

@@ -43,4 +43,7 @@ class ReferenceRenderer(AdCPBaseModel):
     provenance: ReferenceRendererProvenance
 
 
+Provenance = ReferenceRendererProvenance
+
+
 __all__ = ["ReferenceRenderer"]

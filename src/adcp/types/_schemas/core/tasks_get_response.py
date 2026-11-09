@@ -95,4 +95,7 @@ class TasksGetResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+HistoryItem = ObjTimestampTypeData
+
+
 __all__ = ["TasksGetResponse"]

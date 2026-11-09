@@ -266,4 +266,25 @@ OptimizationGoal._branch_models = (OptimizationGoalMetric, OptimizationGoalEvent
 OptimizationGoal.model_rebuild(force=True)
 
 
+EventSource = EventSourcesItem
+
+
+Metric = OptimizationMetric
+
+
+OptimizationGoal10 = OptimizationGoalVendorMetric
+
+
+OptimizationGoal8 = OptimizationGoalMetric
+
+
+OptimizationGoal9 = OptimizationGoalEvent
+
+
+Target16 = TargetPerAdSpend
+
+
+Target17 = TargetMaximizeValue
+
+
 __all__ = ["OptimizationGoal"]

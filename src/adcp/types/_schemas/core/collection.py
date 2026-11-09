@@ -61,4 +61,7 @@ class Collection(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+RelatedCollection = RelatedCollectionsItem
+
+
 __all__ = ["Collection"]

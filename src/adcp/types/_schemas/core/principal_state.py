@@ -44,4 +44,7 @@ class PrincipalState(AdCPBaseModel):
     retired_destinations: Annotated[list[RetiredDestinationsItem] | None, Field(description='Destinations the caller revoked by omitting them from a submitted reporting_destinations section, retained while any generation remains resolvable for reporting history. Enumerable only by the owning principal. Reusing a retired destination_id requires fresh registration and proof and produces a new generation.', max_length=64), OmittedNotNull] = None
 
 
+RetiredDestination = RetiredDestinationsItem
+
+
 __all__ = ["PrincipalState"]

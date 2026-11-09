@@ -154,4 +154,7 @@ class ReportingDeliveryOffering(AdCPBaseModel):
     method: Annotated[Method | None, Field(description='Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.'), OmittedNotNull] = None
 
 
+DestinationMode = DestinationModesItem
+
+
 __all__ = ["ReportingDeliveryOffering", "ReportingDeliveryPattern", "ReportingFeedPurpose"]

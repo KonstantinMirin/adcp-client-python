@@ -69,4 +69,10 @@ VASTAsset.model_rebuild(force=True)
 VastAsset = VASTAsset
 
 
+VastAsset3 = VASTAssetUrl
+
+
+VastAsset4 = VASTAssetInline
+
+
 __all__ = ["VASTAsset"]

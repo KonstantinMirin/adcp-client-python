@@ -89,4 +89,10 @@ class CanonicalFormatHostedAudio(CanonicalFormatBase):
     brand_name_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
 
 
+AudioChannel = AudioChannels
+
+
+AudioCodec = AudioCodecsItem
+
+
 __all__ = ["CanonicalFormatHostedAudio"]

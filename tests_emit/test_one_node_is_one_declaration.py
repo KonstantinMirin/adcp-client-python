@@ -556,6 +556,15 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
     record is as red as an adoption's missing name, and so is the reverse.  It is NOT an
     allowance -- nothing is subtracted, and a binding neither record accounts for still
     fails.
+
+    **AND THE THIRD IS THE OTHER HALF OF THAT SAME REASON** (``codegen.structure``,
+    ``Emitted.restructured``).  A position no TITLE names -- a union branch leaf, an array
+    element, a nested model, a nested enumeration -- was named by upstream's generator from
+    the FIELD PATH and numbered by traversal order (``Assets``, ``Assets9``, ``Fields``),
+    and the module binds that published word beside ours where a structural join finds it
+    uniquely.  It is the same kind of second name as a recasing, so it goes on the same
+    equality for the same reason: three terms, nothing subtracted, and a word in any record
+    the tree does not carry as a class fails here.
     """
     first = _a_class("First", "a.module", SchemaRef(document="a.json", pointer="#"))
     second = _a_class("Second", "a.module", SchemaRef(document="a.json", pointer="#/x"))
@@ -589,7 +598,14 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
         # spelling, a bundle-relative path, which is why the dotted module name is turned
         # back into a document first.  A word the record names and the tree does not carry
         # as a class is left out of this term, so the equality below reports it.
-        for word in out.recased.get(emit.module_path(document), {}):
+        # Both second-name records of the module are read in one pass, because the two are
+        # the same KIND of binding reached by two keys -- a title's recasing and a
+        # structural join -- and a reader that took one for the other would report a
+        # binding as unaccounted while the run had recorded it (``Emitted.restructured``).
+        for word in (
+            *out.recased.get(emit.module_path(document), {}),
+            *out.restructured.get(emit.module_path(document), {}),
+        ):
             bound = getattr(imported, word, None)
             if isinstance(bound, type) and id(bound) in objects:
                 recased.add((name, word))
@@ -603,16 +619,16 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
 
     claimed("names bound beyond the class they name", named_twice)
     claimed("second names the run recorded as an adoption's", renamed_adoptions)
-    claimed("second names the run recorded as upstream's own spelling", recased)
+    claimed("second names the run recorded as one of UPSTREAM's own words", recased)
     accounted = renamed_adoptions | recased
     assert named_twice == accounted, {
-        "a second name with neither an adoption nor a recasing behind it": sorted(
+        "a second name with no adoption and no upstream word behind it": sorted(
             named_twice - accounted
         ),
         "an adoption whose second name the tree does not carry": sorted(
             renamed_adoptions - named_twice
         ),
-        "a recasing the record names and the tree does not carry": sorted(
+        "an upstream word the record names and the tree does not carry": sorted(
             recased - named_twice
         ),
     }

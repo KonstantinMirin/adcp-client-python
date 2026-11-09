@@ -68,4 +68,7 @@ class PostalAreaSupport(AdCPBaseModel):
     at_plz: Annotated[bool | None, OmittedNotNull] = None
 
 
+PostalAreaSupportAdditionalPropertyEnum = PostalAreaSupportValueItem
+
+
 __all__ = ["PostalAreaSupport"]

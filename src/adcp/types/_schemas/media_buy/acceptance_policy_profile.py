@@ -87,4 +87,7 @@ class AcceptancePolicyProfile(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+PolicyRef = PolicyRefsItem
+
+
 __all__ = ["AcceptancePolicyProfile"]

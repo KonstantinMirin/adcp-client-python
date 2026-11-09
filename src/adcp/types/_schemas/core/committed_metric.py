@@ -74,4 +74,10 @@ CommittedMetric._branch_models = (CommittedMetricStandard, CommittedMetricVendor
 CommittedMetric.model_rebuild(force=True)
 
 
+CommittedMetric1 = CommittedMetricStandard
+
+
+CommittedMetric2 = CommittedMetricVendor
+
+
 __all__ = ["CommittedMetric", "Qualifier"]

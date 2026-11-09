@@ -199,4 +199,52 @@ ProductFormatDeclaration._branch_models = (ImageFormatDeclaration, HTML5FormatDe
 ProductFormatDeclaration.model_rebuild(force=True)
 
 
+ProductFormatDeclaration1 = ImageFormatDeclaration
+
+
+ProductFormatDeclaration10 = SponsoredPlacementFormatDeclaration
+
+
+ProductFormatDeclaration11 = NativeInFeedFormatDeclaration
+
+
+ProductFormatDeclaration12 = ResponsiveCreativeFormatDeclaration
+
+
+ProductFormatDeclaration13 = AgentPlacementFormatDeclaration
+
+
+ProductFormatDeclaration14 = SellerRenderedStatefulDisplayFormatDeclaration
+
+
+ProductFormatDeclaration15 = CoordinatedPlacementsFormatDeclaration
+
+
+ProductFormatDeclaration16 = CustomFormatDeclaration
+
+
+ProductFormatDeclaration2 = HTML5FormatDeclaration
+
+
+ProductFormatDeclaration3 = DisplayTagFormatDeclaration
+
+
+ProductFormatDeclaration4 = ImageCarouselFormatDeclaration
+
+
+ProductFormatDeclaration5 = HostedVideoFormatDeclaration
+
+
+ProductFormatDeclaration6 = VASTVideoFormatDeclaration
+
+
+ProductFormatDeclaration7 = HostedAudioFormatDeclaration
+
+
+ProductFormatDeclaration8 = VASTAudioFormatDeclaration
+
+
+ProductFormatDeclaration9 = DAASTAudioFormatDeclaration
+
+
 __all__ = ["ProductFormatDeclaration", "SellerPreference"]

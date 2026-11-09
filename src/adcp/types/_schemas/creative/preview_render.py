@@ -120,4 +120,16 @@ PreviewRender._branch_models = (PreviewRenderUrl, PreviewRenderHtml, PreviewRend
 PreviewRender.model_rebuild(force=True)
 
 
+Dimensions = PreviewRenderUrlDimensions
+
+
+PreviewRender1 = PreviewRenderUrl
+
+
+PreviewRender2 = PreviewRenderHtml
+
+
+PreviewRender3 = PreviewRenderBoth
+
+
 __all__ = ["PreviewRender"]

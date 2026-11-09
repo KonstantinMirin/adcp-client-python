@@ -101,4 +101,10 @@ class TasksListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+DomainBreakdown = ObjMediaBuySignalsCreative
+
+
+Task = TasksItem
+
+
 __all__ = ["TasksListResponse"]

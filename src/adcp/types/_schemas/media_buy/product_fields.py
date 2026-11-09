@@ -97,4 +97,7 @@ class ProductResponseFields(AdCPRootModel):
     )
 
 
+ProductResponseField = ProductResponseFieldsItem
+
+
 __all__ = ["ProductResponseFields", "ProductResponseFieldsItem"]

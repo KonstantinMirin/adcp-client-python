@@ -65,4 +65,10 @@ CreateContentStandardsResponse._branch_models = (CreateContentStandardsResponseS
 CreateContentStandardsResponse.model_rebuild(force=True)
 
 
+CreateContentStandardsResponse1 = CreateContentStandardsResponseStandardsId
+
+
+CreateContentStandardsResponse2 = CreateContentStandardsResponseErrors
+
+
 __all__ = ["CreateContentStandardsResponse"]

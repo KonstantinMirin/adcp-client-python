@@ -243,4 +243,34 @@ class Artifact(AdCPBaseModel):
     identifiers: Annotated[Identifiers | None, Field(description='Platform-specific identifiers for this artifact'), OmittedNotNull] = None
 
 
+AssetAccess1 = AssetAccessBearerToken
+
+
+AssetAccess2 = AssetAccessServiceAccount
+
+
+AssetAccess3 = AssetAccessSignedUrl
+
+
+Assets1 = AssetsItemText
+
+
+Assets2 = AssetsItemImage
+
+
+Assets3 = AssetsItemVideo
+
+
+Assets4 = AssetsItemAudio
+
+
+TranscriptFormat = AssetsItemVideoTranscriptFormat
+
+
+TranscriptSource = AssetsItemVideoTranscriptSource
+
+
+TranscriptSource1 = AssetsItemAudioTranscriptSource
+
+
 __all__ = ["Artifact", "AssetAccess"]

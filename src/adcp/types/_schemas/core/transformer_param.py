@@ -79,4 +79,7 @@ class TransformerParam(AdCPBaseModel):
     description: Annotated[str | None, Field(description='Human-readable explanation of what this knob does.'), OmittedNotNull] = None
 
 
+Option = OptionsItem
+
+
 __all__ = ["TransformerParam"]

@@ -135,4 +135,10 @@ class ProductOfferFilters(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+RequiredPerformanceStandard = RequiredPerformanceStandardsItem
+
+
+RequiredVendorMetric = RequiredVendorMetricsItem
+
+
 __all__ = ["ProductOfferFilters"]

@@ -119,4 +119,7 @@ class ReportingConsumerStatus(AdCPBaseModel):
     recorded_at: Annotated[AwareDatetime | None, Field(description='When the seller durably recorded this immutable statement.'), OmittedNotNull] = None
 
 
+Period = ObjStartEndSourceTimezone
+
+
 __all__ = ["ReportingConsumerStatus"]

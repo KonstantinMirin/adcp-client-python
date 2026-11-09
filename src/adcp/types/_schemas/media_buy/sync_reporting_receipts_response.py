@@ -106,4 +106,19 @@ class SyncReportingReceiptsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpR
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Results = FailedReportingReceipt
+
+
+Results20 = RecordedReportingReceipt
+
+
+Results21 = UnchangedReportingReceipt
+
+
+Results22 = RecordedReportingAdjustmentReceipt
+
+
+Results23 = UnchangedReportingAdjustmentReceipt
+
+
 __all__ = ["SyncReportingReceiptsResponse"]

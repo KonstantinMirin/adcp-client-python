@@ -69,4 +69,7 @@ DeliveryMetricAggregate._branch_models = (DeliveryMetricAggregateStandard, Deliv
 DeliveryMetricAggregate.model_rebuild(force=True)
 
 
+DeliveryMetricAggregate2 = DeliveryMetricAggregateVendor
+
+
 __all__ = ["DeliveryMetricAggregate", "DeliveryMetricAggregateStandard"]

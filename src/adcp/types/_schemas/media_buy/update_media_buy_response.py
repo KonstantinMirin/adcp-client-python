@@ -129,4 +129,7 @@ UpdateMediaBuyResponse._branch_models = (UpdateMediaBuySuccess, UpdateMediaBuyEr
 UpdateMediaBuyResponse.model_rebuild(force=True)
 
 
+UpdateMediaBuyResponse2 = UpdateMediaBuyError
+
+
 __all__ = ["UpdateMediaBuyResponse"]

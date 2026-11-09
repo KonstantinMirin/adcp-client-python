@@ -37,4 +37,7 @@ class AttributeDefinition(AdCPBaseModel):
     guidance: Annotated[str | None, Field(description='Implementation notes. Covers edge cases, inferred vs. declared data, and common pitfalls.'), OmittedNotNull] = None
 
 
+RegulatoryBasi = RegulatoryBasisItem
+
+
 __all__ = ["AttributeDefinition"]

@@ -244,4 +244,28 @@ class TargetingOverlaySupport(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+BrowserSupport1 = BrowserSupportFamilies
+
+
+CountrySupport1 = CountrySupportMaxValuesPerPackage
+
+
+DaypartSupport1 = DaypartSupportTimezoneModes
+
+
+Demographics = TargetingOverlaySupportDemographicsAge
+
+
+GeoProximity = TargetingOverlaySupportGeoProximity
+
+
+KeywordSupport1 = KeywordSupportSupportedMatchTypes
+
+
+MetroSupport1 = MetroSupportSystems
+
+
+PlacementSelection = TargetingOverlaySupportPlacementSelection
+
+
 __all__ = ["BrowserSupport", "CountrySupport", "DaypartSupport", "KeywordSupport", "MetroSupport", "PlaceCatalogSupport", "PlaceSupport", "Supported", "TargetingOverlaySupport"]

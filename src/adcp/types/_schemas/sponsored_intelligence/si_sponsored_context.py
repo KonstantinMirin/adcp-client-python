@@ -149,6 +149,12 @@ class SISponsoredContext(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Account = PayingPrincipalAccount
+
+
+Jurisdiction = JurisdictionsItem
+
+
 SiSponsoredContext = SISponsoredContext
 
 

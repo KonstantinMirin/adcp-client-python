@@ -52,4 +52,10 @@ ReportingWriteDestination._branch_models = (ReportingWriteDestinationExisting, P
 ReportingWriteDestination.model_rebuild(force=True)
 
 
+ReportingWriteDestination1 = ReportingWriteDestinationExisting
+
+
+ReportingWriteDestination2 = ProvisionBinding
+
+
 __all__ = ["ReportingWriteDestination"]

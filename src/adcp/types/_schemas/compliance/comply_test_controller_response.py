@@ -346,4 +346,28 @@ ComplyTestControllerResponse._branch_models = (ListScenariosSuccess, StateTransi
 ComplyTestControllerResponse.model_rebuild(force=True)
 
 
+ComplyTestControllerResponse1 = ListScenariosSuccess
+
+
+ComplyTestControllerResponse2 = StateTransitionSuccess
+
+
+ComplyTestControllerResponse4 = ForcedDirectiveSuccess
+
+
+ComplyTestControllerResponse5 = SeedSuccess
+
+
+ComplyTestControllerResponse6 = ProvenanceAuditObservationsSuccess
+
+
+ComplyTestControllerResponse7 = UpstreamTrafficSuccess
+
+
+ComplyTestControllerResponse8 = ControllerError
+
+
+IdentifierMatchProof = IdentifierMatchProofsItem
+
+
 __all__ = ["ComplyTestControllerResponse"]

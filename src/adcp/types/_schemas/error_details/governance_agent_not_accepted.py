@@ -47,4 +47,10 @@ GovernanceAgentNotAcceptedDetails._branch_models = (GovernanceAgentNotAcceptedDe
 GovernanceAgentNotAcceptedDetails.model_rebuild(force=True)
 
 
+GovernanceAgentNotAcceptedDetails1 = GovernanceAgentNotAcceptedDetailsDisclosed
+
+
+GovernanceAgentNotAcceptedDetails2 = GovernanceAgentNotAcceptedDetailsOpaque
+
+
 __all__ = ["GovernanceAgentNotAcceptedDetails"]

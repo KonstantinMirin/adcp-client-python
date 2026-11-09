@@ -152,4 +152,16 @@ SyncCatalogsResponse._branch_models = (SyncCatalogsSuccess, SyncCatalogsError, S
 SyncCatalogsResponse.model_rebuild(force=True)
 
 
+Catalog = CatalogsItem
+
+
+ItemIssue = ItemIssuesItem
+
+
+SyncCatalogsResponse1 = SyncCatalogsSuccess
+
+
+SyncCatalogsResponse2 = SyncCatalogsError
+
+
 __all__ = ["SyncCatalogsResponse"]

@@ -118,4 +118,7 @@ class PackageRequest(AdCPVersionEnvelope):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+CommittedMetrics2 = CommittedMetricsItemVendor
+
+
 __all__ = ["PackageRequest"]

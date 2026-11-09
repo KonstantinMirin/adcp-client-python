@@ -137,4 +137,16 @@ MediaBuyCommitmentResponse._branch_models = (CommittedMediaBuy, CommitmentError,
 MediaBuyCommitmentResponse.model_rebuild(force=True)
 
 
+MediaBuyCommitmentResponse1 = CommittedMediaBuy
+
+
+MediaBuyCommitmentResponse2 = CommitmentError
+
+
+MediaBuyCommitmentResponse3 = CommitmentSubmitted
+
+
+PurchaseBinding = PurchaseBindingsItem
+
+
 __all__ = ["MediaBuyCommitmentResponse"]

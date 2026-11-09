@@ -144,4 +144,7 @@ class ContextMatchRequest(AdCPBaseModel):
     package_ids: Annotated[list[str] | None, Field(description='Restrict evaluation to specific packages. When omitted, the provider evaluates all eligible packages for this placement (the common case). MUST NOT vary by user — the same package_ids must be sent for every user on a given placement. User-dependent filtering leaks identity into the context path.', max_length=500, min_length=1), OmittedNotNull] = None
 
 
+ArtifactRef = ArtifactRefsItem
+
+
 __all__ = ["ContextMatchRequest"]

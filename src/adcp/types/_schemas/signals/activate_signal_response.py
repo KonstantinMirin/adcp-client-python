@@ -70,4 +70,10 @@ ActivateSignalResponse._branch_models = (ActivateSignalSuccess, ActivateSignalEr
 ActivateSignalResponse.model_rebuild(force=True)
 
 
+ActivateSignalResponse1 = ActivateSignalSuccess
+
+
+ActivateSignalResponse2 = ActivateSignalError
+
+
 __all__ = ["ActivateSignalResponse"]

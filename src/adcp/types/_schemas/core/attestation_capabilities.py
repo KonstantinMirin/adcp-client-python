@@ -105,4 +105,16 @@ class AttestationCapabilities(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+AcceptedIssuer = AcceptedIssuersItem
+
+
+AcceptedVerifier = AcceptedVerifiersItem
+
+
+Resolver = ResolversItem
+
+
+SupportedDeliveryMethod = SupportedDeliveryMethodsItem
+
+
 __all__ = ["AttestationCapabilities"]

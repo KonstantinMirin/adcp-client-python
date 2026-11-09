@@ -96,4 +96,16 @@ MediaBuyChangeTermConstraints._branch_models = (BudgetChangeConstraints, FlightC
 MediaBuyChangeTermConstraints.model_rebuild(force=True)
 
 
+MediaBuyChangeTermConstraints1 = BudgetChangeConstraints
+
+
+MediaBuyChangeTermConstraints2 = FlightChangeConstraints
+
+
+MediaBuyChangeTermConstraints3 = PackageCountConstraints
+
+
+MediaBuyChangeTermConstraints4 = EffectiveTimingConstraints
+
+
 __all__ = ["MediaBuyChangeTermConstraints", "Money"]

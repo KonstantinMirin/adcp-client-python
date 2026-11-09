@@ -87,4 +87,7 @@ class TasksListRequest(AdCPVersionEnvelope):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Field1 = SortField
+
+
 __all__ = ["TasksListRequest"]

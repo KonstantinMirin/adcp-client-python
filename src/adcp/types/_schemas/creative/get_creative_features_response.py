@@ -84,4 +84,7 @@ GetCreativeFeaturesResponse._branch_models = (GetCreativeFeaturesResponseSuccess
 GetCreativeFeaturesResponse.model_rebuild(force=True)
 
 
+GetCreativeFeaturesResponse2 = GetCreativeFeaturesError
+
+
 __all__ = ["GetCreativeFeaturesResponse"]

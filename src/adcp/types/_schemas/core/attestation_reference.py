@@ -105,4 +105,10 @@ class AttestationReference(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Locator = AttestationCredentialUriLocator
+
+
+Locator1 = AttestationIssuerCredentialIdLocator
+
+
 __all__ = ["AttestationReference"]

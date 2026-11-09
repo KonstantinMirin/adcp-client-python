@@ -111,4 +111,10 @@ class PlacementDefinition(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+FormatOptions = FormatOptionsItemFormatOptionId
+
+
+Identifier = IdentifiersItem
+
+
 __all__ = ["PlacementDefinition", "PublisherDoohPlacementAttributes", "PublisherDoohScreenResolution"]

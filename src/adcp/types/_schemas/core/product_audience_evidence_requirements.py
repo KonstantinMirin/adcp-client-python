@@ -115,4 +115,10 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+AcceptedAttestationIssuers1 = AcceptedAttestationIssuersItemBrand
+
+
+AcceptedAttestationIssuers2 = AcceptedAttestationIssuersItemAgent
+
+
 __all__ = ["ProductAudienceEvidenceRequirements"]

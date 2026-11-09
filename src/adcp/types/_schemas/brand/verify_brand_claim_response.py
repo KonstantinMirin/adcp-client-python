@@ -123,4 +123,13 @@ VerifyBrandClaimResponse._branch_models = (VerifyBrandClaimSuccess, VerifyBrandC
 VerifyBrandClaimResponse.model_rebuild(force=True)
 
 
+VerifyBrandClaimErrorResponse = VerifyBrandClaimError
+
+
+VerifyBrandClaimSignedSuccessPayload = SignedSuccessPayload
+
+
+VerifyBrandClaimSuccessResponse = VerifyBrandClaimSuccess
+
+
 __all__ = ["SignedResponse", "SignedSuccessPayload", "VerifyBrandClaimResponse"]

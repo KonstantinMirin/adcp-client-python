@@ -58,4 +58,10 @@ class OutcomeTarget(AdCPBaseModel):
     cost_per: Annotated[OutcomeTargetCostPer | None, OmittedNotNull] = None
 
 
+Goal = GoalMetric
+
+
+Goal1 = GoalEvent
+
+
 __all__ = ["OutcomeTarget"]

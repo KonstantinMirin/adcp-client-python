@@ -127,4 +127,10 @@ SyncEventSourcesResponse._branch_models = (SyncEventSourcesSuccess, SyncEventSou
 SyncEventSourcesResponse.model_rebuild(force=True)
 
 
+SyncEventSourcesResponse1 = SyncEventSourcesSuccess
+
+
+SyncEventSourcesResponse2 = SyncEventSourcesError
+
+
 __all__ = ["SyncEventSourcesResponse"]

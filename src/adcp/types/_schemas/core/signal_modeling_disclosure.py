@@ -56,4 +56,7 @@ class SignalModelingDisclosure(AdCPBaseModel):
     notes: Annotated[StrMaxLen2000 | None, Field(description='Optional provider notes on how the disclosure should be interpreted. Informational only; buyers should not branch programmatically on this text.'), OmittedNotNull] = None
 
 
+Jurisdiction = JurisdictionsItem
+
+
 __all__ = ["SignalModelingDisclosure"]

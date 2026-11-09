@@ -70,4 +70,7 @@ class AgentWebhookChallenge(AdCPBaseModel):
     event_types: Annotated[list[EventTypesItem], Field(description='Normalized agent-level notification types requested by the subscriber at the time of the challenge. Part of the endpoint proof scope; changing event_types[] requires a fresh challenge before the new set can become active. Currently only `capabilities.changed` is valid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
+DeliveryAuth = ObjModeCredentialFingerprint
+
+
 __all__ = ["AgentWebhookChallenge"]

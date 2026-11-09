@@ -142,4 +142,13 @@ PostalCountrySystem._branch_models = (PostalCountrySystemUS, PostalCountrySystem
 PostalCountrySystem.model_rebuild(force=True)
 
 
+PostalCountrySystem1 = PostalCountrySystemUS
+
+
+PostalCountrySystem2 = PostalCountrySystemGB
+
+
+PostalCountrySystem3 = PostalCountrySystemCA
+
+
 __all__ = ["PostalCountrySystem"]

@@ -52,4 +52,10 @@ AccountReference._branch_models = (AccountReferenceAccountId, AccountReferenceBr
 AccountReference.model_rebuild(force=True)
 
 
+AccountReference1 = AccountReferenceAccountId
+
+
+AccountReference2 = AccountReferenceBrandOperator
+
+
 __all__ = ["AccountReference"]

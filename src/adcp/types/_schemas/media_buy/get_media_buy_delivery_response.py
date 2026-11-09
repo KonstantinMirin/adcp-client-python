@@ -424,4 +424,19 @@ class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+ByPackageItem = MediaBuyDeliveriesItemByPackageItem
+
+
+ByPackageItem1 = WindowsItemByPackageItem
+
+
+MediaBuyDelivery = MediaBuyDeliveriesItem
+
+
+Totals = MediaBuyDeliveriesItemTotals
+
+
+Window = WindowsItem
+
+
 __all__ = ["GetMediaBuyDeliveryResponse"]

@@ -25,4 +25,7 @@ ProductChangeMap = Annotated[dict[StrMinLen1, ProductChangeMapValue], Field(desc
 strict_validate = strict_alias(__adcp_schema__, "ProductChangeMap", ProductChangeMap)
 
 
+ProductChangeMap1 = ProductChangeMapValue
+
+
 __all__ = ["ProductChangeMap"]

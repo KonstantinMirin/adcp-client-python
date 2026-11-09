@@ -34,4 +34,7 @@ class PublisherDesignatedPreviewProvider(AdCPBaseModel):
     routes: Annotated[list[RoutesItem], Field(min_length=1)]
 
 
+Route = RoutesItem
+
+
 __all__ = ["PublisherDesignatedPreviewProvider"]

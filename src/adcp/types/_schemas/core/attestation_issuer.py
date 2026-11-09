@@ -59,4 +59,13 @@ AttestationIssuer._branch_models = (AttestationBrandIssuer, AttestationAgentIssu
 AttestationIssuer.model_rebuild(force=True)
 
 
+AttestationIssuer1 = AttestationBrandIssuer
+
+
+AttestationIssuer2 = AttestationAgentIssuer
+
+
+AttestationIssuer3 = AttestationOriginIssuer
+
+
 __all__ = ["AttestationIssuer"]

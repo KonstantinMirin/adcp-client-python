@@ -119,4 +119,7 @@ class ListCreativesRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Field1 = FieldsItem
+
+
 __all__ = ["ListCreativesRequest"]

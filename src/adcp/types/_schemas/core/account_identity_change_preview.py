@@ -122,4 +122,19 @@ AccountIdentityChangePreview._branch_models = (AccountIdentityChangeWouldApply, 
 AccountIdentityChangePreview.model_rebuild(force=True)
 
 
+AccountIdentityChangePreview1 = AccountIdentityChangeWouldApply
+
+
+AccountIdentityChangePreview2 = AccountIdentityChangeWouldRequireApproval
+
+
+AccountIdentityChangePreview3 = AccountIdentityChangeBlocked
+
+
+Effect = ImpactEffect
+
+
+Effect1 = NonblockingImpactsItemEffect
+
+
 __all__ = ["AccountIdentityChangePreview", "BlockedImpacts", "Impact", "NonblockingImpacts"]

@@ -133,4 +133,19 @@ VendorPricing._branch_models = (CpmPricing, PercentOfMediaPricing, FlatFeePricin
 VendorPricing.model_rebuild(force=True)
 
 
+VendorPricing1 = CpmPricing
+
+
+VendorPricing2 = PercentOfMediaPricing
+
+
+VendorPricing3 = FlatFeePricing
+
+
+VendorPricing4 = PerUnitPricing
+
+
+VendorPricing5 = CustomPricing
+
+
 __all__ = ["VendorPricing"]

@@ -59,4 +59,7 @@ FormatOptionReference._branch_models = (PublisherCatalogFormatOptionReference, P
 FormatOptionReference.model_rebuild(force=True)
 
 
+FormatOptionReference1 = PublisherCatalogFormatOptionReference
+
+
 __all__ = ["FormatOptionReference"]

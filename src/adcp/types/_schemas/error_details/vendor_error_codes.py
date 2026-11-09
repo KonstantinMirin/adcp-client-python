@@ -32,4 +32,10 @@ class VendorErrorCodeRegistry(AdCPBaseModel):
     vendors: Annotated[dict[str, VendorsValue] | None, Field(description='Map of vendor prefix to vendor metadata and codes'), OmittedNotNull] = None
 
 
+Codes = CodesValue
+
+
+Vendors = VendorsValue
+
+
 __all__ = ["VendorErrorCodeRegistry"]

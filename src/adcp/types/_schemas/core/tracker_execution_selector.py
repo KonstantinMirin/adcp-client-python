@@ -92,4 +92,7 @@ TrackerExecutionSelector._branch_models = (TrackerExecutionSelectorPixelTrackerI
 TrackerExecutionSelector.model_rebuild(force=True)
 
 
+TrackerExecutionSelector1 = TrackerExecutionSelectorPixelTrackerImg
+
+
 __all__ = ["TrackerExecutionSelector"]

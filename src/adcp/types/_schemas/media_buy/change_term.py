@@ -52,4 +52,7 @@ class MediaBuyChangeTerm(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+AllowedStatus = AllowedStatusesItem
+
+
 __all__ = ["MediaBuyChangeTerm"]

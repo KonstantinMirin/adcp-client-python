@@ -68,4 +68,7 @@ class CanonicalFormatHTML5Banner(CanonicalFormatBase):
 CanonicalFormatHtml5Banner = CanonicalFormatHTML5Banner
 
 
+Size = SizesItem
+
+
 __all__ = ["CanonicalFormatHTML5Banner"]

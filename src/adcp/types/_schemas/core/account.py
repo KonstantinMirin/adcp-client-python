@@ -134,4 +134,10 @@ class Account(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+GovernanceAgent = ObjUrl
+
+
+Setup = ObjUrlMessageExpiresAt
+
+
 __all__ = ["Account", "CreditLimit", "ObjUrl", "ObjUrlMessageExpiresAt", "ReportingBucket"]

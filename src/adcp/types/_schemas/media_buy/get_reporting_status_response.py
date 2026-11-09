@@ -295,4 +295,7 @@ GetReportingStatusResponse._branch_models = (SuccessfulLookup, FailedLookup,)
 GetReportingStatusResponse.model_rebuild(force=True)
 
 
+DeliveryConfigGeneration = DeliveryConfigGenerationsItem
+
+
 __all__ = ["GetReportingStatusResponse"]

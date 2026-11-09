@@ -72,4 +72,7 @@ class ValidationResult(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Feature = FeaturesItem
+
+
 __all__ = ["ValidationResult"]

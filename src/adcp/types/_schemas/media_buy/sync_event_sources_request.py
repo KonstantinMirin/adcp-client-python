@@ -53,4 +53,7 @@ class SyncEventSourcesRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+EventSource = EventSourcesItem
+
+
 __all__ = ["SyncEventSourcesRequest"]

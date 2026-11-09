@@ -115,4 +115,7 @@ DeclineProposalsResponse._branch_models = (DeclineProposalsResponseResults, Decl
 DeclineProposalsResponse.model_rebuild(force=True)
 
 
+DeclineProposalsResponse1 = DeclineProposalsResponseResults
+
+
 __all__ = ["DeclineProposalsResponse"]

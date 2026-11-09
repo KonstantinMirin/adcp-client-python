@@ -52,4 +52,10 @@ PlacementSelection._branch_models = (SelectedPlacements, ProductDefaultPlacement
 PlacementSelection.model_rebuild(force=True)
 
 
+PlacementSelection1 = SelectedPlacements
+
+
+PlacementSelection2 = ProductDefaultPlacements
+
+
 __all__ = ["PlacementSelection"]

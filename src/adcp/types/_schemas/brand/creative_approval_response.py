@@ -104,4 +104,16 @@ CreativeApprovalResponse._branch_models = (CreativeApproved, CreativeRejected, C
 CreativeApprovalResponse.model_rebuild(force=True)
 
 
+CreativeApprovalResponse1 = CreativeApproved
+
+
+CreativeApprovalResponse2 = CreativeRejected
+
+
+CreativeApprovalResponse3 = CreativePendingReview
+
+
+CreativeApprovalResponse4 = CreativeApprovalError
+
+
 __all__ = ["CreativeApprovalResponse"]

@@ -62,4 +62,10 @@ CollectionSelection._branch_models = (SelectedCollections, ProductDefaultCollect
 CollectionSelection.model_rebuild(force=True)
 
 
+CollectionSelection1 = SelectedCollections
+
+
+CollectionSelection2 = ProductDefaultCollections
+
+
 __all__ = ["CollectionSelection"]

@@ -134,4 +134,7 @@ class SignalCoverageForecast(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Point = PointsItem
+
+
 __all__ = ["SignalCoverageForecast"]

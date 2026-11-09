@@ -81,4 +81,13 @@ SignalTargeting._branch_models = (SignalTargetingBinary, SignalTargetingCategori
 SignalTargeting.model_rebuild(force=True)
 
 
+SignalTargeting1 = SignalTargetingBinary
+
+
+SignalTargeting2 = SignalTargetingCategorical
+
+
+SignalTargeting3 = SignalTargetingNumeric
+
+
 __all__ = ["SignalTargeting"]

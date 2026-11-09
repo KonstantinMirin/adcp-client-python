@@ -86,4 +86,13 @@ AgentReportingDestination._branch_models = (FileTransferDestination, WarehouseMa
 AgentReportingDestination.model_rebuild(force=True)
 
 
+AgentReportingDestination1 = FileTransferDestination
+
+
+AgentReportingDestination2 = WarehouseMaterializationDestination
+
+
+AgentReportingDestination3 = DatasetShareRecipient
+
+
 __all__ = ["AgentReportingDestination"]

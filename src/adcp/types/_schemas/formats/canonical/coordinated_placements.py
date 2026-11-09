@@ -297,4 +297,49 @@ class CanonicalFormatCoordinatedPlacements(CanonicalFormatBase):
     shared_slots: Annotated[list[SharedSlotsItem] | None, Field(description='Manifest slots supplied once and consumed by one or more coordinated components.'), OmittedNotNull] = None
 
 
+Components = ComponentsItemFormatOptionRef
+
+
+Components1 = ComponentsItemFormatKindParamsImage
+
+
+Components10 = ComponentsItemFormatKindParamsNativeInFeed
+
+
+Components11 = ComponentsItemFormatKindParamsResponsiveCreative
+
+
+Components12 = ComponentsItemFormatKindParamsAgentPlacement
+
+
+Components13 = ComponentsItemFormatKindParamsSellerRenderedStatefulDisplay
+
+
+Components2 = ComponentsItemFormatKindParamsHtml5
+
+
+Components3 = ComponentsItemFormatKindParamsDisplayTag
+
+
+Components4 = ComponentsItemFormatKindParamsImageCarousel
+
+
+Components5 = ComponentsItemFormatKindParamsVideoHosted
+
+
+Components6 = ComponentsItemFormatKindParamsVideoVast
+
+
+Components7 = ComponentsItemFormatKindParamsAudioHosted
+
+
+Components8 = ComponentsItemFormatKindParamsAudioDaast
+
+
+Components9 = ComponentsItemFormatKindParamsSponsoredPlacement
+
+
+SharedSlot = SharedSlotsItem
+
+
 __all__ = ["CanonicalFormatCoordinatedPlacements"]

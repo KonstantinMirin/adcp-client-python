@@ -191,4 +191,22 @@ class GetProductsRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Action = RefineItemProductAction
+
+
+Action9 = RefineItemProposalAction
+
+
+Fields = FieldsItem
+
+
+Refine1 = ObjScopeAsk
+
+
+Refine2 = ObjScopeProductIdActionAsk
+
+
+Refine3 = ObjScopeProposalIdActionAsk
+
+
 __all__ = ["GetProductsRequest"]

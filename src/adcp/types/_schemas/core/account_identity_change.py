@@ -49,4 +49,10 @@ AccountIdentityChange._branch_models = (AccountIdentityChangePending, AccountIde
 AccountIdentityChange.model_rebuild(force=True)
 
 
+AccountIdentityChange1 = AccountIdentityChangePending
+
+
+AccountIdentityChange2 = AccountIdentityChangeRejected
+
+
 __all__ = ["AccountIdentityChange"]

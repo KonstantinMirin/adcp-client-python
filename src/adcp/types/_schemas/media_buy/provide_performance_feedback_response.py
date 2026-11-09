@@ -91,4 +91,7 @@ ProvidePerformanceFeedbackResponse._branch_models = (ProvidePerformanceFeedbackS
 ProvidePerformanceFeedbackResponse.model_rebuild(force=True)
 
 
+ProvidePerformanceFeedbackResponse2 = ProvidePerformanceFeedbackError
+
+
 __all__ = ["ProvidePerformanceFeedbackResponse"]

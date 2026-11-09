@@ -74,4 +74,7 @@ class SyncAudiencesRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Audience = AudiencesItem
+
+
 __all__ = ["SyncAudiencesRequest"]

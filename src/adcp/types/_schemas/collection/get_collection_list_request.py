@@ -43,4 +43,7 @@ class GetCollectionListRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Pagination = ObjMaxResultsCursor
+
+
 __all__ = ["GetCollectionListRequest"]

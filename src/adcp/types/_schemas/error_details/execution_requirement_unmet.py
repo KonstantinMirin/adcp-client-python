@@ -46,4 +46,7 @@ class ExecutionRequirementUnmetDetails(AdCPBaseModel):
     unmet_requirements: Annotated[list[UnmetRequirementsItem], Field(min_length=1)]
 
 
+UnmetRequirement = UnmetRequirementsItem
+
+
 __all__ = ["ExecutionRequirementUnmetDetails"]

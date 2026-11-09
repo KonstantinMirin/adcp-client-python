@@ -111,4 +111,10 @@ class IdentityMatchRequest(AdCPBaseModel):
     sealed_credentials: Annotated[list[SealedCredentialsItem] | None, Field(description='Optional HPKE-sealed credentials addressed to specific audiences — the network-as-RP ("issuer-as-RP"/Mechanism B) carrier. Each payload is opaque to the publisher, who relays it untouched; the inner plaintext is an `attestation` (see identities[].attestation) scoped to the audience\'s relying party. Reuses the TMPX envelope format. Router handling (normative — see docs/trusted-match/specification.mdx): the router forwards each entry only to the provider that owns its `audience_kid` (not broadcast), folds `sealed_credentials` into the per-provider re-signature canonical bytes so an injected/swapped blob breaks the signature, and includes a `sealed_credentials_hash` in the dedup cache key. Receivers decrypt only entries whose `audience_kid` they hold a key for and ignore the rest. Receivers MUST bound count and size to prevent DoS amplification.', max_length=8), OmittedNotNull] = None
 
 
+Identity = IdentitiesItem
+
+
+SealedCredential = SealedCredentialsItem
+
+
 __all__ = ["IdentityMatchRequest"]

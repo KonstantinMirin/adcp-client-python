@@ -83,4 +83,13 @@ class CreativeLocalizationReadback(AdCPBaseModel):
     variants: Annotated[list[SourceLocalizationReadback | TargetLocalizationReadback], Field(description='The source variant followed by every target variant, or only the source for monolingual topology. Assets are fully resolved after source inheritance. The enclosing creative status applies to the set as a whole.', json_schema_extra={'uniqueItems': True}, max_length=51, min_length=1)]
 
 
+LocaleFallback = LocaleFallbacksItem
+
+
+Variants1 = SourceLocalizationReadback
+
+
+Variants2 = TargetLocalizationReadback
+
+
 __all__ = ["CreativeLocalizationReadback", "ResolvedAssets"]

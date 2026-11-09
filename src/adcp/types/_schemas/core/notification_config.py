@@ -98,4 +98,7 @@ class NotificationConfig(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+EventType = EventTypesItem
+
+
 __all__ = ["NotificationConfig"]

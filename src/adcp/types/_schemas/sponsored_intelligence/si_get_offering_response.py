@@ -75,6 +75,12 @@ class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+MatchingProduct = MatchingProductsItem
+
+
+Offering = SIGetOfferingResponseOffering
+
+
 SiGetOfferingResponse = SIGetOfferingResponse
 
 

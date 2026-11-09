@@ -61,4 +61,7 @@ class Offering(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Metro = MetrosItem
+
+
 __all__ = ["Offering"]

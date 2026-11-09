@@ -180,4 +180,13 @@ SyncAudiencesResponse._branch_models = (SyncAudiencesSuccess, SyncAudiencesError
 SyncAudiencesResponse.model_rebuild(force=True)
 
 
+MatchBreakdown = MatchBreakdownItem
+
+
+SyncAudiencesResponse1 = SyncAudiencesSuccess
+
+
+SyncAudiencesResponse2 = SyncAudiencesError
+
+
 __all__ = ["SyncAudiencesResponse"]

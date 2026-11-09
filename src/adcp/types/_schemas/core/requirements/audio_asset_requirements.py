@@ -46,4 +46,7 @@ class AudioAssetRequirements(AdCPBaseModel):
     true_peak_dbfs: Annotated[float | None, Field(description='Maximum true-peak level in dBFS.'), OmittedNotNull] = None
 
 
+Format = FormatsItem
+
+
 __all__ = ["AudioAssetRequirements"]

@@ -98,4 +98,7 @@ class MediaBuy(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Cancellation = ObjCanceledAtCanceledByReason
+
+
 __all__ = ["MediaBuy"]

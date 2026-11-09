@@ -44,4 +44,10 @@ CanonicalBudgetAllocation._branch_models = (CanonicalBudgetAllocationFixed, Cano
 CanonicalBudgetAllocation.model_rebuild(force=True)
 
 
+CanonicalBudgetAllocation1 = CanonicalBudgetAllocationFixed
+
+
+CanonicalBudgetAllocation2 = CanonicalBudgetAllocationSellerOptimized
+
+
 __all__ = ["CanonicalBudgetAllocation"]

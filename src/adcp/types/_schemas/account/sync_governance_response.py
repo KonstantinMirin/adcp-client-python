@@ -96,4 +96,13 @@ SyncGovernanceResponse._branch_models = (SyncGovernanceSuccess, SyncGovernanceEr
 SyncGovernanceResponse.model_rebuild(force=True)
 
 
+Account = AccountsItem
+
+
+SyncGovernanceResponse1 = SyncGovernanceSuccess
+
+
+SyncGovernanceResponse2 = SyncGovernanceError
+
+
 __all__ = ["SyncGovernanceResponse"]

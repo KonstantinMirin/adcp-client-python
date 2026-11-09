@@ -168,4 +168,7 @@ class CheckGovernanceRequest(AdCPVersionEnvelope, AdcpRequest):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
+Pacing = DeliveryMetricsPacing
+
+
 __all__ = ["CheckGovernanceRequest"]

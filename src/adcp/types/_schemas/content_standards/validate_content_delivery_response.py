@@ -84,4 +84,13 @@ ValidateContentDeliveryResponse._branch_models = (ValidateContentDeliveryRespons
 ValidateContentDeliveryResponse.model_rebuild(force=True)
 
 
+Result = ResultsItem
+
+
+ValidateContentDeliveryResponse1 = ValidateContentDeliveryResponseResultsSummary
+
+
+ValidateContentDeliveryResponse2 = ValidateContentDeliveryResponseErrors
+
+
 __all__ = ["ValidateContentDeliveryResponse"]

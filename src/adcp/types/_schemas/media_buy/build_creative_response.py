@@ -379,4 +379,31 @@ BuildCreativeResponse._branch_models = (BuildCreativeSuccess, BuildCreativeMulti
 BuildCreativeResponse.model_rebuild(force=True)
 
 
+BuildCreativeResponse1 = BuildCreativeSuccess
+
+
+BuildCreativeResponse2 = BuildCreativeError
+
+
+BuildCreativeResponse3 = BuildCreativeMultiSuccess
+
+
+BuildCreativeResponse5 = BuildCreativeEstimate
+
+
+Creative = CreativesItem
+
+
+PerLeaf = PerLeafItem
+
+
+Preview2 = BuildCreativeSuccessPreviewPreviewsItem
+
+
+Preview4 = BuildCreativeMultiSuccessPreviewPreviewsItem
+
+
+Variant = VariantsItem
+
+
 __all__ = ["BuildCreativeResponse"]

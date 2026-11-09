@@ -79,4 +79,13 @@ CalibrateContentResponse._branch_models = (CalibrateContentResponseVerdict, ObjE
 CalibrateContentResponse.model_rebuild(force=True)
 
 
+CalibrateContentResponse1 = CalibrateContentResponseVerdict
+
+
+CalibrateContentResponse2 = ObjErrorsContextExt
+
+
+Feature = FeaturesItem
+
+
 __all__ = ["CalibrateContentResponse"]

@@ -102,7 +102,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
-from codegen import ir
+from codegen import ir, structure
 from codegen.refusal import BuildFailure, Kind, Refusal
 from codegen.schema import nodes
 
@@ -2010,6 +2010,7 @@ def assign(
     declared: Mapping[str, str] = {},
     abroad: frozenset[str] = frozenset(),
     subjects: frozenset[str] = frozenset(),
+    upstream: Mapping[str, Mapping[str, object] | None] = {},
 ) -> ir.Module | Refusal:
     """The pass: every declaration of one module given the name §4 derives for it.
 
@@ -2072,6 +2073,13 @@ def assign(
     rather than a gate.**  Nothing here looks at an emitted name to see whether it claimed
     a subject; the claim is simply not among the names the collision rule leaves available.
     §3a: "a census over the output can only ever confirm a decision made once."
+
+    ``upstream`` is UPSTREAM's PUBLISHED STRUCTURES for the module their generator wrote
+    from this same document -- word -> structural identity, read off their emitted tree
+    (``codegen.structure``, ``survey/published_structures.py``).  It is handed in by the run
+    for ``surface``'s and ``subjects``' reason: the index is one artifact for the whole tree
+    and the caller that knows the run reads it once.  Empty by default, which binds nothing
+    and refuses nothing -- a document lowered outside a run is named by §4 alone.
     """
     #: The declarations §4's dedup leaves unwritten: an adopting position that derives NO
     #: name of its own, and one whose derived name IS the declaring class's.  The first
@@ -2254,14 +2262,33 @@ def assign(
     #: (:func:`the_published_spellings`).  Asked of a finished table rather than mixed
     #: into the spelling, so nothing here can move a declaration's name: what it produces
     #: is a BINDING, and the collision rule has already decided every symbol it binds.
-    recased = the_published_spellings(
-        mod.hops,
-        symbols,
-        mod.root,
+    #: The module's whole NAMESPACE as the two name rules below must see it: the symbols
+    #: this module declares, the renderer's carriers, the symbols it imports, and its root.
+    #: Bound once, because a word one of those has taken is not available to either rule and
+    #: two readings of "already taken" would be two places they could disagree.
+    occupied = (
         frozenset(symbols.values())
         | carriers
         | {symbol for _, symbol in mod.imports}
-        | {symbols.get("", mod.root)},
+        | {symbols.get("", mod.root)}
+    )
+    recased = the_published_spellings(mod.hops, symbols, mod.root, occupied)
+    #: §4's declarations, SETTLED -- needed before the structural join below because that
+    #: join reads the element set of each class this module declares, which is a property of
+    #: the finished declarations and not of the walk's order.
+    declarations = the_value_lists(
+        tuple(_bound(d, symbols) for i, d in enumerate(mod.declarations) if i not in degenerate)
+    )
+    #: **THE COMPLEMENT OF :data:`UPSTREAM_TITLE_CASE`, joined on STRUCTURE**
+    #: (``codegen.structure.STRUCTURAL_IDENTITY``): the words upstream's generator published
+    #: at the positions a title cannot reach.  Read after ``recased`` and with ``recased``'s
+    #: own words in ``occupied``, so the ROOT's rule is settled first and this one never
+    #: shadows it -- the two rules partition upstream's surface rather than compete for it.
+    restructured, unbound = structure.bind(
+        structure.from_declarations(declarations),
+        upstream,
+        symbols.get("", mod.root),
+        occupied | frozenset(recased),
     )
     return ir.Module(
         document=mod.document,
@@ -2279,13 +2306,7 @@ def assign(
         # positions -- two derivations that do not interact, so the order is the one that
         # lets each read a finished input.
         declarations=(
-            *the_value_lists(
-                tuple(
-                    _bound(d, symbols)
-                    for i, d in enumerate(mod.declarations)
-                    if i not in degenerate
-                )
-            ),
+            *declarations,
             # **Upstream's spelling, LAST and as the one alias statement this emitter
             # has** (:data:`UPSTREAM_TITLE_CASE`).  An ``ir.AliasDecl`` holding a bare
             # local symbol is what :func:`adopt` already declares for §4's content dedup,
@@ -2301,7 +2322,7 @@ def assign(
             # move a line of any other module.
             *(
                 ir.AliasDecl(word, ir.TypeRef(symbol, local=True))
-                for word, symbol in sorted(recased.items())
+                for word, symbol in sorted({**recased, **restructured}.items())
             ),
         ),
         imports=frozenset(mod.imports),
@@ -2337,4 +2358,11 @@ def assign(
         # Upstream's spellings beside them, as the run's own record of the one kind of
         # binding no POSITION of the document is behind (:attr:`codegen.ir.Module.recased`).
         recased=recased,
+        # Upstream's PUBLISHED words beside them, the same kind of binding reached by the
+        # other key (:attr:`codegen.ir.Module.restructured`), and every word the join did
+        # NOT bind beside the reason it did not (:attr:`codegen.ir.Module.unbound`).  The
+        # refusals ride on the module because that is where the join happened: a count
+        # recomputed later would be a second join.
+        restructured=restructured,
+        unbound=unbound,
     )

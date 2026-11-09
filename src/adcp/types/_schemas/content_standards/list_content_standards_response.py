@@ -67,4 +67,10 @@ ListContentStandardsResponse._branch_models = (ListContentStandardsResponseStand
 ListContentStandardsResponse.model_rebuild(force=True)
 
 
+ListContentStandardsResponse1 = ListContentStandardsResponseStandards
+
+
+ListContentStandardsResponse2 = ListContentStandardsResponseErrors
+
+
 __all__ = ["ListContentStandardsResponse"]
