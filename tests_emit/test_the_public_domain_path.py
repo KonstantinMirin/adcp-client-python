@@ -188,8 +188,28 @@ def test_each_clause_has_a_population() -> None:
     assert COMPOSES_MACHINERY in found, (COMPOSES_MACHINERY, sorted(found))
     # The aggregator package is where the compiler writes, read off the emitter.
     assert (TYPES / emit.SURFACE / "__init__.py").is_file(), emit.SURFACE
+    # **THE CROSS-DOMAIN CONSOLIDATION IS THE ONE FILE OF THAT PACKAGE WITH NO PUBLIC
+    # COMPOSITION, AND THAT IS THE CLAUSE** (``emit.FLAT``, ``adcp-client-python-qpo4``,
+    # 2026-11-09).  Every other module here is a DOMAIN, and a domain's aggregator earns a
+    # public ``adcp/types/<domain>.py`` because §1 gives a class exactly one path a consumer
+    # writes and that path is the domain's.  ``_flat`` is the union of all 23 under their
+    # bare words -- a FLAT spelling, which §1 gives no public module, because the import is
+    # meant to tell a reader which document a class came from.  So there is nothing for this
+    # file to compare it against, and the absence is the rule rather than an omission: a
+    # public ``adcp/types/_flat.py`` would be the second path §1 forbids, 3,219 times over.
+    #
+    # What stands over it instead is ``test_emit.test_the_committed_tree_is_what_a_fresh_run
+    # _emits``, which byte-compares every file of ``out.beside`` including this one -- so the
+    # consolidation is graded exactly as the 23 are, and only its COMPOSITION is absent.
+    # Named off the emitter on both sides, so a rename of either constant moves one place.
     assert sorted(p.stem for p in (TYPES / emit.SURFACE).glob("*.py") if p.stem != "__init__") == (
-        sorted(found)
+        sorted(found | {emit.FLAT})
+    )
+    assert emit.FLAT not in found, (emit.FLAT, sorted(found))
+    assert not (TYPES / f"{emit.FLAT}.py").exists(), (
+        f"src/adcp/types/{emit.FLAT}.py is a public FLAT path for every name §1 gives a "
+        f"domain path, which is the second spelling §1 forbids.  The consolidation is "
+        f"private and ``adcp.types.__getattr__`` is its one reader."
     )
 
 
