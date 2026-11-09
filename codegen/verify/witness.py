@@ -1437,6 +1437,11 @@ class Construction:
         """
         self.counters.subjects += 1
         held: list[str] = []
+        #: **§8's THIRD pairing rule, as pointers**: the SIBLING conjuncts of a conjunct
+        #: list the pointer CUTS INTO.  Held apart from :data:`held` and not merged into it,
+        #: because ``applied_schema`` resets this list at every cut and keeps the other --
+        #: see the clause at the ``CONJUNCT`` hop below.
+        siblings: list[str] = []
         picks: list[tuple[str, int]] = []
         at = ""
         parts = [part for part in pointer.lstrip("/").split("/") if part]
@@ -1448,20 +1453,38 @@ class Construction:
                 # it -- which is ``_conjunction``'s own clause -- and so is each member of
                 # that node's own ``allOf``, UNLESS the hop is into that list: at an
                 # ``allOf`` hop the list the pointer is entering is this node's own, and
-                # holding it would state every sibling conjunct at a pointer inside one of
-                # them.  ``_conjunction``'s ``through != "allOf"`` is the same clause.
+                # holding it as a whole statement would state every sibling conjunct at a
+                # pointer inside one of them.  ``_conjunction``'s ``through != "allOf"`` is
+                # the same clause, and ``siblings`` below is where that list goes instead.
                 where, node = self.through(document, at)
                 if isinstance(node, Mapping):
                     held.append(where)
                     if part not in CONJUNCT:
-                        # ``codegen.bundle.subschemas`` is the ONE descent step and it spells
-                        # the suffix, so the conjunct's pointer is read off the same walk the
-                        # compiler's own census reads and never assembled from a keyword name.
-                        held.extend(
-                            f"{where}{suffix}"
-                            for keyword, suffix, _, _ in bundle.subschemas(node)
-                            if keyword in CONJUNCT
+                        held.extend(self._conjuncts(document, where, node))
+                if part in CONJUNCT:
+                    # **THE SIBLING CONJUNCTS, which is ``applied_schema``'s ``cutting`` /
+                    # ``siblings`` pair read for pointers.**  draft-07 holds every member of
+                    # an ``allOf`` against the SAME instance, so at ``/allOf/1`` the other
+                    # members are statements about this instance and not facts the class
+                    # added -- and where the pointer continues BELOW the conjunct, each
+                    # sibling's declaration at the same keys is what holds against the
+                    # instance the node describes.  Measured: without this clause, 11 of the
+                    # 30 refusals ``adcp-client-python-hzio.14`` names are a value built
+                    # without a statement the subject conjoins, every one of them with the
+                    # subject's error inside ``allOf/0`` -- the sibling.
+                    #
+                    # **A SECOND CUT DROPS THE FIRST ONE'S SIBLINGS** rather than guessing
+                    # how the two compose, which is ``applied_schema``'s own rule at the same
+                    # place ("a conjunct of a conjunct would need a reading of which of the
+                    # outer siblings' nodes answers the inner cut, and this rule makes
+                    # none").  The assignment -- not an ``extend`` -- is that rule.
+                    siblings = (
+                        self._conjuncts(
+                            document, where, node, skip=f"/{part}/{parts[index + 1]}"
                         )
+                        if isinstance(node, Mapping)
+                        else []
+                    )
                 if part in bundle.HELD_IN_A_LIST:
                     taken = int(parts[index + 1])
                     if part in UNIONS:
@@ -1478,16 +1501,20 @@ class Construction:
             # against this one to that same instance: draft-07 applies ``allOf/0/properties/x``
             # and ``properties/x`` to one value.  A statement silent at the key says nothing
             # about it and drops out, which is ``_descended``'s own totality.
-            descended: list[str] = []
-            for statement in held:
-                where, node = self.through(document, f"{statement}/{part}")
-                if isinstance(node, Mapping):
-                    descended.append(where)
-            held = descended
+            #
+            # **ONE operation and not two**: a sibling travels by exactly what a held
+            # statement travels by, which is ``applied_schema``'s own sentence at this hop
+            # ("the two lists differ in where they came from and not in how they travel").
+            held = self._descended(document, held, part)
+            siblings = self._descended(document, siblings, part)
             at = f"{at}/{part}"
             index += 1
+        # A sibling conjunct is a conjunct of THIS node, so it joins the enclosing
+        # statements at the foot -- ``applied_schema``'s ``[*conjoined, *siblings]``.
         besides = tuple(
-            dict.fromkeys(statement for statement in held if statement != pointer)
+            dict.fromkeys(
+                statement for statement in (*held, *siblings) if statement != pointer
+            )
         )
         read = Subject(pointer, besides, tuple(picks))
         self.counters.conjoined += len(besides)
@@ -1495,6 +1522,60 @@ class Construction:
         if not besides:
             self.counters.bare += 1
         return read
+
+    def _conjuncts(
+        self, document: str, where: str, node: Mapping[str, Any], skip: str = ""
+    ) -> list[str]:
+        """The pointers of ``node``'s own conjunct list, each READ THROUGH THE STORE.
+
+        ``codegen.bundle.subschemas`` is the ONE descent step and it spells the suffix, so a
+        conjunct's pointer is read off the same walk the compiler's own census reads and
+        never assembled from a keyword name.
+
+        **AND EACH IS RESOLVED AS IT IS HELD, which a measurement forced.**  The record
+        stores a repeated subtree once and writes a reference at every other occurrence, so a
+        conjunct held as the reference holds NO KEY AT ALL -- and :meth:`_descended`'s next
+        hop then drops it, silently, exactly as :meth:`through`'s own docstring says it
+        would.  ``adcp.types._base._conjunction`` resolves a spliced conjunct at the same
+        place and for the same reason.  Measured: the two ``indicators`` classes of
+        ``media-buy/get-media-buys-response.json`` hold ``core/indicator.json`` as a sibling
+        conjunct stored once, and the unresolved pointer dropped at the ``properties`` hop --
+        so the class was graded without the ``required`` its subject states.
+
+        ``skip`` is the ONE suffix the pointer itself is entering, which is what makes this
+        the SIBLINGS at a cut and the whole list everywhere else.
+        """
+        out: list[str] = []
+        for keyword, suffix, _, _ in bundle.subschemas(node):
+            if keyword not in CONJUNCT or suffix == skip:
+                continue
+            resolved, member = self.through(document, f"{where}{suffix}")
+            if isinstance(member, Mapping):
+                out.append(resolved)
+        return out
+
+    def _descended(
+        self, document: str, statements: Sequence[str], part: str
+    ) -> list[str]:
+        """Every pointer in ``statements`` read AT ``part``, with the silent ones dropped.
+
+        ``adcp.types._base._descended`` with the dicts left out: one hop of a pointer
+        applied to the statements held against the instance the hop is LEAVING, because
+        draft-07 applies ``allOf/0/properties/x`` and ``properties/x`` to one value.  A
+        statement that says nothing at this key drops out, which is what makes the descent
+        total rather than partial, and **"the record has no node there" is how silence is
+        spelled as a pointer** (:meth:`through`'s ``_MISSING``).
+
+        One function because :meth:`subject` descends TWO lists -- the enclosing statements
+        and the sibling conjuncts -- and that function's own sentence at the same hop is
+        that "the two lists differ in where they came from and not in how they travel".
+        """
+        out: list[str] = []
+        for statement in statements:
+            where, node = self.through(document, f"{statement}/{part}")
+            if isinstance(node, Mapping):
+                out.append(where)
+        return out
 
     def applied(self, document: str, pointer: str = "") -> Built:
         """**The witness for the subject a CLASS at this pointer names**, and the one entry
