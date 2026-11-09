@@ -567,6 +567,23 @@ CONJUNCT = frozenset(
 )
 UNIONS = keywords.combinators(keywords.Position.ROOT)
 
+#: **Every keyword whose subschema describes the SAME INSTANCE as the node stating it**, read
+#: off the same descent column: a conjunct (``CONJ``), a branch (``BRANCH``) and a RULE
+#: (``RULE`` -- a ``not``, an ``if`` and its two arms).
+#:
+#: :data:`SAME_INSTANCE` is this set WITHOUT ``not`` and ``if``, and the two answer different
+#: questions.  That one answers which hop of a POINTER keeps the conjunction travelling, and
+#: ``adcp.types._base.applied_schema`` -- which the subject must agree with -- resets at those
+#: two.  This answers which subschema OF A STATEMENT talks about the value the statement is
+#: about, and a ``not``'s subject and an ``if``'s condition both do.  :meth:`Construction._names`
+#: is the one reader, and it reads a statement's own text for KEY NAMES and nothing else.
+ABOUT_ONE_INSTANCE = frozenset(
+    k
+    for k, position in bundle.DESCENDS.items()
+    if position
+    in (keywords.Position.CONJ, keywords.Position.BRANCH, keywords.Position.RULE)
+)
+
 #: How many storage references :meth:`Construction.through` will follow before it calls the
 #: record a defect of its writer.  **NOT A CAP ON A CHECK** (``adcp-client-python-hzio.6``):
 #: a stored subtree is never itself a bare reference, so one hop suffices and this bound is
@@ -713,6 +730,13 @@ class Counters:
     #: branch per union the pointer passes through, so this is a figure about the pointers
     #: and never a budget.
     answered: int = 0
+
+    #: **How many values took a KEY to its own next case because a decider refused the
+    #: first** (:meth:`Construction._recased`).  The conditional's counterpart to the union
+    #: branch retry, and the figure that says how much of the population it serves -- a
+    #: reading with zero firings over the graded population is dead code by
+    #: ``adcp-client-python-hzio.7``'s own rule and this is where that shows.
+    recased: int = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -1373,14 +1397,81 @@ class Construction:
         object, so the answer cannot go stale, and the entry PINS the node: an identity key
         over an unpinned temporary is the defect §9's identity rule names, and nothing here
         can acquire it while every node the walk has seen is held.
+
+        **AND THE RECORD'S OWN STORAGE HOP IS TAKEN MID-WALK WHERE -- AND ONLY WHERE -- THE
+        PLAIN DEREFERENCE WOULD RAISE** (:meth:`_hoisted`).  ``codegen.bundle.record`` stores
+        each distinct subtree once and writes a reference at every other occurrence, so a
+        pointer whose own text walks INTO a hoisted subtree walks into the reference instead,
+        and the segment after it has no key to index.  ``adcp.types._base.through_the_store``
+        is "the one hop that makes the hoisting invisible to a pointer" and
+        ``applied_schema`` takes it before every segment for exactly this reason; this method
+        took it only at the foot (:meth:`through`), so the two disagreed about which pointers
+        the record holds.
+
+        **Gated so that nothing which resolves today moves**, which is ``applied_schema``'s
+        own discipline at its own substitution clause: a pointer the plain walk reaches takes
+        the plain walk, and a pointer NEITHER walk reaches still raises -- so a class stamped
+        at a position the record does not hold stays loud.  Measured: one of the five
+        ``adcp-client-python-hzio.15`` names,
+        ``media-buy/refine-proposals-response.json#/properties/results/items/oneOf/0/properties/proposals/items``,
+        is a pointer the record HOLDS through one such hop and the other four are not.
         """
         key = (document, pointer)
         held = self._nodes.get(key, _MISSING)
         if held is _MISSING:
-            held = bundle.node_at(self._records[document], pointer)
+            try:
+                held = bundle.node_at(self._records[document], pointer)
+            except (KeyError, IndexError, TypeError, ValueError):
+                held = self._hoisted(document, pointer)
             self._nodes[key] = held
             self.counters.reached += 1
         return held
+
+    def _hoisted(self, document: str, pointer: str) -> Any:
+        """``pointer`` dereferenced with the record's own storage hop taken before each segment.
+
+        One segment at a time, each read through :meth:`through`, because the hoisting is the
+        record's storage decision and not a statement the document makes -- "it carries
+        nothing and answers nothing".  The pointer that comes out is the document's own
+        pointer and the node is the document's own node; nothing is composed and nothing is
+        minted, which is what keeps §9's identity rule satisfiable here.
+
+        It RAISES where the hop does not reach either -- the only caller is :meth:`node`'s own
+        fallback and a position neither walk holds is a finding
+        (``adcp-client-python-hzio.15``) rather than something to answer with an empty schema.
+
+        **IT READS THE RECORD DIRECTLY AND NOT THROUGH :meth:`node`**, which is not a
+        micro-decision: :meth:`node` is this method's own caller, so settling a segment
+        through it would re-enter here at the same pointer and recur without bound.  Measured
+        the hard way -- ``RecursionError`` at 195 pairs and a monotonicity the gate caught.
+        """
+        record = self._records[document]
+        at = ""
+        for part in [p for p in pointer.lstrip("/").split("/") if p]:
+            at = f"{self._settles(document, record, at)}/{part}"
+        return bundle.node_at(record, self._settles(document, record, at))
+
+    def _settles(self, document: str, record: Mapping[str, Any], at: str) -> str:
+        """``at`` with the record's own storage reference followed, as a POINTER.
+
+        :meth:`through`'s reading without the memo, because its caller is :meth:`node` and
+        this one is :meth:`node`'s own fallback.  One hop suffices for any record
+        ``codegen.bundle.record`` can write and :data:`_STORE_HOPS` is the same unreachable
+        bound and the same reason that method carries: the alternative to raising on a cycle
+        is a hang.
+        """
+        for _ in range(_STORE_HOPS):
+            node = bundle.node_at(record, at)
+            if not (isinstance(node, Mapping) and len(node) == 1):
+                return at
+            ref = node.get("$ref")
+            if not isinstance(ref, str):
+                return at
+            target = _local(ref)
+            if target is None:
+                return at
+            at = target
+        raise RecursionError(f"{document}{at}: a storage reference does not settle")
 
     def through(self, document: str, pointer: str) -> tuple[str, Any]:
         """The pointer a SOLE ``$ref`` node forwards to, with the node there -- or ``_MISSING``.
@@ -1437,6 +1528,11 @@ class Construction:
         """
         self.counters.subjects += 1
         held: list[str] = []
+        #: **§8's THIRD pairing rule, as pointers**: the SIBLING conjuncts of a conjunct
+        #: list the pointer CUTS INTO.  Held apart from :data:`held` and not merged into it,
+        #: because ``applied_schema`` resets this list at every cut and keeps the other --
+        #: see the clause at the ``CONJUNCT`` hop below.
+        siblings: list[str] = []
         picks: list[tuple[str, int]] = []
         at = ""
         parts = [part for part in pointer.lstrip("/").split("/") if part]
@@ -1448,20 +1544,38 @@ class Construction:
                 # it -- which is ``_conjunction``'s own clause -- and so is each member of
                 # that node's own ``allOf``, UNLESS the hop is into that list: at an
                 # ``allOf`` hop the list the pointer is entering is this node's own, and
-                # holding it would state every sibling conjunct at a pointer inside one of
-                # them.  ``_conjunction``'s ``through != "allOf"`` is the same clause.
+                # holding it as a whole statement would state every sibling conjunct at a
+                # pointer inside one of them.  ``_conjunction``'s ``through != "allOf"`` is
+                # the same clause, and ``siblings`` below is where that list goes instead.
                 where, node = self.through(document, at)
                 if isinstance(node, Mapping):
                     held.append(where)
                     if part not in CONJUNCT:
-                        # ``codegen.bundle.subschemas`` is the ONE descent step and it spells
-                        # the suffix, so the conjunct's pointer is read off the same walk the
-                        # compiler's own census reads and never assembled from a keyword name.
-                        held.extend(
-                            f"{where}{suffix}"
-                            for keyword, suffix, _, _ in bundle.subschemas(node)
-                            if keyword in CONJUNCT
+                        held.extend(self._conjuncts(document, where, node))
+                if part in CONJUNCT:
+                    # **THE SIBLING CONJUNCTS, which is ``applied_schema``'s ``cutting`` /
+                    # ``siblings`` pair read for pointers.**  draft-07 holds every member of
+                    # an ``allOf`` against the SAME instance, so at ``/allOf/1`` the other
+                    # members are statements about this instance and not facts the class
+                    # added -- and where the pointer continues BELOW the conjunct, each
+                    # sibling's declaration at the same keys is what holds against the
+                    # instance the node describes.  Measured: without this clause, 11 of the
+                    # 30 refusals ``adcp-client-python-hzio.14`` names are a value built
+                    # without a statement the subject conjoins, every one of them with the
+                    # subject's error inside ``allOf/0`` -- the sibling.
+                    #
+                    # **A SECOND CUT DROPS THE FIRST ONE'S SIBLINGS** rather than guessing
+                    # how the two compose, which is ``applied_schema``'s own rule at the same
+                    # place ("a conjunct of a conjunct would need a reading of which of the
+                    # outer siblings' nodes answers the inner cut, and this rule makes
+                    # none").  The assignment -- not an ``extend`` -- is that rule.
+                    siblings = (
+                        self._conjuncts(
+                            document, where, node, skip=f"/{part}/{parts[index + 1]}"
                         )
+                        if isinstance(node, Mapping)
+                        else []
+                    )
                 if part in bundle.HELD_IN_A_LIST:
                     taken = int(parts[index + 1])
                     if part in UNIONS:
@@ -1478,16 +1592,20 @@ class Construction:
             # against this one to that same instance: draft-07 applies ``allOf/0/properties/x``
             # and ``properties/x`` to one value.  A statement silent at the key says nothing
             # about it and drops out, which is ``_descended``'s own totality.
-            descended: list[str] = []
-            for statement in held:
-                where, node = self.through(document, f"{statement}/{part}")
-                if isinstance(node, Mapping):
-                    descended.append(where)
-            held = descended
+            #
+            # **ONE operation and not two**: a sibling travels by exactly what a held
+            # statement travels by, which is ``applied_schema``'s own sentence at this hop
+            # ("the two lists differ in where they came from and not in how they travel").
+            held = self._descended(document, held, part)
+            siblings = self._descended(document, siblings, part)
             at = f"{at}/{part}"
             index += 1
+        # A sibling conjunct is a conjunct of THIS node, so it joins the enclosing
+        # statements at the foot -- ``applied_schema``'s ``[*conjoined, *siblings]``.
         besides = tuple(
-            dict.fromkeys(statement for statement in held if statement != pointer)
+            dict.fromkeys(
+                statement for statement in (*held, *siblings) if statement != pointer
+            )
         )
         read = Subject(pointer, besides, tuple(picks))
         self.counters.conjoined += len(besides)
@@ -1495,6 +1613,60 @@ class Construction:
         if not besides:
             self.counters.bare += 1
         return read
+
+    def _conjuncts(
+        self, document: str, where: str, node: Mapping[str, Any], skip: str = ""
+    ) -> list[str]:
+        """The pointers of ``node``'s own conjunct list, each READ THROUGH THE STORE.
+
+        ``codegen.bundle.subschemas`` is the ONE descent step and it spells the suffix, so a
+        conjunct's pointer is read off the same walk the compiler's own census reads and
+        never assembled from a keyword name.
+
+        **AND EACH IS RESOLVED AS IT IS HELD, which a measurement forced.**  The record
+        stores a repeated subtree once and writes a reference at every other occurrence, so a
+        conjunct held as the reference holds NO KEY AT ALL -- and :meth:`_descended`'s next
+        hop then drops it, silently, exactly as :meth:`through`'s own docstring says it
+        would.  ``adcp.types._base._conjunction`` resolves a spliced conjunct at the same
+        place and for the same reason.  Measured: the two ``indicators`` classes of
+        ``media-buy/get-media-buys-response.json`` hold ``core/indicator.json`` as a sibling
+        conjunct stored once, and the unresolved pointer dropped at the ``properties`` hop --
+        so the class was graded without the ``required`` its subject states.
+
+        ``skip`` is the ONE suffix the pointer itself is entering, which is what makes this
+        the SIBLINGS at a cut and the whole list everywhere else.
+        """
+        out: list[str] = []
+        for keyword, suffix, _, _ in bundle.subschemas(node):
+            if keyword not in CONJUNCT or suffix == skip:
+                continue
+            resolved, member = self.through(document, f"{where}{suffix}")
+            if isinstance(member, Mapping):
+                out.append(resolved)
+        return out
+
+    def _descended(
+        self, document: str, statements: Sequence[str], part: str
+    ) -> list[str]:
+        """Every pointer in ``statements`` read AT ``part``, with the silent ones dropped.
+
+        ``adcp.types._base._descended`` with the dicts left out: one hop of a pointer
+        applied to the statements held against the instance the hop is LEAVING, because
+        draft-07 applies ``allOf/0/properties/x`` and ``properties/x`` to one value.  A
+        statement that says nothing at this key drops out, which is what makes the descent
+        total rather than partial, and **"the record has no node there" is how silence is
+        spelled as a pointer** (:meth:`through`'s ``_MISSING``).
+
+        One function because :meth:`subject` descends TWO lists -- the enclosing statements
+        and the sibling conjuncts -- and that function's own sentence at the same hop is
+        that "the two lists differ in where they came from and not in how they travel".
+        """
+        out: list[str] = []
+        for statement in statements:
+            where, node = self.through(document, f"{statement}/{part}")
+            if isinstance(node, Mapping):
+                out.append(where)
+        return out
 
     def applied(self, document: str, pointer: str = "") -> Built:
         """**The witness for the subject a CLASS at this pointer names**, and the one entry
@@ -1905,6 +2077,13 @@ class Construction:
         LATER member of the node's own ``enum`` is a reading of the node and the exclusion
         is read off the sibling's own statement -- there is no search here and no solver.
 
+        **AND THE SAME READING AT A KEY A DECIDER READS** (:meth:`_recased`), which is this
+        clause's own sentence one level down: a ``not`` whose subject names a key is the
+        ``vast-tracker-asset`` shape with the ``enum`` at the CHILD instead of at the node,
+        and the loop above cannot reach it because an object node states no ``enum`` of its
+        own.  Where the deciders refuse the built object, the key the deciding statement
+        itself names takes its own next value class.
+
         **A value the node's own screen admits is never DELETED by a decider.**  Where no
         stated case satisfies them, the value comes back unchanged and the composition is
         graded where a composition is graded (:meth:`document_admits`).  The approximation
@@ -1938,6 +2117,9 @@ class Construction:
             reading = _patterned(read[0], _bound(nodes, "minLength") or 0, _bound(nodes, "maxLength"))
             if reading.held and not self.refusals(document, pointer, reading.value):
                 return reading
+        recased = self._recased(document, pointer, views, built)
+        if recased is not None:
+            return recased
         for where, _ in views:
             stated = self.node(document, where)
             members = stated.get("examples") if isinstance(stated, Mapping) else None
@@ -1956,6 +2138,132 @@ class Construction:
         return built if built.source is Source.APPROXIMATED else Built(
             None, Source.APPROXIMATED, built.reason or "no keyword states a value"
         )
+
+    def _recased(
+        self,
+        document: str,
+        pointer: str,
+        views: Sequence[tuple[str, tuple[str, ...]]],
+        built: Built,
+    ) -> Built | None:
+        """The built object with ONE key taken to its own next value class.
+
+        **THE CONDITIONAL'S AND THE NEGATION'S COUNTERPART TO THE UNION BRANCH RETRY**
+        (``adcp-client-python-hzio.13``: *"nothing varies an enum member at a key an ``if``
+        names"*).  :meth:`_picks` varies one union's branches because a value merged from a
+        union's first branch can be one a later branch also admits; the same is true of a key
+        whose first ``enum`` member is the member a ``not`` forbids or an ``if`` selects an
+        unsatisfiable consequent on, and nothing varied it.
+
+        **THE KEY IS READ OFF THE DECIDING STATEMENT'S OWN TEXT and the VALUE off the key's
+        own keywords**, so neither is a search.  :meth:`_names` answers which keys a statement
+        names; :meth:`classes` answers which values the key's node admits -- "every member of
+        an ``enum``, both sides of each bound and the bound itself", each already screened
+        against the key's own node.  There is no solver here and nothing is enumerated that
+        the document does not state.
+
+        **A SUM AND NOT A PRODUCT**, which is :meth:`_picks`' own rule at this keyword: one
+        key is varied at a time and the first candidate the node's screen admits and the
+        deciders accept is the answer, so the cost is the sum over the named keys of their own
+        class counts and never a cross-product over the object's keys.
+        ``docs/plan/architecture.md`` §9 calls that cross-product a defect of the approach
+        rather than a cost to control.
+
+        ``None`` where the deciders accept the value already, where the value is not an
+        object, or where no named key's own classes satisfy them -- and then the caller's
+        last clause stands: a value the node's own screen admits is never DELETED by a
+        decider.
+        """
+        if not built.held or not isinstance(built.value, Mapping):
+            return None
+        if not self._decides(document, views, built.value):
+            return None
+        for name in self._names(document, views, built.value):
+            describing = [
+                (f"{at}/properties/{bundle.escape_key(name)}", path)
+                for at, path in views
+                for node in [self.node(document, at)]
+                if isinstance(node, Mapping) and name in (node.get("properties") or {})
+            ]
+            if not describing:
+                continue
+            at, path = describing[0]
+            besides = tuple(p for p, _ in describing[1:])
+            for case in self.classes(document, at, (*path, *besides)):
+                if case.value == built.value.get(name):
+                    continue
+                candidate = {**built.value, name: case.value}
+                if self.refusals(document, pointer, candidate):
+                    continue
+                if not self._decides(document, views, candidate):
+                    self.counters.recased += 1
+                    return Built(candidate, Source.CONSTRUCTED)
+        return None
+
+    def _names(
+        self,
+        document: str,
+        views: Sequence[tuple[str, tuple[str, ...]]],
+        value: Any,
+    ) -> tuple[str, ...]:
+        """The keys the statements that REFUSE this value name, in the document's own order.
+
+        One statement at a time and only the ones that refuse: a decider the value already
+        satisfies says nothing about which key to vary, and asking it would widen the set for
+        no reading.  Then the keys are read off that statement's own subtree -- every
+        ``properties`` entry it declares and every ``required`` member it demands, following
+        the record's own storage reference and every subschema the ONE descent table names
+        (:func:`codegen.bundle.subschemas`), because a ``not`` states its subject through an
+        ``anyOf`` of ``$ref``\\ s as readily as inline and the key names are the same either
+        way.
+
+        **Terminating on the pointer set and not on a depth**, which is §9's own rule for a
+        walk in this module: a pointer already seen is not walked again, so the walk is
+        bounded by the statement's own subtree and no bound is introduced here.
+        """
+        out: list[str] = []
+        for at, _ in views:
+            node = self.node(document, at)
+            if not isinstance(node, Mapping):
+                continue
+            stated = {k: node[k] for k in ("oneOf", "anyOf", "not") if k in node}
+            if not stated:
+                continue
+            for keyword in stated:
+                refused = any(
+                    True
+                    for _ in self.validator(document)
+                    .evolve(schema={keyword: stated[keyword]})
+                    .iter_errors(value)
+                )
+                if not refused:
+                    continue
+                pending = [
+                    f"{at}{suffix}"
+                    for held, suffix, _, _ in bundle.subschemas(node)
+                    if held == keyword
+                ]
+                seen: set[str] = set()
+                while pending:
+                    where, held = self.through(document, pending.pop(0))
+                    if where in seen or not isinstance(held, Mapping):
+                        continue
+                    seen.add(where)
+                    for key in held.get("properties") or ():
+                        if key not in out:
+                            out.append(key)
+                    for key in held.get("required") or ():
+                        if isinstance(key, str) and key not in out:
+                            out.append(key)
+                    # Only the subschemas that talk about THIS instance: a
+                    # ``properties`` entry's own ``required`` is a statement about
+                    # another value and its key names are not this object's.
+                    pending.extend(
+                        f"{where}{suffix}"
+                        for inner, suffix, _, _ in bundle.subschemas(held)
+                        if inner in ABOUT_ONE_INSTANCE
+                    )
+        return tuple(out)
 
     def _views(
         self,
@@ -2370,6 +2678,23 @@ class Construction:
         admits no value the array has none either, with the conjunction's own reason
         carried: an array whose ``contains`` no member can satisfy admits no instance, and
         saying so is the answer rather than an array the document refuses.
+
+        **AND SEVERAL ``contains`` DEMAND SEVERAL MEMBERS, one each, which is the keyword's
+        own reading rather than a count this module chose.**  draft-07's ``contains`` is
+        satisfied by SOME member, so two statements of it are two existential claims and one
+        value conjoined from both satisfies them only where they agree; where they do not,
+        a single member repeated satisfies exactly one and the document refuses the array on
+        the other.  ``media-buy/request-proposals-response.json`` is the measured shape:
+        ``purchase_continuation``'s legacy branch states ``losses.contains`` twice at its own
+        conjuncts and a third time in the consequent its own ``source_adcp_version``
+        selects, over an element ``enum`` of exactly those three members -- so the document
+        admits the three-member array and the one-member reading built two of them and was
+        refused on ``contains`` (``adcp-client-python-hzio.14``).
+
+        The count such a set demands is the number of STATEMENTS, bounded by the node's own
+        ``maxItems``: a bound the document states is a fact and not a budget, and where it
+        is below that number the document admits no instance -- which the node's own screen
+        then says, at ``maxItems``, rather than this reading guessing.
         """
         least = _bound(nodes, "minItems")
         count = int(least) if isinstance(least, (int, float)) else 0
@@ -2401,7 +2726,10 @@ class Construction:
             if isinstance(node, Mapping) and isinstance(node.get("items"), Mapping)
         ]
         if wanted:
-            count = max(count, 1)
+            # ONE member per existential statement, bounded by the node's own ceiling.
+            most = _bound(nodes, "maxItems")
+            demanded = max(count, len(wanted))
+            count = min(demanded, int(most)) if isinstance(most, (int, float)) else demanded
         if not element:
             if not wanted:
                 return Built([None] * count, Source.CONSTRUCTED)
@@ -2412,6 +2740,16 @@ class Construction:
             besides = tuple(p for p, _ in (*element[1:], *wanted))
         if count == 0:
             return Built([], Source.CONSTRUCTED)
+        if len(wanted) > 1:
+            built = self._one_each(
+                document,
+                element,
+                wanted,
+                count,
+                distinct=any(node.get("uniqueItems") is True for node in nodes),
+            )
+            if built is not None:
+                return built
         inner = self.value(document, at, (*path, *besides), besides)
         if inner.source is Source.BACK_EDGE:
             if count == 0:
@@ -2423,6 +2761,56 @@ class Construction:
         if count > 1 and any(node.get("uniqueItems") is True for node in nodes):
             return self._distinct(document, at, path, count)
         return Built([inner.value] * count, Source.CONSTRUCTED)
+
+    def _one_each(
+        self,
+        document: str,
+        element: Sequence[tuple[str, tuple[str, ...]]],
+        wanted: Sequence[tuple[str, tuple[str, ...]]],
+        count: int,
+        *,
+        distinct: bool,
+    ) -> Built | None:
+        """One member per ``contains`` statement, each built from the ELEMENT and that one.
+
+        The array's half of :meth:`_views`' own rule, read for an EXISTENTIAL keyword: a
+        ``contains`` describes SOME member, so the statement to build a member from is the
+        element's declaration conjoined with exactly ONE of them -- never with all of them at
+        once, which is the universal reading and the one that empties the intersection where
+        two of them disagree.
+
+        ``None`` where this reading has nothing to add, and the caller then takes the
+        one-member reading unchanged.  Two cases: a member the element and its ``contains``
+        admit no value for, and a set whose members come out EQUAL under a ``uniqueItems``
+        that forbids it -- there the node's own ``enum`` is the distinct set
+        (:meth:`_distinct`) and this reading has no better answer than the one already there.
+        The short list is padded with its FIRST member, because ``minItems`` above the number
+        of existential statements is a count and says nothing about what fills it.
+        """
+        out: list[Any] = []
+        for one, where in wanted:
+            seed, path = element[0] if element else (one, where)
+            besides = (
+                (*(p for p, _ in element[1:]), one) if element else ()
+            )
+            member = self.value(document, seed, (*path, *besides), besides)
+            if member.source is Source.BACK_EDGE:
+                return None
+            if not member.held:
+                return None
+            out.append(member.value)
+        if distinct and (
+            len(out) < count
+            or any(
+                out[i] == out[j]
+                for i in range(len(out))
+                for j in range(i + 1, len(out))
+            )
+        ):
+            return None
+        while 0 < len(out) < count:
+            out.append(out[0])
+        return Built(out[:count], Source.CONSTRUCTED)
 
     def _distinct(
         self, document: str, at: str, path: tuple[str, ...], count: int

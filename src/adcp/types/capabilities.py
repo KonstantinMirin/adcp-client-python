@@ -35,13 +35,10 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
-from adcp.types.compat import Avatar as Avatar
-from adcp.types.compat import IdempotencySupported as Idempotency
-from adcp.types.compat import IdempotencySupported as IdempotencySupported
-from adcp.types.compat import IdempotencyUnsupported as IdempotencyUnsupported
-from adcp.types.compat import Video as Video
-from adcp.types.compat import Voice as Voice
+from adcp.types.core import ExperimentalFeatureID as ExperimentalFeature
+from adcp.types.core import PostalAreaSupport as GeoPostalAreas
 from adcp.types.core import PreviewRendererMetadataRenderingOrigin as CapabilitiesPreviewRenderingOrigin
+from adcp.types.enums import AdCPSpecialism as Specialism
 from adcp.types.protocol import GetAdCPCapabilitiesResponseAccount as CapabilitiesAccount
 from adcp.types.protocol import GetAdCPCapabilitiesResponseAdcp as Adcp
 from adcp.types.protocol import GetAdCPCapabilitiesResponseBrand as Brand
@@ -54,6 +51,8 @@ from adcp.types.protocol import GetAdCPCapabilitiesResponseIdentity as Identity
 from adcp.types.protocol import GetAdCPCapabilitiesResponseIdentityCompromiseNotification as CompromiseNotification
 from adcp.types.protocol import GetAdCPCapabilitiesResponseIdentityKeyOrigins as KeyOrigins
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMeasurement as Measurement
+from adcp.types.protocol import GetAdCPCapabilitiesResponseMeasurementMetricsItem as Metric
+from adcp.types.protocol import GetAdCPCapabilitiesResponseMeasurementMetricsItemAccreditationsItem as Accreditation
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuy as CapabilitiesMediaBuy
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyAudienceTargeting as AudienceTargeting
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyAudienceTargetingMatchingLatencyHours as MatchingLatencyHours
@@ -77,15 +76,24 @@ from adcp.types.protocol import GetAdCPCapabilitiesResponseSignalsFeatures as Fe
 from adcp.types.protocol import GetAdCPCapabilitiesResponseSignalsFeatures as SignalsFeatures
 from adcp.types.protocol import GetAdCPCapabilitiesResponseSponsoredIntelligence as SponsoredIntelligence
 from adcp.types.protocol import GetAdCPCapabilitiesResponseSponsoredIntelligenceEndpoint as Endpoint
+from adcp.types.protocol import GetAdCPCapabilitiesResponseSponsoredIntelligenceEndpointTransportsItem as Transport
 from adcp.types.protocol import GetAdCPCapabilitiesResponseSupportedProtocolsItem as SupportedProtocol
 from adcp.types.protocol import GetAdCPCapabilitiesResponseWebhookSigning as WebhookSigning
+from adcp.types.protocol import IdempotencySupported as Idempotency
+from adcp.types.protocol import IdempotencySupported as IdempotencySupported
+from adcp.types.protocol import IdempotencyUnsupported as IdempotencyUnsupported
+from adcp.types.sponsored_intelligence import Avatar as Avatar
+from adcp.types.sponsored_intelligence import SICapabilities as SiCapabilities
 from adcp.types.sponsored_intelligence import SICapabilitiesA2ui as A2ui
 from adcp.types.sponsored_intelligence import SICapabilitiesCommerce as Commerce
 from adcp.types.sponsored_intelligence import SICapabilitiesComponents as Components
 from adcp.types.sponsored_intelligence import SICapabilitiesModalities as Modalities
+from adcp.types.sponsored_intelligence import Video as Video
+from adcp.types.sponsored_intelligence import Voice as Voice
 
 __all__ = [
     "A2ui",
+    "Accreditation",
     "Adcp",
     "AgeRestriction",
     "AttributionWindow",
@@ -107,8 +115,10 @@ __all__ = [
     "CreativeSpecs",
     "Endpoint",
     "Execution",
+    "ExperimentalFeature",
     "Features",
     "GeoMetros",
+    "GeoPostalAreas",
     "GeoProximity",
     "Governance",
     "Idempotency",
@@ -120,15 +130,19 @@ __all__ = [
     "LifecycleTool",
     "MatchingLatencyHours",
     "Measurement",
+    "Metric",
     "Modalities",
     "NegativeKeywords",
     "Portfolio",
     "RequestSigning",
+    "SiCapabilities",
     "Signals",
     "SignalsFeatures",
+    "Specialism",
     "SponsoredIntelligence",
     "SupportedProtocol",
     "Targeting",
+    "Transport",
     "TrustedMatch",
     "Video",
     "Voice",
@@ -142,13 +156,6 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "Accreditation": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "ExperimentalFeature": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "GeoPostalAreas": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "Metric": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "SiCapabilities": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "Specialism": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "Transport": "DOCUMENT-NO-WORD-NO-IDENTITY",
 }
 
 

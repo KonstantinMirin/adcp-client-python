@@ -19,8 +19,8 @@ declaring module in `__module__`, and that module's path IS a bundle document's 
 carries its own word in `__qualname__`, and both trees derive that word from the document.
 So upstream's own name says WHICH DOCUMENT and WHICH NODE, and neither half is a guess.
 
-NINE KEYS, each reported as itself because "what the key was read off" is the first thing a
-disagreement about a row turns out to be about.  `survey/alias_surface.py`'s two are the
+ELEVEN KEYS, each reported as itself because "what the key was read off" is the first thing
+a disagreement about a row turns out to be about.  `survey/alias_surface.py`'s two are the
 first three; the rest are the owner's extension (`adcp-client-python-1hck`, amended), and
 each is tried in this order so a stronger key is never overridden by a weaker one:
 
@@ -70,6 +70,30 @@ each is tried in this order so a stronger key is never overridden by a weaker on
                             `ProvenanceVerificationItemResult`.  5 names, each listed in the
                             table with its identity corroboration, because this is the one
                             key an owner may want to read row by row.
+    document+pointer-identity   THE POINTERS THE DOCUMENT STATES.  The pool is
+                            :meth:`Join.pointer_pool` -- every declaration of ours the
+                            document states, inline at a pointer of its own or through a
+                            `$ref` THAT DOCUMENT states -- and the gate is schema equality,
+                            unique in the pool.  This is the key the `$ref` hop needed and
+                            `word+identity` could only reach when the two trees happened to
+                            agree on the word: `ExperimentalFeature` is
+                            `core/experimental-feature-id.json` at
+                            `#/properties/experimental_features/items`, and our word for it
+                            is `ExperimentalFeatureID`.
+    document+pointer-structure  the same pool, selected by the DOCUMENT'S OWN STRUCTURE
+                            (:func:`shape`) where the two emissions disagree about a leaf
+                            nobody read off the document: their `Accreditation` and our
+                            `AccreditationsItem` are one items node and differ only in what
+                            each generator added to `evidence_url`.  Property names, nesting
+                            and enumerated values only; unique in the pool; silent where the
+                            structure names nothing (:func:`names_nothing`).
+
+**AND NEITHER POINTER KEY READS A LETTER OF EITHER SIDE'S SPELLING, which is what keeps them
+from binding two unrelated subjects.**  `Accreditation`/`AccreditationsItem` and
+`Metric`/`MetricsItem` look like suffix artefacts and are not matched as any; the pool is
+bounded by ONE document -- their own declaring module's -- and by the references that
+document states, and a tie refuses the row (`pointer_refused`) instead of picking.  A key
+that matched on spelling would bind two subjects the first time two documents shared a word.
 
 AND A MODULE NO DOCUMENT STATES IS REFUSED WHOLE.  `adcp.types.registry` is generated from
 `schemas/registry-openapi.yaml` and `adcp.types.core` is hand-written machinery; not one of
@@ -131,6 +155,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import structural_signature as ss  # noqa: E402
+import upstream_machinery as um  # noqa: E402
 
 OUR_GEN = "adcp.types._schemas"
 THEIR_GEN = "adcp.types.domains"
@@ -176,18 +201,37 @@ def dump_ours(out_path: Path) -> None:
 
     declarations: dict[str, dict] = {}
     unreadable: dict[str, str] = {}
+    #: **WHICH DECLARATION AN OBJECT ON A PUBLIC MODULE IS, BY IDENTITY.**  A class answers
+    #: that with `__module__` and `__qualname__`; a type ALIAS has neither, so the public
+    #: path of `core/experimental-feature-id.json`'s root was invisible and the adapter
+    #: imported it from `adcp.types._schemas` -- a PRIVATE path, in a generated module whose
+    #: whole purpose is to be the supported spelling.  A re-export binds the same object, so
+    #: `id()` is the reading, and it is exact where equality would not be: two `Annotated`
+    #: aliases over one type compare equal and are different declarations.
+    by_id: dict[int, str] = {}
 
     def add(mod_name: str, word: str, obj: object) -> None:
         key = f"{mod_name}.{word}"
         if key in declarations:
             return
+        by_id.setdefault(id(obj), key)
         method, schema, note = ss.signature(obj)
         branch = obj.__dict__.get("_branch_models") or () if isinstance(obj, type) else ()
+        # **THE DOCUMENT AND THE POINTER THE CLASS ITSELF CARRIES**, which is this project's
+        # own statement of what a declaration IS (`adcp.types._base.SchemaRef`) and the one
+        # fact about a declaration that is neither a word nor a signature.  Off `__dict__`
+        # and not `getattr`, because a subclass inherits its base's ref and would report a
+        # pointer no document states for it.  A declaration that is not a class carries
+        # none: a root type ALIAS binds its ref at MODULE scope and a nested one binds none
+        # at all (`codegen/render.py`), so attributing the module's ref to every alias in
+        # `__all__` would hand several declarations one pointer.
+        ref = obj.__dict__.get("__adcp_schema__") if isinstance(obj, type) else None
         declarations[key] = {
             "word": word,
             "module": mod_name,
             "method": method,
             "note": note,
+            "ref": list(ref) if isinstance(ref, tuple) else None,
             "sig": ss._digest(schema) if schema is not None else "",  # noqa: SLF001
             "schema": ss._canon(schema) if schema is not None else "",  # noqa: SLF001
             "branches": [f"{b.__module__}.{b.__qualname__}" for b in branch],
@@ -195,6 +239,15 @@ def dump_ours(out_path: Path) -> None:
         }
 
     def record(mod_name: str, mod: object) -> None:
+        # **AN ADAPTER OF OURS DECLARES NOTHING, SO NOTHING IS RECORDED FROM IT.**  The
+        # class arm below is already safe -- a re-exported class still names its own
+        # `__module__` -- but a type ALIAS has no module of its own, so the `__all__` arm
+        # recorded `adcp.types.capabilities.ExperimentalFeature` as a DECLARATION the moment
+        # this writer bound that name, and the next run's word and signature indexes then
+        # carried its own last output as a candidate.  Measured: one declaration on the run
+        # after the write, and the count is stable across two runs with this clause.
+        if getattr(mod, MARKER, None) is not None:
+            return
         for attr, obj in list(vars(mod).items()):
             if isinstance(obj, type) and getattr(obj, "__module__", None) == mod_name:
                 add(mod_name, obj.__qualname__, obj)
@@ -208,6 +261,25 @@ def dump_ours(out_path: Path) -> None:
             obj = getattr(mod, word, None)
             if obj is not None and not isinstance(obj, type):
                 add(mod_name, word, obj)
+        # **A MODULE'S OWN `__adcp_schema__` IS ITS ROOT'S, AND WHOSE IT IS IS GATED ON
+        # UNIQUENESS.**  A root with a class says so itself; an ENUM root and a scalar ALIAS
+        # root have nowhere to put a `ClassVar`, so `codegen/render.py` binds the ref at
+        # MODULE scope beside `strict_validate` -- `enums/specialism.py` is
+        # `__adcp_schema__ = SchemaRef('enums/specialism.json', '#')` and
+        # `class AdCPSpecialism(StrEnum)`.  Attributed only where no declaration of the
+        # module already claims the root pointer and exactly ONE carries no ref at all:
+        # measured, `core/postal_area_support.py` holds the root `PostalAreaSupport` (which
+        # claims `#` itself) beside the inner `PostalAreaSupportValueItem`, and an
+        # ungated reading handed the inner enum the document's root pointer.
+        mine = [k for k in declarations if declarations[k]["module"] == mod_name]
+        at_root = getattr(mod, "__adcp_schema__", None)
+        refless = [k for k in mine if declarations[k]["ref"] is None]
+        if (
+            isinstance(at_root, tuple)
+            and len(refless) == 1
+            and not any((declarations[k]["ref"] or [None, None])[1] == "#" for k in mine)
+        ):
+            declarations[refless[0]]["ref"] = list(at_root)
 
     for mod_name in modules:
         try:
@@ -221,12 +293,26 @@ def dump_ours(out_path: Path) -> None:
             unreadable[mod_name] = f"{type(exc).__name__}: {exc}"
             continue
         record(mod_name, mod)
-        for attr, obj in list(vars(mod).items()):
-            if attr.startswith("_") or not isinstance(obj, type):
-                continue
-            key = f"{getattr(obj, '__module__', '')}.{getattr(obj, '__qualname__', '')}"
-            if key in declarations:
-                declarations[key]["public"].append([mod_name, attr])
+        # **AN ADAPTER OF OURS IS NOT A PUBLIC HOME FOR A DECLARATION.**  A module carrying
+        # :data:`MARKER` restates upstream's words and declares nothing, so recording it as
+        # a `public` path makes this writer's own last output an input to its next run: the
+        # statement for `CpmAuctionPricingOption` named `adcp.types.compat` -- the OTHER
+        # alias layer -- rather than the emitted `adcp.types.pricing_options`, which is one
+        # adapter importing another and is a second answer to one question.  Measured: 31
+        # rows of the table were reaching an alias layer that way, and all 31 now name the
+        # module the compiler wrote -- the same rule `demand` reads one layer down, and what
+        # makes a second run of the writer reproduce the first.
+        if getattr(mod, MARKER, None) is None:
+            for attr, obj in list(vars(mod).items()):
+                if attr.startswith("_"):
+                    continue
+                key = (
+                    f"{getattr(obj, '__module__', '')}.{getattr(obj, '__qualname__', '')}"
+                    if isinstance(obj, type)
+                    else by_id.get(id(obj), "")
+                )
+                if key in declarations:
+                    declarations[key]["public"].append([mod_name, attr])
 
     out_path.write_text(
         json.dumps(
@@ -429,8 +515,84 @@ def consts(schema: str) -> dict[str, object]:
     return {k: v["const"] for k, v in props.items() if isinstance(v, dict) and "const" in v}
 
 
+#: The keywords a STRUCTURE is read off, split by how draft-07 spells what they hold.  Three
+#: tuples and not a walk of every key, because the whole point is that everything NOT named
+#: here is dropped: `minLength`, `maxLength`, `format`, `default`, `description`, `title`,
+#: `examples` and `uniqueItems` are what the two generators add on their own authority, and
+#: they are exactly where two emissions of ONE document disagree.
+SHAPE_LEAF = ("type", "enum", "const")
+SHAPE_BY_NAME = ("properties", "patternProperties", "definitions")
+SHAPE_IN_LIST = ("oneOf", "anyOf", "allOf", "prefixItems")
+SHAPE_ONE = ("items", "additionalProperties", "contains", "additionalItems")
+
+
+def shape(node: object) -> tuple:
+    """**THE DOCUMENT'S OWN STRUCTURE AT A NODE**: its names, its nesting, its values.
+
+    The identity key asks whether two emissions produced the same schema; this asks the
+    weaker and more durable question -- whether they describe the same NODE OF THE DOCUMENT
+    -- and it is the only reading that survives two generators disagreeing about a leaf.
+    Measured: upstream's `Accreditation` says `evidence_url` is `{"format": "uri",
+    "minLength": 1}` and ours says `{"format": "uri", "maxLength": 2048}`; the document
+    itself says `{"type": "string", "format": "uri"}` and neither emitter is quoting it.
+    The property NAMES, the nesting and the enumerated VALUES are the document's own
+    vocabulary and no generator invents them, so they are what is kept.
+
+    Recursive and position-keyed: a branch is identified by its index in the list, a
+    property by its name, so two nodes with the same names in a different arrangement do not
+    agree.  Sorted where the document holds a BAG (`properties`) and in order where it holds
+    a LIST (`oneOf`), which is the same split `codegen.bundle.subschemas` reads off the
+    descent table.
+    """
+    if isinstance(node, bool):
+        return ("bool", node)
+    if not isinstance(node, dict):
+        return ("scalar",)
+    out: list[tuple] = []
+    for keyword in SHAPE_LEAF:
+        if keyword in node:
+            held = node[keyword]
+            out.append(
+                (keyword, tuple(sorted(map(repr, held))) if isinstance(held, list) else repr(held))
+            )
+    for keyword in SHAPE_BY_NAME:
+        held = node.get(keyword)
+        if isinstance(held, dict):
+            out.append((keyword, tuple(sorted((k, shape(v)) for k, v in held.items()))))
+    for keyword in SHAPE_IN_LIST:
+        held = node.get(keyword)
+        if isinstance(held, list):
+            out.append((keyword, tuple(shape(v) for v in held)))
+    for keyword in SHAPE_ONE:
+        if keyword in node:
+            out.append((keyword, shape(node[keyword])))
+    if isinstance(node.get("required"), list):
+        out.append(("required", tuple(sorted(node["required"]))))
+    return tuple(out)
+
+
+def root_shape(canon: str) -> tuple:
+    """:func:`shape` of a dump's canonical schema, which carries the node under `root`."""
+    try:
+        return shape((json.loads(canon) or {}).get("root"))
+    except ValueError:
+        return ()
+
+
+def names_nothing(sh: tuple) -> bool:
+    """A structure with no NAMES and no VALUES cannot tell two subjects apart.
+
+    The one guard the structure key needs, and it is measured rather than cautionary: every
+    scalar alias of a document dumps as `{"type": "string"}` once the leaf keywords are
+    dropped, so `core/experimental-feature-id.json`, `core/domain-name.json`,
+    `core/country-code.json` and four more share one structure.  The key is silent there and
+    identity -- which separates all seven -- is what binds them.
+    """
+    return not ({k for k, _ in sh} & {"properties", "patternProperties", "definitions", "enum"})
+
+
 class Join:
-    def __init__(self, ours: dict, theirs: dict) -> None:
+    def __init__(self, ours: dict, theirs: dict, bundle_dir: Path | None = None) -> None:
         assert theirs.get("version") not in (None, "", "unknown"), (
             "the upstream dump records no version, and every row below is a claim about one"
         )
@@ -444,6 +606,19 @@ class Join:
         self.version = theirs["version"]
         self._values: dict[str, frozenset[str]] = {}
         self._roots: dict[str, str] = {}
+        self._shapes: dict[str, tuple] = {}
+        self._pools: dict[str, dict[str, str]] = {}
+        self.bundle_dir = bundle_dir
+        #: The bundle's own documents, dotted as a module path is, so a document named in
+        #: these rows is turned back into the PATH the bundle holds it at without a second
+        #: spelling rule -- `sponsored_intelligence.si_capabilities` is a document only
+        #: because `sponsored-intelligence/si-capabilities.json` is a file.
+        self.documents: dict[str, str] = {}
+        if bundle_dir is not None:
+            from codegen import bundle as _bundle
+
+            for path in _bundle.portable(bundle_dir):
+                self.documents[path[: -len(".json")].replace("-", "_").replace("/", ".")] = path
 
         self.their_modules = {m for r in theirs["declarations"].values() for m in r["modules"]}
         self.at: dict[tuple[str, str], list[str]] = collections.defaultdict(list)
@@ -495,6 +670,76 @@ class Join:
         while mod and mod not in self.their_modules:
             mod = mod.rsplit(".", 1)[0] if "." in mod else ""
         return mod
+
+    def shape_of(self, key: str) -> tuple:
+        if key not in self._shapes:
+            self._shapes[key] = root_shape(self.ours["declarations"][key]["schema"])
+        return self._shapes[key]
+
+    def root_declaration(self, doc: str) -> str | None:
+        """The declaration of ours that document's ROOT compiles to, by its POINTER.
+
+        `__adcp_schema__` is the class's own answer and `#` is the root pointer, so a class
+        says this about itself.  A root type ALIAS carries no class attribute to say it with
+        (`codegen/render.py` binds its ref at module scope), and for those the root is the
+        word :func:`root_of` derives from the document's own path -- the derivation already
+        in this file, not a second one.
+        """
+        path = self.documents.get(doc)
+        for word, key in self.in_module.get(OUR_GEN + "." + doc, {}).items():
+            ref = self.ours["declarations"][key].get("ref")
+            if ref and list(ref) == [path, "#"]:
+                return key
+            if ref is None and word == self.root_of(doc):
+                return key
+        return None
+
+    def pointer_pool(self, doc: str) -> dict[str, str]:
+        """**EVERY DECLARATION OF OURS THE DOCUMENT STATES, AND THE POINTER THAT STATES IT.**
+
+        Upstream's generator and ours read ONE document and disagree about where a node's
+        class goes, in exactly one way: at a `$ref` theirs INLINES the referenced document
+        into the referring module and ours keeps the referenced document's own class.  So
+        the subjects a document states are of two kinds, and both are pointers IN THAT
+        DOCUMENT:
+
+        * a node the document declares inline -- ours is the declaration in the document's
+          own module, carrying that pointer in its `__adcp_schema__`;
+        * a node the document states a `$ref` at -- ours is the ROOT declaration of the
+          document referenced, and the pointer is where the reference stands.
+
+        `codegen.bundle.references` is the reference census, which is the project's one walk
+        over the descent table, and `document_for` resolves a reference's URI to the
+        document the bundle holds -- so the pool is read off the DOCUMENT and not off either
+        tree's module graph.  A reference at a RULE position is kept here deliberately: the
+        pool is a candidate set gated below, not a claim that a type was lowered.
+
+        Returns our declaration key -> the pointer in `doc` that reaches it.  Empty when no
+        bundle was given, which makes the keys that read it silent rather than wrong.
+        """
+        if doc in self._pools:
+            return self._pools[doc]
+        pool: dict[str, str] = {}
+        path = self.documents.get(doc)
+        if self.bundle_dir is None or path is None:
+            self._pools[doc] = pool
+            return pool
+        from codegen import bundle as _bundle
+
+        for key in self.by_doc.get(doc, []):
+            ref = self.ours["declarations"][key].get("ref")
+            pool[key] = ref[1] if ref and ref[0] == path else ""
+        document = _bundle.read(self.bundle_dir, path)
+        for pointer, uri, _position in _bundle.references(document):
+            target = _bundle.document_for(uri, list(self.documents.values()))
+            if not target:
+                continue
+            dotted = target[: -len(".json")].replace("-", "_").replace("/", ".")
+            root = self.root_declaration(dotted)
+            if root is not None and root not in pool:
+                pool[root] = pointer or "#"
+        self._pools[doc] = pool
+        return pool
 
     def public(self, key: str) -> list[str] | None:
         paths = self.ours["declarations"][key]["public"]
@@ -747,6 +992,60 @@ class Join:
             only = self.by_word[word.lower()][0]
             return bind("word-unique", only, "the only declaration of that word in our tree")
 
+        # 9 / 10: THE POINTERS THE DOCUMENT STATES, which is where their generator's INLINED
+        # node and our referenced document's class are one subject under two words.  Not one
+        # letter of either side's spelling is read: the pool is
+        # :meth:`pointer_pool` -- the declarations of ours the document states, inline or
+        # through its own `$ref` -- and the selector is the declaration's own content.  Two
+        # selectors in strength order, each required to be UNIQUE in the pool:
+        #
+        #   document+pointer-identity  the canonical schemas are EQUAL.  `ExperimentalFeature`
+        #                              is `core/experimental-feature-id.json`, referenced at
+        #                              `#/properties/experimental_features/items`, and the two
+        #                              emissions agree to the digest.
+        #   document+pointer-structure the DOCUMENT'S OWN structure agrees (:func:`shape`):
+        #                              names, nesting, enumerated values, with every keyword a
+        #                              generator adds dropped.  This is the key for a node two
+        #                              emitters describe differently -- their `Accreditation`
+        #                              and our `AccreditationsItem` are both the document's
+        #                              `.../metrics/items/properties/accreditations/items`
+        #                              and disagree only on what each added to `evidence_url`.
+        #
+        # **IT CANNOT BIND TWO UNRELATED SUBJECTS**, and the two reasons are the two halves:
+        # the pool is bounded by ONE document -- their own declaring module's -- and by the
+        # references THAT document states, so nothing outside what the document names is a
+        # candidate at all; and the selector is the document's own vocabulary, where a tie
+        # refuses the row instead of picking (`pointer_refused`).  A structure that names
+        # nothing (:func:`names_nothing`) is refused outright, because every scalar alias of
+        # a document shares it.
+        if doc:
+            pool = self.pointer_pool(doc)
+            want = root_shape(their["schema"])
+            if their["sig"]:
+                hit = [k for k in pool if self.ours["declarations"][k]["sig"] == their["sig"]]
+                if len(hit) == 1:
+                    return bind(
+                        "document+pointer-identity",
+                        hit[0],
+                        f"the document states it at {pool[hit[0]] or '#'}",
+                    )
+                if len(hit) > 1:
+                    row["pointer_refused"] = (
+                        f"{len(hit)} pointers of the document carry that schema"
+                    )
+            if not names_nothing(want) and "pointer_refused" not in row:
+                hit = [k for k in pool if self.shape_of(k) == want]
+                if len(hit) == 1:
+                    return bind(
+                        "document+pointer-structure",
+                        hit[0],
+                        f"the document states it at {pool[hit[0]] or '#'}",
+                    )
+                if len(hit) > 1:
+                    row["pointer_refused"] = (
+                        f"{len(hit)} pointers of the document carry that structure"
+                    )
+
         row["identity_anywhere"] = (self.by_sig.get(their["sig"]) or [])[:3]
         if their["method"] == "none":
             row["verdict"] = "NOT-A-TYPE"
@@ -837,50 +1136,93 @@ def __getattr__(name: str) -> object:
 '''
 
 
-def write_modules(rows: list[dict], out: Path, version: str) -> dict[str, tuple[int, int]]:
+def owner(target: Path, restored: frozenset[Path]) -> str | None:
+    """Who holds this path, where it is NOT this writer's to write: the reason, or `None`.
+
+    **THE WRITER OWNS A PATH THAT IS ABSENT OR THAT CARRIES ITS OWN MARKER, AND NOTHING
+    ELSE.**  Read as a predicate over the path rather than as "the file exists", which is
+    the distinction `adcp-client-python-smzq` is about: `target.exists()` is true of the
+    writer's OWN last output, so skipping on it meant the instrument could never ADD A NAME
+    to a module it had written -- a schema bump moved the table beside it and left every
+    adapter module at its old contents, with nothing saying so.  The two clauses here are
+    the two things that skip was standing in for, each said as what it actually is:
+
+    * **upstream's own file, restored** (`survey/upstream_machinery.restored_paths`): the
+      bytes at the path are upstream's at the commit the classification names.  Measured on
+      this tree: six paths, and five of them -- `_legacy_assets`, `_scalar`, `_str_enum`,
+      `_wire`, `error_narrowing` -- are paths this writer's own demand names.  Derived from
+      the classification and never listed, so a module restored tomorrow is protected
+      without this file changing.
+    * **a module of OURS**: a path that exists, carries no marker of an adapter, and is not
+      upstream's restored file either -- which is our EMITTED domain surface
+      (`adcp.types.core` is a document's module of ours AND the name of a hand-written
+      machinery module of theirs) or any other hand-authored module of the layer.  Where
+      their path is already ours, ours wins (`survey/dropin/_dropin.py`'s own rule), read
+      here at file granularity because this writes FILES and not a loader.
+
+    Neither clause reads a module NAME, because the hazard is a path: upstream's
+    `versioned_bases/_runtime.py` and our `_runtime.py` are two files whose module leaf is
+    one word, and a name-keyed exclusion would protect ours as though it were theirs.
+
+    And a third clause, which is this writer's own reach rather than someone's ownership:
+    **a module no DIRECTORY of the layer can hold is not a file this writer can write.**
+    The demand names 16 pairs under `adcp.types.domains`, a package served by a FINDER
+    (`adcp/types/domains/__init__.py` binds `<mirror>.<rest>` to the built module
+    `adcp.types._schemas.<rest>`) and holding no submodule files at all; writing
+    `domains/core/format.py` would put a file where a loader answers.  Those rows are
+    reported with this reason and left to the lanes that own the names.
+    """
+    if target.resolve() in restored:
+        return "upstream's own file, restored"
+    if not target.parent.is_dir():
+        return f"no directory at {target.parent.name}/ -- the module is served by a loader"
+    if not target.exists():
+        return None
+    if MARKER in target.read_text():
+        return None
+    return "a module of ours, which this writer did not write"
+
+
+def write_modules(
+    rows: list[dict], out: Path, version: str, restored: frozenset[Path] | None = None
+) -> tuple[dict[str, tuple[int, int]], dict[str, str]]:
     """One module per upstream module the demand names, with its names and its refusals.
 
-    **A MODULE OF OURS IS NEVER OVERWRITTEN.**  `adcp.types.core` is a domain module of ours
-    AND the name of a hand-written machinery module of theirs, and the domain module is
-    EMITTED -- `codegen/emit.py` writes it from the compiler's own record of what it
-    exported, and a gate reads it byte for byte.  So where their path is already ours, ours
-    wins and the names only theirs carried are reported rather than served; see
-    `survey/dropin/_dropin.py`'s "where a path is ours, ours wins", read here at file
-    granularity because this writes FILES and not a loader.
+    **A PATH THIS WRITER DOES NOT OWN IS NEVER WRITTEN, AND A PATH IT OWNS IS REWRITTEN**
+    (:func:`owner`, and `adcp-client-python-smzq` for the defect that is).  Those are the
+    two halves of one repair and neither works alone: without the ownership reading a
+    re-run overwrites upstream's restored machinery with generated re-exports, and with a
+    blanket "the target exists" skip the instrument cannot add a name to its own module and
+    stops being derived at the first schema bump.  A refusal is REPORTED with its reason
+    (:func:`main` prints it) rather than recorded as a module written with no names.
 
     The FLAT namespace is written to `_adapter.py` for the same reason: `adcp.types`'s own
     `__init__` is the package, it is hand-written on purpose ("a package's own `__init__` IS
     the package, so it is bound before `__path__` is consulted"), and it resolves a flat name
     through a module rather than carrying a list.
     """
+    #: Measured live by default (`survey/upstream_machinery.restored_paths`) and a PARAMETER
+    #: so the gate can hand this function a tree of its own: the one thing worth proving
+    #: about the clause is that a run targeting a restored path leaves its bytes alone, and
+    #: a check that proved it against `src/adcp/types` would destroy the tree when it failed.
+    restored = um.restored_paths() if restored is None else restored
     by_module: dict[str, list[dict]] = collections.defaultdict(list)
     for row in rows:
         by_module[row["module"]].append(row)
     written: dict[str, tuple[int, int]] = {}
+    refused_paths: dict[str, str] = {}
     for module, group in sorted(by_module.items()):
-        leaf = "_adapter" if module == "adcp.types" else module.rpartition(".")[2]
-        target = out / f"{leaf}.py"
-        #: **THIS SKIP IS A KNOWN DEFECT AND IT IS THE SAFER OF TWO** -- see
-        #: `adcp-client-python`'s row on the adapter writer.  Skipping a target that
-        #: exists means this instrument CANNOT ADD A NAME to a module it has already
-        #: written: a schema bump leaves every adapter module at its old contents while
-        #: the table beside it moves, and nothing says so.  That contradicts the claim
-        #: this module makes about being derived.
-        #:
-        #: It is nevertheless kept, because removing it today is WORSE.  Five of the
-        #: paths this writer targets -- `_legacy_assets`, `_scalar`, `_str_enum`,
-        #: `_wire`, `error_narrowing` -- now hold upstream's own HAND-WRITTEN machinery,
-        #: restored byte for byte, and this writer has no idea: measured, the only
-        #: mention of `survey/upstream_machinery.py`'s classification anywhere in this
-        #: file is this comment.  Without the skip, a re-run silently overwrites restored
-        #: source with generated re-exports.
-        #:
-        #: The repair is BOTH halves together and neither alone: exclude a module the
-        #: machinery classification marks `restored` from `rows` upstream of here, and
-        #: then drop the skip.  Until both land, a schema bump needs this file's output
-        #: deleted by hand and the restored five put back.
-        if module != "adcp.types" and target.exists():
-            written[module] = (0, 0)
+        # **THE WHOLE MODULE PATH AND NOT ITS LEAF.**  A leaf collapses
+        # `adcp.types.domains.core.format` onto `format.py` beside `capabilities.py`, which
+        # is a file at a path no module names; the demand reached a nested module for the
+        # first time on this branch and the flattening would have written four such files.
+        rest = module[len("adcp.types") :].lstrip(".")
+        target = (
+            out / "_adapter.py" if not rest else out.joinpath(*rest.split(".")).with_suffix(".py")
+        )
+        held = owner(target, restored)
+        if held is not None:
+            refused_paths[module] = f"{target.name}: {held}"
             continue
         statements: list[str] = []
         unions: list[str] = []
@@ -940,7 +1282,7 @@ def write_modules(rows: list[dict], out: Path, version: str) -> dict[str, tuple[
         )
         target.write_text(body)
         written[module] = (len(names), len(refused))
-    return written
+    return written, refused_paths
 
 
 # --------------------------------------------------------------------------- main
@@ -959,6 +1301,12 @@ def main() -> None:
     parser.add_argument("--table", type=Path, metavar="PATH")
     parser.add_argument("--report", type=Path, metavar="PATH")
     parser.add_argument("--write", type=Path, metavar="DIR")
+    #: **THE BUNDLE A RUN READS**, which is the published one with the build's patch sets
+    #: applied (`codegen.patch.for_build`) -- the same derivation `./check` and
+    #: `tests_emit/fresh.py` take, so the pointers the keys below read off a document are the
+    #: pointers the emitter wrote into `__adcp_schema__`.  Named rather than assumed: the
+    #: unpatched bundle is a different document set and would state different references.
+    parser.add_argument("--bundle", type=Path, default=HERE.parent / "schemas/cache/3.2")
     args = parser.parse_args()
 
     if args.dump_ours:
@@ -974,8 +1322,14 @@ def main() -> None:
     if not (args.ours and args.upstream):
         parser.error("the join needs --ours and --upstream")
 
+    from codegen import patch
+
     c = census(args.src)
-    join = Join(json.loads(args.ours.read_text()), json.loads(args.upstream.read_text()))
+    join = Join(
+        json.loads(args.ours.read_text()),
+        json.loads(args.upstream.read_text()),
+        patch.for_build(args.bundle),
+    )
     owed = demand(c)
     rows = []
     for (mod, name), files in sorted(owed.items()):
@@ -1035,9 +1389,11 @@ def main() -> None:
     if args.report:
         args.report.write_text(json.dumps({"version": join.version, "rows": rows}, indent=1))
     if args.write:
-        written = write_modules(rows, args.write, join.version)
+        written, refused_paths = write_modules(rows, args.write, join.version)
         for module, n in sorted(written.items()):
             print(f"  wrote {module:34} {n[0]:5} names, {n[1]:4} refused")
+        for module, why in sorted(refused_paths.items()):
+            print(f"  NOT WRITTEN {module:28} {why}")
 
 
 if __name__ == "__main__":
