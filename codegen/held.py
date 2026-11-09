@@ -145,7 +145,22 @@ DIRECTORY = CACHE_ROOT / "accepts-corpus"
 #: an importable package name sitting among the test modules.  It is not in
 #: ``[tool.setuptools.packages.find]``'s ``where``, so none of it reaches the wheel: the
 #: shipped artifact is the packaged records, and a drawn instance is evidence about them.
-COMMITTED = ROOT / "tests" / "accepts-corpus"
+#: **WHERE THIS PROJECT'S OWN SUITE LIVES, DERIVED AND NOT ASSUMED.**  On the
+#: substitution branch ``tests/`` is UPSTREAM's suite and ours is ``tests_emit/``.  A
+#: constant that assumes ``tests/`` sends every store lookup to a directory that does
+#: not hold it, and a MISS here is not an error -- it is a silent full redraw, which is
+#: the most expensive thing this module exists to avoid.  So the directory is the one
+#: that actually holds a corpus, and a tree with neither keeps ``tests/``.
+def _suite(root: Path) -> Path:
+    for name in ("tests_emit", "tests"):
+        if (root / name / "accepts-corpus").is_dir() or (root / name / "compiled.py").is_file():
+            return root / name
+    return root / "tests"
+
+
+SUITE = _suite(ROOT)
+
+COMMITTED = SUITE / "accepts-corpus"
 
 
 class Store:
@@ -380,7 +395,7 @@ WIDENING_DIRECTORY = CACHE_ROOT / "widening-corpus"
 #: could not be filled.  So what this row ships is the store, the layering and
 #: ``--write-corpus``; whether the floor is also graded for currency, and against which
 #: derived population, is an open decision for ``docs/plan/architecture.md``.
-WIDENING_COMMITTED = ROOT / "tests" / "widening-corpus"
+WIDENING_COMMITTED = SUITE / "widening-corpus"
 
 WIDENING_FLOOR = Store(WIDENING_COMMITTED)
 

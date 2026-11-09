@@ -40,7 +40,14 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "tests"))
+#: WHERE THIS PROJECT'S OWN SUITE LIVES, and it is not always ``tests/``.  On the
+#: substitution branch ``tests/`` is UPSTREAM's suite and ours is ``tests_emit/``, so the
+#: path is derived from which directory holds the helpers rather than assumed.  One
+#: constant, because a second reader guessing differently is how a fast loop comes to
+#: read a different tree from the gate.
+ROOT = Path(__file__).resolve().parent
+SUITE = next(d for d in (ROOT / "tests_emit", ROOT / "tests") if (d / "compiled.py").is_file())
+sys.path.insert(0, str(SUITE))
 
 from codegen import patch  # noqa: E402  (the sys.path line above is what makes it resolve)
 
