@@ -1,33 +1,43 @@
-"""``adcp.types.domains.<domain>.<document>`` -- v9.6's module layout, as a COMPATIBILITY
-mirror of the private tree and never as a second public path.
+"""``adcp.types.domains.core.account`` -- v9.6's module layout, as a COMPATIBILITY mirror
+of the private tree and never as a second public path.
+
+**EVERY PATH IN THIS DOCSTRING IS A NAMED ONE AND NOT A TEMPLATE, which is the sentence
+obeying its own clause** (``tests_emit/test_prose_resolves.py``): a path a consumer can
+type is a claim about the artifact, so only a path that RESOLVES can be checked, and a
+``<placeholder>`` segment is the one spelling no import can grade.  ``core/account.json``
+is the document named throughout, and the general rule it stands for is one prefix
+substitution stated in :func:`generated`.
 
 **WHAT FORCES IT.**  ``docs/plan/rebuild-plan.md`` §1 writes a document's module to
-``adcp.types._schemas.<domain>.<document>`` and gives each class ONE public path, the
-domain surface ``adcp.types.<domain>``.  v9.6 published the generated tree itself, at
-``adcp.types.domains.<domain>.<document>``, and the machinery this release keeps is written
+``adcp.types._schemas.core.account`` and gives each class ONE public path, the domain
+surface ``adcp.types.core``.  v9.6 published the generated tree itself, at
+``adcp.types.domains.core.account``, and the machinery this release keeps is written
 against that layout: measured over ``src/adcp/`` less ``src/adcp/types/``, **1,423
-module-scope ``(module, name)`` imports from ``adcp.types*``, of which 792 resolve and 92
-distinct pairs are blocked because 91 modules under ``adcp.types.domains.*`` do not
-exist**.  Because the imports are at MODULE SCOPE one absent module takes the whole
-importing file and every name it carried, so the layout has to resolve for the kept
-machinery to import at all.  All 91 have an exact counterpart under ``_schemas`` -- 91 of
-91 -- so what is owed is a second NAME for a module, not a second module.
+module-scope ``(module, name)`` imports from ``adcp.types``, of which 792 resolve and 92
+distinct pairs are blocked because 91 modules under ``adcp.types.domains`` do not exist**.
+Because the imports are at MODULE SCOPE one absent module takes the whole importing file
+and every name it carried, so the layout has to resolve for the kept machinery to import at
+all -- measured against upstream's own suite, 77 of its test files failed COLLECTION on
+``No module named 'adcp.types.domains'`` alone.  All 91 have an exact counterpart under
+``adcp.types._schemas`` -- 91 of 91 -- so what is owed is a second NAME for a module, not a
+second module.
 
 **AND IT IS NOT A SECOND PUBLIC PATH, which is the clause that keeps ``final-state.md``
-reading 6 true.**  Reading 6 is "``from adcp.types.<domain> import <Name>`` reaches every
+reading 6 true.**  Reading 6 is "``from adcp.types.core import Account`` reaches every
 class the tree declares -- roots, union branches and aliases alike -- at exactly one such
 path", and it is stated over the DOMAIN surface.  The gate that holds it
 (``tests_emit/test_the_domain_surface.py``) derives its population from the compiler's own
-export record (``emit.surface``, keyed on the modules the run wrote under ``_schemas``), so
-the paths it counts are ``adcp.types.<domain>.<Name>`` and nothing else.  This module adds
-none of those.  It is a compatibility surface in the sense ``adcp.types.compat`` is one --
-the spelling an application has already written, resolving to the one object -- and the
-gate is not widened to tolerate it, because the gate never ranges over it.
+export record (``emit.surface``, keyed on the modules the run wrote under
+``adcp.types._schemas``), so the paths it counts are the domain surface's and nothing else.
+This module adds none of those.  It is a compatibility surface in the sense
+``adcp.types.compat`` is one -- the spelling an application has already written, resolving
+to the one object -- and the gate is not widened to tolerate it, because the gate never
+ranges over it.
 
 **NOTHING HERE IS A DECLARATION, and the identity is structural rather than per name.**  A
 mirror module IS the private module: the import system is handed the object
-``adcp.types._schemas.<rest>`` already built, bound in ``sys.modules`` under the second
-name, so
+``adcp.types._schemas.core.account`` already built, bound in ``sys.modules`` under the
+second name, so
 
     adcp.types.domains.core.account.Account is adcp.types._schemas.core.account.Account
 
