@@ -83,7 +83,7 @@ import collections
 import dataclasses
 import enum
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, NamedTuple
 
 import jsonschema
 import referencing.exceptions
@@ -523,6 +523,107 @@ class Mutation:
     location: tuple[Any, ...]
 
 
+#: **The hops that do NOT move to another instance**, read off the one descent column
+#: (``codegen.keywords.descends_at``) rather than written out, which is §3's rule for a
+#: keyword collection: a conjunct (``Position.CONJ``), a branch (``Position.BRANCH``) and
+#: the conditional's two ARMS are each a statement about the instance the enclosing node
+#: already describes, so a pointer that takes one of them names the SAME instance under one
+#: more statement.
+#:
+#: **``if`` and ``not`` are NOT here, and that is agreement rather than a reading of
+#: draft-07.**  Both descend to ``Position.RULE`` beside ``then`` and ``else``, so the
+#: column cannot separate them -- ``codegen.keywords.conditional`` says so in those words
+#: -- and ``adcp.types._base.applied_schema``, which is the subject a CLASS is graded
+#: against, treats a hop into either as a hop to a different instance: it resets the
+#: enclosing ``type`` and reads every held statement AT THAT KEY.  :meth:`Construction.subject`
+#: has to name the same conjunction that function names, so the set is the arms and not the
+#: four, and ``conditional()[1:]`` is "the arms" spelled as a reading of the declaration.
+SAME_INSTANCE = frozenset(
+    k
+    for k, position in bundle.DESCENDS.items()
+    if position in (keywords.Position.CONJ, keywords.Position.BRANCH)
+) | frozenset(keywords.conditional()[1:])
+
+#: The CONJUNCT list's keyword and the two UNION keywords, each read off the same column as
+#: :data:`SAME_INSTANCE` rather than spelled.  :meth:`Construction.subject` needs the two
+#: apart: a hop into the conjunct list must not hold that list's own siblings at a pointer
+#: inside one of them, and a hop into a union is an ANSWER the pointer already gives.
+CONJUNCT = frozenset(
+    k for k, position in bundle.DESCENDS.items() if position is keywords.Position.CONJ
+)
+UNIONS = keywords.combinators(keywords.Position.ROOT)
+
+#: How many storage references :meth:`Construction.through` will follow before it calls the
+#: record a defect of its writer.  **NOT A CAP ON A CHECK** (``adcp-client-python-hzio.6``):
+#: a stored subtree is never itself a bare reference, so one hop suffices and this bound is
+#: unreachable by any record ``codegen.bundle.record`` can write.  It exists because the
+#: alternative to raising on a cycle here is a hang, which is the same reason
+#: ``adcp.types._base.through_the_store`` writes one.
+_STORE_HOPS = 8
+
+
+class Subject(NamedTuple):
+    """**The subject a CLASS names: the node at its pointer under the conjunction that
+    reaches it** -- as POINTERS, never as a minted document.
+
+    ``docs/plan/architecture.md`` §9's identity rule is what forces this shape.  A pointer
+    names a node of a document; it cannot name a value composition minted, so a verifier
+    whose working object is a composed TEXT has no pointer to key on and reaches for content
+    by necessity.  The conjunction therefore "travels beside the node as the applied schema
+    rather than replacing it, and the identity stays the POINTER's": :attr:`pointer` is the
+    identity, :attr:`besides` is the rest of the conjunction as pointers OF THE SAME RECORD,
+    and nothing here is a dict this module assembled.
+
+    **WHY AN UPWARD READING IS NEEDED AT ALL, in the words of the lane that found it.**
+    :meth:`Construction._views` walks DOWN from the node and never up, so at
+    ``#/oneOf/0`` it builds a value for the branch alone -- and a branch CLASS is not the
+    branch node: it is the branch node conjoined with everything its root applies to the
+    same instance.  ``adcp.types._base.applied_schema`` is how this project already reads
+    that, ``SchemaBound.strict_validate`` validates against exactly it, and a witness built
+    from the branch alone is NARROWER than the class it would be offered to.  Measured over
+    the 2,584 pairs of the committed tree
+    (``tests_emit/test_witness_applied.py::test_the_upward_witness_is_admitted_by_the_class_s_own_subject``):
+    the downward reading alone puts 2,212 witnesses inside the class's own subject and 245
+    outside it; this reading puts 2,415 inside and 30 outside.
+
+    **WHAT IT CONJOINS, and it is ``applied_schema``'s own walk read for pointers.**  At
+    each hop of the pointer: a hop that does not move to another instance
+    (:data:`SAME_INSTANCE`) adds the ENCLOSING node -- and, where the hop is not through the
+    conjunct list itself, each member of that node's own ``allOf`` -- to the held set; a hop
+    that DOES move to another instance reads every held statement AT THAT KEY and drops the
+    ones silent there.  That is ``_conjunction`` and ``_descended`` with the dicts left out,
+    and it is why every member of :attr:`besides` is a pointer the record holds.
+
+    **AND THE BRANCH THE POINTER TOOK IS AN ANSWER AND NOT A CHOICE** (:attr:`picks`).  The
+    enclosing node's ``oneOf`` is in the held set, and :meth:`Construction._reach` descends a
+    union's FIRST branch by default -- so a subject at ``#/oneOf/1`` would be conjoined with
+    branch 0, which is a statement the document does not make about it.  The pointer already
+    says which branch, so each union hop is recorded here and the walk takes that index.
+    Measured: without it, 199 of 2,584 subjects named a pointer the record does not hold at
+    all, because the conjunction walked into the wrong branch.
+
+    **WHERE THIS IS WIDER THAN ``applied_schema``, AND THE DIRECTION IS THE SAFE ONE.**  An
+    enclosing node arrives here WHOLE, where ``_conjunction`` assembles a conjunct out of
+    ``SAME_INSTANCE_FACTS`` (plus ``SAME_INSTANCE_RULES`` at a branch hop) and leaves the
+    node's other keywords behind.  So this reading can hold a statement the class's subject
+    does not -- the enclosing node's own ``enum`` or bound, or its rules at a hop that
+    inherits none.  A conjunction with MORE statements in it admits FEWER values, so a
+    witness built under it is still one the subject admits: the cost is an approximation
+    where no value satisfies the surplus (measured: 122 nodes with no value become 134), and
+    never a witness the subject refuses.  The one direction that is not safe is a ``type``
+    the enclosing node states and the node CONTRADICTS, where ``applied_schema`` keeps the
+    node's word and this reading intersects to none; it is 3 of the 30 named refusals and
+    ``adcp-client-python-hzio.14`` owns it.
+    """
+
+    #: The node's own pointer -- the identity, and the only thing a key is taken from.
+    pointer: str
+    #: The rest of the conjunction about this one instance, as pointers of the same record.
+    besides: tuple[str, ...]
+    #: ``(pointer of the union keyword, index)`` for each union hop the pointer itself took.
+    picks: tuple[tuple[str, int], ...]
+
+
 @dataclasses.dataclass
 class Counters:
     """**Every memo and every claimed funnel carries a counter the gate reads** (§9).
@@ -576,6 +677,28 @@ class Counters:
     #: Visits that did NOT build a ``Resource`` to ask a node with no ``$id`` whether it has
     #: one.  The library builds one per node per visit and discards 99.99% of them.
     resource_skipped: int = 0
+
+    #: **THE UPWARD READING'S OWN CENSUS** (:class:`Subject`, :meth:`Construction.subject`).
+    #: How many subjects were WALKED.
+    #:
+    #: **AND THERE IS NO MEMO HERE, which is this row's own answer to
+    #: ``adcp-client-python-hzio.7``'s rule.**  One was written and measured first: over the
+    #: 2,584 pairs of the committed tree it took 2,584 misses and ZERO hits, because every
+    #: caller on that population asks for one subject once.  "A memo with zero hits over the
+    #: graded population is a defect -- it is either dead or keyed on something the answer
+    #: does not depend on", so it was deleted rather than kept with a hit rate of nothing.
+    #: The walk it held is a handful of dict lookups per pointer segment and
+    #: :meth:`Construction.node` -- which DOES hit -- is where its cost actually sits.
+    subjects: int = 0
+    #: How many statements the upward reading conjoined, and how many subjects conjoined
+    #: NOTHING -- a subject at a document root conjoins nothing by construction, so
+    #: ``bare`` is the root count and anything else is a walk that found no ancestor.
+    conjoined: int = 0
+    bare: int = 0
+    #: How many union hops a pointer answered for itself (:attr:`Subject.picks`).  ONE
+    #: branch per union the pointer passes through, so this is a figure about the pointers
+    #: and never a budget.
+    answered: int = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -1131,6 +1254,146 @@ class Construction:
             self.counters.reached += 1
         return held
 
+    def through(self, document: str, pointer: str) -> tuple[str, Any]:
+        """The pointer a SOLE ``$ref`` node forwards to, with the node there -- or ``_MISSING``.
+
+        **The record's text is a DAG and its pointers are not** (``docs/plan/architecture.md``):
+        ``codegen.bundle.record`` stores each distinct subtree once and writes a reference at
+        every other occurrence, and ``adcp.types._base.through_the_store`` is the one hop that
+        makes the hoisting invisible to a pointer.  :meth:`subject` takes the same hop for the
+        same reason and with one more consequence: a held statement left as a storage
+        reference holds no key at all, so the next hop of the pointer would drop it and a
+        statement the document makes about an instance two hops down would silently stop
+        being conjoined.  Returning the pointer it forwarded TO is what keeps the held set
+        pointers of the record rather than nodes this module is carrying.
+
+        A node whose ONE key is a local ``$ref`` and nothing else, which is the only node the
+        hoisting writes; a document's own reference beside a ``description`` is left exactly
+        as the document spells it, because following those would change what the subject
+        conjoins at 1,158 positions for a storage decision that touches none.
+
+        ``_MISSING`` for a pointer the record does not hold, which is what makes the descent
+        in :meth:`subject` total: ``_descended``'s rule is that a statement silent at a key
+        drops out, and "the record has no node there" is how silence is spelled as a pointer.
+        """
+        for _ in range(_STORE_HOPS):
+            try:
+                node = self.node(document, pointer)
+            except (KeyError, IndexError, TypeError, ValueError):
+                return pointer, _MISSING
+            if not (isinstance(node, Mapping) and len(node) == 1):
+                return pointer, node
+            ref = node.get("$ref")
+            if not isinstance(ref, str):
+                return pointer, node
+            target = _local(ref)
+            if target is None:
+                return pointer, node
+            pointer = target
+        raise RecursionError(f"{document}{pointer}: a storage reference does not settle")
+
+    # -- the upward reading ------------------------------------------------- #
+    def subject(self, document: str, pointer: str) -> Subject:
+        """**The subject a CLASS at this pointer names**, as pointers -- see :class:`Subject`.
+
+        ``adcp.types._base.applied_schema``'s walk, read for the POINTERS it conjoins instead
+        of for the dict it assembles.  The two must not disagree, so the clauses below are
+        that function's own clauses in its own order, and
+        ``tests_emit/test_witness_applied.py`` is where the agreement is MEASURED over every
+        pair of the tree rather than asserted in prose.
+
+        **NOT MEMOISED, and :attr:`Counters.subjects` says why**: one was written and took
+        2,584 misses and zero hits over the graded population, which
+        ``adcp-client-python-hzio.7`` calls a defect rather than a saving.  What the walk
+        reads it reads through :meth:`node`, whose memo does hit.
+        """
+        self.counters.subjects += 1
+        held: list[str] = []
+        picks: list[tuple[str, int]] = []
+        at = ""
+        parts = [part for part in pointer.lstrip("/").split("/") if part]
+        index = 0
+        while index < len(parts):
+            part = parts[index]
+            if part in SAME_INSTANCE:
+                # The hop stays on this instance, so the ENCLOSING node is a statement about
+                # it -- which is ``_conjunction``'s own clause -- and so is each member of
+                # that node's own ``allOf``, UNLESS the hop is into that list: at an
+                # ``allOf`` hop the list the pointer is entering is this node's own, and
+                # holding it would state every sibling conjunct at a pointer inside one of
+                # them.  ``_conjunction``'s ``through != "allOf"`` is the same clause.
+                where, node = self.through(document, at)
+                if isinstance(node, Mapping):
+                    held.append(where)
+                    if part not in CONJUNCT:
+                        # ``codegen.bundle.subschemas`` is the ONE descent step and it spells
+                        # the suffix, so the conjunct's pointer is read off the same walk the
+                        # compiler's own census reads and never assembled from a keyword name.
+                        held.extend(
+                            f"{where}{suffix}"
+                            for keyword, suffix, _, _ in bundle.subschemas(node)
+                            if keyword in CONJUNCT
+                        )
+                if part in bundle.HELD_IN_A_LIST:
+                    taken = int(parts[index + 1])
+                    if part in UNIONS:
+                        # The pointer says WHICH branch, so the union is answered and not
+                        # chosen.  :class:`Subject` carries the measurement.
+                        picks.append((f"{at}/{part}", taken))
+                    at = f"{at}/{part}/{taken}"
+                    index += 2
+                    continue
+                at = f"{at}/{part}"
+                index += 1
+                continue
+            # The hop moves to a DIFFERENT instance, and it moves every statement held
+            # against this one to that same instance: draft-07 applies ``allOf/0/properties/x``
+            # and ``properties/x`` to one value.  A statement silent at the key says nothing
+            # about it and drops out, which is ``_descended``'s own totality.
+            descended: list[str] = []
+            for statement in held:
+                where, node = self.through(document, f"{statement}/{part}")
+                if isinstance(node, Mapping):
+                    descended.append(where)
+            held = descended
+            at = f"{at}/{part}"
+            index += 1
+        besides = tuple(
+            dict.fromkeys(statement for statement in held if statement != pointer)
+        )
+        read = Subject(pointer, besides, tuple(picks))
+        self.counters.conjoined += len(besides)
+        self.counters.answered += len(picks)
+        if not besides:
+            self.counters.bare += 1
+        return read
+
+    def applied(self, document: str, pointer: str = "") -> Built:
+        """**The witness for the subject a CLASS at this pointer names**, and the one entry
+        point a grader of a class uses.
+
+        :meth:`value` builds the value a NODE's own keywords state; this builds the value the
+        node states UNDER the conjunction that reaches it, which is the subject
+        ``SchemaBound.strict_validate`` validates against.  The two are the same call with
+        the conjunction supplied: :attr:`Subject.besides` is handed to :meth:`value` as the
+        rest of the conjunction about this instance AND put on the stack, which is the rule
+        :meth:`value`'s own docstring states -- *"a caller that passed one and not the other
+        would be asking the memo to serve an answer built from a conjunction it was not keyed
+        on"*.
+
+        **THE KEY IS STILL ``(document, pointer, stack)``, and :attr:`Subject.picks` does not
+        join it.**  The picks are a function of the pointer -- they are the branch indices the
+        pointer itself spells -- so two calls that disagree about them are two different
+        pointers, and the stack already carries the conjunction they were read with.  A pick
+        reaches no CHILD's call either: a child is another instance location and the branch
+        this instance took says nothing about it, so :meth:`_object` and :meth:`_array`
+        pass none and the forcing lives for exactly one frame.
+        """
+        read = self.subject(document, pointer)
+        return self.value(
+            document, pointer, (pointer, *read.besides), read.besides, read.picks
+        )
+
     # -- the walk ---------------------------------------------------------- #
     def value(
         self,
@@ -1138,6 +1401,7 @@ class Construction:
         pointer: str = "",
         stack: tuple[str, ...] = (),
         besides: tuple[str, ...] = (),
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> Built:
         """**THE ONE ENTRY POINT, and it is memoised** (§9).
 
@@ -1157,6 +1421,16 @@ class Construction:
         rule names.  **A caller that passed one and not the other would be asking the memo
         to serve an answer built from a conjunction it was not keyed on**, which is the
         defect ``Fixtures._pin`` was measured to have.
+
+        **``answered`` IS THE BRANCH A UNION IN THE CONJUNCTION HAS ALREADY BEEN GIVEN**, and
+        it is :attr:`Subject.picks` -- never a caller's choice.  :meth:`applied` is its one
+        source: a subject at ``#/oneOf/1`` holds the enclosing node, whose ``oneOf`` the walk
+        would otherwise read at its FIRST branch, so the index the pointer itself spells
+        travels with the call.  It is NOT in :data:`Key` and does not need to be: the picks
+        are a function of the pointer, so two calls that disagree about them are two different
+        pointers, and ``stack`` already distinguishes the conjunction the answer was built
+        under.  Nothing inherits it -- a child instance's branch is not this one's -- so it
+        lives for one frame.
         """
         key: Key = (document, pointer, stack)
         self.counters.asked += 1
@@ -1168,7 +1442,7 @@ class Construction:
         # findable.  The stack is what carries that -- a pointer already on it is a back
         # edge -- so no placeholder value is parked here and no second structure holds
         # "in progress".
-        built = self._construct(document, pointer, stack, besides)
+        built = self._construct(document, pointer, stack, besides, answered)
         self._memo[key] = built
         self.counters.computed += 1
         if built.source is Source.STATED:
@@ -1269,7 +1543,12 @@ class Construction:
         return Built(WORD_FLOOR.get(word), Source.CONSTRUCTED)
 
     def _construct(
-        self, document: str, pointer: str, stack: tuple[str, ...], besides: tuple[str, ...] = ()
+        self,
+        document: str,
+        pointer: str,
+        stack: tuple[str, ...],
+        besides: tuple[str, ...] = (),
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> Built:
         """One node's value, bottom-up over its children's.
 
@@ -1320,10 +1599,10 @@ class Construction:
             # ``dialect_semantic`` as a ``$ref`` to a string and a consequent declares the
             # same key as a ``$ref`` to the 75-member macro ``enum``; dropping the second at
             # this line built the string's floor and the document refused it on ``enum``.
-            return self.value(document, target, (*stack, target), besides)
+            return self.value(document, target, (*stack, target), besides, answered)
 
-        views = self._views(document, pointer, stack, None, besides)
-        built, settled = self._settled(document, views)
+        views = self._views(document, pointer, stack, None, besides, answered)
+        built, settled = self._settled(document, views, None, answered)
         if built.source is Source.BACK_EDGE:
             return built
         screened = built.held and not self.refusals(document, pointer, built.value)
@@ -1334,9 +1613,12 @@ class Construction:
         # The default branch of the union the picks range over IS the round above, so the
         # retry starts at the second: a pick is a different reading of the SAME node and
         # not a second node, which is what makes this a sum over one union's branches.
-        for pick in self._picks(document, settled)[1:]:
+        for pick in self._picks(document, settled, answered)[1:]:
             built, settled = self._settled(
-                document, self._views(document, pointer, stack, pick, besides), pick
+                document,
+                self._views(document, pointer, stack, pick, besides, answered),
+                pick,
+                answered,
             )
             if built.source is Source.BACK_EDGE:
                 return built
@@ -1370,6 +1652,7 @@ class Construction:
         document: str,
         views: Sequence[tuple[str, tuple[str, ...]]],
         pick: tuple[str, int] | None = None,
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> tuple[Built, tuple[tuple[str, tuple[str, ...]], ...]]:
         """The value, with every conditional the value's own content DECIDES folded in.
 
@@ -1413,7 +1696,9 @@ class Construction:
             if not arms:
                 return built, settled
             taken.update(at for at, _ in arms)
-            fresh = tuple(v for v in self._reach(document, arms, pick) if v not in settled)
+            fresh = tuple(
+                v for v in self._reach(document, arms, pick, answered) if v not in settled
+            )
             settled = (*settled, *fresh)
             built = self._from(document, settled)
             if built.source is Source.BACK_EDGE:
@@ -1551,6 +1836,7 @@ class Construction:
         stack: tuple[str, ...],
         pick: tuple[str, int] | None = None,
         besides: tuple[str, ...] = (),
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> tuple[tuple[str, tuple[str, ...]], ...]:
         """Every statement about THIS instance, as ``(pointer, stack)`` and never as text.
 
@@ -1583,14 +1869,22 @@ class Construction:
         the case the walk cannot find from the pointer alone: a key described both by the
         node's own ``properties`` and by a branch's entry for the same key is one location
         with two statements, and only its parent knows both positions.
+
+        ``answered`` is :attr:`Subject.picks`, and it reaches the walk through here for the
+        same reason ``besides`` does: a conjunction the pointer's own ancestors supply
+        carries the ancestors' unions with it, and the branch each of those is to be read at
+        is the one the POINTER spells.
         """
-        return self._reach(document, [(pointer, stack), *((at, stack) for at in besides)], pick)
+        return self._reach(
+            document, [(pointer, stack), *((at, stack) for at in besides)], pick, answered
+        )
 
     def _reach(
         self,
         document: str,
         seeds: Sequence[tuple[str, tuple[str, ...]]],
         pick: tuple[str, int] | None = None,
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> tuple[tuple[str, tuple[str, ...]], ...]:
         """The transparent walk itself, from any set of positions describing one instance.
 
@@ -1599,8 +1893,17 @@ class Construction:
         ``allOf`` exactly as a conjunct does.  Two spellings of this walk is two readings of
         draft-07's composition grammar, and the one that was missing read a ``{"$ref": ...}``
         consequent as a node stating nothing.
+
+        **A UNION'S BRANCH IS TAKEN FROM THREE PLACES AND IN ONE ORDER**: ``pick``, which is
+        the retry varying ONE union and therefore beats everything; ``answered``, which is the
+        branch the POINTER being constructed already spelled (:attr:`Subject.picks`); and
+        failing both the document's own first branch.  The order is forced -- a retry that
+        could not override an answered union would have exactly one reading of a subject
+        available, and an answered union read at its first branch is the defect
+        :class:`Subject` measures at 199 pairs.
         """
         out: list[tuple[str, tuple[str, ...]]] = []
+        given = dict(answered)
         pending = list(seeds)
         while pending:
             at, path = pending.pop(0)
@@ -1621,13 +1924,19 @@ class Construction:
                     pending.append((f"{at}{suffix}", (*path, f"{at}{suffix}")))
                 elif keyword in ("anyOf", "oneOf"):
                     union = f"{at}/{keyword}"
-                    index = pick[1] if pick is not None and pick[0] == union else 0
+                    if pick is not None and pick[0] == union:
+                        index = pick[1]
+                    else:
+                        index = given.get(union, 0)
                     if suffix == f"/{keyword}/{index}":
                         pending.append((f"{at}{suffix}", (*path, f"{at}{suffix}")))
         return tuple(out)
 
     def _picks(
-        self, document: str, views: Sequence[tuple[str, tuple[str, ...]]]
+        self,
+        document: str,
+        views: Sequence[tuple[str, tuple[str, ...]]],
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> tuple[tuple[str, int], ...]:
         """Which union to vary and in what order -- the document's own branch order.
 
@@ -1641,14 +1950,26 @@ class Construction:
         The second union in a view set is NOT varied, and that is the product this refuses to
         pay: ``docs/plan/architecture.md`` §9 calls a cross-product over the unions in a
         subtree a defect of the approach rather than a cost to control.
+
+        **A UNION THE POINTER HAS ALREADY ANSWERED IS NOT VARIED** (``answered``,
+        :attr:`Subject.picks`).  The retry exists because a value merged from a union's FIRST
+        branch can be one a later branch also admits, so reading the later branches is a
+        different reading of the same node; a union whose branch the pointer itself spells is
+        not a reading this walk gets to choose -- varying it would grade the class at
+        ``#/oneOf/1`` against branch 2's value, which is a statement about another class.
         """
+        given = {union for union, _ in answered}
         for at, _ in views:
             node = self.node(document, at)
             if not isinstance(node, Mapping):
                 continue
             for keyword in ("oneOf", "anyOf"):
                 members = node.get(keyword)
-                if isinstance(members, list) and len(members) > 1:
+                if (
+                    isinstance(members, list)
+                    and len(members) > 1
+                    and f"{at}/{keyword}" not in given
+                ):
                     return tuple((f"{at}/{keyword}", i) for i in range(len(members)))
         return ()
 
