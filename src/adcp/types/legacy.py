@@ -35,24 +35,32 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
+from adcp.types.core import CreativeAsset as LegacyCreativeAsset
+from adcp.types.core import Format as LegacyFormat
 from adcp.types.core import FormatReferenceStructuredObject as FormatReferenceStructuredObject
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatId
 from adcp.types.core import Product as LegacyProduct
 from adcp.types.creative import GetCreativeDeliveryResponse as LegacyGetCreativeDeliveryResponse
 from adcp.types.creative import ListCreativesRequest as LegacyListCreativesRequest
 from adcp.types.creative import ListCreativesResponse as LegacyListCreativesResponse
+from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeBatchResponse
 from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeResponse2
 from adcp.types.creative import PreviewCreativeRequest as LegacyPreviewCreativeRequest
+from adcp.types.creative import PreviewCreativeResponse as LegacyPreviewCreativeResponse
 from adcp.types.creative import PreviewCreativeSingleResponse as LegacyPreviewCreativeResponse1
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeResponse3
 from adcp.types.creative import SyncCreativesRequest as LegacySyncCreativesRequest
+from adcp.types.creative import SyncCreativesResponse as LegacySyncCreativesResponse
 from adcp.types.media_buy import BuildCreativeError as LegacyBuildCreativeResponse5
 from adcp.types.media_buy import BuildCreativeEstimate as LegacyBuildCreativeResponse4
 from adcp.types.media_buy import BuildCreativeMultiSuccess as LegacyBuildCreativeResponse2
 from adcp.types.media_buy import BuildCreativeRequest as LegacyBuildCreativeRequest
+from adcp.types.media_buy import BuildCreativeResponse as LegacyBuildCreativeResponse
 from adcp.types.media_buy import BuildCreativeSuccess as LegacyBuildCreativeResponse1
 from adcp.types.media_buy import BuildCreativeVariantSuccess as LegacyBuildCreativeResponse3
 from adcp.types.media_buy import CreateMediaBuyRequest as LegacyCreateMediaBuyRequest
+from adcp.types.media_buy import CreateMediaBuyResponse as LegacyCreateMediaBuyResponse
+from adcp.types.media_buy import CreateMediaBuySuccess as LegacyCreateMediaBuyResponse1
 from adcp.types.media_buy import GetMediaBuyDeliveryResponse as LegacyGetMediaBuyDeliveryResponse
 from adcp.types.media_buy import GetMediaBuysResponse as LegacyGetMediaBuysResponse
 from adcp.types.media_buy import GetProductsRequest as LegacyGetProductsRequest
@@ -60,16 +68,22 @@ from adcp.types.media_buy import GetProductsResponse as LegacyGetProductsRespons
 from adcp.types.media_buy import ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest
 from adcp.types.media_buy import ListCreativeFormatsResponse as LegacyListCreativeFormatsResponse
 from adcp.types.media_buy import UpdateMediaBuyRequest as LegacyUpdateMediaBuyRequest
+from adcp.types.media_buy import UpdateMediaBuyResponse as LegacyUpdateMediaBuyResponse
 
 __all__ = [
     "FormatReferenceStructuredObject",
     "LegacyBuildCreativeRequest",
+    "LegacyBuildCreativeResponse",
     "LegacyBuildCreativeResponse1",
     "LegacyBuildCreativeResponse2",
     "LegacyBuildCreativeResponse3",
     "LegacyBuildCreativeResponse4",
     "LegacyBuildCreativeResponse5",
     "LegacyCreateMediaBuyRequest",
+    "LegacyCreateMediaBuyResponse",
+    "LegacyCreateMediaBuyResponse1",
+    "LegacyCreativeAsset",
+    "LegacyFormat",
     "LegacyFormatId",
     "LegacyGetCreativeDeliveryResponse",
     "LegacyGetMediaBuyDeliveryResponse",
@@ -80,13 +94,17 @@ __all__ = [
     "LegacyListCreativeFormatsResponse",
     "LegacyListCreativesRequest",
     "LegacyListCreativesResponse",
+    "LegacyPreviewCreativeBatchResponse",
     "LegacyPreviewCreativeRequest",
+    "LegacyPreviewCreativeResponse",
     "LegacyPreviewCreativeResponse1",
     "LegacyPreviewCreativeResponse2",
     "LegacyPreviewCreativeResponse3",
     "LegacyProduct",
     "LegacySyncCreativesRequest",
+    "LegacySyncCreativesResponse",
     "LegacyUpdateMediaBuyRequest",
+    "LegacyUpdateMediaBuyResponse",
 ]
 
 
@@ -96,11 +114,9 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "LegacyBuildCreativeResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacyCreateMediaBuyResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacyPreviewCreativeResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacySyncCreativesResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacyUpdateMediaBuyResponse": "NO-DOCUMENT-NO-SUBJECT",
+    "coerce_legacy_asset": "NO-DOCUMENT-NO-SUBJECT",
+    "coerce_legacy_assets": "NO-DOCUMENT-NO-SUBJECT",
+    "infer_asset_type": "NO-DOCUMENT-NO-SUBJECT",
 }
 
 

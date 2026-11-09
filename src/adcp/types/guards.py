@@ -42,6 +42,21 @@ __all__ = [
 __adcp_refused__ = {
     "is_adcp_error": "NO-DOCUMENT-NO-SUBJECT",
     "is_adcp_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_build_creative_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_build_creative_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_build_creative_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_create_media_buy_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_create_media_buy_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_create_media_buy_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_catalogs_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_catalogs_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_catalogs_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_creatives_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_creatives_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_creatives_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_update_media_buy_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_update_media_buy_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_update_media_buy_success": "NO-DOCUMENT-NO-SUBJECT",
 }
 
 

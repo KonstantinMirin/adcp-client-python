@@ -40,7 +40,16 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
+    "CanonicalBoundaryModel": "NO-DOCUMENT-NO-SUBJECT",
+    "CreateMediaBuyResponse1": "NO-DOCUMENT-NO-SUBJECT",
+    "CreateMediaBuyResponse2": "NO-DOCUMENT-NO-SUBJECT",
+    "DeliveryCreative": "NO-DOCUMENT-NO-SUBJECT",
     "Format": "MODULE-HAS-NO-BUNDLE-SUBJECT",
+    "PRIMARY_CANONICAL_MODELS": "NOT-A-TYPE",
+    "_DeliveryCreativeVariant": "UNRESOLVABLE-UPSTREAM",
+    "is_canonical_format_kind": "NO-DOCUMENT-NO-SUBJECT",
+    "is_legacy_creative_identity_key": "NO-DOCUMENT-NO-SUBJECT",
+    "sanitize_canonical_schema": "NO-DOCUMENT-NO-SUBJECT",
     "strip_legacy_creative_identity": "NO-DOCUMENT-NO-SUBJECT",
 }
 

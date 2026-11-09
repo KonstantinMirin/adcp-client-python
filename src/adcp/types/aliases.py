@@ -88,8 +88,11 @@ from adcp.types.core import PricingOption as PricingOption
 from adcp.types.core import PropertyID as PropertyId
 from adcp.types.core import PropertyTag as PropertyTag
 from adcp.types.core import PublisherPropertySelectorAll as PublisherPropertiesAll
+from adcp.types.core import PublisherPropertySelectorAll as _arm0_PublisherProperties
 from adcp.types.core import PublisherPropertySelectorById as PublisherPropertiesById
+from adcp.types.core import PublisherPropertySelectorById as _arm1_PublisherProperties
 from adcp.types.core import PublisherPropertySelectorByTag as PublisherPropertiesByTag
+from adcp.types.core import PublisherPropertySelectorByTag as _arm2_PublisherProperties
 from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByBuyerRefRequest
 from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByCreativeRequest
 from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByMediaBuyRequest
@@ -104,6 +107,11 @@ from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesR
 from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesSubmittedResponse
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
+from adcp.types.media_buy import CreateMediaBuyError as CreateMediaBuyErrorResponse
+from adcp.types.media_buy import CreateMediaBuySuccess as CreateMediaBuySuccessResponse
+from adcp.types.media_buy import GetProductsRequest as GetProductsBriefRequest
+from adcp.types.media_buy import GetProductsRequest as GetProductsRefineRequest
+from adcp.types.media_buy import GetProductsRequest as GetProductsWholesaleRequest
 from adcp.types.media_buy import LogEventError as LogEventErrorResponse
 from adcp.types.media_buy import LogEventSuccess as LogEventResponse1
 from adcp.types.media_buy import LogEventSuccess as LogEventSuccessResponse
@@ -123,6 +131,8 @@ from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsSuccessRespo
 from adcp.types.media_buy import SyncEventSourcesError as SyncEventSourcesErrorResponse
 from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesResponse1
 from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesSuccessResponse
+from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyPackagesRequest
+from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyPropertiesRequest
 from adcp.types.signals import ActivateSignalError as ActivateSignalErrorResponse
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalResponse1
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalSuccessResponse
@@ -130,6 +140,8 @@ from adcp.types.signals import GetSignalsRequest as GetSignalsDiscoveryRequest
 from adcp.types.signals import GetSignalsRequest as GetSignalsLookupRequest
 from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendActionResponseRequest
 from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendTextMessageRequest
+
+PublisherProperties = _arm0_PublisherProperties | _arm1_PublisherProperties | _arm2_PublisherProperties
 
 __all__ = [
     "AccountReferenceById",
@@ -152,6 +164,8 @@ __all__ = [
     "CreateContentStandardsErrorResponse",
     "CreateContentStandardsResponse1",
     "CreateContentStandardsSuccessResponse",
+    "CreateMediaBuyErrorResponse",
+    "CreateMediaBuySuccessResponse",
     "Deployment",
     "Destination",
     "GetAccountFinancialsErrorResponse",
@@ -172,6 +186,9 @@ __all__ = [
     "GetMediaBuyArtifactsErrorResponse",
     "GetMediaBuyArtifactsResponse1",
     "GetMediaBuyArtifactsSuccessResponse",
+    "GetProductsBriefRequest",
+    "GetProductsRefineRequest",
+    "GetProductsWholesaleRequest",
     "GetRightsErrorResponse",
     "GetRightsResponse1",
     "GetRightsSuccessResponse",
@@ -195,6 +212,7 @@ __all__ = [
     "ProvidePerformanceFeedbackErrorResponse",
     "ProvidePerformanceFeedbackResponse1",
     "ProvidePerformanceFeedbackSuccessResponse",
+    "PublisherProperties",
     "PublisherPropertiesAll",
     "PublisherPropertiesById",
     "PublisherPropertiesByTag",
@@ -223,6 +241,8 @@ __all__ = [
     "UpdateContentStandardsErrorResponse",
     "UpdateContentStandardsResponse1",
     "UpdateContentStandardsSuccessResponse",
+    "UpdateMediaBuyPackagesRequest",
+    "UpdateMediaBuyPropertiesRequest",
     "UrlPreviewRender",
     "ValidateContentDeliveryErrorResponse",
     "ValidateContentDeliveryResponse1",
@@ -243,17 +263,12 @@ __adcp_refused__ = {
     "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "GetProductsBriefRequest": "NO-DOCUMENT-NO-SUBJECT",
-    "GetProductsRefineRequest": "NO-DOCUMENT-NO-SUBJECT",
-    "GetProductsWholesaleRequest": "NO-DOCUMENT-NO-SUBJECT",
+    "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PublisherProperties": "NO-DOCUMENT-NO-SUBJECT",
     "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncCatalogResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncCreativeResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "UpdateMediaBuyPackagesRequest": "NO-DOCUMENT-NO-SUBJECT",
-    "UpdateMediaBuyPropertiesRequest": "NO-DOCUMENT-NO-SUBJECT",
     "UrlDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "UrlVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
 }

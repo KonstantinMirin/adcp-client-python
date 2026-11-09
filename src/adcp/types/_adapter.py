@@ -36,27 +36,33 @@ from __future__ import annotations
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
 from adcp.types.account import SyncGovernanceRequestAccountsItemGovernanceAgentsItem as GovernanceAgent
+from adcp.types.account import SyncGovernanceRequestAccountsItemGovernanceAgentsItemAuthentication as Authentication
 from adcp.types.brand import BrandDiscoveryKellerType as KellerType
 from adcp.types.brand import GetBrandIdentitySuccess as GetBrandIdentitySuccessResponse
 from adcp.types.brand import GetRightsSuccess as GetRightsSuccessResponse
 from adcp.types.brand import VerifyBrandClaimResponseSignedResponse as VerifyBrandClaimSignedResponse
 from adcp.types.brand import VerifyBrandClaimResponseSignedResponsePayload as VerifyBrandClaimPayload
 from adcp.types.brand import VerifyBrandClaimResponseSignedSuccessPayload as VerifyBrandClaimSignedSuccessPayload
+from adcp.types.core import AccountReferenceAccountId as AccountReferenceById
+from adcp.types.core import AccountReferenceBrandOperator as AccountReferenceByNaturalKey
 from adcp.types.core import AccountReportingBucket as ReportingBucket
 from adcp.types.core import ActivationKeyKeyValue as PropertyTagActivationKey
 from adcp.types.core import ActivationKeySegmentId as PropertyIdActivationKey
 from adcp.types.core import AudioAsset as AudioContent
 from adcp.types.core import CSSAsset as CssContent
 from adcp.types.core import CatalogFieldMappingTransform as Transform
+from adcp.types.core import CountryCode as PrimaryCountry
 from adcp.types.core import CreativeAsset as LegacyCreativeAsset
 from adcp.types.core import CreativeFilters as CreativeFilters
 from adcp.types.core import CreativeFilters as LegacyCreativeFilters
 from adcp.types.core import CreativeManifest as CreativeManifest
 from adcp.types.core import CurrencyCode as PricingCurrency
+from adcp.types.core import DeploymentPlatform as PlatformDeployment
 from adcp.types.core import ErrorRecovery as Recovery
 from adcp.types.core import ErrorSource as Source
 from adcp.types.core import Format as Format
 from adcp.types.core import Format as LegacyFormat
+from adcp.types.core import FormatFormatCard as FormatCard
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatId
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatReferenceStructuredObject
 from adcp.types.core import HTMLAsset as HtmlContent
@@ -69,9 +75,18 @@ from adcp.types.core import Placement as LegacyPlacement
 from adcp.types.core import Placement as Placement
 from adcp.types.core import Product as LegacyProduct
 from adcp.types.core import Product as Product
+from adcp.types.core import ProductDeliveryMeasurement as DeliveryMeasurement
 from adcp.types.core import ProductFilters as LegacyProductFilters
 from adcp.types.core import ProductFilters as ProductFilters
 from adcp.types.core import ProductFormatDeclaration as ProductFormatDeclaration
+from adcp.types.core import ProductTrustedMatch as TrustedMatch
+from adcp.types.core import ReportingConsumerStatusConsumerStatus as ReportingConsumerStatusValue
+from adcp.types.core import ReportingConsumerStatusFailureCode as ReportingConsumerFailureCode
+from adcp.types.core import ReportingConsumerStatusMismatchCode as ReportingConsumerMismatchCode
+from adcp.types.core import ReportingDeliveryCapabilitiesOperationsContact as ReportingOperationsContact
+from adcp.types.core import ReportingDeliveryConfigurationAuthoritativeParty as ReportingAuthoritativeParty
+from adcp.types.core import ReportingStatusIssueIssueState as ReportingIssueState
+from adcp.types.core import ReportingStatusIssueRecommendedAction as ReportingIssueRecommendedAction
 from adcp.types.core import TextAsset as TextContent
 from adcp.types.core import URLAsset as UrlContent
 from adcp.types.core import VideoAsset as VideoContent
@@ -84,11 +99,13 @@ from adcp.types.creative import ListCreativesResponseCreativesItemSnapshot as Sn
 from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeBatchResponse
 from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeResponse2
 from adcp.types.creative import PreviewCreativeRequest as LegacyPreviewCreativeRequest
+from adcp.types.creative import PreviewCreativeResponse as LegacyPreviewCreativeResponse
 from adcp.types.creative import PreviewCreativeSingleResponse as LegacyPreviewCreativeResponse1
 from adcp.types.creative import PreviewCreativeSingleResponse as LegacyPreviewCreativeSingleResponse
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeResponse3
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeVariantResponse
 from adcp.types.creative import SyncCreativesRequest as LegacySyncCreativesRequest
+from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
 from adcp.types.enums import AudienceSource as AudienceSource
 from adcp.types.enums import PixelTrackingEvent as PixelTrackerEvent
@@ -98,12 +115,14 @@ from adcp.types.media_buy import BuildCreativeEstimate as LegacyBuildCreativeRes
 from adcp.types.media_buy import BuildCreativeMultiSuccess as LegacyBuildCreativeErrorResponse
 from adcp.types.media_buy import BuildCreativeMultiSuccess as LegacyBuildCreativeResponse2
 from adcp.types.media_buy import BuildCreativeRequest as LegacyBuildCreativeRequest
+from adcp.types.media_buy import BuildCreativeResponse as LegacyBuildCreativeResponse
 from adcp.types.media_buy import BuildCreativeResponseSubmitted as LegacyBuildCreativeResponse6
 from adcp.types.media_buy import BuildCreativeResponseSubmitted as LegacyBuildCreativeSubmittedResponse
 from adcp.types.media_buy import BuildCreativeSuccess as LegacyBuildCreativeResponse1
 from adcp.types.media_buy import BuildCreativeSuccess as LegacyBuildCreativeSuccessResponse
 from adcp.types.media_buy import BuildCreativeVariantSuccess as LegacyBuildCreativeResponse3
 from adcp.types.media_buy import CreateMediaBuyRequest as LegacyCreateMediaBuyRequest
+from adcp.types.media_buy import CreateMediaBuySuccess as CreateMediaBuyResponse1
 from adcp.types.media_buy import EffectiveTimingConstraints as EffectiveTimingChangeConstraints
 from adcp.types.media_buy import FieldsItem as _arm0_GetProductsField
 from adcp.types.media_buy import GetMediaBuyDeliveryResponse as LegacyGetMediaBuyDeliveryResponse
@@ -111,6 +130,7 @@ from adcp.types.media_buy import GetMediaBuysResponse as LegacyGetMediaBuysRespo
 from adcp.types.media_buy import GetProductsRequest as LegacyGetProductsRequest
 from adcp.types.media_buy import GetProductsRequestBuyingMode as BuyingMode
 from adcp.types.media_buy import GetProductsResponse as LegacyGetProductsResponse
+from adcp.types.media_buy import GetReportingStatusResponseObligationCounts as ReportingObligationCounts
 from adcp.types.media_buy import ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest
 from adcp.types.media_buy import ListCreativeFormatsResponse as LegacyListCreativeFormatsResponse
 from adcp.types.media_buy import MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemStatus as MediaBuyDeliveryStatus
@@ -122,32 +142,43 @@ from adcp.types.media_buy import ProductResponseFieldsItem as _arm1_GetProductsF
 from adcp.types.media_buy import SyncAudiencesSuccess as SyncAudiencesSuccessResponse
 from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsSuccessResponse
 from adcp.types.media_buy import UpdateMediaBuyRequest as LegacyUpdateMediaBuyRequest
+from adcp.types.media_buy import UpdateMediaBuyResponseSubmitted as UpdateMediaBuyResponse3
+from adcp.types.media_buy import UpdateMediaBuySuccess as UpdateMediaBuyResponse1
 from adcp.types.pricing_options import CPMPricingOption as CpmAuctionPricingOption
 from adcp.types.pricing_options import CPMPricingOption as CpmFixedRatePricingOption
 from adcp.types.pricing_options import TimeBasedPricingOptionParametersTimeUnit as TimeUnit
 from adcp.types.pricing_options import VCPMPricingOption as VcpmAuctionPricingOption
 from adcp.types.pricing_options import VCPMPricingOption as VcpmFixedRatePricingOption
+from adcp.types.protocol import GetAdCPCapabilitiesResponseCreative as Creative
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyAcceptancePolicyDiscovery as AcceptancePolicyDiscovery
 from adcp.types.protocol import SyncPrincipalRequestConfiguration as PrincipalConfiguration
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalSuccessResponse
 from adcp.types.signals import GetSignalsRequest as GetSignalsDiscoveryRequest
 from adcp.types.signals import GetSignalsRequest as GetSignalsLookupRequest
+from adcp.types.trusted_match import Offer as TmpOffer
 
 GetProductsField = _arm0_GetProductsField | _arm1_GetProductsField
 
 __all__ = [
     "AcceptancePolicyDiscovery",
+    "AccountReferenceById",
+    "AccountReferenceByNaturalKey",
     "ActivateSignalSuccessResponse",
     "AudienceSource",
     "AudioContent",
+    "Authentication",
     "BuyingMode",
     "CpmAuctionPricingOption",
     "CpmFixedRatePricingOption",
+    "CreateMediaBuyResponse1",
+    "Creative",
     "CreativeFilters",
     "CreativeManifest",
     "CssContent",
+    "DeliveryMeasurement",
     "EffectiveTimingChangeConstraints",
     "Format",
+    "FormatCard",
     "GeneratedTaskStatus",
     "GetBrandIdentitySuccessResponse",
     "GetProductsField",
@@ -161,6 +192,7 @@ __all__ = [
     "KellerType",
     "LegacyBuildCreativeErrorResponse",
     "LegacyBuildCreativeRequest",
+    "LegacyBuildCreativeResponse",
     "LegacyBuildCreativeResponse1",
     "LegacyBuildCreativeResponse2",
     "LegacyBuildCreativeResponse3",
@@ -190,6 +222,7 @@ __all__ = [
     "LegacyPlacement",
     "LegacyPreviewCreativeBatchResponse",
     "LegacyPreviewCreativeRequest",
+    "LegacyPreviewCreativeResponse",
     "LegacyPreviewCreativeResponse1",
     "LegacyPreviewCreativeResponse2",
     "LegacyPreviewCreativeResponse3",
@@ -206,7 +239,9 @@ __all__ = [
     "PixelTrackerEvent",
     "PixelTrackerMethod",
     "Placement",
+    "PlatformDeployment",
     "PricingCurrency",
+    "PrimaryCountry",
     "PrincipalConfiguration",
     "Product",
     "ProductFilters",
@@ -214,16 +249,29 @@ __all__ = [
     "PropertyIdActivationKey",
     "PropertyTagActivationKey",
     "Recovery",
+    "ReportingAuthoritativeParty",
     "ReportingBucket",
+    "ReportingConsumerFailureCode",
+    "ReportingConsumerMismatchCode",
+    "ReportingConsumerStatusValue",
+    "ReportingIssueRecommendedAction",
+    "ReportingIssueState",
+    "ReportingObligationCounts",
+    "ReportingOperationsContact",
     "Signal",
     "Snapshot",
     "Source",
     "SyncAudiencesSuccessResponse",
     "SyncCatalogsSuccessResponse",
+    "SyncCreativesResponse1",
     "SyncCreativesSuccessResponse",
     "TextContent",
     "TimeUnit",
+    "TmpOffer",
     "Transform",
+    "TrustedMatch",
+    "UpdateMediaBuyResponse1",
+    "UpdateMediaBuyResponse3",
     "UrlContent",
     "VcpmAuctionPricingOption",
     "VcpmFixedRatePricingOption",
@@ -243,19 +291,33 @@ __all__ = [
 __adcp_refused__ = {
     "AcceptancePolicyProfileId": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "AcceptedLoss": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AgentConfig": "NO-DOCUMENT-NO-SUBJECT",
     "AssetInstance": "NO-DOCUMENT-NO-SUBJECT",
     "AssetInstanceType": "NO-DOCUMENT-NO-SUBJECT",
+    "AuthorizedAgent": "NO-DOCUMENT-NO-SUBJECT",
+    "AuthorizedAgents": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByInlineProperties": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPropertyId": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPropertyTag": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "BrandIdentity": "DOCUMENT-WE-DO-NOT-COMPILE",
     "BrandSource": "NO-DOCUMENT-NO-SUBJECT",
+    "CanonicalFormatKindStr": "NO-DOCUMENT-NO-SUBJECT",
     "CatalogGroupBinding": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "CpmVendorPricingOption": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "CreateMediaBuyErrorResponse": "NO-DOCUMENT-NO-SUBJECT",
     "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "Creative": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "CreativeApproval": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "CreditLimit": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "DurationUnit": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "FormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT",
+    "GroupFormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT",
     "Gtin": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "IdentityMatchTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "LegacyBuildCreativeResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacyPreviewCreativeResponse": "NO-DOCUMENT-NO-SUBJECT",
+    "ImageFormatAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "LegacyProductFormatDeclaration": "NO-DOCUMENT-NO-SUBJECT",
     "MediaBuyPackage": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalAppliedResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
@@ -267,18 +329,31 @@ __adcp_refused__ = {
     "PrincipalSyncResult": "NO-DOCUMENT-NO-SUBJECT",
     "PrincipalUnconfiguredResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalValidatedResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "Protocol": "NO-DOCUMENT-NO-SUBJECT",
     "ProviderRegistrationTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "PublisherDomain": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "Refine": "NO-DOCUMENT-NO-SUBJECT",
+    "RepeatableAssetGroup": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "SchemaVariant": "NOT-A-TYPE",
     "Setup": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "SyncAccountsAccount": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UnknownFormatAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UnknownGroupAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "UpdateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT",
+    "VendorPricingOptionUnion": "NO-DOCUMENT-NO-SUBJECT",
     "VerifyBrandClaimsErrorResponse": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "VerifyBrandClaimsPayload": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "VerifyBrandClaimsSignedResponse": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "VerifyBrandClaimsSignedSuccessPayload": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "_generated": "UNRESOLVABLE-UPSTREAM",
     "aliases": "NOT-A-TYPE",
+    "is_canonical_format_kind": "NO-DOCUMENT-NO-SUBJECT",
     "project_geo_postal_areas": "NO-DOCUMENT-NO-SUBJECT",
+    "require_canonical_format_kind": "NO-DOCUMENT-NO-SUBJECT",
+    "v31": "UNRESOLVABLE-UPSTREAM",
+    "validate_union": "NO-DOCUMENT-NO-SUBJECT",
+    "validation": "UNRESOLVABLE-UPSTREAM",
 }
 
 

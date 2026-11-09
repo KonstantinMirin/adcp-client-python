@@ -36,12 +36,14 @@ from __future__ import annotations
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
 from adcp.types._base import AdCPBaseModel as AdCPBaseModel
+from adcp.types._base import AdCPRootModel as AdCPRootModel
 from adcp.types.envelopes import AdcpRequest as AdcpRequest
 from adcp.types.envelopes import AdcpResponse as AdcpResponse
 from adcp.types.envelopes import FailedResponse as FailedResponse
 
 __all__ = [
     "AdCPBaseModel",
+    "AdCPRootModel",
     "AdcpRequest",
     "AdcpResponse",
     "FailedResponse",
@@ -54,6 +56,13 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
+    "NoExplicitNull": "NOT-A-TYPE",
+    "WireUrl": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "_AdcpMessage": "UNRESOLVABLE-UPSTREAM",
+    "_REFUSE_JSON_NULL": "UNRESOLVABLE-UPSTREAM",
+    "_resolve_extra_policy": "UNRESOLVABLE-UPSTREAM",
+    "defer_model_rebuild": "NO-DOCUMENT-NO-SUBJECT",
+    "is_no_explicit_null": "NOT-A-TYPE",
 }
 
 

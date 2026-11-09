@@ -60,6 +60,7 @@ __adcp_refused__ = {
     "PropertyIdentifier": "NO-DOCUMENT-NO-SUBJECT",
     "PropertyRegistryItem": "NO-DOCUMENT-NO-SUBJECT",
     "PropertySummary": "NO-DOCUMENT-NO-SUBJECT",
+    "SuccessLiteral": "NO-DOCUMENT-NO-SUBJECT",
     "ValidationResult": "MODULE-HAS-NO-BUNDLE-SUBJECT",
 }
 
