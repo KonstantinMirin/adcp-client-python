@@ -77,6 +77,36 @@ file is not: a package's own ``__init__`` is the package, so it is bound before
 ``__path__`` is consulted and no generated copy of it could be the one a test grades.  It
 therefore names no type and carries no list.
 
+**AND A DOMAIN'S AGGREGATOR IS AT A PATH THE COMPILER OWNS OUTRIGHT, WITH THE PUBLIC PATH
+COMPOSING IT IN ONE LINE** (``codegen/emit.py``'s ``SURFACE``, 2026-11-09).  Named at the
+one domain the split exists for: what the compiler writes is
+``adcp.types._surface.core``, and ``adcp.types.core`` is a short hand-written module whose
+whole body is ``from ._surface.core import *`` and that aggregator's own ``__all__``.
+Three things decide the split and none of them is taste:
+
+* **A public domain path is also a path upstream kept hand-written machinery at.**
+  ``adcp.types.core`` is the one genuine case -- 444 lines of the SDK's own ``TaskResult``,
+  ``AgentConfig``, ``Protocol`` and ``TaskStatus``, no bundle document states any of them,
+  and they are restored at ``adcp._client_types``.  The two name sets may share a module
+  PATH; they must not share one FILE.
+* **The gate is what rules out one file.**  ``emit.write`` is handed a FRESH EMPTY
+  directory, so a read-modify-write emitter's output can never equal the committed file,
+  and a marked region would force the whole-file byte compare down to a region compare --
+  which cannot see a hand edit outside the markers nor a marker moved inward.  Two files
+  composed at the import path cost the compare nothing: the aggregator stays 100 % the
+  compiler's and is compared byte for byte, and
+  ``tests_emit/test_the_public_domain_path.py`` compares the composition's whole text
+  against the one it is derived from.
+* **The EMITTED half is the eager one, and that is measured.**  Under mypy ``--strict`` a
+  star import re-exported through a module reveals the real class even with
+  ``--no-implicit-reexport``, where a module-level ``__getattr__`` reveals ``Any``.  The
+  surface is 3,221 emitted names against upstream's 21, so the star import carries the
+  3,221 and the 21 are written in the ``X as X`` form, which a checker reads the same way.
+
+Nothing about this is visible at the import a consumer writes: ``adcp.types.core.Account``
+is still the one path for that class and still the object the runtime validates into --
+``adcp.types.core.Account is adcp.types._schemas.core.account.Account``.
+
 Two modules are public and are not domains, because what they hold has no document to
 bind -- so neither has a domain a surface could give it, and neither waits on one.
 
@@ -124,7 +154,14 @@ def __getattr__(name: str) -> object:
     compat = _alias_module()
     adapter = _adapter_module()
     if name == "__all__":
-        return sorted({*compat.__all__, *compat.__adcp_flat_only__, *adapter.__all__})
+        return sorted(
+            {
+                *compat.__all__,
+                *compat.__adcp_flat_only__,
+                *adapter.__all__,
+                *_restored_module().__all__,
+            }
+        )
     try:
         return getattr(compat, name)
     except AttributeError:
@@ -144,6 +181,19 @@ def __getattr__(name: str) -> object:
     # be overridden here.
     try:
         return getattr(adapter, name)
+    except AttributeError:
+        pass
+    # **AND THE FLAT SURFACE OWES WHAT UPSTREAM'S RESTORED MACHINERY DECLARES, which no
+    # table over the bundle could reach**: ``adcp.types._restored`` is the flat spelling of
+    # the names upstream's own hand-written files declare -- ``MEDIA_BUY_LEGACY_STATUS_VALUES``
+    # is the measured case, a ``frozenset`` upstream derives by SUBTRACTION from the
+    # lifecycle enumeration and no document states.  Upstream serves these from their own
+    # ``_eager``, which is not restorable here -- 16 imports of the generated aggregator
+    # this branch deleted -- so the module names the restored MODULES and derives the names
+    # from each one's own ``__all__`` or declarations.  CONSULTED LAST, so nothing the
+    # alias table or the adapter decided is overridden.
+    try:
+        return getattr(_restored_module(), name)
     except AttributeError:
         pass
     raise AttributeError(
@@ -167,9 +217,23 @@ def _alias_module():
 
 
 #: The submodules :func:`__getattr__` must NOT answer, so the import system goes on to
-#: import them.  Both are alias layers of this package and both are reached by
+#: import them.  All three are compatibility layers of this package and each is reached by
 #: ``import_module`` below rather than by an attribute.
-_NOT_ROUTED = ("compat", "_adapter")
+_NOT_ROUTED = ("compat", "_adapter", "_restored")
+
+
+def _restored_module():
+    """``adcp.types._restored``, reached the same way and for the same reason.
+
+    The flat spelling of what upstream's own restored files declare.  Imported on a MISS
+    and never while this package's body runs: none of the six modules it reads imports
+    ``adcp.types``, so answering a name from here costs no generated import -- but the
+    import still happens at the moment a name is asked for rather than at this package's
+    own import, which is what keeps ``tests/fresh.py``'s binding ahead of it.
+    """
+    import importlib
+
+    return importlib.import_module("adcp.types._restored")
 
 
 def _adapter_module():
@@ -202,4 +266,5 @@ def __dir__() -> list[str]:
         | set(compat.__all__)
         | set(compat.__adcp_flat_only__)
         | set(_adapter_module().__all__)
+        | set(_restored_module().__all__)
     )

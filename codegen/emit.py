@@ -3059,11 +3059,37 @@ def vocabularies_modules(l0: catalogue.Catalogue) -> dict[str, tuple[ir.ValuesDe
     }
 
 
+#: The package the compiler writes §1's domain aggregators into, as a directory name
+#: relative to the package the run is handed (``emit.write``'s ``package``).
+#:
+#: **A FILE THE COMPILER OWNS OUTRIGHT, which is why the aggregator is not at the public
+#: path** (``adcp-client-python-kcta``, the ruling of 2026-11-09).  ``adcp.types.core`` is
+#: the path a consumer writes AND the path upstream kept 444 lines of hand-written SDK
+#: machinery at, and those two name sets may share a module PATH and must not share one
+#: FILE: a marked region inside one file forces ``write``'s whole-file byte compare down to
+#: a REGION compare -- ``write`` is handed a fresh empty directory, so a read-modify-write
+#: emitter's output can never equal the committed file -- and a region compare cannot see a
+#: hand edit outside the markers nor a marker moved inward.  That is the gate losing the
+#: ability to catch what it exists for.
+#:
+#: So the compiler writes ``_surface/<domain>.py`` and owns every byte of it, and the
+#: public ``adcp/types/<domain>.py`` is one name-free line, ``from ._surface.<domain>
+#: import *``, composed where a hand-written name set has to meet an emitted one.  The
+#: EMITTED half is the eager one, which is the measured half of the ruling: under mypy
+#: ``--strict`` a star import re-exported through a module reveals the real class even
+#: under ``--no-implicit-reexport``, where a module-level ``__getattr__`` reveals ``Any``
+#: -- and the surface is 3,221 emitted names against upstream's 29.
+#:
+#: PRIVATE for ``_schemas``' own reason (P8): the path a consumer writes is the domain's,
+#: and a second public spelling of one class is what §1 forbids.
+SURFACE = "_surface"
+
+
 def domain_modules(
     surface: Mapping[str, Mapping[str, str]],
     published: Mapping[str, Mapping[str, str]] = {},
 ) -> dict[str, str]:
-    """§1's DOMAIN SURFACE: ``<domain>.py`` per domain plus ``__init__.py``, as text.
+    """§1's DOMAIN SURFACE: ``_surface/<domain>.py`` per domain, plus its ``__init__``.
 
     §1: "a document compiles to a module at its own path under a private tree ... **and is
     re-exported from** ``adcp.types.<domain>``, where the domain is derived from the
@@ -3088,6 +3114,14 @@ def domain_modules(
     **RELATIVE imports**, for the reason ``relative_module`` already gives: ``_schemas`` is
     private, and an absolute ``adcp.types._schemas...`` here would publish the private path
     once per name.
+
+    **THE AGGREGATOR IS AT A PATH THE COMPILER OWNS OUTRIGHT AND THE PUBLIC PATH COMPOSES
+    IT** (:data:`SURFACE`, 2026-11-09).  What is written here is
+    ``_surface/<domain>.py``; ``adcp/types/<domain>.py`` is the public path and carries one
+    name-free star re-export of it.  Nothing about that is visible to a consumer -- the
+    object reached at the public name is still the class the private module built -- and it
+    is what lets a domain whose word upstream also used for hand-written machinery serve
+    both name sets without either file holding the other's text.
 
     **``adcp/types/__init__.py`` is NOT among these and cannot be**, which is a fact about
     Python and not a decision: ``tests/fresh.py`` grades a fresh tree by putting its
@@ -3132,12 +3166,12 @@ def domain_modules(
             # Keyed on the WORD, which is the thing §1 forbids two of and the thing
             # ``__all__`` carries; the symbol rides along because the IMPORT needs it.
             into[renamed.get(symbol, symbol)] = (module.replace("/", "."), symbol)
-    out: dict[str, str] = {}
+    out: dict[str, str] = {f"{SURFACE}/__init__.py": render.surface_package()}
     for known in sorted(held):
         by_module: dict[str, list[tuple[str, str]]] = {}
         for word, (module, symbol) in sorted(held[known].items()):
             by_module.setdefault(module, []).append((symbol, word))
-        out[f"{known}.py"] = render.domain_module(known, by_module)
+        out[f"{SURFACE}/{known}.py"] = render.domain_module(known, by_module)
     return out
 
 

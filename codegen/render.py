@@ -2053,8 +2053,13 @@ def domain_module(domain: str, held: Mapping[str, Sequence[tuple[str, str]]]) ->
     literal list is written and not derived.
 
     **RELATIVE, for ``emit.relative_module``'s reason**: ``_schemas`` is private (P8) and a
-    relative import is the one spelling that cannot name it.  One level, because every
-    domain module sits directly in ``adcp/types/``.
+    relative import is the one spelling that cannot name it.  TWO levels, because the
+    aggregator sits in ``adcp/types/_surface/`` -- a package the compiler owns outright,
+    whose reason is ``emit.SURFACE``'s -- and ``_schemas`` is its parent's sibling.  The
+    arithmetic is one dot more than the public module needed and is asserted against the
+    emitted import block rather than restated, for the reason
+    ``test_a_document_whose_path_is_also_a_directorys_is_that_packages_root`` already gives:
+    a leading dot too few resolves to a module that EXISTS, just the wrong one.
 
     **One statement per name, which is the sorter's form and not a choice of layout.**
     ``combine-as-imports`` is false by default and this project does not set it, so a
@@ -2064,17 +2069,22 @@ def domain_module(domain: str, held: Mapping[str, Sequence[tuple[str, str]]]) ->
     fit the output.
     """
     lines = [
-        f'"""The public types of the ``{domain}`` domain.',
+        f'"""The exports of the ``{domain}`` domain, as the compiler aggregates them.',
         "",
         "Every name here is the class, root model, enumeration or alias the schema document",
         "of that name compiles to, re-exported from the private module at the document's own",
-        "path.  This is the one import path for each of them, and the object is the same one",
-        "the runtime validates into -- ``isinstance`` against a union branch imported from",
-        "here is true.",
+        "path.  The object is the same one the runtime validates into -- ``isinstance``",
+        "against a union branch imported from here is true.",
         "",
         "Generated from the compiler's own record of what it exported: every document ROOT,",
         "every union BRANCH and every type ALIAS the documents of this domain declare.  A",
         "document added upstream appears here with nothing edited.",
+        "",
+        "**NOT the path a consumer writes.**  This file is the compiler's outright and is",
+        "compared byte for byte, so that the domain's PUBLIC module can compose it in one",
+        "line and serve a hand-written name set beside it where the domain's word is also a",
+        "word upstream kept machinery under.  The public module is the one import path for",
+        "every name here.",
         '"""',
         "",
     ]
@@ -2083,11 +2093,37 @@ def domain_module(domain: str, held: Mapping[str, Sequence[tuple[str, str]]]) ->
         ["__all__ = [", *(f"    {word!r}," for word in sorted(names, key=_export_key)), "]", ""]
     )
     reexports = [
-        (f"._schemas.{module}", symbol, word)
+        (f".._schemas.{module}", symbol, word)
         for module in held
         for symbol, word in held[module]
     ]
     return "\n".join([*lines, *_import_section((), body, reexports), body])
+
+
+def surface_package() -> str:
+    """The text of ``adcp/types/_surface/__init__.py``: a docstring and NO name.
+
+    The package exists so that each domain's aggregator can live in a file the compiler
+    owns outright (``emit.SURFACE``), and its own ``__init__`` is the one module of it that
+    aggregates nothing: a name bound here would be a third spelling of a class §1 gives one
+    path, and it would be bound while the package's body runs -- which is before anything
+    can decide which tree the children come from.
+    """
+    return "\n".join(
+        [
+            '"""The compiler\'s own aggregators, one module per domain.',
+            "",
+            "Nothing here is a path a consumer writes.  Each module re-exports one domain's",
+            "names from the private per-document tree, and the public module of that domain",
+            "composes this one with a single star re-export -- which is what lets a public",
+            "path serve an emitted name set beside a hand-written one without either file",
+            "holding the other's text.",
+            "",
+            "This package declares no name of its own.",
+            '"""',
+            "",
+        ]
+    )
 
 
 def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
