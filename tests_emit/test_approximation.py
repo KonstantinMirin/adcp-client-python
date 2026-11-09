@@ -49,8 +49,8 @@ from codegen import attribution, bundle, compiler, emit, harness, ir, keywords, 
 from codegen.keywords import Effect, Position, Rung
 from codegen.lower.approximate import approximate, attribution_for, declare, rung_for
 from codegen.refusal import BuildFailure
-from tests import compared
-from tests.nodeset import claimed
+import compared
+from nodeset import claimed
 
 DOC = "core/probe.json"
 

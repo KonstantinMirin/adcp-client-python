@@ -55,7 +55,7 @@ from adcp.types._runtime import Match
 from codegen import bundle
 from codegen.keywords import Position
 from codegen.lower import rules
-from tests.nodeset import claimed
+from nodeset import claimed
 
 #: **The bundle a RUN reads, re-exported from ``tests/fresh.py``** -- the same seam
 #: ``tests/test_the_domain_surface.py`` takes it from, and for the same measured reason

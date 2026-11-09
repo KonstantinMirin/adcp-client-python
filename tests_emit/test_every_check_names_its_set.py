@@ -37,7 +37,7 @@ from __future__ import annotations
 import ast
 import pathlib
 
-from tests.nodeset import claimed
+from nodeset import claimed
 
 TESTS = pathlib.Path(__file__).resolve().parent
 

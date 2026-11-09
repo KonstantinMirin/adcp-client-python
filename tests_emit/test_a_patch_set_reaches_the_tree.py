@@ -44,7 +44,7 @@ import fresh
 from compiled import compiled
 
 from codegen import bundle, catalogue, emit, patch
-from tests.nodeset import claimed
+from nodeset import claimed
 
 #: The bundle a RUN reads: the published one with every patch set of ``patch.BUILD`` applied.
 PATCHED = fresh.BUNDLE

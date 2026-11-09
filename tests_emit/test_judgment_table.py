@@ -34,8 +34,8 @@ from pathlib import Path
 import pytest
 
 from codegen import bundle, catalogue, emit, keywords, patch
-from tests.judgment import COLLAPSE, OWNED, ask_for, judged, table
-from tests.nodeset import claimed, partitions, ratchet
+from judgment import COLLAPSE, OWNED, ask_for, judged, table
+from nodeset import claimed, partitions, ratchet
 
 #: The published bundle every verdict is read off.
 PUBLISHED = Path("schemas/cache/3.2")

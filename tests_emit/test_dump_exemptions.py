@@ -48,7 +48,7 @@ from codegen.dump_exemptions import (
     VIOLATING,
     Exemption,
 )
-from tests.nodeset import claimed
+from nodeset import claimed
 
 #: The packaged tree, which is the pointer space an entry names: section 6 measures
 #: these documents at 0 ``$ref`` occurrences, so what the harness grades is the

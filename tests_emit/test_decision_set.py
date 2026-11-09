@@ -79,7 +79,7 @@ from codegen.attribution import Issue, Sighting
 from codegen.keywords import Position
 from codegen.narrowings import ADMITTED, Narrowing, Taken
 from codegen.refusal import BuildFailure
-from tests.nodeset import claimed
+from nodeset import claimed
 
 ROOT = Path(__file__).resolve().parents[1]
 #: **The bundle a run reads, taken from the ONE declaration of it**

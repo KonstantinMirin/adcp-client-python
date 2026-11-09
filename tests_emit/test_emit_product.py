@@ -54,7 +54,7 @@ from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
-from tests.nodeset import claimed, partitions, ratchet
+from nodeset import claimed, partitions, ratchet
 
 
 def _probe_node(doc: dict, mod: compiler.Module, pointer: str = "") -> schema_nodes.Base:

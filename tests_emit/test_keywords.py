@@ -31,7 +31,7 @@ import pathlib
 
 from codegen import keywords
 from codegen.keywords import ADMITTED, GRIDS, REFUSED, Cell, Effect, Position, cell, lowers
-from tests.nodeset import claimed
+from nodeset import claimed
 
 PLAN = pathlib.Path(__file__).resolve().parents[1] / "docs" / "plan" / "rebuild-plan.md"
 

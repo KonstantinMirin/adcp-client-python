@@ -30,7 +30,7 @@ from adcp.types._schemas.core.error import Error
 from adcp.types.envelopes import FailedResponse
 from codegen import bundle, emit, keywords
 from codegen.lower import envelope
-from tests.nodeset import claimed, partitions
+from nodeset import claimed, partitions
 
 #: **The bundle a run reads, taken from the ONE declaration of it**
 #: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while

@@ -43,8 +43,8 @@ from codegen.lower import enum as lower_enum
 from codegen.lower import names
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
-from tests.nodeset import claimed, partitions
-from tests.test_emit import BUNDLE, PACKAGES, TREE, graded, population
+from nodeset import claimed, partitions
+from test_emit import BUNDLE, PACKAGES, TREE, graded, population
 
 
 def _probe(raw: dict, pointer: str = "", position: Position = Position.PROP) -> schema_nodes.Base:

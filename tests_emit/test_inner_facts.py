@@ -43,7 +43,7 @@ from pydantic import ValidationError
 
 from codegen import bundle, emit
 from codegen.ir import MISSING
-from tests.nodeset import claimed, partitions
+from nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
 #: **The bundle a run reads, taken from the ONE declaration of it**

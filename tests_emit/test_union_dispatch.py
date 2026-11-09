@@ -48,7 +48,7 @@ from pydantic import BaseModel, ValidationError
 import adcp.types._schemas as schemas_pkg
 from adcp.types._base import BranchDispatchMixin, applied_schema, through_the_store
 from codegen import bundle, catalogue, harness, held
-from tests.nodeset import claimed, partitions, ratchet
+from nodeset import claimed, partitions, ratchet
 
 REPO = Path(__file__).resolve().parents[1]
 #: **The bundle a run reads, taken from the ONE declaration of it**

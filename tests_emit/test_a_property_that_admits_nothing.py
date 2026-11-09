@@ -49,7 +49,7 @@ from pydantic import ValidationError
 from adcp.types._base import SchemaRef, schema_at
 from codegen import bundle, emit
 from codegen.schema import parse as schema
-from tests.nodeset import claimed
+from nodeset import claimed
 
 DRAFT = "http://json-schema.org/draft-07/schema#"
 #: **The bundle a run reads, taken from the ONE declaration of it**

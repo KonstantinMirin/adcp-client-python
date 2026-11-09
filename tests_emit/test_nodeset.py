@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import pytest
 
-from tests import nodeset
-from tests.nodeset import claimed, partitions, ratchet
+import nodeset
+from nodeset import claimed, partitions, ratchet
 
 
 def test_claimed_refuses_an_empty_set() -> None:

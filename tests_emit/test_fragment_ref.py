@@ -53,7 +53,7 @@ from adcp.types._base import applied_schema
 from codegen import bundle, emit, intersect
 from codegen.keywords import Position
 from codegen.refusal import Refusal
-from tests.nodeset import claimed, partitions
+from nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
 

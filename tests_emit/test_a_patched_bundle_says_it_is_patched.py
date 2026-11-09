@@ -62,7 +62,7 @@ import fresh
 import pytest
 
 from codegen import bundle, patch, store
-from tests.nodeset import claimed
+from nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]
 

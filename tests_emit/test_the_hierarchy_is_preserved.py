@@ -43,7 +43,7 @@ import pytest
 from adcp.types._base import PACKAGE, BranchDispatchMixin, SchemaBound
 from adcp.types.envelopes import AdcpRequest, AdcpResponse
 from codegen import bundle
-from tests.nodeset import claimed
+from nodeset import claimed
 
 #: **The bundle a run reads, from the ONE declaration of it** -- ``fresh.BUNDLE``, the
 #: PATCHED bundle, which is the bundle the committed classes were emitted from.  A

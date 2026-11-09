@@ -32,7 +32,7 @@ from compiled import compiled
 
 from codegen import bundle, keywords, render
 from codegen.lower import names
-from tests.nodeset import claimed
+from nodeset import claimed
 
 #: **The bundle a run reads, taken from the ONE declaration of it**
 #: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while

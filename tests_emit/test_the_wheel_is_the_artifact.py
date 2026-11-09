@@ -89,7 +89,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.nodeset import claimed
+from nodeset import claimed
 
 ROOT = Path(__file__).resolve().parents[1]
 

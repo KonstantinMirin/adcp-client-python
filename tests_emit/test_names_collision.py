@@ -27,7 +27,7 @@ import fresh
 
 from codegen.lower import names, union
 from codegen.refusal import Refusal
-from tests.nodeset import claimed, ratchet
+from nodeset import claimed, ratchet
 
 REPO = Path(__file__).resolve().parents[1]
 

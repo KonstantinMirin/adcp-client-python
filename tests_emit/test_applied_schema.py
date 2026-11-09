@@ -53,7 +53,7 @@ from adcp.types import _base
 from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
 from codegen import bundle, emit, keywords
 from codegen import refusal as refusal_module
-from tests.nodeset import claimed, partitions, ratchet
+from nodeset import claimed, partitions, ratchet
 
 #: A FLOOR over the WHOLE portable set, which is not the count the committed tree holds
 #: (that is the ``population()`` run, and the two have been confused in three

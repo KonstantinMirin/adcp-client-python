@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 
 from codegen import bundle, patch
-from tests.nodeset import claimed, ratchet
+from nodeset import claimed, ratchet
 
 #: The published bundle the patch is stated against.
 PUBLISHED = Path("schemas/cache/3.2")

@@ -63,7 +63,7 @@ from test_enum import _members, emitted_enum_classes
 from adcp.types._base import MEMBER_NAMES_TAKEN, MemberAlias
 from codegen import bundle, ir, render
 from codegen.lower import enum as lower_enum
-from tests.nodeset import claimed, partitions
+from nodeset import claimed, partitions
 
 #: The one member the bead is written about, as the document that states it and the
 #: attribute a caller of upstream's package types.  Not a fixture of the tree: the VALUE
