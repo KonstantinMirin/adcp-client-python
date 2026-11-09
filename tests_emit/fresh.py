@@ -137,10 +137,17 @@ KEPT_SECONDS = 12 * 60 * 60
 
 #: The generated children of ``adcp.types``, which this run writes and ``src/`` must not
 #: be allowed to answer for.  ``emit.write`` puts the first under ``_schemas`` and the
-#: other two BESIDE it (``Emitted.beside``), and all three are asserted present in the
+#: others BESIDE it (``Emitted.beside``), and every one is asserted present in the
 #: materialised directory: a missing one would fall through ``adcp.types.__path__`` to the
 #: committed module, which is the mixture of two compilers this module exists to end.
-GENERATED = ("_schemas", "constraints.py", "envelopes.py")
+#:
+#: ``domains`` is v9.6's module layout as a COMPATIBILITY MIRROR of the fresh ``_schemas``
+#: (``codegen/mirror``), and it is here for the rule's own reason rather than for the
+#: mixture it could cause: the mirror resolves ``adcp.types._schemas.<rest>`` by NAME at
+#: import time, so it follows whichever tree is bound and cannot mirror the committed one
+#: while the rest of the grade reads the fresh one.  What a fall-through WOULD hide is the
+#: artifact itself going stale, and that is what the entry closes.
+GENERATED = ("_schemas", "constraints.py", "envelopes.py", "domains")
 
 #: Why no fresh tree could be built, or ``""``.
 #:
