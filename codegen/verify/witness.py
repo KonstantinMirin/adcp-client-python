@@ -36,13 +36,36 @@ the target's minimal value (:meth:`Construction.floor`) where the document requi
 The memo that makes the walk linear is the memo that closes the cycle, so a depth limit
 would be a guess standing in for the detection and none is introduced here.
 
+**A ``pattern`` OF FOUR CONSTRUCTS IS READ AND EVERY OTHER PATTERN IS LEFT UNREAD.**  An
+anchor, a literal run, a character class and a quantifier are keywords the way ``minLength``
+is a keyword, and the reading is the same reading: the class's FIRST member repeated the
+quantifier's MINIMUM count, exactly as ``minLength: 3`` gives ``"aaa"`` (:func:`_atoms`,
+:func:`_patterned`).  ``^[A-Z]{3}$`` gives ``"AAA"`` and ``^sha256:[a-f0-9]{64}$`` gives
+``"sha256:"`` and sixty-four ``"a"``\\ s.  **THIS IS NOT A REGEX ENGINE AND MUST NOT BECOME
+ONE**: there is no backtracking, no lookaround, no group, no group reference, no alternation
+and no class subtraction here, and a pattern stating any of them is NOT ATTEMPTED -- the
+document's own ``examples`` is the value and failing that the fact is approximated with the
+pattern QUOTED (:func:`_atoms` names the construct it stopped at).  Measured over bundle
+3.2: 66 of 110 distinct patterns and 5,306 of 7,638 pattern-bearing positions are of the
+read shape; the 44 that are not are a group, an alternation, a lookaround or a complement
+class, and a reader that guessed at
+``^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9]...`` is the thing this module refuses to
+be.
+
 **WHERE CONSTRUCTION CANNOT REACH, THE DOCUMENT'S OWN ``examples`` IS THE VALUE**, and
 failing that the fact is approximated with the reason named (:attr:`Source.APPROXIMATED`,
-:attr:`Built.reason`).  An arbitrary ``pattern`` and a ``format`` nothing can state are
-the two cases, and **this module builds no solver for either** -- not a regex engine, not
-a format generator.  Refusing to build one is the decision, not an omission:
+:attr:`Built.reason`).  A ``pattern`` of an unread shape and a ``format`` nothing can state
+are the two cases, and **this module builds no generator for either** -- not a regex
+engine, not a format generator.  Refusing to build one is the decision, not an omission:
 ``docs/plan/final-state.md`` reading 1 says a document that states no example and admits
 no value construction can produce "is an ask over a set of the bundle".
+
+**AND THE VALUE THE READING PRODUCES IS CHECKED BY THE DOCUMENT'S OWN CHECKER BEFORE IT IS
+USED**, never by the reader's belief about what it produced: :meth:`Construction.refusals`
+offers it to the node's own statements -- the ``pattern`` itself, and every ``minLength``,
+``maxLength`` and ``format`` beside it -- and a value the node refuses is not kept.  A
+reader returning a string its own pattern refuses is therefore a defect this module's own
+screen catches, which is why the reading may be as small as it is.
 
 **THE SCREEN IS SHALLOW BY DESIGN, AND THAT IS §9's LINEARITY RULE.**  A value is offered
 to the node's OWN statements (:meth:`Construction.refusals`) and never to its subtree: a
@@ -346,14 +369,309 @@ def _implied(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
     return ()
 
 
+# --------------------------------------------------------------------------- #
+# the four constructs a pattern is READ by
+# --------------------------------------------------------------------------- #
+#: What a class ESCAPE admits, first member first -- a table of CONSTANTS and not a
+#: generator, which is the same reason :data:`FORMAT_CASES` is permitted here.  An escape
+#: absent from this table is one whose members this reader does not NAME
+#: (:data:`_UNNAMED_CLASS`) or a construct it does not read at all (:func:`_escaped`).
+_CLASS_ESCAPE: Mapping[str, str] = {
+    "d": "0123456789",
+    "w": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_",
+}
+
+#: The class escapes this reader does not name a member of.  A COMPLEMENT (``\S``, ``\D``,
+#: ``\W``) has no first member to take -- "the first character that is not a digit" is a
+#: choice and not a reading -- and ``\s``'s members are the whitespace a document almost
+#: never means.  A quantifier may still take such a class ZERO times, which is why these
+#: are an unnamed member rather than an outright refusal: ``^[^\x00-\x1f]*$`` is READ, as
+#: the empty string, and ``^[^\x00-\x1f]+$`` is not.
+_UNNAMED_CLASS = frozenset("sSDW")
+
+#: How a value READ OFF A PATTERN says so, on :attr:`Built.reason` -- which is that field's
+#: second half, *"how the one there is was reached"*.  A marker and not a sentence, because
+#: what reads it is a measurement over the whole bundle: the obligation that every value
+#: this reading produces is one its own node admits is only checkable if the values it
+#: produced can be told from the values the other readings did.
+READ_FROM_A_PATTERN = "the pattern's own constructs"
+
+#: The zero-width assertions, which are not atoms: a pattern stating one is not read.
+#: ``^`` and ``$`` at the pattern's two ends are the anchors :func:`_atoms` reads; anywhere
+#: else, and in every other spelling, an assertion is a construct this reader stops at.
+_ASSERTIONS = frozenset("AbBGzZ")
+
+#: The characters that open a construct this reader does not read, with the construct NAMED
+#: -- a group, an alternation, a lookaround (which opens as a group) and a backreference.
+#: ``docs/plan/architecture.md`` §2's rule, as a table: the reader stops, the document's own
+#: ``examples`` is asked, and the pattern is quoted in the reason.
+_UNREAD = {
+    "(": "a group",
+    ")": "a group",
+    "|": "an alternation",
+    "^": "an anchor inside the pattern",
+    "$": "an anchor inside the pattern",
+    "*": "a quantifier with no atom",
+    "+": "a quantifier with no atom",
+    "?": "a quantifier with no atom",
+    "{": "a quantifier with no atom",
+}
+
+
+class _Unread(Exception):
+    """The pattern states a construct this reader does not read, and ``str`` NAMES it.
+
+    An exception and not a sentinel because the four readings nest -- a class inside an
+    atom inside the sequence -- and a shape the reader stops at has to stop all of them at
+    once.  Every raise names the CONSTRUCT rather than the position, because what the
+    reason has to carry is why this pattern was left unread.
+    """
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _Atom:
+    """One construct of a pattern: what it admits, and how many times it may repeat.
+
+    :attr:`member` is the class's FIRST member -- the one the reading takes -- or ``None``
+    where the class is one whose members the reader does not name.  A ``None`` member is
+    fatal only where the count is above zero (:func:`_patterned`), because a quantifier that
+    admits zero repetitions never asks what the class holds.
+    """
+
+    member: str | None
+    least: int
+    most: int | None
+
+
+def _escaped(text: str, at: int) -> tuple[str | None, int, bool]:
+    """One ``\\``-escape: ``(what it admits, the index after it, is it a class)``.
+
+    A class escape gives its members (:data:`_CLASS_ESCAPE`), ``None`` where it is one this
+    reader does not name; ``\\xNN`` and ``\\uNNNN`` give the character they spell; a
+    punctuation escape gives the character itself.  **An escape that is a LETTER or a DIGIT
+    and is not in the tables is not read**: a digit is a backreference or an octal escape
+    and a letter is a construct with semantics of its own, and guessing at either is the
+    engine this module refuses to be.
+    """
+    if at >= len(text):
+        raise _Unread("a trailing backslash")
+    found = text[at]
+    if found in _CLASS_ESCAPE:
+        return _CLASS_ESCAPE[found], at + 1, True
+    if found in _UNNAMED_CLASS:
+        return None, at + 1, True
+    if found in _ASSERTIONS:
+        raise _Unread(f"the assertion '\\{found}'")
+    if found == "x" and at + 3 <= len(text):
+        return chr(int(text[at + 1 : at + 3], 16)), at + 3, False
+    if found == "u" and at + 5 <= len(text):
+        return chr(int(text[at + 1 : at + 5], 16)), at + 5, False
+    if found.isalnum():
+        raise _Unread(f"the escape '\\{found}'")
+    return found, at + 1, False
+
+
+def _members(text: str, at: int) -> tuple[str | None, int]:
+    """A character class, from its ``[`` -- ``(its first member, the index after it)``.
+
+    The FIRST MEMBER IS THE DOCUMENT'S OWN FIRST: the class is read left to right and the
+    first thing it lists is the one the value takes, so ``[a-f0-9]`` gives ``"a"`` and
+    ``[-a-z]`` gives ``"-"``.  The whole class is read even though only its head is used,
+    because a member the reader cannot parse is a construct it has not understood -- a
+    POSIX class, a subtraction -- and a pattern it has not understood is one it leaves
+    unread.
+
+    **A NEGATED CLASS HAS NO FIRST MEMBER** and is reported as one whose members are not
+    named (``None``), not as a refusal: *"the first character that is not a digit"* is a
+    choice this reader does not make, and a quantifier admitting zero repetitions makes the
+    question moot.  The two ``]`` spellings draft-07's own grammar gives are read: a ``]``
+    immediately after ``[`` or ``[^`` is a literal member, and anywhere else it closes.
+    """
+    at += 1
+    unnamed = at < len(text) and text[at] == "^"
+    at += 1 if unnamed else 0
+    first: str | None = None
+    stated = False
+    if at < len(text) and text[at] == "]":
+        first, stated, at = "]", True, at + 1
+    while at < len(text) and text[at] != "]":
+        if text[at] == "\\":
+            member, at, holds_a_class = _escaped(text, at + 1)
+            if holds_a_class:
+                if member is None:
+                    unnamed = True
+                elif first is None:
+                    first = member[0]
+                stated = True
+                continue
+        else:
+            member, at = text[at], at + 1
+        stated = True
+        if at + 1 < len(text) and text[at] == "-" and text[at + 1] != "]":
+            if text[at + 1] == "\\":
+                high, at, holds_a_class = _escaped(text, at + 2)
+                if holds_a_class:
+                    raise _Unread("a range over a class escape")
+            else:
+                high, at = text[at + 1], at + 2
+            if high is None or member is None or ord(high) < ord(member):
+                raise _Unread("a range that admits nothing")
+        if first is None:
+            first = member
+    if at >= len(text):
+        raise _Unread("a class with no end")
+    if not stated:
+        raise _Unread("a class that admits nothing")
+    return (None if unnamed else first), at + 1
+
+
+def _count(text: str, at: int) -> tuple[int, int | None, int]:
+    """An atom's quantifier: ``(least, most, the index after it)``, ``most`` ``None`` for
+    unbounded.
+
+    The four spellings draft-07's own grammar gives -- ``*``, ``+``, ``?`` and ``{n}`` in
+    its three forms -- and nothing else.  A LAZY or POSSESSIVE quantifier is not read: it
+    admits the same strings its greedy spelling does, but reading it would be reading a
+    MATCHING strategy, and a reader that starts interpreting the engine's search is the
+    engine.  An atom with no quantifier repeats exactly once, which is the grammar's own
+    default and not a choice made here.
+    """
+    if at >= len(text):
+        return 1, 1, at
+    found = text[at]
+    if found in "*+?":
+        least, most = {"*": (0, None), "+": (1, None), "?": (0, 1)}[found]
+        at += 1
+    elif found == "{":
+        close = text.find("}", at)
+        if close < 0:
+            raise _Unread("a quantifier with no end")
+        stated = text[at + 1 : close].split(",")
+        if len(stated) > 2 or not stated[0].isdigit() or not all(p.isdigit() or not p for p in stated):
+            raise _Unread(f"the quantifier '{text[at : close + 1]}'")
+        least = int(stated[0])
+        most = least if len(stated) == 1 else (int(stated[1]) if stated[1] else None)
+        at = close + 1
+    else:
+        return 1, 1, at
+    if at < len(text) and text[at] in "?+":
+        raise _Unread("a lazy or possessive quantifier")
+    return least, most, at
+
+
+def _atoms(pattern: str) -> tuple[_Atom, ...]:
+    """The pattern as a sequence of :class:`_Atom`, or :class:`_Unread` naming the construct.
+
+    **THE ANCHORS ARE READ AS ANCHORS AND NOT AS ATOMS.**  A leading ``^`` and a trailing
+    ``$`` say where the match sits, which is what lets the sequence between them be the
+    whole of what the reading has to produce; ``$`` in any other position, and ``^`` outside
+    a class, is an assertion this reader stops at.  An UNANCHORED pattern is read too and
+    needs no special case: draft-07's ``pattern`` is a SEARCH rather than a full match, so
+    the string the atoms name is found in itself -- which is why ``^https://`` gives
+    ``"https://"`` and ``\\S`` gives nothing.
+    """
+    text = pattern[1:] if pattern.startswith("^") else pattern
+    if text.endswith("$") and not text.endswith("\\$"):
+        text = text[:-1]
+    out: list[_Atom] = []
+    at = 0
+    while at < len(text):
+        found = text[at]
+        if found == "[":
+            member, at = _members(text, at)
+        elif found == "\\":
+            member, at, holds_a_class = _escaped(text, at + 1)
+            member = (member[0] if member else None) if holds_a_class else member
+        elif found == ".":
+            member, at = None, at + 1
+        elif found in _UNREAD:
+            raise _Unread(_UNREAD[found])
+        else:
+            member, at = found, at + 1
+        least, most, at = _count(text, at)
+        out.append(_Atom(member, least, most))
+    if not out:
+        raise _Unread("a pattern that states no atom")
+    return tuple(out)
+
+
+def _patterned(pattern: str, low: int, high: int | None) -> Built:
+    """The string the pattern's own four constructs name, inside the node's length bound.
+
+    Each class's first member repeated the quantifier's MINIMUM count, which is the whole
+    reading -- and then the length bound, which is a statement about the same instance and
+    so has to hold of the same string.  A quantifier's RANGE is what makes that possible: a
+    ``minLength`` above the atoms' own minimum is met by repeating a class the number of
+    times its own quantifier admits, and a bound no repetition of the atoms can reach is
+    reported rather than approached.
+    """
+    try:
+        atoms = _atoms(pattern)
+    except _Unread as why:
+        return Built(None, Source.APPROXIMATED, f"pattern {pattern!r} is not solved: {why}")
+    counts = [atom.least for atom in atoms]
+    length = sum(counts)
+    if high is not None and length > high:
+        return Built(
+            None,
+            Source.APPROXIMATED,
+            f"pattern {pattern!r} is not solved under maxLength {high}: it admits nothing shorter",
+        )
+    index = len(atoms) - 1
+    while length < low and index >= 0:
+        atom = atoms[index]
+        room = (low - length) if atom.most is None else atom.most - counts[index]
+        if atom.member is None or room <= 0:
+            index -= 1
+            continue
+        grown = min(room, low - length)
+        counts[index] += grown
+        length += grown
+    if length < low:
+        return Built(
+            None,
+            Source.APPROXIMATED,
+            f"pattern {pattern!r} is not solved under minLength {low}: it admits nothing longer",
+        )
+    out = []
+    for atom, count in zip(atoms, counts):
+        if count == 0:
+            continue
+        if atom.member is None:
+            return Built(
+                None,
+                Source.APPROXIMATED,
+                f"pattern {pattern!r} is not solved: a class whose members it does not name",
+            )
+        out.append(atom.member * count)
+    return Built("".join(out), Source.CONSTRUCTED, READ_FROM_A_PATTERN)
+
+
+def _patterns(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
+    """The DISTINCT patterns the co-describing statements state, in first-stated order."""
+    out: list[str] = []
+    for view in views:
+        stated = view.get("pattern")
+        if isinstance(stated, str) and stated not in out:
+            out.append(stated)
+    return tuple(out)
+
+
 def _string(views: Sequence[Mapping[str, Any]]) -> Built:
     """The string the node's own string keywords state it admits.
 
     ``format`` first, because a formatted node's admitted set is the format's and a
-    padded string is not in it; then the length bound, exactly as many characters as it
-    demands.  A ``pattern`` is where the construction STOPS -- there is no regex engine
-    here and there will not be one -- so the caller falls to the document's own
-    ``examples``.
+    padded string is not in it; then the ``pattern``, read by its own four constructs
+    (:func:`_patterned`); then the length bound, exactly as many characters as it demands.
+    A pattern of an unread shape is where the construction STOPS, and the caller falls to
+    the document's own ``examples``.
+
+    **TWO DIFFERENT PATTERNS ON ONE INSTANCE ARE NOT READ.**  Two co-describing conjuncts
+    each stating a pattern demand a string in the INTERSECTION of two languages, and
+    intersecting them is solving rather than reading -- so the fact is approximated with
+    both quoted.  A value the first pattern alone admits would be a witness nothing
+    checked: the shallow screen reads one node's own statements, so a conjunct's pattern is
+    graded at the conjunct and not here.
     """
     low = _bound(views, "minLength") or 0
     high = _bound(views, "maxLength")
@@ -371,9 +689,15 @@ def _string(views: Sequence[Mapping[str, Any]]) -> Built:
                     f"no stated case of format {named!r} fits the length bound",
                 )
             return Built(fitting[0], Source.CONSTRUCTED)
-    for view in views:
-        if isinstance(view.get("pattern"), str):
-            return Built(None, Source.APPROXIMATED, f"pattern {view['pattern']!r} is not solved")
+    stated = _patterns(views)
+    if len(stated) > 1:
+        return Built(
+            None,
+            Source.APPROXIMATED,
+            f"pattern {stated[0]!r} is not solved beside {stated[1]!r} at one instance",
+        )
+    if stated:
+        return _patterned(stated[0], low, high)
     if high is not None and high < low:
         return Built(None, Source.APPROXIMATED, "the length bounds admit no string")
     return Built("a" * low, Source.CONSTRUCTED)
@@ -740,6 +1064,16 @@ class Construction:
         then the answer.  Reading a pattern to TEST a candidate is not solving it: the
         screen is the document's own validator and the candidate came from the node.
 
+        **AND THE PATTERN'S OWN READING IS ONE OF THOSE CASES** (:func:`_patterned`), which
+        is where the ``format``/``pattern`` pair comes out right in BOTH directions:
+        :func:`_string` offers the format's case because a formatted node's admitted set is
+        the format's, and where a sibling pattern refuses every case the format states, the
+        string the pattern itself names is the node's own next statement.
+        ``{"format": "uri", "pattern": "^https://github\\.com/"}`` is the measured shape --
+        no case of ``uri`` matches it and the reading gives ``"https://github.com/"``, which
+        the node admits on both keywords.  Screened like every other candidate, so a reading
+        the ``format`` refuses is not kept.
+
         **Then ``docs/plan/final-state.md`` reading 1's ``examples``:** *"the document's own
         stated instance is the schema's statement about itself, it needs no generator, and
         it survives any transformation that preserves what the document admits."*  Screened
@@ -759,6 +1093,17 @@ class Construction:
             for member in members if isinstance(members, list) else ():
                 if not self.refusals(document, pointer, member):
                     return Built(member, Source.CONSTRUCTED)
+        nodes = [
+            node
+            for at, _ in views
+            for node in [self.node(document, at)]
+            if isinstance(node, Mapping)
+        ]
+        read = _patterns(nodes)
+        if len(read) == 1:
+            reading = _patterned(read[0], _bound(nodes, "minLength") or 0, _bound(nodes, "maxLength"))
+            if reading.held and not self.refusals(document, pointer, reading.value):
+                return reading
         for where, _ in views:
             stated = self.node(document, where)
             members = stated.get("examples") if isinstance(stated, Mapping) else None
@@ -918,10 +1263,13 @@ class Construction:
         """The keys ``minProperties`` demands beyond the required ones.
 
         A declared ``properties`` entry first, because a key the document NAMES is a key
-        the construction can reach.  Failing that the key is a free choice and the
-        construction makes one -- ``docs/plan/rebuild-plan.md`` §8 says exactly that of a
-        mapping value -- unless ``propertyNames`` or ``patternProperties`` is what decides
-        which names are admitted, where the choice is a regex to solve.
+        the construction can reach.  Then the key a ``patternProperties`` entry or a
+        ``propertyNames`` schema admits, which are the two places a document states what a
+        name may be: **a ``patternProperties`` key is its pattern READ** (:func:`_patterned`,
+        the same four constructs a string value is read by) and a ``propertyNames`` key is
+        the value already built for that schema's own node -- so neither is a choice made
+        here.  Failing all three the key is a free choice and the construction makes one;
+        ``docs/plan/rebuild-plan.md`` §8 says exactly that of a mapping value.
         """
         extra: dict[str, Any] = {}
         for at, path in views:
@@ -936,6 +1284,37 @@ class Construction:
                 inner = self.value(document, f"{at}/properties/{bundle.escape_key(name)}", path)
                 if inner.held:
                     extra[name] = inner.value
+        if len(extra) >= wanted:
+            return Built(extra, Source.CONSTRUCTED)
+        for at, path in views:
+            node = self.node(document, at)
+            if not isinstance(node, Mapping):
+                continue
+            table = node.get("patternProperties")
+            for stated in table if isinstance(table, Mapping) else ():
+                if len(extra) >= wanted:
+                    break
+                named = _patterned(stated, 0, None)
+                if not named.held or named.value in placed or named.value in extra:
+                    continue
+                inner = self.value(
+                    document, f"{at}/patternProperties/{bundle.escape_key(stated)}", path
+                )
+                if inner.held:
+                    extra[named.value] = inner.value
+            if len(extra) >= wanted or not isinstance(node.get("propertyNames"), Mapping):
+                continue
+            named = self.value(document, f"{at}/propertyNames", path)
+            if not isinstance(named.value, str) or named.value in placed or named.value in extra:
+                continue
+            sub = node.get("additionalProperties")
+            inner = (
+                self.value(document, f"{at}/additionalProperties", path)
+                if isinstance(sub, Mapping)
+                else Built(None, Source.CONSTRUCTED)
+            )
+            if inner.held:
+                extra[named.value] = inner.value
         if len(extra) >= wanted:
             return Built(extra, Source.CONSTRUCTED)
         for node in [self.node(document, at) for at, _ in views]:
