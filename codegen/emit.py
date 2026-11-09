@@ -112,7 +112,19 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._base import Approximation
-from codegen import bundle, catalogue, compiler, harness, intersect, ir, keywords, refusal, render, store
+from codegen import (
+    bundle,
+    catalogue,
+    compiler,
+    harness,
+    intersect,
+    ir,
+    keywords,
+    refusal,
+    render,
+    store,
+    structure,
+)
 from codegen import constraints as constraints_module
 from codegen import mirror as compat_mirror
 from codegen.compiler import (
@@ -1080,6 +1092,19 @@ class Emitted:
     #: record and :attr:`adopted` both, which is what ``tests_emit/
     #: test_one_node_is_one_declaration.py`` reads it for.
     recased: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: **MODULE** -> ``ir.Module.restructured``: upstream's PUBLISHED word for a position no
+    #: title names -> the symbol of ours it binds, joined on structure
+    #: (``codegen.structure.STRUCTURAL_IDENTITY``).  Beside :attr:`recased` and the same
+    #: kind of binding reached by the other key: that one is the document ROOT's, measured
+    #: at 101 of 101, and this one is the complement -- the union branch leaf, the array
+    #: element, the nested model and the nested enumeration.
+    restructured: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: **MODULE** -> ``ir.Module.unbound``: every published word the join did NOT bind ->
+    #: the ``codegen.structure.REFUSALS`` entry that says why.  **THE REFUSALS ARE PART OF
+    #: THE RECORD AND NOT A SILENCE**: an ambiguous join is a defect to name, so a reader
+    #: ranges over this instead of over upstream's tree, and the gate asserts by NAME that
+    #: the words a word-keyed join got wrong are refused here.
+    unbound: dict[str, dict[str, str]] = field(default_factory=dict)
     #: Section 5's ``default`` row, the REPORTED half: ``document -> {pointer -> the
     #: value dropped}``, for a default the document states on a REQUIRED property.
     #: Dropping it changes no accepted set -- the key is in every admitted instance,
@@ -1492,6 +1517,7 @@ def decidable(
     objects: Mapping[str, Target] = {},
     constrained: Mapping[object, str] = {},
     abroad: frozenset[str] = frozenset(),
+    upstream: Mapping[str, Mapping[str, object] | None] = {},
     *,
     known: Collection[str],
 ) -> tuple[Module, ir.Module] | Refusal:
@@ -1584,7 +1610,7 @@ def decidable(
     # ``mod.root`` and not the title read again: the two agree by the assertion above, so
     # this spends the reading that is already in hand.
     subjects = frozenset(rooted_subjects(bundle_dir)) - {mod.root}
-    bound = lower_names.assign(mod, carriers, elsewhere, judged, abroad, subjects)
+    bound = lower_names.assign(mod, carriers, elsewhere, judged, abroad, subjects, upstream)
     if isinstance(bound, Refusal):
         # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
         # one class name, and a branch with no identity.  Returned from here because this
@@ -1728,6 +1754,16 @@ def emit(
     #: reader that needs it."  **This function is that caller**: it is handed the bundle
     #: directory and the run's documents, so it is the one frame that knows both.
     known = set(bundle.portable(bundle_dir))
+    #: **UPSTREAM's PUBLISHED STRUCTURES, read ONCE by the caller that knows the run** and
+    #: threaded to the naming pass through :func:`decidable`, which is the architecture
+    #: document's own rule for every set a callee needs: "a callee that needs the set of a
+    #: bundle's documents ... must be **told** it, not go and find it."  The index is one
+    #: file for the whole of upstream's tree (``codegen.structure.PUBLISHED``), so a reader
+    #: per document would open it 1,059 times.
+    #:
+    #: Read here and not in ``lower/`` for §8's reason as well: nothing under ``lower/``
+    #: opens a file, and the join is a function of its arguments.
+    upstream = structure.published()
     # **ONE SCAN of the bundle, and three readings of it** (``bundle.edges``): the
     # per-document ``named`` set, the pointers a root ``allOf`` composes, and the
     # reference graph the order is computed over.  Read from the BUNDLE rather than from
@@ -2712,6 +2748,13 @@ def emit(
                 for symbol, where in abroad[document].items()
                 if symbol in lowered[where][1].exports
             ),
+            # **UPSTREAM's published structures for the module their generator wrote from
+            # THIS document**, looked up by the module path both layouts derive from the
+            # document path (``codegen.structure``).  A document upstream's tree has no
+            # counterpart module for gets ``{}``, which binds nothing: their layout and
+            # ours agree on 1,081 modules of the two, and the handful that differ are
+            # reported by the gate rather than guessed at here.
+            upstream.get(module_path(document), {}),
             known=known,
         )
         if isinstance(outcome, Refusal):
@@ -2863,6 +2906,10 @@ def emit(
         # every module so that absence means "no title of this module recases", which is
         # what lets a reader range over the record instead of over the whole tree.
         out.recased[module_path(document)] = dict(bound.recased)
+        # Upstream's PUBLISHED words beside them, and the refusals beside those, same pass
+        # and same reason (:attr:`Emitted.restructured`, :attr:`Emitted.unbound`).
+        out.restructured[module_path(document)] = dict(bound.restructured)
+        out.unbound[module_path(document)] = dict(bound.unbound)
         if mod.drops:
             out.drops[document] = dict(mod.drops)
         if mod.carries_nothing:

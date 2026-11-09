@@ -115,6 +115,15 @@ STORE = CACHE_ROOT / "emit-cache"
 #: ``SchemaRef`` and the approximation kinds, ``_runtime`` for the rule dataclasses.
 _PACKAGE_INPUTS = ("src/adcp/types/_base.py", "src/adcp/types/_runtime.py")
 
+#: **THE COMMITTED ARTIFACTS THE COMPILE READS, which a glob over ``*.py`` cannot see.**
+#: ``codegen/published.json`` is upstream's published structures -- the other side of
+#: ``codegen.structure``'s join, and therefore an input the emitted text is a function of:
+#: regenerate the index against a different revision and every module that binds one of
+#: those words changes bytes.  Without it in the key a lane that rebuilds the index alone is
+#: served the previous compile, which is the same defect ``_PACKAGE_INPUTS`` exists for, one
+#: file type further out.
+_DATA_INPUTS = ("codegen/published.json",)
+
 
 @functools.cache
 def _compiler_digest() -> str:
@@ -135,7 +144,11 @@ def _compiler_digest() -> str:
     describes code it did not run -- the exact defect this key exists to prevent, one
     package boundary further out.
     """
-    paths = [*sorted((REPO / "codegen").rglob("*.py")), *(REPO / p for p in _PACKAGE_INPUTS)]
+    paths = [
+        *sorted((REPO / "codegen").rglob("*.py")),
+        *(REPO / p for p in _PACKAGE_INPUTS),
+        *(REPO / p for p in _DATA_INPUTS),
+    ]
     h = hashlib.sha256()
     for path in paths:
         h.update(path.relative_to(REPO).as_posix().encode())
