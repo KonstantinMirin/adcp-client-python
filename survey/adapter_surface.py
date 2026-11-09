@@ -521,8 +521,18 @@ def demand(c: dict) -> dict[tuple[str, str], list[str]]:
     second instrument re-deciding them would be two answers to one question.  A flat name
     that resolves through `_adapter` is re-demanded by the same rule read one layer up.
     """
+    #: **AND THE `other` BUCKET IS DEMAND TOO.**  A pair whose module raises something that
+    #: is not `ModuleNotFoundError(mod)` was dropped from the demand entirely, and the three
+    #: readings of why it raised are all demand: `adcp.types.versioned_bases.v31` fails
+    #: because its PARENT package is absent, so the error names `versioned_bases` and not
+    #: the module asked for; `adcp.types.domains.bundled.protocol...` fails because the
+    #: mirror's prefix substitution finds no `_schemas.bundled`.  Measured: 8 pairs upstream's
+    #: own suite asks for had no row of the table at all, for no reason except which
+    #: exception the import raised.  The pair is what the file asks for, however the import
+    #: failed.
     out: dict[tuple[str, str], list[str]] = collections.defaultdict(list)
-    for file, mod, name in c["missing_module"] + c["missing_name"]:
+    for row in c["missing_module"] + c["missing_name"] + c["other"]:
+        file, mod, name = row[0], row[1], row[2]
         out[(mod, name)].append(file)
     adapters = set()
     for _, mod, _ in c["resolving"]:
@@ -1362,15 +1372,47 @@ REFUSAL = '''
 #: caller asked for.
 __adcp_refused__ = {refused}
 
+#: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where
+#: upstream's module is not one.  Measured off their own source and never listed: of every
+#: module in their hand-written type layer, exactly two bind nothing but plain re-exports of
+#: their generated tree and declare no class or function of their own -- `_generated`
+#: (2,981 bindings, 2,969 of them straight out of `adcp.types.domains`) and `error_details`
+#: (98 and 96).  A module whose whole content is "every generated name" owes every generated
+#: name, and a census over module-SCOPE imports cannot measure that: `adcp/server/mcp_tools`
+#: reaches into it with `getattr`, so the demand showed 30 names and the suite then stopped
+#: on `_generated.ValidateInputRequest` with every one of the 30 present.
+__adcp_delegates_to__ = {delegate}
+
 
 def __getattr__(name: str) -> object:
     why = __adcp_refused__.get(name)
-    if why is None:
-        raise AttributeError(f"module {{__name__!r}} has no attribute {{name!r}}")
-    raise AttributeError(
-        f"{{__name__}}.{{name}} is upstream's and has no subject in the pinned bundle: {{why}}. "
-        f"See docs/migration-from-upstream.md"
-    )
+    if why is not None:
+        raise AttributeError(
+            f"{{__name__}}.{{name}} is upstream's and has no subject in the pinned bundle: "
+            f"{{why}}. See docs/migration-from-upstream.md"
+        )
+    # **DELEGATION IS A NAME AND NOT A SECOND ANSWER.**  The namespace reached here is OUR
+    # own flat surface, whose names one lane already decided; this adds no decision of its
+    # own, declares nothing, and is lazy -- so a module of 3,477 names costs nothing at
+    # import.  The refusal table is read FIRST, because a verdict about this name at this
+    # module outranks the namespace's answer to the same word.
+    if __adcp_delegates_to__ is not None:
+        import importlib
+
+        held = importlib.import_module(__adcp_delegates_to__)
+        try:
+            return getattr(held, name)
+        except AttributeError:
+            pass
+    raise AttributeError(f"module {{__name__!r}} has no attribute {{name!r}}")
+
+
+def __dir__() -> list[str]:
+    if __adcp_delegates_to__ is None:
+        return sorted(__all__)
+    import importlib
+
+    return sorted(set(__all__) | set(dir(importlib.import_module(__adcp_delegates_to__))))
 '''
 
 
@@ -1452,8 +1494,46 @@ def owner(module: str, target: Path, restored: frozenset[Path]) -> str | None:
     return "a module of ours, which this writer did not write"
 
 
+#: Where a NAMESPACE module of upstream's is served from.  One entry, because our flat
+#: surface is one namespace; the KEYS are measured (:func:`namespaces`) and never listed.
+OUR_NAMESPACE = "adcp.types"
+
+
+def namespaces(oracle: ua.Oracle | None) -> frozenset[str]:
+    """Which modules of upstream's are PURE RE-EXPORT NAMESPACES of their generated tree.
+
+    Read off their own source, as a property rather than as a list: every module-scope
+    binding is a plain `import` out of `adcp.types.domains`, and the module declares no
+    class and no function of its own.  Measured on 9.6.1: `adcp.types._generated` (2,981
+    bindings, 2,969 from the generated tree) and `adcp.types.error_details` (98 and 96), and
+    nothing else clears 0.75.  The threshold is `>= 0.9` with at least twenty bindings, and
+    the declaration screen is what keeps a topic module with a few re-exports out.
+    """
+    if oracle is None:
+        return frozenset()
+    per: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
+    for (module, _name), statement in oracle.bindings.items():
+        if module.startswith(ua.THEIR_GEN):
+            continue
+        kind = statement.kind
+        if kind in ("import", "import-as"):
+            kind += "-gen" if statement.ref_module.startswith(ua.THEIR_GEN) else "-other"
+        per[module][kind] += 1
+    out = set()
+    for module, kinds in per.items():
+        total = sum(kinds.values())
+        from_gen = kinds["import-gen"] + kinds["import-as-gen"]
+        if total >= 20 and from_gen / total >= 0.9 and not (kinds["class"] or kinds["function"]):
+            out.add(module)
+    return frozenset(out)
+
+
 def write_modules(
-    rows: list[dict], out: Path, version: str, restored: frozenset[Path] | None = None
+    rows: list[dict],
+    out: Path,
+    version: str,
+    restored: frozenset[Path] | None = None,
+    delegating: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, tuple[int, int]], dict[str, str]]:
     """One module per upstream module the demand names, with its names and its refusals.
 
@@ -1548,6 +1628,7 @@ def write_modules(
         body += REFUSAL.format(
             module=module,
             refused="{\n" + "".join(f'    "{k}": "{v}",\n' for k, v in sorted(refused.items())) + "}",
+            delegate=f'"{OUR_NAMESPACE}"' if module in delegating else "None",
         )
         target.write_text(body)
         written[module] = (len(names), len(refused))
@@ -1682,7 +1763,11 @@ def main() -> None:
     if args.report:
         args.report.write_text(json.dumps({"version": join.version, "rows": rows}, indent=1))
     if args.write:
-        written, refused_paths = write_modules(rows, args.write, join.version)
+        delegating = namespaces(oracle)
+        print(f"  modules upstream publishes as a NAMESPACE, measured: {sorted(delegating)}")
+        written, refused_paths = write_modules(
+            rows, args.write, join.version, delegating=delegating
+        )
         for module, n in sorted(written.items()):
             print(f"  wrote {module:34} {n[0]:5} names, {n[1]:4} refused")
         for module, why in sorted(refused_paths.items()):

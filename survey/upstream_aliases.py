@@ -277,16 +277,28 @@ class Oracle:
         header, which is the commit the restored machinery is already measured against --
         one pin for the whole project, so the alias layer and the restore cannot come to be
         about two different upstreams.
+
+        **THE EXTRACTION IS CACHED UNDER THE REV, which is correctness and not speed.**  A
+        fresh `mkdtemp` per call leaves one copy of their 1,137-file tree behind per run,
+        and `/tmp` here is a tmpfs with a million inodes: eleven runs of this instrument
+        exhausted them and the twelfth `tar` failed with "No space left on device" mid-tree
+        -- a half-extracted tree is an ORACLE THAT SILENTLY ANSWERS `absent`, which is the
+        one failure mode this module must not have.  Keyed on the rev, so the bytes under
+        the path are the bytes that rev names, and re-extracted when the marker is missing.
         """
         rev = rev or um.rows()[0]
-        root = Path(scratch or tempfile.mkdtemp(prefix=f"adcp-upstream-{rev}-"))
-        archive = subprocess.run(
-            ["git", "archive", rev, "--", TREE],
-            cwd=HERE.parent,
-            capture_output=True,
-            check=True,
-        ).stdout
-        subprocess.run(["tar", "-x", "-C", str(root)], input=archive, check=True)
+        root = Path(scratch) if scratch else Path(tempfile.gettempdir()) / f"adcp-upstream-{rev}"
+        marker = root / ".complete"
+        if not marker.is_file():
+            archive = subprocess.run(
+                ["git", "archive", rev, "--", TREE],
+                cwd=HERE.parent,
+                capture_output=True,
+                check=True,
+            ).stdout
+            root.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["tar", "-x", "-C", str(root)], input=archive, check=True)
+            marker.write_text(rev)
         out = cls(rev=rev, root=root / TREE)
         out.read()
         return out
