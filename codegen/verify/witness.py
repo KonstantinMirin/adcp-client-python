@@ -2451,6 +2451,23 @@ class Construction:
         admits no value the array has none either, with the conjunction's own reason
         carried: an array whose ``contains`` no member can satisfy admits no instance, and
         saying so is the answer rather than an array the document refuses.
+
+        **AND SEVERAL ``contains`` DEMAND SEVERAL MEMBERS, one each, which is the keyword's
+        own reading rather than a count this module chose.**  draft-07's ``contains`` is
+        satisfied by SOME member, so two statements of it are two existential claims and one
+        value conjoined from both satisfies them only where they agree; where they do not,
+        a single member repeated satisfies exactly one and the document refuses the array on
+        the other.  ``media-buy/request-proposals-response.json`` is the measured shape:
+        ``purchase_continuation``'s legacy branch states ``losses.contains`` twice at its own
+        conjuncts and a third time in the consequent its own ``source_adcp_version``
+        selects, over an element ``enum`` of exactly those three members -- so the document
+        admits the three-member array and the one-member reading built two of them and was
+        refused on ``contains`` (``adcp-client-python-hzio.14``).
+
+        The count such a set demands is the number of STATEMENTS, bounded by the node's own
+        ``maxItems``: a bound the document states is a fact and not a budget, and where it
+        is below that number the document admits no instance -- which the node's own screen
+        then says, at ``maxItems``, rather than this reading guessing.
         """
         least = _bound(nodes, "minItems")
         count = int(least) if isinstance(least, (int, float)) else 0
@@ -2482,7 +2499,10 @@ class Construction:
             if isinstance(node, Mapping) and isinstance(node.get("items"), Mapping)
         ]
         if wanted:
-            count = max(count, 1)
+            # ONE member per existential statement, bounded by the node's own ceiling.
+            most = _bound(nodes, "maxItems")
+            demanded = max(count, len(wanted))
+            count = min(demanded, int(most)) if isinstance(most, (int, float)) else demanded
         if not element:
             if not wanted:
                 return Built([None] * count, Source.CONSTRUCTED)
@@ -2493,6 +2513,16 @@ class Construction:
             besides = tuple(p for p, _ in (*element[1:], *wanted))
         if count == 0:
             return Built([], Source.CONSTRUCTED)
+        if len(wanted) > 1:
+            built = self._one_each(
+                document,
+                element,
+                wanted,
+                count,
+                distinct=any(node.get("uniqueItems") is True for node in nodes),
+            )
+            if built is not None:
+                return built
         inner = self.value(document, at, (*path, *besides), besides)
         if inner.source is Source.BACK_EDGE:
             if count == 0:
@@ -2504,6 +2534,56 @@ class Construction:
         if count > 1 and any(node.get("uniqueItems") is True for node in nodes):
             return self._distinct(document, at, path, count)
         return Built([inner.value] * count, Source.CONSTRUCTED)
+
+    def _one_each(
+        self,
+        document: str,
+        element: Sequence[tuple[str, tuple[str, ...]]],
+        wanted: Sequence[tuple[str, tuple[str, ...]]],
+        count: int,
+        *,
+        distinct: bool,
+    ) -> Built | None:
+        """One member per ``contains`` statement, each built from the ELEMENT and that one.
+
+        The array's half of :meth:`_views`' own rule, read for an EXISTENTIAL keyword: a
+        ``contains`` describes SOME member, so the statement to build a member from is the
+        element's declaration conjoined with exactly ONE of them -- never with all of them at
+        once, which is the universal reading and the one that empties the intersection where
+        two of them disagree.
+
+        ``None`` where this reading has nothing to add, and the caller then takes the
+        one-member reading unchanged.  Two cases: a member the element and its ``contains``
+        admit no value for, and a set whose members come out EQUAL under a ``uniqueItems``
+        that forbids it -- there the node's own ``enum`` is the distinct set
+        (:meth:`_distinct`) and this reading has no better answer than the one already there.
+        The short list is padded with its FIRST member, because ``minItems`` above the number
+        of existential statements is a count and says nothing about what fills it.
+        """
+        out: list[Any] = []
+        for one, where in wanted:
+            seed, path = element[0] if element else (one, where)
+            besides = (
+                (*(p for p, _ in element[1:]), one) if element else ()
+            )
+            member = self.value(document, seed, (*path, *besides), besides)
+            if member.source is Source.BACK_EDGE:
+                return None
+            if not member.held:
+                return None
+            out.append(member.value)
+        if distinct and (
+            len(out) < count
+            or any(
+                out[i] == out[j]
+                for i in range(len(out))
+                for j in range(i + 1, len(out))
+            )
+        ):
+            return None
+        while 0 < len(out) < count:
+            out.append(out[0])
+        return Built(out[:count], Source.CONSTRUCTED)
 
     def _distinct(
         self, document: str, at: str, path: tuple[str, ...], count: int
