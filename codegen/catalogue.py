@@ -930,7 +930,7 @@ class Admitted:
         self._targets: dict[tuple[tuple[str, str], tuple[tuple[str, str], ...]], object] = {}
         #: The document set a collection ranged over -> L2A's collected positions over it,
         #: which is L2's own screen (:func:`shape_states`' ``applied``).  **PUBLIC, unlike
-        #: the three memos above**, because :func:`collect_shapes` is what fills it: it is
+        #: the three memos above**, because :func:`collect_applied` is what fills it: it is
         #: part of what this object carries FOR the layers that share it rather than state
         #: of its own keying.
         #:
@@ -938,9 +938,17 @@ class Admitted:
         #: §3a asks that a derived reading be an argument rather than something a callee
         #: recomputes, and the point of that rule is that one run reads one collection; a
         #: screen a caller could supply differently is the same defect the rule forbids,
-        #: arriving through the argument instead of around it.  So :func:`collect_shapes`
-        #: derives it and this object -- which is already what a run shares between its
-        #: layers -- holds it, and the emitter's two passes collect L2A once between them.
+        #: arriving through the argument instead of around it.  So :func:`collect_applied`
+        #: records it and this object -- which is already what a run shares between its
+        #: layers -- holds it.
+        #:
+        #: **WRITTEN BY THE LAYER THAT COLLECTS IT AND NOT BY THE ONE THAT READS IT**, which
+        #: is what makes "the emitter's two passes collect L2A once between them" true
+        #: rather than merely asserted (``adcp-client-python-lqun``, defect 2).
+        #: :func:`collect_shapes` was the only writer, so the emitter's DIRECT
+        #: ``collect_applied`` call recorded nothing and L2 recomputed L2C and L2A over the
+        #: whole bundle to derive a screen the run already held -- measured, 1,218 of that
+        #: pass's 4,852 keys were the duplicate.
         self.screens: dict[object, frozenset[tuple[str, str]]] = {}
 
     def document(self, name: str) -> dict:
@@ -2179,18 +2187,23 @@ def collect_shapes(
     a caller can supply differently.  Measured before it moved here: this module's own L2
     fixture and ``tests/test_catalogue_homes.py``'s both read L2 unscreened while the run
     read it screened, so the gate on a homeless entry ranged over a layer no run collects.
-    :attr:`Admitted.screens` is where the answer is held, so the emitter's two passes
-    collect L2A once between them.
+    :attr:`Admitted.screens` is where the answer is held, and the layer that COLLECTS it
+    is the one that records it there (:func:`collect_applied`) -- which is what makes the
+    emitter's two passes collect L2A once between them.  **That sentence used to be false
+    of the code it described** (``adcp-client-python-lqun``, defect 2): this function was
+    the only writer, so an emitter calling :func:`collect_applied` DIRECTLY recorded
+    nothing and the branch below recomputed L2C and L2A over the whole bundle.  So the
+    branch is a fall-back for a caller that reaches L2 first, and never the run's path.
     """
     if layer == "L2":
         held = None if documents is None else frozenset(documents)
         if held not in admitted.screens:
-            admitted.screens[held] = collect_applied(
+            collect_applied(
                 admitted,
                 collect_shapes(admitted, "L2C", standing, documents),
                 standing,
                 documents,
-            ).collected
+            )
         applied: Collection[tuple[str, str]] = admitted.screens[held]
     else:
         applied = ()
@@ -2454,16 +2467,25 @@ def collect_applied(
             name=entry.name,
             step=entry.step,
         )
+    #: **L2's SCREEN, recorded BY THE LAYER THAT COLLECTED IT** and not by the one that
+    #: reads it (``adcp-client-python-lqun``, defect 2).  :func:`collect_shapes` used to be
+    #: the only writer of :attr:`Admitted.screens`, so the emitter's DIRECT call here
+    #: (``emit.py``'s ``l2a = catalogue.collect_applied(...)``) left the screen absent and
+    #: L2 then recomputed L2C and L2A over the whole bundle to derive it again.  Measured
+    #: over this bundle: ``collect_applied`` ran TWICE and ``collect_shapes`` three times,
+    #: 1,218 of the pass's 4,852 collected keys -- 25% -- being the duplicate.
+    screen = frozenset(
+        (position.document, position.pointer)
+        for found in joining.values()
+        for position in found
+    )
+    admitted.screens[None if documents is None else frozenset(documents)] = screen
     return Applied(
         entries=entries,
         undeclared=tuple(undeclared),
         unmatched=tuple(unmatched),
         positions=tuple(every),
-        collected=frozenset(
-            (position.document, position.pointer)
-            for found in joining.values()
-            for position in found
-        ),
+        collected=screen,
     )
 
 
