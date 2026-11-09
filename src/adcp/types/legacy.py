@@ -35,30 +35,30 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
-from adcp.types.compat import BuildCreativeRequest as LegacyBuildCreativeRequest
-from adcp.types.compat import GetCreativeDeliveryResponse as LegacyGetCreativeDeliveryResponse
-from adcp.types.compat import GetProductsRequest as LegacyGetProductsRequest
-from adcp.types.compat import GetProductsResponse as LegacyGetProductsResponse
-from adcp.types.compat import ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest
-from adcp.types.compat import ListCreativeFormatsResponse as LegacyListCreativeFormatsResponse
-from adcp.types.compat import PreviewCreativeRequest as LegacyPreviewCreativeRequest
 from adcp.types.core import FormatReferenceStructuredObject as FormatReferenceStructuredObject
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatId
 from adcp.types.core import Product as LegacyProduct
+from adcp.types.creative import GetCreativeDeliveryResponse as LegacyGetCreativeDeliveryResponse
 from adcp.types.creative import ListCreativesRequest as LegacyListCreativesRequest
 from adcp.types.creative import ListCreativesResponse as LegacyListCreativesResponse
 from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeResponse2
+from adcp.types.creative import PreviewCreativeRequest as LegacyPreviewCreativeRequest
 from adcp.types.creative import PreviewCreativeSingleResponse as LegacyPreviewCreativeResponse1
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeResponse3
 from adcp.types.creative import SyncCreativesRequest as LegacySyncCreativesRequest
 from adcp.types.media_buy import BuildCreativeError as LegacyBuildCreativeResponse5
 from adcp.types.media_buy import BuildCreativeEstimate as LegacyBuildCreativeResponse4
 from adcp.types.media_buy import BuildCreativeMultiSuccess as LegacyBuildCreativeResponse2
+from adcp.types.media_buy import BuildCreativeRequest as LegacyBuildCreativeRequest
 from adcp.types.media_buy import BuildCreativeSuccess as LegacyBuildCreativeResponse1
 from adcp.types.media_buy import BuildCreativeVariantSuccess as LegacyBuildCreativeResponse3
 from adcp.types.media_buy import CreateMediaBuyRequest as LegacyCreateMediaBuyRequest
 from adcp.types.media_buy import GetMediaBuyDeliveryResponse as LegacyGetMediaBuyDeliveryResponse
 from adcp.types.media_buy import GetMediaBuysResponse as LegacyGetMediaBuysResponse
+from adcp.types.media_buy import GetProductsRequest as LegacyGetProductsRequest
+from adcp.types.media_buy import GetProductsResponse as LegacyGetProductsResponse
+from adcp.types.media_buy import ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest
+from adcp.types.media_buy import ListCreativeFormatsResponse as LegacyListCreativeFormatsResponse
 from adcp.types.media_buy import UpdateMediaBuyRequest as LegacyUpdateMediaBuyRequest
 
 __all__ = [
