@@ -101,6 +101,20 @@ dependencies = [
     # bundled AdCP schemas. Pin to the Draft 7 generation the schemas
     # declare via ``$schema``. Floor at 4.20.0 because mcp 2.0.0 requires it.
     "jsonschema>=4.20.0",
+    # `jsonschema` asserts NOTHING for a draft-07 `format` unless the checker for
+    # that format is installed, and the emitter lets a format select a Python type
+    # only where the schema half asserts it. These two are what make this bundle's
+    # formats checkable: `rfc3339-validator` registers `date-time` (and `time`),
+    # `rfc3987` registers `uri` (and `uri-reference`, `iri`, `iri-reference`);
+    # `date`, `email`, `idn-email`, `ipv4`, `ipv6` and `regex` come with
+    # `jsonschema` itself. RUNTIME dependencies and not dev ones, because
+    # `strict_validate` is what decides acceptance: without them a deployed SDK
+    # accepts a `date-time` carrying no offset, and an `AwareDatetime` field is
+    # then NARROWER than the document it names. They move `date-time` and `uri`
+    # from ungraded to graded over the great majority of this bundle's format
+    # uses; `docs/design/type-generation.md` states the rule they serve.
+    "rfc3339-validator>=0.1.4",
+    "rfc3987>=1.3.8",
     # Validate original URI syntax before AnyUrl can normalize it.
     "rfc3986-validator>=0.1.1,<0.2",
     # Public Suffix List lookups — used by ``adcp.signing.etld`` to compute
@@ -138,6 +152,10 @@ adcp-keygen = "adcp.signing.keygen:main"
 
 [project.optional-dependencies]
 dev = [
+    # The grading path still samples payloads; the epic that replaces sampling
+    # with construction removes both of these, and nothing else imports them.
+    "hypothesis>=6.100.0",
+    "hypothesis-jsonschema>=0.23.1",
     # The reporting outbox gate builds and installs the real sdist/wheel.
     "build>=1.2.1",
     "pytest>=7.0.0",
