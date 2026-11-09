@@ -526,7 +526,7 @@ value set** — finite, monotone, and terminating at its greatest element:
 renderings. **Which widening a keyword takes is the keyword's decision and lives in its cell
 (§5), never at the site that widens.**
 
-A narrowing is not discouraged here; it is a **failing check**. §8's accepts draw covers the
+A narrowing is not discouraged here; it is a **failing check**. §8's accepts construction covers the
 node's admissible space by constraint class, so a type that refuses any value the document
 admits is reported with the value. Where a widening would still leave a narrowing — the type
 word itself refusing what a constraint admits — the type widens by another widening, to `Any` if
@@ -546,13 +546,13 @@ an **attribution**. Nothing is approximated by silence: an undeclared widening i
 
 **There is ONE kind: WIDENED.** The annotation admits a value the document refuses. The
 schema half refuses it, so acceptance is unharmed; what is lost is what the type says, and §8's
-DRAW proves each one by handing the class a value the document admits.
+CONSTRUCTION proves each one by handing the class a value the document admits.
 
-**A difference no draw and no dump can observe is not a fact about the artifact**, and is
+**A difference no construction and no dump can observe is not a fact about the artifact**, and is
 therefore not a kind. A union whose branches §4's dispatch cannot separate admits exactly what the
 document admits where the combinator is `anyOf`, and which branch an overlapping payload becomes is
 a property of declaration order that nothing can observe. An inseparable `oneOf` is different and
-stays WIDENED: there the model admits a payload the document REFUSES, and the draw shows it.
+stays WIDENED: there the model admits a payload the document REFUSES, and the construction shows it.
 
 #### Attribution: ours, or upstream's, and the issue is a reference
 
@@ -633,8 +633,8 @@ inlined target.
 *Why.* A resolver that canonicalises while it inlines — an `enum` of both booleans for a
 `bool`, a `const` for a `null`, a bound derived from a sibling, an annotation dropped — writes a
 document the bundle does not state, and every reader downstream then grades the model against
-that document instead of the bundle's. A payload generator may canonicalise its own copy in order
-to draw from it; that copy is an instrument of one check, and it is not the document.
+that document instead of the bundle's. A check may canonicalise its own copy of a node in order to
+read it; that copy is an instrument of one check, and it is not the document.
 
 ---
 
@@ -1082,7 +1082,7 @@ which is a substitution and §2 forbids it.
 `oneOf` declares WIDENED, because the model admits values the document refuses and a consumer sees
 that through `model_validate`; its reason also states that such a payload's branch is decided by
 declaration order, which the document does not decide. Nothing is dropped — the kind is the one
-§8's DRAW can prove, by handing the class a value the document refuses.
+§8's CONSTRUCTION can prove, by handing the class a value the document refuses.
 
 **And the `anyOf` case declares NOTHING.**
 `anyOf` admits an instance satisfying at least one branch and so does `A | B`, so the model is not
@@ -1197,10 +1197,10 @@ is the one place a keyword decision lives, and a grid is its rendering.
 **`oneOf` AND `anyOf` KEEP ONE CELL**, because what differs between them is not the lowering. There
 is no document-side disjointness fold either.
 
-**What the two combinators do differ in is a fact about the artifact, and the draw proves it.** An
+**What the two combinators do differ in is a fact about the artifact, and the construction proves it.** An
 inseparable `oneOf` admits a payload the document refuses — one satisfying two of its branches,
 which `Draft7Validator` refuses and `model_validate` accepts as the first matching branch. That is
-a WIDENED declaration and §8's draw hands the class exactly such a value. A cell reading "the
+a WIDENED declaration and §8's construction hands the class exactly such a value. A cell reading "the
 schema half enforces exclusivity" is true only of a caller who invokes `strict_validate`, and
 correcting that sentence is a cell edit and not this rendering's.
 
@@ -1373,7 +1373,7 @@ approximation at all: the sentence that grades them exists, and what is owed is 
   value's own type: the root is a permissive root model carrying `ConditionalRequired`. The
   document states a conditional and nothing else, and so does the model.
 - **A root stating no schema keyword.** A permissive root model over a document that constrains
-  nothing DROPS nothing, so there is no fact to declare, and a declaration the draw cannot prove
+  nothing DROPS nothing, so there is no fact to declare, and a declaration the construction cannot prove
   is deleted rather than carried. A document declaring draft-07 whose keys are not schema keywords
   admits every instance under `Draft7Validator`, so the permissive model is exactly as wide as the
   document. The upstream issue stands — the schema should say more than it does — but **an
@@ -1773,81 +1773,106 @@ its whole type is as visible in the report and in the emitted module as a refuse
 
 ## 8. How we know the output is right
 
-**TWO checks and one declared set**, run once per emitted class against the schema document it
-names. Both checks are payload checks: a value is drawn, and the class and the document are asked
-about the same value. Nothing here reads one schema against another, and nothing here grades a
-rendering. **Anything that is not one of these two checks or the widening set they prove does not
-belong in this section.**
+**THREE checks and one declared set**, run once per emitted class against the schema document it
+names. All three are payload checks: a value is CONSTRUCTED from the node's own keywords, and the
+class and the document are asked about the same value. Nothing here reads one schema against
+another, and nothing here grades a rendering. **Anything that is not one of these three checks or
+the widening set they prove does not belong in this section.**
 
-- **Accepts.** Draw payloads the document accepts and construct the class from each. A refusal
+- **Accepts.** Construct the values the document admits and build the class from each. A refusal
   here means the model is tighter than its document, which is the defect that matters.
 
- **An approximation is a claim about this check, and this check is what proves it.** §2 says
+- **Refuses.** Violate one keyword the node states and offer the result. An acceptance here means
+  the model is wider than its document, and the refusal is read AT THE LOCATION the violation was
+  made — a class refusing for some other reason has not been shown to carry the keyword.
+
+- **Dumps.** Instantiate from the accepted value, dump, and validate the dump against the same
+  document.
+
+ **An approximation is a claim about the first check, and that check is what proves it.** §2 says
   every approximation of acceptance is a widening. A widening is therefore not a thing a
-  declaration asserts and a reader believes: for every fact an approximation drops, the draw
-  takes the values that keyword distinguishes — the same coverage classes below — and the class
-  must accept every one of them. An approximation that still refuses a value the document admits
-  is a NARROWING wearing a declaration, and it fails here, by value and by pointer. This is
+  declaration asserts and a reader believes: for every fact an approximation drops, the
+  construction takes the values that keyword distinguishes — the same coverage classes below — and
+  the class must accept every one of them. An approximation that still refuses a value the document
+  admits is a NARROWING wearing a declaration, and it fails here, by value and by pointer. This is
   what keeps "approximated" from being an allowlist.
 
- **The draw COVERS the node's admissible space by constraint class; it does not sample it.**
-  "Never tighter" is a claim about every value the document admits, and a sampling draw reports
-  only the values it drew — so it can run green forever against a type that refuses a whole class
-  of admissible value. For each keyword the node states, the draw takes the classes that keyword
-  distinguishes: every member of an `enum`, both sides of each bound and the bound itself, and for
-  a `format` every case the format's own checker admits rather than the case a generator finds
-  most likely. A Python type chosen for a node admits everything the node admits, or the choice is
-  a narrowing and this check names it with the value.
+ **THE CONSTRUCTION COVERS THE NODE'S ADMISSIBLE SPACE BY CONSTRAINT CLASS; IT DOES NOT SAMPLE
+  IT.** "Never tighter" is a claim about every value the document admits, and a sampler reports only
+  the values it happened to produce — so it can run green forever against a type that refuses a
+  whole class of admissible value. For each keyword the node states, the construction takes the
+  classes that keyword distinguishes: every member of an `enum`, both sides of each bound and the
+  bound itself, and for a `format` every case the format's own checker admits rather than the case a
+  generator finds most likely. A Python type chosen for a node admits everything the node admits, or
+  the choice is a narrowing and this check names it with the value.
+
+ **AND THE COVERAGE IS WHY CONSTRUCTION IS THE ONLY INSTRUMENT THAT CAN ANSWER.** The classes a
+  keyword distinguishes are enumerable from the keyword itself, so they are built, not found; a
+  search over the space the keyword admits is both more expensive and weaker, because it cannot
+  report which class it failed to reach. **The witness set of a node is therefore a function of its
+  keywords: one admitted value, and one violation per keyword stated.** A node stating _k_ keywords
+  owes _k_+1 payloads, and a document owes the sum over its nodes — never a product, and never a
+  count chosen by a parameter.
+
+ **A REFERENCE CONTRIBUTES ITS TARGET'S WITNESS, AND A CYCLE CLOSES ON THE POINTER.** A `$ref` takes
+  the value already constructed for the pointer it names, so no subtree is constructed twice. A
+  reference reaching a pointer whose construction is in progress is a back edge: it is omitted where
+  the document makes it optional and takes the target's minimal value where the document requires
+  it. The memo that makes the walk linear is the memo that closes the cycle, so **no depth parameter
+  exists to be chosen.**
 
  **Every position a widening can land at has an instance location.** The
-  draw places a value at the instance location the node's pointer names, and a position with no
+  construction places a value at the instance location the node's pointer names, and a position with no
   location makes a widening UNPROVABLE — which that check counts as a failure, correctly, since
   an unproved widening is a claim with no instrument on it.
 
   - **A mapping value** — `#/properties/x/additionalProperties`, and the same for
     `patternProperties`. The location is `x` then any key the mapping admits; a key is a free
-    choice and the draw makes one, so the location exists and must be read.
+    choice and the construction makes one, so the location exists and must be read.
   - **A `definitions` entry** — `#/definitions/x`. This one has no location of its own and never
     will: an entry is reachable only through a `$ref` that names it, and §5 declares no entry
     nothing references. **It needs no new reading, because the rule that a declaration travels
     with the fact already re-points it to the referring pointer**, which is a `properties`
-    segment the draw already places. The two settlements compose: one gives the declaration a
-    pointer the declaration names, and that same pointer is one the draw can reach.
+    segment the construction already places. The two settlements compose: one gives the declaration a
+    pointer the declaration names, and that same pointer is one the construction can reach.
 - **Dump.** Serialize the instance and validate the dump against the document. A failure means we
   emit something our own schema refuses.
-### THE TWO CHECKS ARE APPLIED COMPOSITIONALLY, AND CERTAINTY COMES FROM THE TABLE
+### THE THREE CHECKS ARE APPLIED COMPOSITIONALLY, AND CERTAINTY COMES FROM THE TABLE
 
-**DRAWING SAMPLES; IT NEVER PROVES.** The draw finds a disagreement and names the value, which is
-why it is the instrument of record for a defect. It cannot establish the absence of one, so *"the
-class is faithful to its document"* is not a claim the draw can deliver at any budget. Two
-consequences, and both are rules.
+**SAMPLING NAMES A DEFECT; IT NEVER ESTABLISHES THE ABSENCE OF ONE.** A sampled value that
+disagrees is a defect with a witness, which is why a sampler is a fine instrument of record for one.
+But *"the class is faithful to its document"* is a claim about every value the document admits, and
+no sample delivers it at any budget. **Construction delivers it for the classes the keywords
+distinguish**, because those classes are enumerable from the keywords themselves — which is why the
+construction is the instrument here and the sampler is not an instrument of this section at all.
+Two consequences, and both are rules.
 
-**A REFERENCED DOCUMENT IS GRADED BY ITS OWN PAIR, SO AT A REFERRING POSITION IT IS A FIXTURE AND
-NOT A DRAW.**
+**A REFERENCED DOCUMENT IS GRADED BY ITS OWN PAIR, SO AT A REFERRING POSITION IT IS A FIXTURE.**
 
 A class under grade varies **its own** payload. Every subtree it reaches through a reference is a
 document with a pair of its own, graded there — so at the referring position the instrument needs
 **one instance that document admits and one it refuses**, not a generated space. Three properties
 over a reference holding fifteen branches is **three plus fifteen, never three times fifteen**: the
-product becomes a sum because nothing is re-derived that is already decided elsewhere.
+product becomes a sum because nothing is re-derived that is already decided elsewhere. **This is the
+whole of why the cost is a sum**, and it is the same rule the reference memo states structurally:
+one witness per pointer, reused wherever that pointer is reached.
 
 **AND THE SAME RULE GOVERNS A WIDENING'S PROVING VALUE: IT IS A QUESTION ABOUT A DECLARATION AND A
 DOCUMENT, NOT ABOUT THE PAIR THAT ASKED.** A declaration sits at one pointer in one document and
 the value that demonstrates it is a property of that pair of facts alone. Keying the held answer on
 the *asking* pair's pointer gives one subject several keys — three pairs deriving an identical
-multi-megabyte subject are given three, and each pays the draw again — where the narrowest pair's
+multi-megabyte subject are given three, and each pays the construction again — where the narrowest pair's
 answer already serves every one of them.
 
 So **the key is the declaration**: the document, the declared pointer, the keyword and the class
 label, which are a function of the declaration and not of who reached it. That is the same "product
-becomes a sum" one layer over, and it is what makes a value drawn once at the cheapest position the
-proof for every position that contains it.
+becomes a sum" one layer over, and it is what makes a value constructed once at the cheapest
+position the proof for every position that contains it.
 
-**A VALUE A DRAW OF THE SAME SUBJECT ALREADY PRODUCED IS ASKED FOR AFTER THE STORE AND BEFORE THE
-DRAW**, and it is a third state beside drawn and replayed rather than either of them. It is not a
-weaker kind of proof — it is offered to the class's own schema and to the document before anything
-accepts it — but it must be *visible*, because a store that answers and a borrow that answers are
-different facts about coverage, and conflating them hides which one is doing the work.
+**AND THE KEY IS A POINTER IN BOTH PLACES, WHICH IS WHAT MAKES THE TWO MEMOS ONE RULE.** The witness
+memo is keyed on the node's pointer and the proof memo on the declaration's; neither is keyed on
+text, neither is held between runs, and neither needs to be, because the thing they avoid repeating
+is a walk and not a search.
 
 ### A DECLARATION IN A `definitions` SECTION IS PROVED BY THAT ENTRY'S OWN CLASS, AND BY NOTHING
 THAT REFERENCES IT
@@ -1875,7 +1900,7 @@ matching** — which is the same split the bound rows already take, where a boun
 sides and the bound itself. **Only the matching one exercises the fact the widening dropped**, and
 it is the one the proof requires; the other is what shows the vacuous case is still admitted.
 
-**AND THIS IS A RULE ABOUT THE DRAW, NOT ABOUT THE RECORD.** The explosion is in generating into an
+**AND THIS IS A RULE ABOUT THE CONSTRUCTION, NOT ABOUT THE RECORD.** The explosion is in generating into an
 inlined subtree, so substituting a fixture collapses it **whether or not the record inlined the
 bytes** — which makes it a change to how we grade rather than a change to the artifact. It is the
 cheap half of what un-inlining would buy.
@@ -1887,7 +1912,7 @@ elsewhere — that is a fact about the record, and not a reason the GRADED NODE 
 routinely arrives at a pointer **the document does not spell**: a raw branch holding no `$ref` at
 all can be graded as a node almost all of whose bytes sit in one spliced `allOf` conjunct.
 
-**AND A FIXTURE POSITION IS EVERY INSTANCE LOCATION THE NODE DECIDES, WITH ITS VALUE DRAWN FROM THE
+**AND A FIXTURE POSITION IS EVERY INSTANCE LOCATION THE NODE DECIDES, WITH ITS VALUE CONSTRUCTED FROM THE
 CONJUNCTION OF EVERY STATEMENT ABOUT IT.** Several conjuncts can each state part of what one key or
 one element must satisfy, so **one value for the location** is the answer that cannot be empty,
 where a fixture per conjunct is the empty intersection this section already names.
@@ -1911,12 +1936,12 @@ are one group and get one value. Grouping by the pointer instead hands the same 
 independent pins, and two pins on one location do not narrow the node — **they empty it.**
 
 **AND WHERE THERE IS NO ONE VALUE, THE UNCONDITIONAL POSITION IS LEFT EXACTLY AS THE DOCUMENT STATES
-IT.** Not restricted, not reordered, not drawn against a narrowing of itself: left standing. A
-statement left standing cannot contradict a value drawn from a conjunction that contains it, and
-**no restriction of that position and no ordering of two independent draws preserves satisfiability.**
+IT.** Not restricted, not reordered, not constructed against a narrowing of itself: left standing. A
+statement left standing cannot contradict a value constructed from a conjunction that contains it, and
+**no restriction of that position and no ordering of two independent constructs preserves satisfiability.**
 
 **AND A REDUCTION THAT YIELDS AN EMPTY NODE IS A DEFECT, NEVER A LOST SAVING.** The fail-safe then
-pays the unreduced draw the reduction exists to avoid, and an empty reduction is indistinguishable
+pays the unreduced construction the reduction exists to avoid, and an empty reduction is indistinguishable
 from a reduction that found nothing to do, so the budget it overruns gets read as the work being
 inherently large. **A reduction reports emptiness as a failure, loudly, and
 a pair whose reduction came back empty is a defect report and not a slow pair.**
@@ -1934,7 +1959,7 @@ the referenced document is the entire answer about one value, and one value it a
 **A reference at an `allOf` conjunct, inside `if`/`then`/`else`, under `not`, or anywhere else that
 CO-DESCRIBES THE ENCLOSING INSTANCE IS NOT ONE.** There, two or more documents each state part of
 what one value must satisfy, so a fixture per conjunct is two documents answering one question and
-**the intersection is empty** — the draw then yields nothing at all rather than yielding too much.
+**the intersection is empty** — the construction then yields nothing at all rather than yielding too much.
 
 **At a co-describing position the reference is TRANSPARENT: the walk reads through it and keeps
 looking below**, which is the reading `architecture.md` already applies to the record's storage.
@@ -1948,17 +1973,17 @@ reach a DISPATCH ROOT, whose every property sits on its branches and whose own n
 states no type word at all. Without it the composition rule is written, correct, and never reached:
 the conjunct is dropped and the class carries the keys as `Any`.
 
-**AND AN `Any` WHERE A TYPE IS DERIVABLE IS A WIDENING NOBODY DECLARED.** It PASSES both checks — a
+**AND AN `Any` WHERE A TYPE IS DERIVABLE IS A WIDENING NOBODY DECLARED.** It PASSES all three checks — a
 model wider than its document is permitted by §2 — so no verdict moves when it is wrong, and the
 only thing that reports it is a reading over the annotation itself. A dropped conjunct is therefore
-invisible to the draw at exactly the positions where it costs the most.
+invisible to the construction at exactly the positions where it costs the most.
 
 **AND THE RESIDUAL EMPTINESS IS REPORTED, NEVER SWALLOWED.** Two fixtures can still meet on one
 instance through `uniqueItems` or a tuple-valued `items`. That is a non-pass with a name — a
 `strategy_error` attributable to its pair — and never a silent green, because a pair the instrument
 cannot grade is not a pair that passes.
 
-**Two costs, stated rather than discovered.** A fixture is one instance where a draw is many, so a
+**Two costs, stated rather than discovered.** A fixture is one instance where a construction is many, so a
 defect reachable only by an unusual value *inside* a referenced subtree is found by **that
 subtree's own pair or not at all** — which is correct, and is the whole content of "graded there",
 but it must be said out loud because it moves where a defect is found. And **the fixture is DERIVED
@@ -1969,13 +1994,13 @@ maintain and a silent exemption the first time a document changes under it.
 IT.** `examples` is JSON Schema's keyword for *this is a valid instance of
 this schema* — the author's own declaration, living in the schema and maintained with it.
 
-**So the instance lookup is: the committed store, then `examples`, then a draw.** An `examples`
+**So the instance lookup is: the committed store, then `examples`, then a construction.** An `examples`
 member is screened exactly as a held instance is, and one the document REFUSES is an upstream
-defect to be filed — never a reason to bypass the mechanism. It is better than a drawn value as
+defect to be filed — never a reason to bypass the mechanism. It is better than a constructed value as
 well as cheaper: a realistic payload rather than a generated one, and at a referring position the
-referenced document's own `examples` is the natural fixture with no draw at all.
+referenced document's own `examples` is the natural fixture with no construction at all.
 
-**AND WHERE A NODE CARRIES NONE AND A DRAW CANNOT PRODUCE ONE, THE ANSWER IS TO PATCH THE SCHEMA
+**AND WHERE A NODE CARRIES NONE AND A CONSTRUCTION CANNOT PRODUCE ONE, THE ANSWER IS TO PATCH THE SCHEMA
 AND SEND THE PATCH UPSTREAM** — not to keep an instance of our own. §1 already decides what a patch
 is: *"Every patch is also the upstream pull request … carrying one is a way of shipping the fix
 early rather than a way of living without it, and the patch disappears when the backport lands."*
@@ -1985,7 +2010,7 @@ means nothing to anyone else.** The maintenance question below does not arise fo
 there is nothing of ours to maintain.
 
 **THE HAND-WRITTEN INSTANCE IS THEREFORE THE LAST RESORT AND NOT THE ANSWER** — reached only where
-a node has no `examples`, no terminating draw, and no upstream answer yet. Its allowance stands, on
+a node has no `examples`, no terminating construction, and no upstream answer yet. Its allowance stands, on
 the reasoning below, and it is expected to be empty.
 
 **AND THAT REASON IS ABOUT SCALE AND SILENCE, SO IT DOES NOT REACH A HANDFUL.** The hazard named
@@ -1994,19 +2019,19 @@ holds is **re-offered to its own document on every read**, so one that stops bei
 **reddens with that document's name**. The drift the rule exists to prevent is self-reporting at
 this size, which is the whole difference.
 
-So where a DRAW CANNOT PRODUCE AN INSTANCE AT ALL — a strategy builder that will not terminate on
+So where a CONSTRUCTION CANNOT PRODUCE AN INSTANCE AT ALL — a strategy builder that will not terminate on
 the document's own form — **a hand-written instance is admissible for that document, screened, and
 counted**: it is admitted by its own document, its pair passes all three checks, it records no
-budget cut, and the commit names it as hand-written so no reader mistakes it for a drawn one.
+budget cut, and the commit names it as hand-written so no reader mistakes it for a constructed one.
 **It is the generator's defect that is being worked around, and the stopgap is not the fix**: the
-next document of the same form hits the same wall, and a hand-written entry is replaced by a drawn
-one the moment a draw can produce it.
+next document of the same form hits the same wall, and a hand-written entry is replaced by a constructed
+one the moment a construction can produce it.
 
 **WHAT MAKES THIS NOT AN EXEMPTION is that nothing is excused.** The pair is graded, by the same
 three checks, against the same document; only the *provenance of the value* changes, and that is
 recorded rather than hidden. An exemption would be the pair passing without being graded.
 
-**A COMBINATOR ROOT IS NOT GRADED BY DRAWING THE POWER SET OF ITS STATEMENTS, AND THE COMBINATOR
+**A COMBINATOR ROOT IS NOT GRADED BY CONSTRUCTION THE POWER SET OF ITS STATEMENTS, AND THE COMBINATOR
 THAT COSTS THAT IS THE CONJUNCTION, NOT THE UNION.**
 
 **A `oneOf` root is already a sum.** Its branches each emit a class, each carries a pair, and the
@@ -2015,7 +2040,7 @@ generator takes one branch at a time. There is no power set there to avoid.
 **An `allOf` root is the one that is 2^n, and the cost is in the SEARCH rather than the
 intersection.** The only way to generate from an intersection is to intersect the statements first,
 and finding which of them will intersect is what enumerates subsets. So the rule is about that
-search: **the statements are covered by one greedy pass, each group is drawn from its own
+search: **the statements are covered by one greedy pass, each group is constructed from its own
 intersection and screened by every statement, and the cost is n² intersections and never 2^n.**
 Nothing is re-keyed onto a branch, no class is added, and no pair moves. A conjunct is not an
 alternative, so it carries no pair of its own: a value for one conjunct is not a value for the root.
@@ -2025,7 +2050,7 @@ is the accepted instance perturbed one keyword at a time, screened against the r
 `oneOf`'s "an instance two branches admit is refused" is decided by the root's own
 validator, and no reduction of what the GENERATOR is offered can weaken it.
 
-A union's branches are each verified on their own, so the root's own draw re-derives what is
+A union's branches are each verified on their own, so the root's own construction re-derives what is
 already decided — and it does so by enumerating **every SUBSET
 of the branches**, because the canonicaliser must merge each combination to know what the union
 admits. That is `2^n`, not a product, and it is why no constant factor reaches it: an eighteen-branch
@@ -2041,11 +2066,11 @@ of them. **A speedup is not available at any multiple.**
    obligation's negative answer.
 
 A branch that is itself a combinator root recurses by the same obligations. **And the recursion
-does not reach every root:** a pair the draw cannot finish may carry no combinator anywhere, and
+does not reach every root:** a pair the construction cannot finish may carry no combinator anywhere, and
 those are the table's to discharge and not this section's.
 
-**A RESTRICTION MAY NOT BE REMOVED TO MAKE A NODE DRAWABLE.** Removing one **widens** the
-admissible set, so instances drawn from the stripped node are not instances the document admits —
+**A RESTRICTION MAY NOT BE REMOVED TO MAKE A NODE CONSTRUCTIBLE.** Removing one **widens** the
+admissible set, so instances constructed from the stripped node are not instances the document admits —
 nearly every one is refused by the pair's own entry point and fails to conform to the full node, so
 an obligation written that way reports almost every root as refusing a valid value. Screening by
 the full node restores soundness and reintroduces the product as rejection sampling. And the
@@ -2068,17 +2093,17 @@ by offering the class the instance that `not` forbids beside a control the docum
 the four are a reason an obligation cannot be WRITTEN, not evidence of a fact dropped.** A claim
 that any of them is dropped needs the payload, as every claim here does.
 
-**AND CERTAINTY ITSELF COMES FROM §5's TABLE, NOT FROM THE DRAW.** §5 is a keyword × position
+**AND CERTAINTY ITSELF COMES FROM §5's TABLE, NOT FROM THE CONSTRUCTION.** §5 is a keyword × position
 decision table: each cell says what one keyword at one position compiles to. **Prove each cell
 once** — the annotation it emits admits exactly the values that keyword admits at that position,
 against the boundary values the keyword itself names — and **prove each composition rule once** —
 `allOf` intersects, `anyOf` unions, a restatement merges — and faithfulness over any document
 follows **by structural induction on the document**. The obligation becomes the table's cells plus
-the composition rules, which is finite and terminates, and it covers documents no draw will ever
+the composition rules, which is finite and terminates, and it covers documents no construction will ever
 reach.
 
-**The draw is then a cross-check on the table rather than the proof**, and that is the role it can
-actually fill: a drawn disagreement means a cell is wrong or the walk applied the wrong cell, and
+**The construction is then a cross-check on the table rather than the proof**, and that is the role it can
+actually fill: a constructed disagreement means a cell is wrong or the walk applied the wrong cell, and
 either is a located defect rather than a mystery. **The carve-outs are already written down** — the
 declared approximations and the narrowings the registry admits — so "faithful except where
 recorded" is a statement the induction can quote rather than a hedge.
@@ -2111,19 +2136,19 @@ coverage of the table.
 **THERE IS NO THIRD CHECK.** A comparison of the class's
 `model_json_schema()` against the document is **deleted** — code, tests, pins,
 prose, as if it had never existed. It was not a check on the artifact; it diffed schema TEXT, and
-it existed as a proxy for coverage the draw had stopped providing.
+it existed as a proxy for coverage the construction had stopped providing.
 
 **A fact no payload can demonstrate is not a fact about the artifact.** A consumer meets these
-classes through validation and construction, so a disagreement a drawn value cannot expose is a
+classes through validation and construction, so a disagreement a constructed value cannot expose is a
 disagreement in rendering, and §2's "nothing rewrites emitted output" already says rendering is
-not ours to grade. Where the draw provably cannot reach a keyword, the honest answer is to NAME
+not ours to grade. Where the construction provably cannot reach a keyword, the honest answer is to NAME
 that residue and raise the example count until the pile stops shrinking — not to diff text and
 count the difference as a defect.
 
-**THE WIDENING SET, which is the one thing beside the two checks.** §2 makes every keyword the
+**THE WIDENING SET, which is the one thing beside the three checks.** §2 makes every keyword the
 model cannot express a WIDENING rather than a refusal, so the artifact is deliberately looser than
 its document in a declared, enumerated set of places. That set needs proving, and the proof is
-the draw and nothing else: for every fact an approximation drops, the draw takes the values that
+the construction and nothing else: for every fact an approximation drops, the construction takes the values that
 keyword distinguishes and **the class must accept every one of them.** An approximation that
 still refuses a value the document admits is a NARROWING wearing a declaration, and it fails
 here, by value and by pointer. That is what keeps the declared set from being an allowlist, and
@@ -2241,10 +2266,10 @@ the document admits and the class now admits, or one exists that the document re
 admits, or the declaration is describing a difference no consumer can reach and it is deleted
 rather than counted. Where nothing widens — the annotation admits exactly what the document admits,
 and the only loss is which branch an overlapping payload becomes, which
-no draw and no dump can observe — there is no declaration. §4's inseparable `oneOf` is a WIDENED
-fact, because the model admits a payload the document refuses, and the draw shows it.
+no construction and no dump can observe — there is no declaration. §4's inseparable `oneOf` is a WIDENED
+fact, because the model admits a payload the document refuses, and the construction shows it.
 
-**A declaration is proved by the draw and by nothing else**: by a value the document admits and the
+**A declaration is proved by the construction and by nothing else**: by a value the document admits and the
 class accepts, at the pointer the declaration names. A declaration no value can prove is deleted
 rather than graded. No derived keyword set, no equality between a declaration and what it renders,
 and no pointer-translation rule stands beside that.
@@ -2283,8 +2308,8 @@ set to reason about: a document that does not appear in the pairing is a defect 
 A branch class of a union is paired with its branch node read
 under the union's siblings: draft-07 applies every keyword beside the combinator to the same
 instance the branch describes, so a field the branch inherits from the base is a fact its node
-states and not one it added. A pair the payload generator cannot draw for still has to pass the
-draw, and names the case that blocked it.
+states and not one it added. A pair no value can be constructed for still has to pass the
+construction, and names the case that blocked it.
 
 **At a union in ANY position, not only a root one.** The reason above is draft-07's evaluation
 rule, which does not care where the union sits.
@@ -2400,9 +2425,9 @@ Each is one sentence and its reason.
   not charge a document for work we have not done — and *clearable* work stays visible, as the
   *ours* half of the approximation count, which ratchets down.
 - **An approximation that narrows is not an approximation.** It is a model tighter than its
-  document wearing a declaration, and §8's accepts draw is pointed at exactly that. Widen by
+  document wearing a declaration, and §8's accepts construction is pointed at exactly that. Widen by
   another widening — to `Any` if nothing else carries it — rather than declaring the narrowing.
-- **A declared approximation the model does not make is a stale excuse.** The draw cannot prove
+- **A declared approximation the model does not make is a stale excuse.** The construction cannot prove
   it — no value the document admits is newly accepted at that pointer — so it is deleted, because
   a declaration that outlives its widening hides the next real gap at the same pointer.
 - **Do not pin the approximation count.** It rises whenever the emitted set grows, which is the

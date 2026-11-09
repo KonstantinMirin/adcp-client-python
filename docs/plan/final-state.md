@@ -82,15 +82,29 @@ about what the class states.
 **THIS IS A PROPERTY OF THE COMPILER AND NOT OF ONE BUNDLE.** It must hold for every document of
 every bundle the compiler is pointed at, so nothing deciding it may be keyed to one bundle's state.
 
-**Decided by two checks and there is no third:**
+**Decided by three checks and there is no fourth:**
 
-1. **Draw a value from the document. The class must admit it.**
-2. **Instantiate the class, dump it. The document must admit the dump.**
+1. **Construct a value from the document's own keywords. The class must admit it.**
+2. **Violate one keyword the document states. The class must refuse it, there.**
+3. **Instantiate the class, dump it. The document must admit the dump.**
 
-Plus the declared deviations of reading 2 — widenings, and the narrowings it admits on three
-conditions — each proved by a value.
+The first says the class is no narrower than its document, the second that it is no wider, the third
+that what the class emits is what the document admits. Plus the declared deviations of reading 2 —
+widenings, and the narrowings it admits on three conditions — each proved by a value.
 
-**BOTH CHECKS ARE A FUNCTION OF (class, document) AND OF NOTHING ELSE.** Point them at another
+**THE VALUE IS CONSTRUCTED, NEVER SEARCHED FOR.** A node's keywords state what it admits, so a value
+it admits is read off them: a stated constant, a first enum member, the required keys, exactly as
+many characters or items as a bound demands, and for a reference the value already built for its
+target. The construction is bottom-up and total, so **a value exists for every node and the cost of
+a document is one walk of it.** A sampler is a different instrument answering a different question,
+and this reading never asks it.
+
+**THE REFUSING VALUE IS A MUTATION OF THE ADMITTED ONE, AND IT NAMES THE KEYWORD IT VIOLATES.**
+Changing exactly one stated fact isolates the keyword under test from every other keyword at the
+node, and reading the refusal at its location is what makes check 2 more than a boolean: a class
+that refuses for some other reason has not been shown to carry the keyword at all.
+
+**ALL THREE CHECKS ARE A FUNCTION OF (class, document) AND OF NOTHING ELSE.** Point them at another
 bundle and they answer for that bundle, because there is nothing to carry over and nothing to
 expire. **A stored value, a key over a document's bytes, or any artifact that must be re-derived
 when the bundle moves makes an improvement to the schema cost exactly as much as a regression** —
@@ -98,13 +112,21 @@ and it makes the instrument answer for the bundle it was built against instead o
 
 **A PAIR THAT CAN ONLY BE GRADED FROM A STORE IS NOT VERIFIED, IT IS REMEMBERED.** Where a store is
 load-bearing rather than a saving, the reading does not hold for that pair and the store is hiding
-it.
+it. Construction is what makes this reading hold without a store: there is no answer expensive
+enough to be worth keeping, so **no corpus of values is held, committed or versioned.**
 
-**AND WHERE A VALUE CANNOT BE DRAWN, THE DOCUMENT'S OWN `examples` IS THE VALUE.** It is the
-schema's statement about itself, it needs no generator, and it survives any transformation that
-preserves what the document admits. A document that states no example and admits no value a
-generator can produce is an ask over a set of the bundle — not a budget, not an exemption, and not
-a pair that passes by leaving the check unexecuted. A budget cut is reported as a cut.
+**AND WHERE CONSTRUCTION CANNOT PRODUCE A VALUE, THE DOCUMENT'S OWN `examples` IS THE VALUE.** An
+arbitrary `pattern` and a `format` that cannot be generated are the cases: the keyword states a set
+the construction cannot enumerate. The document's own stated instance is the schema's statement
+about itself, it needs no generator, and it survives any transformation that preserves what the
+document admits. A document that states no example and admits no value construction can produce is
+an ask over a set of the bundle — not a budget, not an exemption, and not a pair that passes by
+leaving the check unexecuted.
+
+**NO CHECK CARRIES A BUDGET, A DEPTH LIMIT OR AN EXAMPLE COUNT.** Each of the three terminates
+structurally: one visit per node, one mutation per stated keyword, and a cycle closed by the pointer
+already in progress. A parameter that bounds a check is evidence its cost is not understood, and
+every pair such a parameter cuts is a check that did not run.
 
 ## 2. Every exception to reading 1 is declared and proved by a value
 
@@ -139,7 +161,7 @@ default is refusal; this clause opens a door and does not remove the wall.
 
 **AND THE DEMAND IS OVER FACTS, PROVED AT THE INNERMOST POSITION THAT CARRIES ONE.** A fact stated
 at a node and re-declared at every position composing that node is **one** fact, and the value
-proving it is drawn where the value can compose. A carrying position inherits that proof; it does
+proving it is constructed where the value can compose. A carrying position inherits that proof; it does
 not owe a second one. **The condition is that the innermost carrier is itself graded and passing**
 — inheritance from an ungraded position proves nothing, and that is the only way this clause could
 be read as a weakening.
@@ -150,9 +172,9 @@ and the demand is not merely expensive but unsatisfiable. **A reading that asks 
 cannot exist is not strict, it is wrong** — and its cost is paid in instruments that look like
 rigour while measuring nothing.
 
-**Decided by** the set equality in both directions, and by the store of proving values containing
-one for each FACT — where an entry recording a budget cut is not a value, and where a count over
-carrying positions is not the count this reading names.
+**Decided by** the set equality in both directions, and by a proving value existing for each FACT —
+constructed on the run that reports it, never held between runs, and where a count over carrying
+positions is not the count this reading names.
 
 **And decided, for a narrowing, by all three conditions at once.** The declaration, the value with
 both reasons named, and the excluded set with the judgement's owner beside it. **A narrowing
@@ -247,7 +269,8 @@ as a class silently skips one.
 
 A document of record stores each distinct subtree once and references it at every occurrence. **The
 pointers readers spell do not change** — the storage is a DAG, the pointer language is not, because
-the corpus key hashes the pointer and a respelling discards every held value.
+the pointer is what names a node to every reader of the record, and a respelling renames what no
+reader asked to have renamed.
 
 **Decided by** the record's own size: no record exceeds its source document by more than the
 references it resolves **plus the bookkeeping the sentence above mandates** — the entry names and

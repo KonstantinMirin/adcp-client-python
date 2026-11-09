@@ -165,70 +165,34 @@ green equality. **The collapse also cannot be sized up front:** collapsing the d
 leaves the handlers answering the sum type, so the checker sees one ring at a time, and the figure
 after each ring is the only honest estimate of the next.
 
-### The drawn corpus is COMMITTED
+### The witness is CONSTRUCTED, so there is no corpus and no store
 
-**The payloads are kilobytes of content; drawing them costs minutes per pair.** In a gitignored
-directory, a fresh checkout, a new worktree, a CI job and every key-space change redraw all of
-them, and a held entry is the exception rather than the rule.
+**A witness is built from the node's own keywords; it is never searched for in the space they
+admit.** `const` gives its value, `enum` its first member, `required` its keys, a length or count
+bound exactly that many, a `$ref` the witness already built for its target. The construction is
+bottom-up and total: a node's witness is a function of its children's, so the cost of a document is
+the cost of walking it once.
 
-**The key is `bundle.source_identities`**: the document's own raw bytes, the raw bytes of its
-reference closure, the example count, the format strategies and the generator version. **A
-compiler edit moves nothing. Only a bundle bump does.** A key over `bundle.record` — our own
-inlining — would be invalidated by any compiler edit, leaving a committed corpus permanently stale
-behind a permanently red gate.
+**Therefore nothing is replayed, because nothing is drawn.** A store exists to hold an answer that
+was expensive to obtain; construction is not expensive, so there is no corpus to commit, no key
+space to version, no floor to promote and no staleness to gate. A run that holds no prior state and
+a run that holds all of it do the same work in the same time.
 
-So the obligation is gradeable, and it is the gate that comes with the decision: **every graded
-pair has a committed entry under the current key.** It
-reddens exactly when a bundle bump or a generator bump lands without a redraw — which is a
-deliberate, reviewable event and not an in-flight change — and `harness.corpus_defect` still
-re-offers every held instance to the document on read, so a wrong entry cannot pass quietly.
+**THE STORE WAS THE SHAPE OF A SEARCH, AND SEARCH IS WHAT IS GONE.** Sampling a composed node has
+two regimes and nothing between them — a value found at once, or a space the sampler cannot get
+out of — so the cost is a cliff rather than a curve, and every artifact around it (a committed
+floor, a cache above it, a key that must version the generator, a budget that cuts the second
+regime off) exists to fence the cliff. Construction has no second regime. Removing the search
+removes the fence, and the fence was the larger structure.
 
-What this buys: a payload is drawn **once per (document, draw version) in the project's history**,
-not once per checkout per lane per key-space change. What it costs is a redraw step on a bundle
-bump, which is the same discipline the packaged records already carry.
+**WHERE CONSTRUCTION CANNOT PRODUCE A VALUE, THE DOCUMENT'S OWN `examples` IS THE VALUE.** An
+arbitrary `pattern` and a `format` no checker can generate are the two cases: the keyword states a
+set the construction cannot enumerate. The document's own stated instance is then the witness, and
+where the document states none the fact is approximated and attributed (§9) rather than searched
+for. This project builds no solver for a keyword it cannot read.
 
-### The widening store's currency is the OBLIGATION, not a second gate
-
-§8's widening obligation draws too, and those draws have a store of their own
-in a separate key space and a separate directory. The accepts gate's case **does not transfer to
-it**: `live_keys()` reads every
-graded pair's accepts key with no draw at all, where the widening space's live set depends on
-which borrowed base hosted each declaration's location — decided by placement attempts against the
-pair's own accepts instance. So the exact set is knowable only by RUNNING the obligation, and on a
-cold floor that costs the very draws the gate would be reporting are owed. A gate over the cheap
-superset would demand entries for draws that never happen.
-
-**The accepts gate exists to close a hole that does not exist here.** A stale accepts entry is
-*silently* correct: its key stops matching, the pair redraws, and nothing reddens. A stale widening
-entry cannot be silent, because every held base is placed and offered to the DOCUMENT before the
-entry point sees it — so it either still hosts the location, in which case the check is real, or it
-fails placement and the declaration is reported `unproved`, which §8 treats as **as much a failure
-as a narrowing.** Staleness here is self-reporting. The obligation is the currency gate.
-
-So the floor is committed as it fills, graded on its STRUCTURE, and **no second derived artifact is
-minted to record which keys the set asks for.** That artifact would need its own equality,
-and that equality would need the same thing one level further out. Leaving the space cache-only is
-also refused: the saving is real, crosses checkouts, and changes no verdict — it buys back the draw
-and nothing else.
-
-**AND "AS IT FILLS" IS NOT A DEFERRAL: A STORE THAT EVAPORATES ON CHECKOUT PROVES NOTHING.** The
-proving values live in a
-cross-worktree cache that a check requires to be *outside* the repository — correctly, because a
-run may not write inside the checkout — so a fresh checkout and a CI job hold a
-proving value for **no declaration at all**, and the half of reading 2 that says *every declaration
-holds a value that demonstrates it* reads as unmet for every one of them. That is the same argument
-that makes the accepts floor committed, and it applies here without modification. So the directory
-is created and promoted the moment values exist for it, under two conditions reading 2 states
-itself: **no entry records a budget cut**, and **every entry is a draw's own output** — never
-written by hand, because a hand-written proof is an exemption the first time the document changes
-under it.
-
-**A RUN MAY NOT WRITE INSIDE THE CHECKOUT; A PROMOTION MAY.** That distinction is what lets both
-rules hold at once, and it is already how the accepts floor works — the check forbidding a run to
-write there is not a check against the floor existing.
-
-A position whose draw never returns is held by nothing under any of these choices. That residue is
-not a currency question. It is the document-derived construction decision.
+**Decided by** no store, cache or committed instance being reachable from the grading path, and by
+a fresh checkout grading the whole bundle at the same cost as a warm one.
 
 ### The wheel SHIPS `py.typed`, and the gate is the CONSUMER'S checker
 
@@ -278,7 +242,7 @@ Two readings go with it:
 
 ### The subject of grading is a FRESH EMIT, never the committed tree
 
-The schema is pinned and the drawn instances are content-addressed, so what a class is graded
+The schema is pinned and every witness is derived from the record, so what a class is graded
 against is a function of the bundle and the compiler alone. **Grading therefore reads the tree a
 fresh run emits. The committed tree is an ARTIFACT, verified by one byte-compare, and is never the
 subject.**
@@ -503,7 +467,7 @@ keyword the handler cannot render drops to:
   else;
 - a cell whose `widens_to` is `None` cannot be approximated, and a handler that asks for one is
   a `BuildFailure` — the keyword states no fact, so a widening against it would be a declaration
-  with nothing to declare, and a declaration the draw cannot prove is deleted;
+  with nothing to declare, and a declaration the construction cannot prove is deleted;
 - a key with no row takes TOP, because an unrowed keyword's reach is unknown and TOP is the one
   widening that is safe without knowing it (the semantics document's §7);
 - the attribution is `Ours` at the cell's own address unless `attribution.py` holds an entry for
@@ -715,7 +679,7 @@ is a storage representation and the readers dereference through it; it is not a 
 **WHY THE POINTERS MAY NOT MOVE.** `harness.corpus_key` walks no pointer — it hashes the document's
 raw bytes and its closure's, plus the pointer, deliberately off our rendering and onto the static
 upstream fact. But the pointer **is** in that identity, so respelling a declared pointer as
-`#/definitions/Shared<N>` discards every held value and redraws the pair at its cold cost. The
+`#/definitions/Shared<N>` moves the pointer every witness is keyed on. The
 store that makes the first reading affordable is exactly what a renaming destroys. So the hoisting
 is invisible to every pointer any reader spells, and a declared pointer that stops resolving is a
 defect of the hoisting rather than a consequence of it.
@@ -1284,8 +1248,11 @@ reordered or respelled on either side. A copy taken from document D has its own 
 references inlined from D before it is placed, because it is leaving D's root scope. A
 reference whose target is not a bundle document, and a cross-document cycle, make the record
 undefined for that document, and `record` returns a `Refusal` (VERDICT) rather than a mapping.
-The payload generator's resolver (`hypothesis_jsonschema`) is confined to drawing payloads in
-`verify/accepts.py` and never writes a document anything else reads.
+The witness construction reads this record directly and resolves nothing of its own: the record is
+already inlined, so a constructed instance is a function of the record and of no second reading of
+the bundle. **No third-party schema interpreter stands between the record and the witness**, which
+is what keeps the subject of a check the document's own node rather than some library's rewriting of
+it.
 
 **This is the one refusal the compiler mints (§2 of the semantics document).** The
 principle that unifies its structures is that **the document has no defined accepted set**: there is
@@ -1302,7 +1269,7 @@ A **local** `$ref` cycle is not in this class: it is never inlined, and it rende
 reference under a string annotation with a `model_rebuild()` after the module's declarations
 (§6). The difference between the two cycles is the record and not the type.
 
-*Why our own.* The record is what `strict_validate` validates against and what the draw
+*Why our own.* The record is what `strict_validate` validates against and what the construction
 grades against. A resolver that canonicalises while it inlines writes a document the bundle
 does not state, and every reader downstream then needs a fold to undo each rewriting. An
 inliner that changes nothing needs none.
@@ -1322,26 +1289,23 @@ two references to it costs that again per occurrence.
 holds for a walk over a structure whose repeated subtrees are held BY REFERENCE — that is what makes
 the text key quadratic and the identity key linear. **It inverts for a function that REBUILDS its
 argument**, because then every child it recurses on is a fresh object sharing identity with nothing,
-and an identity key cannot hit what no two call sites hold in common. A strategy builder whose
-first statement rebuilds its argument through text is such a function, and there the text key is
-the effective one. So the discriminator is not
+and an identity key cannot hit what no two call sites hold in common. So the discriminator is not
 which key is cheaper to compute — it is **whether the walk hands the same object twice**, and that
-is a property of the callee rather than of the data. Ask it before applying this rule anywhere.
+is a property of the callee rather than of the data.
 
-**AND THE ACCEPTS RESOLVER INLINES AND DOES NOT CANONICALISE**, which is a statement about where a
-cost belongs rather than about correctness. The draw's own strategy builder canonicalises whatever
-it is handed, so **a draw pays canonicalisation inside the draw, over the schema it will generate
-from, and resolution pays it never.** A resolver that canonicalises pays it once per inlined
-occurrence and then hands the draw something it will canonicalise again.
+**WHICH IS WHY NO READER OF THE RECORD IS ALLOWED TO REBUILD IT.** A reader that rebuilds forfeits
+the identity its caller carried, and every memo above it stops hitting — so the rule is not a
+preference about keys but a constraint on what a reader may do with the record it is handed: it
+walks, it does not re-derive. The record is read as a mapping, its pointers travel with it, and a
+reader that needs a different reading states that reading beside the node rather than minting a new
+document for it.
 
-**A ONE-SHOT `signal.alarm` DOES NOT BOUND ANYTHING**, which is why a timeout is not the fix for
-it: the signal can land where Python DISCARDS the exception it raises — a
-garbage-collection callback or a `__del__`, and `hypothesis` installs one — so the alarm fires, is
-ignored, and nothing is left to fire again. `harness.within`'s timer repeats for exactly that
-reason, so a swallowed signal costs the interval and not the bound.
-
-**A phase that cannot be preempted must be made to terminate, not bounded** — and a bound whose
-delivery is probabilistic must repeat, or it is reporting a guarantee it does not have.
+**AND NO PHASE IS BOUNDED BY A CLOCK, because a phase that cannot be preempted must be made to
+terminate rather than bounded.** A wall-clock bound on a walk is a statement that the walk's cost is
+not understood; it is also unreliable in a way that is easy to miss, since a signal can land where
+the exception it raises is discarded and the bound then reports a guarantee it does not have. The
+verifier's phases terminate structurally — one visit per node, a memo that closes every cycle — so
+there is nothing for a timer to protect and no interval to choose.
 
 ### The node, and the parser that is the one reading
 
@@ -1638,9 +1602,9 @@ type.
 
 A union whose branches §4 of the semantics document cannot separate lowers the same way it would
 if they were separable. Where the combinator is `oneOf` it declares a WIDENED `Approximation` at
-the union's own pointer, because the model then admits a payload the document refuses and the draw
+the union's own pointer, because the model then admits a payload the document refuses and the witness
 proves it. Where it is `anyOf` it declares **nothing**: the model admits exactly what the document
-admits, and the only loss — which branch an overlapping payload becomes — is observable by no draw
+admits, and the only loss — which branch an overlapping payload becomes — is observable by no witness
 and no dump.
 
 ---
@@ -1802,20 +1766,52 @@ the artifact as this repository states it.
 
 ## 9. The verifier: `codegen/verify/`
 
+**THE VERIFIER ASSERTS THREE THINGS AT EVERY NODE, AND NOTHING ELSE.**
+
+| the witness | the subject | what must hold |
+| --- | --- | --- |
+| the constructed valid instance | the emitted class | the class accepts it |
+| each invalidating mutation of it | the emitted class | the class refuses it, at the location the mutation was made |
+| the accepted instance, instantiated and dumped | the document | the document accepts the dump |
+
+The first says the class is no narrower than its document, the second that it is no wider, the third
+that what the class emits is what the document admits. Three assertions, one witness set, one node.
+There is no fourth check, and no check ranges over more than one node's own statements.
+
 **A CHECK'S COST IS LINEAR IN THE DOCUMENT'S NODES, EACH VISITED ONCE — AND A BUDGET IS EVIDENCE
 THAT ONE IS NOT.** Combinatorial explosion and unbounded recursion are **defects of the approach,
 not costs to control.** A time budget, a depth limit, a cap on examples: each is a parameter added
 so that an explosion stops being visible, and **every pair such a budget cuts is a check that did
 not run, recorded as though something had been learned.** That is the same evasion as an
-expected-failure marker, arriving as arithmetic instead of as a decorator.
+expected-failure marker, arriving as arithmetic instead of as a decorator. **The verifier carries no
+cap of any kind**, and that is a structural claim about the three checks above rather than a target.
 
-The two checks are linear by construction and nothing in the readings asks otherwise: draw a value
-the document admits and the class must admit it; instantiate, dump, and the document must admit the
-dump. **A document with N branches needs N values, not 2^N.** So where a cost is a power set, a
-cross-product of conjuncts, or "every combination of branches", the question is which reading
-demanded it — and the answer is none of the ten. Where a `$ref` cycle is survived by a depth limit,
-the cycle is to be **detected once and the node memoised**; this project has already found 189
-refusals that were a single reference loop.
+**THE VALID WITNESS IS CONSTRUCTED AND THE INVALID ONE IS A MUTATION OF IT.** The valid instance is
+read off the node's keywords (§2) and the invalid set is one violation per keyword the node states —
+a required key dropped, a type replaced, a value outside an `enum`, a bound exceeded by one. Both
+are therefore **derived from the document and bounded by its own statements**: a node that states
+_k_ keywords has _k_ invalid witnesses and one valid one, so a document with N branches needs N
+witness sets, not 2^N. Where a cost would be a power set, a cross-product of conjuncts, or "every
+combination of branches", no reading demanded it.
+
+**A MUTATION NAMES THE KEYWORD IT VIOLATES, WHICH IS WHAT MAKES THE SECOND CHECK MORE THAN A
+BOOLEAN.** A class that refuses the mutation for the wrong reason has not been shown to carry the
+keyword, so the refusal is read at its location and against its cause. This is also why the invalid
+witness is a mutation of the valid one rather than an arbitrary non-conforming value: changing
+exactly one stated fact isolates the keyword under test from every other keyword at the node.
+
+**A CYCLE TERMINATES ON THE POINTER, NOT ON A DEPTH LIMIT.** A reference reaching a pointer whose
+construction is already in progress is a back edge: the construction completes by omitting the
+reference where the document makes it optional, and by taking the minimal instance of the target
+where the document requires it. The memo that makes the walk linear is the same memo that closes the
+cycle, so **there is no depth parameter to choose** — a depth limit on a cyclic construction is a
+guess standing in for the detection.
+
+**ONE VALIDATOR PER DOCUMENT.** The document's reference registry and its resolver are properties of
+the document, not of a visit, so they are built where the document is read and outlive every node in
+it. A validator constructed per call rebuilds the registry, re-resolves every reference and discards
+what it learned; the pointer memo and the validator lifetime are the same rule applied to the two
+halves of the check.
 
 **AND A NODE'S IDENTITY IS ITS POINTER, NEVER ITS TEXT.** Serialising a structure to key it, hash
 it or compare it **re-derives what the walk already carries** — every node has a document and a
@@ -1825,24 +1821,31 @@ string for two nodes that merely look alike.
 
 **THIS IS THE CASE THE LINEARITY RULE EXISTS FOR, because the cost is invisible at the call site.**
 A hash key reads as O(1) and is O(subtree) underneath, so a walk that keys each node on its own
-serialisation pays the sum of every subtree — quadratic in the document and worse with depth.
-Measured on one 700 KB record: ~100,000 serialisations and 336 million encoder calls inside a
-single check that never terminated, with the same work also accounting for the memory.
+serialisation pays the sum of every subtree — quadratic in the document and worse with depth. A text
+key nested inside another text key is worse again, because the outer rendering re-escapes the inner
+one, and the inflation compounds with every level.
 
-**AND THE IDIOM ARRIVES INDEPENDENTLY, WHICH IS WHY IT IS A RULE AND NOT A BUG.** Three sites
-reached for it separately — a memo's key, a storability test, and a library's canonical form — none
-of them wanting JSON and each wanting *which node is this*. **A memo added to make a check cheaper
-became the most expensive thing in it**, and its own docstring recorded the memory problem it was
-written to solve.
+**THE RULE IS SATISFIABLE BECAUSE THE VERIFIER WALKS THE DOCUMENT.** A pointer names a node of a
+document; it cannot name a value that composition minted, so a verifier whose working objects are
+composed texts has no pointer to key on and reaches for content by necessity. The three checks above
+are stated at the document's own nodes for exactly this reason: the subject of a check is always a
+node the document holds, the conjunction it is read under travels beside it as the applied schema,
+and the identity therefore stays the pointer's.
 
-**Decided by** no serialisation being reachable from the grading path, with the library's own two
-named as the exception and nothing of ours beside them.
+**Decided by** no serialisation being reachable from the grading path, with the library's own named
+as the exception and nothing of ours beside them.
 
 **MEMOISATION HERE IS THE DESIGN AND NOT AN OPTIMISATION.** One answer per node per document, keyed
-on the pointer, is what makes the cost linear and the budget unnecessary. The largest single saving
-this suite has had was exactly that — a per-pair grade left uncached beneath a cached whole-set
-one, so one body of work ran three times — and it was invisible because the gate written to
-prevent it read only one of the two names.
+on the pointer, is what makes the cost linear, the budget unnecessary and the cycle closed. A memo
+is therefore part of the cost model rather than a later improvement to it, and one that is dead,
+keyed on something the answer does not depend on, or shadowed by a second uncached entry point is a
+defect in the model and not a missed saving.
+
+**AND EVERY MEMO AND EVERY CLAIMED FUNNEL CARRIES A COUNTER THE GATE READS.** A memo nothing reaches,
+a cap the walk actually terminates on, a pass stated to run once that runs twice: each of these is
+silent in the artifact and loud in a counter. So a hit rate, a maximum observed depth and a pass
+count are part of the verifier's output, and **a figure stated about the cost is asserted by the
+gate that reports it** — the same rule the artifact's own equalities already follow.
 
 The verifier grades an emitted class against the document it names, and it does so without
 reading the walk. Its import set is the whole of that rule, and `tests/test_import_rule.py`
@@ -1865,9 +1868,9 @@ intersection rule it carries stays a second spelling of the one in `lower/compos
 purpose. Sharing DATA is a different matter from sharing a READING: the keyword table is the
 declared semantics, and both halves must read the same declaration or the grade means nothing.
 
-Its checks are the semantics document's §8: `accepts.py` draws
-from the record and constructs; `dump.py` serialises and validates against the record,
-striking the exemptions `exemptions.py` lists. Every
+Its checks are the semantics document's §8: `witness.py` constructs the valid instance and its
+mutations from the record and offers them to the class; `dump.py` serialises and validates against
+the record, striking the exemptions `exemptions.py` lists. Every
 fold that undoes a rewriting of the delegated resolver is deleted when the record is this
 package's own (§4): the finite-type restoration, the derived `maxItems`, the `{"not": {}}`
 closure, the dropped `additionalProperties: true`, the one-member `enum` respelling and the
@@ -1875,13 +1878,13 @@ same-title lift. What remains of normalisation is the readings this pipeline's o
 forces — a nested class hoisted to `$defs`, D4's `| None` for an optional property, a type list
 rendered as a union — and each is applied to both sides.
 
-**The approximation's grader is the draw**, and there is one rather than three: a declaration
+**The approximation's grader is the witness**, and there is one rather than three: a declaration
 either names a value the document admits and the class now accepts, or it does not belong in the
 declared set.
 
 | what is checked | where | how it fails |
 | --- | --- | --- |
-| an approximation's claim that the model is WIDER there | `accepts.py` | the draw takes the classes the dropped keyword distinguishes; a value the document admits and the class refuses is a narrowing wearing a declaration |
+| an approximation's claim that the model is WIDER there | `witness.py` | the construction takes the keyword the declaration dropped; a value the document admits and the class refuses is a narrowing wearing a declaration |
 | an upstream attribution's issue | `attribution.py`'s own test | an entry with no issue is a `BuildFailure` |
 
 The two equalities are what keep "approximated" from being an allowlist, and the reason they are
@@ -2145,7 +2148,7 @@ gate that forbade it would be pinning the defect.
 **The order.** Steps 1 to 7 are relocations. Step 8 is the approximation end to end with **no
 cell widened**, step 9 is the rows the directive makes FAITHFUL, and step 10 is the rows that
 genuinely widen. The split is forced rather than tidy: *the instrument has to exist before the
-first cell widens.* A cell that widens while no draw yet reaches the values the keyword
+first cell widens.* A cell that widens while no witness yet reaches the values the keyword
 distinguishes produces a flood the pin cannot survive, and the project then either abandons the
 pin or stops believing the grader — which is the semantics document's §8 failure mode. The waves
 follow, with the exit condition below.
@@ -2168,7 +2171,7 @@ follow, with the exit condition below.
 
 3. **`bundle.record`.** Replace the delegated resolver with this package's inliner (§4) for the
    packaged documents and for the verifier; keep the delegated resolver inside
-   `verify/accepts.py` for drawing. Delete the inverse folds in the verifier. Regenerate the
+   `verify/witness.py` for construction. Delete the inverse folds in the verifier. Regenerate the
    packaged documents. *Report changes:* every packaged `.json` changes where a target was
    canonicalised; a new round-trip failure is a real finding and not a fold's absence.
   *Modules unchanged.* Unblocks the verifier being a reader of the document and nothing else.
