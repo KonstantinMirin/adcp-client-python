@@ -84,7 +84,7 @@ class Judged:
     """One pending entry, the evidence the bundle gives for it, and the outcome."""
 
     layer: str
-    key: str
+    key: catalogue.DecidedKey
     positions: tuple[catalogue.Shaped, ...]
     #: The names the bundle states over the positions, ``None`` for a position it names
     #: under none.
@@ -209,7 +209,7 @@ class Judged:
 
 def pending(
     admitted: catalogue.Admitted, layer: str, standing: dict[str, int]
-) -> list[tuple[str, tuple[catalogue.Shaped, ...]]]:
+) -> list[tuple[catalogue.DecidedKey, tuple[catalogue.Shaped, ...]]]:
     """§3a's PENDING set for one structural layer: the entries nothing in the bundle NAMES.
 
     Read off ``collect_shapes``' own parts and never re-derived (§3a: "a derived reading of
@@ -222,7 +222,7 @@ def pending(
       nothing.
     """
     shapes = catalogue.collect_shapes(admitted, layer, standing)
-    out: list[tuple[str, tuple[catalogue.Shaped, ...]]] = []
+    out: list[tuple[catalogue.DecidedKey, tuple[catalogue.Shaped, ...]]] = []
     if layer == "L2":
         out += [
             (entry.key, entry.positions)
@@ -361,15 +361,22 @@ def ask_for(row: Judged) -> str:
     return f"{owed} (the element's layer: {row.element})"
 
 
-def digest(key: str) -> str:
+def digest(key: catalogue.DecidedKey) -> str:
     """A short stable name for an admitted key, for a reader and for a gate to join on.
 
     The key itself is the whole admitted set written out -- a megabyte for one entry at the
     wide end -- so a checked-in table carrying it would be 30 MB of text no reviewer reads.
     The POSITIONS are what identifies the entry to a reader; this is what identifies it to a
     diff, and it moves exactly when the admitted set does.
+
+    **THIS IS A READER'S NAME FOR AN ENTRY AND NOT THE ENTRY'S IDENTITY**, which is why it
+    is the one place that may render a decided key (``catalogue.DecidedKey``) and
+    ``catalogue.Admitted.key`` is the rendering it uses: a digest is bytes by definition,
+    so a reading that needs bytes renders here, once, for 109 table rows -- and every
+    checked-in row keeps the name it had, because these are the same bytes the key was
+    hashed from before the layers stopped carrying text.
     """
-    return hashlib.sha256(key.encode()).hexdigest()[:16]
+    return hashlib.sha256(repr(key).encode()).hexdigest()[:16]
 
 
 def table(rows: list[Judged]) -> dict:
