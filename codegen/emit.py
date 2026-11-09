@@ -3190,7 +3190,54 @@ def domain_modules(
         for word, (module, symbol) in sorted(held[known].items()):
             by_module.setdefault(module, []).append((symbol, word))
         out[f"{SURFACE}/{known}.py"] = render.domain_module(known, by_module)
+    out[f"{SURFACE}/{FLAT}.py"] = render.flat_surface(*_flat_words(held))
     return out
+
+
+#: **The CROSS-DOMAIN consolidation's module name**, written inside :data:`SURFACE` beside
+#: the per-domain aggregators and private for their reason twice over: ``_schemas`` is
+#: private (P8), the aggregators are not a path a consumer writes (:data:`SURFACE`), and a
+#: flat spelling of a class §1 gives one domain path is not a second public path -- it is
+#: what reading 10's compatibility FACADE answers from.
+#:
+#: **Why the consolidation is the compiler's and not a hand-written list** (2026-11-09,
+#: ``adcp-client-python-qpo4``).  ``adcp.types.__getattr__`` answers the import an
+#: application has already written, and before this module it could answer only from the
+#: alias table, the generated adapter and the restored modules -- so a name THIS COMPILER
+#: EMITTED that no table happened to mention raised ``AttributeError`` at the flat
+#: spelling.  Measured on bundle 3.2: the aggregators publish 3,220 words and the facade
+#: served 1,183.  A hand-written list of the other 2,037 goes stale on the next bundle,
+#: which is the argument that put every other name list in this file.
+FLAT = "_flat"
+
+
+def _flat_words(
+    held: Mapping[str, Mapping[str, tuple[str, str]]],
+) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """The cross-domain union of :func:`domain_modules`' per-domain decision, SPLIT.
+
+    First the words exactly one domain publishes, valued at that domain; then the words
+    more than one does, valued at every domain that does.  Both read off the same ``held``
+    the aggregators are rendered from, which is what makes the consolidation their union
+    rather than a second derivation of it.
+
+    **THE SPLIT IS THE WHOLE POINT AND IT IS NOT A JUDGEMENT.**  A domain's own words are
+    unique -- §1's amendment of 2026-10-30, held by
+    ``tests_emit/test_the_domain_surface.py`` -- but nothing makes a word unique across
+    domains, and a flat namespace has ONE slot for it.  ``core/audience-source.json`` and
+    ``enums/audience-source.json`` are two documents, two classes and one word; whichever
+    the flat surface bound, a consumer's ``isinstance`` would be false against the other,
+    and "whichever import ran last" is that defect decided by file order.  So the
+    ambiguous words are returned SEPARATELY, bound nowhere, and named in the module -- the
+    compiler declining to answer a question only the domain path can answer.
+    """
+    domains: dict[str, list[str]] = {}
+    for domain in sorted(held):
+        for word in held[domain]:
+            domains.setdefault(word, []).append(domain)
+    one = {word: ds[0] for word, ds in domains.items() if len(ds) == 1}
+    many = {word: ds for word, ds in domains.items() if len(ds) > 1}
+    return one, many
 
 
 def _envelope_bases(bundle_dir: Path, shape: Sequence[bundle.Agreed]) -> str:
