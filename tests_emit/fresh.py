@@ -147,7 +147,14 @@ KEPT_SECONDS = 12 * 60 * 60
 #: import time, so it follows whichever tree is bound and cannot mirror the committed one
 #: while the rest of the grade reads the fresh one.  What a fall-through WOULD hide is the
 #: artifact itself going stale, and that is what the entry closes.
-GENERATED = ("_schemas", "constraints.py", "envelopes.py", "domains")
+#: ``_surface`` is §1's domain aggregators, at the path the compiler owns outright
+#: (``emit.SURFACE``).  It is here for the mixture this tuple exists to end and not only for
+#: the rule: the PUBLIC ``adcp.types.<domain>`` is a hand-written composition now and is
+#: resolved from ``src/``, so if the aggregator it star-imports fell through to the
+#: committed one, every name a consumer reaches at a domain path would come from the
+#: committed tree while the grade read the fresh one -- the two compilers mixed at the one
+#: surface the whole suite ranges over.
+GENERATED = ("_schemas", "constraints.py", "envelopes.py", "domains", emit.SURFACE)
 
 #: Why no fresh tree could be built, or ``""``.
 #:

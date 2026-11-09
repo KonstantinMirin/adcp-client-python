@@ -6967,11 +6967,21 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     # surface is stated over what is EXPORTED, which is the one case where that reading and
     # "every module the run wrote" differ: 1,058 modules on the record, 4 of them exporting
     # none, 23 domains with a public module and a 24th (``common``) without one.
+    #
+    # **The key is ``_surface/<domain>.py`` and not ``<domain>.py``** (``emit.SURFACE``,
+    # 2026-11-09): the aggregator is at a path the compiler owns OUTRIGHT, so that the
+    # public ``adcp/types/<domain>.py`` can compose it with one name-free line where a
+    # domain's word is also the word upstream kept hand-written machinery under.  The
+    # compare below is unchanged -- whole file, every byte, over the set the run intends --
+    # and what moved is a derived KEY, read off ``emit.SURFACE`` on both sides.  The public
+    # module leaves this population, which is the honest cost of its no longer being a file
+    # the compiler writes; ``tests_emit/test_the_public_domain_path.py`` is what stands over
+    # it instead, and it compares that file's whole text against the derived composition.
     domains = {
-        f"{emit.module_domain(module)}.py"
+        f"{emit.SURFACE}/{emit.module_domain(module)}.py"
         for module, exported in out.surface.items()
         if exported
-    }
+    } | {f"{emit.SURFACE}/__init__.py"}
     # The compatibility mirror of v9.6's module layout (``codegen/mirror``) is the fourth
     # kind, and it is the one that is a function of NEITHER the run nor the bundle: its
     # mapping is one prefix substitution evaluated at import time, so it names no document
@@ -7288,8 +7298,12 @@ def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> 
     monkeypatch.undo()
     control = compiled(BUNDLE, population())
     assert sorted(control.beside) == sorted(
-        {f"{emit.module_domain(module)}.py" for module, held in control.surface.items() if held}
-        | {"constraints.py", "envelopes.py"}
+        {
+            f"{emit.SURFACE}/{emit.module_domain(module)}.py"
+            for module, held in control.surface.items()
+            if held
+        }
+        | {f"{emit.SURFACE}/__init__.py", "constraints.py", "envelopes.py"}
         | set(compat_mirror.beside())
     ), sorted(control.beside)
 

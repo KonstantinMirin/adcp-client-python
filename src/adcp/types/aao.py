@@ -1,34 +1,12 @@
-"""The public types of the ``aao`` domain.
+"""The public path of the ``aao`` domain: §1's one import path for its classes.
 
-Every name here is the class, root model, enumeration or alias the schema document
-of that name compiles to, re-exported from the private module at the document's own
-path.  This is the one import path for each of them, and the object is the same one
-the runtime validates into -- ``isinstance`` against a union branch imported from
-here is true.
-
-Generated from the compiler's own record of what it exported: every document ROOT,
-every union BRANCH and every type ALIAS the documents of this domain declare.  A
-document added upstream appears here with nothing edited.
+The names are the compiler's, re-exported in one line from the aggregator it owns
+outright and compares byte for byte, ``adcp.types._surface.aao``.  This file is the
+COMPOSITION: it declares nothing, lists nothing, and the object reached at a name here
+is the class the private per-document module built.  Why the aggregator is a second
+file rather than this one is in ``adcp.types``' own docstring and in the ruling
+``codegen/emit.py``'s ``SURFACE`` carries.
 """
 
-from __future__ import annotations
-
-from ._schemas.aao.agent_publishers import (
-    AAODirectoryAgentPublishersInverseLookupResponse as AAODirectoryAgentPublishersInverseLookupResponse,
-)
-from ._schemas.aao.agent_publishers import (
-    DiscoveryMethod as AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryDiscoveryMethod,
-)
-from ._schemas.aao.agent_publishers import (
-    PublisherEntry as AAODirectoryAgentPublishersInverseLookupResponsePublisherEntry,
-)
-from ._schemas.aao.agent_publishers import (
-    Status as AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryStatus,
-)
-
-__all__ = [
-    'AAODirectoryAgentPublishersInverseLookupResponse',
-    'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntry',
-    'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryDiscoveryMethod',
-    'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryStatus',
-]
+from ._surface.aao import *  # noqa: F403
+from ._surface.aao import __all__ as __all__
