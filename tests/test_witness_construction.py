@@ -206,13 +206,14 @@ def test_the_document_admits_the_value_built_for_its_own_root(document: str) -> 
     beginning of its own repair.
 
     **AND THIS GATE IS RED TODAY, WHICH IS ITS PURPOSE RATHER THAN ITS DEFECT.**  Measured
-    over the 1,059 roots: 834 admit, 32 are REFUSED by their own document (16 of them at a
-    ``oneOf``) and 193 have NO VALUE, dominated by a ``pattern`` on a required key.
-    ``adcp-client-python-hzio.10`` owns the pattern reader and
-    ``adcp-client-python-hzio.11`` the refused roots; ``adcp-client-python-hzio.9`` owns
-    this gate and its instruction is to leave it red.  No ``xfail``, no skip and no
-    narrowing: a residue that is visible per document under its own name is the only honest
-    form it can take.
+    over the 1,059 roots: 868 admit, NONE is refused by its own document, and 191 have NO
+    VALUE -- every one of them on a ``pattern`` the construction does not solve, which is
+    ``adcp-client-python-hzio.10``'s row.  ``adcp-client-python-hzio.11`` was the other half
+    and it has landed: it read 32 roots as building a value their own document refused, and
+    the figure is now zero rather than smaller.  ``adcp-client-python-hzio.9`` owns this
+    gate and its instruction is to leave it red until the pattern reader closes the
+    remainder.  No ``xfail``, no skip and no narrowing: a residue that is visible per
+    document under its own name is the only honest form it can take.
     """
     built = constructed.whole()
     answer = built.value(document, "")
@@ -222,6 +223,41 @@ def test_the_document_admits_the_value_built_for_its_own_root(document: str) -> 
         f"{document}: the document refuses the value built for its own root on "
         f"{', '.join(refused)}"
     )
+
+
+def test_no_root_builds_a_value_its_own_document_refuses() -> None:
+    """``adcp-client-python-hzio.11``, **and the assertion is ZERO rather than a ceiling.**
+
+    The gate above states the whole obligation per document and is red on the 191 roots the
+    pattern reader owes.  That makes its two halves indistinguishable to a reader of the
+    suite: a root that STOPS building a refused value and starts having no value at all
+    leaves the same test id red, so the repair and the regression look alike.  This names
+    the half that is finished.
+
+    **A ROOT THAT CANNOT BE BUILT BELONGS TO THE OTHER HALF AND IS NOT COUNTED HERE.**
+    ``hzio.11``'s own instruction: *"a root that cannot be built goes to the no-value path
+    with its reason -- it does not stay a refused value, and converting a refusal into a
+    silent absence without a named reason is the failure mode to avoid."*  What forbids the
+    silent absence is
+    :func:`test_every_node_has_a_value_or_a_named_reason_and_the_two_partition_it` and
+    :func:`test_every_reason_a_node_has_no_value_is_one_of_the_two_the_readings_name`, which
+    together say that every absence carries a reason and that every reason is one of the
+    named groups -- so the three roots ``hzio.11`` moved here
+    (``core/forecast-dimension-geo.json``, ``core/placement.json`` and
+    ``core/signal-coverage-forecast.json``) each report an unsolved ``pattern`` and none of
+    them can hide.
+
+    No count appears in the assertion, for the reason the gate above states: a count is what
+    goes stale and then gets believed.  The set is empty or it names its members.
+    """
+    built = constructed.whole()
+    refused = {
+        document: built.document_admits(document, answer.value)
+        for document in sorted(constructed.records())
+        for answer in [built.value(document, "")]
+        if answer.held and built.document_admits(document, answer.value)
+    }
+    assert not refused, refused
 
 
 def test_every_reason_a_node_has_no_value_is_one_of_the_two_the_readings_name() -> None:
