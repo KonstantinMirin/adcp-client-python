@@ -36,13 +36,36 @@ the target's minimal value (:meth:`Construction.floor`) where the document requi
 The memo that makes the walk linear is the memo that closes the cycle, so a depth limit
 would be a guess standing in for the detection and none is introduced here.
 
+**A ``pattern`` OF FOUR CONSTRUCTS IS READ AND EVERY OTHER PATTERN IS LEFT UNREAD.**  An
+anchor, a literal run, a character class and a quantifier are keywords the way ``minLength``
+is a keyword, and the reading is the same reading: the class's FIRST member repeated the
+quantifier's MINIMUM count, exactly as ``minLength: 3`` gives ``"aaa"`` (:func:`_atoms`,
+:func:`_patterned`).  ``^[A-Z]{3}$`` gives ``"AAA"`` and ``^sha256:[a-f0-9]{64}$`` gives
+``"sha256:"`` and sixty-four ``"a"``\\ s.  **THIS IS NOT A REGEX ENGINE AND MUST NOT BECOME
+ONE**: there is no backtracking, no lookaround, no group, no group reference, no alternation
+and no class subtraction here, and a pattern stating any of them is NOT ATTEMPTED -- the
+document's own ``examples`` is the value and failing that the fact is approximated with the
+pattern QUOTED (:func:`_atoms` names the construct it stopped at).  Measured over bundle
+3.2: 66 of 110 distinct patterns and 5,306 of 7,638 pattern-bearing positions are of the
+read shape; the 44 that are not are a group, an alternation, a lookaround or a complement
+class, and a reader that guessed at
+``^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9]...`` is the thing this module refuses to
+be.
+
 **WHERE CONSTRUCTION CANNOT REACH, THE DOCUMENT'S OWN ``examples`` IS THE VALUE**, and
 failing that the fact is approximated with the reason named (:attr:`Source.APPROXIMATED`,
-:attr:`Built.reason`).  An arbitrary ``pattern`` and a ``format`` nothing can state are
-the two cases, and **this module builds no solver for either** -- not a regex engine, not
-a format generator.  Refusing to build one is the decision, not an omission:
+:attr:`Built.reason`).  A ``pattern`` of an unread shape and a ``format`` nothing can state
+are the two cases, and **this module builds no generator for either** -- not a regex
+engine, not a format generator.  Refusing to build one is the decision, not an omission:
 ``docs/plan/final-state.md`` reading 1 says a document that states no example and admits
 no value construction can produce "is an ask over a set of the bundle".
+
+**AND THE VALUE THE READING PRODUCES IS CHECKED BY THE DOCUMENT'S OWN CHECKER BEFORE IT IS
+USED**, never by the reader's belief about what it produced: :meth:`Construction.refusals`
+offers it to the node's own statements -- the ``pattern`` itself, and every ``minLength``,
+``maxLength`` and ``format`` beside it -- and a value the node refuses is not kept.  A
+reader returning a string its own pattern refuses is therefore a defect this module's own
+screen catches, which is why the reading may be as small as it is.
 
 **THE SCREEN IS SHALLOW BY DESIGN, AND THAT IS §9's LINEARITY RULE.**  A value is offered
 to the node's OWN statements (:meth:`Construction.refusals`) and never to its subtree: a
@@ -63,8 +86,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import jsonschema
-import referencing.exceptions
-from jsonschema import _utils as _jsonschema_utils
 
 from codegen import bundle, keywords
 
@@ -166,259 +187,6 @@ _CONTAINERS = frozenset({"object", "array"})
 #: A sentinel for "this pointer has not been dereferenced", because ``None`` is a node a
 #: record can legitimately hold at a position a pointer names.
 _MISSING = object()
-
-
-# --------------------------------------------------------------------------- #
-# the document's validator: one per document, no message nobody reads, and the
-# resolution amortised  (``adcp-client-python-hzio.3``, evidence ``adcp-client-python-2i99``)
-# --------------------------------------------------------------------------- #
-#: What stands where an error message would, on every reading below.
-#:
-#: **Nothing in this module reads one.**  :meth:`Construction.refusals` reads
-#: ``error.validator`` and ``error.absolute_path``; :meth:`Construction.document_admits`
-#: reads ``error.validator`` alone.  ``adcp-client-python-2i99`` measured what the library
-#: nevertheless builds for them -- 17.0 GB of 192.6 GB allocated in one run, of which
-#: 12.103 GB is one line: a ``oneOf`` error whose message recursively ``repr``\\ s whole
-#: merged subschema dicts of ~16 KB each, 725,375 times, at ~43x ``_PyUnicodeWriter``
-#: realloc amplification.  **The check that wants a keyword asks for a keyword.**
-#:
-#: A CONSTANT and not an empty string, because an error that reaches a human by some path
-#: this module does not have should say why it carries nothing rather than carry nothing.
-#:
-#: **AND IT IS SHORT BECAUSE A LONG ONE IS THE SAME DEFECT SMALLER.**  Measured over this
-#: bundle's construction: the library's own messages on THIS path total 656,026 bytes over
-#: 15,778 errors -- 41 bytes each, because a shallow screen's errors are over small values --
-#: so a 110-byte explanation here cost 1,203,124 bytes and made the figure WORSE.  The
-#: sentence belongs in this comment, where it is written once; what the error carries is the
-#: pointer back to it.
-NO_MESSAGE = "unrendered (witness.NO_MESSAGE)"
-
-_equal = _jsonschema_utils.equal
-_ensure_list = _jsonschema_utils.ensure_list
-
-
-def _quiet_type(validator: Any, types: Any, instance: Any, schema: Any) -> Any:
-    if not any(validator.is_type(instance, word) for word in _ensure_list(types)):
-        yield jsonschema.ValidationError(NO_MESSAGE)
-
-
-def _quiet_enum(validator: Any, enums: Any, instance: Any, schema: Any) -> Any:
-    if all(not _equal(each, instance) for each in enums):
-        yield jsonschema.ValidationError(NO_MESSAGE)
-
-
-def _quiet_const(validator: Any, const: Any, instance: Any, schema: Any) -> Any:
-    if not _equal(instance, const):
-        yield jsonschema.ValidationError(NO_MESSAGE)
-
-
-def _quiet_not(validator: Any, not_schema: Any, instance: Any, schema: Any) -> Any:
-    if validator.evolve(schema=not_schema).is_valid(instance):
-        yield jsonschema.ValidationError(NO_MESSAGE)
-
-
-def _quiet_contains(validator: Any, contains: Any, instance: Any, schema: Any) -> Any:
-    if not validator.is_type(instance, "array"):
-        return
-    if not any(
-        validator.evolve(schema=contains).is_valid(element) for element in instance
-    ):
-        yield jsonschema.ValidationError(NO_MESSAGE)
-
-
-def _quiet_any_of(validator: Any, anyOf: Any, instance: Any, schema: Any) -> Any:
-    all_errors: list[Any] = []
-    for index, subschema in enumerate(anyOf):
-        errs = list(validator.descend(instance, subschema, schema_path=index))
-        if not errs:
-            break
-        all_errors.extend(errs)
-    else:
-        yield jsonschema.ValidationError(NO_MESSAGE, context=all_errors)
-
-
-def _quiet_one_of(validator: Any, oneOf: Any, instance: Any, schema: Any) -> Any:
-    subschemas = enumerate(oneOf)
-    all_errors: list[Any] = []
-    for index, subschema in subschemas:
-        errs = list(validator.descend(instance, subschema, schema_path=index))
-        if not errs:
-            break
-        all_errors.extend(errs)
-    else:
-        yield jsonschema.ValidationError(NO_MESSAGE, context=all_errors)
-    # The library's own second clause, and the PROBES stay: a ``oneOf`` an instance
-    # satisfies through two branches is refused, and nothing but the probe decides that.
-    # What goes is the SENTENCE it was refused with.
-    if any(validator.evolve(schema=each).is_valid(instance) for _, each in subschemas):
-        yield jsonschema.ValidationError(NO_MESSAGE)
-
-
-#: The keyword readings this module substitutes for the library's, **by the one property
-#: that puts them here: their message renders the INSTANCE or a SUBSCHEMA**, so its cost is
-#: the size of the value rather than a constant, and no caller in this module reads it.
-#:
-#: ``tests/test_witness_construction.py`` asserts two things about this table and neither
-#: is a restatement of it: that each entry agrees with the library's own reading on the set
-#: of ``(keyword, location)`` pairs over every value this construction builds, and that no
-#: keyword whose library message renders a whole value is MISSING from it -- read off
-#: ``inspect.getsource`` of the draft's own ``VALIDATORS``, so a library that grows one
-#: reddens here instead of quietly costing what this removes.
-QUIET: Mapping[str, Any] = {
-    "type": _quiet_type,
-    "enum": _quiet_enum,
-    "const": _quiet_const,
-    "not": _quiet_not,
-    "contains": _quiet_contains,
-    "anyOf": _quiet_any_of,
-    "oneOf": _quiet_one_of,
-}
-
-#: The keywords whose library message renders a BOUND or a KEY NAME and is therefore
-#: constant-cost, so they stay the library's.  Named rather than inferred, because the gate
-#: above partitions the draft's own keyword set and a keyword in neither half is a keyword
-#: nobody decided about.
-CONSTANT_COST = frozenset(
-    {
-        "maxItems",
-        "minItems",
-        "maxLength",
-        "minLength",
-        "maxProperties",
-        "minProperties",
-        "maximum",
-        "minimum",
-        "exclusiveMaximum",
-        "exclusiveMinimum",
-        "multipleOf",
-        "pattern",
-        "required",
-        "dependencies",
-        "additionalProperties",
-        "uniqueItems",
-    }
-)
-
-
-def _reading(cls: Any, counters: "Counters") -> Any:
-    """``cls`` with the three re-derivations ``adcp-client-python-2i99`` measured removed.
-
-    **ONE CLASS PER (DRAFT, CONSTRUCTION), built where the document is read**, so the memos
-    below live exactly as long as the :class:`Construction` that owns them and are dropped
-    with it.  Nothing here is a process global and nothing is patched at import time, which
-    is the lifetime rule ``codegen/harness.py``'s own sharings are held to.
-
-    **(1) THE ``$ref`` RESOLUTION IS AMORTISED.**  The library's own ``$ref`` reading calls
-    ``Resolver.lookup`` on every visit, and ``lookup`` does ``urldefrag(urljoin(...))`` and
-    then walks the pointer SEGMENT BY SEGMENT, building a ``Resource`` per segment, with no
-    memo anywhere: ``adcp-client-python-2i99`` counted 1,156,366 lookups in one run of the
-    population, every one of them re-deriving an answer about a bundle that is fixed at load
-    time.  The memo's key is ``(registry, base_uri, dynamic scope, ref)``, which is the whole
-    of what ``lookup`` reads -- so it is keyed on everything the answer depends on, which is
-    the defect ``Fixtures._pin``'s key had and this one does not.  ``Resolved`` is immutable
-    and the library's own, so a hit hands back the same object a miss would have built.
-    :attr:`Counters.lookups` and :attr:`Counters.lookup_hits` are the hit rate.
-
-    **(2) NO ``Resource`` IS BUILT TO ASK A NODE WITH NO ``$id`` WHETHER IT HAS ONE.**  The
-    library's ``descend`` builds ``specification.create_resource(schema)`` for every node of
-    every visit purely to call ``Resolver.in_subresource``, which returns ``self`` UNCHANGED
-    when the resource has no id -- 31,029,263 of 31,032,069 Resources in the measured
-    grading pass, 99.99%.  draft-07's id reading is ``$id`` where the node states one and ``None``
-    otherwise, so a node whose keys hold neither ``$id`` nor ``id`` cannot change the
-    resolver: this hands ``descend`` the resolver it would have arrived at and the Resource
-    is never built.  **The predicate is the library's own and not a guess about it** --
-    ``tests/test_witness_construction.py`` asserts that for every node of every record the
-    shortcut and ``in_subresource`` agree.
-
-    **(3) NO MESSAGE IS BUILT ON A PATH THIS MODULE'S CALLERS DISCARD** (:data:`QUIET`).
-    """
-    lookups: dict[tuple[Any, ...], Any] = {}
-    #: Pinned, which is the same argument :meth:`Construction.node` makes: a key over an
-    #: identity is sound only while the object it names is held, and the registry a
-    #: ``Resolved`` carries must outlive the key that names it.
-    pinned: list[Any] = []
-
-    def _ref(validator: Any, ref: str, instance: Any, schema: Any) -> Any:
-        resolver = validator._resolver
-        if resolver is None:  # the legacy resolver path, which this module never takes
-            yield from validator._validate_reference(ref=ref, instance=instance)
-            return
-        key = (id(resolver._registry), resolver._base_uri, resolver._previous, ref)
-        counters.lookups += 1
-        held = lookups.get(key)
-        if held is None:
-            try:
-                held = resolver.lookup(ref)
-            except referencing.exceptions.Unresolvable as err:
-                # The library's own wrapping, repeated here because a caller catching
-                # ``jsonschema``'s error by name must keep catching it: a reference the
-                # record could not resolve is a finding about the BUNDLE and it has to
-                # arrive wearing the name every other reader of this library expects.
-                raise jsonschema.exceptions._WrappedReferencingError(err) from err
-            lookups[key] = held
-            pinned.append(resolver._registry)
-        else:
-            counters.lookup_hits += 1
-        yield from validator.descend(instance, held.contents, resolver=held.resolver)
-
-    def skipped() -> None:
-        counters.resource_skipped += 1
-
-    return without_an_idless_resource(
-        jsonschema.validators.extend(cls, validators={**QUIET, "$ref": _ref}), skipped
-    )
-
-
-def without_an_idless_resource(cls: Any, counted: Any = None) -> Any:
-    """``cls`` with the ``Resource`` a node stating no ``$id`` does not need not built.
-
-    ``jsonschema``'s ``descend`` builds ``specification.create_resource(schema)`` for every
-    node of every visit and hands it to ``Resolver.in_subresource``, which returns ``self``
-    UNCHANGED when the resource has no id.  Measured over the suite's grading pass of this
-    tree: **31,029,263 of 31,032,069 Resources carry no ``$id`` at all -- 99.99%** -- and
-    each one exists to answer "this node has no ``$id``" once per visit
-    (``adcp-client-python-2i99``: *"create_resource + Resource.id + _legacy_dollar_id +
-    in_subresource = ~400 samples = 2.27% = 3.3 s + 414 MB, spent re-answering 'this node
-    has no $id' once per (node, instance) visit"*).
-
-    **The predicate is draft-07's own id reading and not a guess about it.**
-    ``_legacy_dollar_id`` answers ``None`` for a node that states no ``$id``, and
-    ``in_subresource`` returns the resolver unchanged for a ``None`` id -- so a node whose
-    keys hold neither ``$id`` nor ``id`` cannot move the resolver, and handing ``descend``
-    the resolver it would have arrived at is the same answer without the object.
-    ``tests/test_witness_construction.py`` asserts the agreement against the library over
-    every node of every record, so a draft whose id reading is not draft-07's reddens.
-
-    ``counted`` is called once per skip, or is ``None`` for a caller with no counter of its
-    own.  A CALLABLE and not a counter object, because the two callers keep their counts in
-    two places -- :class:`Counters` here and
-    :data:`codegen.harness.VALIDATOR_COUNTERS` there -- and this function has no business
-    knowing which.
-    """
-    library_descend = cls.descend
-
-    def descend(
-        self: Any,
-        instance: Any,
-        schema: Any,
-        path: Any = None,
-        schema_path: Any = None,
-        resolver: Any = None,
-    ) -> Any:
-        if (
-            resolver is None
-            and self._ref_resolver is None
-            and type(schema) is dict
-            and "$id" not in schema
-            and "id" not in schema
-        ):
-            if counted is not None:
-                counted()
-            resolver = self._resolver
-        return library_descend(self, instance, schema, path, schema_path, resolver)
-
-    cls.descend = descend
-    return cls
 
 
 class Source(enum.StrEnum):
@@ -541,19 +309,6 @@ class Counters:
     #: Why a mutation was discarded, by keyword.
     discards: collections.Counter[str] = dataclasses.field(default_factory=collections.Counter)
 
-    #: **ONE VALIDATOR PER DOCUMENT** (§9, ``adcp-client-python-hzio.3``): how many ROOT
-    #: validators this construction built.  ``validators == len(records)`` is the claim
-    #: stated as an equality rather than as prose, and a per-call construction would put it
-    #: at the number of calls instead.
-    validators: int = 0
-    #: ``(registry, base_uri, scope, ref) -> Resolved`` (:func:`_reading`).
-    #: ``lookup_hits / lookups`` is the hit rate the row owes a figure for.
-    lookups: int = 0
-    lookup_hits: int = 0
-    #: Visits that did NOT build a ``Resource`` to ask a node with no ``$id`` whether it has
-    #: one.  The library builds one per node per visit and discards 99.99% of them.
-    resource_skipped: int = 0
-
 
 # --------------------------------------------------------------------------- #
 # reading one node's own statements
@@ -614,14 +369,309 @@ def _implied(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
     return ()
 
 
+# --------------------------------------------------------------------------- #
+# the four constructs a pattern is READ by
+# --------------------------------------------------------------------------- #
+#: What a class ESCAPE admits, first member first -- a table of CONSTANTS and not a
+#: generator, which is the same reason :data:`FORMAT_CASES` is permitted here.  An escape
+#: absent from this table is one whose members this reader does not NAME
+#: (:data:`_UNNAMED_CLASS`) or a construct it does not read at all (:func:`_escaped`).
+_CLASS_ESCAPE: Mapping[str, str] = {
+    "d": "0123456789",
+    "w": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_",
+}
+
+#: The class escapes this reader does not name a member of.  A COMPLEMENT (``\S``, ``\D``,
+#: ``\W``) has no first member to take -- "the first character that is not a digit" is a
+#: choice and not a reading -- and ``\s``'s members are the whitespace a document almost
+#: never means.  A quantifier may still take such a class ZERO times, which is why these
+#: are an unnamed member rather than an outright refusal: ``^[^\x00-\x1f]*$`` is READ, as
+#: the empty string, and ``^[^\x00-\x1f]+$`` is not.
+_UNNAMED_CLASS = frozenset("sSDW")
+
+#: How a value READ OFF A PATTERN says so, on :attr:`Built.reason` -- which is that field's
+#: second half, *"how the one there is was reached"*.  A marker and not a sentence, because
+#: what reads it is a measurement over the whole bundle: the obligation that every value
+#: this reading produces is one its own node admits is only checkable if the values it
+#: produced can be told from the values the other readings did.
+READ_FROM_A_PATTERN = "the pattern's own constructs"
+
+#: The zero-width assertions, which are not atoms: a pattern stating one is not read.
+#: ``^`` and ``$`` at the pattern's two ends are the anchors :func:`_atoms` reads; anywhere
+#: else, and in every other spelling, an assertion is a construct this reader stops at.
+_ASSERTIONS = frozenset("AbBGzZ")
+
+#: The characters that open a construct this reader does not read, with the construct NAMED
+#: -- a group, an alternation, a lookaround (which opens as a group) and a backreference.
+#: ``docs/plan/architecture.md`` §2's rule, as a table: the reader stops, the document's own
+#: ``examples`` is asked, and the pattern is quoted in the reason.
+_UNREAD = {
+    "(": "a group",
+    ")": "a group",
+    "|": "an alternation",
+    "^": "an anchor inside the pattern",
+    "$": "an anchor inside the pattern",
+    "*": "a quantifier with no atom",
+    "+": "a quantifier with no atom",
+    "?": "a quantifier with no atom",
+    "{": "a quantifier with no atom",
+}
+
+
+class _Unread(Exception):
+    """The pattern states a construct this reader does not read, and ``str`` NAMES it.
+
+    An exception and not a sentinel because the four readings nest -- a class inside an
+    atom inside the sequence -- and a shape the reader stops at has to stop all of them at
+    once.  Every raise names the CONSTRUCT rather than the position, because what the
+    reason has to carry is why this pattern was left unread.
+    """
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _Atom:
+    """One construct of a pattern: what it admits, and how many times it may repeat.
+
+    :attr:`member` is the class's FIRST member -- the one the reading takes -- or ``None``
+    where the class is one whose members the reader does not name.  A ``None`` member is
+    fatal only where the count is above zero (:func:`_patterned`), because a quantifier that
+    admits zero repetitions never asks what the class holds.
+    """
+
+    member: str | None
+    least: int
+    most: int | None
+
+
+def _escaped(text: str, at: int) -> tuple[str | None, int, bool]:
+    """One ``\\``-escape: ``(what it admits, the index after it, is it a class)``.
+
+    A class escape gives its members (:data:`_CLASS_ESCAPE`), ``None`` where it is one this
+    reader does not name; ``\\xNN`` and ``\\uNNNN`` give the character they spell; a
+    punctuation escape gives the character itself.  **An escape that is a LETTER or a DIGIT
+    and is not in the tables is not read**: a digit is a backreference or an octal escape
+    and a letter is a construct with semantics of its own, and guessing at either is the
+    engine this module refuses to be.
+    """
+    if at >= len(text):
+        raise _Unread("a trailing backslash")
+    found = text[at]
+    if found in _CLASS_ESCAPE:
+        return _CLASS_ESCAPE[found], at + 1, True
+    if found in _UNNAMED_CLASS:
+        return None, at + 1, True
+    if found in _ASSERTIONS:
+        raise _Unread(f"the assertion '\\{found}'")
+    if found == "x" and at + 3 <= len(text):
+        return chr(int(text[at + 1 : at + 3], 16)), at + 3, False
+    if found == "u" and at + 5 <= len(text):
+        return chr(int(text[at + 1 : at + 5], 16)), at + 5, False
+    if found.isalnum():
+        raise _Unread(f"the escape '\\{found}'")
+    return found, at + 1, False
+
+
+def _members(text: str, at: int) -> tuple[str | None, int]:
+    """A character class, from its ``[`` -- ``(its first member, the index after it)``.
+
+    The FIRST MEMBER IS THE DOCUMENT'S OWN FIRST: the class is read left to right and the
+    first thing it lists is the one the value takes, so ``[a-f0-9]`` gives ``"a"`` and
+    ``[-a-z]`` gives ``"-"``.  The whole class is read even though only its head is used,
+    because a member the reader cannot parse is a construct it has not understood -- a
+    POSIX class, a subtraction -- and a pattern it has not understood is one it leaves
+    unread.
+
+    **A NEGATED CLASS HAS NO FIRST MEMBER** and is reported as one whose members are not
+    named (``None``), not as a refusal: *"the first character that is not a digit"* is a
+    choice this reader does not make, and a quantifier admitting zero repetitions makes the
+    question moot.  The two ``]`` spellings draft-07's own grammar gives are read: a ``]``
+    immediately after ``[`` or ``[^`` is a literal member, and anywhere else it closes.
+    """
+    at += 1
+    unnamed = at < len(text) and text[at] == "^"
+    at += 1 if unnamed else 0
+    first: str | None = None
+    stated = False
+    if at < len(text) and text[at] == "]":
+        first, stated, at = "]", True, at + 1
+    while at < len(text) and text[at] != "]":
+        if text[at] == "\\":
+            member, at, holds_a_class = _escaped(text, at + 1)
+            if holds_a_class:
+                if member is None:
+                    unnamed = True
+                elif first is None:
+                    first = member[0]
+                stated = True
+                continue
+        else:
+            member, at = text[at], at + 1
+        stated = True
+        if at + 1 < len(text) and text[at] == "-" and text[at + 1] != "]":
+            if text[at + 1] == "\\":
+                high, at, holds_a_class = _escaped(text, at + 2)
+                if holds_a_class:
+                    raise _Unread("a range over a class escape")
+            else:
+                high, at = text[at + 1], at + 2
+            if high is None or member is None or ord(high) < ord(member):
+                raise _Unread("a range that admits nothing")
+        if first is None:
+            first = member
+    if at >= len(text):
+        raise _Unread("a class with no end")
+    if not stated:
+        raise _Unread("a class that admits nothing")
+    return (None if unnamed else first), at + 1
+
+
+def _count(text: str, at: int) -> tuple[int, int | None, int]:
+    """An atom's quantifier: ``(least, most, the index after it)``, ``most`` ``None`` for
+    unbounded.
+
+    The four spellings draft-07's own grammar gives -- ``*``, ``+``, ``?`` and ``{n}`` in
+    its three forms -- and nothing else.  A LAZY or POSSESSIVE quantifier is not read: it
+    admits the same strings its greedy spelling does, but reading it would be reading a
+    MATCHING strategy, and a reader that starts interpreting the engine's search is the
+    engine.  An atom with no quantifier repeats exactly once, which is the grammar's own
+    default and not a choice made here.
+    """
+    if at >= len(text):
+        return 1, 1, at
+    found = text[at]
+    if found in "*+?":
+        least, most = {"*": (0, None), "+": (1, None), "?": (0, 1)}[found]
+        at += 1
+    elif found == "{":
+        close = text.find("}", at)
+        if close < 0:
+            raise _Unread("a quantifier with no end")
+        stated = text[at + 1 : close].split(",")
+        if len(stated) > 2 or not stated[0].isdigit() or not all(p.isdigit() or not p for p in stated):
+            raise _Unread(f"the quantifier '{text[at : close + 1]}'")
+        least = int(stated[0])
+        most = least if len(stated) == 1 else (int(stated[1]) if stated[1] else None)
+        at = close + 1
+    else:
+        return 1, 1, at
+    if at < len(text) and text[at] in "?+":
+        raise _Unread("a lazy or possessive quantifier")
+    return least, most, at
+
+
+def _atoms(pattern: str) -> tuple[_Atom, ...]:
+    """The pattern as a sequence of :class:`_Atom`, or :class:`_Unread` naming the construct.
+
+    **THE ANCHORS ARE READ AS ANCHORS AND NOT AS ATOMS.**  A leading ``^`` and a trailing
+    ``$`` say where the match sits, which is what lets the sequence between them be the
+    whole of what the reading has to produce; ``$`` in any other position, and ``^`` outside
+    a class, is an assertion this reader stops at.  An UNANCHORED pattern is read too and
+    needs no special case: draft-07's ``pattern`` is a SEARCH rather than a full match, so
+    the string the atoms name is found in itself -- which is why ``^https://`` gives
+    ``"https://"`` and ``\\S`` gives nothing.
+    """
+    text = pattern[1:] if pattern.startswith("^") else pattern
+    if text.endswith("$") and not text.endswith("\\$"):
+        text = text[:-1]
+    out: list[_Atom] = []
+    at = 0
+    while at < len(text):
+        found = text[at]
+        if found == "[":
+            member, at = _members(text, at)
+        elif found == "\\":
+            member, at, holds_a_class = _escaped(text, at + 1)
+            member = (member[0] if member else None) if holds_a_class else member
+        elif found == ".":
+            member, at = None, at + 1
+        elif found in _UNREAD:
+            raise _Unread(_UNREAD[found])
+        else:
+            member, at = found, at + 1
+        least, most, at = _count(text, at)
+        out.append(_Atom(member, least, most))
+    if not out:
+        raise _Unread("a pattern that states no atom")
+    return tuple(out)
+
+
+def _patterned(pattern: str, low: int, high: int | None) -> Built:
+    """The string the pattern's own four constructs name, inside the node's length bound.
+
+    Each class's first member repeated the quantifier's MINIMUM count, which is the whole
+    reading -- and then the length bound, which is a statement about the same instance and
+    so has to hold of the same string.  A quantifier's RANGE is what makes that possible: a
+    ``minLength`` above the atoms' own minimum is met by repeating a class the number of
+    times its own quantifier admits, and a bound no repetition of the atoms can reach is
+    reported rather than approached.
+    """
+    try:
+        atoms = _atoms(pattern)
+    except _Unread as why:
+        return Built(None, Source.APPROXIMATED, f"pattern {pattern!r} is not solved: {why}")
+    counts = [atom.least for atom in atoms]
+    length = sum(counts)
+    if high is not None and length > high:
+        return Built(
+            None,
+            Source.APPROXIMATED,
+            f"pattern {pattern!r} is not solved under maxLength {high}: it admits nothing shorter",
+        )
+    index = len(atoms) - 1
+    while length < low and index >= 0:
+        atom = atoms[index]
+        room = (low - length) if atom.most is None else atom.most - counts[index]
+        if atom.member is None or room <= 0:
+            index -= 1
+            continue
+        grown = min(room, low - length)
+        counts[index] += grown
+        length += grown
+    if length < low:
+        return Built(
+            None,
+            Source.APPROXIMATED,
+            f"pattern {pattern!r} is not solved under minLength {low}: it admits nothing longer",
+        )
+    out = []
+    for atom, count in zip(atoms, counts):
+        if count == 0:
+            continue
+        if atom.member is None:
+            return Built(
+                None,
+                Source.APPROXIMATED,
+                f"pattern {pattern!r} is not solved: a class whose members it does not name",
+            )
+        out.append(atom.member * count)
+    return Built("".join(out), Source.CONSTRUCTED, READ_FROM_A_PATTERN)
+
+
+def _patterns(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
+    """The DISTINCT patterns the co-describing statements state, in first-stated order."""
+    out: list[str] = []
+    for view in views:
+        stated = view.get("pattern")
+        if isinstance(stated, str) and stated not in out:
+            out.append(stated)
+    return tuple(out)
+
+
 def _string(views: Sequence[Mapping[str, Any]]) -> Built:
     """The string the node's own string keywords state it admits.
 
     ``format`` first, because a formatted node's admitted set is the format's and a
-    padded string is not in it; then the length bound, exactly as many characters as it
-    demands.  A ``pattern`` is where the construction STOPS -- there is no regex engine
-    here and there will not be one -- so the caller falls to the document's own
-    ``examples``.
+    padded string is not in it; then the ``pattern``, read by its own four constructs
+    (:func:`_patterned`); then the length bound, exactly as many characters as it demands.
+    A pattern of an unread shape is where the construction STOPS, and the caller falls to
+    the document's own ``examples``.
+
+    **TWO DIFFERENT PATTERNS ON ONE INSTANCE ARE NOT READ.**  Two co-describing conjuncts
+    each stating a pattern demand a string in the INTERSECTION of two languages, and
+    intersecting them is solving rather than reading -- so the fact is approximated with
+    both quoted.  A value the first pattern alone admits would be a witness nothing
+    checked: the shallow screen reads one node's own statements, so a conjunct's pattern is
+    graded at the conjunct and not here.
     """
     low = _bound(views, "minLength") or 0
     high = _bound(views, "maxLength")
@@ -639,9 +689,15 @@ def _string(views: Sequence[Mapping[str, Any]]) -> Built:
                     f"no stated case of format {named!r} fits the length bound",
                 )
             return Built(fitting[0], Source.CONSTRUCTED)
-    for view in views:
-        if isinstance(view.get("pattern"), str):
-            return Built(None, Source.APPROXIMATED, f"pattern {view['pattern']!r} is not solved")
+    stated = _patterns(views)
+    if len(stated) > 1:
+        return Built(
+            None,
+            Source.APPROXIMATED,
+            f"pattern {stated[0]!r} is not solved beside {stated[1]!r} at one instance",
+        )
+    if stated:
+        return _patterned(stated[0], low, high)
     if high is not None and high < low:
         return Built(None, Source.APPROXIMATED, "the length bounds admit no string")
     return Built("a" * low, Source.CONSTRUCTED)
@@ -713,12 +769,6 @@ class Construction:
     def __init__(self, records: Mapping[str, Mapping[str, Any]]) -> None:
         self._records = dict(records)
         self._validators: dict[str, Any] = {}
-        #: The validator CLASS this construction reads with, per draft the bundle declares
-        #: (:func:`_reading`).  One class per draft and not per document, because what the
-        #: class carries is the resolution memo and the quiet readings -- both of which are
-        #: this construction's and not one document's -- while what a DOCUMENT gets is one
-        #: INSTANCE of it, which is the registry and the resolver §9 names.
-        self._reading: dict[Any, Any] = {}
         self._memo: dict[Key, Built] = {}
         self._floors: dict[tuple[str, str], Built] = {}
         self._nodes: dict[tuple[str, str], Any] = {}
@@ -740,26 +790,13 @@ class Construction:
         registry: the global one carries every checker any draft defines, so it would
         assert ``uuid`` against a draft-07 document, which draft-07 does not define as a
         format -- the SDK inventing a constraint.
-
-        **AND THE READING IS :func:`_reading`'s AND NOT THE LIBRARY'S**
-        (``adcp-client-python-hzio.3``, evidence ``adcp-client-python-2i99``).  The root
-        construction is where ``jsonschema`` builds the ``Resource``, the ``Registry`` and
-        the ``Resolver``, so it is the one place that has to happen once per document; the
-        three repairs that make the per-NODE half linear -- the resolution memo, the
-        Resource that is not built, and the message that is not rendered -- travel on the
-        validator CLASS, which is why they are installed there and not here.
         """
         held = self._validators.get(document)
         if held is None:
             record = self._records[document]
             cls = jsonschema.validators.validator_for(record, jsonschema.Draft7Validator)
-            reading = self._reading.get(cls)
-            if reading is None:
-                reading = _reading(cls, self.counters)
-                self._reading[cls] = reading
-            held = reading(record, format_checker=reading.FORMAT_CHECKER)
+            held = cls(record, format_checker=cls.FORMAT_CHECKER)
             self._validators[document] = held
-            self.counters.validators += 1
         return held
 
     def node(self, document: str, pointer: str) -> Any:
@@ -1027,6 +1064,16 @@ class Construction:
         then the answer.  Reading a pattern to TEST a candidate is not solving it: the
         screen is the document's own validator and the candidate came from the node.
 
+        **AND THE PATTERN'S OWN READING IS ONE OF THOSE CASES** (:func:`_patterned`), which
+        is where the ``format``/``pattern`` pair comes out right in BOTH directions:
+        :func:`_string` offers the format's case because a formatted node's admitted set is
+        the format's, and where a sibling pattern refuses every case the format states, the
+        string the pattern itself names is the node's own next statement.
+        ``{"format": "uri", "pattern": "^https://github\\.com/"}`` is the measured shape --
+        no case of ``uri`` matches it and the reading gives ``"https://github.com/"``, which
+        the node admits on both keywords.  Screened like every other candidate, so a reading
+        the ``format`` refuses is not kept.
+
         **Then ``docs/plan/final-state.md`` reading 1's ``examples``:** *"the document's own
         stated instance is the schema's statement about itself, it needs no generator, and
         it survives any transformation that preserves what the document admits."*  Screened
@@ -1046,6 +1093,17 @@ class Construction:
             for member in members if isinstance(members, list) else ():
                 if not self.refusals(document, pointer, member):
                     return Built(member, Source.CONSTRUCTED)
+        nodes = [
+            node
+            for at, _ in views
+            for node in [self.node(document, at)]
+            if isinstance(node, Mapping)
+        ]
+        read = _patterns(nodes)
+        if len(read) == 1:
+            reading = _patterned(read[0], _bound(nodes, "minLength") or 0, _bound(nodes, "maxLength"))
+            if reading.held and not self.refusals(document, pointer, reading.value):
+                return reading
         for where, _ in views:
             stated = self.node(document, where)
             members = stated.get("examples") if isinstance(stated, Mapping) else None
@@ -1205,10 +1263,13 @@ class Construction:
         """The keys ``minProperties`` demands beyond the required ones.
 
         A declared ``properties`` entry first, because a key the document NAMES is a key
-        the construction can reach.  Failing that the key is a free choice and the
-        construction makes one -- ``docs/plan/rebuild-plan.md`` §8 says exactly that of a
-        mapping value -- unless ``propertyNames`` or ``patternProperties`` is what decides
-        which names are admitted, where the choice is a regex to solve.
+        the construction can reach.  Then the key a ``patternProperties`` entry or a
+        ``propertyNames`` schema admits, which are the two places a document states what a
+        name may be: **a ``patternProperties`` key is its pattern READ** (:func:`_patterned`,
+        the same four constructs a string value is read by) and a ``propertyNames`` key is
+        the value already built for that schema's own node -- so neither is a choice made
+        here.  Failing all three the key is a free choice and the construction makes one;
+        ``docs/plan/rebuild-plan.md`` §8 says exactly that of a mapping value.
         """
         extra: dict[str, Any] = {}
         for at, path in views:
@@ -1223,6 +1284,37 @@ class Construction:
                 inner = self.value(document, f"{at}/properties/{bundle.escape_key(name)}", path)
                 if inner.held:
                     extra[name] = inner.value
+        if len(extra) >= wanted:
+            return Built(extra, Source.CONSTRUCTED)
+        for at, path in views:
+            node = self.node(document, at)
+            if not isinstance(node, Mapping):
+                continue
+            table = node.get("patternProperties")
+            for stated in table if isinstance(table, Mapping) else ():
+                if len(extra) >= wanted:
+                    break
+                named = _patterned(stated, 0, None)
+                if not named.held or named.value in placed or named.value in extra:
+                    continue
+                inner = self.value(
+                    document, f"{at}/patternProperties/{bundle.escape_key(stated)}", path
+                )
+                if inner.held:
+                    extra[named.value] = inner.value
+            if len(extra) >= wanted or not isinstance(node.get("propertyNames"), Mapping):
+                continue
+            named = self.value(document, f"{at}/propertyNames", path)
+            if not isinstance(named.value, str) or named.value in placed or named.value in extra:
+                continue
+            sub = node.get("additionalProperties")
+            inner = (
+                self.value(document, f"{at}/additionalProperties", path)
+                if isinstance(sub, Mapping)
+                else Built(None, Source.CONSTRUCTED)
+            )
+            if inner.held:
+                extra[named.value] = inner.value
         if len(extra) >= wanted:
             return Built(extra, Source.CONSTRUCTED)
         for node in [self.node(document, at) for at, _ in views]:
