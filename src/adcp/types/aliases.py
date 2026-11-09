@@ -108,7 +108,6 @@ from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesS
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
 from adcp.types.media_buy import CreateMediaBuyError as CreateMediaBuyErrorResponse
-from adcp.types.media_buy import CreateMediaBuySuccess as CreateMediaBuySuccessResponse
 from adcp.types.media_buy import GetProductsRequest as GetProductsBriefRequest
 from adcp.types.media_buy import GetProductsRequest as GetProductsRefineRequest
 from adcp.types.media_buy import GetProductsRequest as GetProductsWholesaleRequest
@@ -165,7 +164,6 @@ __all__ = [
     "CreateContentStandardsResponse1",
     "CreateContentStandardsSuccessResponse",
     "CreateMediaBuyErrorResponse",
-    "CreateMediaBuySuccessResponse",
     "Deployment",
     "Destination",
     "GetAccountFinancialsErrorResponse",
@@ -263,6 +261,7 @@ __adcp_refused__ = {
     "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT",
     "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",

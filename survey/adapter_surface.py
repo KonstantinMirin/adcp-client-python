@@ -989,6 +989,13 @@ class Join:
                     f"upstream declares it at {terminal.module}.{terminal.name}, which is "
                     f"{inner.get('verdict')}"
                 )
+            unpinned = self.unpinned(terminal, inner)
+            if unpinned:
+                return refuse(
+                    f"their {terminal.name} pins {unpinned} and the subject it reaches "
+                    f"({inner['target']}) pins nothing there: a name over a type that "
+                    f"accepts what the document refuses is worse than an unbound name"
+                )
             return {
                 **inner,
                 "module": mod,
@@ -1048,6 +1055,41 @@ class Join:
                           f"their {len(targets)} arms, each resolved to one subject of ours"),
             **evidence,
         }
+
+    def unpinned(self, terminal: ua.Terminal, inner: dict) -> dict[str, object]:
+        """**WHAT UPSTREAM'S DECLARATION PINS THAT THE SUBJECT IT REACHES DOES NOT.**
+
+        The middle term of a composition is where this key can do real harm, and the
+        structural lane measured the case: upstream's
+        `media_buy/create_media_buy_response.json` arm `CreateMediaBuyResponse1` pins
+        `status` to `'completed'`, and the subject `document+ordinal` reaches for it --
+        our `CreateMediaBuySuccess` -- has no `status` element at all.  25 of their 26
+        elements agree.  Publishing their `CreateMediaBuySuccessResponse` over that subject
+        would mint a NAME over a type that accepts payloads the document refuses, which is
+        worse than leaving the name unbound.
+
+        So this key refuses where upstream pins a property and the subject pins NOTHING
+        there, and names the property.  Asymmetric on purpose, and the asymmetry is the
+        whole reading: a DISAGREEMENT about a pinned value is what :meth:`ordinal`'s second
+        gate already catches, and this is the other half -- a pin present on one side only,
+        where that gate is silent because the intersection is empty.  Those are wire facts
+        owed by whoever owns branch lowering and they are not words to alias around.
+
+        Read off the two dumps' canonical schemas (:func:`consts`) and never off a spelling.
+        """
+        key = f"{terminal.module}.{terminal.name}"
+        their = self.theirs["declarations"].get(key)
+        if their is None or not their.get("schema"):
+            return {}
+        pinned = consts(their["schema"])
+        if not pinned:
+            return {}
+        ours: dict[str, object] = {}
+        for target in inner.get("target") or ():
+            held = self.ours["declarations"].get(target)
+            if held and held.get("schema"):
+                ours.update(consts(held["schema"]))
+        return {k: v for k, v in pinned.items() if k not in ours}
 
     def _bound(self, row: dict, how: str, targets: list[str], note: str) -> dict:
         """The BOUND row :meth:`resolve`'s own `bind` writes, for a key outside its body."""
@@ -1605,6 +1647,23 @@ def write_modules(
                 if word not in names:
                     statements.append(f"from adcp.types.envelopes import {word} as {word}")
                     names.append(word)
+        # **A MODULE WITH NO NAME TO SERVE IS NOT CREATED, and one that already exists is
+        # still rewritten.**  Both halves measured.  A refusal-only module buys exactly one
+        # thing -- the import that fails says WHY -- and `from <module> import X` fails
+        # either way, so it moves no blocked file: of the 19 of upstream's files this run
+        # unblocked, none was unblocked by one.  What it costs is a module of the surface
+        # that exports nothing, which `tests_emit/test_the_surface_exports_something.py`
+        # calls a defect in its first sentence and reddens on twice; creating four of them
+        # turned 6 of its failures into 14.  So the predicate is "no bound name AND no file
+        # there yet": nothing new is minted, and `registry`, `guards` and
+        # `canonical_creative` -- already on the tree, already red there -- keep being
+        # rewritten, because a path this writer owns going stale is `smzq` all over again.
+        if not names and not target.exists():
+            refused_paths[module] = (
+                f"{target.name}: every one of its {len(refused)} rows is refused, and a "
+                "module of the surface that exports nothing is a defect of its own"
+            )
+            continue
         example = ""
         if names:
             first = sorted(names)[0]

@@ -3,7 +3,7 @@
 ``survey/adapter_surface.py``'s eleven keys all start from upstream's RUNTIME dump, where a
 class answers "which document, which node" with its own ``__module__`` and ``__qualname__``.
 A name upstream binds rather than declares answers neither, and that is not a corner:
-measured over the demand this branch's census now reads, **122 of the 550 names owed have no
+measured over the demand this branch's census now reads, **122 of the 546 names owed have no
 declaration of upstream's behind them at all**, because their type layer binds them -- 283
 statements of the form ``X as Y``, 230 ``Y = X`` and 209 ``Y: TypeAlias = <expression>``.
 Their ``adcp.types.legacy.LegacyCreateMediaBuyResponse`` is a union alias, so the dump
@@ -38,6 +38,7 @@ from __future__ import annotations
 import ast
 import csv
 import importlib
+import json
 import sys
 from pathlib import Path
 
@@ -296,6 +297,43 @@ def test_a_name_their_tree_does_not_bind_is_reported_absent(tmp_path: Path) -> N
     assert oracle.trace("adcp.types.legacy", "Held")[0].kind == "declared-class"
     assert oracle.trace("adcp.types.legacy", "Absent")[0].kind == "absent"
     assert oracle.trace("adcp.types.nowhere", "Absent")[0].kind == "no-such-module"
+
+
+def test_the_oracle_and_the_structural_index_agree_about_upstream_s_generated_tree() -> None:
+    """Two readings of ONE tree of upstream's, asserted to agree rather than assumed to.
+
+    ``codegen/published.json`` is §4's index of upstream's generated tree, written by
+    ``survey/published_structures.py`` from ``2954b258b:src/adcp/types/domains`` and keyed
+    on STRUCTURE; this oracle parses ``src/adcp/types`` at the commit the machinery
+    classification pins and is keyed on the STATEMENT that binds a name.  Different facts,
+    so neither is the other's duplicate -- the index has no alias statements and the oracle
+    has no element sets -- but they overlap on one claim: WHICH WORDS upstream's generated
+    module declares.  That overlap is corroboration here instead of a second predicate
+    nobody compares.
+
+    **AND THE TWO REVISIONS ARE ONE TREE, which is measured and not hoped for.**
+    ``git rev-parse 4ed0bce87:src/adcp/types`` and ``2954b258b:src/adcp/types`` are both
+    ``bd0a9197``, so the two instruments pin different commits of this repository's history
+    and read the same bytes.  The reading below is what would redden if a future pair of
+    revisions stopped agreeing: it compares the WORDS, which is the overlap, and says which
+    module and which word if they diverge.
+    """
+    index = json.loads((ROOT / "codegen" / "published.json").read_text())
+    oracle = ua.Oracle.at()
+    claimed("published modules the structural index holds", set(index["modules"]))
+    missing: list[str] = []
+    checked = 0
+    for module, words in sorted(index["modules"].items()):
+        dotted = f"{ua.THEIR_GEN}.{module.replace('/', '.')}"
+        if dotted not in oracle.modules:
+            missing.append(f"{dotted}: the oracle's extraction holds no such module")
+            continue
+        for word in sorted(words):
+            checked += 1
+            if oracle.statement(dotted, word) is None:
+                missing.append(f"{dotted}.{word}: the index holds it and the oracle does not")
+    assert checked > 3000, checked
+    assert not missing[:20], missing[:20]
 
 
 def test_a_binding_inside_a_guarded_block_is_still_a_binding(tmp_path: Path) -> None:
