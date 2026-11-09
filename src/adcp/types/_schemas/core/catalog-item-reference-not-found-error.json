@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Privacy-preserving error for an unknown, inaccessible, unauthorized, or stale-generation catalog item reference. The invariant closed shape prevents resource enumeration.",
+  "properties": {
+    "code": {
+      "const": "REFERENCE_NOT_FOUND",
+      "type": "string"
+    },
+    "message": {
+      "const": "Catalog item not found",
+      "type": "string"
+    },
+    "recovery": {
+      "const": "correctable",
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "recovery"
+  ],
+  "title": "Catalog Item Reference Not Found Error",
+  "type": "object"
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Audit metadata identifying the implementation that actually produced a preview render. This metadata records implementation origin and safety behavior; it never grants authority. Consumers determine authority only from an applicable publisher-origin preview_provider delegation.",
+  "properties": {
+    "export": {
+      "description": "Renderer export or entry-point name used for this render.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "renderer_id": {
+      "description": "Stable implementation identifier.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "rendering_origin": {
+      "description": "Informational implementation origin copied from the selected route. It does not grant authority.",
+      "enum": [
+        "platform_native",
+        "agent_approximation"
+      ],
+      "type": "string"
+    },
+    "tracking_suppressed": {
+      "description": "True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.",
+      "type": "boolean"
+    },
+    "version": {
+      "description": "Exact semantic version of the renderer implementation.",
+      "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "renderer_id",
+    "version",
+    "export",
+    "rendering_origin",
+    "tracking_suppressed"
+  ],
+  "title": "Preview Renderer Metadata",
+  "type": "object"
+}

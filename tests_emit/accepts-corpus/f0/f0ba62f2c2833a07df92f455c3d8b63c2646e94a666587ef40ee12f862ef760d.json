@@ -1,0 +1,1 @@
+[{"event_types": ["indicators.changed"], "registration_task": "sync_accounts", "repair_tasks": ["get_media_buys"], "supported": true}]

@@ -1,0 +1,1259 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "allOf": [
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself.",
+      "properties": {
+        "adcp_major_version": {
+          "deprecated": true,
+          "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+          "maximum": 99,
+          "minimum": 1,
+          "type": "integer",
+          "x-removed-in": "4.0.0"
+        },
+        "adcp_version": {
+          "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
+          "examples": [
+            "3.0",
+            "3.1",
+            "3.1-beta",
+            "3.1-rc.1"
+          ],
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
+          "type": "string"
+        }
+      },
+      "title": "AdCP Version Envelope",
+      "type": "object"
+    }
+  ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "IPTC-aligned classification of AI involvement in producing this content",
+      "enum": [
+        "digital_capture",
+        "digital_creation",
+        "trained_algorithmic_media",
+        "composite_with_trained_algorithmic_media",
+        "algorithmic_media",
+        "composite_capture",
+        "composite_synthetic",
+        "human_edits",
+        "data_driven_media"
+      ],
+      "enumDescriptions": {
+        "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
+        "composite_capture": "Multiple digital captures composited together without AI",
+        "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
+        "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
+        "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)",
+        "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
+        "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
+        "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
+        "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)"
+      },
+      "title": "Digital Source Type",
+      "type": "string"
+    },
+    "Shared10": {
+      "description": "Content watermarks applied to this asset. Each entry declares one watermarking layer: a content modification that encodes an identifier or fingerprint within the asset. Watermarks differ from embedded provenance: a watermark encodes an identifier (who generated it, who owns it), while embedded provenance carries or references a structured provenance record (the full chain of custody). A single asset may carry both. Aligns with C2PA action taxonomy: c2pa.watermarked.bound (watermark linked to a C2PA manifest) and c2pa.watermarked.unbound (watermark independent of any manifest). This is a declaration by the watermarking party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).",
+      "items": {
+        "properties": {
+          "c2pa_action": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "C2PA action classification for this watermark",
+            "enum": [
+              "c2pa.watermarked.bound",
+              "c2pa.watermarked.unbound"
+            ],
+            "enumDescriptions": {
+              "c2pa.watermarked.bound": "Watermark linked to a C2PA manifest for this asset. The watermark and manifest are mutually reinforcing: the manifest references the watermark, and the watermark can be used to locate the manifest.",
+              "c2pa.watermarked.unbound": "Watermark independent of any C2PA manifest. Applied before any provenance signing event (e.g., by the AI generator at creation time) or in pipelines where no manifest is present."
+            },
+            "title": "C2PA Watermark Action",
+            "type": "string"
+          },
+          "embedded_at": {
+            "description": "When the watermark was applied (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "media_type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Media category of the watermarked content",
+            "enum": [
+              "audio",
+              "image",
+              "video",
+              "text"
+            ],
+            "enumDescriptions": {
+              "audio": "Watermark applied to audio content (e.g., spread-spectrum, echo hiding)",
+              "image": "Watermark applied to image content (e.g., spatial domain, frequency domain)",
+              "text": "Watermark applied to text content (e.g., synonym substitution, structural modification)",
+              "video": "Watermark applied to video content (e.g., per-frame image watermarking, temporal watermarking)"
+            },
+            "title": "Watermark Media Type",
+            "type": "string"
+          },
+          "provider": {
+            "description": "Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context \u2014 not a wire identifier.",
+            "type": "string"
+          },
+          "verify_agent": {
+            "additionalProperties": false,
+            "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
+            "properties": {
+              "agent_url": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
+                "format": "uri",
+                "pattern": "^https://",
+                "title": "HTTPS URL",
+                "type": "string"
+              },
+              "feature_id": {
+                "description": "Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `imatag.watermark_detected`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent_url"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "media_type",
+          "provider"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "Shared11": {
+      "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
+      "properties": {
+        "jurisdictions": {
+          "description": "Jurisdictions where disclosure obligations apply",
+          "items": {
+            "properties": {
+              "country": {
+                "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')",
+                "type": "string"
+              },
+              "label_text": {
+                "description": "Required disclosure label text for this jurisdiction, in the local language",
+                "type": "string"
+              },
+              "region": {
+                "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)",
+                "type": "string"
+              },
+              "regulation": {
+                "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')",
+                "type": "string"
+              },
+              "render_guidance": {
+                "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
+                "minProperties": 1,
+                "properties": {
+                  "ext": {
+                    "$ref": "#/definitions/Shared0"
+                  },
+                  "min_duration_ms": {
+                    "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "persistence": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "How long the disclosure must persist during content playback or display",
+                    "enum": [
+                      "continuous",
+                      "initial",
+                      "flexible"
+                    ],
+                    "enumDescriptions": {
+                      "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                      "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion",
+                      "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration."
+                    },
+                    "title": "Disclosure Persistence",
+                    "type": "string"
+                  },
+                  "positions": {
+                    "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
+                    "items": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
+                      "enum": [
+                        "prominent",
+                        "footer",
+                        "audio",
+                        "subtitle",
+                        "overlay",
+                        "end_card",
+                        "pre_roll",
+                        "companion"
+                      ],
+                      "title": "Disclosure Position",
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "country",
+              "regulation"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "required": {
+          "description": "The declaring party's claim that AI disclosure is required for this content under applicable regulations. This is a declared signal carried through the supply chain \u2014 useful as a routing and audit input \u2014 not a regulatory determination made by the protocol. Receiving parties remain responsible for their own jurisdictional analysis and should not treat `required: false` as compliance cover.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "required"
+      ],
+      "type": "object"
+    },
+    "Shared12": {
+      "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+      "items": {
+        "properties": {
+          "confidence": {
+            "description": "Confidence score of the verification result (0.0 to 1.0)",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "details_url": {
+            "description": "URL to the full verification report",
+            "format": "uri",
+            "type": "string"
+          },
+          "result": {
+            "description": "Verification outcome",
+            "enum": [
+              "authentic",
+              "ai_generated",
+              "ai_modified",
+              "inconclusive"
+            ],
+            "type": "string"
+          },
+          "verified_by": {
+            "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')",
+            "type": "string"
+          },
+          "verified_time": {
+            "description": "When the verification was performed (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verified_by",
+          "result"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "Shared13": {
+      "description": "Short-lived bearer-token access for origins that cannot use signed URLs or pre-configured workload identity. The token is a live secret and must be scoped to the asset. Consumers MUST send it only to the HTTPS origin authorized for that asset and MUST NOT forward the Authorization header across redirects.",
+      "properties": {
+        "method": {
+          "const": "bearer_token",
+          "type": "string"
+        },
+        "token": {
+          "description": "Short-lived, asset-scoped bearer token for the Authorization header. Producers MUST NOT issue a standing or broadly scoped credential here. Consumers MUST redact the token from logs, traces, errors, metrics, analytics, model context, and durable storage. Any temporary encrypted cache MUST be bounded by the credential expiry and the consumer's configured maximum lifetime.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "method",
+        "token"
+      ],
+      "type": "object"
+    },
+    "Shared14": {
+      "description": "Credential-free workload-identity access. The asset origin authorizes an identity already controlled by the component that performs the asset fetch, such as a GCP service account or AWS IAM role, through authenticated out-of-band onboarding. The consumer MUST use workload credentials only for the pre-authorized HTTPS origin and resource prefix; the payload's method, provider, and URL are not authorization. No provider key or access secret crosses the AdCP payload.",
+      "properties": {
+        "credentials": {
+          "additionalProperties": true,
+          "deprecated": true,
+          "description": "Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead.",
+          "type": "object"
+        },
+        "method": {
+          "const": "service_account",
+          "type": "string"
+        },
+        "provider": {
+          "description": "Cloud provider",
+          "enum": [
+            "gcp",
+            "aws"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "method",
+        "provider"
+      ],
+      "type": "object"
+    },
+    "Shared15": {
+      "description": "Recommended default for one-off access. The asset `url` is a time-limited bearer capability and requires no additional authentication. Producers SHOULD scope it to one asset and the shortest practical access window under their documented maximum TTL. Consumers MUST redact the complete URL from logs, traces, errors, metrics, analytics, model context, and durable storage, and MUST NOT forward it outside the intended recipient trust boundary.",
+      "properties": {
+        "method": {
+          "const": "signed_url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "method"
+      ],
+      "type": "object"
+    },
+    "Shared16": {
+      "description": "Authentication for secured URLs",
+      "discriminator": {
+        "propertyName": "method"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/definitions/Shared13"
+        },
+        {
+          "$ref": "#/definitions/Shared14"
+        },
+        {
+          "$ref": "#/definitions/Shared15"
+        }
+      ],
+      "type": "object"
+    },
+    "Shared17": {
+      "default": "text/plain",
+      "description": "MIME type indicating how to parse the transcript field. Default: text/plain.",
+      "enum": [
+        "text/plain",
+        "text/markdown",
+        "application/json"
+      ],
+      "type": "string"
+    },
+    "Shared2": {
+      "description": "Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.",
+      "type": "boolean"
+    },
+    "Shared3": {
+      "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
+      "properties": {
+        "name": {
+          "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')",
+          "type": "string"
+        },
+        "provider": {
+          "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')",
+          "type": "string"
+        },
+        "version": {
+          "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "Shared4": {
+      "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
+      "enum": [
+        "none",
+        "prompt_only",
+        "selected",
+        "edited",
+        "directed"
+      ],
+      "enumDescriptions": {
+        "directed": "Human directed the creative process with AI as an assistive tool",
+        "edited": "Human edited or refined AI-generated output",
+        "none": "Fully automated with no human involvement in generation",
+        "prompt_only": "Human provided the prompt or instructions but did not review outputs",
+        "selected": "Human selected from multiple AI-generated candidates"
+      },
+      "type": "string"
+    },
+    "Shared5": {
+      "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
+      "properties": {
+        "agent_url": {
+          "description": "URL of the agent or service that declared this provenance",
+          "format": "uri",
+          "type": "string"
+        },
+        "role": {
+          "description": "Role of the declaring party in the supply chain",
+          "enum": [
+            "creator",
+            "advertiser",
+            "agency",
+            "platform",
+            "tool"
+          ],
+          "enumDescriptions": {
+            "advertiser": "The brand or advertiser that owns the content",
+            "agency": "Agency acting on behalf of the advertiser",
+            "creator": "The party that created or generated the content",
+            "platform": "Ad platform or publisher that processed the content",
+            "tool": "Automated tool or service that attached provenance metadata"
+          },
+          "type": "string"
+        }
+      },
+      "required": [
+        "role"
+      ],
+      "type": "object"
+    },
+    "Shared6": {
+      "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared7": {
+      "description": "When this content was created or generated (ISO 8601)",
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared8": {
+      "description": "C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.",
+      "properties": {
+        "manifest_url": {
+          "description": "URL to the C2PA manifest store for this content",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "manifest_url"
+      ],
+      "type": "object"
+    },
+    "Shared9": {
+      "description": "Provenance metadata embedded within the content stream. Each entry declares one embedding layer: structured provenance data carried inside the content itself, as distinct from sidecar references (c2pa.manifest_url). Embedded provenance survives operations that break sidecar and file-level bindings: ad-server transcoding, CMS ingestion, copy-paste, reformatting, and CDN re-encoding. For ad-tech pipelines where content passes through multiple intermediaries, embedded provenance is the reliable path for provenance that persists from declaration through delivery. This is a declaration by the embedding party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).",
+      "items": {
+        "properties": {
+          "embedded_at": {
+            "description": "When the provenance data was embedded (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "method": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "How provenance data is carried within the content",
+            "enum": [
+              "manifest_wrapper",
+              "provenance_markers"
+            ],
+            "enumDescriptions": {
+              "manifest_wrapper": "A provenance manifest embedded in the file container per format-specific rules (e.g., JUMBF box in JPEG, C2PATextManifestWrapper in plaintext per C2PA Section A.7). The manifest travels with the file but is tied to the file's byte structure.",
+              "provenance_markers": "Invisible markers embedded within the content stream that encode or reference a provenance record. Designed to survive reformatting, copy-paste, CMS ingestion, and ad-server transcoding that breaks file-level bindings."
+            },
+            "title": "Embedded Provenance Method",
+            "type": "string"
+          },
+          "provider": {
+            "description": "Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context \u2014 not a wire identifier.",
+            "type": "string"
+          },
+          "standard": {
+            "description": "Standard the embedding conforms to, if any (e.g., 'c2pa' for C2PA Section A.7 text manifest embedding)",
+            "type": "string"
+          },
+          "verify_agent": {
+            "additionalProperties": false,
+            "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
+            "properties": {
+              "agent_url": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
+                "format": "uri",
+                "pattern": "^https://",
+                "title": "HTTPS URL",
+                "type": "string"
+              },
+              "feature_id": {
+                "description": "Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `encypher.markers_present_v2`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent_url"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "method",
+          "provider"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "description": "Request parameters for batch validating delivery records against content safety policies",
+  "properties": {
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "ext": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "feature_ids": {
+      "description": "Specific features to evaluate (defaults to all)",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "include_passed": {
+      "default": true,
+      "description": "Include passed records in results",
+      "type": "boolean"
+    },
+    "records": {
+      "description": "Delivery records to validate (max 10,000)",
+      "items": {
+        "properties": {
+          "artifact": {
+            "$defs": {
+              "asset_access": {
+                "description": "Access instructions for a secured asset URL. Producers SHOULD use `signed_url` for one-off delivery unless the parties already have an identity-based access relationship. New producers MUST NOT emit `service_account.credentials`; `bearer_token` is the explicit short-lived credential path. Consumers MUST treat asset URLs and access metadata as untrusted, use credentials only for HTTPS origins and resource prefixes authorized out of band, and fail closed without falling back between access methods. The deprecated legacy field remains parseable during the 3.x compatibility window but MUST NOT be activated automatically.",
+                "discriminator": {
+                  "propertyName": "method"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/definitions/Shared13"
+                  },
+                  {
+                    "$ref": "#/definitions/Shared14"
+                  },
+                  {
+                    "$ref": "#/definitions/Shared15"
+                  }
+                ],
+                "type": "object"
+              }
+            },
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
+            "description": "Artifact where ad was delivered",
+            "properties": {
+              "artifact_id": {
+                "description": "Identifier for this artifact within the property. The property owner defines the scheme (e.g., 'article_12345', 'episode_42_segment_3', 'post_abc123').",
+                "type": "string"
+              },
+              "assets": {
+                "description": "Artifact assets in document flow order - text blocks, images, video, audio",
+                "items": {
+                  "discriminator": {
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "description": "Text block (paragraph, heading, etc.)",
+                      "properties": {
+                        "content": {
+                          "description": "Text content. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.",
+                          "maxLength": 100000,
+                          "type": "string"
+                        },
+                        "content_format": {
+                          "default": "text/plain",
+                          "description": "MIME type indicating how to parse the content field. Default: text/plain.",
+                          "enum": [
+                            "text/plain",
+                            "text/markdown",
+                            "text/html",
+                            "application/json"
+                          ],
+                          "type": "string"
+                        },
+                        "heading_level": {
+                          "description": "Heading level (1-6), only for role=heading",
+                          "maximum": 6,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "language": {
+                          "description": "BCP 47 language tag for this text (e.g., 'en', 'es-MX'). Useful when artifact contains mixed-language content.",
+                          "type": "string"
+                        },
+                        "provenance": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Provenance for this text block, overrides artifact-level provenance",
+                          "properties": {
+                            "ai_tool": {
+                              "$ref": "#/definitions/Shared3"
+                            },
+                            "c2pa": {
+                              "$ref": "#/definitions/Shared8"
+                            },
+                            "created_time": {
+                              "$ref": "#/definitions/Shared7"
+                            },
+                            "declared_at": {
+                              "$ref": "#/definitions/Shared6"
+                            },
+                            "declared_by": {
+                              "$ref": "#/definitions/Shared5"
+                            },
+                            "digital_source_type": {
+                              "$ref": "#/definitions/Shared1"
+                            },
+                            "disclosure": {
+                              "$ref": "#/definitions/Shared11"
+                            },
+                            "embedded_provenance": {
+                              "$ref": "#/definitions/Shared9"
+                            },
+                            "ext": {
+                              "$ref": "#/definitions/Shared0"
+                            },
+                            "human_oversight": {
+                              "$ref": "#/definitions/Shared4"
+                            },
+                            "synthetic_depiction": {
+                              "$ref": "#/definitions/Shared2"
+                            },
+                            "verification": {
+                              "$ref": "#/definitions/Shared12"
+                            },
+                            "watermarks": {
+                              "$ref": "#/definitions/Shared10"
+                            }
+                          },
+                          "title": "Provenance",
+                          "type": "object"
+                        },
+                        "role": {
+                          "description": "Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries.",
+                          "enum": [
+                            "title",
+                            "paragraph",
+                            "heading",
+                            "caption",
+                            "quote",
+                            "list_item",
+                            "description"
+                          ],
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "text",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "content"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "description": "Image asset",
+                      "properties": {
+                        "access": {
+                          "$ref": "#/definitions/Shared16"
+                        },
+                        "alt_text": {
+                          "description": "Alt text or image description",
+                          "type": "string"
+                        },
+                        "caption": {
+                          "description": "Image caption",
+                          "type": "string"
+                        },
+                        "height": {
+                          "description": "Image height in pixels",
+                          "type": "integer"
+                        },
+                        "provenance": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Provenance for this image, overrides artifact-level provenance",
+                          "properties": {
+                            "ai_tool": {
+                              "$ref": "#/definitions/Shared3"
+                            },
+                            "c2pa": {
+                              "$ref": "#/definitions/Shared8"
+                            },
+                            "created_time": {
+                              "$ref": "#/definitions/Shared7"
+                            },
+                            "declared_at": {
+                              "$ref": "#/definitions/Shared6"
+                            },
+                            "declared_by": {
+                              "$ref": "#/definitions/Shared5"
+                            },
+                            "digital_source_type": {
+                              "$ref": "#/definitions/Shared1"
+                            },
+                            "disclosure": {
+                              "$ref": "#/definitions/Shared11"
+                            },
+                            "embedded_provenance": {
+                              "$ref": "#/definitions/Shared9"
+                            },
+                            "ext": {
+                              "$ref": "#/definitions/Shared0"
+                            },
+                            "human_oversight": {
+                              "$ref": "#/definitions/Shared4"
+                            },
+                            "synthetic_depiction": {
+                              "$ref": "#/definitions/Shared2"
+                            },
+                            "verification": {
+                              "$ref": "#/definitions/Shared12"
+                            },
+                            "watermarks": {
+                              "$ref": "#/definitions/Shared10"
+                            }
+                          },
+                          "title": "Provenance",
+                          "type": "object"
+                        },
+                        "type": {
+                          "const": "image",
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "Image URL",
+                          "format": "uri",
+                          "type": "string"
+                        },
+                        "width": {
+                          "description": "Image width in pixels",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "url"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "description": "Video asset",
+                      "properties": {
+                        "access": {
+                          "$ref": "#/definitions/Shared16"
+                        },
+                        "duration_ms": {
+                          "description": "Video duration in milliseconds",
+                          "type": "integer"
+                        },
+                        "provenance": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Provenance for this video, overrides artifact-level provenance",
+                          "properties": {
+                            "ai_tool": {
+                              "$ref": "#/definitions/Shared3"
+                            },
+                            "c2pa": {
+                              "$ref": "#/definitions/Shared8"
+                            },
+                            "created_time": {
+                              "$ref": "#/definitions/Shared7"
+                            },
+                            "declared_at": {
+                              "$ref": "#/definitions/Shared6"
+                            },
+                            "declared_by": {
+                              "$ref": "#/definitions/Shared5"
+                            },
+                            "digital_source_type": {
+                              "$ref": "#/definitions/Shared1"
+                            },
+                            "disclosure": {
+                              "$ref": "#/definitions/Shared11"
+                            },
+                            "embedded_provenance": {
+                              "$ref": "#/definitions/Shared9"
+                            },
+                            "ext": {
+                              "$ref": "#/definitions/Shared0"
+                            },
+                            "human_oversight": {
+                              "$ref": "#/definitions/Shared4"
+                            },
+                            "synthetic_depiction": {
+                              "$ref": "#/definitions/Shared2"
+                            },
+                            "verification": {
+                              "$ref": "#/definitions/Shared12"
+                            },
+                            "watermarks": {
+                              "$ref": "#/definitions/Shared10"
+                            }
+                          },
+                          "title": "Provenance",
+                          "type": "object"
+                        },
+                        "thumbnail_url": {
+                          "description": "Video thumbnail URL",
+                          "format": "uri",
+                          "type": "string"
+                        },
+                        "transcript": {
+                          "description": "Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.",
+                          "maxLength": 200000,
+                          "type": "string"
+                        },
+                        "transcript_format": {
+                          "$ref": "#/definitions/Shared17"
+                        },
+                        "transcript_source": {
+                          "description": "How the transcript was generated",
+                          "enum": [
+                            "original_script",
+                            "subtitles",
+                            "closed_captions",
+                            "dub",
+                            "generated"
+                          ],
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "video",
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "Video URL",
+                          "format": "uri",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "url"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "description": "Audio asset",
+                      "properties": {
+                        "access": {
+                          "$ref": "#/definitions/Shared16"
+                        },
+                        "duration_ms": {
+                          "description": "Audio duration in milliseconds",
+                          "type": "integer"
+                        },
+                        "provenance": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Provenance for this audio, overrides artifact-level provenance",
+                          "properties": {
+                            "ai_tool": {
+                              "$ref": "#/definitions/Shared3"
+                            },
+                            "c2pa": {
+                              "$ref": "#/definitions/Shared8"
+                            },
+                            "created_time": {
+                              "$ref": "#/definitions/Shared7"
+                            },
+                            "declared_at": {
+                              "$ref": "#/definitions/Shared6"
+                            },
+                            "declared_by": {
+                              "$ref": "#/definitions/Shared5"
+                            },
+                            "digital_source_type": {
+                              "$ref": "#/definitions/Shared1"
+                            },
+                            "disclosure": {
+                              "$ref": "#/definitions/Shared11"
+                            },
+                            "embedded_provenance": {
+                              "$ref": "#/definitions/Shared9"
+                            },
+                            "ext": {
+                              "$ref": "#/definitions/Shared0"
+                            },
+                            "human_oversight": {
+                              "$ref": "#/definitions/Shared4"
+                            },
+                            "synthetic_depiction": {
+                              "$ref": "#/definitions/Shared2"
+                            },
+                            "verification": {
+                              "$ref": "#/definitions/Shared12"
+                            },
+                            "watermarks": {
+                              "$ref": "#/definitions/Shared10"
+                            }
+                          },
+                          "title": "Provenance",
+                          "type": "object"
+                        },
+                        "transcript": {
+                          "description": "Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.",
+                          "maxLength": 200000,
+                          "type": "string"
+                        },
+                        "transcript_format": {
+                          "$ref": "#/definitions/Shared17"
+                        },
+                        "transcript_source": {
+                          "description": "How the transcript was generated",
+                          "enum": [
+                            "original_script",
+                            "closed_captions",
+                            "generated"
+                          ],
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "audio",
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "Audio URL",
+                          "format": "uri",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "url"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              "format_id": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
+                "dependencies": {
+                  "height": [
+                    "width"
+                  ],
+                  "pixel_ratio": [
+                    "width",
+                    "height"
+                  ],
+                  "width": [
+                    "height"
+                  ]
+                },
+                "deprecated": true,
+                "description": "**DEPRECATED in 3.2.** Legacy named-format reference. Use `format_kind` for canonical artifact media classification.",
+                "properties": {
+                  "agent_url": {
+                    "description": "URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.",
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "duration_ms": {
+                    "description": "Duration in milliseconds for time-based formats (video, audio). When specified, creates a parameterized format ID. Omit to reference a template format without parameters.",
+                    "minimum": 1,
+                    "type": "number"
+                  },
+                  "height": {
+                    "description": "Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "id": {
+                    "description": "Format identifier within the agent's namespace (e.g., 'display_static', 'video_hosted', 'audio_standard'). When used alone, references a template format. When combined with dimension/duration fields, creates a parameterized format ID for a specific variant.",
+                    "pattern": "^[a-zA-Z0-9_-]+$",
+                    "type": "string"
+                  },
+                  "pixel_ratio": {
+                    "description": "Required intrinsic-pixel density for a parameterized visual format, expressed as intrinsic pixels per logical pixel. Requires `width` and `height`. Example: `{id: \"display_image\", width: 300, height: 250, pixel_ratio: 2}` identifies a 300\u00d7250 logical render supplied by a 600\u00d7500 image. Omit for the backward-compatible 1x variant.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "width": {
+                    "description": "Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "agent_url",
+                  "id"
+                ],
+                "title": "Format Reference (Structured Object)",
+                "type": "object",
+                "x-entity": "creative_format"
+              },
+              "format_kind": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Optional canonical media/creative kind associated with this artifact.",
+                "enum": [
+                  "image",
+                  "html5",
+                  "display_tag",
+                  "image_carousel",
+                  "video_hosted",
+                  "video_vast",
+                  "audio_hosted",
+                  "audio_vast",
+                  "audio_daast",
+                  "sponsored_placement",
+                  "native_in_feed",
+                  "responsive_creative",
+                  "agent_placement",
+                  "seller_rendered_stateful_display",
+                  "coordinated_placements",
+                  "custom"
+                ],
+                "title": "Canonical Format Kind",
+                "type": "string"
+              },
+              "identifiers": {
+                "additionalProperties": true,
+                "description": "Platform-specific identifiers for this artifact",
+                "properties": {
+                  "apple_podcast_id": {
+                    "description": "Apple Podcasts ID",
+                    "type": "string"
+                  },
+                  "podcast_guid": {
+                    "description": "Podcast GUID (from RSS feed)",
+                    "type": "string"
+                  },
+                  "rss_url": {
+                    "description": "RSS feed URL",
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "spotify_collection_id": {
+                    "description": "Spotify collection ID",
+                    "type": "string"
+                  },
+                  "youtube_video_id": {
+                    "description": "YouTube video ID",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "last_update_time": {
+                "description": "When the artifact was last modified (ISO 8601 format)",
+                "format": "date-time",
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": true,
+                "description": "Rich metadata extracted from the artifact",
+                "properties": {
+                  "author": {
+                    "description": "Artifact author name",
+                    "type": "string"
+                  },
+                  "canonical": {
+                    "description": "Canonical URL",
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "json_ld": {
+                    "description": "JSON-LD structured data (schema.org)",
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "keywords": {
+                    "description": "Artifact keywords",
+                    "type": "string"
+                  },
+                  "open_graph": {
+                    "additionalProperties": true,
+                    "description": "Open Graph protocol metadata",
+                    "type": "object"
+                  },
+                  "twitter_card": {
+                    "additionalProperties": true,
+                    "description": "Twitter Card metadata",
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "property_rid": {
+                "description": "Stable property identifier from the property catalog. Globally unique across the ecosystem.",
+                "type": "string"
+              },
+              "provenance": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact \u2014 individual assets can override with their own provenance.",
+                "properties": {
+                  "ai_tool": {
+                    "$ref": "#/definitions/Shared3"
+                  },
+                  "c2pa": {
+                    "$ref": "#/definitions/Shared8"
+                  },
+                  "created_time": {
+                    "$ref": "#/definitions/Shared7"
+                  },
+                  "declared_at": {
+                    "$ref": "#/definitions/Shared6"
+                  },
+                  "declared_by": {
+                    "$ref": "#/definitions/Shared5"
+                  },
+                  "digital_source_type": {
+                    "$ref": "#/definitions/Shared1"
+                  },
+                  "disclosure": {
+                    "$ref": "#/definitions/Shared11"
+                  },
+                  "embedded_provenance": {
+                    "$ref": "#/definitions/Shared9"
+                  },
+                  "ext": {
+                    "$ref": "#/definitions/Shared0"
+                  },
+                  "human_oversight": {
+                    "$ref": "#/definitions/Shared4"
+                  },
+                  "synthetic_depiction": {
+                    "$ref": "#/definitions/Shared2"
+                  },
+                  "verification": {
+                    "$ref": "#/definitions/Shared12"
+                  },
+                  "watermarks": {
+                    "$ref": "#/definitions/Shared10"
+                  }
+                },
+                "title": "Provenance",
+                "type": "object"
+              },
+              "published_time": {
+                "description": "When the artifact was published (ISO 8601 format)",
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "description": "Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).",
+                "format": "uri",
+                "type": "string"
+              },
+              "variant_id": {
+                "description": "Identifies a specific variant of this artifact. Use for A/B tests, translations, or temporal versions. Examples: 'en', 'es-MX', 'v2', 'headline_test_b'. The combination of artifact_id + variant_id must be unique.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "property_rid",
+              "artifact_id",
+              "assets"
+            ],
+            "title": "Artifact",
+            "type": "object"
+          },
+          "brand_context": {
+            "description": "Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.",
+            "properties": {
+              "brand_id": {
+                "description": "Brand identifier",
+                "type": "string"
+              },
+              "sku_id": {
+                "description": "Product/SKU identifier if applicable",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "channel": {
+            "description": "Channel type (e.g., display, video, audio, social)",
+            "type": "string"
+          },
+          "country": {
+            "description": "ISO 3166-1 alpha-2 country code where delivery occurred",
+            "type": "string"
+          },
+          "media_buy_id": {
+            "description": "Media buy this record belongs to (when batching across multiple buys)",
+            "type": "string"
+          },
+          "record_id": {
+            "description": "Unique identifier for this delivery record",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "When the delivery occurred",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "artifact"
+        ],
+        "type": "object"
+      },
+      "maxItems": 10000,
+      "minItems": 1,
+      "type": "array"
+    },
+    "standards_id": {
+      "description": "Standards configuration to validate against",
+      "type": "string"
+    }
+  },
+  "required": [
+    "standards_id",
+    "records"
+  ],
+  "title": "Validate Content Delivery Request",
+  "type": "object"
+}

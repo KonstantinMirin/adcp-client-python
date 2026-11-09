@@ -1,0 +1,657 @@
+bucket	document	pointer	keyword	position	branches	object_ish_branches	titled_branches	schema_discriminator	const_keyed_property	classes	branch_discriminator	dispatch_mixin	fields	branch_children	other_children	arm_classes
+A	a2ui/bound-value.json	#	oneOf	ROOT	5	5	0			A2UIBoundValue	-	yes	0	A2UIBoundValueLiteralBoolean|A2UIBoundValueLiteralNumber|A2UIBoundValueLiteralString|A2UIBoundValueLiteralStringPath|A2UIBoundValuePath		A2UIBoundValueLiteralString|A2UIBoundValueLiteralNumber|A2UIBoundValueLiteralBoolean|A2UIBoundValuePath|A2UIBoundValueLiteralStringPath
+A	account/get-account-financials-response.json	#	oneOf	ROOT	2	2	2			GetAccountFinancialsResponse	-	yes	13	GetAccountFinancialsError|GetAccountFinancialsSuccess		GetAccountFinancialsSuccess|GetAccountFinancialsError
+F	account/get-account-financials-response.json	#/oneOf/1/not	anyOf	RULE	4	4	0									
+A	account/list-account-changes-response.json	#	oneOf	ROOT	2	2	0	status	status	ListAccountChangesResponse	status	yes	21	ListAccountChangesResponseCompleted|ListAccountChangesResponseFailed		ListAccountChangesResponseCompleted|ListAccountChangesResponseFailed
+A	account/sync-accounts-request.json	#/properties/accounts/items	oneOf	ELEM	2	2	2			AccountsItem	-	yes	16	ProvisioningMode|SettingsUpdateMode		ProvisioningMode|SettingsUpdateMode
+A	account/sync-accounts-response.json	#	oneOf	ROOT	2	2	2			SyncAccountsResponse	-	yes	13	SyncAccountsError|SyncAccountsSuccess		SyncAccountsSuccess|SyncAccountsError
+F	account/sync-accounts-response.json	#/oneOf/0/properties/accounts/items/allOf/0/then/not	anyOf	RULE	2	2	0									
+F	account/sync-accounts-response.json	#/oneOf/1/not	anyOf	RULE	2	2	0									
+A	account/sync-governance-response.json	#	oneOf	ROOT	2	2	2			SyncGovernanceResponse	-	yes	13	SyncGovernanceError|SyncGovernanceSuccess		SyncGovernanceSuccess|SyncGovernanceError
+A	adagents.json	#	oneOf	ROOT	2	2	0			AdCPAgentsAuthorization	-	yes	0	AdCPAgentsAuthorizationAuthoritativeLocation|AdCPAgentsAuthorizationCommunityFormatRegistry		AdCPAgentsAuthorizationAuthoritativeLocation|AdCPAgentsAuthorizationCommunityFormatRegistry
+F	adagents.json	#/oneOf/1/allOf/0	anyOf	CONJ	6	6	0									AdCPAgentsAuthorizationCommunityFormatRegistryBranch0|AdCPAgentsAuthorizationCommunityFormatRegistryFormats|AdCPAgentsAuthorizationCommunityFormatRegistryProperties|AdCPAgentsAuthorizationCommunityFormatRegistryPlacements|AdCPAgentsAuthorizationCommunityFormatRegistryCollections|AdCPAgentsAuthorizationCommunityFormatRegistrySignals
+C	adagents.json	#/oneOf/1/properties/authorized_agents/items	oneOf	ELEM	6	6	0	authorization_type	authorization_type							AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags|AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags
+A	brand.json	#	oneOf	ROOT	5	5	5			BrandDiscovery	-	yes	0	AuthoritativeLocationRedirect|BrandAgent|BrandCanonicalDocument|HousePortfolio|HouseRedirect		AuthoritativeLocationRedirect|HouseRedirect|BrandAgent|HousePortfolio|BrandCanonicalDocument
+G	brand.json	#/definitions/brand/properties/tagline	oneOf	PROP	2	0	0									
+G	brand.json	#/definitions/brand/properties/tone	oneOf	PROP	2	1	0									Tone
+A	brand.json	#/definitions/color_ref	oneOf	DEF	3	3	0		kind	ColorRef	kind	yes	4	ColorRefName|ColorRefSurface|ColorRefValue		ColorRefName|ColorRefValue|ColorRefSurface
+G	brand.json	#/definitions/color_value	oneOf	DEF	2	0	0									
+E	brand.json	#/definitions/data_subject_contestation	anyOf	DEF	2	2	0			DataSubjectContestation	-	no	3			
+G	brand.json	#/definitions/font_role	oneOf	DEF	2	1	0									BrandDiscoveryFontRoleFamily
+G	brand.json	#/definitions/localized_scalar	oneOf	DEF	2	0	0									
+G	brand.json	#/definitions/localized_string_list	oneOf	DEF	2	0	0									
+E	brand.json	#/definitions/logo_usage_rule	anyOf	DEF	5	5	0			LogoUsageRule	-	no	13			
+E	brand.json	#/oneOf/2	anyOf	BRANCH	2	2	0			BrandAgent	-	yes	7			
+E	brand.json	#/oneOf/3	anyOf	BRANCH	2	2	0			HousePortfolio	-	yes	10			
+F	brand.json	#/oneOf/4/allOf/0/not	anyOf	RULE	9	9	0									
+A	brand/acquire-rights-response.json	#	oneOf	ROOT	4	4	4			AcquireRightsResponse	-	yes	13	AcquireRightsAcquired|AcquireRightsError|AcquireRightsPendingApproval|AcquireRightsRejected		AcquireRightsAcquired|AcquireRightsPendingApproval|AcquireRightsRejected|AcquireRightsError
+A	brand/creative-approval-response.json	#	oneOf	ROOT	4	4	4			CreativeApprovalResponse	-	yes	13	CreativeApprovalError|CreativeApproved|CreativePendingReview|CreativeRejected		CreativeApproved|CreativeRejected|CreativePendingReview|CreativeApprovalError
+A	brand/get-brand-identity-response.json	#	oneOf	ROOT	2	2	2			GetBrandIdentityResponse	-	yes	13	GetBrandIdentityError|GetBrandIdentitySuccess		GetBrandIdentitySuccess|GetBrandIdentityError
+G	brand/get-brand-identity-response.json	#/oneOf/0/properties/colors/properties/accent	oneOf	PROP	2	0	0									
+G	brand/get-brand-identity-response.json	#/oneOf/0/properties/colors/properties/background	oneOf	PROP	2	0	0									
+G	brand/get-brand-identity-response.json	#/oneOf/0/properties/colors/properties/primary	oneOf	PROP	2	0	0									
+G	brand/get-brand-identity-response.json	#/oneOf/0/properties/colors/properties/secondary	oneOf	PROP	2	0	0									
+G	brand/get-brand-identity-response.json	#/oneOf/0/properties/colors/properties/text	oneOf	PROP	2	0	0									
+G	brand/get-brand-identity-response.json	#/oneOf/0/properties/fonts/definitions/font_role	oneOf	DEF	2	1	0									GetBrandIdentityResponseFontRoleFamily
+G	brand/get-brand-identity-response.json	#/oneOf/0/properties/tagline	oneOf	PROP	2	0	0									
+F	brand/get-brand-identity-response.json	#/oneOf/1/not	anyOf	RULE	3	3	0									
+A	brand/get-rights-response.json	#	oneOf	ROOT	2	2	2			GetRightsResponse	-	yes	13	GetRightsError|GetRightsSuccess		GetRightsSuccess|GetRightsError
+A	brand/search-brands-response.json	#	oneOf	ROOT	2	2	2			SearchBrandsResponse	-	yes	13	SearchBrandsError|SearchBrandsSuccess		SearchBrandsSuccess|SearchBrandsError
+A	brand/update-rights-response.json	#	oneOf	ROOT	2	2	2			UpdateRightsResponse	-	yes	13	UpdateRightsError|UpdateRightsSuccess		UpdateRightsSuccess|UpdateRightsError
+F	brand/update-rights-response.json	#/oneOf/1/not	anyOf	RULE	2	2	0									
+A	brand/verify-brand-claim-request.json	#	oneOf	ROOT	4	4	4	claim_type	claim_type	VerifyBrandClaimRequest	claim_type	yes	2	VerifyParentClaim|VerifyPropertyClaim|VerifySubsidiaryClaim|VerifyTrademarkClaim		VerifySubsidiaryClaim|VerifyParentClaim|VerifyPropertyClaim|VerifyTrademarkClaim
+A	brand/verify-brand-claim-response.json	#	oneOf	ROOT	2	2	2			VerifyBrandClaimResponse	-	yes	13	VerifyBrandClaimError|VerifyBrandClaimSuccess		VerifyBrandClaimSuccess|VerifyBrandClaimError
+F	brand/verify-brand-claim-response.json	#/definitions/signed_success_payload/not	anyOf	RULE	2	2	0									
+F	brand/verify-brand-claim-response.json	#/oneOf/1/not	anyOf	RULE	2	2	0									
+C	brand/verify-brand-claims-request.json	#/definitions/claim_entry	oneOf	DEF	4	4	4	claim_type	claim_type							
+A	brand/verify-brand-claims-response.json	#	oneOf	ROOT	2	2	2			VerifyBrandClaimsResponseBulk	-	yes	13	VerifyBrandClaimsError|VerifyBrandClaimsSuccess		VerifyBrandClaimsSuccess|VerifyBrandClaimsError
+C	brand/verify-brand-claims-response.json	#/definitions/result_entry	oneOf	DEF	2	2	2									VerifyBrandClaimsResultSuccess|VerifyBrandClaimsResultError
+F	brand/verify-brand-claims-response.json	#/definitions/result_entry/oneOf/1/not	anyOf	RULE	2	2	0									
+F	brand/verify-brand-claims-response.json	#/definitions/signed_success_payload/not	anyOf	RULE	2	2	0									
+A	collection/base-collection-source.json	#	oneOf	ROOT	3	3	3	selection_type	selection_type	BaseCollectionSource	selection_type	yes	0	DistributionIDsSource|PublisherCollectionsSource|PublisherGenresSource		DistributionIDsSource|PublisherCollectionsSource|PublisherGenresSource
+C	compliance/comply-test-controller-request.json	#/allOf/10/then/properties/params	oneOf	PROP	2	2	0		arm							
+F	compliance/comply-test-controller-request.json	#/allOf/14/then/properties/params	anyOf	PROP	2	2	0									
+F	compliance/comply-test-controller-request.json	#/allOf/28/then/properties/params/allOf/1/then/not	anyOf	RULE	3	3	0									
+F	compliance/comply-test-controller-request.json	#/allOf/29/then/properties/params/not	anyOf	RULE	3	3	0									
+F	compliance/comply-test-controller-request.json	#/allOf/30/then/properties/params/allOf/1/else/not	anyOf	RULE	2	2	0									
+F	compliance/comply-test-controller-request.json	#/allOf/8/then/properties/params/allOf/0/then/not	anyOf	RULE	2	2	0									
+F	compliance/comply-test-controller-request.json	#/allOf/8/then/properties/params/allOf/1/then/not	anyOf	RULE	2	2	0									
+A	compliance/comply-test-controller-response.json	#	oneOf	ROOT	8	8	8		success	ComplyTestControllerResponse	-	yes	13	ControllerError|ForcedDirectiveSuccess|ListScenariosSuccess|ProvenanceAuditObservationsSuccess|SeedSuccess|SimulationSuccess|StateTransitionSuccess|UpstreamTrafficSuccess		ListScenariosSuccess|StateTransitionSuccess|SimulationSuccess|ForcedDirectiveSuccess|SeedSuccess|ProvenanceAuditObservationsSuccess|UpstreamTrafficSuccess|ControllerError
+F	compliance/comply-test-controller-response.json	#/oneOf/0/not	anyOf	RULE	6	6	0									
+F	compliance/comply-test-controller-response.json	#/oneOf/1/not	anyOf	RULE	6	6	0									
+F	compliance/comply-test-controller-response.json	#/oneOf/2/not	anyOf	RULE	6	6	0									
+F	compliance/comply-test-controller-response.json	#/oneOf/3/not	anyOf	RULE	6	6	0									
+F	compliance/comply-test-controller-response.json	#/oneOf/3/properties/forced/allOf/1/then/not	anyOf	RULE	2	2	0									
+F	compliance/comply-test-controller-response.json	#/oneOf/4/not	anyOf	RULE	7	7	0									
+F	compliance/comply-test-controller-response.json	#/oneOf/5/not	anyOf	RULE	6	6	0									
+F	compliance/comply-test-controller-response.json	#/oneOf/6/not	anyOf	RULE	6	6	0									
+A	compliance/comply-test-controller-response.json	#/oneOf/6/properties/recorded_calls/items	oneOf	ELEM	2	2	2	attestation_mode	attestation_mode	RecordedCallsItem	attestation_mode	yes	14	DigestAttestation|RawAttestation		RawAttestation|DigestAttestation
+F	compliance/comply-test-controller-response.json	#/oneOf/6/properties/recorded_calls/items/oneOf/0/not	anyOf	RULE	2	2	0									
+F	compliance/comply-test-controller-response.json	#/oneOf/7/not	anyOf	RULE	6	6	0									
+D	compliance/task-completion-data.json	#	anyOf	ROOT	4	4	4			ComplianceTaskCompletionData	-	yes	0	CreateMediaBuyCompletion|GetCreativeFeaturesCompletion|GetProductsCompletion|GetSignalsCompletion		GetProductsCompletion|GetSignalsCompletion|CreateMediaBuyCompletion|GetCreativeFeaturesCompletion
+C	content-standards/artifact.json	#/$defs/asset_access	oneOf	DEF	3	3	0	method	method							AssetAccessBearerToken|AssetAccessServiceAccount|AssetAccessSignedUrl
+C	content-standards/artifact.json	#/properties/assets/items	oneOf	ELEM	4	4	0	type	type							AssetsItemText|AssetsItemImage|AssetsItemVideo|AssetsItemAudio
+A	content-standards/calibrate-content-response.json	#	oneOf	ROOT	2	2	0			CalibrateContentResponse	-	yes	13	CalibrateContentResponseVerdict|ObjErrorsContextExt		CalibrateContentResponseVerdict|ObjErrorsContextExt
+E	content-standards/create-content-standards-request.json	#	anyOf	ROOT	2	2	0			CreateContentStandardsRequest	-	no	9			
+C	content-standards/create-content-standards-request.json	#/properties/calibration_exemplars/properties/fail/items	oneOf	ELEM	2	2	0									ObjTypeValueLanguage
+C	content-standards/create-content-standards-request.json	#/properties/calibration_exemplars/properties/pass/items	oneOf	ELEM	2	2	0									PassItemUrl
+A	content-standards/create-content-standards-response.json	#	oneOf	ROOT	2	2	0			CreateContentStandardsResponse	-	yes	13	CreateContentStandardsResponseErrors|CreateContentStandardsResponseStandardsId		CreateContentStandardsResponseStandardsId|CreateContentStandardsResponseErrors
+A	content-standards/get-content-standards-response.json	#	oneOf	ROOT	2	2	0			GetContentStandardsResponse	-	yes	13	GetContentStandardsResponseBranch0|GetContentStandardsResponseErrors		GetContentStandardsResponseBranch0|GetContentStandardsResponseErrors
+A	content-standards/get-media-buy-artifacts-response.json	#	oneOf	ROOT	2	2	0			GetMediaBuyArtifactsResponse	-	yes	13	GetMediaBuyArtifactsResponseArtifactsMediaBuyId|GetMediaBuyArtifactsResponseErrors		GetMediaBuyArtifactsResponseArtifactsMediaBuyId|GetMediaBuyArtifactsResponseErrors
+A	content-standards/list-content-standards-response.json	#	oneOf	ROOT	2	2	0			ListContentStandardsResponse	-	yes	13	ListContentStandardsResponseErrors|ListContentStandardsResponseStandards		ListContentStandardsResponseStandards|ListContentStandardsResponseErrors
+C	content-standards/update-content-standards-request.json	#/properties/calibration_exemplars/properties/fail/items	oneOf	ELEM	2	2	0									
+C	content-standards/update-content-standards-request.json	#/properties/calibration_exemplars/properties/pass/items	oneOf	ELEM	2	2	0									
+A	content-standards/update-content-standards-response.json	#	oneOf	ROOT	2	2	2		success	UpdateContentStandardsResponse	success	yes	13	UpdateContentStandardsError|UpdateContentStandardsSuccess		UpdateContentStandardsSuccess|UpdateContentStandardsError
+A	content-standards/validate-content-delivery-response.json	#	oneOf	ROOT	2	2	0			ValidateContentDeliveryResponse	-	yes	13	ValidateContentDeliveryResponseErrors|ValidateContentDeliveryResponseResultsSummary		ValidateContentDeliveryResponseResultsSummary|ValidateContentDeliveryResponseErrors
+G	core/account-authorization.json	#/properties/scope_name	anyOf	PROP	2	0	2									
+A	core/account-identity-change-preview.json	#	oneOf	ROOT	3	3	3		outcome	AccountIdentityChangePreview	outcome	yes	0	AccountIdentityChangeBlocked|AccountIdentityChangeWouldApply|AccountIdentityChangeWouldRequireApproval		AccountIdentityChangeWouldApply|AccountIdentityChangeWouldRequireApproval|AccountIdentityChangeBlocked
+A	core/account-identity-change.json	#	oneOf	ROOT	2	2	2		status	AccountIdentityChange	status	yes	0	AccountIdentityChangePending|AccountIdentityChangeRejected		AccountIdentityChangePending|AccountIdentityChangeRejected
+A	core/account-ref.json	#	oneOf	ROOT	2	2	0			AccountReference	-	yes	0	AccountReferenceAccountId|AccountReferenceBrandOperator		AccountReferenceAccountId|AccountReferenceBrandOperator
+F	core/account-timezone-capability.json	#/allOf/0/then/not	anyOf	RULE	2	2	0									
+A	core/activation-key.json	#	oneOf	ROOT	2	2	0	type	type	ActivationKey	type	yes	0	ActivationKeyKeyValue|ActivationKeySegmentId		ActivationKeySegmentId|ActivationKeyKeyValue
+A	core/agent-reporting-destination.json	#	oneOf	ROOT	3	3	3		pattern	AgentReportingDestination	pattern	yes	0	DatasetShareRecipient|FileTransferDestination|WarehouseMaterializationDestination		FileTransferDestination|WarehouseMaterializationDestination|DatasetShareRecipient
+A	core/assets/asset-union.json	#	oneOf	ROOT	21	21	0	asset_type	asset_type	AssetVariant	asset_type	yes	0	AssetVariantAudio|AssetVariantBrief|AssetVariantCard|AssetVariantCatalog|AssetVariantCss|AssetVariantDaast|AssetVariantDaastTracker|AssetVariantDisplayTag|AssetVariantHtml|AssetVariantImage|AssetVariantJavascript|AssetVariantMarkdown|AssetVariantPixelTracker|AssetVariantPublishedPost|AssetVariantText|AssetVariantUrl|AssetVariantVast|AssetVariantVastTracker|AssetVariantVideo|AssetVariantWebhook|AssetVariantZip		AssetVariantImage|AssetVariantVideo|AssetVariantWebhook|AssetVariantCss|AssetVariantDaast|AssetVariantMarkdown|AssetVariantBrief|AssetVariantCatalog|AssetVariantPublishedPost|AssetVariantCard|AssetVariantPixelTracker|AssetVariantVastTracker|AssetVariantAudio|AssetVariantDaastTracker|AssetVariantVast|AssetVariantDisplayTag|AssetVariantText|AssetVariantUrl|AssetVariantHtml|AssetVariantJavascript|AssetVariantZip
+C	core/assets/card-asset.json	#/properties/media	oneOf	PROP	2	2	0	asset_type	asset_type							
+A	core/assets/daast-asset.json	#	oneOf	ROOT	2	2	0	delivery_type	delivery_type	DAASTAsset	delivery_type	yes	8	DAASTAssetInline|DAASTAssetUrl	AssetVariantDaast	DAASTAssetUrl|DAASTAssetInline
+A	core/assets/display-tag-asset.json	#	oneOf	ROOT	3	3	3	delivery_type	asset_type|delivery_type	DisplayTagAsset	delivery_type	yes	3	InlineMarkup|PairedRedirect|TagURL	AssetVariantDisplayTag	TagURL|InlineMarkup|PairedRedirect
+F	core/assets/display-tag-asset.json	#/oneOf/0/not	anyOf	RULE	3	3	0									
+F	core/assets/display-tag-asset.json	#/oneOf/1/not	anyOf	RULE	3	3	0									
+F	core/assets/display-tag-asset.json	#/oneOf/2/not	anyOf	RULE	2	2	0									
+E	core/assets/published-post-asset.json	#	anyOf	ROOT	2	2	0			PublishedPostAsset	-	no	8		AssetVariantPublishedPost	
+A	core/assets/vast-asset.json	#	oneOf	ROOT	2	2	0	delivery_type	delivery_type	VASTAsset	delivery_type	yes	9	VASTAssetInline|VASTAssetUrl	AssetVariantVast	VASTAssetUrl|VASTAssetInline
+G	core/assets/webhook-asset.json	#/properties/required_macros/items	anyOf	ELEM	2	1	0									
+G	core/assets/webhook-asset.json	#/properties/supported_macros/items	anyOf	ELEM	2	1	0									
+D	core/async-response-data.json	#	anyOf	ROOT	42	42	42			AdCPAsyncResponseData	-	yes	0	AdCPAsyncResponseDataBuildCreativeResponse|AdCPAsyncResponseDataCompactTaskInputRequired|AdCPAsyncResponseDataCompactTaskSubmitted|AdCPAsyncResponseDataCompactTaskWorking|AdCPAsyncResponseDataCreateMediaBuyResponse|AdCPAsyncResponseDataDeclineProposalsResponse|AdCPAsyncResponseDataGetCreativeFeaturesResponse|AdCPAsyncResponseDataGetProductsResponse|AdCPAsyncResponseDataGetSignalsResponse|AdCPAsyncResponseDataMediaBuyDeliveryWebhookResult|AdCPAsyncResponseDataPreviewCreativeResponse|AdCPAsyncResponseDataRefineProposalsResponse|AdCPAsyncResponseDataRejected|AdCPAsyncResponseDataRequestProposalsResponse|AdCPAsyncResponseDataSyncCatalogsResponse|AdCPAsyncResponseDataSyncCreativesResponse|AdCPAsyncResponseDataUpdateMediaBuyResponse|BuildCreativeAsyncInputRequired|BuildCreativeAsyncSubmitted|BuildCreativeAsyncWorking|CreateMediaBuyAsyncInputRequired|CreateMediaBuyAsyncSubmitted|CreateMediaBuyAsyncWorking|GetCreativeFeaturesAsyncSubmitted|GetProductsAsyncInputRequired|GetProductsAsyncSubmitted|GetProductsAsyncWorking|GetSignalsAsyncSubmitted|GetSignalsAsyncWorking|RefineProposalsAsyncSubmitted|RequestProposalsAsyncSubmitted|SyncCatalogsAsyncInputRequired|SyncCatalogsAsyncSubmitted|SyncCatalogsAsyncWorking|SyncCreativesAsyncInputRequired|SyncCreativesAsyncSubmitted|SyncCreativesAsyncWorking|UpdateMediaBuyAsyncInputRequired|UpdateMediaBuyAsyncSubmitted|UpdateMediaBuyAsyncWorking	ControlMediaBuyResponseCompleted|ControlMediaBuyResponseFailed|ControlMediaBuyResponseSubmitted|MediaBuyCommitmentResponseCompleted|MediaBuyCommitmentResponseFailed|MediaBuyCommitmentResponseSubmitted	AdCPAsyncResponseDataGetProductsResponse|AdCPAsyncResponseDataRejected|AdCPAsyncResponseDataCompactTaskSubmitted|AdCPAsyncResponseDataCompactTaskWorking|AdCPAsyncResponseDataCompactTaskInputRequired|AdCPAsyncResponseDataGetSignalsResponse|GetSignalsAsyncWorking|GetSignalsAsyncSubmitted|AdCPAsyncResponseDataCreateMediaBuyResponse|CreateMediaBuyAsyncWorking|GetProductsAsyncWorking|CreateMediaBuyAsyncInputRequired|CreateMediaBuyAsyncSubmitted|AdCPAsyncResponseDataUpdateMediaBuyResponse|UpdateMediaBuyAsyncWorking|UpdateMediaBuyAsyncInputRequired|UpdateMediaBuyAsyncSubmitted|AdCPAsyncResponseDataMediaBuyDeliveryWebhookResult|AdCPAsyncResponseDataBuildCreativeResponse|AdCPAsyncResponseDataPreviewCreativeResponse|BuildCreativeAsyncWorking|GetProductsAsyncInputRequired|BuildCreativeAsyncInputRequired|BuildCreativeAsyncSubmitted|AdCPAsyncResponseDataGetCreativeFeaturesResponse|GetCreativeFeaturesAsyncSubmitted|AdCPAsyncResponseDataSyncCreativesResponse|SyncCreativesAsyncWorking|SyncCreativesAsyncInputRequired|SyncCreativesAsyncSubmitted|AdCPAsyncResponseDataSyncCatalogsResponse|SyncCatalogsAsyncWorking|GetProductsAsyncSubmitted|SyncCatalogsAsyncInputRequired|SyncCatalogsAsyncSubmitted|AdCPAsyncResponseDataRequestProposalsResponse|RequestProposalsAsyncSubmitted|AdCPAsyncResponseDataRefineProposalsResponse|RefineProposalsAsyncSubmitted|AdCPAsyncResponseDataDeclineProposalsResponse
+F	core/async-response-refs/creative/get-creative-features-async-response-submitted.json	#/not	anyOf	RULE	7	7	0									
+F	core/async-response-refs/media-buy/get-products-async-response-submitted.json	#/not	anyOf	RULE	3	3	0									
+F	core/async-response-refs/signals/get-signals-async-response-submitted.json	#/not	anyOf	RULE	2	2	0									
+E	core/attestation-evaluation.json	#/properties/action_binding	anyOf	PROP	2	2	0			ActionBinding	-	no	3			
+A	core/attestation-issuer.json	#	oneOf	ROOT	3	3	3	type	type	AttestationIssuer	type	yes	0	AttestationAgentIssuer|AttestationBrandIssuer|AttestationOriginIssuer		AttestationBrandIssuer|AttestationAgentIssuer|AttestationOriginIssuer
+E	core/attestation-reference.json	#	anyOf	ROOT	2	2	0			AttestationReference	-	no	10		AttestationRefsItem|AttestationRefsItem|Reference|RuntimeAttestationsItem	
+C	core/attestation-reference.json	#/properties/locator	oneOf	PROP	2	2	2	type	type							AttestationCredentialUriLocator|AttestationIssuerCredentialIdLocator
+A	core/attestation-subject.json	#	oneOf	ROOT	3	3	3	type	type	AttestationSubject	type	yes	0	AttestationAgentSubject|AttestationBrandSubject|AttestationResourceSubject		AttestationBrandSubject|AttestationAgentSubject|AttestationResourceSubject
+A	core/audience-activation-method.json	#	oneOf	ROOT	6	6	6		pattern	AudienceActivationMethod	pattern	yes	0	AdCPAudienceSync|AudienceActivationMethodFileTransfer|CleanRoom|DatasetQuery|PlatformDistribution|TMPIdentityMatch		AdCPAudienceSync|TMPIdentityMatch|AudienceActivationMethodFileTransfer|DatasetQuery|CleanRoom|PlatformDistribution
+E	core/audience-characteristic.json	#	anyOf	ROOT	2	2	0			AudienceCharacteristic	-	no	5			
+G	core/audience-characteristic.json	#/allOf/0/then/properties/value	oneOf	PROP	2	0	0									
+G	core/audience-characteristic.json	#/properties/dimension	anyOf	PROP	2	0	0									
+G	core/audience-characteristic.json	#/properties/value	oneOf	PROP	4	0	0									
+G	core/audience-characteristic.json	#/properties/value/oneOf/3/items	oneOf	ELEM	3	0	0									
+E	core/audience-member.json	#	anyOf	ROOT	3	3	0			AudienceMember	-	no	5			
+A	core/audience-selector.json	#	oneOf	ROOT	4	4	0		type	AudienceSelector	-	yes	0	AudienceSelectorDescription|AudienceSelectorSignalBinary|AudienceSelectorSignalCategorical|AudienceSelectorSignalNumeric		AudienceSelectorSignalBinary|AudienceSelectorSignalCategorical|AudienceSelectorSignalNumeric|AudienceSelectorDescription
+E	core/audience-selector.json	#/oneOf/0	anyOf	BRANCH	2	2	0			AudienceSelectorSignalBinary	-	yes	5			
+E	core/audience-selector.json	#/oneOf/1	anyOf	BRANCH	2	2	0			AudienceSelectorSignalCategorical	-	yes	5			
+E	core/audience-selector.json	#/oneOf/2	anyOf	BRANCH	2	2	0			AudienceSelectorSignalNumeric	-	yes	6			
+A	core/audience-source.json	#	oneOf	ROOT	2	2	2		kind	AudienceSource	kind	yes	0	Dataset|PlatformSegment		Dataset|PlatformSegment
+E	core/bidding-policy-capability.json	#/definitions/policy_profile	anyOf	DEF	2	2	0			PolicyProfile	-	no	4			
+C	core/bidding-policy-capability.json	#/definitions/policy_profile/properties/supported_combinations/items	oneOf	ELEM	2	2	0		kind							
+F	core/bidding-policy.json	#/allOf/0/not	anyOf	RULE	8	8	0									
+E	core/brand-ref.json	#/properties/data_subject_contestation	anyOf	PROP	2	2	0			DataSubjectContestation	-	no	3			
+A	core/brand-response-authorization-result.json	#	oneOf	ROOT	2	2	0		trust	BrandResponseAuthorizationResult	trust	yes	4	BrandResponseAuthorizationResultTrusted|BrandResponseAuthorizationResultUntrusted		BrandResponseAuthorizationResultTrusted|BrandResponseAuthorizationResultUntrusted
+A	core/budget-allocation.json	#	oneOf	ROOT	2	2	0	mode	mode	BudgetAllocation	mode	yes	0	BudgetAllocationFixed|BudgetAllocationSellerOptimized		BudgetAllocationFixed|BudgetAllocationSellerOptimized
+E	core/budget-range.json	#	anyOf	ROOT	2	2	0			BudgetRange	-	no	3			
+D	core/canonical-account-ref.json	#	anyOf	ROOT	2	2	0			CanonicalAccountReference	-	yes	0	CanonicalAccountReferenceAccountId|CanonicalAccountReferenceBrandOperator		CanonicalAccountReferenceAccountId|CanonicalAccountReferenceBrandOperator
+A	core/canonical-budget-allocation.json	#	oneOf	ROOT	2	2	0	mode	mode	CanonicalBudgetAllocation	mode	yes	0	CanonicalBudgetAllocationFixed|CanonicalBudgetAllocationSellerOptimized		CanonicalBudgetAllocationFixed|CanonicalBudgetAllocationSellerOptimized
+G	core/canonical-forecast-point.json	#/properties/viewability	anyOf	PROP	2	1	0			Viewability	-	no	6			
+F	core/canonical-forecast-point.json	#/properties/viewability/anyOf/0/not	anyOf	RULE	4	4	0									
+F	core/canonical-format-option.json	#/allOf/2/else/not	anyOf	RULE	2	2	0									
+A	core/canonical-media-buy-action.json	#	oneOf	ROOT	3	3	0	task		CanonicalMediaBuyAction	task	yes	0	CanonicalMediaBuyActionControlMediaBuy|CanonicalMediaBuyActionRefineProposals|CanonicalMediaBuyActionSyncCreatives		CanonicalMediaBuyActionControlMediaBuy|CanonicalMediaBuyActionRefineProposals|CanonicalMediaBuyActionSyncCreatives
+A	core/canonical-optimization-goal.json	#	oneOf	ROOT	3	3	0	kind	kind	CanonicalOptimizationGoal	kind	yes	0	CanonicalOptimizationGoalEvent|CanonicalOptimizationGoalMetric|CanonicalOptimizationGoalVendorMetric		CanonicalOptimizationGoalMetric|CanonicalOptimizationGoalEvent|CanonicalOptimizationGoalVendorMetric
+F	core/canonical-optimization-goal.json	#/oneOf/0/allOf/1/else/not	anyOf	RULE	2	2	0									
+E	core/canonical-optimization-goal.json	#/oneOf/0/properties/target_frequency	anyOf	PROP	2	2	0			TargetFrequency	-	no	3			
+A	core/canonical-placement.json	#	oneOf	ROOT	2	2	0		kind	CanonicalProductPlacement	kind	yes	15	CanonicalProductPlacementPublisherRef|CanonicalProductPlacementSellerInline		CanonicalProductPlacementPublisherRef|CanonicalProductPlacementSellerInline
+F	core/canonical-product.json	#/allOf/2/then/properties/overlay_support/not	anyOf	RULE	2	2	0									
+E	core/canonical-proposal.json	#/properties/total_budget_guidance	anyOf	PROP	3	3	0			TotalBudgetGuidance	-	no	4			
+A	core/canonical-reporting-commitment.json	#	oneOf	ROOT	2	2	0	scope	scope	CanonicalReportingCommitment	scope	yes	0	CanonicalReportingCommitmentStandard|CanonicalReportingCommitmentVendor		CanonicalReportingCommitmentStandard|CanonicalReportingCommitmentVendor
+F	core/catalog-item-availability-state.json	#/allOf/0/else/not	anyOf	RULE	4	4	0									
+F	core/catalog-item-availability-update-result.json	#/allOf/0/then/not	anyOf	RULE	4	4	0									
+B	core/catchment.json	#	oneOf	ROOT	3	3	0			Catchment	-	no	7			
+F	core/catchment.json	#/oneOf/0/not	anyOf	RULE	2	2	0									
+F	core/catchment.json	#/oneOf/1/not	anyOf	RULE	2	2	0									
+F	core/catchment.json	#/oneOf/2/not	anyOf	RULE	2	2	0									
+E	core/collection-distribution.json	#	anyOf	ROOT	2	2	0			CollectionDistribution	-	no	3			
+A	core/collection-selection.json	#	oneOf	ROOT	2	2	2	mode	mode	CollectionSelection	mode	yes	0	ProductDefaultCollections|SelectedCollections		SelectedCollections|ProductDefaultCollections
+A	core/committed-metric.json	#	oneOf	ROOT	2	2	0	scope	scope	CommittedMetric	scope	yes	0	CommittedMetricStandard|CommittedMetricVendor		CommittedMetricStandard|CommittedMetricVendor
+B	core/creative-asset.json	#	oneOf	ROOT	2	2	2			CreativeAsset	-	no	17		CreativesItem|CreativesItem	
+F	core/creative-asset.json	#/not	anyOf	RULE	2	2	0									
+G	core/creative-asset.json	#/properties/assets/patternProperties/^[a-z0-9_]+$	oneOf	MAPV	2	1	0									
+G	core/creative-assets.json	#/patternProperties/^[a-z0-9_]+$	anyOf	MAPV	2	1	0									
+A	core/creative-item.json	#	oneOf	ROOT	2	2	0	asset_kind	asset_kind	CreativeItem	asset_kind	yes	0	CreativeItemMedia|CreativeItemText		CreativeItemMedia|CreativeItemText
+G	core/creative-item.json	#/oneOf/1/properties/content	oneOf	PROP	2	0	0									
+G	core/creative-localization-readback.json	#/definitions/resolvedAssets/patternProperties/^[a-z0-9_]+$	anyOf	MAPV	2	1	0									
+C	core/creative-localization-readback.json	#/properties/variants/items	oneOf	ELEM	2	2	2	role	role							SourceLocalizationReadback|TargetLocalizationReadback
+F	core/creative-localization-readback.json	#/properties/variants/items/oneOf/0/not	anyOf	RULE	3	3	0									
+F	core/creative-localization-readback.json	#/properties/variants/items/oneOf/1/not	anyOf	RULE	3	3	0									
+G	core/creative-localization.json	#/properties/target_variants/items/properties/assets/patternProperties/^[a-z0-9_]+$	anyOf	MAPV	2	1	0									
+B	core/creative-manifest.json	#	oneOf	ROOT	2	2	2			CreativeManifest	-	no	11		CreativeRepresentation	
+F	core/creative-manifest.json	#/not	anyOf	RULE	2	2	0									
+G	core/creative-manifest.json	#/properties/assets/patternProperties/^[a-z0-9_]+$	oneOf	MAPV	2	1	0									
+F	core/creative-operation-format-declaration.json	#/allOf/0/not	anyOf	RULE	2	2	0									
+F	core/creative-operation-format-declaration.json	#/allOf/2/else/not	anyOf	RULE	2	2	0									
+F	core/creative-operation-format-declaration.json	#/allOf/2/then	anyOf	RULE	2	2	0									
+F	core/creative-representation.json	#/allOf/1/not	anyOf	RULE	3	3	0									
+G	core/daast-tracker-constraints.json	#/allOf/0/if	anyOf	RULE	2	1	0		target							
+A	core/data-provider-signal-selector.json	#	oneOf	ROOT	3	3	0	selection_type	selection_type	DataProviderSignalSelector	selection_type	yes	0	DataProviderSignalSelectorAll|DataProviderSignalSelectorById|DataProviderSignalSelectorByTag		DataProviderSignalSelectorAll|DataProviderSignalSelectorById|DataProviderSignalSelectorByTag
+G	core/daypart-target.json	#/properties/timezone	anyOf	PROP	2	1	0									
+A	core/delivery-metric-aggregate.json	#	oneOf	ROOT	2	2	0	scope	scope	DeliveryMetricAggregate	scope	yes	0	DeliveryMetricAggregateStandard|DeliveryMetricAggregateVendor		DeliveryMetricAggregateStandard|DeliveryMetricAggregateVendor
+E	core/demographic-age-range.json	#	anyOf	ROOT	2	2	0			DemographicAgeRange	-	no	3		Age	
+E	core/demographic-reporting-capability.json	#	anyOf	ROOT	2	2	0			DemographicReportingCapability	-	no	3			
+F	core/demographic-targeting-resolution.json	#/not	anyOf	RULE	2	2	0									
+C	core/demographic-targeting-resolution.json	#/properties/execution	oneOf	PROP	3	3	0		type							ExecutionContinuousBounds|ExecutionEnumeratedIntervals|ExecutionSignals
+A	core/deployment.json	#	oneOf	ROOT	2	2	0	type	type	Deployment	type	yes	0	DeploymentAgent|DeploymentPlatform		DeploymentPlatform|DeploymentAgent
+A	core/destination.json	#	oneOf	ROOT	2	2	0	type	type	Destination	type	yes	0	DestinationAgent|DestinationPlatform		DestinationPlatform|DestinationAgent
+F	core/downstream-connection-requirement.json	#/allOf/0/then	anyOf	RULE	2	2	0									
+A	core/evaluator-spec.json	#	oneOf	ROOT	3	3	0			EvaluatorSpec	-	yes	5	EvaluatorSpecAgentUrl|EvaluatorSpecEvaluatorId|EvaluatorSpecExemplars		EvaluatorSpecExemplars|EvaluatorSpecEvaluatorId|EvaluatorSpecAgentUrl
+F	core/event.json	#/allOf/0/then/properties/custom_data/allOf/1	anyOf	CONJ	2	2	0									
+F	core/forecast-dimension-geo.json	#/allOf/0/then/not	anyOf	RULE	2	2	0									
+F	core/forecast-dimension-geo.json	#/allOf/1/then/not	anyOf	RULE	2	2	0									
+F	core/forecast-dimension-geo.json	#/allOf/3/then	anyOf	RULE	2	2	0									
+E	core/forecast-dimension-signal.json	#	anyOf	ROOT	2	2	0			SignalForecastDimension	-	no	7			
+C	core/forecast-point-dimensions.json	#/items	oneOf	ELEM	7	7	0		kind							
+G	core/forecast-point.json	#/properties/viewability	anyOf	PROP	2	1	0			Viewability	-	no	6			
+F	core/forecast-point.json	#/properties/viewability/anyOf/0/not	anyOf	RULE	4	4	0									
+E	core/forecast-range.json	#	anyOf	ROOT	2	2	0			ForecastRange	-	no	3		CoverageRate|ForecastRateRange|ViewableRate	
+A	core/format-option-ref.json	#	oneOf	ROOT	2	2	2	scope	scope	FormatOptionReference	scope	yes	0	ProductLocalFormatOptionReference|PublisherCatalogFormatOptionReference		PublisherCatalogFormatOptionReference|ProductLocalFormatOptionReference
+C	core/format.json	#/properties/assets/items	oneOf	ELEM	2	2	1	item_type	item_type							AssetsItemIndividual|RepeatableGroupAsset
+A	core/format.json	#/properties/assets/items/oneOf/0	oneOf	BRANCH	21	21	21	asset_type	asset_type|item_type	AssetsItemIndividual	asset_type	yes	1	IndividualAudioAsset|IndividualBriefAsset|IndividualCardAsset|IndividualCatalogAsset|IndividualCssAsset|IndividualDaastAsset|IndividualDaastTrackerAsset|IndividualDisplayTagAsset|IndividualHtmlAsset|IndividualImageAsset|IndividualJavaScriptAsset|IndividualMarkdownAsset|IndividualPixelTrackerAsset|IndividualPublishedPostAsset|IndividualTextAsset|IndividualUrlAsset|IndividualVastAsset|IndividualVastTrackerAsset|IndividualVideoAsset|IndividualWebhookAsset|IndividualZipAsset		IndividualImageAsset|IndividualVideoAsset|IndividualDaastAsset|IndividualUrlAsset|IndividualWebhookAsset|IndividualBriefAsset|IndividualCatalogAsset|IndividualDisplayTagAsset|IndividualPublishedPostAsset|IndividualCardAsset|IndividualPixelTrackerAsset|IndividualVastTrackerAsset|IndividualAudioAsset|IndividualDaastTrackerAsset|IndividualTextAsset|IndividualMarkdownAsset|IndividualHtmlAsset|IndividualCssAsset|IndividualJavaScriptAsset|IndividualZipAsset|IndividualVastAsset
+C	core/format.json	#/properties/assets/items/oneOf/1/properties/assets/items	oneOf	ELEM	21	21	21	asset_type	asset_type							GroupImageAsset|GroupVideoAsset|GroupDaastAsset|GroupUrlAsset|GroupWebhookAsset|GroupBriefAsset|GroupCatalogAsset|GroupDisplayTagAsset|GroupPublishedPostAsset|GroupCardAsset|GroupPixelTrackerAsset|GroupVastTrackerAsset|GroupAudioAsset|GroupDaastTrackerAsset|GroupTextAsset|GroupMarkdownAsset|GroupHtmlAsset|GroupCssAsset|GroupJavaScriptAsset|GroupZipAsset|GroupVastAsset
+F	core/format.json	#/properties/canonical_parameters/allOf/1/not	anyOf	RULE	2	2	0									
+A	core/format.json	#/properties/renders/items	oneOf	ELEM	2	2	0			RendersItem	-	yes	3	RendersItemDimensions|RendersItemParametersFromFormatId		RendersItemDimensions|RendersItemParametersFromFormatId
+G	core/format.json	#/properties/supported_macros/items	anyOf	ELEM	2	1	0									
+E	core/frequency-cap-constraints.json	#	anyOf	ROOT	6	6	0			FrequencyCapConstraints	-	no	7		FrequencyCapSupport|MediaBuyFrequencyCapCapability|MediaBuyFrequencyCapSupport	
+B	core/frequency-cap-impression-constraints.json	#	oneOf	ROOT	2	2	0			FrequencyCapImpressionConstraints	-	no	4			
+F	core/frequency-cap-impression-constraints.json	#/oneOf/0/not	anyOf	RULE	2	2	0									
+B	core/frequency-cap-interval-constraints.json	#	oneOf	ROOT	2	2	0			FrequencyCapIntervalConstraints	-	no	5			
+F	core/frequency-cap-interval-constraints.json	#/oneOf/0/not	anyOf	RULE	2	2	0									
+E	core/frequency-cap.json	#	anyOf	ROOT	3	3	0			FrequencyCap	-	no	5		MediaBuyFrequencyCap	
+F	core/geo-delivery-metrics.json	#/allOf/1/allOf/0/then/not	anyOf	RULE	2	2	0									
+F	core/geo-delivery-metrics.json	#/allOf/1/allOf/1/then/not	anyOf	RULE	2	2	0									
+F	core/geo-delivery-metrics.json	#/allOf/1/allOf/3/then	anyOf	RULE	2	2	0									
+G	core/geo-place-system.json	#	anyOf	ROOT	2	0	0									
+G	core/geo-place-type.json	#	anyOf	ROOT	2	0	0									
+F	core/geo-region-requirement.json	#/properties/countries/additionalProperties	anyOf	MAPV	2	2	0									
+F	core/geo-region-support.json	#/properties/countries/additionalProperties	anyOf	MAPV	2	2	0									ObjAllValues|ObjValues
+E	core/get-geo-place-resolution-request.json	#	anyOf	ROOT	2	2	0			GetGeographicPlaceResolutionRequest	-	no	9			
+A	core/inventory-list-application.json	#	oneOf	ROOT	2	2	2	list_type	list_type	InventoryListApplication	list_type	yes	0	CollectionListApplication|PropertyListApplication		PropertyListApplication|CollectionListApplication
+G	core/macro-bearing-url.json	#	anyOf	ROOT	3	0	0									
+F	core/macro-declaration.json	#/allOf/1/then/not	anyOf	RULE	2	2	0									
+F	core/macro-declaration.json	#/allOf/4/then/not	anyOf	RULE	3	3	0									
+F	core/macro-declaration.json	#/allOf/8/then/not	anyOf	RULE	2	2	0									
+F	core/macro-resolution-capability.json	#/allOf/1/then/not	anyOf	RULE	2	2	0									
+F	core/macro-resolution-result.json	#/allOf/1/then/not	anyOf	RULE	2	2	0									
+F	core/macro-resolution-result.json	#/allOf/6/then/not	anyOf	RULE	2	2	0									
+F	core/macro-translation-target.json	#/allOf/1/then/not	anyOf	RULE	2	2	0									
+G	core/media-buy-available-action-id.json	#	anyOf	ROOT	2	1	0									
+F	core/media-buy-frequency-cap.json	#/allOf/1/not	anyOf	RULE	2	2	0									
+A	core/missing-metric.json	#	oneOf	ROOT	2	2	0	scope	scope	MissingMetric	scope	yes	0	MissingMetricVendor|ObjScopeMetricIdQualifier		ObjScopeMetricIdQualifier|MissingMetricVendor
+C	core/offering-asset-group.json	#/properties/items/items	oneOf	ELEM	13	13	0	asset_type	asset_type							
+F	core/opportunity-context.json	#/allOf/0/else/not	anyOf	RULE	2	2	0									
+A	core/optimization-goal.json	#	oneOf	ROOT	3	3	0	kind	kind	OptimizationGoal	kind	yes	0	OptimizationGoalEvent|OptimizationGoalMetric|OptimizationGoalVendorMetric		OptimizationGoalMetric|OptimizationGoalEvent|OptimizationGoalVendorMetric
+F	core/optimization-goal.json	#/oneOf/0/allOf/1/else/not	anyOf	RULE	2	2	0									
+C	core/optimization-goal.json	#/oneOf/0/properties/target	oneOf	PROP	2	2	0	kind	kind							OptimizationGoalMetricTargetCostPer|OptimizationGoalMetricTargetThresholdRate
+E	core/optimization-goal.json	#/oneOf/0/properties/target_frequency	anyOf	PROP	2	2	0			TargetFrequency	-	no	3			
+C	core/optimization-goal.json	#/oneOf/1/properties/target	oneOf	PROP	3	3	0	kind	kind							OptimizationGoalEventTargetCostPer|TargetPerAdSpend|TargetMaximizeValue
+C	core/optimization-goal.json	#/oneOf/2/properties/target	oneOf	PROP	2	2	0	kind	kind							OptimizationGoalVendorMetricTargetCostPer|OptimizationGoalVendorMetricTargetThresholdRate
+F	core/package.json	#/allOf/2/if	anyOf	RULE	2	2	0									
+A	core/performance-feedback-metric.json	#	oneOf	ROOT	2	2	0	scope	scope	PerformanceFeedbackMetric	scope	yes	0	PerformanceFeedbackMetricStandard|PerformanceFeedbackMetricVendor		PerformanceFeedbackMetricStandard|PerformanceFeedbackMetricVendor
+C	core/performance-feedback.json	#/properties/metric	oneOf	PROP	2	2	0	scope	scope							
+E	core/placement-definition.json	#	anyOf	ROOT	2	2	0			PlacementDefinition	-	no	18			
+F	core/placement-definition.json	#/allOf/0/not	anyOf	RULE	5	5	0									
+F	core/placement-definition.json	#/properties/format_options/items	anyOf	ELEM	2	2	2									FormatOptionsItemFormatOptionId
+A	core/placement-identity.json	#	oneOf	ROOT	2	2	2		kind	PlacementIdentity	kind	yes	0	PublisherCatalogPlacementIdentity|SellerInlinePlacementIdentity		PublisherCatalogPlacementIdentity|SellerInlinePlacementIdentity
+C	core/placement-presentation.json	#/properties/decorations/items	oneOf	ELEM	3	3	0		kind							
+A	core/placement-selection.json	#	oneOf	ROOT	2	2	2	mode	mode	PlacementSelection	mode	yes	0	ProductDefaultPlacements|SelectedPlacements		SelectedPlacements|ProductDefaultPlacements
+G	core/placement-selection.json	#/oneOf/0/properties/placement_refs/items	anyOf	ELEM	2	1	0									
+E	core/placement.json	#	anyOf	ROOT	2	2	0			Placement	-	no	16			
+F	core/placement.json	#/allOf/0/not	anyOf	RULE	4	4	0									
+G	core/postal-area-support.json	#/propertyNames	anyOf	KEY	2	1	0									
+D	core/postal-area.json	#	anyOf	ROOT	2	2	2			PostalArea	-	yes	0	PostalAreaCountrySystemValues|PostalAreaWithFusedSystem		PostalAreaCountrySystemValues|PostalAreaWithFusedSystem
+D	core/postal-country-system.json	#	anyOf	ROOT	10	10	0			PostalCountrySystem	-	yes	2	PostalCountrySystemAUPostcode|PostalCountrySystemBRCep|PostalCountrySystemBranch9|PostalCountrySystemCA|PostalCountrySystemFRCodePostal|PostalCountrySystemGB|PostalCountrySystemINPin|PostalCountrySystemPlz|PostalCountrySystemUS|PostalCountrySystemZAPostalCode		PostalCountrySystemUS|PostalCountrySystemGB|PostalCountrySystemCA|PostalCountrySystemPlz|PostalCountrySystemFRCodePostal|PostalCountrySystemAUPostcode|PostalCountrySystemBRCep|PostalCountrySystemINPin|PostalCountrySystemZAPostalCode|PostalCountrySystemBranch9
+A	core/pricing-option.json	#	oneOf	ROOT	10	10	0	pricing_model	pricing_model	PricingOption	pricing_model	yes	0	PricingOptionCpa|PricingOptionCpc|PricingOptionCpcv|PricingOptionCpm|PricingOptionCpp|PricingOptionCpv|PricingOptionFlatRate|PricingOptionRevenueShare|PricingOptionTime|PricingOptionVcpm		PricingOptionCpm|PricingOptionVcpm|PricingOptionCpc|PricingOptionCpcv|PricingOptionCpv|PricingOptionCpp|PricingOptionCpa|PricingOptionRevenueShare|PricingOptionFlatRate|PricingOptionTime
+C	core/product-audience-evidence-requirements.json	#/properties/accepted_attestation_issuers/items	oneOf	ELEM	3	3	0	type	type							AcceptedAttestationIssuersItemBrand|AcceptedAttestationIssuersItemAgent
+C	core/product-card-reference-asset.json	#/properties/asset	oneOf	PROP	4	4	0		asset_type							
+A	core/product-execution-requirement.json	#	oneOf	ROOT	3	3	3	kind	kind	ProductExecutionRequirement	kind	yes	0	CatalogExecutionRequirement|DownstreamConnectionExecutionRequirement|EventSourceExecutionRequirement		EventSourceExecutionRequirement|CatalogExecutionRequirement|DownstreamConnectionExecutionRequirement
+F	core/product-execution-requirement.json	#/oneOf/2/properties/connection/allOf/1/not	anyOf	RULE	3	3	0									
+C	core/product-filters.json	#/properties/audience_activation_methods/items	oneOf	ELEM	6	6	0		pattern							AudienceActivationMethodsItemTmpIdentityMatch|AudienceActivationMethodsItemFileTransfer|AudienceActivationMethodsItemDatasetQuery|AudienceActivationMethodsItemCleanRoom|AudienceActivationMethodsItemPlatformDistribution
+F	core/product-filters.json	#/properties/budget_range	anyOf	PROP	2	2	0									
+B	core/product-filters.json	#/properties/geo_proximity/items	oneOf	ELEM	3	3	0			GeoProximityItem	-	no	7			
+F	core/product-filters.json	#/properties/geo_proximity/items/oneOf/0/not	anyOf	RULE	2	2	0									
+F	core/product-filters.json	#/properties/geo_proximity/items/oneOf/1/not	anyOf	RULE	2	2	0									
+F	core/product-filters.json	#/properties/geo_proximity/items/oneOf/2/not	anyOf	RULE	2	2	0									
+F	core/product-filters.json	#/properties/required_geo_targeting/items/allOf/0/then/not	anyOf	RULE	2	2	0									
+G	core/product-filters.json	#/properties/required_geo_targeting/items/allOf/1/then	anyOf	RULE	2	1	0									
+F	core/product-filters.json	#/properties/required_geo_targeting/items/allOf/2/then	anyOf	RULE	3	2	0									
+F	core/product-filters.json	#/properties/required_geo_targeting/items/allOf/2/then/anyOf/0/not	anyOf	RULE	2	2	0									
+E	core/product-filters.json	#/properties/required_vendor_metrics/items	anyOf	ELEM	2	2	0			RequiredVendorMetricsItem	-	no	2			
+A	core/product-format-declaration.json	#	oneOf	ROOT	16	16	16	format_kind	format_kind	ProductFormatDeclaration	format_kind	yes	15	AgentPlacementFormatDeclaration|CoordinatedPlacementsFormatDeclaration|CustomFormatDeclaration|DAASTAudioFormatDeclaration|DisplayTagFormatDeclaration|HTML5FormatDeclaration|HostedAudioFormatDeclaration|HostedVideoFormatDeclaration|ImageCarouselFormatDeclaration|ImageFormatDeclaration|NativeInFeedFormatDeclaration|ResponsiveCreativeFormatDeclaration|SellerRenderedStatefulDisplayFormatDeclaration|SponsoredPlacementFormatDeclaration|VASTAudioFormatDeclaration|VASTVideoFormatDeclaration		ImageFormatDeclaration|HTML5FormatDeclaration|NativeInFeedFormatDeclaration|ResponsiveCreativeFormatDeclaration|AgentPlacementFormatDeclaration|SellerRenderedStatefulDisplayFormatDeclaration|CoordinatedPlacementsFormatDeclaration|CustomFormatDeclaration|DisplayTagFormatDeclaration|ImageCarouselFormatDeclaration|HostedVideoFormatDeclaration|VASTVideoFormatDeclaration|HostedAudioFormatDeclaration|VASTAudioFormatDeclaration|DAASTAudioFormatDeclaration|SponsoredPlacementFormatDeclaration
+F	core/product-format-declaration.json	#/allOf/2/else/not	anyOf	RULE	2	2	0									
+F	core/product-format-declaration.json	#/allOf/2/then	anyOf	RULE	2	2	0									
+F	core/product-offer-filters.json	#/allOf/0/not	anyOf	RULE	2	2	0									
+E	core/product-offer-filters.json	#/properties/required_vendor_metrics/items	anyOf	ELEM	2	2	0			RequiredVendorMetricsItem	-	no	2			
+E	core/product.json	#	anyOf	ROOT	2	2	2			Product	-	no	60			
+F	core/product.json	#/allOf/0/if	anyOf	RULE	2	2	0									
+F	core/product.json	#/allOf/3/then/properties/overlay_support/not	anyOf	RULE	2	2	0									
+F	core/proposal.json	#/allOf/0/else/properties/allocations/items/not	anyOf	RULE	2	2	0									
+F	core/protocol-envelope.json	#/not	anyOf	RULE	2	2	0									
+A	core/publisher-property-selector.json	#	oneOf	ROOT	3	3	0	selection_type	selection_type	PublisherPropertySelector	selection_type	yes	0	PublisherPropertySelectorAll|PublisherPropertySelectorById|PublisherPropertySelectorByTag		PublisherPropertySelectorAll|PublisherPropertySelectorById|PublisherPropertySelectorByTag
+F	core/publisher-property-selector.json	#/oneOf/0/allOf/1	anyOf	CONJ	2	2	0									
+F	core/publisher-property-selector.json	#/oneOf/2/allOf/1	anyOf	CONJ	2	2	0									
+A	core/registry-event.json	#	oneOf	ROOT	20	20	0	event_type	entity_type|event_type	RegistryEvent	event_type	yes	7	RegistryEventAgentComplianceChangedAgent|RegistryEventAgentDiscoveredAgent|RegistryEventAgentProfileUpdatedAgent|RegistryEventAgentRemovedAgent|RegistryEventAgentVerificationEarnedAgent|RegistryEventAgentVerificationLostAgent|RegistryEventAuthorizationGrantedAuthorization|RegistryEventAuthorizationModifiedAuthorization|RegistryEventAuthorizationRevokedAuthorization|RegistryEventCollectionCreatedCollection|RegistryEventCollectionMergedCollection|RegistryEventCollectionRemovedCollection|RegistryEventCollectionUpdatedCollection|RegistryEventPropertyCreatedProperty|RegistryEventPropertyMergedProperty|RegistryEventPropertyReactivatedProperty|RegistryEventPropertyStaleProperty|RegistryEventPropertyUpdatedProperty|RegistryEventPublisherAdagentsChangedPublisher|RegistryEventPublisherAdagentsDiscoveredPublisher		RegistryEventPropertyCreatedProperty|RegistryEventPropertyUpdatedProperty|RegistryEventAgentRemovedAgent|RegistryEventAgentProfileUpdatedAgent|RegistryEventAgentComplianceChangedAgent|RegistryEventAgentVerificationEarnedAgent|RegistryEventAgentVerificationLostAgent|RegistryEventPublisherAdagentsDiscoveredPublisher|RegistryEventPublisherAdagentsChangedPublisher|RegistryEventAuthorizationGrantedAuthorization|RegistryEventAuthorizationRevokedAuthorization|RegistryEventAuthorizationModifiedAuthorization|RegistryEventPropertyMergedProperty|RegistryEventPropertyStaleProperty|RegistryEventPropertyReactivatedProperty|RegistryEventCollectionCreatedCollection|RegistryEventCollectionUpdatedCollection|RegistryEventCollectionMergedCollection|RegistryEventCollectionRemovedCollection|RegistryEventAgentDiscoveredAgent
+G	core/registry-event.json	#/$defs/collectionPayload/properties/kind	anyOf	PROP	2	1	0									
+E	core/registry-event.json	#/$defs/publisherAdagentsPayload	anyOf	DEF	2	2	0			PublisherAdagentsPayload	-	no	15		RegistryEventPublisherAdagentsChangedPublisherPayload	
+F	core/reporting-consumer-status.json	#/allOf/0/then/not	anyOf	RULE	2	2	0									
+F	core/reporting-consumer-status.json	#/allOf/1/then/not	anyOf	RULE	5	5	0									
+F	core/reporting-consumer-status.json	#/allOf/2/then/not	anyOf	RULE	4	4	0									
+F	core/reporting-consumer-status.json	#/allOf/3/then/not	anyOf	RULE	2	2	0									
+A	core/reporting-control-total.json	#	oneOf	ROOT	2	2	2		value_type	ReportingControlTotal	value_type	yes	0	DecimalReportingControlTotal|IntegerReportingControlTotal		IntegerReportingControlTotal|DecimalReportingControlTotal
+A	core/reporting-dataset-share-destination.json	#	oneOf	ROOT	2	2	2		mode	ReportingDatasetShareDestination	mode	yes	0	ProvisionRecipient|ReportingDatasetShareDestinationExisting		ReportingDatasetShareDestinationExisting|ProvisionRecipient
+F	core/reporting-delivery-config-state.json	#/allOf/0/then/not	anyOf	RULE	3	3	0									
+F	core/reporting-delivery-config-state.json	#/allOf/1/then	anyOf	RULE	2	2	0									
+A	core/reporting-delivery-method.json	#	oneOf	ROOT	3	3	3		pattern	ReportingDeliveryMethod	pattern	yes	0	DatasetShare|ReportingDeliveryMethodFileTransfer|WarehouseMaterialization		ReportingDeliveryMethodFileTransfer|DatasetShare|WarehouseMaterialization
+F	core/reporting-ledger-changed-webhook.json	#/allOf/0/else/not	anyOf	RULE	3	3	0									
+F	core/reporting-ledger-changed-webhook.json	#/allOf/0/then/not	anyOf	RULE	2	2	0									
+F	core/reporting-reliability-statistics.json	#/properties/evidence/allOf/0/else/not	anyOf	RULE	2	2	0									
+C	core/reporting-report-definition.json	#/properties/finality_policies/items	oneOf	ELEM	3	3	0		basis							FinalityPoliciesItemSourceFinal|FinalityPoliciesItemContractualCutoff|FinalityPoliciesItemStabilized
+F	core/reporting-revision.json	#/allOf/1/else/not	anyOf	RULE	3	3	0									
+F	core/reporting-schedule-offering.json	#/allOf/0/else/else/not	anyOf	RULE	4	4	0									
+F	core/reporting-schedule-offering.json	#/allOf/0/else/then/not	anyOf	RULE	2	2	0									
+F	core/reporting-schedule-offering.json	#/allOf/0/then/allOf/0/else/not	anyOf	RULE	2	2	0									
+F	core/reporting-schedule.json	#/allOf/0/else/else/not	anyOf	RULE	2	2	0									
+C	core/reporting-verification.json	#/properties/physical_checksums/items	oneOf	ELEM	2	2	2		algorithm							SHA256PhysicalChecksum|SHA512PhysicalChecksum
+A	core/reporting-write-destination.json	#	oneOf	ROOT	2	2	2		mode	ReportingWriteDestination	mode	yes	0	ProvisionBinding|ReportingWriteDestinationExisting		ReportingWriteDestinationExisting|ProvisionBinding
+D	core/requirements/asset-requirements.json	#	anyOf	ROOT	12	12	0			AssetRequirements	-	yes	0	AssetRequirementsAudio|AssetRequirementsCSS|AssetRequirementsDAAST|AssetRequirementsHTML|AssetRequirementsImage|AssetRequirementsJavaScript|AssetRequirementsMarkdown|AssetRequirementsText|AssetRequirementsURL|AssetRequirementsVAST|AssetRequirementsVideo|AssetRequirementsWebhook		AssetRequirementsImage|AssetRequirementsVideo|AssetRequirementsURL|AssetRequirementsWebhook|AssetRequirementsAudio|AssetRequirementsText|AssetRequirementsMarkdown|AssetRequirementsHTML|AssetRequirementsCSS|AssetRequirementsJavaScript|AssetRequirementsVAST|AssetRequirementsDAAST
+A	core/requirements/catalog-field-binding.json	#	oneOf	ROOT	3	3	0	kind	kind	CatalogFieldBinding	kind	yes	0	CatalogFieldBindingAssetPool|CatalogFieldBindingCatalogGroup|CatalogFieldBindingScalar		CatalogFieldBindingScalar|CatalogFieldBindingAssetPool|CatalogFieldBindingCatalogGroup
+C	core/requirements/catalog-field-binding.json	#/oneOf/2/properties/per_item_bindings/items	oneOf	ELEM	2	2	0	kind	kind							
+C	core/requirements/image-asset-requirements.json	#/properties/bleed	oneOf	PROP	2	2	0									BleedUniform|BleedBottomLeftRightTop
+F	core/signal-definition-enrichment.json	#/properties/data_subject_rights/properties/channels/items	anyOf	ELEM	2	2	0									
+E	core/signal-definition.json	#/properties/data_subject_rights/properties/channels/items	anyOf	ELEM	2	2	0			ChannelsItem	-	no	5			
+A	core/signal-id.json	#	oneOf	ROOT	2	2	0	source	source	SignalID	source	yes	0	SignalIDAgent|SignalIDCatalog		SignalIDCatalog|SignalIDAgent
+E	core/signal-listing.json	#	anyOf	ROOT	2	2	0			SignalListing	-	no	11		ProductSignalTargetingOption|Signal|SignalsItem	
+A	core/signal-pricing.json	#	oneOf	ROOT	5	5	5	model	model	VendorPricing	model	yes	0	CpmPricing|CustomPricing|FlatFeePricing|PerUnitPricing|PercentOfMediaPricing		CpmPricing|PercentOfMediaPricing|FlatFeePricing|PerUnitPricing|CustomPricing
+A	core/signal-ref.json	#	oneOf	ROOT	3	3	0	scope	scope	SignalRef	scope	yes	0	SignalRefDataProvider|SignalRefProduct|SignalRefSignalSource		SignalRefProduct|SignalRefDataProvider|SignalRefSignalSource
+F	core/signal-ref.json	#/oneOf/0/not	anyOf	RULE	5	5	0									
+F	core/signal-ref.json	#/oneOf/1/not	anyOf	RULE	4	4	0									
+F	core/signal-ref.json	#/oneOf/2/not	anyOf	RULE	4	4	0									
+A	core/signal-targeting-expression.json	#	oneOf	ROOT	3	3	0	value_type	value_type	SignalTargetingExpression	value_type	yes	0	SignalTargetingExpressionBinary|SignalTargetingExpressionCategorical|SignalTargetingExpressionNumeric		SignalTargetingExpressionBinary|SignalTargetingExpressionCategorical|SignalTargetingExpressionNumeric
+E	core/signal-targeting-expression.json	#/oneOf/2	anyOf	BRANCH	2	2	0			SignalTargetingExpressionNumeric	-	yes	4		PackageSignalTargetingNumeric	
+A	core/signal-targeting.json	#	oneOf	ROOT	3	3	0	value_type	value_type	SignalTargeting	value_type	yes	0	SignalTargetingBinary|SignalTargetingCategorical|SignalTargetingNumeric		SignalTargetingBinary|SignalTargetingCategorical|SignalTargetingNumeric
+E	core/signal-targeting.json	#/oneOf/0	anyOf	BRANCH	2	2	0			SignalTargetingBinary	-	yes	4		SignalConditionsItemBinary|SignalTargetingItemBinary	
+E	core/signal-targeting.json	#/oneOf/1	anyOf	BRANCH	2	2	0			SignalTargetingCategorical	-	yes	4		SignalConditionsItemCategorical|SignalTargetingItemCategorical	
+E	core/signal-targeting.json	#/oneOf/2	anyOf	BRANCH	2	2	0			SignalTargetingNumeric	-	yes	5		SignalConditionsItemNumeric|SignalTargetingItemNumeric	
+G	core/start-timing.json	#	oneOf	ROOT	2	0	0									
+G	core/targeting-input.json	#/properties/age_restriction	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/audience_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/audience_include	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/axe_exclude_segment	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/axe_include_segment	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/browser	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/browser_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/collection_list	anyOf	PROP	2	1	1									
+G	core/targeting-input.json	#/properties/collection_list_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/collection_selection	anyOf	PROP	2	1	1									
+G	core/targeting-input.json	#/properties/daypart_targets	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/demographics	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/device_platform	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/device_platform_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/device_type	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/device_type_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/frequency_cap	anyOf	PROP	2	1	1									
+G	core/targeting-input.json	#/properties/geo_countries	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_countries_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_metros_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_places	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_places_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_postal_areas	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_postal_areas_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_proximity	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_regions	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/geo_regions_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/placement_selection	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/property_list	anyOf	PROP	2	1	1									
+G	core/targeting-input.json	#/properties/property_list_exclude	anyOf	PROP	2	1	0									
+G	core/targeting-input.json	#/properties/signal_targeting_groups	anyOf	PROP	2	1	1		operator							
+G	core/targeting-input.json	#/properties/store_catchments	anyOf	PROP	2	1	0									
+A	core/targeting-modification.json	#	oneOf	ROOT	2	2	2	operation	operation	TargetingModification	operation	yes	0	RemoveTargetingSetValues|ReplaceTargetingValue		ReplaceTargetingValue|RemoveTargetingSetValues
+F	core/targeting-overlay-requirements.json	#/definitions/browserRequirement	anyOf	DEF	2	2	0									BrowserRequirementFamilies
+F	core/targeting-overlay-requirements.json	#/definitions/daypartRequirement	anyOf	DEF	2	2	0									DaypartRequirementTimezoneModes
+F	core/targeting-overlay-requirements.json	#/definitions/keywordRequirement	anyOf	DEF	2	2	0									KeywordRequirementSupportedMatchTypes
+F	core/targeting-overlay-requirements.json	#/definitions/metroRequirement	anyOf	DEF	2	2	0									MetroRequirementSystems
+F	core/targeting-overlay-requirements.json	#/properties/demographics	anyOf	PROP	2	2	0									TargetingOverlayRequirementsDemographicsAge
+F	core/targeting-overlay-requirements.json	#/properties/geo_postal_areas	anyOf	PROP	2	2	0									
+F	core/targeting-overlay-requirements.json	#/properties/geo_postal_areas_exclude	anyOf	PROP	2	2	0									
+F	core/targeting-overlay-requirements.json	#/properties/geo_proximity	anyOf	PROP	2	2	0									TargetingOverlayRequirementsGeoProximity
+E	core/targeting-overlay-requirements.json	#/properties/geo_proximity/anyOf/1	anyOf	BRANCH	4	4	0			TargetingOverlayRequirementsGeoProximity	-	no	4			
+F	core/targeting-overlay-requirements.json	#/properties/geo_regions	anyOf	PROP	2	2	0									
+F	core/targeting-overlay-requirements.json	#/properties/geo_regions_exclude	anyOf	PROP	2	2	0									
+F	core/targeting-overlay-support.json	#/definitions/browserSupport	anyOf	DEF	2	2	0									BrowserSupportFamilies
+F	core/targeting-overlay-support.json	#/definitions/countrySupport	anyOf	DEF	2	2	0									CountrySupportMaxValuesPerPackage
+G	core/targeting-overlay-support.json	#/definitions/daypartSupport	anyOf	DEF	2	1	0									DaypartSupportTimezoneModes
+G	core/targeting-overlay-support.json	#/definitions/daypartSupport/anyOf/1/properties/iana_timezones	anyOf	PROP	2	0	0									
+F	core/targeting-overlay-support.json	#/definitions/keywordSupport	anyOf	DEF	2	2	0									KeywordSupportSupportedMatchTypes
+F	core/targeting-overlay-support.json	#/definitions/metroSupport	anyOf	DEF	2	2	0									MetroSupportSystems
+F	core/targeting-overlay-support.json	#/properties/demographics	anyOf	PROP	2	2	0									TargetingOverlaySupportDemographicsAge
+F	core/targeting-overlay-support.json	#/properties/geo_postal_areas	anyOf	PROP	2	2	0									
+F	core/targeting-overlay-support.json	#/properties/geo_postal_areas_exclude	anyOf	PROP	2	2	0									
+F	core/targeting-overlay-support.json	#/properties/geo_proximity	anyOf	PROP	2	2	0									TargetingOverlaySupportGeoProximity
+E	core/targeting-overlay-support.json	#/properties/geo_proximity/anyOf/1	anyOf	BRANCH	4	4	0			TargetingOverlaySupportGeoProximity	-	no	6			
+F	core/targeting-overlay-support.json	#/properties/geo_regions	anyOf	PROP	2	2	0									
+F	core/targeting-overlay-support.json	#/properties/geo_regions_exclude	anyOf	PROP	2	2	0									
+F	core/targeting-overlay-support.json	#/properties/placement_selection	anyOf	PROP	2	2	0									TargetingOverlaySupportPlacementSelection
+B	core/targeting.json	#/properties/geo_proximity/items	oneOf	ELEM	3	3	0			GeoProximityItem	-	no	8			
+F	core/targeting.json	#/properties/geo_proximity/items/oneOf/0/not	anyOf	RULE	2	2	0									
+F	core/targeting.json	#/properties/geo_proximity/items/oneOf/1/not	anyOf	RULE	2	2	0									
+F	core/targeting.json	#/properties/geo_proximity/items/oneOf/2/not	anyOf	RULE	2	2	0									
+A	core/tracker-execution-selector.json	#	oneOf	ROOT	3	3	0	asset_type	asset_type	TrackerExecutionSelector	asset_type	yes	0	TrackerExecutionSelectorDaastTracker|TrackerExecutionSelectorPixelTrackerImg|TrackerExecutionSelectorVastTracker		TrackerExecutionSelectorPixelTrackerImg|TrackerExecutionSelectorVastTracker|TrackerExecutionSelectorDaastTracker
+F	core/transformer-param.json	#/allOf/2/then/not	anyOf	RULE	5	5	0									
+E	core/transformer.json	#	anyOf	ROOT	2	2	2			Transformer	-	no	12			
+F	core/transformer.json	#/properties/input_formats/items/allOf/1/not	anyOf	RULE	2	2	0									
+E	core/user-match.json	#	anyOf	ROOT	5	5	0			UserMatch	-	no	8			
+G	core/vast-tracker-constraints.json	#/allOf/0/if	anyOf	RULE	2	1	0		target							
+E	core/webhook-challenge-response.json	#	anyOf	ROOT	2	2	0			WebhookChallengeResponse	-	no	2			
+A	core/wholesale-feed-event.json	#	oneOf	ROOT	9	9	0	event_type	entity_type|event_type	WholesaleFeedEvent	event_type	yes	6	WholesaleFeedEventProductCreatedProduct|WholesaleFeedEventProductPricedProduct|WholesaleFeedEventProductRemovedProduct|WholesaleFeedEventProductUpdatedProduct|WholesaleFeedEventSignalCreatedSignal|WholesaleFeedEventSignalPricedSignal|WholesaleFeedEventSignalRemovedSignal|WholesaleFeedEventSignalUpdatedSignal|WholesaleFeedEventWholesaleFeedBulkChangeFeed		WholesaleFeedEventProductCreatedProduct|WholesaleFeedEventProductUpdatedProduct|WholesaleFeedEventProductPricedProduct|WholesaleFeedEventProductRemovedProduct|WholesaleFeedEventSignalCreatedSignal|WholesaleFeedEventSignalUpdatedSignal|WholesaleFeedEventSignalPricedSignal|WholesaleFeedEventSignalRemovedSignal|WholesaleFeedEventWholesaleFeedBulkChangeFeed
+C	core/wholesale-feed-event.json	#/$defs/appliesTo	oneOf	DEF	2	2	0	scope	scope							AppliesToPublic|AppliesToAccount
+E	core/wholesale-feed-event.json	#/$defs/signal	anyOf	DEF	2	2	0			Signal	-	no	18			
+E	core/wholesale-feed-event.json	#/oneOf/0/properties/payload	anyOf	PROP	2	2	0			WholesaleFeedEventProductCreatedProductPayload	-	no	4			
+E	core/wholesale-feed-event.json	#/oneOf/1/properties/payload	anyOf	PROP	2	2	0			WholesaleFeedEventProductUpdatedProductPayload	-	no	5			
+E	core/wholesale-feed-event.json	#/oneOf/2/properties/payload	anyOf	PROP	2	2	0			WholesaleFeedEventProductPricedProductPayload	-	no	7			
+G	creative/creative-feature-result.json	#/properties/value	oneOf	PROP	3	0	0									
+E	creative/get-creative-delivery-request.json	#	anyOf	ROOT	2	2	0			GetCreativeDeliveryRequest	-	no	11			
+F	creative/get-creative-features-async-response-submitted.json	#/not	anyOf	RULE	7	7	0									
+A	creative/get-creative-features-response.json	#	oneOf	ROOT	3	3	2			GetCreativeFeaturesResponse	-	yes	13	GetCreativeFeaturesError|GetCreativeFeaturesResponseSubmitted|GetCreativeFeaturesResponseSuccess	AdCPAsyncResponseDataGetCreativeFeaturesResponse	GetCreativeFeaturesResponseSuccess|GetCreativeFeaturesError|GetCreativeFeaturesResponseSubmitted
+F	creative/get-creative-features-response.json	#/oneOf/1/not	anyOf	RULE	2	2	0									
+F	creative/get-creative-features-response.json	#/oneOf/2/not	anyOf	RULE	7	7	0									
+F	creative/get-creative-features-terminal-success.json	#/not	anyOf	RULE	2	2	0									
+B	creative/list-creatives-response.json	#/properties/creatives/items	oneOf	ELEM	2	2	2			CreativesItem	-	no	28			
+G	creative/list-creatives-response.json	#/properties/creatives/items/properties/assets/patternProperties/^[a-z0-9_]+$	oneOf	MAPV	2	1	0									
+F	creative/preview-creative-request.json	#/allOf/1/then	anyOf	RULE	2	2	0									
+G	creative/preview-creative-request.json	#/allOf/6/not	anyOf	RULE	3	0	0									
+E	creative/preview-creative-request.json	#/properties/requests/items	anyOf	ELEM	2	2	0			RequestsItem	-	no	9			
+A	creative/preview-creative-response.json	#	oneOf	ROOT	4	4	4	response_type	response_type	PreviewCreativeResponse	response_type	yes	13	PreviewCreativeBatchResponse|PreviewCreativeSingleResponse|PreviewCreativeSubmitted|PreviewCreativeVariantResponse	AdCPAsyncResponseDataPreviewCreativeResponse	PreviewCreativeSingleResponse|PreviewCreativeBatchResponse|PreviewCreativeVariantResponse|PreviewCreativeSubmitted
+A	creative/preview-creative-response.json	#/oneOf/1/properties/results/items	oneOf	ELEM	2	2	2		success	ResultsItem	success	yes	5	PreviewBatchResultError|PreviewBatchResultSuccess		PreviewBatchResultSuccess|PreviewBatchResultError
+A	creative/preview-render.json	#	oneOf	ROOT	3	3	0	output_format	output_format	PreviewRender	output_format	yes	0	PreviewRenderBoth|PreviewRenderHtml|PreviewRenderUrl		PreviewRenderUrl|PreviewRenderHtml|PreviewRenderBoth
+E	creative/sync-creatives-request.json	#	anyOf	ROOT	3	3	0			SyncCreativesRequest	-	no	14			
+C	creative/sync-creatives-request.json	#/properties/assignment_operations/items	oneOf	ELEM	3	3	3	operation	operation							AssignOrUpdate|Unassign|ReplaceAssignment
+G	creative/sync-creatives-request.json	#/properties/creatives/items/allOf/1/properties/localization	anyOf	PROP	2	1	0									
+A	creative/sync-creatives-response.json	#	oneOf	ROOT	3	3	3			SyncCreativesResponse	-	yes	13	SyncCreativesError|SyncCreativesResponseSubmitted|SyncCreativesSuccess	AdCPAsyncResponseDataSyncCreativesResponse	SyncCreativesSuccess|SyncCreativesError|SyncCreativesResponseSubmitted
+F	creative/sync-creatives-response.json	#/oneOf/0/not	anyOf	RULE	4	4	0									
+F	creative/sync-creatives-response.json	#/oneOf/0/properties/creatives/items/allOf/0/then/not	anyOf	RULE	3	3	0									
+F	creative/sync-creatives-response.json	#/oneOf/1/not	anyOf	RULE	6	6	0									
+F	creative/sync-creatives-response.json	#/oneOf/2/not	anyOf	RULE	2	2	0									
+A	creative/validate-input-request.json	#/properties/targets/items	oneOf	ELEM	4	4	4	kind	kind	TargetsItem	kind	yes	0	CanonicalFormatTarget|CreativeCapabilityTarget|ProductTarget|ThirdPartyFormatTarget		CanonicalFormatTarget|ProductTarget|ThirdPartyFormatTarget|CreativeCapabilityTarget
+G	error-details/accessibility-violation.json	#/properties/violations/items/properties/failure_kind	oneOf	PROP	2	0	0									
+A	error-details/governance-agent-not-accepted.json	#	oneOf	ROOT	2	2	0	disclosure	disclosure	GovernanceAgentNotAcceptedDetails	disclosure	yes	0	GovernanceAgentNotAcceptedDetailsDisclosed|GovernanceAgentNotAcceptedDetailsOpaque		GovernanceAgentNotAcceptedDetailsDisclosed|GovernanceAgentNotAcceptedDetailsOpaque
+G	error-details/requote-required.json	#/properties/envelope_field	oneOf	PROP	2	0	0									
+D	error-details/vast-version-mismatch.json	#	anyOf	ROOT	3	3	3			VASTVersionMismatchDetails	-	yes	8	AssetOutsideAcceptedVersionIntersection|InspectedDocumentVersionMismatch|SupportedVersionsCompatibilityDetails		AssetOutsideAcceptedVersionIntersection|InspectedDocumentVersionMismatch|SupportedVersionsCompatibilityDetails
+G	error-details/vast-version-mismatch.json	#/properties/observed_document_vast_version	anyOf	PROP	2	0	0									
+F	formats/canonical/_base.json	#/properties/slots/items/allOf/2/then/not	anyOf	RULE	2	2	0									
+F	formats/canonical/_base.json	#/properties/slots/items/allOf/3/else/not	anyOf	RULE	2	2	0									
+F	formats/canonical/_base.json	#/properties/slots/items/allOf/5/then/not	anyOf	RULE	2	2	0									
+G	formats/canonical/audio_hosted.json	#/properties/duration_ms_range/items	anyOf	ELEM	2	0	0									
+F	formats/canonical/audio_vast.json	#/not	anyOf	RULE	3	3	0									
+F	formats/canonical/audio_vast.json	#/not/anyOf/2/properties/media_file_requirements	anyOf	PROP	4	4	0									
+D	formats/canonical/coordinated_placements.json	#/properties/components/items	anyOf	ELEM	2	2	0			ComponentsItem	-	yes	9	ComponentsItemFormatKindParams|ComponentsItemFormatOptionRef		ComponentsItemFormatOptionRef|ComponentsItemFormatKindParams
+F	formats/canonical/coordinated_placements.json	#/properties/components/items/anyOf/0/not	anyOf	RULE	2	2	0									
+A	formats/canonical/coordinated_placements.json	#/properties/components/items/anyOf/1	oneOf	BRANCH	13	13	0		format_kind	ComponentsItemFormatKindParams	format_kind	yes	9	ComponentsItemFormatKindParamsAgentPlacement|ComponentsItemFormatKindParamsAudioDaast|ComponentsItemFormatKindParamsAudioHosted|ComponentsItemFormatKindParamsDisplayTag|ComponentsItemFormatKindParamsHtml5|ComponentsItemFormatKindParamsImage|ComponentsItemFormatKindParamsImageCarousel|ComponentsItemFormatKindParamsNativeInFeed|ComponentsItemFormatKindParamsResponsiveCreative|ComponentsItemFormatKindParamsSellerRenderedStatefulDisplay|ComponentsItemFormatKindParamsSponsoredPlacement|ComponentsItemFormatKindParamsVideoHosted|ComponentsItemFormatKindParamsVideoVast		ComponentsItemFormatKindParamsImage|ComponentsItemFormatKindParamsHtml5|ComponentsItemFormatKindParamsResponsiveCreative|ComponentsItemFormatKindParamsAgentPlacement|ComponentsItemFormatKindParamsSellerRenderedStatefulDisplay|ComponentsItemFormatKindParamsDisplayTag|ComponentsItemFormatKindParamsImageCarousel|ComponentsItemFormatKindParamsVideoHosted|ComponentsItemFormatKindParamsVideoVast|ComponentsItemFormatKindParamsAudioHosted|ComponentsItemFormatKindParamsAudioDaast|ComponentsItemFormatKindParamsSponsoredPlacement|ComponentsItemFormatKindParamsNativeInFeed
+C	formats/canonical/display_tag.json	#/allOf/1	oneOf	CONJ	4	2	4									
+F	formats/canonical/display_tag.json	#/allOf/1/oneOf/0/not	anyOf	RULE	5	5	0									
+F	formats/canonical/display_tag.json	#/allOf/1/oneOf/1/not	anyOf	RULE	6	6	0									
+F	formats/canonical/display_tag.json	#/allOf/1/oneOf/2	anyOf	BRANCH	4	4	0									
+F	formats/canonical/display_tag.json	#/allOf/1/oneOf/2/not	anyOf	RULE	3	3	0									
+F	formats/canonical/display_tag.json	#/allOf/1/oneOf/3/not	anyOf	RULE	7	7	0									
+C	formats/canonical/html5.json	#/allOf/1	oneOf	CONJ	4	2	4									
+F	formats/canonical/html5.json	#/allOf/1/oneOf/0/not	anyOf	RULE	5	5	0									
+F	formats/canonical/html5.json	#/allOf/1/oneOf/1/not	anyOf	RULE	6	6	0									
+F	formats/canonical/html5.json	#/allOf/1/oneOf/2	anyOf	BRANCH	4	4	0									
+F	formats/canonical/html5.json	#/allOf/1/oneOf/2/not	anyOf	RULE	3	3	0									
+F	formats/canonical/html5.json	#/allOf/1/oneOf/3/not	anyOf	RULE	7	7	0									
+C	formats/canonical/image.json	#/allOf/1	oneOf	CONJ	4	2	4									
+F	formats/canonical/image.json	#/allOf/1/oneOf/0/not	anyOf	RULE	5	5	0									
+F	formats/canonical/image.json	#/allOf/1/oneOf/1/not	anyOf	RULE	6	6	0									
+F	formats/canonical/image.json	#/allOf/1/oneOf/2	anyOf	BRANCH	4	4	0									
+F	formats/canonical/image.json	#/allOf/1/oneOf/2/not	anyOf	RULE	3	3	0									
+F	formats/canonical/image.json	#/allOf/1/oneOf/3/not	anyOf	RULE	7	7	0									
+F	formats/canonical/native_in_feed.json	#/allOf/2/if	anyOf	RULE	2	2	0									
+G	formats/canonical/seller_rendered_stateful_display.json	#/properties/duration_ms_range/items	anyOf	ELEM	2	0	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/states/items/properties/breakpoints/items/allOf/0	anyOf	CONJ	3	3	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/states/items/properties/breakpoints/items/allOf/0/anyOf/0/not	anyOf	RULE	2	2	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/states/items/properties/breakpoints/items/allOf/0/anyOf/1/not	anyOf	RULE	2	2	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/states/items/properties/breakpoints/items/allOf/0/anyOf/2/not	anyOf	RULE	2	2	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/states/items/properties/breakpoints/items/allOf/1	anyOf	CONJ	3	3	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/states/items/properties/breakpoints/items/allOf/1/anyOf/0/not	anyOf	RULE	2	2	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/states/items/properties/breakpoints/items/allOf/1/anyOf/1/not	anyOf	RULE	2	2	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/states/items/properties/breakpoints/items/allOf/1/anyOf/2/not	anyOf	RULE	2	2	0									
+A	formats/canonical/seller_rendered_stateful_display.json	#/properties/transitions/items	oneOf	ELEM	6	6	0		trigger	TransitionsItem	trigger	yes	15	TransitionsItemInViewTimer|TransitionsItemMediaEvent|TransitionsItemScrollProgressScrollScrollLinked|TransitionsItemScrollThresholdScroll|TransitionsItemTimer|TransitionsItemUserAction		TransitionsItemTimer|TransitionsItemInViewTimer|TransitionsItemScrollThresholdScroll|TransitionsItemScrollProgressScrollScrollLinked|TransitionsItemUserAction|TransitionsItemMediaEvent
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/transitions/items/oneOf/0/not	anyOf	RULE	6	6	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/transitions/items/oneOf/1/not	anyOf	RULE	6	6	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/transitions/items/oneOf/2/not	anyOf	RULE	4	4	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/transitions/items/oneOf/3/not	anyOf	RULE	4	4	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/transitions/items/oneOf/4/not	anyOf	RULE	7	7	0									
+F	formats/canonical/seller_rendered_stateful_display.json	#/properties/transitions/items/oneOf/5/not	anyOf	RULE	7	7	0									
+G	formats/canonical/video_hosted.json	#/properties/duration_ms_range/items	anyOf	ELEM	2	0	0									
+C	governance/accepted-governance-agents.json	#/properties/any_of/items	oneOf	ELEM	2	2	0	kind	kind							AnyOfItemAgentUrl|AnyOfItemVerification
+G	governance/check-governance-request.json	#/allOf/1	anyOf	CONJ	2	1	0									
+F	governance/check-governance-request.json	#/allOf/1/anyOf/1/allOf/1	anyOf	CONJ	2	2	0									
+F	governance/check-governance-request.json	#/allOf/10/if	anyOf	RULE	2	2	0									
+F	governance/check-governance-request.json	#/allOf/13/if/allOf/1	anyOf	CONJ	2	2	0									
+F	governance/check-governance-request.json	#/allOf/14/if	anyOf	RULE	2	2	0									
+F	governance/check-governance-request.json	#/allOf/15/not/allOf/0	anyOf	CONJ	2	2	0									
+F	governance/check-governance-request.json	#/allOf/15/not/allOf/1	anyOf	CONJ	2	2	0									
+F	governance/check-governance-request.json	#/allOf/4/then/not	anyOf	RULE	3	3	0									
+F	governance/check-governance-request.json	#/allOf/5/then/not	anyOf	RULE	3	3	0									
+F	governance/check-governance-request.json	#/allOf/7/then/not	anyOf	RULE	3	3	0									
+F	governance/check-governance-response.json	#/allOf/1/then/allOf/0/else/not	anyOf	RULE	2	2	0									
+F	governance/check-governance-response.json	#/allOf/1/then/allOf/0/then/not	anyOf	RULE	2	2	0									
+F	governance/check-governance-response.json	#/allOf/1/then/allOf/2/else/not	anyOf	RULE	2	2	0									
+E	governance/get-plan-audit-logs-request.json	#	anyOf	ROOT	3	3	0			GetPlanAuditLogsRequest	-	no	9			
+G	governance/reported-outcome-error.json	#/definitions/bounded_scalar	oneOf	DEF	4	0	0									
+F	governance/reported-outcome-error.json	#/definitions/bounded_value	anyOf	DEF	3	2	0									
+F	governance/reported-outcome-error.json	#/definitions/bounded_value_level_2	anyOf	DEF	3	2	0									
+F	governance/reported-outcome-error.json	#/definitions/bounded_value_level_3	anyOf	DEF	3	2	0									
+A	governance/sync-plans-request.json	#/properties/plans/items/properties/budget	oneOf	PROP	2	2	0			Budget	-	yes	7	BudgetReallocationThreshold|BudgetReallocationUnlimited		BudgetReallocationThreshold|BudgetReallocationUnlimited
+C	manifest.schema.json	#/properties/tools/additionalProperties/properties/legacy_fallback	oneOf	PROP	3	3	0	mode	mode							
+F	media-buy/accept-proposal-request.json	#/not	anyOf	RULE	4	4	0									
+E	media-buy/acceptance-policy-catalog.json	#	anyOf	ROOT	2	2	0			AcceptancePolicyCatalog	-	no	5			
+E	media-buy/acceptance-policy-profile.json	#/properties/scope	anyOf	PROP	3	3	0			Scope	-	no	5			
+A	media-buy/acceptance-policy-requirement.json	#	oneOf	ROOT	17	17	0	kind	kind	AcceptancePolicyRequirement	kind	yes	0	AcceptancePolicyRequirementAccountSetup|AcceptancePolicyRequirementAdvertiserEligibility|AcceptancePolicyRequirementAdvertiserVerification|AcceptancePolicyRequirementCategoryDeclaration|AcceptancePolicyRequirementCertification|AcceptancePolicyRequirementCreativeRestriction|AcceptancePolicyRequirementCustom|AcceptancePolicyRequirementDestinationRestriction|AcceptancePolicyRequirementDisclosure|AcceptancePolicyRequirementFormatRestriction|AcceptancePolicyRequirementFundingRestriction|AcceptancePolicyRequirementLicense|AcceptancePolicyRequirementPriorAuthorization|AcceptancePolicyRequirementSalesAssisted|AcceptancePolicyRequirementTargetingRestriction|AcceptancePolicyRequirementTimeRestriction|AcceptancePolicyRequirementTransparencyReporting		AcceptancePolicyRequirementCategoryDeclaration|AcceptancePolicyRequirementAdvertiserVerification|AcceptancePolicyRequirementTargetingRestriction|AcceptancePolicyRequirementCreativeRestriction|AcceptancePolicyRequirementDestinationRestriction|AcceptancePolicyRequirementFormatRestriction|AcceptancePolicyRequirementTimeRestriction|AcceptancePolicyRequirementTransparencyReporting|AcceptancePolicyRequirementCustom|AcceptancePolicyRequirementAdvertiserEligibility|AcceptancePolicyRequirementFundingRestriction|AcceptancePolicyRequirementCertification|AcceptancePolicyRequirementLicense|AcceptancePolicyRequirementPriorAuthorization|AcceptancePolicyRequirementAccountSetup|AcceptancePolicyRequirementSalesAssisted|AcceptancePolicyRequirementDisclosure
+F	media-buy/build-creative-request.json	#/allOf/3/not	anyOf	RULE	4	4	0									
+F	media-buy/build-creative-request.json	#/allOf/4	anyOf	CONJ	5	5	5									
+F	media-buy/build-creative-request.json	#/allOf/4/anyOf/0/not	anyOf	RULE	5	5	0									
+F	media-buy/build-creative-request.json	#/allOf/6/not	anyOf	RULE	3	3	0									
+F	media-buy/build-creative-request.json	#/allOf/7/then/not	anyOf	RULE	23	23	0									
+F	media-buy/build-creative-request.json	#/allOf/8/if	anyOf	RULE	2	2	0									
+A	media-buy/build-creative-response.json	#	oneOf	ROOT	6	6	6			BuildCreativeResponse	-	yes	13	BuildCreativeError|BuildCreativeEstimate|BuildCreativeMultiSuccess|BuildCreativeResponseSubmitted|BuildCreativeSuccess|BuildCreativeVariantSuccess	AdCPAsyncResponseDataBuildCreativeResponse	BuildCreativeSuccess|BuildCreativeMultiSuccess|BuildCreativeVariantSuccess|BuildCreativeEstimate|BuildCreativeError|BuildCreativeResponseSubmitted
+E	media-buy/build-creative-response.json	#/oneOf/1/properties/preview/properties/previews/items	anyOf	ELEM	2	2	0			BuildCreativeMultiSuccessPreviewPreviewsItem	-	no	5			
+E	media-buy/build-creative-response.json	#/oneOf/2/properties/creatives/items	anyOf	ELEM	2	2	0			CreativesItem	-	no	5			
+F	media-buy/build-creative-response.json	#/oneOf/4/not	anyOf	RULE	5	5	0									
+F	media-buy/build-creative-response.json	#/oneOf/5/not	anyOf	RULE	4	4	0									
+D	media-buy/buy-products-request.json	#	anyOf	ROOT	2	2	0			BuyProductsRequest	-	yes	29	BuyProductsRequestBranch1|BuyProductsRequestBrand		BuyProductsRequestBrand|BuyProductsRequestBranch1
+F	media-buy/buy-products-request.json	#/not	anyOf	RULE	5	5	0									
+A	media-buy/change-term-constraints.json	#	oneOf	ROOT	4	4	4	kind	kind	MediaBuyChangeTermConstraints	kind	yes	0	BudgetChangeConstraints|EffectiveTimingConstraints|FlightChangeConstraints|PackageCountConstraints		BudgetChangeConstraints|FlightChangeConstraints|PackageCountConstraints|EffectiveTimingConstraints
+E	media-buy/change-term-constraints.json	#/oneOf/0	anyOf	BRANCH	4	4	0			BudgetChangeConstraints	-	yes	5			
+E	media-buy/change-term-constraints.json	#/oneOf/1	anyOf	BRANCH	4	4	0			FlightChangeConstraints	-	yes	5			
+E	media-buy/change-term-constraints.json	#/oneOf/2	anyOf	BRANCH	3	3	0			PackageCountConstraints	-	yes	4			
+E	media-buy/change-term-constraints.json	#/oneOf/3	anyOf	BRANCH	3	3	0			EffectiveTimingConstraints	-	yes	4			
+E	media-buy/control-media-buy-request.json	#	anyOf	ROOT	12	12	0			ControlMediaBuyRequest	-	no	23			
+F	media-buy/control-media-buy-request.json	#/allOf/2/then/not	anyOf	RULE	11	11	0									
+F	media-buy/control-media-buy-request.json	#/not	anyOf	RULE	6	6	0									
+G	media-buy/control-media-buy-request.json	#/properties/bidding	anyOf	PROP	2	1	0		automatic							
+G	media-buy/control-media-buy-request.json	#/properties/frequency_cap	anyOf	PROP	2	1	0									
+A	media-buy/control-media-buy-response.json	#	oneOf	ROOT	3	3	3	status	replayed|status	ControlMediaBuyResponse	status	yes	0	ControlApplied|ControlError|ControlSubmitted		ControlApplied|ControlError|ControlSubmitted
+D	media-buy/create-media-buy-request.json	#	anyOf	ROOT	3	3	3			CreateMediaBuyRequest	-	yes	31	CommittedProposalExecution|ExplicitPackagesWithFixedAllocation|ExplicitPackagesWithSellerOptimizedAllocation		ExplicitPackagesWithFixedAllocation|ExplicitPackagesWithSellerOptimizedAllocation|CommittedProposalExecution
+F	media-buy/create-media-buy-request.json	#/allOf/2/then/properties/packages/items/not	anyOf	RULE	2	2	0									
+F	media-buy/create-media-buy-request.json	#/anyOf/2/not	anyOf	RULE	3	3	0									
+A	media-buy/create-media-buy-response.json	#	oneOf	ROOT	3	3	3			CreateMediaBuyResponse	-	yes	13	CreateMediaBuyError|CreateMediaBuyResponseSubmitted|CreateMediaBuySuccess	AdCPAsyncResponseDataCreateMediaBuyResponse	CreateMediaBuySuccess|CreateMediaBuyError|CreateMediaBuyResponseSubmitted
+F	media-buy/create-media-buy-response.json	#/oneOf/1/not	anyOf	RULE	5	5	0									
+F	media-buy/create-media-buy-response.json	#/oneOf/2/not	anyOf	RULE	3	3	0									
+D	media-buy/decline-proposals-response.json	#	anyOf	ROOT	2	2	0			DeclineProposalsResponse	-	yes	8	DeclineProposalsResponseResults|DeclineProposalsResponseSubmitted	AdCPAsyncResponseDataDeclineProposalsResponse	DeclineProposalsResponseResults|DeclineProposalsResponseSubmitted
+F	media-buy/decline-proposals-response.json	#/anyOf/0/not	anyOf	RULE	2	2	0									
+A	media-buy/decline-proposals-response.json	#/properties/results/items	oneOf	ELEM	2	2	0	outcome	outcome	ResultsItem	outcome	yes	3	DeclineProposalsResponseResultsItemUnable|ResultsItemDeclined		ResultsItemDeclined|DeclineProposalsResponseResultsItemUnable
+F	media-buy/get-media-buy-delivery-request.json	#/allOf/1/then/not	anyOf	RULE	10	10	0									
+F	media-buy/get-media-buy-delivery-request.json	#/properties/reporting_dimensions/properties/geo/allOf/0/then/not	anyOf	RULE	2	2	0									
+G	media-buy/get-media-buy-delivery-request.json	#/properties/reporting_dimensions/properties/geo/allOf/1/then	anyOf	RULE	2	1	0									
+F	media-buy/get-media-buy-delivery-request.json	#/properties/reporting_dimensions/properties/geo/allOf/2/then	anyOf	RULE	3	2	0									
+F	media-buy/get-media-buy-delivery-request.json	#/properties/reporting_dimensions/properties/geo/allOf/2/then/anyOf/0/not	anyOf	RULE	2	2	0									
+F	media-buy/get-media-buy-delivery-request.json	#/properties/reporting_dimensions/properties/geo/properties/system	anyOf	PROP	3	3	0									
+G	media-buy/get-media-buy-delivery-request.json	#/properties/status_filter	oneOf	PROP	2	1	0									
+F	media-buy/get-media-buy-delivery-response.json	#/allOf/3/if	anyOf	RULE	3	3	0									
+G	media-buy/get-media-buys-request.json	#/properties/status_filter	oneOf	PROP	2	1	0									
+F	media-buy/get-media-buys-response.json	#/properties/media_buys/items/properties/available_actions/items	anyOf	ELEM	2	2	0									
+F	media-buy/get-media-buys-response.json	#/properties/media_buys/items/properties/packages/items/allOf/4/if	anyOf	RULE	2	2	0									
+F	media-buy/get-products-async-response-submitted.json	#/not	anyOf	RULE	3	3	0									
+F	media-buy/get-products-rejected.json	#/not	anyOf	RULE	12	12	0									
+F	media-buy/get-products-request.json	#/allOf/1/if	anyOf	RULE	2	2	0									
+G	media-buy/get-products-request.json	#/properties/fields/items	anyOf	ELEM	2	1	0									
+C	media-buy/get-products-request.json	#/properties/refine/items	oneOf	ELEM	3	3	0	scope	scope							ObjScopeAsk|ObjScopeProductIdActionAsk|ObjScopeProposalIdActionAsk
+F	media-buy/get-products-response.json	#/allOf/2/then/not	anyOf	RULE	2	2	0									
+G	media-buy/get-products-response.json	#/properties/filter_diagnostics/properties/excluded_by/additionalProperties/properties/values/items	oneOf	ELEM	2	1	0									
+C	media-buy/get-products-response.json	#/properties/refinement_applied/items	oneOf	ELEM	3	3	0	scope	scope							RefinementAppliedItemRequest|RefinementAppliedItemProduct|RefinementAppliedItemProposal
+F	media-buy/get-reporting-status-request.json	#/allOf/1/then/not	anyOf	RULE	4	4	0									
+F	media-buy/get-reporting-status-request.json	#/allOf/3/then/not	anyOf	RULE	7	7	0									
+A	media-buy/get-reporting-status-response.json	#	oneOf	ROOT	2	2	2		status	GetReportingStatusResponse	status	yes	36	FailedLookup|SuccessfulLookup		SuccessfulLookup|FailedLookup
+A	media-buy/get-reporting-status-response.json	#/oneOf/0	oneOf	BRANCH	3	3	3		view	SuccessfulLookup	view	yes	36	PeriodsView|RevisionView|SummaryView		SummaryView|PeriodsView|RevisionView
+F	media-buy/get-reporting-status-response.json	#/oneOf/0/oneOf/0/not	anyOf	RULE	10	10	0									
+F	media-buy/get-reporting-status-response.json	#/oneOf/0/oneOf/2/not	anyOf	RULE	5	5	0									
+A	media-buy/get-reporting-status-response.json	#/oneOf/1	oneOf	BRANCH	2	2	2		failure_kind|status	FailedLookup	failure_kind	yes	36	OperationalFailure|UnavailableLookup		UnavailableLookup|OperationalFailure
+F	media-buy/list-products-request.json	#/allOf/1/then	anyOf	RULE	2	2	0									
+A	media-buy/list-products-response.json	#	oneOf	ROOT	2	2	0	outcome	outcome	ListProductsResponse	outcome	yes	10	ListProductsResponseListed|ListProductsResponseUnchanged		ListProductsResponseListed|ListProductsResponseUnchanged
+F	media-buy/list-products-response.json	#/not	anyOf	RULE	4	4	0									
+A	media-buy/log-event-response.json	#	oneOf	ROOT	2	2	2			LogEventResponse	-	yes	13	LogEventError|LogEventSuccess		LogEventSuccess|LogEventError
+F	media-buy/log-event-response.json	#/oneOf/1/not	anyOf	RULE	3	3	0									
+A	media-buy/media-buy-commitment-response.json	#	oneOf	ROOT	3	3	3	status	replayed|status	MediaBuyCommitmentResponse	status	yes	0	CommitmentError|CommitmentSubmitted|CommittedMediaBuy		CommittedMediaBuy|CommitmentError|CommitmentSubmitted
+E	media-buy/outcome-target.json	#	anyOf	ROOT	2	2	0			OutcomeTarget	-	no	3		ProductDiscoveryCriteriaOutcomeTarget	
+C	media-buy/outcome-target.json	#/properties/goal	oneOf	PROP	2	2	0	kind	kind							GoalMetric|GoalEvent
+E	media-buy/package-control.json	#	anyOf	ROOT	15	15	0			PackageControl	-	no	17			
+F	media-buy/package-control.json	#/allOf/0/then/not	anyOf	RULE	4	4	0									
+F	media-buy/package-control.json	#/allOf/2/then/not	anyOf	RULE	14	14	0									
+F	media-buy/package-control.json	#/not	anyOf	RULE	7	7	0									
+G	media-buy/package-control.json	#/properties/bidding	anyOf	PROP	2	1	0		automatic							
+F	media-buy/package-request.json	#/not	anyOf	RULE	3	3	0									
+C	media-buy/package-request.json	#/properties/committed_metrics/items	oneOf	ELEM	2	2	0	scope	scope							CommittedMetricsItemVendor
+F	media-buy/package-update.json	#/not	anyOf	RULE	9	9	0									
+G	media-buy/package-update.json	#/properties/bidding	anyOf	PROP	2	1	0		automatic							
+F	media-buy/product-purchase-input.json	#/not	anyOf	RULE	3	3	0									
+F	media-buy/product-purchase.json	#/not	anyOf	RULE	3	3	0									
+C	media-buy/product-refinement.json	#/items	oneOf	ELEM	3	3	0	scope	scope							
+E	media-buy/proposal-budget-constraint.json	#	anyOf	ROOT	2	2	0			ProposalBudgetConstraint	-	no	3			
+A	media-buy/proposal-refinement.json	#	oneOf	ROOT	2	2	0		action	ProposalRefinement	action	yes	9	ProposalRefinementFinalize|ProposalRefinementRevise		ProposalRefinementFinalize|ProposalRefinementRevise
+F	media-buy/proposal-refinement.json	#/oneOf/0/not	anyOf	RULE	7	7	0									
+D	media-buy/proposal-refinement.json	#/oneOf/1	anyOf	BRANCH	7	7	0			ProposalRefinementRevise	-	yes	9	ProposalRefinementReviseAlternatives|ProposalRefinementReviseAsk|ProposalRefinementReviseCancellation|ProposalRefinementReviseConstraints|ProposalRefinementReviseCriteria|ProposalRefinementReviseProductChanges|ProposalRefinementReviseRemoveMediaBuyFrequencyCap		ProposalRefinementReviseConstraints|ProposalRefinementReviseProductChanges|ProposalRefinementReviseAlternatives|ProposalRefinementReviseAsk|ProposalRefinementReviseCriteria|ProposalRefinementReviseRemoveMediaBuyFrequencyCap|ProposalRefinementReviseCancellation
+E	media-buy/proposal-refinement.json	#/properties/constraints/properties/flight	anyOf	PROP	2	2	0			Flight	-	no	2			
+A	media-buy/provide-performance-feedback-response.json	#	oneOf	ROOT	2	2	2			ProvidePerformanceFeedbackResponse	-	yes	13	ProvidePerformanceFeedbackError|ProvidePerformanceFeedbackSuccess		ProvidePerformanceFeedbackSuccess|ProvidePerformanceFeedbackError
+F	media-buy/provide-performance-feedback-response.json	#/oneOf/1/not	anyOf	RULE	2	2	0									
+D	media-buy/refine-proposals-response.json	#	anyOf	ROOT	2	2	0			RefineProposalsResponse	-	yes	10	RefineProposalsResponseCompleted|RefineProposalsResponseSubmitted	AdCPAsyncResponseDataRefineProposalsResponse	RefineProposalsResponseCompleted|RefineProposalsResponseSubmitted
+F	media-buy/refine-proposals-response.json	#/not	anyOf	RULE	3	3	0									
+A	media-buy/refine-proposals-response.json	#/properties/results/items	oneOf	ELEM	4	4	0	outcome	outcome	ResultsItem	outcome	yes	10	RefineProposalsResponseResultsItemUnable|ResultsItemFinalized|ResultsItemPartial|ResultsItemRevised		ResultsItemRevised|ResultsItemPartial|ResultsItemFinalized|RefineProposalsResponseResultsItemUnable
+F	media-buy/refine-proposals-response.json	#/properties/results/items/allOf/0/then	anyOf	RULE	2	2	0									
+F	media-buy/refine-proposals-response.json	#/properties/results/items/oneOf/0/not	anyOf	RULE	5	5	0									
+F	media-buy/refine-proposals-response.json	#/properties/results/items/oneOf/2/not	anyOf	RULE	5	5	0									
+F	media-buy/refine-proposals-response.json	#/properties/results/items/oneOf/3/not	anyOf	RULE	2	2	0									
+D	media-buy/request-proposals-request.json	#	anyOf	ROOT	2	2	0			RequestProposalsRequest	-	yes	12	RequestProposalsRequestAccount|RequestProposalsRequestBrand		RequestProposalsRequestBrand|RequestProposalsRequestAccount
+D	media-buy/request-proposals-response.json	#	anyOf	ROOT	4	4	0			RequestProposalsResponse	-	yes	16	RequestProposalsResponseProductsAvailableCompleted|RequestProposalsResponseProposedCompleted|RequestProposalsResponseRejectedCompleted|RequestProposalsResponseSubmitted	AdCPAsyncResponseDataRequestProposalsResponse	RequestProposalsResponseProposedCompleted|RequestProposalsResponseProductsAvailableCompleted|RequestProposalsResponseRejectedCompleted|RequestProposalsResponseSubmitted
+F	media-buy/request-proposals-response.json	#/anyOf/0/not	anyOf	RULE	4	4	0									
+F	media-buy/request-proposals-response.json	#/anyOf/1/not	anyOf	RULE	4	4	0									
+F	media-buy/request-proposals-response.json	#/anyOf/2/not	anyOf	RULE	5	5	0									
+F	media-buy/request-proposals-response.json	#/not	anyOf	RULE	4	4	0									
+C	media-buy/request-proposals-response.json	#/properties/purchase_continuation	oneOf	PROP	2	2	0		kind							PurchaseContinuationListedPurchaseAccount|PurchaseContinuationLegacyCreate
+A	media-buy/sync-audiences-response.json	#	oneOf	ROOT	3	3	3			SyncAudiencesResponse	-	yes	13	SyncAudiencesError|SyncAudiencesSubmitted|SyncAudiencesSuccess		SyncAudiencesSuccess|SyncAudiencesError|SyncAudiencesSubmitted
+F	media-buy/sync-audiences-response.json	#/oneOf/0/not	anyOf	RULE	3	3	0									
+F	media-buy/sync-audiences-response.json	#/oneOf/1/not	anyOf	RULE	4	4	0									
+A	media-buy/sync-catalogs-response.json	#	oneOf	ROOT	3	3	3			SyncCatalogsResponse	-	yes	13	SyncCatalogsError|SyncCatalogsResponseSubmitted|SyncCatalogsSuccess	AdCPAsyncResponseDataSyncCatalogsResponse	SyncCatalogsSuccess|SyncCatalogsError|SyncCatalogsResponseSubmitted
+F	media-buy/sync-catalogs-response.json	#/oneOf/1/not	anyOf	RULE	6	6	0									
+F	media-buy/sync-catalogs-response.json	#/oneOf/1/properties/errors/items/allOf/1/then	anyOf	RULE	2	2	0									
+F	media-buy/sync-catalogs-response.json	#/oneOf/2/not	anyOf	RULE	3	3	0									
+A	media-buy/sync-event-sources-response.json	#	oneOf	ROOT	2	2	2			SyncEventSourcesResponse	-	yes	13	SyncEventSourcesError|SyncEventSourcesSuccess		SyncEventSourcesSuccess|SyncEventSourcesError
+F	media-buy/sync-event-sources-response.json	#/oneOf/1/not	anyOf	RULE	2	2	0									
+E	media-buy/sync-reporting-receipts-request.json	#	anyOf	ROOT	2	2	0			SyncReportingReceiptsRequest	-	no	8			
+F	media-buy/sync-reporting-receipts-response.json	#/properties/results/items	anyOf	ELEM	5	5	5		result							RecordedReportingReceipt|UnchangedReportingReceipt|RecordedReportingAdjustmentReceipt|UnchangedReportingAdjustmentReceipt|FailedReportingReceipt
+C	media-buy/sync-reporting-status-response.json	#/properties/results/items	oneOf	ELEM	3	3	3		result							RecordedReportingConsumerStatus|UnchangedReportingConsumerStatus|FailedReportingConsumerStatus
+F	media-buy/update-media-buy-request.json	#/allOf/1/then/properties/new_packages/items/not	anyOf	RULE	2	2	0									
+F	media-buy/update-media-buy-request.json	#/allOf/1/then/properties/packages/items/not	anyOf	RULE	2	2	0									
+G	media-buy/update-media-buy-request.json	#/properties/bidding	anyOf	PROP	2	1	0		automatic							
+G	media-buy/update-media-buy-request.json	#/properties/frequency_cap	anyOf	PROP	2	1	0									
+A	media-buy/update-media-buy-response.json	#	oneOf	ROOT	3	3	3			UpdateMediaBuyResponse	-	yes	13	UpdateMediaBuyError|UpdateMediaBuyResponseSubmitted|UpdateMediaBuySuccess	AdCPAsyncResponseDataUpdateMediaBuyResponse	UpdateMediaBuySuccess|UpdateMediaBuyError|UpdateMediaBuyResponseSubmitted
+F	media-buy/update-media-buy-response.json	#/oneOf/1/not	anyOf	RULE	5	5	0									
+F	media-buy/update-media-buy-response.json	#/oneOf/2/not	anyOf	RULE	2	2	0									
+G	pricing-options/cpv-option.json	#/properties/parameters/properties/view_threshold	oneOf	PROP	2	1	0									ViewThresholdDurationSeconds
+B	pricing-options/price-breakdown.json	#/properties/adjustments/items	oneOf	ELEM	2	2	0			AdjustmentsItem	-	no	6			
+F	pricing-options/revenue-share-option.json	#/allOf/1/not	anyOf	RULE	4	4	0									
+A	property/base-property-source.json	#	oneOf	ROOT	3	3	3	selection_type	selection_type	BasePropertySource	selection_type	yes	0	DirectIdentifiersSource|PublisherPropertyIDsSource|PublisherTagsSource		PublisherTagsSource|PublisherPropertyIDsSource|DirectIdentifiersSource
+G	property/property-feature-result.json	#/properties/property	oneOf	PROP	2	1	0									
+G	property/property-feature-value.json	#/properties/value	oneOf	PROP	3	0	0									
+F	protocol/get-adcp-capabilities-response.json	#/allOf/11/if/allOf/1	anyOf	CONJ	2	2	0									
+F	protocol/get-adcp-capabilities-response.json	#/allOf/9/if/properties/media_buy/properties/reporting_delivery	anyOf	PROP	3	3	0									
+C	protocol/get-adcp-capabilities-response.json	#/properties/account/properties/change_feed	oneOf	PROP	2	2	2		supported							AccountChangeFeedSupported|AccountChangeFeedUnsupported
+F	protocol/get-adcp-capabilities-response.json	#/properties/account/properties/change_feed/oneOf/1/not	anyOf	RULE	5	5	0									
+C	protocol/get-adcp-capabilities-response.json	#/properties/account/properties/identity_updates	oneOf	PROP	2	2	2		supported							AccountIdentityUpdatesSupported|AccountIdentityUpdatesUnsupported
+C	protocol/get-adcp-capabilities-response.json	#/properties/account/properties/notifications	oneOf	PROP	2	2	2		supported							AccountNotificationsSupported|AccountNotificationsUnsupported
+F	protocol/get-adcp-capabilities-response.json	#/properties/account/properties/notifications/oneOf/1/not	anyOf	RULE	3	3	0									
+C	protocol/get-adcp-capabilities-response.json	#/properties/adcp/properties/capability_changes/properties/notifications	oneOf	PROP	2	2	2		supported							CapabilityChangeNotificationsSupported|CapabilityChangeNotificationsUnsupported
+F	protocol/get-adcp-capabilities-response.json	#/properties/adcp/properties/capability_changes/properties/notifications/oneOf/1/not	anyOf	RULE	2	2	0									
+C	protocol/get-adcp-capabilities-response.json	#/properties/adcp/properties/governance_enforcement/properties/tasks/items	oneOf	ELEM	9	9	0	task	task							TasksItemCreateMediaBuy|TasksItemUpdateMediaBuy|TasksItemBuyProducts|TasksItemAcceptProposal|TasksItemControlMediaBuy|TasksItemBuildCreative|TasksItemActivateSignal|TasksItemAcquireRights|TasksItemUpdateRights
+C	protocol/get-adcp-capabilities-response.json	#/properties/adcp/properties/idempotency	oneOf	PROP	2	2	2		supported							IdempotencySupported|IdempotencyUnsupported
+F	protocol/get-adcp-capabilities-response.json	#/properties/adcp/properties/idempotency/oneOf/1/not	anyOf	RULE	2	2	0									
+F	protocol/get-adcp-capabilities-response.json	#/properties/creative/properties/localization/not	anyOf	RULE	3	3	0									
+G	protocol/get-adcp-capabilities-response.json	#/properties/media_buy/properties/execution/properties/targeting/properties/geo_regions	anyOf	PROP	2	1	0									
+G	protocol/get-adcp-capabilities-response.json	#/properties/media_buy/properties/execution/properties/targeting/properties/geo_regions_exclude	anyOf	PROP	2	1	0									
+G	protocol/get-adcp-capabilities-response.json	#/properties/media_buy/properties/execution/properties/targeting/properties/language	oneOf	PROP	2	1	0									Language
+F	protocol/get-principal-request.json	#/allOf/1/not	anyOf	RULE	4	4	0									
+C	protocol/get-principal-response.json	#/properties/result	oneOf	PROP	4	4	4		kind							CurrentPrincipalConfiguration|RecognizedPrincipalWithoutStandingConfiguration|UnconfiguredPrincipal|FailedPrincipalRead
+F	protocol/sync-principal-request.json	#/allOf/1/not	anyOf	RULE	4	4	0									
+C	protocol/sync-principal-response.json	#/properties/result	oneOf	PROP	3	3	3		kind							AppliedPrincipalConfiguration|ValidatedPrincipalDryRun|FailedPrincipalSync
+C	registries/v1-canonical-mapping.json	#/properties/mappings/items/properties/v1_pattern	oneOf	PROP	2	2	0									V1PatternFormatIdGlob|V1PatternStructural
+A	signals/activate-signal-response.json	#	oneOf	ROOT	2	2	2			ActivateSignalResponse	-	yes	13	ActivateSignalError|ActivateSignalSuccess		ActivateSignalSuccess|ActivateSignalError
+F	signals/activate-signal-response.json	#/oneOf/1/not	anyOf	RULE	2	2	0									
+F	signals/get-signals-async-response-submitted.json	#/not	anyOf	RULE	2	2	0									
+F	signals/get-signals-request.json	#/allOf/1/if	anyOf	RULE	2	2	0									
+F	signals/get-signals-request.json	#/else	anyOf	RULE	3	3	0									
+F	signals/get-signals-request.json	#/then/not	anyOf	RULE	3	3	0									
+E	signals/get-signals-response.json	#/properties/signals/items	anyOf	ELEM	2	2	0			SignalsItem	-	no	35			
+G	sponsored-intelligence/si-capabilities.json	#/properties/modalities/properties/avatar	oneOf	PROP	2	1	0									Avatar
+G	sponsored-intelligence/si-capabilities.json	#/properties/modalities/properties/video	oneOf	PROP	2	1	0									Video
+G	sponsored-intelligence/si-capabilities.json	#/properties/modalities/properties/voice	oneOf	PROP	2	1	0									Voice
+E	sponsored-intelligence/si-send-message-request.json	#	anyOf	ROOT	2	2	0			SISendMessageRequest	-	no	9			
+F	sponsored-intelligence/si-sponsored-context-receipt.json	#/properties/host_receipt/allOf/1/then/not	anyOf	RULE	2	2	0									
+F	trusted-match/context-match-response.json	#/not	anyOf	RULE	3	3	0									
+F	trusted-match/identity-match-response.json	#/not	anyOf	RULE	5	5	0									
+F	trusted-match/provider-context-match-response.json	#/not	anyOf	RULE	3	3	0									
+F	trusted-match/provider-identity-match-response.json	#/not	anyOf	RULE	6	6	0									
+D	trusted-match/provider-registration.json	#	anyOf	ROOT	2	2	0			TMPProviderRegistration	-	yes	11	TMPProviderRegistrationContextMatch|TMPProviderRegistrationIdentityMatch		TMPProviderRegistrationContextMatch|TMPProviderRegistrationIdentityMatch

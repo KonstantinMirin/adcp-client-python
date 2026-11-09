@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "A person associated with a collection or installment, with an optional link to their brand.json identity",
+  "properties": {
+    "brand_url": {
+      "description": "URL to this person's brand.json entry. Enables buyer agents to evaluate the talent's brand identity and associations.",
+      "format": "uri",
+      "type": "string"
+    },
+    "name": {
+      "description": "Person's name as credited on the collection",
+      "type": "string"
+    },
+    "role": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Role of this person on the collection or installment",
+      "enum": [
+        "host",
+        "guest",
+        "creator",
+        "cast",
+        "narrator",
+        "producer",
+        "correspondent",
+        "commentator",
+        "analyst"
+      ],
+      "enumDescriptions": {
+        "analyst": "Color commentator or subject matter analyst",
+        "cast": "Regular or recurring cast member",
+        "commentator": "Play-by-play or event commentator",
+        "correspondent": "Reporter or field correspondent",
+        "creator": "Collection creator or showrunner",
+        "guest": "Guest appearing on a specific installment",
+        "host": "Primary host or anchor of the collection",
+        "narrator": "Narrator or voiceover",
+        "producer": "Executive or lead producer with on-screen presence"
+      },
+      "title": "Talent Role",
+      "type": "string"
+    }
+  },
+  "required": [
+    "role",
+    "name"
+  ],
+  "title": "Talent",
+  "type": "object"
+}

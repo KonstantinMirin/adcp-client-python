@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "anyOf": [
+        {
+          "required": [
+            "mid"
+          ]
+        },
+        {
+          "required": [
+            "low",
+            "high"
+          ]
+        }
+      ],
+      "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
+      "properties": {
+        "high": {
+          "description": "Optimistic (high-end) forecast value",
+          "minimum": 0,
+          "type": "number"
+        },
+        "low": {
+          "description": "Conservative (low-end) forecast value",
+          "minimum": 0,
+          "type": "number"
+        },
+        "mid": {
+          "description": "Expected (most likely) forecast value",
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "title": "Forecast Range",
+      "type": "object"
+    }
+  },
+  "description": "Compact forecasted vendor metric with a BrandKey vendor pointer and no embedded brand assets.",
+  "properties": {
+    "breakdown": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "measurable_impressions": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "metric_id": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Identifier for a vendor-defined metric within the vendor's vocabulary. Stable lookup key; the vendor publishes the canonical list (with category, methodology, and standard alignment) in `brand.json` `agents[type='measurement']`. Lowercase with underscores so a future enum promotion into `available-metric.json` is a literal string lift. Identifier is namespaced by the vendor \u2014 the same `metric_id` may mean different things in different vendors' vocabularies.",
+      "examples": [
+        "attention_units",
+        "gco2e_per_impression",
+        "demographic_reach",
+        "co_view_index",
+        "incremental_lift_percent"
+      ],
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Vendor Metric ID",
+      "type": "string",
+      "x-entity": "vendor_metric"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "value": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "vendor": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+      "properties": {
+        "brand_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+          "examples": [
+            "tide",
+            "cheerios",
+            "air_jordan",
+            "nike",
+            "pampers"
+          ],
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Brand ID",
+          "type": "string",
+          "x-entity": "advertiser_brand"
+        },
+        "countries": {
+          "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Country Code",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Brand Key",
+      "type": "object"
+    }
+  },
+  "required": [
+    "vendor",
+    "metric_id",
+    "value"
+  ],
+  "title": "Canonical Forecast Vendor Metric Value",
+  "type": "object"
+}

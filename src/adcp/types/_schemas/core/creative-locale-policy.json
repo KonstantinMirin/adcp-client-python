@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Seller-declared locale eligibility for one product or placement format declaration. Each accepted_language_ranges entry is a concrete canonical BCP 47 language range evaluated with RFC 4647 section 3.3.1 Basic Filtering: fr accepts fr, fr-CA, and fr-FR, while fr-CA accepts only fr-CA and its more-specific descendants. Ranges are ORed and wildcards are not supported. Presence is a hard assignment constraint, not a preference: at least one materialized creative locale variant must match. The seller filters the creative to eligible variants before applying buyer-declared strict Lookup, locale_fallbacks, or default behavior; buyer policy can never select a seller-ineligible variant.",
+  "properties": {
+    "accepted_language_ranges": {
+      "description": "Concrete canonical BCP 47 language ranges accepted by this format option. RFC 4647 Basic Filtering is directional: seller range fr accepts variant fr-CA, but seller range fr-CA does not accept variant fr or fr-FR. Use zxx explicitly for language-neutral creative; und means unknown and is not a wildcard.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "A well-formed BCP 47 language tag used by AdCP only as language identity. Script and region may refine that identity; other valid BCP 47 subtags remain part of tag matching but do not make this a general locale-settings object. It does not determine currency, time zone, number/date formatting, market, or legal jurisdiction. The AdCP canonical wire profile requires lower-case language and variants, title-case script, and upper-case region (for example `en-US`, `zh-Hant-TW`, or `x-private`). RFC 5646 comparisons are case-insensitive and its case regularization is optional; AdCP intentionally requires this stricter single wire spelling and receivers MUST reject differently cased tags rather than silently normalizing them. The schema pattern enforces the AdCP casing profile and extension structure for commonly used tags; conforming receivers additionally validate the complete RFC 5646 grammar and registry rules. Every new AdCP field carrying BCP 47 language identity or a concrete language range MUST reference this schema instead of declaring independent string constraints.",
+        "examples": [
+          "en-US",
+          "es-ES",
+          "zh-Hant-TW",
+          "x-private"
+        ],
+        "maxLength": 63,
+        "minLength": 2,
+        "pattern": "^(?:[a-z]{2,8}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?|x(?:-[a-z0-9]{1,8})+)$",
+        "title": "Language Tag",
+        "type": "string",
+        "x-adcp-validation": {
+          "spec": "docs/protocol/language-and-localization.mdx#one-language-tag-primitive",
+          "verifier_constraints": {
+            "canonical_wire_profile": "adcp_bcp47_casing",
+            "non_profile": "reject",
+            "rfc5646_comparison": "case_insensitive",
+            "semantic_scope": "language_identity_only",
+            "well_formed": "rfc5646"
+          }
+        }
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "accepted_language_ranges"
+  ],
+  "title": "Creative Locale Policy",
+  "type": "object",
+  "x-adcp-validation": {
+    "spec": "docs/creative/canonical-formats.mdx#creative-locale-policy",
+    "verifier_constraints": {
+      "assignment_eligibility": "at_least_one_materialized_variant_must_match",
+      "assignment_policy_lifecycle": "snapshot_effective_policy_at_acceptance_catalog_changes_apply_only_to_new_or_changed_assignments",
+      "capability_gate": "seller_must_advertise_creative.localization_and_creative.has_creative_library",
+      "legacy_projection": "no_product_or_placement_format_id_may_project_to_a_locale_constrained_option",
+      "placement_narrowing": "product_policy_absent_allows_any_placement_policy_else_every_placement_range_must_be_contained_by_a_product_range",
+      "range_matching": "rfc4647_basic_filtering",
+      "selection_precedence": "filter_seller_eligible_variants_before_buyer_lookup_fallback_or_default",
+      "serve_default": "when_unmatched_locale_action_is_serve_default_default_locale_variant_id_must_reference_an_eligible_variant",
+      "wildcards": "not_supported"
+    }
+  }
+}

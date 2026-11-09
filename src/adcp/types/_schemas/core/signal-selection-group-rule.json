@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Product-scoped override for one ProductSignalTargetingOption.selection_group value. Use this when a product has mixed signal-selection behavior, such as fixed suppressions plus a required pick-one include tier.",
+  "properties": {
+    "max_selected_signals": {
+      "description": "Maximum selected options from this selection_group.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_selected_signals": {
+      "description": "Minimum selected options from this selection_group. If selection_mode is 'required' and omitted, sellers MUST treat the minimum as 1.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "selection_group": {
+      "description": "ProductSignalTargetingOption.selection_group value this rule applies to.",
+      "type": "string"
+    },
+    "selection_mode": {
+      "description": "Selection behavior for this selection_group. 'required' means at least min_selected_signals, or 1 when omitted. 'fixed' means default_selected options in this group are seller-applied and read-only.",
+      "enum": [
+        "optional",
+        "required",
+        "fixed"
+      ],
+      "type": "string"
+    },
+    "targeting_mode": {
+      "description": "How options in this selection_group are intended to be used in signal_targeting_groups. 'include' maps to child groups with operator 'any'. 'exclude' maps to child groups with operator 'none'. Omit when options in the group may be used according to each option's allowed_targeting_modes.",
+      "enum": [
+        "include",
+        "exclude"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "selection_group"
+  ],
+  "title": "Signal Selection Group Rule",
+  "type": "object"
+}

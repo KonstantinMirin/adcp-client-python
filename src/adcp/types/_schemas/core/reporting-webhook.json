@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Webhook configuration for automated reporting delivery. Configures where and how campaign performance reports are sent.",
+  "properties": {
+    "authentication": {
+      "additionalProperties": false,
+      "deprecated": true,
+      "description": "Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS \u2014 no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.",
+      "properties": {
+        "credentials": {
+          "description": "Credentials for the legacy scheme. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.",
+          "minLength": 32,
+          "type": "string"
+        },
+        "schemes": {
+          "description": "Array of authentication schemes. ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD use the RFC 9421 webhook signing profile instead.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "deprecated": true,
+            "description": "Legacy authentication schemes for the webhook auth block. Bearer: token sent in Authorization header. HMAC-SHA256: legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit the authentication block and use the RFC 9421 webhook signing profile (applicable on schemas where authentication is optional). Removed in AdCP 4.0.",
+            "enum": [
+              "Bearer",
+              "HMAC-SHA256"
+            ],
+            "title": "Authentication Scheme",
+            "type": "string",
+            "x-removed-in": "4.0.0"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "schemes",
+        "credentials"
+      ],
+      "type": "object",
+      "x-removed-in": "4.0.0"
+    },
+    "reporting_frequency": {
+      "description": "Frequency for automated reporting delivery. Must be supported by all products in the media buy.",
+      "enum": [
+        "hourly",
+        "daily",
+        "monthly"
+      ],
+      "type": "string"
+    },
+    "requested_metrics": {
+      "description": "Optional list of metrics to include in webhook notifications. If omitted, all available metrics are included; an empty array has the same meaning as omission (it does not narrow to impressions and spend only). impressions and spend are always included regardless of this list. Must be a subset of the product's available_metrics. Subset evaluation and leaf resolution follow `enums/available-metric.json`: a numeric leaf may be covered by its container, while each structured distribution must be explicitly available. Requesting any nested identity selects its canonical carrier inside the payload's nested object. Same narrowing semantics as get_media_buy_delivery's requested_metrics (which additionally requires at least one entry when present).",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Standard delivery and performance metrics available for reporting. Most values name flat numeric fields of `core/delivery-metrics.json`. Leaf identities address a single numeric value nested inside an object-shaped metric so it can be declared, committed, aggregated, and sorted individually: `quartile_25`/`quartile_50`/`quartile_75`/`quartile_100` resolve to `quartile_data.q1_views`\u2013`q4_views`, and `viewable_rate`/`viewable_impressions`/`measurable_impressions`/`viewed_seconds` resolve to the same-named fields of `viewability`. Structured nested identities `viewed_seconds_percentiles` and `viewed_seconds_histogram` make the corresponding optional distribution carriers discoverable, committable, and requestable, but not aggregatable or sortable. The nested object or array remains the canonical carrier \u2014 nested identities never introduce duplicate flat response fields. Container tokens such as `viewability`, `quartile_data`, `dooh_metrics`, and `time_based_views` declare their documented nested surface. **Container subsumption applies only to numeric leaves**: `viewability` subsumes `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds`; `quartile_data` subsumes `quartile_25`, `quartile_50`, `quartile_75`, and `quartile_100`. This rule applies to capability declaration, `required_metrics` filtering, format `reported_metrics` intersection, and `requested_metrics` selection. Optional structured identities MUST be declared explicitly: `viewability` alone does not satisfy `viewed_seconds_percentiles` or `viewed_seconds_histogram`. Requesting any nested identity selects its canonical carrier in the response. A nested identity declaration does not imply sibling values or the carrier's non-metric fields.",
+        "enum": [
+          "impressions",
+          "spend",
+          "clicks",
+          "ctr",
+          "views",
+          "completed_views",
+          "completion_rate",
+          "conversions",
+          "conversion_value",
+          "commissionable_value",
+          "roas",
+          "cost_per_acquisition",
+          "new_to_brand_rate",
+          "leads",
+          "reach",
+          "frequency",
+          "grps",
+          "engagements",
+          "engagement_rate",
+          "follows",
+          "saves",
+          "profile_visits",
+          "viewability",
+          "viewable_rate",
+          "viewable_impressions",
+          "measurable_impressions",
+          "viewed_seconds",
+          "viewed_seconds_percentiles",
+          "viewed_seconds_histogram",
+          "quartile_data",
+          "quartile_25",
+          "quartile_50",
+          "quartile_75",
+          "quartile_100",
+          "time_based_views",
+          "dooh_metrics",
+          "ooh_metrics",
+          "cost_per_click",
+          "cost_per_completed_view",
+          "cpm",
+          "downloads",
+          "units_sold",
+          "new_to_brand_units",
+          "plays",
+          "incremental_sales_lift",
+          "brand_lift",
+          "foot_traffic",
+          "conversion_lift",
+          "brand_search_lift"
+        ],
+        "title": "Available Metric",
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "token": {
+      "description": "Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.",
+      "minLength": 16,
+      "type": "string"
+    },
+    "url": {
+      "description": "Webhook endpoint URL for reporting notifications",
+      "format": "uri",
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "authentication",
+    "reporting_frequency"
+  ],
+  "title": "Reporting Webhook",
+  "type": "object"
+}

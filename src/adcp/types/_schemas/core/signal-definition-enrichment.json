@@ -1,0 +1,637 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "demographic_predicate"
+        ]
+      },
+      "then": {
+        "properties": {
+          "restricted_attributes": {
+            "contains": {
+              "const": "age"
+            }
+          }
+        },
+        "required": [
+          "restricted_attributes"
+        ]
+      }
+    }
+  ],
+  "definitions": {
+    "Shared0": {
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared1": {
+      "type": "boolean"
+    },
+    "Shared2": {
+      "enum": [
+        "intra_day",
+        "daily",
+        "weekly",
+        "monthly",
+        "bi_monthly",
+        "quarterly",
+        "bi_annually",
+        "annually"
+      ],
+      "type": "string"
+    },
+    "Shared3": {
+      "items": {
+        "$ref": "#/definitions/Shared5"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "Shared4": {
+      "type": "string"
+    },
+    "Shared5": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+      "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
+      "type": "string"
+    },
+    "Shared6": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
+      "format": "uri",
+      "pattern": "^https://",
+      "title": "HTTPS URL",
+      "type": "string"
+    },
+    "Shared7": {
+      "items": {
+        "$ref": "#/definitions/Shared4"
+      },
+      "type": "array"
+    }
+  },
+  "description": "Optional signal-definition enrichment fields that may be projected inline on signal listings when requested through get_signals.fields. This schema intentionally excludes signal identity and required definition fields so source-native, private, or compact listings can include typed partial disclosure without becoming a full adagents.json signal definition.",
+  "properties": {
+    "art9_basis": {
+      "description": "Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis.",
+      "enum": [
+        "explicit_consent",
+        "manifestly_made_public",
+        "substantial_public_interest",
+        "vital_interests"
+      ],
+      "type": "string"
+    },
+    "audience_expansion": {
+      "$ref": "#/definitions/Shared1"
+    },
+    "consent_basis": {
+      "description": "Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Common GDPR lawful bases relevant to advertising. Covers the Article 6(1) bases used in programmatic advertising contexts.",
+        "enum": [
+          "consent",
+          "legitimate_interest",
+          "contract",
+          "legal_obligation"
+        ],
+        "title": "Consent Basis",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "countries": {
+      "$ref": "#/definitions/Shared3"
+    },
+    "criteria_url": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "data_sources": {
+      "items": {
+        "enum": [
+          "app_behavior",
+          "app_usage",
+          "web_usage",
+          "geo_location",
+          "email",
+          "tv_ott_or_stb_device",
+          "panel",
+          "online_ecommerce",
+          "credit_data",
+          "loyalty_card",
+          "transaction",
+          "online_survey",
+          "offline_survey",
+          "public_record_census",
+          "public_record_voter_file",
+          "public_record_other",
+          "offline_transaction"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "data_subject_rights": {
+      "additionalProperties": false,
+      "description": "Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.",
+      "properties": {
+        "ccpa_opt_out_url": {
+          "$ref": "#/definitions/Shared6"
+        },
+        "channels": {
+          "contains": {
+            "properties": {
+              "rights": {
+                "contains": {
+                  "enum": [
+                    "access",
+                    "erasure",
+                    "objection"
+                  ]
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "rights"
+            ],
+            "type": "object"
+          },
+          "items": {
+            "additionalProperties": false,
+            "anyOf": [
+              {
+                "required": [
+                  "url"
+                ]
+              },
+              {
+                "required": [
+                  "email"
+                ]
+              }
+            ],
+            "properties": {
+              "countries": {
+                "items": {
+                  "$ref": "#/definitions/Shared5"
+                },
+                "type": "array"
+              },
+              "email": {
+                "format": "email",
+                "type": "string"
+              },
+              "languages": {
+                "$ref": "#/definitions/Shared7"
+              },
+              "rights": {
+                "items": {
+                  "enum": [
+                    "access",
+                    "rectification",
+                    "erasure",
+                    "portability",
+                    "objection"
+                  ],
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "url": {
+                "$ref": "#/definitions/Shared6"
+              }
+            },
+            "required": [
+              "rights"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "response_sla_days": {
+          "maximum": 90,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "upstream_source_domain": {
+          "format": "hostname",
+          "maxLength": 253,
+          "type": "string"
+        }
+      },
+      "required": [
+        "channels"
+      ],
+      "type": "object"
+    },
+    "demographic_predicate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Projected authoritative demographic meaning for the signal. When projected from another provider, this MUST match the provider's definition exactly. Signal names alone never establish demographic semantics.",
+      "properties": {
+        "age": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "required": [
+                "min"
+              ]
+            },
+            {
+              "required": [
+                "max"
+              ]
+            }
+          ],
+          "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
+          "properties": {
+            "include_unknown": {
+              "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+              "type": "boolean"
+            },
+            "max": {
+              "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
+              "maximum": 150,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "min": {
+              "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
+              "maximum": 150,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "include_unknown"
+          ],
+          "title": "Demographic Age Range",
+          "type": "object"
+        }
+      },
+      "required": [
+        "age"
+      ],
+      "title": "Demographic Predicate",
+      "type": "object"
+    },
+    "device_expansion": {
+      "$ref": "#/definitions/Shared1"
+    },
+    "dts_compliant_version": {
+      "$ref": "#/definitions/Shared4"
+    },
+    "last_updated": {
+      "description": "When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "lookback_window": {
+      "$ref": "#/definitions/Shared2"
+    },
+    "methodology": {
+      "enum": [
+        "observed",
+        "declared",
+        "derived",
+        "inferred",
+        "modeled"
+      ],
+      "type": "string"
+    },
+    "modeling": {
+      "additionalProperties": false,
+      "properties": {
+        "ai_act_risk_class": {
+          "enum": [
+            "minimal",
+            "limited",
+            "high_risk"
+          ],
+          "type": "string"
+        },
+        "disclosure": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "required": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "required"
+                ]
+              },
+              "then": {
+                "required": [
+                  "jurisdictions"
+                ]
+              }
+            }
+          ],
+          "description": "Disclosure requirements and jurisdictional notes for modeled data signals. This schema is intentionally separate from core/provenance.json because creative provenance is about generated content, render guidance, and asset-level chain of custody, while signal modeling disclosure is about data-segment methodology and data-use transparency.",
+          "properties": {
+            "jurisdictions": {
+              "description": "Jurisdictions where a modeling or AI-use disclosure applies.",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "audience": {
+                    "description": "Primary audience for this disclosure entry.",
+                    "enum": [
+                      "buyer",
+                      "data_subject",
+                      "regulator",
+                      "public"
+                    ],
+                    "type": "string"
+                  },
+                  "country": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "ISO 3166-1 alpha-2 country code.",
+                    "pattern": "^[A-Z]{2}$",
+                    "title": "Country Code",
+                    "type": "string"
+                  },
+                  "disclosure_text": {
+                    "description": "Human-readable disclosure text or summary the provider expects buyers or reviewers to see.",
+                    "type": "string"
+                  },
+                  "disclosure_url": {
+                    "description": "Optional URL to the provider's canonical disclosure or methodology page for this jurisdiction.",
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "Provider-defined sub-national region code or name when the obligation is regional. No global canonical format is implied.",
+                    "type": "string"
+                  },
+                  "regulation": {
+                    "description": "Provider-supplied regulation identifier for the disclosure obligation.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "country",
+                  "regulation"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "notes": {
+              "description": "Optional provider notes on how the disclosure should be interpreted. Informational only; buyers should not branch programmatically on this text.",
+              "maxLength": 2000,
+              "type": "string"
+            },
+            "required": {
+              "description": "The provider's claim that a modeling or AI-use disclosure is required for this signal in at least one applicable jurisdiction. This is a declared compliance signal, not a protocol-level legal determination.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "required"
+          ],
+          "title": "Signal Modeling Disclosure",
+          "type": "object"
+        },
+        "method": {
+          "enum": [
+            "lookalike",
+            "supervised",
+            "embedding",
+            "rules"
+          ],
+          "type": "string"
+        },
+        "seed_source": {
+          "additionalProperties": false,
+          "properties": {
+            "provider_signed": {
+              "description": "Provider assertion that the seed source carries a signed attestation. Consumers MUST NOT treat this boolean alone as cryptographic proof.",
+              "type": "boolean"
+            },
+            "type": {
+              "enum": [
+                "first_party_crm",
+                "panel",
+                "declared_survey",
+                "transactional",
+                "behavioral"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "provider_signed"
+          ],
+          "type": "object"
+        },
+        "training_data_jurisdictions": {
+          "$ref": "#/definitions/Shared3"
+        }
+      },
+      "required": [
+        "method",
+        "seed_source",
+        "training_data_jurisdictions",
+        "ai_act_risk_class"
+      ],
+      "type": "object"
+    },
+    "onboarder": {
+      "additionalProperties": false,
+      "properties": {
+        "match_keys": {
+          "items": {
+            "enum": [
+              "name",
+              "address",
+              "email",
+              "postal",
+              "lat_long",
+              "mobile_id",
+              "cookie_id",
+              "ip",
+              "customer_id",
+              "phone"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "pre_onboarding_audience_expansion": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "pre_onboarding_device_expansion": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "pre_onboarding_precision_level": {
+          "enum": [
+            "individual",
+            "household",
+            "business",
+            "geography"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_keys"
+      ],
+      "type": "object"
+    },
+    "policy_categories": {
+      "description": "Policy categories this signal is sensitive for.",
+      "items": {
+        "$ref": "#/definitions/Shared4"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "refresh_cadence": {
+      "$ref": "#/definitions/Shared2"
+    },
+    "restricted_attributes": {
+      "description": "Restricted attribute categories this signal touches.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Personal data categories that may be restricted from use in audience targeting. Combines GDPR Article 9 special categories with US civil-rights protected classes (FHA familial_status, ADEA age). Used in two places: (1) on campaign plans via restricted_attributes to declare which categories are prohibited, and (2) on signal-definition.json via restricted_attributes to declare which categories a signal touches. Governance agents match plan restrictions against signal declarations for structural validation.",
+        "enum": [
+          "racial_ethnic_origin",
+          "political_opinions",
+          "religious_beliefs",
+          "trade_union_membership",
+          "health_data",
+          "sex_life_sexual_orientation",
+          "genetic_data",
+          "biometric_data",
+          "age",
+          "familial_status"
+        ],
+        "enumDescriptions": {
+          "age": "A person's age or age range. US ADEA (40+) for employment, US FHA for housing, EU AVMSD for content-directed targeting. Restricted for regulated verticals.",
+          "biometric_data": "Biometric data used for identification. GDPR Article 9(1).",
+          "familial_status": "Whether a household includes children under 18, a pregnant person, or a person seeking custody of a minor. US FHA protected class.",
+          "genetic_data": "Genetic data. GDPR Article 9(1), US GINA.",
+          "health_data": "Health status, medical conditions, disability. GDPR Article 9(1), US ADA protected class. Includes inferred health data from behavioral signals.",
+          "political_opinions": "Political opinions or affiliations. GDPR Article 9(1). EU DSA Article 26 prohibits targeting on this category.",
+          "racial_ethnic_origin": "Race or ethnic origin. GDPR Article 9(1), US FHA/ECOA/EEOC protected class.",
+          "religious_beliefs": "Religious or philosophical beliefs. GDPR Article 9(1), US FHA/EEOC protected class.",
+          "sex_life_sexual_orientation": "Sex life or sexual orientation. GDPR Article 9(1).",
+          "trade_union_membership": "Trade union membership. GDPR Article 9(1)."
+        },
+        "title": "Restricted Attribute",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "segmentation_criteria": {
+      "maxLength": 500,
+      "type": "string"
+    },
+    "taxonomy": {
+      "additionalProperties": false,
+      "description": "Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.",
+      "properties": {
+        "etag": {
+          "$ref": "#/definitions/Shared4"
+        },
+        "parent_match_behavior": {
+          "enum": [
+            "exact_only",
+            "descendants_supported",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "segtax": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "value_mappings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "modifiers": {
+                "$ref": "#/definitions/Shared7"
+              },
+              "path": {
+                "$ref": "#/definitions/Shared4"
+              },
+              "taxonomy_value_id": {
+                "$ref": "#/definitions/Shared4"
+              },
+              "value": {
+                "$ref": "#/definitions/Shared4"
+              }
+            },
+            "required": [
+              "value",
+              "taxonomy_value_id"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "values": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "modifiers": {
+                "$ref": "#/definitions/Shared7"
+              },
+              "path": {
+                "$ref": "#/definitions/Shared4"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "version": {
+          "$ref": "#/definitions/Shared4"
+        }
+      },
+      "required": [
+        "ref",
+        "values"
+      ],
+      "type": "object"
+    }
+  },
+  "title": "Signal Definition Enrichment",
+  "type": "object"
+}

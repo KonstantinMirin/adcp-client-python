@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Recommended `error.details` shape for STALE_RESPONSE errors. Emitted alongside a populated success payload when the seller served cached data past its freshness target because an upstream or sub-agent fetch failed. Lets buyer agents dispatch on cache age and identify the stale upstream without parsing prose. One details entry per affected upstream \u2014 when multiple upstreams are stale, the seller emits one STALE_RESPONSE error per upstream rather than aggregating.",
+  "properties": {
+    "cache_age_seconds": {
+      "description": "Age of the cached payload in seconds at the time of the response. Informational \u2014 buyer agents MAY use this to decide whether to immediately retry for fresh data or accept the cached value.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "freshness_target_seconds": {
+      "description": "The seller's freshness target for this surface, in seconds. `cache_age_seconds - freshness_target_seconds` is how far beyond target the cached entry is. Optional \u2014 sellers MAY omit when no public freshness contract is declared.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "original_error": {
+      "additionalProperties": true,
+      "description": "Minimal subset of the underlying failure that triggered cache fallback. Sellers MUST NOT include internal stack traces, credentials, or connection strings.",
+      "properties": {
+        "code": {
+          "description": "Error code from the underlying failure, e.g., SERVICE_UNAVAILABLE, or a transport-level identifier like 'TIMEOUT' / 'CONNECTION_REFUSED' when the underlying call did not produce an AdCP error code.",
+          "type": "string"
+        },
+        "message": {
+          "description": "Short human-readable description of the underlying failure (e.g., 'Connection timeout after 20s'). MUST NOT include credentials, internal hostnames, or stack traces.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "served_from_cache": {
+      "const": true,
+      "description": "Always true for STALE_RESPONSE. Acts as a positive shape sentinel so consumers can validate the details payload matches the code.",
+      "type": "boolean"
+    },
+    "upstream": {
+      "additionalProperties": true,
+      "description": "Identifies the upstream or sub-agent whose fetch failed and triggered cache fallback. When N upstreams are stale, the seller emits N separate STALE_RESPONSE entries (one per upstream) rather than aggregating into a single entry \u2014 mirrors the per-asset advisory precedent set by PIXEL_TRACKER_LOSSY_DOWNGRADE.",
+      "properties": {
+        "name": {
+          "description": "Human-readable identifier for the upstream, e.g., 'creative-agent-foo' or 'inventory-service'. Used when the upstream is internal or when the URL is not informative on its own.",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL of the unreachable upstream, when the upstream is HTTP-addressable. Sellers MUST omit when the upstream is an internal (non-URL) dependency.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "served_from_cache",
+    "cache_age_seconds"
+  ],
+  "title": "Stale Response Details",
+  "type": "object"
+}

@@ -1,0 +1,10589 @@
+"""Grade the tree a FRESH run emits against the documents it was emitted from.
+
+**The subject is a fresh emission and never the committed tree**
+(``docs/plan/architecture.md``, 2026-10-29): "the schema is pinned and the drawn
+instances are content-addressed, so what a class is graded against is a function of the
+bundle and the compiler alone.  Grading therefore reads the tree a fresh run emits.  The
+committed tree is an ARTIFACT, verified by one byte-compare, and is never the subject."
+``tests/fresh.py`` is how: it writes the emission to disk once and binds the generated
+half of ``adcp.types`` to it, so :data:`TREE` and :func:`graded`'s import are two
+readings of ONE tree and that tree is this compiler's output.  :data:`COMMITTED` is the
+artifact and ``test_the_committed_tree_is_what_a_fresh_run_emits`` is the only check in
+this file that reads it.
+
+What that replaced, because the file's own figures were the evidence: the committed tree
+was found carrying no module at all for some documents a fresh run emits and differing
+byte for byte on others, so every census here graded a MIXTURE of two compilers -- most
+of the import-path collisions then on the board were invisible in ``src/`` and visible in
+a fresh run.  And because :func:`graded` runs at PARAMETRIZE time, one committed module
+that did not import collected zero tests from this file, including the obligation that
+exists to report such a module.
+
+Every assertion here is over something DERIVED: the population comes from the
+bundle, the pairs come from the classes' own ``__adcp_schema__``, and the verdict
+comes from the harness.  There is no expected class list, no snapshot and no
+blessed value, so a test that passes cannot be passing because someone recorded
+what the tree happened to hold (P10).
+
+**There is no adapter and no binding table.**  Both existed to tell the harness
+which document a class was generated from, and an indirection that can be aimed
+at a tree can be aimed at the WRONG tree -- which is how a previous attempt came
+to grade 1,602 documents green while generating nothing.  Now a class carries its
+own schema reference, so ``pairs`` reads the pairing off the class and the
+"grading someone else's tree" failure has no site.  The last site was a STALE
+module -- one an earlier run wrote and no current document produces -- which is
+indistinguishable from a real emission to everything that reads the tree, and
+``emit.write`` now DELETES one on a whole-population run
+(``test_write_removes_a_file_the_run_no_longer_intends``).  It is still checked
+where P10 puts a check as well: ``test_the_committed_tree_is_what_a_fresh_run_emits``
+compares the whole tree with a fresh emission of the derived population, so a file
+no run produces is a failure at the gate even if it got there some other way.
+
+The bundle directory is a constant here and nowhere inside ``codegen/``: step 10
+derives it from ``adcp.get_adcp_spec_version()`` (D9, P9).
+"""
+
+from __future__ import annotations
+
+import ast
+import collections
+import enum
+import functools
+import importlib
+import importlib.util
+import inspect
+import json
+import os
+import pkgutil
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import types
+from collections.abc import Mapping
+from dataclasses import replace
+from pathlib import Path
+from typing import Annotated, Any, ClassVar, Literal, NamedTuple
+
+import compared
+import corpus
+import fresh
+import jsonschema
+import populations
+import pytest
+from compiled import compiled
+from conftest import refusal_from
+from datamodel_code_generator.types import DataType
+from hypothesis import HealthCheck, Phase, given, settings
+from hypothesis import strategies as st
+from nodeset import claimed, partitions, ratchet
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic_core import PydanticCustomError
+
+from adcp.types._base import (
+    REGEX_ENGINE,
+    UNDERDETERMINED,
+    WIDENED,
+    AdCPBaseModel,
+    AdCPRootModel,
+    BranchDispatchMixin,
+    SchemaRef,
+    applied_schema,
+    omits_null,
+    schema_at,
+)
+from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
+from codegen import bundle, catalogue, compiler, emit, harness, intersect, ir, keywords, render
+from codegen import constraints as constraints_module
+from codegen import refusal as refusal_module
+from codegen.harness import (
+    AcceptsResult,
+    AdmitsResult,
+    LivenessResult,
+    Pair,
+    PairReport,
+    RefusesResult,
+    WideningResult,
+    _composed,  # the harness's own folding of an allOf conjunct's facts
+    check_accepts,
+    check_liveness,
+    check_pair,
+    conforms,
+    refusing_payload,
+    violated_keywords,
+)
+from codegen.keywords import Rung
+from codegen.lower import composition, names, objects, rules, scalars
+from codegen.lower import const as lower_const
+from codegen.lower import enum as lower_enum
+from codegen.lower import union as lower_union
+from codegen.refusal import Refusal
+from codegen.schema import nodes
+from codegen.schema import parse as schema_parse
+
+REPO = Path(__file__).resolve().parents[1]
+
+#: **The ``PYTHONPATH`` a SUBPROCESS of this suite needs, and why ``REPO`` alone is not
+#: it.**  Two tests below run ``python -m codegen`` as a child process, and a child gets
+#: none of the parent's ``sys.path`` except what this names.  ``REPO`` reaches ``codegen``,
+#: and ``adcp`` is then resolved by the environment's own editable install -- a ``.pth``
+#: naming ONE checkout's ``src``.  In the checkout that owns the install the two agree; in
+#: any other, the child grades ``codegen`` from THIS tree against ``adcp`` from ANOTHER,
+#: and a defect in either is invisible to it.
+#:
+#: Measured: with ``PYTHONPATH=REPO`` a sibling worktree's child imported
+#: ``/srv/ws/adcp-client-python/src/adcp/types/_base.py`` while the in-process suite
+#: imported this tree's, and the first symbol added to that module by a row working in a
+#: worktree turned both tests into an ``ImportError`` traceback -- which each test then
+#: reported as its own subject failing (``"Traceback" not in done.stderr``, and an empty
+#: output set) rather than as a path it had assembled wrong.
+#:
+#: So ``src`` is named FIRST, which is what makes the child's ``adcp`` the same object the
+#: parent's is.  Not a relaxation of either assertion: both still grade the tree this file
+#: sits in, which is the tree they claim to grade.
+SUBPROCESS_PATH = os.pathsep.join((str(REPO / "src"), str(REPO)))
+
+#: **The bundle every check in this file reads: the one a RUN reads** -- re-exported from
+#: ``tests/fresh.py``, which is where the tree beneath it is materialised from.  ONE name for
+#: one value, so :func:`tree_population` and ``./check``'s three numbers cannot range over
+#: two bundles; before this line one of them read the published bundle and the override table
+#: reached neither.
+BUNDLE = fresh.BUNDLE
+
+#: **The tree every check in this file reads: the one a fresh run emits.**
+#: ``tests/fresh.py`` materialises it and binds ``adcp.types``'s generated half to it, so
+#: a reading through this path and a reading through ``import adcp.types._schemas`` are
+#: two readings of the same tree.  They were not before, and that was the defect: a path
+#: reading of ``src/`` and an import of ``src/`` agreed with each other and with neither
+#: compiler.
+TREE = fresh.TREE
+
+#: The package set, re-exported from where the tree is: the second argument every
+#: ``emit.module_file`` call in this file and in ``tests/test_enum.py`` needs.  One name
+#: for one value, for the reason ``TREE`` is one name here.
+PACKAGES = fresh.PACKAGES
+
+#: ``src/adcp/types/_schemas``: the ARTIFACT a consumer installs.
+#:
+#: Read by ``test_the_committed_tree_is_what_a_fresh_run_emits`` and by nothing else here.
+#: It is verified -- one byte-compare against a fresh emission of the derived population
+#: -- and it is never the SUBJECT of a check about the compiler, because a check whose
+#: subject is a committed file passes or fails on when that file was last written.
+COMMITTED = REPO / emit.TREE
+
+
+#: Cached because each of these re-reads all 1,054 documents and the two keyword
+#: selectors walk every schema position in each: over 400 tests calling them, the
+#: uncached suite spends minutes re-deriving a population that is a function of the
+#: bundle alone.  ``graded()`` is cached for the same reason -- it imports the whole
+#: emitted tree, and a union root's ``model_rebuild(force=True)`` is not cheap.
+@functools.cache
+def leaves() -> list[str]:
+    """Step 1's population: an object root with no reference anywhere in it."""
+    return [d for d in bundle.portable(BUNDLE) if bundle.is_leaf_object(bundle.read(BUNDLE, d))]
+
+
+@functools.cache
+def referencing() -> list[str]:
+    """Step 2's population: every reference is a property's own schema or its items."""
+    return [
+        d for d in bundle.portable(BUNDLE) if bundle.references_a_property(bundle.read(BUNDLE, d))
+    ]
+
+
+@functools.cache
+def enums() -> list[str]:
+    """Step 3's population: an ``enum`` at a schema position anywhere in it."""
+    return [d for d in bundle.portable(BUNDLE) if bundle.carries_an_enum(bundle.read(BUNDLE, d))]
+
+
+@functools.cache
+def composing() -> list[str]:
+    """Step 4's population: a root ``allOf`` with no union beside it."""
+    return [
+        d
+        for d in bundle.portable(BUNDLE)
+        if populations.composes_at_the_root(bundle.read(BUNDLE, d))
+    ]
+
+
+@functools.cache
+def union_roots() -> list[str]:
+    """Step 5's population: a document whose root carries ``oneOf`` or ``anyOf``.
+
+    Read off ``populations.union_root``, which is also the step's DISPATCH selector, so the
+    population this file counts and the population the table claims are one function.
+    """
+    return [d for d in bundle.portable(BUNDLE) if populations.union_root(bundle.read(BUNDLE, d))]
+
+
+@functools.cache
+def _named() -> dict[str, frozenset[str]]:
+    """``bundle.named_nodes`` for the whole bundle, cached like every other
+    derivation here: it reads all 1,054 documents."""
+    return bundle.named_nodes(BUNDLE)
+
+
+def lowered_nodes(document: str) -> list[tuple[str, dict]]:
+    """Every node of a document the emitter LOWERS, as ``bundle.nodes`` pairs.
+
+    ``bundle.nodes`` walks every schema position, INCLUDING the inside of a
+    ``definitions`` / ``$defs`` entry nothing declares -- and section 3 says such an
+    entry "is not declared", so the emitter writes no type, no annotation and no import
+    for anything inside it.  A check that asserts a node produced something in the
+    module therefore ranges over this, not over every position: asking the whole walk
+    grades the emitter against a node it is correct not to have visited.
+
+    First reached when ``a2ui/si-catalog.json`` emitted (``salesagent-j3k2l.71``): its
+    dead section states a ``format: uri`` and a typed ``additionalProperties``, and two
+    checks here read both as positions the module had failed to carry.
+    """
+    doc = bundle.read(BUNDLE, document)
+    entries = bundle.section_entries(doc)
+    named = _named().get(document, frozenset())
+    return [
+        (pointer, node)
+        for pointer, node in bundle.nodes(doc)
+        if bundle.reaches(pointer, entries=entries, declared=named)
+    ]
+
+
+@functools.cache
+def tree_population() -> list[str]:
+    """**What the committed tree is emitted from: the bundle's own portable set.**
+
+    ``adcp-client-python-10l.73``.  It was :func:`population`, the union of the seven
+    STEP selectors, and a step is a phase of the rebuild while the tree is an
+    ARTIFACT -- so the artifact's contents were a function of which documents the
+    phases happened to claim, plus whichever others some earlier run reached
+    transitively through ``emit``'s ``$ref`` closure.  Measured on trunk at this row:
+    63 portable documents are outside :func:`population`, 56 of them EMIT, and 47 of
+    those 56 are in the committed tree anyway because a named document references
+    them.  Which is why regenerating trunk from :func:`population` **deletes** 34
+    files -- 17 documents whose module is in the tree and whose name no current
+    reference reaches.  A set whose membership depends on which documents the last
+    regeneration happened to reach is not a derivation, and ``core/property.json``,
+    ``core/collection.json``, ``core/frequency-cap.json`` and ``core/brand-id.json``
+    are ordinary public types a caller imports.
+
+    So the population is the bundle's, read by the one predicate that already
+    answers "can this document be emitted at all" -- ``bundle.portable`` -- and no
+    new document-set predicate is written for it.  ``docs/plan/architecture.md`` §5
+    keeps "the document-set predicates a step's result was stated over" under
+    ``tests/`` and that still holds: the seven selectors are unchanged below and go
+    on grading their own steps.  This is not one of them.  It is the whole bundle,
+    and the 7 portable documents that refuse need nothing -- ``emit`` writes no
+    module for a refusal, so widening the population adds modules and no refusal.
+
+    A reference TARGET needs no entry here either, and now cannot have one it does
+    not already have: ``emit`` walks ``$ref`` and emits the closure, and over this
+    population the closure reaches nothing outside it (asserted in
+    ``test_the_committed_tree_is_what_a_fresh_run_emits``).
+    """
+    return sorted(bundle.portable(BUNDLE))
+
+
+@functools.cache
+def population() -> list[str]:
+    """The union of the seven STEP selectors: what each phase of the rebuild was
+    stated over.  A reference TARGET is not here and does not need to be: ``emit``
+    walks ``$ref`` and emits the closure.
+
+    The selectors OVERLAP by design -- a leaf object with an inline enum belongs to
+    step 1 and to step 3 alike, and 26 leaves and 94 referencing documents are
+    already inside step 3's 535.  The overlap is a property of the POPULATION and not
+    of the dispatch table, whose rows read a document's ROOT and claim 0 documents in
+    common (asserted below).
+
+    **Not what the committed tree is emitted from, since
+    ``adcp-client-python-10l.73``**: that is :func:`tree_population`, which is the
+    bundle's portable set, and this is a PROPER PART of it.  The two are kept apart
+    rather than merged because they answer different questions -- "which documents
+    did this phase state its result over" is a fact about the rebuild, and "which
+    documents does the SDK ship a class for" is a fact about the artifact -- and the
+    tests below that grade a step read this one.
+    """
+    return sorted(
+        set(leaves())
+        | set(referencing())
+        | set(enums())
+        | set(composing())
+        | set(union_roots())
+        | set(container_roots())
+        | set(object_rules())
+    )
+
+
+@functools.cache
+def container_roots() -> list[str]:
+    """Step 6's population: the document's ROOT is a container.
+
+    Also step 6's row in ``emit.ROWS``, and the two being one predicate is the
+    point: a row cannot claim a document its step does not count.
+    """
+    return [
+        d
+        for d in bundle.portable(BUNDLE)
+        if populations.is_container_root(bundle.read(BUNDLE, d))
+    ]
+
+
+@functools.cache
+def object_rules() -> list[str]:
+    """Step 7's population: an object root whose composition is a presence rule."""
+    return [
+        d
+        for d in bundle.portable(BUNDLE)
+        if populations.states_an_object_rule(bundle.read(BUNDLE, d))
+    ]
+
+
+
+
+# --------------------------------------------------------------------------- #
+# the pairs, read off the classes themselves
+# --------------------------------------------------------------------------- #
+class Graded(NamedTuple):
+    ref: SchemaRef
+    model: Any
+    accept: Any
+    module: str
+
+
+#: Modules of the fresh tree that did not import, as ``name -> the tail of the traceback``.
+#:
+#: **:func:`graded` records an unimportable module and does not raise**, and that is the
+#: whole of why this dict exists.  It runs at PARAMETRIZE time, where a raise is not a red
+#: test: it errors the COLLECTION of this file, and the measurement is that one module
+#: which did not import collected ZERO tests here -- every pair, every census and the
+#: import obligation itself, gone, with the reader left holding a traceback about a base
+#: list instead of a named failure.  ``docs/plan/architecture.md``'s rule for it is "a
+#: tree that does not build fails one named test instead of disabling the file".
+#:
+#: So the skip is a finding, and ``test_no_module_of_the_graded_tree_failed_to_import``
+#: below is the one that reads it.  It is NOT silent anywhere else either: a module that
+#: does not import contributes no pair, so its document emits and is not graded, which
+#: ``test_the_pairing_is_intrinsic_to_every_class_the_tree_carries`` reports from the
+#: other side, and ``tests/test_the_tree_imports.py`` reports in a child process over the
+#: same tree without importing anything of it here.
+#:
+#: **THE SAME DICT OBJECT ``tests/compared.py`` FILLS**, because the walk moved there with
+#: :func:`graded`'s body (``adcp-client-python-3be.23``) and this name is what the test
+#: below reads.  An alias and not a copy: a copy taken at import time would be empty
+#: whatever the walk later found.
+UNIMPORTABLE: dict[str, str] = compared.UNIMPORTABLE
+
+
+@functools.cache
+def graded() -> list[Graded]:
+    """Every class and alias the tree carries, with the schema each one names.
+
+    The whole of the pairing.  A class is taken only from the module that DEFINES
+    it (``__module__``), because a referencing module imports its target's symbol
+    and the same class would otherwise be graded once per importer.
+
+    An alias is D2's root-scalar row: it is not a class, so its MODULE carries
+    the ``__adcp_schema__`` and the ``strict_validate``, and the model is the one
+    name the module exports.  Both cases are asserted non-empty below, so neither
+    is graded by an empty loop.
+
+    **A class is taken ONCE per defining module, however many names that module
+    binds it under, and the ``__module__`` filter does NOT cover this.**  That filter
+    answers "did this module define the class", which is a question about the
+    IMPORTING module; D3's content dedup gives one class a name at every position the
+    node occupies (``emit.bind_the_same_node``), and those names are in the DEFINING
+    module, so ``vars(module)`` yields the same class object two or three times.
+    Measured rather than reasoned: with the aliases emitted and this loop keyed on
+    names, the pair count went 1,079 -> 1,085 -- six extra, which is exactly the 6 of
+    the 10 collapsed nodes that are classes (the other 4 are enumerations, which carry
+    no ``__adcp_schema__`` and were never pairs) -- and 5 refs were graded twice or
+    three times, ``creative/preview-render.json#/oneOf/0/properties/dimensions`` among
+    them.  A pair is one class against one schema, so a second name for it is not a
+    second pair.
+
+    **And 1,085 was the stale pin, so the naive reading passed.**  ``PAIRS_PIN`` was
+    1085 before this row shrank the class count by 6, so grading 6 pairs twice landed
+    back on the number the suite expected and nothing reddened.  The dedup check below
+    is what catches it from the other side: it asserts that every name in a content
+    group binds ONE object.
+
+    **THE TREE IS THE ONE A FRESH RUN EMITS**, which is the row this function is the
+    subject of.  ``tests/fresh.py`` writes the emission and binds ``adcp.types``'s
+    generated half to it, so the import below reaches this compiler's output and its
+    aliases resolve through this compiler's ``constraints`` module.  A fresh ``_schemas``
+    imported beside the COMMITTED alias module would resolve its aliases through that one,
+    and an alias this run mints that the committed module lacks is exactly a defect the
+    pairing is meant to find -- which is why the binding is one decision about one package
+    and not a path handed in here.
+
+    **Nothing it reads can take this file's collection down.**  No tree at all is an empty
+    list (``fresh.schemas()`` answers ``None`` and a named test reads the reason), and a
+    module that does not import is recorded in :data:`UNIMPORTABLE` and skipped.  Both
+    were raises, and both errored ~2,400 tests.
+
+    Cached because it imports the whole emitted tree and a union root's
+    ``model_rebuild(force=True)`` is not cheap; it is read at parametrize time and by
+    several tests, and the result is a function of the tree alone.  The returned list is
+    SHARED: read it, do not mutate it.
+
+    **THE WALK ITSELF IS ``tests/compared.py``'s AND THIS IS A WRAPPER**
+    (``adcp-client-python-3be.23``).  The pairing is what the round trip needs -- which
+    emitted class answers which document and pointer -- so it is stated ONCE, where any
+    reader of the fresh tree takes the same rows: a reader walking the tree for itself
+    would range over however many pairs that second walk turned out to find, which is the
+    two-populations defect ``tests/compiled.py``'s key exists to prevent one layer down.
+    So there is ONE pairing of the fresh tree: ``compared.pairs()`` performs it, carries
+    every decision the paragraphs above record, and fills the same
+    :data:`UNIMPORTABLE`; this function wraps each row in :class:`Graded`, which is the
+    type this file's parametrize ids and helpers read.
+    """
+    return [Graded(*row) for row in compared.pairs()]
+
+
+#: **The ``format`` strategies the LIBRARY does not ship**, handed to ``check_pair`` as
+#: ``custom_formats``, which is the channel ``harness.missing_formats`` exists to point
+#: at: "hypothesis_jsonschema ignores a ``format`` it does not know, silently and without
+#: a warning, which turns an unsupported format into arbitrary text and so into a false
+#: direction-1 failure.  A caller supplies a strategy per format its documents use."
+#:
+#: **EMPTY until ``adcp-client-python-10l.21``'s third instalment**, and it is the row's
+#: own emission that filled it: the bundle uses 3 formats at a schema position in the
+#: graded tree -- ``uri`` (35 sites), ``date-time`` (27) and ``uuid`` (1) -- and
+#: ``hypothesis_jsonschema``'s ``STRING_FORMATS`` ships the first two and not the third.
+#: The one ``uuid`` site is ``trusted-match/context-match-request.json``, which emits
+#: behind ``content-standards/artifact.json`` once a ``type`` word beside a NESTED
+#: combinator stops refusing it, and the pair reported ``missing_formats: ['uuid']`` --
+#: the instrument saying so, which is exactly what it is for.
+#:
+#: Each entry is GRADED before it is trusted, by
+#: ``test_every_format_strategy_is_graded_before_it_is_trusted`` through
+#: ``harness.check_format_strategy``: a strategy emitting values the format refuses makes
+#: every site using it pass vacuously, and a vacuous pass is reported by nothing.
+#:
+#: **THE DECLARATION IS ``harness.FORMAT_STRATEGIES`` AND THIS IS AN ALIAS TO IT**
+#: (``adcp-client-python-82m.4``).  There are two graders of the population now -- this
+#: suite and the RUN, which writes §10's per-pair verdict table -- and a strategy declared
+#: in one of them drifts silently in the direction that matters: the suite would pass pairs
+#: the run reports ``missing_formats`` on, and a reviewer comparing the two would be
+#: comparing two instruments.  So the entries are stated once beside the check that reads
+#: them, the test below grades THAT dict, and this name is what every reader in this file
+#: already says.
+FORMAT_STRATEGIES: dict[str, Any] = harness.FORMAT_STRATEGIES
+
+
+def test_every_format_strategy_is_graded_before_it_is_trusted() -> None:
+    """Both answers required of every entry, which is ``check_format_strategy``'s rule.
+
+    "The values it produces are admitted by the format; a deliberately malformed value of
+    the same shape is REFUSED."  The second is not redundant: a validator with no checker
+    for the format answers ``True`` for every input, and that case is reported
+    ``unchecked``, which is not a pass.
+
+    The counterexample is of the SAME SHAPE as what the strategy emits -- a
+    dash-separated hex-ish string that is not a UUID -- so a checker that merely
+    pattern-sniffs is not what makes the second answer green.
+    """
+    counterexamples = {"uuid": "123e4567-e89b-12d3-a456-42661417400"}  # one digit short
+    named = claimed("format strategies", set(FORMAT_STRATEGIES))
+    assert named == set(counterexamples), sorted(named ^ set(counterexamples))
+    for fmt, strategy in sorted(FORMAT_STRATEGIES.items()):
+        verdict = harness.check_format_strategy(
+            fmt, strategy, counterexample=counterexamples[fmt]
+        )
+        assert verdict.checked, (fmt, "no checker: the format cannot be graded by checking")
+        assert verdict.examples, (fmt, verdict.detail)
+        assert verdict.accepted == verdict.examples, (fmt, verdict.rejected)
+        assert verdict.counterexample_refused, (fmt, counterexamples[fmt])
+
+
+#: Cached for ``leaves()``'s reason and with its own reading: one call reads every portable
+#: document once, keys what it ADMITS (``catalogue.Admitted``, which resolves a ``$ref`` to
+#: what it names) and takes the stated-instance closure over ``bundle.edges`` -- a function
+#: of the bundle alone, and every pair of one document wants the same answer.
+@functools.cache
+def admitted_identities() -> dict[str, str]:
+    """``catalogue.admitted_identities(BUNDLE)``, once per process.
+
+    ``harness.stated_instances`` is the screen, handed in: the key must carry the instances
+    a node STATES and ADMITS because ``check_accepts`` answers "the store, then the
+    document's own ``examples``, then the draw", and one screen for both means the key
+    cannot stand still while the witness moves.
+    """
+    return catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
+
+
+def identity_of(ref: SchemaRef) -> dict[str, str]:
+    """**The STATIC identity of the question a pair's accepts draw asks**, for the corpus.
+
+    ``harness.corpus_key``'s argument, and the reason it is spelled here rather than taken
+    from the pair's schema: the schema is ``bundle.record``'s rendering of a document, so an
+    identity read off it moves whenever this package's inliner moves and every held instance
+    is redrawn for a bundle nobody touched.  This is the same node named by facts the
+    compiler cannot move -- what the document ADMITS and the instances it STATES
+    (``catalogue.admitted_identities``), and the POINTER, which says which node of that
+    document the pair is.
+
+    **``admits`` AND NOT A DIGEST OF THE DOCUMENT'S BYTES, which is this field's whole
+    current change** (``adcp-client-python-lzzj.8``).  ``bundle.source_identities`` hashed
+    the raw text of the document and of its raw reference closure, so an
+    ACCEPTANCE-PRESERVING rewrite of the bundle moved every key -- measured at 1,054 of
+    1,054 identities moved by a patch whose 22,338 differences are every one a gained
+    ``$schema``/``title``/``description`` and none of them visible to a validator, 854 of
+    them by a TRAILING NEWLINE alone.  ``docs/plan/final-state.md`` reading 1 is the rule:
+    "A stored value, a key over a document's bytes, or any artifact that must be
+    re-derived when the bundle moves makes an improvement to the schema cost exactly as
+    much as a regression."  Over that same pair of bundles the admitted identity moves 0 of
+    1,054.
+
+    The pointer is a pointer into the RECORD and so is a name within our own rendering; what
+    keeps that honest is ``harness.corpus_defect``, which re-offers the held instance to the
+    document on every read.  A rendering that moved a node's accepted set is reported there,
+    as ``accepts:corpus_rejected``, rather than hidden by a key that happened to move too.
+    """
+    return {
+        "document": ref.document,
+        "pointer": ref.pointer,
+        "admits": admitted_identities()[ref.document],
+    }
+
+
+@functools.cache
+def fixtures() -> harness.Fixtures:
+    """**§8's FIXTURES for this suite's grading pass, over this bundle.**
+
+    "A referenced document is graded by its own pair, so at a referring position it is a
+    fixture and not a draw."  ``harness.Fixtures`` holds the derivation and the memo; this
+    supplies the three readers it needs and nothing else, which is the seam
+    ``docs/plan/architecture.md`` §9 draws for the accepts corpus and for the same reason --
+    the verifier reads nothing but its arguments, so WHERE a document lives is the caller's
+    business.
+
+    * ``read`` is the RAW document, because that is the layer that still spells a ``$ref``:
+      ``bundle.record`` inlines a cross-document reference by copying, so the record cannot
+      say that a subtree came from somewhere else.
+    * ``node`` is the document OF RECORD at a pointer -- ``schema_at``, the same accessor
+      ``pair_of`` reads the graded node through, so a fixture is derived from the node its
+      own pair is graded against and not from a second rendering.
+    * ``identity`` is :func:`identity_of`'s answer, which is what the held accepts corpus is
+      keyed on.
+
+    One object per process and memoised inside it: the whole content of "the product
+    becomes a sum" is that one document's fixture is derived once however many referrers
+    ask for it.
+    """
+    return harness.Fixtures(
+        read=lambda document: bundle.read(BUNDLE, document),
+        node=lambda document, pointer: schema_at(SchemaRef(document, pointer)),
+        identity=lambda document, pointer: identity_of(SchemaRef(document, pointer)),
+        documents=frozenset(bundle.portable(BUNDLE)),
+        corpus=corpus.STORE,
+        custom_formats=FORMAT_STRATEGIES,
+    )
+
+
+def pair_of(g: Graded) -> Pair:
+    """The pair, and the document ROOT beside the node.
+
+    ``schema`` is the node the class names and is what the pair is graded against.
+    ``document`` is the scope a LOCAL ``$ref`` on the document side is relative to,
+    which a nested pair's node does not contain -- ``core/bidding-policy-capability.json``'s
+    ``#/definitions/scope_capability`` references ``#/definitions/policy_profile``,
+    a sibling in the root's own ``definitions`` section.  Read through the same
+    ``schema_at`` as the node, so one function answers "what does this document
+    say" for both.
+
+    ``ref`` is the same ``SchemaRef`` ``name`` is spelled from, and it is what
+    ``codegen.dump_exemptions`` matches a position against.  Supplied here rather
+    than parsed back out of ``name``, and not read off ``model`` -- D2's
+    root-scalar row is graded as an alias, whose ``__adcp_schema__`` is on its
+    module and not on the model.
+
+    ``declared`` is §7's approximation declaration, read off the same object
+    ``__adcp_schema__`` is read off: the CLASS for a class, and the MODULE for an alias or
+    an enumeration, which is the split §7 makes ("beside the module for an alias") and the
+    one ``graded()`` above already draws.  ``harness.declarations_of`` does the reading, so
+    §9's "the verifier reads the declaration off the class, as a consumer" stays true of
+    the code that grades it and this function only says WHICH object holds it.
+
+    ``identity`` is what the held accepts corpus is keyed on, and :func:`identity_of` says
+    why it is a reading of the BUNDLE rather than of ``schema``.
+    """
+    holder = g.model if isinstance(g.model, type) else importlib.import_module(g.module)
+    return Pair(
+        name=f"{g.ref.document}{g.ref.pointer}",
+        schema=schema_at(g.ref),
+        model=g.model,
+        accept=g.accept,
+        document=schema_at(SchemaRef(g.ref.document, "#")),
+        ref=g.ref,
+        declared=harness.declarations_of(holder),
+        identity=identity_of(g.ref),
+    )
+
+
+PAGINATION = "core/pagination-request.json"
+
+#: ``Field`` kwargs that state no constraint: a name (``alias``), a presence
+#: default in either of its two spellings, and the two annotations the document carries
+#: and the compiler transcribes.  Everything else a ``Field`` can carry narrows a value,
+#: so a kwarg outside this set has to be one the document declares locally.
+#:
+#: **``default_factory`` is the SECOND SPELLING of ``default`` and was missing**, which is
+#: ``adcp-client-python-qzx.1``'s undecided item "whether the factory is a document fact
+#: (a default of ``[]`` or ``{}``) -- then the pin is stale -- or whether ONE factory
+#: object is shared across two positions, which is a defect".  Measured on the tree a
+#: fresh run emits: 98 sites in 58 modules, every one of them
+#: ``default_factory=lambda: TypeAdapter(<T>).validate_python(<the document's own
+#: default>)`` -- the renderer's channel for a stated ``default`` whose value has to be
+#: parsed into the field's type, written beside a ``json_schema_extra={'default': ...}``
+#: carrying the document's own literal.  So it is the FORMER: a document fact, and a
+#: presence default states what a value is when absent rather than narrowing the set a
+#: present one may come from.  Not the latter either -- each site is its own ``lambda``,
+#: so no factory object is shared between two positions.  The witness that reddened the
+#: census is ``account/list-account-changes-request.json``'s ``starting_position``, whose
+#: document states ``"default": "earliest"``.
+#:
+#: **``init`` was missing too, and it is pydantic's spelling and not a document's**: 15
+#: sites in 10 modules, every one of them
+#: ``__pydantic_extra__: dict[str, <T>] = Field(init=False)`` -- the TYPED
+#: ``additionalProperties`` rendering, whose extra mapping is populated by validation
+#: rather than by a constructor argument.  First witness
+#: ``core/canonical-forecast-point.json``.
+#:
+#: **DERIVED, so the next member of this census is not met one invocation at a time.**
+#: Every ``Field`` keyword the tree a fresh run emits actually uses, counted over all
+#: 1,054 modules: ``description`` 8,207, ``min_length`` 1,056, ``json_schema_extra`` 627,
+#: ``max_length`` 144, ``default_factory`` 98, ``alias`` 19, ``init`` 15 -- and no
+#: ``default`` at all, a presence default being written as ``= None`` or as
+#: ``= Field(default_factory=...)``.  ``min_length`` and ``max_length`` are the only two
+#: that narrow, and they are exactly the two this set does NOT name: they have to be
+#: backed by a fact the document states locally, which is what ``_pydantic_names(local)``
+#: supplies.  ``default`` is kept here even with no site, because the kwarg states a
+#: presence default whichever spelling the renderer picks.
+ANNOTATION_KWARGS = frozenset(
+    {"alias", "default", "default_factory", "description", "init", "json_schema_extra"}
+)
+
+
+def pagination() -> Graded:
+    return next(g for g in graded() if g.ref == SchemaRef(PAGINATION, "#"))
+
+
+# --------------------------------------------------------------------------- #
+# the population and the arithmetic over it
+# --------------------------------------------------------------------------- #
+def test_the_population_is_the_one_the_step_is_stated_over() -> None:
+    """A verdict read off a set of nodes nobody named is a verdict over however many
+    documents there turned out to be, including none.
+
+    **No selector's SIZE is asserted here, and that is the correction.**  A size is one
+    bundle version's reading of a set every emitting row moves: a row that takes a
+    document from one row's ground to another's moves two of these totals at once while
+    leaving untouched the thing the check exists for.  Section 8 asks for the set, so
+    the set is what is asserted:
+
+    * each selector names a NON-EMPTY set drawn from the bundle's own portable set, so
+      no assertion over one of them holds vacuously;
+    * ``population()`` is EXACTLY the union of the seven selectors, derived here rather
+      than restated, so a selector that stops contributing to the denominator reddens;
+    * the overlap is asserted as the FACT it is -- the union is strictly smaller than
+      the sum of the parts, so a reader cannot add the selectors up -- rather than as
+      one version's count of each intersection;
+    * the two small selectors are named member by member, because a set of names unions
+      with another row's addition where a total collides with it;
+    * every selector's anchor document, by name.
+    """
+    whole = claimed("bundle.portable", bundle.portable(BUNDLE))
+    selectors = {
+        "leaves": claimed("leaves", leaves(), inside=whole),
+        "referencing": claimed("referencing", referencing(), inside=whole),
+        "enums": claimed("enums", enums(), inside=whole),
+        # ``composes_at_the_root`` reads "a union beside the allOf" through
+        # ``union_root``, so a root carrying ``allOf`` beside a PRESENCE-ONLY ``anyOf``
+        # is step 4's ground rather than nobody's.
+        "composing": claimed("composing", composing(), inside=whole),
+        # ``union_root`` does NOT yield a root whose combinator holds ``required``
+        # GROUPS: those are rules and not unions, and they are step 7's (see
+        # ``test_step_sevens_population_reaches_the_object_row_and_no_other``).
+        "union_roots": claimed("union_roots", union_roots(), inside=whole),
+        "container_roots": claimed("container_roots", container_roots(), inside=whole),
+        "object_rules": claimed("object_rules", object_rules(), inside=whole),
+    }
+
+    # The denominator is the union of the seven and nothing else.  Asserted against the
+    # seven named sets rather than against a total, so dropping a selector from
+    # ``population`` reddens here with the dropped documents named.
+    assert claimed("population", population(), inside=whole) == set().union(*selectors.values())
+    assert set(population()) < whole, "the step's population is not a part of the bundle"
+    # The selectors OVERLAP by design -- a leaf object with an inline enum is step 1's
+    # and step 3's alike -- and that is the fact, not any one intersection's size: the
+    # union is strictly smaller than the sum, so the selectors cannot be added up.
+    assert len(population()) < sum(len(s) for s in selectors.values())
+    assert selectors["leaves"] & selectors["enums"]
+    assert selectors["referencing"] & selectors["enums"]
+
+    assert PAGINATION in selectors["leaves"]
+    assert "error-details/creative-revision-content-mismatch.json" in selectors["referencing"]
+    assert "enums/match-type.json" in selectors["enums"]
+    assert "core/signal-id.json" in selectors["union_roots"]
+    # 0 union roots carry BOTH keywords, so the keyword the lowering reads is unambiguous
+    # for every document the selector claims.  The set it ranges over is named
+    # non-empty above, so this empty part is empty over a real set of nodes.
+    assert [
+        d
+        for d in union_roots()
+        if {"oneOf", "anyOf"} <= set(bundle.read(BUNDLE, d))
+        and all(isinstance(bundle.read(BUNDLE, d)[k], list) for k in ("oneOf", "anyOf"))
+    ] == []
+    # ``is_container_root`` excludes a root that declares a union as well, because most
+    # of the bundle's mapping roots do and the union row owns them.  Named rather than
+    # counted: which documents the container row claims is the fact a later row moves,
+    # and a name says which one moved where a count says only that one did.
+    assert selectors["container_roots"] == {
+        "core/acceptance-policy-profile-ids.json",
+        "core/context.json",
+        "core/creative-assets.json",
+        "core/ext.json",
+        "core/forecast-point-dimensions.json",
+        "core/product-change-map.json",
+        "core/reporting-verification-profile-set.json",
+        "media-buy/product-fields.json",
+        "media-buy/product-refinement.json",
+    }
+    # Step 6's population only GROWS the named set, which is what makes the earlier
+    # steps structurally safe rather than re-measured: a container root is neither a
+    # leaf object nor a referencing one, so no document stops being named.
+    assert not selectors["container_roots"] & (selectors["leaves"] | selectors["referencing"])
+    assert selectors["object_rules"] == {
+        "core/demographic-age-range.json",
+        "core/forecast-range.json",
+        "core/webhook-challenge-response.json",
+    }
+    # **AND THE TWO THIS SET LOST ARE NAMED WITH THEIR CAUSE, because a pin that is
+    # re-pasted smaller deletes the fact that it shrank.**  This clause pinned five, and
+    # ``populations.states_an_object_rule``'s docstring still said "5 documents before and
+    # after" after it had become three.  The two that left --
+    # ``core/budget-range.json`` and ``media-buy/proposal-budget-constraint.json`` -- did
+    # NOT stop stating a presence rule and did not leave ``population()``: the PATCH TABLE
+    # replaces each one's inline ``currency`` string with a ``$ref`` to
+    # ``core/currency-code.json``, and step 7's first clause excludes a document carrying
+    # a ``$ref`` anywhere, so each is step 2's ground now instead of step 7's.  Both halves
+    # are asserted, so neither the cause nor the consequence can drift unobserved: the
+    # PUBLISHED bundle still counts them, the PATCHED one reaches them through the
+    # referencing selector, and the denominator is unmoved either way.
+    # Read over :data:`BUNDLE` alone, so this module stays the one-bundle reader
+    # ``tests/test_the_bundle_a_module_reads.py`` requires: the cause is stated as the
+    # ``$ref`` being the ONLY clause that excludes each one -- its root still declares
+    # ``properties`` and a presence-only combinator, which is the rest of step 7's test.
+    for document in ("core/budget-range.json", "media-buy/proposal-budget-constraint.json"):
+        doc = bundle.read(BUNDLE, document)
+        assert not populations.states_an_object_rule(doc), document
+        assert "$ref" in bundle.schema_keywords(doc), document
+        assert doc["properties"]["currency"].keys() == {"$ref"}, document
+        assert "properties" in doc and doc.get("type") == "object", document
+        assert bundle.schema_keywords(doc) & {*bundle.CONDITIONAL, "oneOf", "anyOf"}, document
+        assert all(rules.presence_only(n) for _, n in bundle.nodes(doc)), document
+        assert document in selectors["referencing"], document
+        assert document in population(), document
+
+
+#: The six root populations, in the order their steps landed.  ``tests/populations.py``
+#: is where ``docs/plan/architecture.md`` §5 puts them, and §14 step 5 deleted the table
+#: they used to double as the selectors of: "Root and non-root are one path.  There is no
+#: second table of root selectors."
+ROOT_POPULATIONS = (
+    populations.is_object_root,
+    populations.is_scalar_root,
+    populations.is_enum_root,
+    populations.composes_at_the_root,
+    populations.union_root,
+    populations.is_container_root,
+)
+
+
+def test_step_sevens_population_is_counted_as_an_object_root_and_nothing_else() -> None:
+    """The step-5/step-7 boundary, asserted on the measurements rather than assumed.
+
+    Step 7 adds no lowering of its own: a rule attaches to the nearest class, so its
+    documents are lowered by the OBJECT arm with ``rules.lower`` inside
+    ``lower.objects.lower_object``.  That only works if the object reading reaches them, and
+    it did not: a root whose ``oneOf`` holds ``required`` groups carries a union
+    keyword, so step 5's predicate counted all 5 and step 7's reached none -- and step
+    5's lowering refuses a branch declaring no property, so step 7's whole population
+    was counted by a step that refuses it.
+
+    ``populations.union_root`` asks ``rules.presence_only`` as well, and this is the
+    assertion that keeps it.  It read ``emit.ROWS`` before §14 step 5 deleted the table,
+    and the WALK'S own answer is asserted beside the count now -- the document EMITS, so
+    the object arm is what read it, which is the half the table used to stand in for.
+    """
+    assert object_rules(), "step 7's population is empty; this would be vacuous"
+    out = compiled(BUNDLE, object_rules())
+    for document in object_rules():
+        doc = bundle.read(BUNDLE, document)
+        counting = [c.__name__ for c in ROOT_POPULATIONS if c(doc)]
+        assert counting == ["is_object_root"], (document, counting)
+        assert document in out.emitted, (document, out.refusals.get(document))
+
+
+def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
+    out = compiled(BUNDLE, population())
+    assert set(population()) <= set(out.emitted) | set(out.refusals)
+    assert not set(out.emitted) & set(out.refusals)
+    for document, row in out.refusals.items():
+        assert row["keyword"] and row["pointer"], document
+
+
+def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
+    """Transitive emission, and that the walk terminates: the whole closure of the
+    references THE WALK LOWERS is emitted, or the document is refused with the target
+    that stopped it.  An import of a symbol from a module no run wrote is an
+    ImportError, so there is no third outcome.
+
+    **The claim ranges over ``bundle.lowered_references`` and not over every ``$ref``
+    in the document, and that is two of the design's own sentences rather than a
+    narrowing.**  §3: no type is lowered from a node under a conditional, so a ``$ref``
+    at a RULE position emits no import and its target is legitimately absent from the
+    run.  §5's ``definitions`` row plus §3's "an entry nothing references is not
+    declared": a reference inside a dead section entry is at a position no class names.
+    Both are predicates over the document's own structure -- the descent column's
+    position and ``bundle.reaches`` -- and neither is a hand-written document set,
+    which is the defect §9 names.
+
+    The live case this test was red on: ``core/forecast-dimension-geo.json`` emits and
+    references ``core/postal-country-system.json`` at ``/allOf/3/then/anyOf/0``, a RULE
+    position.  Verified at the module: ``forecast_dimension_geo.py`` imports
+    ``..enums.geo_level`` and ``constraints`` and nothing of the target, so there is no
+    ImportError and the closure is not broken.  Both skipped populations are asserted
+    non-empty below, so neither is a silent hole.
+    """
+    out = compiled(BUNDLE, population())
+    pulled_in = set(out.emitted) - set(population())
+    assert pulled_in, "no document was reached through a reference; the walk graded nothing"
+    assert "core/creative-revision-id.json" in pulled_in
+    # every CROSS-DOCUMENT reference the walk LOWERS resolves to a document also
+    # emitted.  A LOCAL reference names a node of the document being written and
+    # so has no target to emit -- ``compiler.local_reference`` resolves it against the
+    # module's own declarations -- and the document half is how ``bundle.split_ref``
+    # tells the two apart, which is the same one reading the walk and the binder use.
+    # Asserted non-empty, so the skip is a population and not a silent hole: this loop
+    # read a local reference as a document and failed on it the first time one reached
+    # an EMITTED document (``core/reporting-coverage.json#/definitions/...``).
+    known = set(bundle.portable(BUNDLE))
+    local_seen = 0
+    unlowered = 0
+    unasked = 0
+    for document in out.emitted:
+        doc = bundle.read(BUNDLE, document)
+        nodes = dict(bundle.nodes(doc))
+        lowered = set(bundle.lowered_references(doc, _named().get(document, frozenset())))
+        for pointer_, uri, _ in bundle.references(doc):
+            if (pointer_, uri) not in lowered:
+                unlowered += 1
+                continue
+            named, pointer = bundle.split_ref(uri)
+            if not named:
+                # A LOCAL reference names a node in the REFERRING document, which is
+                # emitted by construction -- it is the document being walked. So the
+                # closure claim does not apply to it; what does is that the pointer
+                # lands, because a local reference to a node the document does not
+                # hold is an ImportError in the same way a missing module is.
+                #
+                # This branch was unreachable until `salesagent-j3k2l.20`: a document
+                # carrying a `definitions` section was REFUSED, so the loop never
+                # walked its references, and `document_for` returning None for a
+                # local reference could not be observed here.
+                assert pointer in nodes, (document, uri)
+                local_seen += 1
+                continue
+            if (uri, pointer_) not in out.asked.get(document, frozenset()):
+                # **A site the STATIC reading reports and the WALK does not reach**, which
+                # ``emit``'s own prune is already written against: "that reading is an
+                # over-approximation of what the walk reaches".  The ImportError claim is
+                # about the references the walk LOWERS, so it ranges over the walk's own
+                # record (``emit.Emitted.asked``) and the static reading is what names
+                # this population rather than what the claim is taken over.
+                #
+                # §5(b)'s ``patternProperties`` widening is what first made this live on
+                # an EMITTED document: ``core/creative-assets.json`` drops the pattern's
+                # value typing, so the ``$ref`` inside that value schema is at a position
+                # no class names and the module imports nothing of its target.  Verified
+                # at the module: ``creative_assets.py`` imports only ``adcp.types._base``,
+                # so there is no ImportError and the closure is not broken.
+                #
+                # AFTER the local branch, because ``asked`` is the record of what the
+                # walk asked the RUN for and a local reference asks ``local_reference``
+                # instead -- there is no module to import from, so the site is never in
+                # it and the whole local population would read as unasked.
+                unasked += 1
+                continue
+            # The DOCUMENT HALF, which ``split_ref`` took off the URI above.
+            # ``document_for`` reads no ``#`` at all -- its docstring says every caller
+            # arrives pre-split -- so handing it the whole URI answers ``None`` for
+            # every reference carrying a fragment, which is 76 of the bundle's 968.
+            target = bundle.document_for(named, known)
+            assert target in out.emitted, (document, uri)
+    assert local_seen, "no local reference was reached; the local branch graded nothing"
+    assert unlowered, (
+        "no reference was skipped as unlowered; the RULE-position and dead-section "
+        "clauses graded nothing, so either the walk now lowers every reference or the "
+        "predicate reads the whole document"
+    )
+    assert unasked, (
+        "no reference was skipped as unasked; the static reading and the walk's own "
+        "record agree everywhere, so either section 5(b)'s widening stopped dropping a "
+        "value schema or emit.Emitted.asked is not the walk's record"
+    )
+
+
+def test_no_module_of_the_graded_tree_failed_to_import() -> None:
+    """:data:`UNIMPORTABLE`, read: what the pairing SKIPPED, named rather than silent.
+
+    ``graded()`` cannot raise -- it runs at parametrize time, where a raise errors this
+    file's collection instead of reddening a test -- so an unimportable module is
+    recorded and stepped over.  A skip nothing reports is a census quietly taken over a
+    subset, which is the shape §8's last paragraph forbids, so this is the report.
+
+    It is deliberately NOT the whole of the import obligation.  ``graded()`` only reaches
+    the modules a walk of the package yields and only asks them to IMPORT; the second
+    question -- whether every class of each one RESOLVES -- needs
+    ``model_json_schema()``, and the obligation over a fresh tree in a child process is
+    ``tests/test_the_tree_imports.py``'s.  This one says the pairing below ranges over
+    every module of the tree, which is that census's own precondition.
+    """
+    graded()
+    assert UNIMPORTABLE == {}, sorted(UNIMPORTABLE)
+
+
+def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
+    """§2: the class names its schema, so nothing aims the grader at a tree.
+
+    Three things, all derived:
+
+    * every class and alias in the tree names a document THIS run emitted, so no
+      module survives from a run over a different population;
+    * every emitted document that DECLARES has exactly one ROOT pair, so N is a count
+      of declaring documents and not of classes;
+    * a nested class names its own node and not its document's root, because a
+      nested class is a subschema (and the previous arrangement could not bind
+      one at all -- a nested class had no row and so no ``strict_validate``).
+
+    ``graded()`` reads the tree the SHIPPED population is emitted from, so the population
+    it is compared against is that one (:func:`tree_population`) and not the steps' union.
+    They were the same function and the equality above held only because the tree happened
+    to carry every closure document some past run had written
+    (``adcp-client-python-10l.73``).  Both sides are now one run's: the documents come from
+    the compile and the classes come from the tree that compile wrote, so neither can be
+    stale with respect to the other -- which is what makes the first clause a claim about
+    the COMPILER rather than about when ``src/`` was last regenerated.
+
+    **AND "EVERY EMITTED DOCUMENT" IS NOT EVERY DOCUMENT THE RUN EMITS A MODULE FOR**
+    (``adcp-client-python-82m.40``).  §3a's layer above L3 is the repeated DOCUMENT
+    (``bundle.repeated``): where the bundle ships one document byte for byte at two paths,
+    the non-home path's module is a RE-EXPORT of the home's class and declares nothing, so
+    it has no pair to grade -- the one class is graded under the HOME's document, which is
+    the whole of what this row fixed.  39 of the 1,054 paths are of that kind.
+
+    **The equality still reddens in BOTH directions and nothing is weakened by this**: a
+    non-home duplicate that started declaring again would appear on the left and not on the
+    right, and a declaring document that stopped would appear on the right and not on the
+    left.  What changed is which documents the right-hand side names, and that is a reading
+    of the BUNDLE rather than a list -- so a bundle version that stops shipping the
+    duplicates narrows nothing and needs no edit here.
+    """
+    repeated = bundle.repeated(BUNDLE)
+    emitted = set(compiled(BUNDLE, tree_population()).emitted)
+    declaring = claimed("emitted documents that DECLARE a class", emitted - set(repeated))
+    rows = graded()
+    assert {g.ref.document for g in rows} == declaring
+    roots = [g for g in rows if g.ref.pointer == "#"]
+    assert sorted(g.ref.document for g in roots) == sorted(declaring)
+    nested = [g for g in rows if g.ref.pointer != "#"]
+    assert nested, "no nested class was emitted; the pointer case is graded by nothing"
+    for g in nested:
+        assert schema_at(g.ref) != schema_at(SchemaRef(g.ref.document, "#")), g.ref
+    aliases = [g for g in rows if not isinstance(g.model, type)]
+    assert aliases, "no root-scalar alias was emitted; that case is graded by nothing"
+
+
+# --------------------------------------------------------------------------- #
+# the three checks
+# --------------------------------------------------------------------------- #
+def test_pagination_request_passes_all_three_checks() -> None:
+    """Step 1's own document, through every check the harness has.
+
+    The DENOMINATORS are asserted and not just the verdicts: a green mark without
+    the count beside it says nothing, because a pair no instance reached reports no
+    failure either.  There are two of them now and they are different questions --
+    how many instances were drawn, constructed and round-tripped, and which fact the
+    one refused payload broke.
+    """
+    rep = check_pair(pair_of(pagination()), accepts_examples=25)
+    assert rep.missing_formats == []
+    assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
+    assert rep.accepts.examples == 25, rep.accepts.examples
+    assert rep.graded_instances == 25, rep.graded_instances  # every one dumped back out
+    assert rep.liveness.outcome == "pass", (rep.liveness.how, rep.liveness.detail)
+    # The document states ``additionalProperties: false`` and demands no key, so the
+    # payload is a whole-instance replacement and the document bites on ``type``.
+    assert rep.liveness.how == "replaces the instance with None", rep.liveness.how
+    assert rep.liveness.violated == ("type",), rep.liveness.violated
+    assert rep.outcome == "pass"
+
+
+def test_the_compiler_carries_what_the_document_says_and_a_text_emitter_dropped() -> None:
+    """By introspection, not by reading the emitted text.
+
+    The four facts a document can state about a value and a hand-rolled renderer
+    silently dropped, named here one at a time so a failure says WHICH one moved.
+    All four come out of the compiler for free.
+    """
+    model = pagination().model
+    schema = schema_at(SchemaRef(PAGINATION, "#"))
+
+    assert model.model_fields["max_results"].default == schema["properties"]["max_results"]["default"]
+    assert model.model_fields["max_results"].default == 50
+    assert {
+        name: field.description for name, field in model.model_fields.items()
+    } == {name: node["description"] for name, node in schema["properties"].items()}
+    #: **The FIELD's own schema and not an ``anyOf`` over it and ``null``**, which is
+    #: :data:`adcp.types._base.OmittedNotNull`'s visible half: the document declares
+    #: ``max_results`` outside ``required`` with ``{"type": "integer", "minimum": …}`` and
+    #: says nothing about ``null``, so a published null arm was the model stating a fact
+    #: its document does not (``adcp-client-python-4yhb``).  The navigation through that
+    #: arm is gone and the arm is asserted ABSENT, which is stronger than the subscript it
+    #: replaces -- a fifth fact the document states and the model now does not drop.
+    emitted = model.model_json_schema()["properties"]["max_results"]
+    assert "anyOf" not in emitted, emitted
+    assert (emitted["minimum"], emitted["maximum"]) == (
+        schema["properties"]["max_results"]["minimum"],
+        schema["properties"]["max_results"]["maximum"],
+    )
+    assert model.model_config["extra"] == "forbid"  # D7, from additionalProperties: false
+    assert model.__adcp_schema__ == SchemaRef(PAGINATION, "#")
+
+
+def test_a_zero_denominator_is_not_reportable_as_a_pass() -> None:
+    """The other half of the rule, and it needs its own fixture.
+
+    The rule is right -- a pair no instance reached is graded by nothing -- and the
+    test above shows it is not what catches a wide model.  So it is graded here on
+    the thing that does produce a zero denominator: an entry point that refuses
+    with an exception that is not pydantic's, which is what the specification's own
+    probe did.  Nothing round-trips, the denominator is 0, and the pair's verdict
+    names the entry point rather than passing.
+
+    **Both halves of the harness are graded here, because a foreign exception can
+    arrive at either.**  The accepts check offers an instance the document admits,
+    and the liveness check offers one it refuses; an entry point raising something the
+    caller cannot catch at either of them used to read as a pair with nothing wrong.
+    ``check_liveness`` is asserted directly with an entry point of its own, because
+    one that refuses a VALID instance and one that refuses an invalid one with the
+    wrong exception are two different wirings.
+    """
+    schema = schema_at(SchemaRef(PAGINATION, "#"))
+    model = pagination().model
+
+    def foreign_error(payload: Any) -> Any:
+        # Refuses with jsonschema's error and not pydantic's, on an instance the
+        # document ADMITS -- a string schema against this document's object root.
+        jsonschema.validate(payload, {"type": "string"})
+        return model.model_validate(payload)
+
+    rep = check_pair(Pair(name="foreign", schema=schema, model=model, accept=foreign_error))
+    assert rep.accepts.outcome == "model_error", rep.accepts.detail
+    assert "ValidationError" in rep.accepts.detail
+    assert rep.graded_instances == 0
+    assert rep.outcome == "accepts:model_error"
+
+    # ... and the same exception on the liveness check's path.
+    def foreign_refusal(_payload: Any) -> Any:
+        raise jsonschema.ValidationError("not pydantic's error")
+
+    live = check_liveness(schema, foreign_refusal, {"max_results": 1})
+    assert live.how == "replaces the instance with None", live.how
+    assert live.outcome == "model_error", (live.outcome, live.detail)
+    assert live.detail.startswith("ValidationError"), live.detail
+    # And the real entry point IS the refusal, over the same payload.
+    assert check_liveness(schema, model.strict_validate, {"max_results": 1}).outcome == "pass"
+
+
+def test_a_zero_denominator_verdict_is_never_pass() -> None:
+    """The rule itself, on a report built to have a zero denominator.
+
+    The test above reaches the zero through an entry point that errors, so the
+    verdict it gets is ``accepts:model_error`` and the branch that says "nothing
+    reached the model and nothing went wrong" is not exercised by it.  No document
+    in this population produces that with every check healthy, so it is graded here
+    on a report rather than on a pipeline, which is the right level: the rule is a
+    property of ``PairReport``.
+
+    Asserted to be something other than ``pass``, so deleting the branch fails this
+    test rather than silently turning a pair nothing reached into a green mark.
+    """
+    refused = LivenessResult(how="replaces the instance with None", outcome="pass")
+
+    nothing_round_tripped = PairReport(
+        name="n",
+        accepts=AcceptsResult(examples=25, outcome="pass", round_tripped=0),
+        liveness=refused,
+    )
+    assert nothing_round_tripped.graded_instances == 0
+    assert nothing_round_tripped.outcome == "no_accepts_check_evidence"
+
+    # ... and one instance reaching the model and coming back out is the whole
+    # difference.
+    reached = PairReport(
+        name="r",
+        accepts=AcceptsResult(examples=25, outcome="pass", round_tripped=1),
+        liveness=refused,
+    )
+    assert reached.graded_instances == 1
+    assert reached.outcome == "pass"
+
+
+def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() -> None:
+    """The admissibility rule, on reports built to have each answer.
+
+    ``no_instrument`` is the harness's one admitted non-pass outcome, and what it is
+    admitted FOR is a position whose ``format`` strategy cannot satisfy the ``pattern``
+    beside it -- ``salesagent-j3k2l.10``.  72 of the bundle's 73 format-beside-pattern
+    positions draw, so "this document states the two keywords somewhere" does not
+    identify the shape: it would speak for a generator failure from any cause at all.
+
+    Graded here on a report rather than on a pipeline, for ``test_a_zero_denominator_
+    verdict_is_never_pass``'s own reason -- the rule is a property of ``PairReport``
+    and no document in this population produces the refusing cell.  The population
+    side is ``test_no_instrument_is_the_designed_outcome_for_a_measured_shape``.
+    """
+    refused = LivenessResult(how="replaces the instance with None", outcome="pass")
+    errored = AcceptsResult(examples=1, outcome="strategy_error", detail="Unsatisfiable: 9 of 9")
+
+    # A generator failure a measured position explains: the admitted exit, and the
+    # cause carries the position and hypothesis's own reason.
+    explained = PairReport(
+        name="e",
+        accepts=errored,
+        liveness=refused,
+        accepts_undrawable=("/p: format 'uri' beside pattern '^https://x/' [Unsatisfiable: 9]",),
+    )
+    assert explained.outcome == "no_instrument"
+    assert explained.no_instrument == (
+        "accepts: /p: format 'uri' beside pattern '^https://x/' [Unsatisfiable: 9];"
+        " Unsatisfiable: 9 of 9",
+    )
+
+    # ... and the same generator failure with NOTHING explaining it is a verdict on
+    # the pair.  Deleting either half of the rule fails here.
+    unexplained = PairReport(name="u", accepts=errored, liveness=refused)
+    assert unexplained.no_instrument == ()
+    assert unexplained.outcome == "accepts:strategy_error"
+
+
+#: **The harness result over the whole population, as pins.**  Every one of these
+#: was MEASURED on this tree after the section-6 rebuild; none is carried from the
+#: per-keyword harness, because three of that one's figures no longer exist to
+#: re-point -- the step-site count, the refuses-check instance total, and the
+#: ``no_constraint_to_step`` partition.
+#:
+#: Each is an EQUALITY.  The old refuses-check instance total was a floor, because
+#: it counted hypothesis draws across 27,791 step sites and seven readings of it on
+#: indistinguishable trees spread over 0.4%.  There is one draw per pair now, so every
+#: figure here is a function of (bundle, emitted tree) and reproduces exactly.
+#: 1055 -> 1085 at ``salesagent-j3k2l.28``: three refusals are gone, so 14 more
+#: documents emit and bring their own nested pairs.  Re-measured, not derived from the document count: a document carries
+#: between one and a dozen pairs.
+#: 1085 -> 1079 at ``salesagent-j3k2l.38``: D3's content dedup collapses 10 nodes, and
+#: the 6 of them that are CLASSES are 6 pairs that no longer exist.  The other 4 are
+#: enumerations, which carry no ``__adcp_schema__`` and were never pairs -- which is why
+#: this moves by 6 against that row's 10 and the two numbers are different senses.
+#: 1079 -> 1090 at ``salesagent-j3k2l.21``: eleven more documents emit, each at
+#: least one pair, and the StrEnum that row removed from
+#: ``error-details/accessibility-violation.json`` took no pair with it -- an
+#: enumeration carries no ``__adcp_schema__`` and was never one.
+#: A FLOOR and not an equality, and the direction is the reason.  Every emitting row
+#: ADDS pairs -- a document that lowers brings its own nested ones -- so an equality
+#: here is red on two branches at once with two different correct values, which is
+#: exactly the collision ``salesagent-j3k2l.47`` converted.  What a floor still refuses
+#: is the failure this number exists for: a class that stopped carrying
+#: ``__adcp_schema__``, or a document that stopped being emitted, takes the count DOWN.
+#: The history of the equality, kept because each move names a cause: 1055 -> 1085
+#: (.28, three refusals gone), 1085 -> 1079 (.38, D3's dedup collapses 6 class pairs),
+#: 1079 -> 1090 (.21, eleven more documents emit), 1090 -> 1095 (.64, the typed mapping
+#: key: two more documents emit and each brings its mapping's nested value classes).
+PAIRS_FLOOR = 1095
+#: **Every pair that is not ``pass``, BY NAME, and written once.**  Two tests read it:
+#: the totals test derives its ``pass`` figure as the complement, and
+#: ``test_the_non_pass_pairs_are_named_and_attributed`` asserts the membership and
+#: attributes each one.  A count told the next reader nothing about WHICH pairs or why;
+#: a name says which, and two readings of one named set cannot drift apart the
+#: way ``PAIRS_PIN`` and ``OUTCOME_PINS`` could.
+#:
+#: One group was GONE rather than smaller: ``accepts:model_dropped_a_fact``'s three pairs
+#: are EXEMPT and the exemption is reported (``codegen.dump_exemptions``, and the
+#: ``exempt`` census in the test named above).
+#: Of :data:`NON_PASS_PAIRS`'s groups, the ones whose pairs round-trip NO instance.  A
+#: pair the generator could not draw for grades 0 instances, and so does one whose dump
+#: the document refused.  Named so the complement in
+#: ``test_the_harness_result_is_counted_over_the_whole_population`` is a derivation from
+#: the mechanism rather than a second count.
+ROUND_TRIPS_NOTHING = ("no_instrument",)
+
+NON_PASS_PAIRS: dict[str, list[str]] = {
+    "no_instrument": [
+        "core/reference-renderer.json#",
+        "core/reference-renderer.json#/properties/provenance",
+    ],
+    # A group with no pair is removed rather than left as an empty list, because
+    # ``set(by_outcome) == {"pass"} | set(NON_PASS_PAIRS)`` would then demand an
+    # outcome no pair has.
+}
+#: The pairs whose LIVENESS check has no payload, by name.  Written once and read by the
+#: two tests that need it, so ``pass`` is the complement of a named set rather than an
+#: arithmetic over two pins.  These are the same two pairs ``NON_PASS_PAIRS`` names and
+#: the coincidence is not asserted: "the accepts check drew no instance" and "the pair's
+#: verdict is ``no_instrument``" are two statements about one cause, and a row that
+#: separates them should redden in one place and not both.
+#: Section 8's one-way invariant, as a floor: "a step adds roots to
+#: ``BranchDispatchMixin``; no step removes one."  38 before the alias dispatch, 38
+#: after it, 38 after D2's Literal amendment -- and the reason it never moved is that
+#: no row had yet added a base, not that an addition would be wrong.
+UNION_BASE_FLOOR = 38
+#: **The two PERMISSIVE root models join at ``adcp-client-python-10l.20``, and they are
+#: the one shape for which "no payload" is the DOCUMENT'S answer rather than the
+#: generator's reach.**  §4's last table row makes a root stating no schema keyword a
+#: permissive root model, and §5(b)'s measurement of what that is faithful TO is exactly
+#: why there is no payload to derive: "``Draft7Validator`` accepts ``42``, ``"x"``,
+#: ``null``, an object and an array, so the permissive model is exactly as wide as the
+#: document."  A document that REFUSES NOTHING has no refusable instance, so the liveness
+#: check has nothing to offer the pair -- which is a fact about the document and not a
+#: gap in the draw.  The two are the roots stating only ``if``/``then``, whose ``then``
+#: narrows a VALUE and so states nothing a payload can violate at the root
+#: (§5's ``then``/``else`` row: "Its ``properties`` -> nothing on the model; the schema
+#: half narrows the value").
+NO_PAYLOAD_PAIRS: tuple[str, ...] = (
+    "core/reference-renderer.json#",
+    "core/reference-renderer.json#/properties/provenance",
+    "core/targeting-unknown-age-eligibility-constraint.json#",
+    "core/targeting-verified-age-basis-constraint.json#",
+)
+
+
+#: **The xdist work unit the four readers of :func:`graded_reports` share**, and the
+#: reason it has to exist: ``functools.cache`` is per PROCESS, and xdist's default
+#: scheduler assigns by test, so four readers of one cached pass land on up to four
+#: workers and the pass is paid once per worker.
+#:
+#: Measured, full suite at ``-n 24`` on the base of ``adcp-client-python-10l.31``, with
+#: the default ``--dist=load``:
+#:
+#: ===================================================== ======= ========
+#: reader                                                 worker  seconds
+#: ===================================================== ======= ========
+#: ``..._the_liveness_check_reaches_every_pair_...``       gw11     3152.4
+#: ``..._the_harness_result_is_counted_over_...``          gw22     3027.9
+#: ``..._a_refused_payload_is_derived_for_every_pair_...`` gw8      2675.4
+#: ``..._the_non_pass_pairs_are_named_and_attributed``     gw22        0.0
+#: ===================================================== ======= ========
+#:
+#: 8,855 s in three items, 31% of the run's whole 28,172 s of test time, for work the
+#: docstring below already says is one pass -- and the fourth row is the PROOF: it
+#: landed on gw22 beside the second, read the warm cache, and cost nothing.
+#:
+#: ``--dist=loadgroup`` in ``pyproject.toml`` is what reads this mark.  Grouped and
+#: re-measured at ``-n 10``, the four are one unit of **3,314.5 s** on one worker and the
+#: other nine finish in 1,331-2,111 s: the run went 4,084 s -> 3,322 s and its worker time
+#: 28,172 s -> 17,061 s, with the same three failures by name.
+#:
+#: **The unit is then the whole ceiling**, 3,314.5 s against a 3,322 s run, so no ``-n``
+#: and no scheduler shortens it further -- 1,628 pairs graded serially in one process, of
+#: which ``media-buy/get-media-buy-delivery-response.json#`` alone is 1,846.8 s on a
+#: 2,701,506-byte resolved schema.  That one is ``check_accepts``'s cost and not this
+#: file's.
+#:
+#: **AND THAT COST IS NOW MEASURED AND HELD** (``adcp-client-python-10l.51``).  Over all
+#: 1,664 pairs, single process: ``check_pair`` is 2,015.6 s, of which ``check_accepts`` is
+#: 2,000.8 s (99.3%) and ``from_schema`` ALONE is 1,509.9 s -- **74.9% of the pair and
+#: 75.5% of the accepts check** -- against 0.35 s for the half that constructs, dumps and
+#: re-validates.  The grading is three parts in ten thousand of the pair; the rest is
+#: building a strategy over a record the suite has already built one over.  So the drawn
+#: instances are held content-addressed in ``tests/corpus.py`` and replayed, which is what
+#: both readers below pass ``corpus=`` for -- and the two passes over this population,
+#: this one and the parametrised test, now fill and read ONE corpus rather than drawing
+#: the same 1,664 instances twice.
+#:
+#: **AND ``widening_corpus`` IS THE SECOND HALF OF THE SAME SENTENCE**
+#: (``adcp-client-python-3be.25``).  With the accepts draws all replayed, the pole moved to
+#: §8's obligation, which draws again from schemas it derives out of the pair's node: 246.7
+#: s on one pair of ``core/async-response-data.json`` and over 600 s on another, measured
+#: with every accepts draw answered by the committed floor.  ``harness._Draws`` carries the
+#: reading; ``corpus.WIDENING_STORE`` is where it lands, and it is a SEPARATE key space so
+#: that the accepts floor's own both-directions gate keeps meaning what it says.
+#:
+#: **AND THE UNIT IS SIX READERS AND NOT FOUR, because the pass is also asked for ONE PAIR
+#: AT A TIME.**  :func:`graded_report` is the per-pair grade the pass is made of, and two
+#: tests ask for it by name rather than reading a total -- the parametrised
+#: ``test_every_class_passes_all_three_checks`` over all 2,584 pairs and
+#: ``test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier`` over the 206
+#: that declare.  Both were ungrouped, and both paid the whole cost of the pairs the
+#: committed floor does not answer, on whichever worker they landed on.  Measured at
+#: ``-n 4`` on the base of this row, against a 2,344 s wall clock:
+#:
+#: ======================================================= ========
+#: reader                                                   seconds
+#: ======================================================= ========
+#: ``..._a_refused_payload_...`` (the pass itself)             853.5
+#: ``test_every_class_passes_all_three_checks`` (2,584)        877.5
+#: ``..._every_declared_fact_holds_a_value_...``               784.7
+#: ======================================================= ========
+#:
+#: 2,515.7 s for one pass's worth of work, done three times.  The second and third rows
+#: are now cache reads in this unit, and ``tests/test_every_check_names_its_set.py``'s
+#: gate reads BOTH names so a per-pair asker cannot be added back outside it.
+GRADED_REPORTS_GROUP = "graded_reports"
+
+
+@functools.cache
+def graded_reports() -> list[tuple[Graded, PairReport]]:
+    """Every graded pair, graded ONCE.
+
+    **One pass over the population, shared by the four tests that read a total.**
+    Each of them used to grade every pair itself -- 1,055 of them then and 1,628 of them
+    now -- so the suite made four
+    passes and each was a single indivisible pytest item -- xdist
+    distributes BY TEST, so a test looping the population cannot be split and the
+    other workers cannot help it.  Caching here makes the pole one pass instead of
+    four; the per-pair test below stays parametrised, because that is the form
+    xdist CAN spread.
+
+    ``functools.cache`` and not a fixture, because ``graded()`` and ``pair_of``
+    are module functions and the reports are a pure function of the emitted tree.
+
+    **And the cache does not cross a PROCESS, so every reader carries
+    :data:`GRADED_REPORTS_GROUP`.**  Without the mark the sentence above is true of a
+    serial run and false of every parallel one, which is every run: the figures beside
+    that constant are three of the four readers paying the full pass on three different
+    workers.  A fifth reader added here takes the mark too, or it adds a whole pass.
+    """
+    return [(g, graded_report(g)) for g in graded()]
+
+
+#: Seconds one pair of this suite's grading pass may spend before the run reports
+#: ``over_budget`` under that pair's own name.
+#:
+#: **THIS IS WHAT MAKES THE FILE RUNNABLE IN ONE INVOCATION, and ``pyproject.toml``'s own
+#: ``timeout`` section is the row that asked for it**: "The pair grade's own budget belongs
+#: on the pair grade, as a marker on that test, and that is a row -- not a figure here that
+#: every other check then has to live under."  That section also measures why the global
+#: backstop cannot be it: ``pytest-timeout``'s signal method arms a ONE-SHOT
+#: ``signal.alarm``, ``hypothesis``'s garbage-collection callback swallows it, and "the pair
+#: then ran thirteen minutes against a 45 s budget with no alarm left to fire".
+#: :func:`harness.within` repeats its timer for exactly that reason, which is why the bound
+#: has to come from here and not from the plugin.
+#:
+#: **WHAT THE NUMBER IS, measured on this base rather than chosen.**  Over all 2,593 graded
+#: pairs, floor-only, the whole population costs 370.6 s of pair time of which 300 s is ONE
+#: pair: 2,591 of them are 0.0-7.8 s, ``creative/sync-creatives-response.json#`` is 33.2 s,
+#: and ``media-buy/get-media-buys-response.json#`` exceeds every bound tried.  There is
+#: nothing between 33 s and unbounded, so the bound is far enough above the slowest pair
+#: that grades that no working check can reach it.
+#:
+#: **AND A CUT IS A NAMED RED AND NEVER A SKIP.**  ``OverBudget`` is a ``BaseException``
+#: and is caught BY NAME one frame out, exactly as ``codegen/__main__.py`` catches it; the
+#: pair then FAILS with ``over_budget`` and its own pointer in the message, so it lands in
+#: the junit XML as itself.  No ``xfail``, no ``skip``, no exemption list: the residue is
+#: visible as a failure under its own name, which ``docs/plan/final-state.md`` reading 1
+#: requires and an unobtainable run cannot give.
+#:
+#: **AND §9 CONDEMNS IT, WHICH IS WHY THIS PARAGRAPH IS HERE AND NOT A DEFENCE.**
+#: ``docs/plan/architecture.md`` §9 now states the rule: "A CHECK'S COST IS LINEAR IN THE
+#: DOCUMENT'S NODES, EACH VISITED ONCE -- AND A BUDGET IS EVIDENCE THAT ONE IS NOT ...
+#: every pair such a budget cuts is a check that did not run, recorded as though something
+#: had been learned."  The paragraph above argues the number is high enough that "no
+#: working check can reach it"; §9's answer is that the argument is the wrong kind.  **This
+#: constant is owed a deletion and ``adcp-client-python-l6xn`` owns it.**
+#:
+#: **WHAT THE PAIRS IT CUTS ACTUALLY COST, PROFILED RATHER THAN SUPPOSED** (``cProfile``
+#: and ``py-spy``, one process, warm compile and warm corpora, no budget -- the lane that
+#: tried to delete this constant):
+#:
+#: * ``core/signal-coverage-forecast.json#`` was 435.2 s, of which 432.1 s was
+#:   ``check_accepts`` -- and **none of it was ``5pb``'s power set**:
+#:   ``merged_as_strategies`` was never reached, because
+#:   ``harness.a_combinator_is_covered_and_never_enumerated`` already bounds it.  It was
+#:   ``hypothesis_jsonschema`` rebuilding the strategy for every key of every instance of
+#:   every one of 1,092 generated test cases -- 72,860 ``__from_schema`` calls for 6,844
+#:   distinct nodes, because ``from_object_schema`` is an ``@st.composite`` that calls
+#:   ``__from_schema`` and ``merged_as_strategies`` INSIDE the draw.  That is §9's second
+#:   arm, "linear already and merely repeated", and
+#:   ``harness.a_strategy_is_built_once_per_node`` is the memoisation §9 calls "the design
+#:   and not an optimisation": **435.2 s to 9.0 s, same verdict, down to the text of its
+#:   ``strategy_error``.**  This pair now grades well inside the bound and the bound is
+#:   not what reports it.
+#:
+#: * ``media-buy/get-media-buys-response.json#`` and
+#:   ``media-buy/refine-proposals-response.json#`` are a DIFFERENT defect and the memo
+#:   does not reach them.  598.7 s of 600 s is in ``check_widening`` and **0.0 s in
+#:   ``check_accepts``** -- the accepts floor answers both.  The stack is
+#:   ``check_widening`` -> ``_Draws.one`` -> ``_Draws._draw`` -> ``Fixtures.reduced`` ->
+#:   ``_pin`` -> ``value`` -> ``one_instance``, and §8's fixture derivation makes **509
+#:   whole generative draws for one pair** -- one per frontier location, recursively --
+#:   at 92 s of leaf time; of those 509, the ones measured raise ``Unsatisfiable`` on
+#:   nodes of 411 to 427 bytes, which is §8's own named caveat that two pins meeting on
+#:   one location EMPTY it.  The reduction then places too little, and ``_draw`` falls
+#:   through to its fail-safe -- ``one_instance`` on the UNREDUCED node -- which for a
+#:   683,849-byte node does not terminate: 43 minutes and 17.7 GB of resident memory on
+#:   one pair with every memo above already applied, and the draw still running.
+#:
+#: So the two are not a cost to cache and not a budget to raise: they are §9's FIRST arm,
+#: a fail-safe whose cost is unbounded, and the repair is in
+#: ``harness.Fixtures``/``_Draws._draw`` rather than in this figure.
+#: ``adcp-client-python-l6xn`` carries all of the above, and this constant goes with it.
+PAIR_BUDGET = 300
+
+
+@functools.cache
+def graded_report(g: Graded) -> PairReport:
+    """One pair's three checks, bounded by :data:`PAIR_BUDGET`.
+
+    The one place this file grades a pair, so the bound cannot be present in one reader of
+    the population and absent in another -- which is the shape the whole-file hang was:
+    :func:`graded_reports`' pass and the parametrised test below both grade every pair, and
+    a bound on one of them leaves the other able to hang the run on its own.
+
+    **CACHED, AND THE CACHE IS WHAT ``graded_reports`` ALWAYS CLAIMED TO BE.**  The pass
+    above is ``functools.cache``d and its docstring says "the pole one pass instead of
+    four" -- but the per-PAIR grade was not, so a second reader asking for one pair by name
+    re-graded it even inside the same process, and the whole-population cache could not
+    answer a question asked one pair at a time.  Measured on the base of this row, at
+    ``-n 4``: ``test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier``
+    asks for 206 pairs by name and cost **784.7 s** doing it, every second of which
+    ``graded_reports`` had already paid in another worker -- and
+    ``test_every_class_passes_all_three_checks`` cost a further **877.5 s** over 2,584
+    items for the same reason.  Both are pure duplication: the report is a function of the
+    pair, which is why it can be cached at all, and :data:`GRADED_REPORTS_GROUP` is what
+    puts the askers in the process that holds it.
+    ``Graded`` is a ``NamedTuple`` of the ref, the class and its constructor, so the key is
+    the pair itself and there is no second name for one report.
+
+    A cut is reported as a ``PairReport`` whose every check NAMES the budget, so a reader
+    of a total sees the pair and the reason rather than an exception out of a list
+    comprehension -- and **all three and not only the accepts one**, because a ``None``
+    result is read as ``unrun`` by :attr:`PairReport.outcome` and as an ``AttributeError``
+    by the three tests that group the population by ``r.liveness.outcome``.  A crash in a
+    reader is not a report about a pair, which is the whole distinction this function
+    exists to keep.
+    """
+    try:
+        with harness.within(PAIR_BUDGET):
+            return check_pair(
+                pair_of(g),
+                custom_formats=FORMAT_STRATEGIES,
+                corpus=corpus.STORE,
+                widening_corpus=corpus.WIDENING_STORE,
+                fixtures=fixtures(),
+            )
+    except harness.OverBudget:
+        name = f"{g.ref.document}{g.ref.pointer}"
+        why = f"{name} did not grade inside {PAIR_BUDGET} s"
+        return PairReport(
+            name=name,
+            accepts=AcceptsResult(outcome="over_budget", detail=why),
+            liveness=LivenessResult(outcome="over_budget", how=why),
+            #: ``WideningResult.outcome`` is DERIVED, so a cut is spelled with the field
+            #: that makes it one: ``detail`` is read as ``error`` there, which is what a
+            #: check that did not run is -- never ``pass`` and never ``no_declarations``.
+            widening=WideningResult(detail=why),
+            #: **And reading 2's undeclared direction too, for the reason above: ALL of
+            #: them and not only the accepts one.**  Left ``None`` this would be read as
+            #: ``unrun`` by one reader and as an ``AttributeError`` by the next, and a
+            #: crash in a reader is not a report about a pair.  ``over_budget`` and never
+            #: ``no_witness``: the budget was spent, which is not the document having
+            #: nothing to refuse.
+            undeclared=RefusesResult(outcome="over_budget", detail=why),
+            #: **And reading 1's witness-derived half, for the same reason again: ALL of
+            #: them and not only the accepts one** (``adcp-client-python-87ll``).  Left
+            #: ``None`` this reads ``unrun`` to :attr:`PairReport.outcome` -- "the accepts
+            #: check drew no instance" -- which is a statement about the DRAW and not
+            #: about a budget that was spent, and the cell beside it would say so.
+            admits=AdmitsResult(outcome="over_budget", detail=why),
+        )
+
+
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
+def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for() -> None:
+    """``no_payload`` is the complement of the accepts check's draw, and nothing else.
+
+    ``refusing_payload`` tries three perturbations of an accepted instance and screens
+    every one against the DOCUMENT, so ``no_payload`` could in principle mean either of
+    two things: the document admits all three shapes, or there was no accepted instance
+    to perturb.  **Measured over the population, it only ever means the second.**  Every
+    one of the 1,053 pairs the accepts check drew an instance for yielded a payload the
+    document refuses, and the 2 that did not are exactly the 2 whose generator could not
+    draw -- so the derivation reaches every pair it is given anything to work with.
+
+    That is worth a test because the first reading of it was wrong, and it was mine: I
+    expected ``core/context.json`` and ``core/ext.json``, the
+    ``additionalProperties: true`` mapping roots, to refuse nothing.  They state
+    ``type: object``, so the whole-instance replacement with ``None`` is refused and they
+    are graded like everything else.  A document refusing NOTHING would have to state no
+    root type at all, and this bundle has none.
+    """
+    reports = graded_reports()
+    excused = sorted(
+        f"{g.ref.document}{g.ref.pointer}" for g, r in reports if r.liveness.outcome == "no_payload"
+    )
+    assert excused == sorted(NO_PAYLOAD_PAIRS), excused
+    # **Read off the reports rather than off the list, and there are TWO CAUSES since
+    # ``adcp-client-python-10l.20``.**  :data:`NO_PAYLOAD_PAIRS`' own comment forecast the
+    # split -- "'the accepts check drew no instance' and 'the pair's verdict is
+    # ``no_instrument``' are two statements about one cause, and a row that separates them
+    # should redden in one place and not both" -- and §4's permissive root model is what
+    # separates them.  For that shape the draw SUCCEEDS, because the document admits every
+    # instance; what has no payload is the REFUSAL, because the document refuses nothing.
+    # So the cause is asserted per pair and the two are partitioned by name below rather
+    # than collapsed into one sentence.
+    #
+    # Last paragraph of this docstring, inverted by that same row: "A document refusing
+    # NOTHING would have to state no root type at all, and this bundle has none" -- it has
+    # five, and two of them emit here (the other three are the registry documents, still
+    # refused on a data key's cell).
+    causes: dict[str, set[str]] = {"drew_no_instance": set(), "refuses_nothing": set()}
+    for g, r in reports:
+        if r.liveness.outcome != "no_payload":
+            assert r.liveness.how, (g.ref, r.liveness.outcome)
+            continue
+        name = f"{g.ref.document}{g.ref.pointer}"
+        assert r.liveness.how == "", (g.ref, r.liveness.how)
+        if r.accepts.outcome == "strategy_error":
+            assert r.liveness.detail == "the accepts check drew no instance", r.liveness.detail
+            causes["drew_no_instance"].add(name)
+            continue
+        # The other cause, asserted as the SHAPE it is rather than as a name: the pair's
+        # document is the empty schema, so every value is admissible and no value is
+        # refusable.  Both halves are checked against the document itself.
+        assert r.accepts.outcome == "pass", (g.ref, r.accepts.outcome)
+        # The DOCUMENT's own answer and not a predicate of ours: draft-07 is what
+        # decides that the empty schema admits everything, so the check is that its own
+        # validator admits a value of every JSON type.
+        node = schema_at(g.ref)
+        validator = jsonschema.Draft7Validator(node)
+        assert all(
+            validator.is_valid(value) for value in (42, "x", None, True, {}, [])
+        ), (g.ref, node)
+        causes["refuses_nothing"].add(name)
+    partitions(set(NO_PAYLOAD_PAIRS), **causes)
+    assert causes["refuses_nothing"] == {
+        "core/targeting-unknown-age-eligibility-constraint.json#",
+        "core/targeting-verified-age-basis-constraint.json#",
+    }, sorted(causes["refuses_nothing"])
+    # The two mapping roots this test's own premise got wrong, asserted the right way
+    # round: they state a root type, so the replacement IS refused and they ARE graded.
+    for name in ("core/context.json#", "core/ext.json#"):
+        g = next(x for x in graded() if f"{x.ref.document}{x.ref.pointer}" == name)
+        schema = schema_at(g.ref)
+        assert schema.get("required", []) == [] and schema["type"] == "object", g.ref
+        assert refusing_payload(schema, {}) == (None, "replaces the instance with None")
+        rep = check_pair(pair_of(g))
+        assert rep.outcome == "pass" and rep.liveness.outcome == "pass"
+        assert rep.graded_instances > 0
+
+
+def _grades_a_cause(cause: str, where: str = "") -> None:
+    """A ``no_instrument`` cause has to be specific enough to ACT on.
+
+    Graded by SHAPE and not by a sentence: the first cut asserted the substring
+    ``"contradicted by"``, the gate fix reworded that half to ``"contradicts the
+    step"``, and every undrawable pair then reddened on the wording while the pairs
+    themselves were exactly as intended.  A test that pins prose grades the prose.
+
+    Three obligations, each read off the structure:
+
+    * WHICH check could not draw -- the entry names ``accepts``, and that is now the
+      only check in this harness that draws at all;
+    * WHERE -- the document's own format-beside-pattern positions, derived from the
+      document because hypothesis raises over the whole schema and names no node;
+    * WHY -- hypothesis's own exception name, which carries the filtered-draw count.
+    """
+    assert cause.startswith("accepts: "), (where, cause)
+    assert "Unsatisfiable" in cause or "RecursionError" in cause, (where, cause)
+    assert ": format " in cause, (where, cause)
+
+
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
+@pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
+def test_every_class_passes_all_three_checks(row: Graded) -> None:
+    """N: emitted AND graded green against the schema the class itself names.
+
+    One verdict other than ``pass`` is allowed through, and it is asserted against
+    its own evidence rather than taken on trust: ``no_instrument``, where the
+    accepts check could not DRAW an instance, so the obstruction is ``hypothesis``
+    and not the model -- asserted by requiring each cause to name a shape (a format
+    beside a pattern) and not merely to exist.
+
+    **Parametrised, and the parametrisation is what makes a cut land under ONE pair's
+    name.**  Each item asserts one pair's verdict, so a residue is reported as the pair it
+    belongs to rather than as a list comprehension inside a population total -- which is
+    what ``accepts:over_budget`` needs in order to be a named red.
+
+    **GROUPED ONTO THE PROCESS THAT HOLDS THE PASS, which is a correction of the sentence
+    that stood here.**  It said the parametrisation "is load-bearing for the suite's wall
+    clock ... 1,055 work items that spread across the workers", and that was true while
+    each item paid for its own grade.  It is no longer: :func:`graded_report` is cached and
+    :func:`graded_reports` grades exactly :func:`graded`, which is this parametrize's own
+    argument -- so every item here is a report the same process has already computed, and
+    spreading them spreads not work but a *re-derivation* of work.  Measured at ``-n 4`` on
+    the base of this row: 877.5 s over these 2,584 items, **821.3 s of it in six of them**,
+    all six already graded by the pass.  Grouped, the items are cache reads and the six
+    are paid once.
+    What spreading cost is the other half of the same measurement: the six are pairs whose
+    draw the committed floor does not answer, so wherever they landed they re-paid the
+    whole :data:`PAIR_BUDGET` beside a worker that had already spent it.
+
+    **And BOUNDED, by :data:`PAIR_BUDGET`, which is what makes this file completable in
+    one invocation.**  A pair whose draw does not terminate used to hang the worker it
+    landed on -- ``harness.within`` had exactly one caller and it was not here -- so the
+    item neither finished nor reported anything and the whole run was unobtainable.  A cut
+    is now ``accepts:over_budget`` with this pair's own name in the message, asserted below
+    like any other non-pass verdict: a NAMED RED, not an ``xfail``, not a skip and not an
+    exemption, which is the only honest form a residue can take.
+    """
+    rep = graded_report(row)
+    assert rep.missing_formats == []
+    if rep.accepts.outcome != "strategy_error":
+        assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
+        assert rep.graded_instances > 0, "nothing was constructed and dumped back out"
+    assert rep.liveness.outcome in ("pass", "no_payload"), (rep.liveness.outcome, rep.liveness.how)
+    #: **Reading 2's undeclared direction, asserted with its WITNESS and not only its
+    #: outcome** (``adcp-client-python-x63t``).  ``rep.outcome`` already carries
+    #: ``undeclared:widened_undeclared`` below, so this adds no obligation -- it adds the
+    #: VALUE, because a pair reported "wider than its document" and nothing else leaves the
+    #: reader to rebuild the witness before they can act, and §2's whole rule is about
+    #: values.  ``no_witness`` and ``unrun`` are the two answers that say the class was
+    #: never asked; an unreached conditional is a ``pass`` HERE and ``absent`` in the
+    #: table's own cell, which is where the reach is reported.
+    assert rep.undeclared is not None, "the undeclared-widening check did not run"
+    assert rep.undeclared.outcome in ("pass", "no_witness", "unrun"), (
+        rep.undeclared.outcome,
+        [(keyword, candidate) for candidate, keyword, _, _ in rep.undeclared.undeclared[:3]],
+    )
+    if rep.outcome == "no_instrument":
+        assert rep.no_instrument, rep.name
+        for cause in rep.no_instrument:
+            _grades_a_cause(cause)
+    else:
+        assert rep.outcome == "pass", rep.outcome
+
+
+def _declaring_class(model: type, name: str) -> type | None:
+    """The class in ``model``'s MRO whose own body declares the field ``name``.
+
+    Read off ``__annotations__`` in each class's own ``__dict__`` and never off
+    ``model_fields``, which pydantic flattens: a field a base declares is in the
+    subclass's ``model_fields`` with no record of where it came from, and WHERE it came
+    from is what says which document declares it.
+    """
+    return next(
+        (c for c in model.__mro__ if name in getattr(c, "__dict__", {}).get("__annotations__", {})),
+        None,
+    )
+
+
+def _refuses_a_null(root: dict, declarations: tuple[Any, ...]) -> bool:
+    """Does the DOCUMENT refuse a JSON ``null`` at a property these subschemas declare.
+
+    The declarations are conjoined the way draft-07 spells a conjunction -- an ``allOf``
+    -- for ``adcp.types._base._conjunction``'s reason: a key two views declare is one key
+    whose declarations compose, and merging them keyword by keyword would be a second copy
+    of §2's intersection.  A single declaration is passed as itself, so the commonest case
+    is validated against the node the document states and not against a wrapper.
+
+    The validator is built on ``root`` and evolved onto the declaration, which is
+    ``_base._refuse``'s own arrangement and is what makes a LOCAL ``$ref`` inside the
+    declaration resolve: ``bundle.record`` leaves one, and a validator built on the
+    fragment alone raises ``Unresolvable`` rather than answering.
+    """
+    node = declarations[0] if len(declarations) == 1 else {"allOf": list(declarations)}
+    cls = jsonschema.validators.validator_for(root)
+    validator = cls(root, format_checker=cls.FORMAT_CHECKER)
+    return bool(list(validator.evolve(schema=node).iter_errors(None)))
+
+
+@pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
+def test_every_optional_field_refuses_an_explicit_null_where_its_document_refuses_one(
+    row: Graded,
+) -> None:
+    """**Reading 1 at an OPTIONAL property, which is the clause the tree had no check for**
+    (``adcp-client-python-4yhb``).
+
+    The clause: *for every emitted field that is optional and whose document property does
+    not admit ``null``, ``model_validate`` with that key set to an explicit ``null`` must
+    REFUSE* -- not merely ``strict_validate``.
+
+    What it cost unstated: every optional property is rendered ``T | None = None``, the
+    ``| None`` is there to carry ABSENCE, and pydantic reads it as a type that also admits
+    an explicit ``null``.  So the MODEL half admitted a value the document refuses at
+    13,790 of this tree's 13,961 graded optional fields, in 1,819 classes, with no
+    declaration anywhere -- and the SCHEMA half refused it, so the two halves of one class
+    disagreed about what the class accepts.  The value the bead carries is
+    ``{"kind": "fee", "name": "ad_serving", "rate": null}`` at
+    ``pricing-options/price-breakdown.json#/properties/adjustments/items``, whose document
+    refuses on the property's own ``type: number``.
+
+    **BOTH DIRECTIONS, as a set equality, because one of them alone is the defect read
+    backwards.**  A property whose document DOES admit ``null`` -- ``type: [..., "null"]``,
+    171 fields here -- must keep its plain ``| None``: marking one would be a NARROWING
+    manufactured out of the repair, which is the direction reading 2 says a caller learns
+    about immediately and is blocked by.  So the marker's presence is asserted to EQUAL the
+    document's refusal, and the refusal itself is then put to a value: the presence of
+    ``OmittedNotNull`` is a property of the emitted text, and what the clause demands is a
+    behaviour.
+
+    **The declarations are read with the harness's own walk**
+    (``harness.property_declarations``) off the node ``schema_at`` returns, which is the
+    node the grade is already made against -- so this is not a second resolution of the
+    document and cannot answer about a node no other reader sees.  A key the walk finds no
+    declaration for is REPORTED and not skipped: it means the comparand at this pointer
+    does not name a property the class carries, which is a fact about the pointer
+    (``adcp-client-python-0ejo``) and is asserted to be empty.
+    """
+    model = row.model
+    if not isinstance(model, type) or not issubclass(model, AdCPBaseModel):
+        pytest.skip("D2's root-scalar row is an alias and declares no property")
+    root = schema_at(SchemaRef(row.ref.document, "#"), module=row.module)
+    #: **THE RESOLVED NODE, which is ``check_pair``'s own ``drawn_from``**: the record
+    #: leaves a LOCAL ``$ref``, and §2's intersection composes a branch class out of a
+    #: ``$ref`` conjunct -- ``brand.json#/oneOf/4``'s 27 fields are declared behind
+    #: ``{"$ref": "#/definitions/brand"}`` -- so a reader of the node as it stands finds 5
+    #: of its 34 declared keys.  The same resolution the grade is made through, so this
+    #: cannot answer about a node no other reader sees.
+    node = harness.resolve(schema_at(row.ref, module=row.module), store={}, referrer=root)
+    declared = harness.property_declarations(node, branches=True)
+    #: **A DISPATCHING base takes the marker half and not the behaviour half, and the
+    #: behaviour is asserted at its branches instead.**  Reading 3 makes a union root
+    #: resolve a payload to its branch, so ``model_validate`` on one never validates the
+    #: base's own fields: ``{"context_id": null}`` at
+    #: ``account/get-account-financials-response.json#`` comes back as one ``oneOf`` error
+    #: at the root, which is a refusal about the DISPATCH and says nothing about the
+    #: field.  A branch class SUBCLASSES the base and so carries the base's fields by
+    #: plain Python inheritance, and every branch is a pair of this population -- so the
+    #: field's own refusal is put to a value at ``#/oneOf/0`` and at every other branch,
+    #: where ``model_validate`` is the field's own validator.  Waived here and asserted
+    #: there, rather than asserted here against the dispatch.
+    dispatches = bool(getattr(model, "_branch_models", ()))
+    #: **READING 1's SECOND CHECK, at the one instance that needs no draw**: a model with
+    #: NOTHING supplied, dumped plainly.  Every marked field reads back ``None`` there, and
+    #: the document refuses a ``null`` at each of them -- so before
+    #: :data:`~adcp.types._base.OmittedNotNull`'s serialisation half, this dump carried
+    #: four explicit nulls at ``AdjustmentsItem`` and 12,000-odd across the tree, and the
+    #: project's dump check passed only because ``harness._wire_dump`` narrows the call
+    #: with ``exclude_unset`` (``tests/test_emit.py``'s own note at the exemption census).
+    #: ``model_construct`` and not a drawn payload for the reason the clause is about
+    #: absence: what is being asserted is what a plain dump does with a property NOBODY
+    #: SUPPLIED, which is exactly the instance ``model_construct`` builds, and it costs no
+    #: draw at 2,327 pairs.  Measured: 79 classes still write an explicit ``null`` here and
+    #: every one of them is at a property whose own document admits one.
+    blank = model.model_construct().model_dump(mode="json", by_alias=True)
+    #: **EVERY MARKED FIELD IS OPTIONAL, which is the marker's own premise and the half a
+    #: perturbation found ungated.**  :data:`~adcp.types._base.OmittedNotNull` is "an
+    #: optional property whose document does not admit ``null``: omit it, or supply a
+    #: value", and a REQUIRED field has no "omitted" for it to spell -- so on a required
+    #: field it is either inert (the annotation carries no ``| None`` for it to strike) or
+    #: a NARROWING (where the document declares ``type: [X, "null"]`` and requires the key,
+    #: the class would refuse a value the document admits).  Asserted over the whole field
+    #: set rather than inside the optional loop below, because what it forbids is a field
+    #: that loop never reaches.
+    marked_and_required = sorted(
+        name
+        for name, field in model.model_fields.items()
+        if field.is_required() and omits_null(field)
+    )
+    assert marked_and_required == [], (
+        f"{row.ref.document}{row.ref.pointer} {model.__name__}: {marked_and_required} are "
+        "REQUIRED and carry OmittedNotNull, which spells an absence they cannot have"
+    )
+    unnamed: list[str] = []
+    for name, field in model.model_fields.items():
+        if field.is_required():
+            continue
+        wire = field.alias or name
+        #: **A FIELD ANOTHER DOCUMENT DECLARES IS GRADED AT THAT DOCUMENT'S PAIR**, which
+        #: is reading 2's "the demand is over facts, proved at the innermost position that
+        #: carries one -- a carrying position inherits that proof; it does not owe a second
+        #: one".  ``compliance/task-completion-data.json#/anyOf/2`` composes
+        #: ``core/protocol-envelope.json``'s class, so it carries ``context_id``,
+        #: ``task_id`` and ten more fields that the envelope's own document declares and
+        #: this one says nothing about beyond ``additionalProperties: true``.  The owner
+        #: is required to BE a pair, so nothing leaves this clause unasked.
+        owner = _declaring_class(model, name)
+        where = getattr(owner, "__adcp_schema__", None)
+        if where is not None and where.document != row.ref.document:
+            assert where in {g.ref for g in graded()}, (
+                f"{model.__name__}.{name} is declared by {owner.__name__} at {where}, "
+                "which is no pair of this population, so the field is graded nowhere"
+            )
+            continue
+        declarations = declared.get(wire)
+        if not declarations:
+            #: A key the comparand does not name: the document states nothing about it,
+            #: so a MARKED field would be refusing a ``null`` on no authority -- a
+            #: narrowing manufactured out of the repair.  One field of this tree is here,
+            #: ``CreateMediaBuyCompletion.status``, which §5's "a required name no
+            #: declaration declares" row types ``Any`` and which therefore admits a null
+            #: exactly as its silent document does.
+            assert not omits_null(field), (
+                f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: the "
+                f"comparand declares no property for {wire!r} and the field refuses a null"
+            )
+            unnamed.append(wire)
+            continue
+        refused = _refuses_a_null(root, declarations)
+        assert omits_null(field) is refused, (
+            f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: the document "
+            f"{'refuses' if refused else 'admits'} an explicit null at {wire!r} and the "
+            f"field {'does not carry' if refused else 'carries'} OmittedNotNull"
+        )
+        if not refused:
+            continue
+        assert blank.get(wire, "absent") is not None, (
+            f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: a plain "
+            f"model_dump writes {wire!r} as an explicit null the document refuses"
+        )
+        if dispatches:
+            continue
+        #: **The BEHAVIOUR and not the marker**, which is the half a reading of the
+        #: emitted text cannot make: the payload is offered to ``model_validate``, the
+        #: entry point a consumer calls, and the error at this key must be the TYPE's own
+        #: and never ``missing`` -- a class whose other required keys are absent raises
+        #: anyway, and reading that as the refusal would make this clause green on a model
+        #: that admits the null and complains about something else.
+        with pytest.raises(ValidationError) as caught:
+            model.model_validate({wire: None})
+        #: **The loc PREFIX, because a union-typed field reports one error per ARM**:
+        #: pydantic's loc for ``locator: A | B | None`` is ``('locator', 'A')``, not
+        #: ``('locator',)``, so an exact match read a real refusal as none.  The prefix is
+        #: what says "this key", and the ``missing`` filter below then ranges over the
+        #: errors about this key alone -- a required key the payload omits reports at its
+        #: OWN loc and cannot satisfy the clause for this one.
+        at = [e for e in caught.value.errors() if tuple(e["loc"][:1]) in ((name,), (wire,))]
+        assert at and all(e["type"] != "missing" for e in at), (
+            f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: "
+            f"model_validate refused nothing at {wire!r}: {caught.value.errors()[:3]}"
+        )
+    #: Reported and not asserted empty, for the reason the arm above gives: a key the
+    #: comparand does not name is answered there, by the one thing the document's silence
+    #: decides -- the field may not refuse a value on no authority.
+    assert all(not omits_null(model.model_fields[n]) for n in unnamed if n in model.model_fields)
+
+
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
+def test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier() -> None:
+    """**Reading 2's second conjunct, which no check of this suite owned**
+    (``adcp-client-python-82m.57``).
+
+    ``docs/plan/final-state.md`` reading 2: "every declaration holds a value that
+    demonstrates it.  A declaration with no value behind it is an allowlist wearing a
+    measurement" -- decided by "the store of proving values containing one for each FACT,
+    where an entry recording a budget cut is not a value, and where a count over carrying
+    positions is not the count this reading names".
+
+    :func:`test_every_class_passes_all_three_checks` asserts ``accepts``, ``liveness`` and
+    ``undeclared``, and says nothing about ``rep.widening``.  So the widening column was a
+    column nothing graded: six ``fail:unproved_widening`` cells sat in it and were found by
+    a lane reading the verdict table by hand rather than by a red.  A deciding conjunct
+    with no clause is one layer worse than a clause that passes when nothing happens --
+    there is nothing to pass -- and this is the clause that owns it.
+
+    **IT COUNTS FACTS AND NOT CARRIERS, which is the whole of why it is not one more
+    ``assert`` on the parametrised test above.**  A fact stated at a node is carried by
+    every pair whose own node contains it (``render.declared_at``) and the obligation walks
+    the declaration's pointer from the carrying pair's node, so one fact is owed once and
+    offered at several positions.  Measured over the tree this run emits: of the graded
+    pairs, 206 declare something and carry 488 (pair, declaration) obligations; 29 of those
+    are UNDERDETERMINED, which no draw can see and which §8's disjointness equality grades
+    instead (``tests/test_the_declared_backlog.py``); the 459 that remain are **360 facts**
+    plus 99 obligations at a carrier that is not the fact's innermost one.  A clause keyed
+    on obligations reddens on those 99 -- which is exactly the reading reading 2's
+    amendment removes, and how an ungated conjunct becomes an over-strict one on its first
+    implementation.
+
+    **SO THE CONDITION IS THE AMENDMENT'S OWN: the innermost carrier is itself GRADED AND
+    PASSING ON THAT FACT.**  "A carrying position inherits that proof; it does not owe a
+    second one" -- but "inheritance from an ungraded position proves nothing", so a cell
+    the pair budget cut cannot stand in for a value, and a non-pass cell is admitted only
+    where every entry in it is attributable to a fact this pair carries whose innermost
+    carrier is elsewhere.  Nothing is marked, nothing is skipped and no bound is lowered:
+    the division of labour is asserted rather than assumed, and it reddens the moment a
+    fact's own innermost carrier is the position that fails.
+
+    **THE TWO CUT CELLS ARE A RED WITH AN OWNER AND NOT AN EXEMPTION HERE.**
+    ``media-buy/refine-proposals-response.json#`` (``adcp-client-python-rs0m``) and
+    ``media-buy/get-media-buys-response.json#`` (:data:`PAIR_BUDGET`'s named residue)
+    exceed the budget, so their cells carry ``detail`` and read ``error``.  They fail under
+    their own names and this clause does not re-raise that; what it refuses is to let a cut
+    count as proof.  Both are required to carry no fact whose innermost carrier they are,
+    and a cell that did not grade for any reason OTHER than that budget is a red here with
+    no further argument available to it.
+
+    **The declaring pairs are DERIVED and the rest are not graded here.**  The obligation
+    is over the pairs that declare something; grading the other 2,383 costs the whole
+    population's pass and adds nothing this clause reads -- a pair that declares nothing
+    has no widening cell at all, which is the ``absent`` the verdict table prints and the
+    complement of the set named below.  Measured on this box with the two stores warm:
+    1,017 s for the 206, about 830 s of it in the three slowest pairs.
+
+    **AND IT NOW PAYS NONE OF THAT, because it asks for reports the pass beside it already
+    holds.**  Those 206 are a SUBSET of :func:`graded`, so every one of them is a pair
+    :func:`graded_reports` grades -- and the figure above was the price of asking in
+    another process: 784.7 s of a 2,344 s run at ``-n 4``, duplicating the three slowest
+    pairs of the population for the third time in one run.  :func:`graded_report` is cached
+    and this test carries :data:`GRADED_REPORTS_GROUP`, so the 206 are cache reads.  The
+    paragraph above is kept as the cost of NOT being grouped, which is what the mark buys
+    and what no summary line would have shown.
+    """
+    #: fact -> every declaring pair that carries it, as pair name -> that pair's pointer.
+    #: The pointer travels with the name because "innermost" is a question about it.
+    carried: dict[tuple[str, str, str], dict[str, str]] = {}
+    declaring: dict[str, Graded] = {}
+    obligations = 0
+    underdetermined = 0
+    for g in graded():
+        pair = pair_of(g)
+        if not pair.declared:
+            continue
+        name = f"{g.ref.document}{g.ref.pointer}"
+        declaring[name] = g
+        for one in pair.declared:
+            obligations += 1
+            if one.kind == UNDERDETERMINED:
+                # §2: "no draw or dump can see one", so this obligation claims none and
+                # ``check_widening`` does not count it either.
+                underdetermined += 1
+                continue
+            carried.setdefault(harness.site_of(one), {})[name] = g.ref.pointer
+    claimed("pairs that declare a fact", set(declaring))
+    facts = claimed("facts owed a proving value", set(carried))
+    # **The two readings are DIFFERENT over this tree, asserted and not asserted away.**
+    # This clause and an obligation-keyed one agree exactly when no fact is carried twice,
+    # and then the paragraph above is a distinction without a difference and the next
+    # reader should re-read it rather than trust it.
+    claimed(
+        "facts carried at a position that is not their innermost one",
+        {site for site, where in carried.items() if len(where) > 1},
+    )
+    # The arithmetic the paragraph above states, as an identity over the derived sets
+    # rather than as prose: an obligation this check claims is a fact at one of its
+    # carriers, so the obligations are the facts plus the carriers beyond the first.
+    assert obligations - underdetermined == len(facts) + sum(
+        len(where) - 1 for where in carried.values()
+    )
+
+    #: fact -> the one carrier no other carrier of that fact is contained by.  The carriers
+    #: of one fact are a CHAIN by construction -- ``render.declared_at`` carries a
+    #: declaration to every pair whose pointer is a prefix of the declaration's -- and that
+    #: is asserted rather than assumed, because "innermost" means nothing for two carriers
+    #: neither of which contains the other.
+    innermost: dict[tuple[str, str, str], str] = {}
+    unordered: list[Any] = []
+    for site, where in carried.items():
+        deepest = max(where, key=lambda name: len(where[name]))
+        if any(not where[deepest].startswith(pointer) for pointer in where.values()):
+            unordered.append({"fact": site, "carriers": sorted(where.values())})
+        innermost[site] = deepest
+    assert unordered == [], unordered
+
+    reports = {name: graded_report(g) for name, g in sorted(declaring.items())}
+    # A declaring pair with no widening cell at all: the check never ran on a pair that
+    # owes it, which is the ``absent`` cell of a pair that declares nothing appearing where
+    # a declaration is.
+    assert [name for name, r in reports.items() if r.widening is None] == []
+    column: dict[str, list[str]] = collections.defaultdict(list)
+    for name, r in reports.items():
+        column[r.widening.outcome].append(name)
+    # **THE COLUMN, PARTITIONED BY ITS OWN VERDICTS**, so an outcome this clause has no
+    # reading for is reported as a pair accounted for by no part instead of passing
+    # silently through an ``in`` test.
+    partitions(
+        declaring,
+        proved=column["pass"],
+        nothing_owed=column["no_declarations"],
+        unproved=column["unproved_widening"],
+        narrowing=column["narrowing_wearing_a_declaration"],
+        cut=column["error"],
+    )
+    # A narrowing wearing a declaration is reading 2's first half failing and there is no
+    # division of labour that admits one: the class refuses a value its document admits.
+    assert column["narrowing_wearing_a_declaration"] == []
+    # **A cell reading "nothing was owed" has to owe nothing**, derived from the same
+    # declarations rather than taken from the cell: these are exactly the pairs whose every
+    # declaration is UNDERDETERMINED, and §8's equality is where each of those is graded.
+    assert set(column["no_declarations"]) == {
+        name
+        for name, g in declaring.items()
+        if all(one.kind == UNDERDETERMINED for one in pair_of(g).declared)
+    }, sorted(column["no_declarations"])
+
+    #: Every FACT whose own innermost carrier does not prove it, by fact, carrier and the
+    #: carrier's own words.  ``check_widening`` heads each entry with
+    #: ``<pointer>/<keyword>: ``, so a cell's failures are attributable to the fact they are
+    #: about and a sibling fact's failure at the same pair is not read as this one's.
+    unproved: list[Any] = []
+    for site, name in sorted(innermost.items()):
+        cell = reports[name].widening
+        if cell.detail:
+            unproved.append(
+                {"fact": site, "innermost carrier": name, "did not grade": cell.detail}
+            )
+            continue
+        for entry in list(cell.unproved) + list(cell.narrowings):
+            if entry.startswith(f"{site[1]}/{site[2]}: "):
+                unproved.append({"fact": site, "innermost carrier": name, "says": entry})
+    assert unproved == [], unproved
+
+    #: Every non-pass cell, and the ONE argument available to it.  An entry has to name a
+    #: fact this pair carries -- otherwise the cell reports something this derivation does
+    #: not know about and the clause would be green on a failure it cannot see -- and a cell
+    #: that did not grade has to have been cut by the pair budget and by nothing else.
+    unaccounted: list[Any] = []
+    for name in sorted(column["unproved_widening"] + column["error"]):
+        cell = reports[name].widening
+        if cell.detail and not cell.detail.endswith(f"did not grade inside {PAIR_BUDGET} s"):
+            unaccounted.append({"pair": name, "did not grade, and not on the budget": cell.detail})
+        for entry in list(cell.unproved) + list(cell.narrowings):
+            if not any(
+                entry.startswith(f"{site[1]}/{site[2]}: ") and name in carried[site]
+                for site in facts
+            ):
+                unaccounted.append({"pair": name, "names no fact this pair carries": entry})
+    assert unaccounted == [], unaccounted
+
+
+#: The three pointer segments a conditional is spelled with.  A node under one is a
+#: CONDITION or a conditional narrowing, which D6 makes a rule on the nearest class and
+#: which ``lower.rules`` declines where it narrows a value -- so nothing is lowered at
+#: such a pointer and no type is selected there.  Same reading ``_base.SAME_INSTANCE``
+#: excludes ``if`` for, and the one
+#: ``test_the_assertion_is_inherited_down_a_chain_of_combinator_hops`` uses.
+_CONDITIONAL_SEGMENTS = frozenset({"if", "then", "else"})
+
+
+def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
+    """D5's format rule, over every format site the population has.
+
+    ``format: date-time`` references RFC 3339, where the offset is MANDATORY, so
+    the document requires a timezone and ``AwareDatetime`` states the document's
+    own rule.  That only holds because the schema half passes a format checker:
+    a draft-07 ``format`` that nothing checks asserts nothing, and a type derived
+    from one would be narrower than its document as graded.  So the rule has two
+    sides and this grades both, over a population selected off the bundle:
+
+    * a format the document's own draft can DECIDE and for which a type is named
+      selects that type, asserted on the AST by the type's import being present
+      and by no ``json_schema_extra`` carrying that format in the same module --
+      so the fact lives in exactly one place;
+    * every other format rides on the node's own scalar type, so the first side
+      cannot be satisfied by dropping the format.  WHERE it rides is the POSITION's
+      answer and not the format's: ``json_schema_extra`` on the field, or -- at an
+      ELEM, a MAPV or a union BRANCH, which have no field -- a named alias in
+      ``adcp.types.constraints``.  Both are asserted, because either one dropped is
+      a model wider than its document and silently so.
+
+    And in both cases the format reaches the model's OWN schema, asserted site by
+    site against the document, so the keyword is stated at the pointer the document
+    states it at and neither channel can drop it silently.
+
+    ``lower.scalars.FORMAT_TYPES`` is read rather than restated, so a row added or removed
+    moves this test's expectation with it; what is pinned is the population
+    (334 sites: ``date-time`` 190, ``uri`` 131, ``date`` 5, ``email`` 5, ``hostname`` 3),
+    because that is the denominator the rule is stated over.  Re-measured at
+    64131600f (``salesagent-j3k2l.29``): every count here is over the documents
+    ``graded()`` names, so each one moved as the emitted population grew.  Two
+    formats have no ``FORMAT_TYPES`` row and so ride the second arm below:
+    ``hostname``, at 3 array ELEMENTS, and ``uri-template``, on one branch of
+    ``core/macro-bearing-url.json``'s root union -- and both of those are positions
+    with no field, so both are carried by a named alias (``salesagent-j3k2l.41``).
+    """
+    checked = emit.asserted_formats(bundle.read(BUNDLE, PAGINATION))
+    # The two dependencies `pyproject` names are what put these in the draft's
+    # own checker; without them the gate below selects no type at all.
+    assert {"date-time", "uri"} <= checked, sorted(checked)
+    assert set(scalars.FORMAT_TYPES) <= checked, sorted(set(scalars.FORMAT_TYPES) - checked)
+
+    seen: dict[str, int] = {}
+    #: The format sites the emitter never visits, by format: a position under a
+    #: conditional.  Its own counter rather than a skip, so the exclusion is a figure.
+    conditional: dict[str, int] = {}
+    #: format -> the type names it actually selected over this population.  More
+    #: than one means the DOCUMENT chose, which is D5's `uri` row.
+    arms: dict[str, set[str]] = {}
+    for document in sorted({g.ref.document for g in graded()}):
+        tree = ast.parse(_source(document))
+        imported = {
+            ("." * n.level + (n.module or ""), a.name)
+            for n in ast.walk(tree)
+            if isinstance(n, ast.ImportFrom)
+            for a in n.names
+        }
+        # **Read off the ``json_schema_extra=`` ARGUMENT and not off every dict literal
+        # in the module**, fixed at ``adcp-client-python-10l.21``'s third instalment.
+        # The reading walked every ``ast.Dict`` and took any ``"format": <const>`` pair,
+        # which is the module's annotation channel AND the document's own spelling:
+        # §7 puts an approximation's ``fact`` into the module verbatim, so a declaration
+        # quoting a node that states a ``format`` read as the MODULE annotating one.
+        # Measured on ``content-standards/get-media-buy-artifacts-response.json``, whose
+        # UNDERDETERMINED declaration at ``#/oneOf`` quotes a branch containing
+        # ``{'type': 'string', 'format': 'date-time'}`` while the module also SELECTS
+        # ``AwareDatetime`` at that very pointer -- so the "a selected format does not
+        # also ride as an annotation" assertion reddened against a faithful module.
+        annotated_formats = {
+            value.value
+            for n in ast.walk(tree)
+            if isinstance(n, ast.Call)
+            for kw in n.keywords
+            if kw.arg == "json_schema_extra" and isinstance(kw.value, ast.Dict)
+            for key, value in zip(kw.value.keys, kw.value.values, strict=True)
+            if isinstance(key, ast.Constant) and key.value == "format"
+            if isinstance(value, ast.Constant)
+        }
+        # ``lowered_nodes`` and not the whole walk: a node inside a section entry
+        # nothing declares is not lowered, so no type is selected and no import is
+        # written for it, and the assertions below are about what the MODULE carries.
+        for pointer, node in lowered_nodes(document):
+            fmt = node.get("format")
+            if not isinstance(fmt, str):
+                continue
+            if any(seg in _CONDITIONAL_SEGMENTS for seg in pointer.split("/")):
+                # **A position under a CONDITIONAL is not lowered at all, so no type
+                # is selected there and asserting one would grade a mechanism this
+                # pipeline does not have.**  D6 makes a conditional a RULE on the
+                # nearest class and ``lower.rules`` declines a branch that narrows a
+                # VALUE -- its module docstring records that ceiling on
+                # ``core/canvas-constraint.json``'s ``if unit == "percent" then
+                # x.maximum = 100``.  First reached when
+                # ``sponsored-intelligence/si-ui-element.json`` emitted
+                # (``salesagent-j3k2l.28``), whose ``/allOf/1/then`` states a
+                # ``format: uri``.  COUNTED below rather than skipped silently, so the
+                # exclusion has a size and a shrink in it is visible.
+                conditional[fmt] = conditional.get(fmt, 0) + 1
+                continue
+            seen[fmt] = seen.get(fmt, 0) + 1
+            # **A MULTI-TYPE node carries a format too, and this used to RAISE on
+            # one.**  ``node["type"] in compiler.SCALAR`` hashes the value, and a list is
+            # unhashable, so the site died with a ``TypeError`` rather than failing an
+            # assertion -- latent until a document declaring ``["string", "null"]``
+            # beside a ``format`` emitted (``salesagent-j3k2l.21``).  D5's rule is
+            # per-ARM: ``lower.containers.multi_type`` cuts the node to one type at a
+            # time carrying only what that type can hold (``ARM["string"]`` holds
+            # ``format``), so the format selects the type of the arm that defines it
+            # and the ``null`` arm takes none of it.  Asserted over the arms, which is
+            # what the emitter actually reads.
+            # **A node stating a format and NO type takes the type the document
+            # APPLIES to it**, which is what the emitter reads: a branch of a root
+            # union sees the root's ``type`` (``lower.union.applied_type``, over
+            # ``_base.applied_schema``).  Read any other way this raised ``KeyError``
+            # on ``core/macro-bearing-url.json``'s three branches, whose own nodes
+            # state a format and a pattern and nothing else -- latent until that
+            # document emitted.
+            applied = applied_schema(bundle.read(BUNDLE, document), pointer).get("type")
+            kinds = applied if isinstance(applied, list) else [applied]
+            assert [k for k in kinds if k != "null"], (document, pointer, kinds)
+            assert all(k in compiler.SCALAR or k == "null" for k in kinds), (
+                document,
+                pointer,
+                kinds,
+            )
+            # The chooser is asked with THIS NODE, because D5 makes a `uri` field's
+            # type a function of the document's own `pattern` -- so a test that read
+            # one path per format would grade only whichever arm it happened to
+            # name, and would have passed unchanged while the other arm went
+            # unimported.
+            choose = scalars.FORMAT_TYPES.get(fmt) if fmt in checked else None
+            # **A URL format beside another string constraint takes the row's own
+            # FALLBACK and selects no type** (§5's group (a), landed at
+            # ``adcp-client-python-10l.20``): "the type is the constrained `str` and the
+            # `format` rides as `json_schema_extra={"format": "uri"}`.  Both facts are
+            # kept and neither half narrows."  So there is no URL type to import, and the
+            # carrier is whichever of the two arms below the position has -- which is
+            # what the ``choose is None`` branch already grades for every other
+            # unselected format.
+            #
+            # ``scalars.selects_a_url_type`` is the PRODUCTION reading, asked here rather
+            # than restated, for the reason the alias NAME is asked of the production
+            # function below: a second reading of "is a type selected here" is how a
+            # check comes to grade a document against a compiler nobody runs.  Measured:
+            # 1 site, ``core/reporting-delivery-capabilities.json`` at
+            # ``/properties/operations_contact/properties/url``, a ``format: uri`` beside
+            # a ``maxLength``.
+            if (
+                choose is not None
+                and fmt in scalars.URL_FORMATS
+                and not scalars.selects_a_url_type(
+                    fmt, {k: node[k] for k in ir.FACTS if k in node}
+                )
+            ):
+                choose = None
+            if choose is None:
+                # **Where no type is selected, section 5's ``format`` row has TWO
+                # answers and the position decides which.**  On a FIELD the format
+                # rides as ``json_schema_extra``; at a position with no field of its
+                # own -- an ELEM, a MAPV, a union BRANCH -- a named alias in
+                # ``adcp.types.constraints`` carries it, because a
+                # ``json_schema_extra`` written on the field holding a union would
+                # state the branch's format for every other branch too.  The alias
+                # NAME is asked of the production function rather than spelled here,
+                # so the two cannot disagree about what the module declares; the
+                # constraints are read off the node for the same reason the name is a
+                # function of the whole shape.
+                stated_constraints = {k: node[k] for k in ir.FACTS if k in node}
+                word = next(k for k in kinds if k != "null")
+                alias = constraints_module.symbol(word, stated_constraints, format=fmt)
+                assert fmt in annotated_formats or (constraints_module.MODULE, alias) in imported, (
+                    document,
+                    pointer,
+                    fmt,
+                    alias,
+                )
+            else:
+                selected = choose(node)
+                module, name = selected.rsplit(".", 1)
+                assert (module, name) in imported, (document, pointer, selected)
+                assert fmt not in annotated_formats, (document, pointer, fmt)
+                arms.setdefault(fmt, set()).add(name)
+
+    # WHICH formats the population reaches, as the set of format names, with every one
+    # of them non-empty so no row of the table above is graded by a loop that met none
+    # of it.  The per-format COUNT is not asserted: it is the number of positions one
+    # emitted tree states a format at, and every row that makes a document emittable
+    # moves two or three of these at once -- ``date-time`` went 190 -> 194 -> 196 and
+    # ``uri`` 131 -> 133 -> 135 over two rows, each a correct move, neither predictable
+    # from the other.
+    # **``uuid`` joins at ``adcp-client-python-10l.21``'s third instalment**, one site,
+    # and it is the row's own emission: ``trusted-match/context-match-request.json``
+    # emits behind ``content-standards/artifact.json``.  It has no ``FORMAT_TYPES`` row,
+    # so it rides the second arm -- and it is also the entry that filled
+    # :data:`FORMAT_STRATEGIES`, because ``hypothesis_jsonschema`` ships no strategy for
+    # it and the pair reported ``missing_formats: ['uuid']`` until one was supplied.
+    assert set(seen) == {
+        "date-time",
+        "uri",
+        "date",
+        "email",
+        "hostname",
+        "uri-template",
+        "uuid",
+    }, seen
+    assert all(seen.values()), seen
+    # The excluded population, named and sized -- and it is SIX sites, not the one
+    # that reddened.  **The other five were passing by accident**, which is the finding:
+    # the import assertion is MODULE-wide, so a conditional-position ``uri`` in a module
+    # that also states one at a lowered pointer was satisfied by its neighbour's import.
+    # ``si-ui-element.json``'s ``/allOf/1/then/properties/data/properties/url`` is the
+    # one with no neighbour to carry it, so it is the one that showed when the document
+    # emitted (``salesagent-j3k2l.28``).
+    # The excluded set, named by its formats and asserted non-empty, for the same
+    # reason: the finding is that a conditional position is excluded AT ALL and which
+    # formats reach one, not how many sites there are in this tree.
+    assert set(conditional) == {"uri", "date-time"}, conditional
+    assert all(conditional.values()), conditional
+    # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
+    # graded by an empty loop: of the 131 `uri` sites, 15 state a `^https://` pattern
+    # and take `AdCPUrl` (across 12 documents, `core/platform-extension-ref.json`
+    # among them) and the other 116 take `HttpUrl`.  A format whose type is a
+    # function of the format alone selects exactly one.
+    assert arms == {
+        "date-time": {"AwareDatetime"},
+        "date": {"date"},
+        "uri": {"AdCPUrl", "HttpUrl"},
+    }, arms
+
+    # Either way the fact is on the model's own schema, at the site the document
+    # states it.  Counted, so this cannot pass by looking at nothing.
+    #
+    # Over EVERY class the tree carries, not only the root-pointer ones.  Restricted to
+    # roots it graded 14 of the 18 census sites above, and the 4 it missed are the ones
+    # step 5 added: a union root has no properties of its own, so every format in one of
+    # those documents is on a BRANCH class, whose pointer is not ``#``.
+    stated: set[tuple[SchemaRef, str]] = set()
+    for g in graded():
+        doc = schema_at(g.ref)
+        emitted = _model_schema(g.model)
+        for key, sub in (doc.get("properties") or {}).items():
+            # **A BOOLEAN property schema is not a format site, and draft-07 has one.**
+            # ``core/format-option-ref.json#/oneOf/1`` states
+            # ``"publisher_domain": false`` -- the schema that admits nothing, which the
+            # branch's own description spells out in prose -- and §14 step 9 is what
+            # made that document emit, so this loop met its first non-mapping property
+            # node and raised ``AttributeError`` on it.  Skipped here because a ``false``
+            # schema states no ``format``; what the model does with it is a FINDING filed
+            # against the row and not this test's subject.
+            if not isinstance(sub, dict) or not isinstance(sub.get("format"), str):
+                continue
+            mine = _rendered(emitted, key, g.model)
+            assert mine.get("format") == sub["format"], (g.ref, key, mine)
+            stated.add((g.ref, key))
+    # The set of (pair, property) positions the loop graded, named and non-empty rather
+    # than counted.  The count moved at every row that made a document emittable --
+    # 326 -> 333 -> 334 over three of them -- and each move was a correct one, so an
+    # equality here refuses the work it is supposed to be grading.  What it has to
+    # refuse instead is a loop that graded nothing, which is what this says.
+    claimed("graded properties that state a format", stated)
+
+
+def _model_schema(model: Any) -> dict:
+    """One model's own JSON schema, whichever kind of model it is.
+
+``isinstance(model, type)`` alone is not the predicate, because D2's enumeration
+    row emits a CLASS that is not a pydantic model and has no ``model_json_schema``.
+    """
+    if isinstance(model, type) and hasattr(model, "model_json_schema"):
+        return model.model_json_schema()
+    return TypeAdapter(model).json_schema()
+
+
+def _rendered(emitted: dict, key: str, model: Any) -> dict:
+    """One DOCUMENT KEY's node in a model's rendered schema, unwrapped.
+
+    **The key is the document's own, because that is the only key the rendered
+    schema has.**  ``model_json_schema()`` is ``by_alias``, and a property whose
+    Python name cannot be the document's key is carried under an ALIAS that IS
+    the document's key (``compiler.field_name``'s own contract: "a key is carried
+    as-is or it is carried under an ALIAS, never dropped").  Indexing by
+    ``names.field_name(key, render.RESERVED)`` -- the PYTHON name -- is what both callers used
+    to do, and it raised ``KeyError`` the moment an aliased property entered the
+    graded population: ``trusted-match/identity-match-request.json#``'s
+    ``$schema`` is ``schema_`` in Python and ``$schema`` on the wire, and it
+    states ``format: uri`` so the format census reaches it.
+
+    Measured over all 1,034 pairs at 64131600f: 6 properties are aliased, and for
+    every one of them the rendered schema carries the DOCUMENT's key and not the
+    Python name.  So the alias relationship is asserted here rather than assumed
+    -- a model that rendered the Python name would be carrying a key its document
+    does not state, which is the defect this spelling would otherwise hide.
+    """
+    python_name = names.field_name(key, render.RESERVED)
+    if python_name != key:
+        field = getattr(model, "model_fields", {}).get(python_name)
+        assert field is not None, (key, python_name, "no field under the Python name")
+        assert field.alias == key, (key, python_name, field.alias)
+        assert python_name not in emitted["properties"], (key, python_name)
+    return _unwrap(emitted["properties"][key], emitted.get("$defs", {}))
+
+
+def _unwrap(node: dict, defs: dict) -> dict:
+    """One property node of a model's schema, with D4's ``T | None`` folded out.
+
+    The same two folds ``harness._normalize`` does and for the same reasons -- an
+    optional property renders as a two-branch ``anyOf`` and a referenced type is
+    hoisted into ``$defs``.  Written here rather than imported because the
+    harness's is private to its own reading of the document; both are three lines and
+    neither is a decision.
+    """
+    if "$ref" in node:
+        outer = {k: v for k, v in node.items() if k != "$ref"}
+        return {**_unwrap(defs[str(node["$ref"]).rsplit("/", 1)[-1]], defs), **outer}
+    branches = node.get("anyOf")
+    if isinstance(branches, list):
+        live = [b for b in branches if isinstance(b, dict) and b.get("type") != "null"]
+        if len(live) == 1 and len(branches) == 2:  # T | None only
+            return {**_unwrap(live[0], defs), **{k: v for k, v in node.items() if k != "anyOf"}}
+    return node
+
+
+def test_a_date_time_with_no_offset_is_refused_by_the_schema_half() -> None:
+    """The format assertion, proved on a real emitted class and in both halves.
+
+    A previous lane backed ``AwareDatetime`` and friends out at 14 sites because
+    they were narrower than their documents AS GRADED, and that was the right
+    call against a grader that asserted nothing for ``format``.  Re-adopting them
+    is only correct if the SCHEMA now refuses what the type refuses, so that is
+    what is asserted here rather than the type's own behaviour:
+
+    * ``strict_validate`` refuses an offsetless timestamp, and the error's
+      ``type`` is ``format`` -- the DOCUMENT's keyword, so the refusal came from
+      the schema half and not from the constructor, which would report
+      ``datetime_from_date_parsing``;
+    * the two halves agree on the whole corpus, in both directions, including
+      a leap second (RFC 3339 syntax admits ``23:59:60`` and
+      ``rfc3339-validator`` refuses it, as pydantic does);
+    * and the accepts check still passes on that pair, because the generator
+      honours the format -- so the re-adoption costs no instance.
+    """
+    g = next(r for r in graded() if r.ref == SchemaRef("core/datetime-range.json", "#"))
+    model, doc = g.model, schema_at(g.ref)
+    assert doc["properties"]["start"]["format"] == "date-time"
+
+    aware = "2020-06-01T12:00:00Z"
+    naive = "2020-06-01T12:00:00"
+    model.strict_validate({"start": aware, "end": aware})  # the document admits it
+    with pytest.raises(ValidationError) as caught:
+        model.strict_validate({"start": naive, "end": aware})
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("format", ("start",))]
+
+    # Both halves, over the same corpus, in both directions.  The type is read
+    # off the model rather than named here, so this grades what was emitted.
+    stamp = TypeAdapter(model.model_fields["start"].annotation)
+    checker = jsonschema.Draft7Validator.FORMAT_CHECKER
+    corpus = [
+        aware,
+        naive,
+        "2020-06-01t12:00:00z",
+        "2020-06-01T12:00:00+05:30",
+        "2020-06-01T12:00:00.123456789Z",
+        "2020-06-01T23:59:60Z",
+        "2020-06-01",
+        "not a timestamp",
+    ]
+    verdicts = []
+    for value in corpus:
+        schema_says = checker.conforms(value, "date-time")
+        try:
+            stamp.validate_python(value)
+            type_says = True
+        except ValidationError:
+            type_says = False
+        assert schema_says == type_says, (value, schema_says, type_says)
+        verdicts.append(schema_says)
+    assert True in verdicts and False in verdicts, verdicts  # not vacuous either way
+
+    rep = check_pair(pair_of(g))
+    assert rep.missing_formats == []
+    assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
+
+
+def test_the_harness_and_the_runtime_decide_a_format_the_same_way() -> None:
+    """One schema, one verdict: the control and the refusal cannot disagree.
+
+    The harness asks the ORIGINAL document which keyword bit
+    (``violated_keywords``) and screens a candidate payload against it
+    (``conforms``) before offering the payload to anything.
+    ``strict_validate``'s schema half asks the same document.  If those two build
+    validators with different vocabularies, the harness screens a payload in or
+    out on the strength of a keyword the runtime cannot see -- so the harness
+    passes the same ``FORMAT_CHECKER`` ``_refuse`` does, and this is what says so.
+
+    Measured without it: the suite went fully green, because no check in the
+    harness produces a ``format``-violating instance on its own -- the accepts
+    check draws instances the document ADMITS and ``hypothesis_jsonschema``
+    honours a format it knows, and ``refusing_payload`` perturbs requiredness and
+    JSON type rather than a string's shape.  So the agreement has no instrument
+    other than this one, and the violating instance is written here rather than
+    drawn.
+    """
+    g = next(r for r in graded() if r.ref == SchemaRef("core/datetime-range.json", "#"))
+    doc = schema_at(g.ref)
+    aware = "2020-06-01T12:00:00Z"
+    naive = {"start": "2020-06-01T12:00:00", "end": aware}
+
+    # the control's two predicates
+    assert conforms(doc, naive) is False
+    assert violated_keywords(doc, naive) == ["format"]
+    # ... and the runtime's, on the same document, naming the same keyword
+    with pytest.raises(ValidationError) as caught:
+        g.accept(naive)
+    assert [e["type"] for e in caught.value.errors()] == ["format"]
+
+    # The control also has to stay able to say YES, or the agreement above is
+    # satisfied by a harness that refuses everything.
+    assert conforms(doc, {"start": aware, "end": aware}) is True
+    assert violated_keywords(doc, {"start": aware, "end": aware}) == []
+
+
+def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() -> None:
+    """Which engine every pattern is compiled with, and WHY it is not derivable.
+
+    The engine was going to be derived per class: pydantic's default is Rust,
+    which is faster and refuses to build a pattern it cannot honour rather than
+    mis-matching one, and its only gap was understood to be look-around -- so a
+    class carrying one of the bundle's 4 look-around patterns would take
+    ``python-re`` and the other 72 of 76 would take the default.  The premise
+    was that the accepted sets agree for those 72, and this test is the
+    assertion of it rather than the assumption.  **It does not hold.**
+
+    Python's ``$`` matches at the end of the string OR just before a trailing
+    newline; Rust's ``$`` matches only at the end of the haystack.  The document
+    is validated by ``jsonschema``, which compiles with Python ``re``, so for
+    every ``$``-anchored pattern the document admits a value ending in ``\\n``
+    that a Rust-engine model refuses -- a model NARROWER than its own document,
+    and invisible to every check the harness has: the accepts check has to draw the
+    trailing newline to see it, and the dump of anything else round-trips.
+
+    So ``python-re`` stays on the base, because it is the engine whose accepted
+    set is the document's, and this test is what will redden if the split is
+    tried again without answering ``$``.  Measured here over the population's own
+    patterns, and reported with both denominators.
+    """
+    assert AdCPBaseModel.model_config["regex_engine"] == REGEX_ENGINE == "python-re"
+
+    distinct: dict[str, int] = {}
+    for document in sorted({g.ref.document for g in graded()}):
+        for _, node in bundle.nodes(bundle.read(BUNDLE, document)):
+            pattern = node.get("pattern")
+            if isinstance(pattern, str):
+                distinct[pattern] = distinct.get(pattern, 0) + 1
+    claimed("patterns stated by a graded document", distinct)
+
+    no_build: dict[str, int] = {}
+    diverges: dict[str, int] = {}
+    agrees: dict[str, int] = {}
+    #: every pattern that drew at least one value the DOCUMENT admits, so no row of
+    #: either bucket is graded by a witness that never existed.
+    witnessed: set[str] = set()
+    #: how many admitting witnesses took the trailing newline INTO the match and how
+    #: many left it outside, over every pattern.  Counted so the implication asserted
+    #: per witness below cannot be green over a one-sided set.
+    took_it: dict[bool, int] = {True: 0, False: 0}
+    #: how many admitting witnesses the DEFAULT engine refused -- the finding itself.
+    refused_by_the_default = 0
+    for pattern, sites in sorted(distinct.items()):
+        if not _default_engine_builds(pattern):
+            # It refuses to BUILD rather than mis-matching, which is the one
+            # thing about the default engine that was right -- and the document's
+            # engine compiles the same pattern, so the schema half still decides.
+            no_build[pattern] = sites
+            assert _pattern_model(pattern, "python-re") is not None, pattern
+            continue
+        where = agrees
+        for drawn in _matching(pattern):
+            value = drawn.rstrip("\n") + "\n"
+            found = re.search(pattern, value)
+            if found is None:
+                continue  # the document refuses it too; nothing to diverge about
+            # the document admits it, so the engine the document is compiled with
+            # must admit it, and that is the one this package uses
+            assert _accepts(pattern, REGEX_ENGINE, value), (pattern, value)
+            witnessed.add(pattern)
+            # **THE MECHANISM, ASSERTED PER VALUE AND NOT PER PATTERN**
+            # (``adcp-client-python-r8lk``).  A match that ran to the end of the
+            # haystack is the same match under both engines -- Rust's ``$`` matches
+            # there too -- so a value whose match TOOK the trailing newline cannot be
+            # one the default engine refuses.  That is the whole of the ``$``
+            # difference, it is a statement about the two engines, and it needs no
+            # census: it is graded on every witness, in both buckets.
+            took_the_newline = found.end() == len(value)
+            refused = not _accepts(pattern, None, value)
+            assert not (took_the_newline and refused), (pattern, value, found.span())
+            took_it[took_the_newline] += 1
+            if refused:
+                refused_by_the_default += 1
+                where = diverges
+        where[pattern] = sites
+
+    # The three buckets PARTITION the patterns the graded documents state, which is
+    # what a census of each one was standing in for: the census moved with the emitted
+    # population at every row that added a document, while the shape of the finding did
+    # not move at all.  So the shape is what is asserted -- every pattern is in exactly
+    # one bucket, each bucket is non-empty, and no pattern's SITES are lost on the way
+    # into a bucket, which is the second denominator this check reports.
+    partitions(distinct, no_build=no_build, diverges=diverges, agrees=agrees)
+    claimed("patterns the default engine refuses to build", no_build)
+    claimed("patterns the two engines disagree on", diverges)
+    claimed("patterns the two engines agree on", agrees)
+    assert sum(no_build.values()) + sum(diverges.values()) + sum(agrees.values()) == sum(
+        distinct.values()
+    ), (no_build, diverges, agrees)
+    # Every buildable pattern drew a value the document admits, so no row of either
+    # bucket is graded by a witness that never existed.
+    assert witnessed == set(diverges) | set(agrees), sorted(
+        (set(diverges) | set(agrees)) - witnessed
+    )
+    # **Every pattern that diverges carries a `$`.**  A value the default engine
+    # refuses is one Python matched only by letting `$` land before the trailing
+    # newline, and a pattern with no `$` has no such position -- so this is the
+    # NECESSARY condition the mechanism forces, and it is the direction that holds
+    # whatever is drawn.
+    assert all("$" in p for p in diverges), diverges
+    # **AND THE CONVERSE IS NOT STATED, because it is false and the clause used to
+    # state it** (``adcp-client-python-r8lk``).  What stood here asserted that within
+    # `agrees`, "carries a `$`" and "the match consumed the newline" are the same set
+    # -- an equality between the pattern's TEXT and one witness's match -- and
+    # `^https?://...(?::[0-9]{1,5})?(?:[/?#]|$)` disproves it: its `$` is one branch
+    # of a final alternation, so a witness ending in `/` is matched identically by
+    # both engines while one ending at the host is matched only by Python's `$`.
+    # Whether that pattern's own draw reaches the `$` branch decides which bucket it
+    # joins, and the clause was measured RED at `-n 4` and green twice at `-n 0` on
+    # the same tree for exactly that reason -- a verdict reporting the draw.  The
+    # per-value implication in the loop is what that equality was standing in for,
+    # it is asserted on all of them rather than on the last draw per pattern, and it
+    # does not move with the bucket.
+    #
+    # The two guards that stop it going quiet: both polarities of "took the newline"
+    # occur among the witnesses, and at least one witness IS refused by the default
+    # engine -- which is the finding this whole clause exists to carry.
+    assert took_it[True] and took_it[False], took_it
+    assert refused_by_the_default, (
+        "no drawn value was refused by the default engine, so the two engines were "
+        "never shown to disagree and `python-re` has nothing holding it here"
+    )
+
+
+def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> None:
+    """The regression for a live narrowing the engine measurement found.
+
+    ``regex_engine`` is a MODEL config, so D2's root-scalar alias has nowhere to
+    carry one: ``strict_alias`` built a bare ``TypeAdapter``, which took
+    pydantic's default Rust engine, while every emitted CLASS took ``python-re``
+    off ``AdCPBaseModel``.  So the two halves of ``strict_validate`` disagreed on
+    an alias: ``core/brand-id.json`` states ``pattern: ^[a-z0-9_]+$``, its
+    document ADMITS ``"abc\\n"``, the schema half admitted it and the constructor
+    then refused it with ``string_pattern_mismatch``.
+
+    Graded over every alias the tree carries rather than on the one document that
+    showed it, with the admitting value DERIVED from each alias's own pattern,
+    and with the document asked each time -- so this cannot pass by asserting
+    what the model happens to do.
+
+
+    **THIS READS DRAW [0] AND IS GREEN BECAUSE IT DOES, WHICH IS A SECOND ROW**
+    (``adcp-client-python-SIBLING``).  ``_matching`` draws TWO witnesses and this
+    grades the first.  Measured: for ``core/https-url.json``'s ``^https://`` the
+    second witness is ``https://``, the document ADMITS ``"https://\n"`` -- its
+    ``format: uri`` checker takes it -- and the alias refuses it with
+    ``url_parsing: empty host``, which is ``adcp-client-python-rwng`` and not an
+    engine question.  So grading both witnesses turns this clause into a second
+    instrument for ``rwng``, and grading one makes its verdict a function of the
+    draw's ORDER.  It is left reading draw [0] until ``rwng`` is answered, and the
+    row carries this measurement so the choice is not re-made by accident.
+    """
+    aliases = claimed("aliases the tree carries", [g.ref for g in graded() if not isinstance(g.model, type)])
+    with_pattern: set[SchemaRef] = set()
+    for g in graded():
+        if isinstance(g.model, type):
+            continue
+        doc = schema_at(g.ref)
+        pattern = doc.get("pattern")
+        if not isinstance(pattern, str):
+            continue
+        with_pattern.add(g.ref)
+        value = _matching(pattern)[0].rstrip("\n") + "\n"
+        jsonschema.Draft7Validator(
+            doc, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
+        ).validate(value)  # the document admits it
+        assert g.accept(value) == value, (g.ref, value)  # and so does the alias
+    # The set of aliases that state a pattern, named as a set and asserted non-empty
+    # rather than counted: how MANY of them there are is a property of the emitted tree
+    # that every row adding an alias moves, while "at least one alias was graded by the
+    # loop above" is the thing that keeps the loop from passing over nothing.
+    claimed("graded aliases that state a pattern", with_pattern, inside=aliases)
+
+
+@functools.cache
+def _pattern_model(pattern: str, engine: str | None) -> type[BaseModel]:
+    """A one-field carrier for ``pattern`` under ``engine``.
+
+    A model and not a bare ``TypeAdapter``, because ``regex_engine`` is a MODEL
+    config -- which is the whole reason the engine is a per-class decision and
+    not a per-field one.  ``engine=None`` sets nothing and so takes pydantic's
+    default, which is the Rust engine; naming ``"rust-regex"`` explicitly would
+    grade a spelling rather than the default.
+    """
+    config = ConfigDict(regex_engine=engine) if engine else ConfigDict()
+
+    class Carrier(BaseModel):
+        model_config = config
+        v: Annotated[str, Field(pattern=pattern)]
+
+    return Carrier
+
+
+def _default_engine_builds(pattern: str) -> bool:
+    """Can pydantic's DEFAULT engine compile this pattern?
+
+    The real predicate, asked of the engine itself.  A textual look-around test
+    would be a second implementation of the incompatibility, and the thing worth
+    knowing is not whether a pattern contains ``(?!`` but whether the engine
+    refuses it -- which is the behaviour that makes the default the one to want.
+    """
+    try:
+        _pattern_model(pattern, None)
+    except Exception:  # pydantic-core refuses to build it
+        return False
+    return True
+
+
+def _accepts(pattern: str, engine: str | None, value: str) -> bool:
+    try:
+        _pattern_model(pattern, engine)(v=value)
+    except ValidationError:
+        return False
+    return True
+
+
+def _matching(pattern: str, examples: int = 2) -> list[str]:
+    """Strings the pattern matches, DRAWN rather than written.
+
+    Written candidates for 11 patterns would be 11 guesses about what each one
+    means, and a wrong guess shows up as a pattern graded only on misses -- which
+    is why the two-engine check above requires both verdicts to appear.
+
+    **THE STREAM IS NOT A FUNCTION OF THE PATTERN, AND RE-SEEDING IT IS NOT FREE**
+    (``adcp-client-python-r8lk``).  ``derandomize=True`` seeds from
+    ``hypothesis.internal.reflection.function_digest`` of the DECORATED FUNCTION --
+    this closure, the same object for every pattern, digested from its source text
+    and from ``repr(test)`` (an address) where ``inspect.getsource`` cannot answer --
+    so the stream is a function of this file's text and of the process, never of the
+    pattern.  Re-seeding it from a digest of the pattern was MEASURED: it flips the
+    draws, and it reddens two clauses at once -- the two-engine check above lands
+    ``^https?://...(?:[/?#]|$)`` in ``agrees`` (which was its ``-n 4`` failure), and
+    the alias check below draws ``https://`` for ``core/https-url.json``, a value the
+    document admits and ``AnyUrl`` refuses, which is ``adcp-client-python-rwng`` and
+    not an engine question.  So a seed buys reproducibility and pays in two verdicts
+    that still report the draw.  **BOTH READERS ARE MADE DRAW-INDEPENDENT INSTEAD**:
+    the two-engine check asserts its mechanism per VALUE rather than per pattern, and
+    the alias check grades every witness the DOCUMENT admits rather than the first
+    one drawn.  Neither now has a verdict a different stream could move.
+    """
+    out: list[str] = []
+
+    @settings(
+        max_examples=examples,
+        deadline=None,
+        database=None,
+        derandomize=True,
+        phases=[Phase.generate],
+        suppress_health_check=list(HealthCheck),
+    )
+    @given(st.from_regex(pattern))
+    def body(value: str) -> None:
+        out.append(value)
+
+    body()
+    return out
+
+
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
+def test_the_harness_result_is_counted_over_the_whole_population() -> None:
+    """One number for the harness, with its denominators, because a per-pair green
+    mark does not add up to one and nobody can sum 1,055 of them by eye.
+
+    **Every figure below was re-measured on this tree after the rebuild and none
+    was carried forward.**  The harness grades one class against one schema now, so
+    three of the old figures no longer exist to re-point: the step-site count, the
+    refuses-check instance total, and the ``no_constraint_to_step`` partition.  What
+    replaces the first two is ``graded_instances``, which counts instances DRAWN,
+    CONSTRUCTED and DUMPED BACK OUT to something the document still admits -- one
+    per pair at the default depth, so it is an equality and not a floor.
+
+    Read off :func:`graded_reports`, which grades the population ONCE for the three
+    tests that need a total.
+    """
+    pairs = {f"{g.ref.document}{g.ref.pointer}": r for g, r in graded_reports()}
+    assert len(pairs) == len(graded_reports()), "two reports under one pair name"
+    reports = list(pairs.values())
+    claimed("graded pairs", pairs)
+    ratchet(
+        "graded pairs",
+        len(reports),
+        at_least=PAIRS_FLOOR,
+        because="an emitting row only ADDS pairs; a drop means a class stopped carrying "
+        "__adcp_schema__ or stopped being emitted, which is never this suite's intent",
+    )
+
+    # THE OUTCOME PARTITION, derived from the NAMED non-pass set rather than from a
+    # second count of it: every pair is ``pass`` or is one of the pairs
+    # ``NON_PASS_PAIRS`` names, the ``pass`` figure is the complement, and a pair
+    # joining or leaving the group reddens with the DOCUMENT named instead of moving
+    # two integers nobody can attribute.
+    by_outcome = collections.Counter(r.outcome for r in reports)
+    assert set(by_outcome) == {"pass"} | set(NON_PASS_PAIRS), dict(by_outcome)
+    assert {k: n for k, n in by_outcome.items() if k != "pass"} == {
+        k: len(v) for k, v in NON_PASS_PAIRS.items()
+    }, dict(by_outcome)
+    assert by_outcome["pass"] == len(reports) - sum(len(v) for v in NON_PASS_PAIRS.values())
+    # One instance per pair at the default depth, so the round-tripped total is the
+    # complement of the groups that round-trip NOTHING -- a pair whose generator could
+    # not draw and a pair whose dump the document refused.
+    #
+    # **DERIVED FROM :data:`ROUND_TRIPS_NOTHING` AND NOT FROM THE WHOLE NON-PASS SET.**
+    # A pair's verdict and its round trip are different questions: only the groups that
+    # round-trip NOTHING come out of the total, and summing over every non-pass group
+    # was green only while the one group was ``no_instrument``.
+    assert sum(r.graded_instances for r in reports) == len(reports) - sum(
+        len(NON_PASS_PAIRS[k]) for k in ROUND_TRIPS_NOTHING
+    )
+
+    # **EVERY DECLARATION'S ATTRIBUTION, over the whole emitted tree.**  Section 2's
+    # attribution "is a choice of two and not a free-text note", and this is where that
+    # bites on the run rather than on an example: every declaration any artifact of the
+    # tree carries, read off the artifact by ``harness.declarations_of``, against
+    # ``codegen.attribution``'s registry and section 2's own ladder.
+    # ``tests/test_approximation.py`` is where each direction of the rule is perturbed.
+    declared = [one for g, _ in graded_reports() for one in pair_of(g).declared]
+    assert harness.unattributed(declared) == [], harness.unattributed(declared)
+    # §8's UNDERDETERMINED equality is NOT here, and that is
+    # ``adcp-client-python-10l.109``'s move: it needs neither a pair nor a draw -- only the
+    # declarations and the documents of record -- so it is graded in seconds by
+    # ``tests/test_the_declared_backlog.py`` instead of behind this test's 2,347 pair
+    # reports.  The *ours* backlog and the artifact-versus-run gap moved with it, for the
+    # same reason and with the same measurement.
+    # The one refused payload per pair, partitioned BY NAME on the fact it broke.  A
+    # partition and not three totals, because which perturbation bites is a property of
+    # the DOCUMENT's own root shape: a pair moving between these groups is a fact worth
+    # reading and a count cannot say which pair moved.
+    how = collections.defaultdict(set)
+    for name, r in pairs.items():
+        how[r.liveness.how.split(" ")[0] or "no_payload"].add(name)
+    partitions(pairs, **how)
+    assert set(how) == {"drops", "replaces", "no_payload"}, sorted(how)
+    for group in how.values():
+        claimed("a liveness perturbation group", group, inside=set(pairs))
+
+
+#: **The format-beside-pattern census over the bundle, and the undrawable population
+#: inside it.**  Measured on the 1,054 portable documents of the 3.2 bundle by
+#: ``harness.format_pattern_positions`` (the co-occurrence census, over each document's
+#: own UNRESOLVED declarations) and by ``harness.undrawable_formats`` (the draw).
+#:
+#: The two figures are the whole of ``salesagent-j3k2l.10``'s decision and they are
+#: deliberately far apart: 73 positions state the two keywords together and 72 of them
+#: DRAW.  73 is section 6's own figure -- "the bundle states eight distinct patterns
+#: across 73 of its 300 ``uri`` uses" -- read here off the harness rather than carried.
+#: The four censuses that used to be pinned here -- positions, documents, shapes and
+#: undrawable positions -- are REDUNDANT with the facts the test asserts as sets: the
+#: format is ``uri`` at every position, the undrawable shape is exactly one and is named
+#: with its pattern, and the one undrawable position is named with its document and
+#: pointer.  A count of each added nothing those names do not say and went stale against
+#: a bundle version instead.
+#: The one position, by document and pointer, and the pattern that makes it undrawable.
+UNDRAWABLE_POSITION = (
+    "core/reference-renderer.json",
+    "/properties/provenance/properties/source_repository",
+)
+UNDRAWABLE_PATTERN = "^https://github\\.com/"
+
+
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
+def test_the_non_pass_pairs_are_named_and_attributed() -> None:
+    """Every pair that is not ``pass``, by name, with what it is.
+
+    **A census and not a tolerance.**  Nothing here excuses anything:
+    ``test_every_class_passes_all_three_checks`` still reddens on every pair whose own
+    verdict is a verdict about the model, and this test exists so the pairs that are not
+    ``pass`` are NAMED rather than counted -- a count tells the next reader nothing about
+    which pairs or why.
+
+    ONE group now, and its attribution was measured rather than assumed.
+
+    ``accepts:model_dropped_a_fact`` is gone too, and NOT because the dump half stopped
+    reading what a class did with a value.  Its three pairs are EXEMPT and the
+    exemption is reported: ``codegen.dump_exemptions`` strikes four named keyword
+    positions for the dump validation alone, because the positions state a keyword no
+    correct class can satisfy and both decisions involved stay as written.  Two
+    mechanisms, one of them reached by two pairs:
+
+    * ``^https://[^/?#@]+$`` on ``core/attestation-issuer.json``'s origin, inlined into
+      ``core/attestation-capabilities.json`` as well.  Every pydantic URL type
+      normalizes, and RFC 3986 S6.2.3 makes ``https://h/`` the normalized form of
+      ``https://h`` -- so the pattern refuses the canonical spelling of a value it
+      accepts.  Measured over all eight ``uri`` patterns the bundle states, 500 draws
+      each: this one refuses 139 of 139 round-tripped values, so it is UNSATISFIABLE
+      rather than violated at a rate, and no conforming URL library could satisfy it.
+      D5 keeps the URL type; ``adcontextprotocol/adcp#8398`` repairs the pattern.
+    * ``minProperties: 1`` at ``core/provenance.json``'s ``render_guidance``.  D8 maps a
+      silent ``additionalProperties`` to ``extra="ignore"``, so an undeclared key is
+      accepted and DROPPED and an instance whose only key is undeclared dumps to
+      ``{}``.  Not an artifact of the dump's own keywords -- measured, the same node
+      dumped WITHOUT ``exclude_unset`` is refused too, on ``type`` instead.  D8 stays.
+
+    **Which is why the census below is now over ``dump_exempt`` as well as over
+    ``outcome``.**  A group that leaves this list because it was exempted has to arrive
+    somewhere else, or the census would have nothing to say about three pairs that pass
+    conditionally -- and "passes with a keyword struck" is exactly the fact a reader of
+    a green pair needs. ``codegen.dump_exemptions`` states the set and the strike in
+    ONE place; what this adds is the POPULATION: no fourth pair acquired one.
+
+    * ``no_instrument`` -- the ``format``-beside-``pattern`` shape
+      ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy, which
+      is an admitted exit rather than a failure (salesagent-j3k2l.10): the GENERATOR
+      produced nothing, which is not a verdict on the model, so each of the two pairs
+      is admitted only with the measured position that explains its draw.
+    """
+    reports = graded_reports()
+    by_outcome: dict[str, list[str]] = {}
+    for g, r in reports:
+        if r.outcome != "pass":
+            by_outcome.setdefault(r.outcome, []).append(f"{g.ref.document}{g.ref.pointer}")
+    # SORTED, because the order ``graded()`` returns is module-walk order and a nested
+    # pair precedes its root in it.  The membership is the obligation; the order is an
+    # artifact of the walk, and asserting it would grade the walk.
+    by_outcome = {k: sorted(v) for k, v in by_outcome.items()}
+    assert by_outcome == NON_PASS_PAIRS, by_outcome
+    # The pairs that pass CONDITIONALLY, by name, with the keyword each one had struck.
+    # An exemption is a position in a literal set, so a fourth pair acquiring one is a
+    # change to that set and reddens here as well as at its own pin.
+    exempt = {
+        f"{g.ref.document}{g.ref.pointer}": sorted(r.accepts.dump_exempt)
+        for g, r in reports
+        if r.accepts.dump_exempt
+    }
+    # THREE, not the eight that an exempt position lies inside: ``dump_exempt`` records
+    # what a pair's dump NEEDED, so the five ancestor pairs whose drawn instance never
+    # reached the node report nothing and a conditional pass stays readable among them.
+    assert exempt == {
+        "core/attestation-capabilities.json#": [
+            "core/attestation-capabilities.json#/properties/accepted_issuers/items"
+            "/properties/credential_origins/items/pattern",
+            "core/attestation-capabilities.json#/properties/accepted_issuers/items"
+            "/properties/issuer/oneOf/2/properties/origin/pattern",
+        ],
+        "core/attestation-issuer.json#/oneOf/2": [
+            "core/attestation-issuer.json#/oneOf/2/properties/origin/pattern"
+        ],
+        # The fourth packaged copy of attestation-issuer's origin branch. It reaches a
+        # pair only on the MERGED compiler: neither the conjunct reader nor the
+        # nested-union sibling rule emits this document alone, so the first tree that
+        # carries it is the one their merge emits.
+        "core/product-audience-evidence-requirements.json#/properties"
+        "/accepted_attestation_issuers/items/oneOf/2": [
+            "core/product-audience-evidence-requirements.json#/properties"
+            "/accepted_attestation_issuers/items/oneOf/2/properties/origin/pattern"
+        ],
+        "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
+        "/properties/render_guidance": [
+            "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
+            "/properties/render_guidance/minProperties"
+        ],
+    }, exempt
+    # Each cause is read off the report rather than taken from the list above, so a
+    # pair that landed in one of these groups for a DIFFERENT reason reddens here.
+    admitted = [(g, r) for g, r in reports if r.outcome == "no_instrument"]
+    assert admitted, "nothing reports no_instrument: the clause below would grade nothing"
+    for g, r in admitted:
+        for cause in r.no_instrument:
+            _grades_a_cause(cause, r.name)
+        # ATTRIBUTED to the one position the bundle census measures as undrawable
+        # (``test_no_instrument_is_the_designed_outcome_for_a_measured_shape``), and
+        # not merely coincident with a document that happens to state the two
+        # keywords: 72 of the 73 co-occurrences draw, so the position is the fact.
+        assert g.ref.document == UNDRAWABLE_POSITION[0], g.ref
+        assert r.accepts_undrawable, g.ref
+        for named in r.accepts_undrawable:
+            where, _, why = named.partition(": format ")
+            assert UNDRAWABLE_POSITION[1].endswith(where), (UNDRAWABLE_POSITION, where)
+            # ``repr``, because that is how the cause writes a pattern: a raw compare
+            # would pass on the shorter string and stop grading the escaping.
+            assert repr(UNDRAWABLE_PATTERN) in why and "Unsatisfiable" in why, named
+
+
+def test_no_instrument_is_the_designed_outcome_for_a_measured_shape() -> None:
+    """``salesagent-j3k2l.10``: the one admitted non-pass outcome, over its POPULATION.
+
+    **The decision.** ``no_instrument`` is the designed outcome for a position whose
+    ``format`` strategy cannot satisfy the ``pattern`` beside it, and what grounds it is
+    the difference between an INSTRUMENT failure and a verdict: the draw produced no
+    instance, so nothing of this pair's evidence is a statement about the class, and
+    reporting it as a model defect would be the generator's reach wearing the model's
+    name.  So the exit is ATTRIBUTED rather than tolerated -- a ``strategy_error`` no
+    measured position of the document explains falls through to
+    ``accepts:strategy_error`` and is a verdict like any other -- and both admitted
+    pairs are named in ``test_the_non_pass_pairs_are_named_and_attributed`` and again
+    below.
+
+    **The alternative was excluded by measurement, not preference.**
+    ``hypothesis_jsonschema``'s ``string_schema`` takes the FORMAT's strategy and
+    applies the pattern as a ``.filter()``, and ``custom_formats`` is keyed on the
+    format alone and never sees the node -- so no supported hook can make a format
+    strategy pattern-aware.  What is left is an upstream change to ``string_schema``,
+    a reimplementation of the library's string generation here, or a ``uri`` strategy
+    whose output pool contains a ``github.com`` value, which is an instrument built
+    from the answer and which the next bundle pinning another host would undo.
+
+    **Four clauses, each over the whole population and each with its denominator.**
+
+    1. THE CENSUS.  73 positions in 47 of 1,054 documents, 8 distinct
+       ``(format, pattern)`` shapes, and the format is ``uri`` at every one.
+    2. THE DRAW.  7 of the 8 shapes draw -- the library's ``uri`` strategy emits
+       ``https://A.COM``, which matches every pattern pinning the scheme or the general
+       host shape -- so 72 of the 73 positions are reachable and ONE is not.  This is
+       the clause that makes the exit a shape and not a label: co-occurrence is
+       overwhelmingly drawable, so a cause naming co-occurrences would admit a
+       ``strategy_error`` from any cause at all.
+    3. THE OBSTRUCTION IS UNCONDITIONAL.  ``source_repository`` is required by
+       ``provenance`` and ``provenance`` by the root, so no instance of either document
+       can omit the position and no number of examples would have reached one.  Were it
+       optional this would be a sampling artifact and the answer would be more draws.
+    **The fourth clause is in ``test_the_non_pass_pairs_are_named_and_attributed``**,
+    because it is over the other population -- the graded REPORTS -- and that test
+    already holds it.  It attributes every admitted ``no_instrument`` pair to the one
+    position measured here, so the two halves of the decision meet at
+    ``UNDRAWABLE_POSITION`` and neither can move alone.
+    """
+    docs = {d: bundle.read(BUNDLE, d) for d in claimed("bundle.portable", bundle.portable(BUNDLE))}
+
+    # 1. THE CENSUS, as the set of positions rather than as its size: how many of them
+    #    the bundle states is a property of the bundle version, and the facts this
+    #    clause exists for are that the set is not empty and that the format is ``uri``
+    #    at every one of them.
+    positions = {
+        (document, pointer): node
+        for document, doc in sorted(docs.items())
+        for pointer, node in harness.format_pattern_positions(doc)
+    }
+    claimed("positions stating format beside pattern", positions)
+    shapes = collections.Counter((node["format"], node["pattern"]) for node in positions.values())
+    claimed("distinct (format, pattern) shapes", shapes)
+    assert {fmt for fmt, _ in shapes} == {"uri"}, sorted(shapes)
+    # Every position lands in exactly one shape, so no position is lost between the two
+    # readings -- the identity the two censuses were a pair of numbers for.
+    assert sum(shapes.values()) == len(positions)
+
+    # 2. THE DRAW, over the SHAPES rather than the positions: what decides drawability
+    #    is the pair of keywords, so the shape is the unit and the positions are its
+    #    multiplicity.  Drawn through the production function.  The undrawable shape is
+    #    NAMED with its pattern and the drawable ones are the complement, which is the
+    #    clause that makes the exit a shape and not a label: co-occurrence is
+    #    overwhelmingly drawable, so a cause naming co-occurrences would admit a
+    #    ``strategy_error`` from any cause at all.
+    cannot: dict[tuple[str, str], tuple[str, ...]] = {}
+    for fmt, pattern in shapes:
+        why = harness.undrawable_formats({"type": "string", "format": fmt, "pattern": pattern})
+        if why:
+            cannot[(fmt, pattern)] = why
+    assert list(cannot) == [("uri", UNDRAWABLE_PATTERN)], sorted(cannot)
+    draws = claimed("shapes that draw", set(shapes) - set(cannot), inside=set(shapes))
+    assert sum(shapes[s] for s in draws) == len(positions) - sum(shapes[s] for s in cannot)
+    assert "Unsatisfiable" in cannot[("uri", UNDRAWABLE_PATTERN)][0]
+    assert [k for k, n in positions.items() if n["pattern"] == UNDRAWABLE_PATTERN] == [
+        UNDRAWABLE_POSITION
+    ]
+
+    # 3. THE OBSTRUCTION IS UNCONDITIONAL: walk the pointer and require the key at
+    #    every step, so an instance that omits the node does not exist.
+    document, pointer = UNDRAWABLE_POSITION
+    node = docs[document]
+    steps = pointer.lstrip("/").split("/")
+    assert steps[::2] == ["properties"] * (len(steps) // 2), pointer
+    for key in steps[1::2]:
+        assert key in node.get("required", []), (pointer, key, node.get("required"))
+        node = node["properties"][key]
+    assert node["format"] == "uri" and node["pattern"] == UNDRAWABLE_PATTERN
+
+
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
+def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for() -> None:
+    """The liveness check's own denominator, and what it is NOT.
+
+    Section 6 keeps one refused payload per class and routes it through the entry
+    point, so the question this answers is "how many classes' schema halves were
+    shown to be connected, and was any of them silent".  ``no_payload`` is the complement and is enumerated
+    by name in ``test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for``.
+
+    ``schema_half_not_connected`` is pinned at ZERO rather than tracked, because an
+    acceptance there is not a tolerance: the document refuses this payload and the
+    entry point did not, so either the schema half is not running for that class or
+    its ``__adcp_schema__`` does not resolve to the document it names.
+    """
+    reports = [r for _, r in graded_reports()]
+    by_outcome: dict[str, set[str]] = {}
+    for g, r in graded_reports():
+        by_outcome.setdefault(r.liveness.outcome, set()).add(f"{g.ref.document}{g.ref.pointer}")
+    assert by_outcome.get("schema_half_not_connected", set()) == set(), [
+        (r.name, r.liveness.how, r.liveness.violated) for r in reports
+        if r.liveness.outcome == "schema_half_not_connected"
+    ]
+    # The live outcomes PARTITION the pairs -- no third one, nothing unaccounted -- and
+    # ``no_payload`` is the NAMED set it is enumerated as rather than a count of 2, so
+    # ``pass`` is the complement and neither has a number of its own to re-point.
+    assert set(by_outcome) == {"pass", "no_payload"}, sorted(by_outcome)
+    assert by_outcome["no_payload"] == set(NO_PAYLOAD_PAIRS), sorted(by_outcome["no_payload"])
+    partitions({f"{g.ref.document}{g.ref.pointer}" for g, _ in graded_reports()}, **by_outcome)
+    # The document decided, at every pair: a perturbation nothing bit is never
+    # offered to the class, so every payload that reached one violates a keyword the
+    # document names.
+    assert all(r.liveness.violated for r in reports if r.liveness.outcome == "pass")
+
+
+def _combinator_parents(ref: SchemaRef) -> list[SchemaRef]:
+    """Every COMBINATOR node above ``ref`` in its own document, nearest first.
+
+    A union branch is at ``<parent>/anyOf/<i>`` or ``<parent>/oneOf/<i>``, and the
+    instance that satisfies the branch IS the instance that satisfies the parent -- so a
+    keyword applying to the whole instance is read off the parents as well as off the
+    branch.  Peeled from the TAIL and only while the tail is a combinator index, which is
+    the half that makes this a reading about one instance: ``#/anyOf/1`` is the root's own
+    instance and answers for the root, while ``#/anyOf/1/properties/account`` is a
+    PROPERTY of it and answers for nobody above -- a root forbidding additional keys says
+    nothing about the keys of a nested object.  A branch of a branch peels twice.
+    """
+    segments = ref.pointer.lstrip("#").strip("/").split("/") if ref.pointer.strip("#/") else []
+    out: list[SchemaRef] = []
+    while len(segments) >= 2 and segments[-2] in ("anyOf", "oneOf") and segments[-1].isdigit():
+        segments = segments[:-2]
+        above = "/".join(segments)
+        out.append(SchemaRef(ref.document, f"#/{above}" if above else "#"))
+    return out
+
+
+def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
+    """D8, over the FOUR forms a document's ``additionalProperties`` can take here.
+
+    The set of classes is partitioned by what each node's document APPLIES, derived
+    from the bundle, and each part is required non-empty so none is graded by an empty
+    loop.  The silent part is the one the base's own default is asserted for, which is
+    why it is asserted here rather than left to follow from the classes that state it.
+
+    **A TYPED ``additionalProperties`` is the fourth form, and it was not a case here
+    until a document carrying one emitted.**  The check read the applied value through a
+    three-way table of ``false`` / ``true`` / absent, so the day
+    ``core/canonical-media-buy-features.json`` emitted it raised ``TypeError: cannot use
+    'dict' as a dict key`` -- a check that ranged over the forms it happened to have met
+    and had nothing to say about a fourth.  The forms are enumerated now, and an
+    unrecognised one is refused by name rather than used as a dict key.
+
+    ``ignore`` and not ``allow`` for the silent case, because absent and ``true``
+    are different statements: ``true`` says an additional property is part of the
+    document and is retained, while silence says only that one is permitted, so it
+    is accepted and dropped.  Both accept the same payloads, so this is retention
+    and not the accepted set.  Nothing reads an environment to decide it.
+    """
+    assert AdCPBaseModel.model_config["extra"] == "ignore"
+
+    grouped: dict[str, set[str]] = {"forbid": set(), "allow": set(), "silent": set(), "typed": set()}
+    classes: set[str] = set()
+    for row in graded():
+        if not (isinstance(row.model, type) and issubclass(row.model, AdCPBaseModel)):
+            continue  # an alias and an enumeration have no model config
+        # **What the DOCUMENT APPLIES at this node, not what the node says alone.**
+        # ``allOf`` conjoins, so a conjunct's ``additionalProperties`` IS the node's --
+        # and ``_composed`` is the harness's own folding of the document, so there is
+        # no second reading of what a conjunct
+        # contributes.  ``_closed`` stood here, folding the delegated resolver's
+        # ``{"not": {}}`` back to the ``false`` it is; it is deleted with that resolver
+        # (architecture §9) and ``bundle.record`` copies the document's own ``false``,
+        # which 0 raw nodes of the bundle spell any other way.  Read bare instead, a
+        # composing node comes back SILENT while its
+        # class correctly carries the conjunct's value: measured on
+        # ``core/attribution-window.json#/properties/post_click``, whose own node is
+        # ``{"allOf": [{"$ref": "core/duration.json"}], "description": ...}`` and whose
+        # one conjunct declares ``additionalProperties: false``.  The class is
+        # ``forbid`` and the folded document says ``false``, which agree; the bare node
+        # said nothing and this read it as the document permitting what it forbids.
+        name = f"{row.ref.document}{row.ref.pointer}"
+        classes.add(name)
+        # **THROUGH ``_normalize`` AS WELL, which is the harness's own reading of the
+        # document and is what row .3 made load-bearing here.**  Architecture §4
+        # leaves a LOCAL ``$ref`` in the record as written, so a union BRANCH can be
+        # ``{"$ref": "#/definitions/ScalarBinding"}`` -- a node that states nothing about
+        # additional properties while the entry it names states ``true``.  Read without
+        # resolving it, the two branches of
+        # ``core/requirements/catalog-field-binding.json`` came back SILENT against a
+        # class that correctly carries ``allow``, and the inherited-value arm below then
+        # asked the union ROOT's own document for a key no union root states.  ONE
+        # reading of the document -- the harness's own, and this check's -- which is the
+        # same argument ``_composed`` is read here for.
+        root = schema_at(SchemaRef(row.ref.document, "#"))
+        declared = _composed(
+            harness._normalize(schema_at(row.ref), root, declared_null=True),
+            root,
+        ).get("additionalProperties", "silent")
+        # **AND CONJOINED WITH WHAT APPLIES TO THE WHOLE INSTANCE, which a node's own
+        # value is not the whole of.**  A union BRANCH is satisfied together with the
+        # root, so the keyword that decides an undeclared key is the AND over the branch
+        # and every combinator parent above it -- and ``false`` wins over ``true``,
+        # because a key the root calls additional is refused there whatever the branch
+        # permits.  Read off the node's own value alone this clause said ``true`` and the
+        # class said ``forbid`` at three pointers --
+        # ``media-buy/decline-proposals-response.json#/anyOf/1``,
+        # ``media-buy/refine-proposals-response.json#/anyOf/1`` and
+        # ``media-buy/request-proposals-response.json#/anyOf/3`` -- each a branch
+        # stating ``additionalProperties: true`` under a root stating ``false``.  The
+        # CLASS is right in all three and the reading was the wider document, which is
+        # the direction ``adcp-client-python-82m.18`` reports for the RULE keywords at
+        # the same position.  Derived by walking the pointer's combinator parents rather
+        # than by naming the three, so a fourth branch is covered by construction.
+        for parent in _combinator_parents(row.ref):
+            above = _composed(
+                harness._normalize(schema_at(parent), root, declared_null=True), root
+            ).get("additionalProperties", "silent")
+            if above is False:
+                declared = False
+        # The four forms, named: a schema here is the TYPED row, graded in full by
+        # ``test_a_typed_additional_properties_is_a_typed_pydantic_extra``.  What D8
+        # decides for it is the same as for ``true`` -- an additional property is part
+        # of the document and is retained -- so the retention is asserted here and the
+        # typing there.
+        if isinstance(declared, dict):
+            assert row.model.model_config["extra"] == "allow", (row.ref, declared)
+            grouped["typed"].add(name)
+            continue
+        assert declared in (False, True, "silent"), (row.ref, declared)
+        want = {False: "forbid", True: "allow", "silent": "ignore"}[declared]
+        if declared == "silent" and row.model.model_config["extra"] != "ignore":
+            # A class that COMPOSES takes its base's value, and the resolver is why
+            # the document no longer says so: ``canonicalish`` drops
+            # ``additionalProperties: true`` as the vocabulary's default, so a
+            # conjunct that stated it comes back silent while the BASE -- read from
+            # its own document, where the key survives at a root -- still carries
+            # ``allow``.  The inherited value is the document's statement about a
+            # schema it composes, so it is checked against the base rather than
+            # read as this document's own silence.  Measured: 1 such class
+            # (``core/async-response-refs/media-buy/accept-proposal-async-response-working.json``
+            # over ``core/compact-task-working.json``, whose own document says
+            # ``true``) when this was first written, and ``allow`` is the only value this branch admits -- a
+            # ``forbid`` inherited where the document is silent would be a
+            # narrowing and still fails.  27 such classes at 64131600f, not 1:
+            # the figure is over ``graded()`` and step 4's row brought the whole
+            # ``core/async-response-refs/`` family into it.
+            #
+            # **THAT WHOLE PARAGRAPH IS A READING OF A TREE THIS IS NO LONGER OVER, and
+            # the branch admitted ``allow`` ALONE on the strength of it.**  Re-measured
+            # here over the tree a fresh run emits: ``core/async-response-refs/`` is
+            # graded at ZERO pointers, so the 27 -- and the 1 before them -- have left
+            # this loop entirely, and the base stating ``additionalProperties: true``
+            # has no site at all.  The branch is reached 7 times and by two mechanisms,
+            # NEITHER of which is the one it was written for:
+            #
+            # * **6 classes inherit ``forbid`` from a base whose OWN document states
+            #   ``false``** -- ``AttestationResourceSubject`` at three pointers,
+            #   ``AttestationBrandIssuer``, ``BudgetAllocationFixed`` and
+            #   ``BudgetAllocationSellerOptimized``.  The old comment called an
+            #   inherited ``forbid`` "a narrowing"; it is not one, it is the base's own
+            #   statement composed faithfully, which is
+            #   ``adcp-client-python-qzx.1``'s recorded refutation of this clause.  So
+            #   the base's value goes through the SAME ``{False: forbid, True: allow}``
+            #   table the document's own value goes through, rather than one admitted
+            #   answer being spelled here.
+            # * **1 class states ``allow`` with NO base document to inherit from**:
+            #   ``core/provenance.json#/properties/disclosure/properties/jurisdictions/items/properties/render_guidance``,
+            #   whose base is ``AdCPBaseModel`` itself.  That is §8 sentence 4's second
+            #   consequence (``codegen/lower/objects.py``, decided 2026-11-03): *a count
+            #   keyword withheld from a class whose extra policy drops the keys it
+            #   counts is answered by the class KEEPING the keys the document counts*.
+            #   Graded as the BEHAVIOUR it exists for -- the class keeps an undeclared
+            #   key and its ``PropertyCount`` counts it, so a payload the document
+            #   admits on that key alone is admitted -- and not by re-reading the
+            #   production predicate that decides it.
+            base = row.model.__mro__[1]
+            stated_by_a_base = getattr(base, "__adcp_schema__", None)
+            inherited = (
+                schema_at(stated_by_a_base).get("additionalProperties", "silent")
+                if stated_by_a_base is not None
+                else "silent"
+            )
+            if inherited in (False, True):
+                want_base = {False: "forbid", True: "allow"}[inherited]
+                assert row.model.model_config["extra"] == want_base, (row.ref, inherited)
+                grouped[want_base].add(name)
+                continue
+            assert row.model.model_config["extra"] == "allow", (row.ref, declared)
+            counts = [r for r in row.model._adcp_rules if type(r).__name__ == "PropertyCount"]
+            assert counts, (row.ref, row.model._adcp_rules)
+            # The payload is ONE key the class does not declare, which satisfies the
+            # count only if the key SURVIVED.  Under ``ignore`` it would be dropped and
+            # the same rule would refuse an instance the document accepts, so this
+            # assertion is the reversal and not a restatement of it.
+            minimum = min(c.minimum for c in counts if c.minimum is not None)
+            payload = {f"undeclared_{i}": 1 for i in range(minimum)}
+            jsonschema.Draft7Validator(schema_at(row.ref)).validate(payload)
+            assert row.model.strict_validate(payload) is not None, (row.ref, payload)
+            grouped["allow"].add(name)
+            continue
+        assert row.model.model_config["extra"] == want, (row.ref, declared)
+        grouped["silent" if declared == "silent" else want].add(name)
+
+    # The four forms partition the classes: total, disjoint, and every part non-empty,
+    # so no form is graded by a loop that met none of it.  The silent part is the leaf
+    # objects whose documents say nothing plus the union BASES, which are silent by
+    # construction -- ``lower/union.py`` refuses a root that states its own
+    # ``additionalProperties``, so a base never has one to carry and takes this default
+    # -- plus the mapping and container roots whose own document is silent too.  How
+    # MANY are in each part is a reading of the emitted population and every row moves
+    # all four, which is why none of them is asserted.
+    partitions(claimed("graded classes", classes), **grouped)
+    for form, members in grouped.items():
+        claimed(f"classes whose document applies {form}", members, inside=classes)
+
+
+# --------------------------------------------------------------------------- #
+# what the schema half decides, and where it finds the schema
+# --------------------------------------------------------------------------- #
+def test_strict_validate_decides_acceptance_against_the_document() -> None:
+    """D4.
+
+    What nothing else in this file reaches: that the schema half of
+    ``strict_validate`` runs at all, and that the keyword it refuses on is the
+    DOCUMENT'S name for it.  ``check_pair`` cannot grade either -- it offers one
+    perturbation of an accepted instance, and a model graded through
+    ``strict_validate`` refuses whatever the document refuses whichever half
+    answered.  Measured:
+    with the schema check deleted from ``strict_validate``, this is the only test
+    in the suite that goes red.
+    """
+    model = pagination().model
+
+    with pytest.raises(ValidationError) as caught:
+        model.strict_validate({"cursor": None})
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("type", ("cursor",))]
+
+    # ``minimum: 1`` is in the annotation too, as ``Field(ge=1)``, so the second
+    # half is the keyword MAPPING: pydantic's own name for it is
+    # ``greater_than_equal`` and the document's is ``minimum``.
+    with pytest.raises(ValidationError) as caught:
+        model.strict_validate({"max_results": 0})
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("minimum", ("max_results",))]
+
+
+def test_a_class_pointed_at_another_document_grades_red() -> None:
+    """``__adcp_schema__`` decides what is validated, and is not decoration.
+
+    The same class body, pointed at a different document, must fail -- otherwise
+    the reference is a comment and ``strict_validate`` is deciding acceptance
+    against something nobody chose.  The other document is picked by its own
+    property: the first emitted document whose root forbids what this one's root
+    requires.
+    """
+    other = next(
+        g.ref.document
+        for g in sorted(graded(), key=lambda g: g.ref.document)
+        if g.ref.pointer == "#"
+        and g.ref.document != PAGINATION
+        and schema_at(g.ref).get("additionalProperties") is False
+        and schema_at(g.ref).get("required")
+    )
+
+    class Misaimed(AdCPBaseModel):
+        __adcp_schema__ = SchemaRef(other, "#")
+        model_config = ConfigDict(extra="forbid")
+        max_results: int | None = 50
+        cursor: str | None = None
+
+    with pytest.raises(ValidationError):
+        Misaimed.strict_validate({"max_results": 50})
+
+
+def test_a_pointer_names_one_node_of_a_document() -> None:
+    """The pointer half of ``SchemaRef``, on the document step 1 is stated over.
+
+    A nested class grades against its own node, and that only works if the
+    pointer resolves to the node rather than to the file.  Graded on
+    ``pagination-request`` even though it has no nested class, so the mechanism
+    is checked where the step's own document is: the property node it names is
+    not the root, and a pointer that names nothing raises.
+    """
+    root = schema_at(SchemaRef(PAGINATION, "#"))
+    node = schema_at(SchemaRef(PAGINATION, "#/properties/max_results"))
+    assert node == root["properties"]["max_results"]
+    assert node != root
+    with pytest.raises(KeyError):
+        schema_at(SchemaRef(PAGINATION, "#/properties/no_such_property"))
+
+
+def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
+    """``strict_validate`` has to be able to DECIDE with the document it reads.
+
+    A ``$ref`` left in one is not decidable locally: ``jsonschema`` finds no
+    store for an absolute URI and retrieves it OVER THE NETWORK, on a code path
+    it deprecates and says "will shortly become an error".  Measured before this
+    was fixed: 4.4 s per validation against a live URL, and a
+    ``RefResolutionError`` offline.  So the emitter writes each document resolved
+    (``bundle.record``).
+
+    This is the runtime half of step 2.  The module half is the opposite and is
+    graded below: a reference is an IMPORT in the generated module (P2) and is
+    never inlined there.  The two are not in tension -- one is where a type LIVES
+    and the other is what a document MEANS.
+
+    **THE OBLIGATION IS "DECIDABLE LOCALLY", AND A LOCAL POINTER IS.**  The sentence
+    above says why -- an ABSOLUTE URI has no store and goes to the network -- and a
+    ``#/definitions/x`` needs no store at all, only the document as its resolution
+    scope.  ``bundle.record`` inlines a remote reference and leaves a local one, so
+    a packaged document CAN carry one, and the first ones to be packaged arrived with
+    ``salesagent-j3k2l.28``: ``core/placement-presentation.json`` and
+    ``core/bidding-policy-capability.json``, which were refused by name until that row.
+    ``_base._refuse_at`` evolves a document-rooted validator onto the node, so the
+    pointer resolves, and ``tests/test_applied_schema.py`` asserts BOTH halves of that
+    -- every local reference a graded pair holds resolves, and the schema half refuses
+    THROUGH it.  So the split is read with ``bundle.split_ref``, which is the one
+    reading of the ``#`` this project has, rather than by looking for the key.
+
+    **AND SINCE ROW .3 THERE IS NO REMOTE REFERENCE LEFT AT ALL, at any position.**
+    The predicate stays ``bundle.undecidable_references``, which is narrower than "no
+    remote reference" and is what admitted ``a2ui/si-catalog.json``'s 24 references in
+    one dead section (``salesagent-j3k2l.71``) -- it has simply stopped having a
+    survivor to admit: ``bundle.record`` descends by the table's descent column, where a
+    ``definitions``/``$defs`` entry is a subschema at a DEF position, so "every
+    cross-document ``$ref``" (architecture §4) means every one.  Both halves are
+    asserted, the narrow predicate AND the stronger fact, so a reading that started
+    leaving a remote reference anywhere reddens here with the pointer.
+
+    ``tests/test_fragment_ref.py`` grades the declared and the dead entry separately on
+    a bundle it writes, which is where the two positions are told apart.
+    """
+    documents = {g.ref.document for g in graded()}
+    named = bundle.named_nodes(BUNDLE)
+    local: dict[str, set[str]] = {}
+    remote: dict[str, set[str]] = {}
+    for document in sorted(documents):
+        carried = schema_at(SchemaRef(document, "#"))
+        owed = bundle.undecidable_references(carried, named.get(document, frozenset()))
+        assert owed == [], (document, owed)
+        for pointer, reference, _ in bundle.references(carried):
+            if bundle.split_ref(reference)[0]:
+                remote.setdefault(document, set()).add(pointer)
+            else:
+                local.setdefault(document, set()).add(reference)
+    # And the control: the bundle DOES have references, so the assertion above is
+    # over documents that had something to resolve rather than over nothing.
+    assert [d for d in documents if bundle.references(bundle.read(BUNDLE, d))]
+    # The stronger fact, asserted beside the narrow predicate: no document the package
+    # carries holds a cross-document reference at ANY position, dead section included.
+    assert remote == {}, {d: sorted(p) for d, p in remote.items()}
+    # THE LOCAL SET, DERIVED AND NOT PINNED, and row .3 is why.  It was a literal map
+    # of three documents to their references, because the delegated resolver INLINED a
+    # local reference and only a recursive chain survived it -- so the survivors were a
+    # property of what that library could manage.  Architecture §4 decides that a local
+    # ``$ref`` stays AS WRITTEN, so what survives is now a property of the DOCUMENT, and
+    # the check is the stronger one: the record's local references are the raw bundle
+    # document's, pointer for pointer and URI for URI.
+    #
+    # Derived from the RAW bundle document, which is an independent input and not the
+    # thing being graded, so it catches a reference changing target, a document joining
+    # the set and a document leaving it -- all three of which the literal could only
+    # report as a diff for a human to attribute.  21 documents of the committed tree
+    # carry one, measured at this tip; the three the literal named are asserted to be
+    # among them so the loop is not graded by an empty set.
+    # ``tests/test_applied_schema.py`` reads the same references once per
+    # (PAIR, reference) rather than once per document, which is a second denominator
+    # for one fact and is why that file's figures are larger.
+    for document in sorted(local):
+        raw = [u for _, u, _ in bundle.references(bundle.read(BUNDLE, document))]
+        assert sorted(local[document]) == sorted({u for u in raw if not bundle.split_ref(u)[0]}), (
+            document,
+            sorted(local[document]),
+            sorted(raw),
+        )
+    carriers = claimed("documents the package carries a local reference in", set(local))
+    assert {
+        "core/bidding-policy-capability.json",
+        "core/placement-presentation.json",
+        "governance/reported-outcome-error.json",
+    } <= carriers, sorted(carriers)
+
+
+# --------------------------------------------------------------------------- #
+# the emitted text
+# --------------------------------------------------------------------------- #
+def _source(document: str) -> str:
+    """The text of the FILE holding one document's module, off the fresh tree.
+
+    ``module_file`` and not ``module_path``: the second is the NAME's path, and
+    ``brand.json`` -- whose path is also a directory's -- is a package ROOT whose file is
+    ``brand/__init__.py``, so a reader spelling ``brand.py`` asks for a file the emitter
+    is decided never to write.
+    """
+    return (TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text()
+
+
+@functools.cache
+def _symbol(document: str) -> str:
+    """The name the emitted module binds the document's ROOT to.
+
+    **READ OFF THE COMPILE THAT PRODUCED THE TREE EVERY CALLER IS GRADING, which is
+    ONE compile and not one per document** (``adcp-client-python-z0hk``).  This asked
+    ``compiled(BUNDLE, [document])`` -- a SINGLE-DOCUMENT compile per distinct target --
+    and the cost is not the only thing wrong with that.  Every caller here reads the
+    symbol against ``tests/fresh.py``'s ``TREE``, either as module TEXT (``_source``) or
+    as an imported attribute (``_module_of``), and that tree is
+    ``compiled(BUNDLE, tree_population())``: ``fresh._materialised`` writes exactly that
+    compile -- its own ``population()`` is this file's ``tree_population()``, the bundle's
+    portable set -- and binds it.  ``population()`` here is the union of the seven step
+    selectors and a PROPER PART of it, so it is not the one to read: 345 targets include
+    documents outside it (``content-standards/artifact-webhook-payload.json`` is the first
+    alphabetically) that the shipped tree emits and these clauses import.
+
+    **So the compile of the shipped population is the accessor the grade reads through,
+    and the symbol has to be derived from it** -- architecture §3a's "A READER DERIVES
+    ITS KEY FROM THE ACCESSOR THE GRADE READS THROUGH".  A single-document
+    compile answers truthfully about an artifact nobody here imports, and where the two
+    disagree -- a root bound by identity to another pointer's declaration lands in
+    ``adopted``, and which pointer got there first is a function of the POPULATION -- it
+    is the single-document answer that is wrong for these clauses, not merely expensive.
+
+    MEASURED, and the cost is why it was found: the 345 distinct ``$ref`` targets of
+    ``test_a_cross_document_reference_is_an_import_and_not_a_copy`` cost 345 compiles,
+    which did not terminate in 50 minutes against the suite's 900 s backstop -- green on
+    a warm store and red on a cold one, which is the one property an instrument may not
+    have.  ``tree_population()``'s compile is already paid by ``tests/conftest.py``'s
+    import of ``tests/fresh.py``, before collection, so every ask here is a dict lookup;
+    MEASURED after, the whole clause is 38.8 s.
+
+    Memoized still, for the dict lookup rather than for the compile.  The answer is a
+    function of (bundle, tree_population, document), and all three are the run's own.
+
+    **RESOLVED BY THE PROVENANCE POINTER AND NEVER BY A POSITION IN A LIST.**  This
+    read ``__all__[0]`` and the fact it stood on is retired: ``6cb95c568`` made the
+    RENDERER decide ``__all__``'s order -- ``RUF022``'s, two groups and case-sensitive,
+    which is what a linter reads the generated tree against -- so the head of the list
+    is the alphabetically first export and not the root.  Measured, it is wrong for
+    ``brand.json``, whose 52 exports begin ``Agents`` (an ``Annotated`` alias at a
+    ``definitions`` entry) while the root binds ``BrandDiscovery``: four union checks
+    below then asked ``list`` for ``model_validate``.
+
+    ``Emitted.declared`` and ``Emitted.adopted`` are the run's own symbol table keyed by
+    POINTER, so ``""`` is the root by construction and no order, title or spelling enters
+    the answer.  Both maps are read because they PARTITION that table: a root whose class
+    was bound by identity to another pointer's declaration is in the second
+    (``emit.emit``'s ``out.declared`` / ``out.adopted`` split), and a reader taking one
+    alone would miss it.
+    """
+    # By the provenance pointer and never by position: ``__all__`` is sorted, so
+    # index 0 is the root for only 1,023 of 1,054 modules.  ``declared``/``adopted``
+    # at pointer ``""`` is the emitter's own record of what it bound there.
+    out = compiled(BUNDLE, tree_population())
+    assert document in out.emitted, (
+        f"{document} is not in the tree this compile emitted, so no caller here can be "
+        "reading its module either"
+    )
+    return {**out.adopted[document], **out.declared[document]}[""]
+
+
+def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
+    """P2, on the AST of the emitted module rather than on its text.
+
+    The previous attempt's whole premise was that three generators all flatten a
+    ``$ref`` into a COPY of its target, so "it emits an import" is the claim this
+    step has to make falsifiable.  Two halves, because either alone passes while
+    the other fails:
+
+      * the referencing field's annotation NAMES the target's symbol and carries
+        no CONSTRAINT -- a copy of the target's constraints is a ``Field(ge=...,
+        min_length=...)``, and a copy that replaced the reference does not name
+        the symbol at all;
+      * no ``Field`` kwarg ANYWHERE in the module is one this document does not
+        declare locally -- so a constraint of the target has nowhere else in the
+        module to hide either.
+
+    The first half used to assert the annotation contained no CALL, which was the
+    same claim only while the renderer dropped the property's own
+    ``description``.  draft-07 says a ``$ref`` ignores its siblings and
+    ``resolve_all_refs`` MERGES them, so the resolved document the class names
+    carries the sibling description -- and a renderer that drops it drops a fact
+    the document states.  The compiler carries it, as ``Field(description=...)``,
+    which is a call in the annotation and not a copy of anything.  So the
+    assertion is on the kwarg NAMES, which is what "copies no constraint" means.
+
+    Deliberately says nothing about HOW an optional property is wrapped.  That is
+    D4's, it has been re-decided once already, and a test naming the wrapper's
+    spelling would have to be edited by the lane that changes it -- which is how
+    a P2 instrument comes to be adjusted by someone who is not grading P2.
+
+    Everything compared is derived: the import module from ``relative_module``,
+    the symbol from the target module's own ``__all__``, the local constraint set
+    from the document's non-reference nodes.
+    """
+    known = set(bundle.portable(BUNDLE))
+    documents = sorted({g.ref.document for g in graded()})
+    cross_document: set[tuple[str, str]] = set()
+    graded_properties: set[tuple[str, str]] = set()
+    fragment_refs: dict[tuple[str, str], str] = {}
+    conjoined_refs: dict[tuple[str, str], str] = {}
+    for document in documents:
+        doc = bundle.read(BUNDLE, document)
+        # CROSS-document only, which is what P2 is about here: a LOCAL reference
+        # names a node of this same document, so it resolves to a symbol the module
+        # DECLARES rather than to an import, and ``document_for`` answers ``None``
+        # for it by design (``bundle.split_ref``).  Re-measured over the graded
+        # documents at 64131600f: 573 property references are cross-document -- 567
+        # name a whole document and are graded here, and 6 name a FRAGMENT of another
+        # document and are handed on (the branch below says why) -- and the local ones
+        # are excluded by this selection, reachable at all since
+        # salesagent-j3k2l.20.  The local half is graded by
+        # ``tests/test_fragment_ref.py``, which is .20's own instrument; selecting on
+        # it here would make this test assert an import for a node that has none.
+        refd = {
+            key: sub["$ref"]
+            for key, sub in doc.get("properties", {}).items()
+            if isinstance(sub, dict) and "$ref" in sub and bundle.split_ref(sub["$ref"])[0]
+        }
+        if not refd:
+            continue
+        # **WHAT THE DOCUMENT APPLIES AT THE PROPERTY, not what the property's own node
+        # says alone** -- the same reading the ``additionalProperties`` clause above is
+        # already taken through ``_composed`` for, and the same correction.  ``allOf``
+        # conjoins, so a conjunct of the root that declares the SAME property narrows it,
+        # and ``_composed`` stashes that declaration as an ``allOf`` on the merged node.
+        # Asked only of a document that HAS a cross-document property reference, because
+        # folding a document is not free and 1,020 of them are graded here.
+        applied = _composed(doc, doc).get("properties", {})
+        tree = ast.parse(_source(document))
+        imported = {
+            ("." * n.level + (n.module or ""), a.name)
+            for n in ast.walk(tree)
+            if isinstance(n, ast.ImportFrom)
+            for a in n.names
+        }
+        root = next(
+            c for c in tree.body if isinstance(c, ast.ClassDef) and c.name == _symbol(document)
+        )
+        annotated = {
+            t.target.id: t.annotation
+            for t in root.body
+            if isinstance(t, ast.AnnAssign) and isinstance(t.target, ast.Name)
+        }
+        for key, uri in sorted(refd.items()):
+            cross_document.add((document, key))
+            resolved = bundle.document_for(uri, known)
+            if resolved is None:
+                # **A cross-document reference to a FRAGMENT, which is a third case
+                # this census did not have.**  ``split_ref`` says there is a document
+                # part so the selection above admits it, and ``document_for`` answers
+                # ``None`` because the uri names a node INSIDE that document rather
+                # than the document.  Reachable since ``salesagent-j3k2l.20``, and
+                # ``tests/test_fragment_ref.py`` is .20's own instrument for it, so
+                # the import obligation for one belongs there and not here -- the
+                # previous spelling passed ``None`` to ``_symbol`` and died with
+                # ``FileNotFoundError: .../schemas/cache/3.2/None``.
+                #
+                # Counted and CHECKED rather than skipped: each unresolved target
+                # must be unresolved BECAUSE it names a fragment, so a reference whose
+                # target is simply absent from the bundle still reddens here.
+                assert "#/" in uri, (document, key, uri)
+                fragment_refs[(document, key)] = uri
+                continue
+            stashed = {
+                k
+                for conjunct in applied.get(key, {}).get("allOf", [])
+                if isinstance(conjunct, dict)
+                for k in conjunct
+            }
+            if stashed - keywords.ANNOTATIONS:
+                # **A cross-document reference the DOCUMENT'S OWN COMPOSITION NARROWS,
+                # which is a fourth case and the one that was never reached.**  The
+                # property names another document AND a conjunct of this root declares
+                # facts at the same property, so what the document applies there is the
+                # INTERSECTION -- strictly less than the target admits -- and the symbol
+                # the target's module binds would accept a value this document refuses.
+                # An import is then the wrong answer and a local declaration is the
+                # right one: measured on ``formats/canonical/image.json``'s
+                # ``motion_level``, a ``$ref`` to ``enums/motion-level.json``'s three
+                # members beside ``allOf[3]`` stating ``enum: [static, limited_motion]``,
+                # which the emitter declares locally with exactly those two while
+                # ``formats/canonical/native-in-feed.json`` and
+                # ``formats/canonical/video-vast.json`` -- the same reference with no
+                # conjunct -- import ``CreativeMotionLevel``.  So the three readings
+                # agree and this clause's census was the one that did not.
+                #
+                # Counted and CHECKED rather than skipped, exactly as the fragment part
+                # above is: the stash has to carry a keyword that CONSTRAINS the
+                # instance -- one outside ``keywords.ANNOTATIONS``, the table's own
+                # reading of which keywords compile to nothing -- so a conjunct stating
+                # only a ``description`` cannot excuse a copy by landing here.
+                conjoined_refs[(document, key)] = uri
+                continue
+            target = str(resolved)
+            symbol = _symbol(target)
+            module = emit.relative_module(document, target, bundle.package_roots(BUNDLE))
+            assert (module, symbol) in imported, (document, key, module, symbol)
+            got = annotated[names.field_name(key, render.RESERVED)]
+            named = {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}
+            assert symbol in named, (document, key, ast.unparse(got))
+            carried = {
+                kw.arg for n in ast.walk(got) if isinstance(n, ast.Call) for kw in n.keywords
+            }
+            assert carried <= ANNOTATION_KWARGS, (document, key, ast.unparse(got))
+            graded_properties.add((document, key))
+        local = {
+            k
+            for _, node in bundle.nodes(doc)
+            if "$ref" not in node
+            for k in node
+            if k in ir.FACTS
+        }
+        used = {
+            kw.arg
+            for n in ast.walk(tree)
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "Field"
+            for kw in n.keywords
+        }
+        assert used <= _pydantic_names(local) | ANNOTATION_KWARGS, (document, sorted(used))
+    # The three parts PARTITION the cross-document property references, and each is
+    # NON-EMPTY, so neither the graded part nor the part handed to
+    # ``tests/test_fragment_ref.py`` nor the part the document's own composition narrows
+    # can go quiet.
+    #
+    # Asserted as sets and not as two totals, and this pin is the row that made the
+    # case: it read ``graded_properties == 567`` while 586 was live on trunk and 606 on
+    # a branch in flight -- red on both trees and pinned at neither, for weeks, because
+    # every row that makes a document emittable moves it and no two rows move it to the
+    # same place.  Re-pointing it was a deferral with a date.  The partition moves with
+    # nobody: a reference joins one part or the other, and a reference that joins
+    # NEITHER, or both, is the defect this is for.
+    partitions(
+        cross_document,
+        graded_here=graded_properties,
+        handed_on=set(fragment_refs),
+        narrowed_by_a_conjunct=set(conjoined_refs),
+    )
+    claimed("cross-document property references graded here", graded_properties)
+    claimed("cross-document property references naming a fragment", fragment_refs)
+    claimed("cross-document property references a conjunct narrows", conjoined_refs)
+
+
+# --------------------------------------------------------------------------- #
+# step 5: union roots (§4)
+# --------------------------------------------------------------------------- #
+def emitted_unions() -> list[str]:
+    """The union roots the committed tree holds, read off the tree and the selector."""
+    return sorted({g.ref.document for g in graded()} & set(union_roots()))
+
+
+def union_root_node(document: str) -> Any:
+    """One union root as the NODE the walk builds for it, through the production parse.
+
+    §14 step 5 makes the union row read node fields, so the two shape predicates below
+    take a ``nodes.Union`` -- which is also what carries the ``type`` word the document
+    applies to a branch stating none (``nodes.Union.word``, handed down at the hop).
+    Parsed at ROOT with the document's own applied-object set, which is exactly what
+    ``emit.lower_document`` passes.
+    """
+    doc = bundle.read(BUNDLE, document)
+    node = schema_parse.parse(
+        doc,
+        pointer="",
+        position=keywords.Position.ROOT,
+        source=schema_parse.Source(
+            document=document, applied_at=bundle.constrained_to_object(doc)
+        ),
+    )
+    assert isinstance(node, nodes.Union), (document, type(node).__name__)
+    return node
+
+
+def _alias_shaped(document: str) -> bool:
+    """Which of D2's two union shapes this root takes.
+
+    Asked of the PRODUCTION predicates (``lower_union.states_a_scalar_instance`` and
+    ``lower_union.declares_a_class``) and not of a reading of its own, because the
+    shape is what the tests below grade and a second reading of it is how a test comes
+    to expect the shape the lowering did not emit.  What is pinned instead is the SIZE
+    of each half, as a literal, in
+    :func:`test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which`.
+    """
+    node = union_root_node(document)
+    return lower_union.states_a_scalar_instance(node) and not any(
+        lower_union.declares_a_class(node, i) for i in range(len(node.branches))
+    )
+
+
+def emitted_union_bases() -> list[str]:
+    """The emitted union roots D2 gives a base plus one subclass per branch (§4).
+
+    **The eight shape tests below run over THIS and not over
+    :func:`emitted_unions`.**  D2 gives a union root two shapes -- the base plus
+    subclasses, and, where the document says its instance is a scalar, the
+    module-level alias a root scalar gets -- and an assertion about
+    ``BranchDispatchMixin`` is a claim about the first only.  Over the whole
+    population it would fail on a correct alias, which is a test asserting the wrong
+    shape rather than a defect.
+    """
+    return [d for d in emitted_unions() if not _alias_shaped(d)]
+
+
+def emitted_union_aliases() -> list[str]:
+    """The emitted union roots D2 gives a module-level alias, because the document
+    says every instance it admits is a scalar (``salesagent-j3k2l.21``)."""
+    return [d for d in emitted_unions() if _alias_shaped(d)]
+
+
+def test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which() -> None:
+    """D2's TWO union shapes, over every union root the bundle has, with the shape
+    decided by the document and the emitted artifact graded against the one it chose.
+
+    D2 gives a ``oneOf``/``anyOf`` root a base plus one subclass per branch.  It also
+    says "a root scalar or mapping -> a module-level alias", and a union every branch of
+    which is a scalar IS a root scalar: every branch of a draft-07 combinator is applied
+    to the SAME instance, so a branch declaring a non-object type is the document saying
+    what the whole document's instance is, and there is no class for a string to be an
+    instance of.  ``{"type": ["string", "null"]}`` at a root would be the same document
+    at the other spelling, which is the spelling ``salesagent-j3k2l.21`` is named for.
+
+    Five clauses, one per way the partition can go wrong, each over a population whose
+    size is asserted as a LITERAL below (D14):
+
+    1. **the two shapes are DISJOINT.**  A root that both says its instance is a scalar
+       AND declares a branch with a shape is NEITHER -- no alias holds a class and no
+       base is a string -- and must take neither path.  It keeps the class path, where
+       the scalar branch's own ``type`` check refuses it by name.  Asserted at 0 rather
+       than exempted, so the first one that appears reddens here instead of silently
+       taking whichever path the predicate happens to answer first.
+    2. **the two shapes are EXHAUSTIVE over the emitted roots, and BOTH are non-empty.**
+       A partition one half of which is empty passes for free, which is the state this
+       row's own first cut was in before the alias path emitted anything.
+    3. **§8's invariant: no root LEAVES ``BranchDispatchMixin``.**  "A step adds roots to
+       it; no step removes one."  The alias path could only take a root off the mixin by
+       claiming one the class path was already emitting, so the base half is pinned at
+       the figure it had BEFORE this row -- 38 -- and the alias half is growth.  That is
+       a pin on a DIFFERENT axis from the total, which moved: a single total would
+       absorb a root swapping sides.
+    4. **an alias-shaped root binds an ALIAS, with §4's two halves.**  A root scalar has
+       no class to carry ``strict_validate``, so "its module binds the same two halves as
+       a module-level function over the same ``SchemaRef``" -- which is read off the AST
+       (the name is not a ``ClassDef``, and both halves are module-scope statements) and
+       then off the IMPORTED module, because whether a name is a class is a property of
+       the object and the text cannot say it.
+    **WHERE A THIRD SHAPE EXTENDS THIS, named so it is not a surprise.**
+    ``salesagent-j3k2l.52`` gives D2 a third reading of a union root -- branches that differ
+    only in permitted VALUES are a rule on one class rather than a class per branch -- and it
+    is sequenced after this row. It does not collide with the dispatch: every branch of that
+    shape declares the same property set, so ``declares_a_class`` answers True for each and
+    the alias is not reached. What it must extend is clause 2's equality below, which says the
+    two halves exhaust the emitted roots; a third half makes that equality fail by naming the
+    documents in neither, which is the legible failure rather than a silent one.
+
+    5. **where each spelling of a declared null actually lives**, so the lowering's claim
+       about it cannot go stale in silence: 0 union roots carry a ``null`` branch and 0
+       roots carry a ``type`` LIST, while 57 sites state ``null`` inside a ``type`` list
+       BELOW a root -- ``lower.containers.multi_type``'s position, whose fold is graded
+       by :func:`test_a_declared_null_is_never_read_as_absence` in both directions.  A
+       null branch of a union ROOT would land in the alias half as ``str | None``, and
+       this is the clause that says the bundle has none to grade.
+    """
+    portable = sorted(claimed("bundle.portable", bundle.portable(BUNDLE)))
+    roots = [d for d in portable if populations.union_root(bundle.read(BUNDLE, d))]
+    claimed("union roots in the bundle", roots, inside=portable)
+
+    scalar_instance, with_a_class_branch, mixed = [], [], []
+    for document in roots:
+        node = union_root_node(document)
+        scalar = lower_union.states_a_scalar_instance(node)
+        classed = [
+            i for i in range(len(node.branches)) if lower_union.declares_a_class(node, i)
+        ]
+        (mixed if scalar and classed else scalar_instance if scalar else with_a_class_branch).append(
+            document
+        )
+
+    # Clause 1, and the partition it belongs to: the three shapes are total and
+    # disjoint over the union roots, ``mixed`` is the part asserted EMPTY, and the
+    # other two are asserted non-empty so neither clause below grades nothing.  How
+    # many roots are in each is a reading of one bundle version and says nothing
+    # clause 1 does not already say by name.
+    assert mixed == [], mixed
+    partitions(
+        roots,
+        scalar_instance=scalar_instance,
+        with_a_class_branch=with_a_class_branch,
+        mixed=mixed,
+    )
+    claimed("union roots whose instance is a scalar", scalar_instance, inside=roots)
+    claimed("union roots with a class-shaped branch", with_a_class_branch, inside=roots)
+    # Clause 2: exactly one half each, over the roots the tree actually carries.
+    assert sorted(emitted_union_bases() + emitted_union_aliases()) == emitted_unions()
+    assert not set(emitted_union_bases()) & set(emitted_union_aliases())
+    assert emitted_union_bases(), "no class-shaped union root emitted"
+    assert emitted_union_aliases(), "no alias-shaped union root emitted"
+    assert set(emitted_union_aliases()) <= set(scalar_instance), emitted_union_aliases()
+
+    # Clause 4, on both instruments.
+    for document in emitted_union_aliases():
+        symbol = _symbol(document)
+        tree = ast.parse(_source(document))
+        assert symbol not in {c.name for c in tree.body if isinstance(c, ast.ClassDef)}, document
+        assigned = {
+            t.id
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            for t in node.targets
+            if isinstance(t, ast.Name)
+        }
+        assert {symbol, "__adcp_schema__", "strict_validate"} <= assigned, (
+            document,
+            sorted(assigned),
+        )
+        module = importlib.import_module(_module_of(document))
+        bound = getattr(module, symbol)
+        assert not (isinstance(bound, type) and issubclass(bound, BaseModel)), (document, bound)
+        assert callable(module.strict_validate), document
+        assert module.__adcp_schema__.document == document, document
+
+    # Clause 5's two populations, measured over the whole portable set.
+    null_branch_roots = [
+        d
+        for d in roots
+        if any(
+            isinstance(b, dict) and b.get("type") == "null"
+            for b in bundle.read(BUNDLE, d)[lower_union.keyword(bundle.read(BUNDLE, d))]
+        )
+    ]
+    root_type_lists = [d for d in portable if isinstance(bundle.read(BUNDLE, d).get("type"), list)]
+    null_in_a_type_list = {
+        (d, pointer)
+        for d in portable
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, d))
+        if isinstance(node.get("type"), list) and "null" in node["type"]
+    }
+
+    # Clause 5: the two places a declared ``null`` could be and the one it IS.  The
+    # empty parts are asserted empty by NAME, and the non-empty one is asserted
+    # non-empty rather than counted -- what the clause claims is that the bundle has
+    # sites below a root to grade and none at a root, which a census of 57 restates
+    # against one bundle version and nothing else.
+    assert null_branch_roots == [], null_branch_roots
+    assert root_type_lists == [], root_type_lists
+    claimed("sites stating null inside a type list below a root", null_in_a_type_list)
+
+    # Clause 3, AS A FLOOR, which is what §8 actually says: "a step adds roots to
+    # BranchDispatchMixin; no step removes one."  An equality also refuses the
+    # ADDITION the invariant permits, which is why it was a collision -- it was 38
+    # before the alias dispatch, 38 after it and 38 after D2's Literal amendment only
+    # because no row had yet added a base.  A floor refuses the removal, which is the
+    # invariant, and the alias half taking a root off the class path would still show
+    # up here because it would take the base count DOWN.
+    ratchet(
+        "union roots emitted as a base over BranchDispatchMixin",
+        len(emitted_union_bases()),
+        at_least=UNION_BASE_FLOOR,
+        because="section 8: a step adds roots to BranchDispatchMixin and no step "
+        "removes one, so the alias path can never claim a root the class path emits",
+    )
+
+
+def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
+    """§4's shape, on the AST of every emitted union module.
+
+    Four claims, each of which a previous generator got wrong at scale:
+
+    * **the root's name binds the BASE**, never a union alias.  Censused over this
+      bundle's 156 union roots, the previous tree bound 100 root names to an alias, so a
+      caller had nothing to ``isinstance`` against.  Asserted as: the module's ``__all__``
+      is the root's own name, that name is a CLASS, and it derives
+      ``BranchDispatchMixin``;
+    * **every branch answered by a class that derives the base**, and every branch class
+      answering exactly one branch.  Not "as many branch classes as the document has
+      branches", which §4's union row makes false at a DISTRIBUTING branch --
+      :func:`_answers_per_branch` is the derivation and carries the measurement;
+    * the base declares the three facts the mixin reads;
+    * the module installs the union, because the branches do not exist while the base is
+      being built.
+
+    Everything compared is derived: the branch set from the document, the symbol from the
+    run's own symbol table at the ROOT POINTER, the pointers from the classes themselves.
+    """
+    assert emitted_union_bases(), "no union root was emitted; this test grades nothing"
+    distributing: set[str] = set()
+    for document in emitted_union_bases():
+        doc = bundle.read(BUNDLE, document)
+        symbol = _symbol(document)
+        tree = ast.parse(_source(document))
+        classes = {c.name: c for c in tree.body if isinstance(c, ast.ClassDef)}
+
+        assert symbol in classes, (document, symbol)
+        bases = [b.id for b in classes[symbol].bases if isinstance(b, ast.Name)]
+        # **``BranchDispatchMixin`` FIRST, and what follows is DERIVED from the
+        # document** (§14 step 9).  This read ``== ["BranchDispatchMixin",
+        # "AdCPBaseModel"]``, which was true while ``union.ROOT_CONJUNCTS`` refused a
+        # root that composes: §5's ``allOf`` row now compiles a root's conjuncts onto the
+        # base -- "beside a union → the same, onto the base: ``$ref`` conjuncts are the
+        # base's bases" -- so a composing root's base derives those classes and reaches
+        # ``AdCPBaseModel`` through them, which is the ONLY order Python will build (a
+        # class cannot precede its own subclasses in an MRO).  The count is read off the
+        # document's own conjunct list rather than listed here.
+        conjuncts = [
+            c
+            for c in (doc.get("allOf") or [])
+            if isinstance(c, dict) and set(intersect.declaring(c, keywords.Position.CONJ)) == {"$ref"}
+        ]
+        assert bases[0] == "BranchDispatchMixin", (document, bases)
+        assert len(bases) == 1 + (len(conjuncts) or 1), (document, bases, len(conjuncts))
+        if not conjuncts:
+            assert bases[1] == "AdCPBaseModel", (document, bases)
+
+        # **A branch class is one whose FIRST base is the union base**, not one whose
+        # only base is.  Section 4: "A branch whose schema is a ``$ref`` is a class with
+        # TWO bases: the target, which supplies the fields, and the union's base, which
+        # supplies the dispatch" -- row ``salesagent-j3k2l.59``'s shape, with the union
+        # base first so ``isinstance`` against the root's name holds.  This read
+        # ``== [symbol]`` and so recognised the one-based branch alone; the predicate was
+        # never reached because no two-based-branch document emitted until the
+        # intersection rule cleared ``core/canonical-media-buy-action.json``, whose three
+        # branches are each ``{"allOf": [{"$ref": ...}], "properties", "required"}`` and
+        # derive ``(CanonicalMediaBuyAction, CanonicalMediaBuyActionFields)``.  The
+        # docstring above already said "each deriving the base", which is this reading.
+        branch_classes = sorted(
+            name
+            for name, node in classes.items()
+            if [b.id for b in node.bases if isinstance(b, ast.Name)][:1] == [symbol]
+        )
+        # **EVERY BRANCH ANSWERED, AND EVERY BRANCH CLASS ANSWERING ONE BRANCH.**  This
+        # read ``len(branch_classes) == len(doc[kw])`` and §4's union row makes that false
+        # where a branch DISTRIBUTES: :func:`_answers_per_branch` is the derivation and
+        # its docstring the reason.  Over the provenance pointers the module itself
+        # writes, so the names §4 derives are not what the partition turns on.
+        distributing.update(
+            f"{document}{branch_at}"
+            for branch_at, named in _answers_per_branch(
+                document, {name: _branch_pointer(classes[name]) for name in branch_classes}
+            ).items()
+            if len(named) > 1
+        )
+
+        declared = {
+            t.target.id
+            for t in classes[symbol].body
+            if isinstance(t, ast.AnnAssign) and isinstance(t.target, ast.Name)
+        }
+        assert {"__adcp_schema__", "_branch_models", "_ROOT_REQUIRED"} <= declared, (
+            document,
+            sorted(declared),
+        )
+        methods = {f.name for f in classes[symbol].body if isinstance(f, ast.FunctionDef)}
+        assert "_branch_combinator" in methods, (document, sorted(methods))
+
+        # the trailer: the union is installed after the branches are defined
+        assigned = [
+            ast.unparse(n)
+            for n in tree.body
+            if isinstance(n, ast.Assign) or isinstance(n, ast.Expr)
+        ]
+        assert f"{symbol}.model_rebuild(force=True)" in assigned, (document, assigned)
+        assert any(a.startswith(f"{symbol}._branch_models = (") for a in assigned), (
+            document,
+            assigned,
+        )
+    claimed("branches that distribute over their target's branches", distributing)
+
+
+def test_the_base_the_root_name_binds_is_the_class_every_branch_descends_from() -> None:
+    """The run-time half of the claim above, read off the live classes.
+
+    The AST test says the module TEXT has the shape; this says the imported objects do,
+    and that the three emitted facts carry the document's own values.  ``_ROOT_REQUIRED``
+    is asserted EMPTY and that is reported rather than hidden: ``lower/union.py`` refuses
+    a root that declares its own ``required``, so no document in this step's population
+    produces a non-empty one, and the field is graded by the mixin's unit test below
+    rather than by the tree.
+
+    **A BRANCH THAT IS ITSELF A UNION ROOT DECLARES ITS OWN BRANCH LIST, and this
+    asserted that none does.**  ``"_branch_models" not in branch.__dict__`` is the claim
+    "no branch shadows the base's list" written as "no branch declares one", and the two
+    are not the same sentence: §5's nested row makes a branch that composes a union a
+    union BASE of its own, so the dispatch continues inside it -- which is the shape
+    ``tests/test_ref_branch_union.py::
+    test_the_nested_union_base_of_postal_area_imports_and_dispatches`` asserts is
+    CORRECT, on ``PostalAreaCountrySystemValues``.  Measured here on ``adagents.json``:
+    ``AdCPAgentsAuthorizationCommunityFormatRegistry`` is the root's ``#/oneOf/1`` and
+    holds six branches of its own, declared at pointers beneath it.
+
+    So the claim asserted is the one the title makes, and it is asserted BY PROVENANCE:
+    a branch's own list, where it has one, is not the base's, and every member of it is a
+    proper subclass declared at a pointer strictly UNDER the branch's.  The set of
+    branches that are union bases is named, so the nested arm cannot go vacuous the day
+    the tree stops producing one.
+    """
+    assert emitted_union_bases()
+    nested_bases: set[str] = set()
+    distributing: set[str] = set()
+    for document in emitted_union_bases():
+        doc = bundle.read(BUNDLE, document)
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+        branches = base._branch_models
+
+        assert "_branch_models" in base.__dict__, document
+        # **EVERY BRANCH ANSWERED, over the live classes' own provenance.**  This read
+        # ``len(branches) == len(doc[kw])``, which §4's union row makes false where a
+        # branch DISTRIBUTES: ``46 == 42`` at ``core/async-response-data.json`` and no
+        # way to say which four.  :func:`_answers_per_branch` is the derivation.
+        distributing.update(
+            f"{document}{branch_at}"
+            for branch_at, named in _answers_per_branch(
+                document, {b.__name__: b.__adcp_schema__.pointer for b in branches}
+            ).items()
+            if len(named) > 1
+        )
+        for branch in branches:
+            assert issubclass(branch, base) and branch is not base, (document, branch)
+            assert branch.__adcp_schema__.document == document, (document, branch)
+            own = branch.__dict__.get("_branch_models")
+            if own is None:
+                continue
+            nested_bases.add(f"{document}{branch.__adcp_schema__.pointer}")
+            assert own != branches, (document, branch)
+            for nested in own:
+                assert issubclass(nested, branch) and nested is not branch, (branch, nested)
+                assert nested.__adcp_schema__.document == document, (branch, nested)
+                assert nested.__adcp_schema__.pointer.startswith(
+                    f"{branch.__adcp_schema__.pointer}/"
+                ), (branch, nested, nested.__adcp_schema__.pointer)
+        assert base._branch_combinator() == lower_union.keyword(doc), document
+        # **The root's OWN ``required``, derived from the document** (§14 step 9).  This
+        # asserted ``()`` and said so because ``union.ROOT_CONJUNCTS`` refused a root
+        # that declares one; §5's ``required`` row at ROOT beside a union is "required on
+        # the base's fields, and the names recorded in ``_ROOT_REQUIRED``, so a refusal
+        # can separate a field the root requires from one that selects a branch", and the
+        # mixin's own refusal reads it -- which
+        # ``test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary``
+        # now grades against a live document rather than a constructed one.
+        assert base._ROOT_REQUIRED == tuple(doc.get("required") or ()), document
+    claimed("branches that are union bases of their own", nested_bases)
+    claimed("branches that distribute over their target's branches", distributing)
+
+
+def _module_of(document: str) -> str:
+    return f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
+
+
+def _answers_per_branch(document: str, at: Mapping[str, str]) -> dict[str, list[str]]:
+    """Each of ``document``'s branch pointers -> the class pointers that answer it.
+
+    **§4's union row, which is why "one class per branch" is not the claim.**  "A ``$ref``
+    branch whose target is a dispatch root declaring nothing of its own is one class per
+    branch of the target, each with that branch and this union's base", and
+    ``lower.union._branch_classes`` says the other half: *no class is declared at a
+    distributing branch's own pointer*.  So a branch is answered by a class at its OWN
+    pointer, or by one per LIVE branch of the target it distributes over.
+
+    Asserted here as a PARTITION over provenance pointers and not as a count: every class
+    answers exactly one branch, and every branch is answered.  Measured over the bundle,
+    exactly one document distributes -- ``core/async-response-data.json``, whose
+    ``#/anyOf/10`` and ``#/anyOf/11`` reference ``media-buy/media-buy-commitment-response``
+    and ``media-buy/control-media-buy-response``, each a dispatch root with three branches
+    and no field set of its own -- so the two checks that read this held ``46 == 42`` and
+    could not say which four were extra.
+
+    ``at`` maps a name a reader can report (a symbol, a class) to the provenance pointer
+    the emitter gave it; the answer is keyed by branch pointer so a caller can say which
+    branch distributed and over what.
+    """
+    doc = bundle.read(BUNDLE, document)
+    kw = lower_union.keyword(doc)
+    answers: dict[str, list[str]] = {f"#/{kw}/{i}": [] for i in range(len(doc[kw]))}
+    for name, pointer in sorted(at.items()):
+        owners = [b for b in answers if pointer == b or pointer.startswith(f"{b}/")]
+        assert len(owners) == 1, (document, name, pointer, owners)
+        answers[owners[0]].append(pointer)
+    assert all(answers.values()), (
+        document,
+        [b for b, named in answers.items() if not named],
+    )
+    # **AND WHERE A BRANCH ANSWERS WITH MORE THAN ONE CLASS, THOSE ARE ITS TARGET'S OWN
+    # BRANCHES**, read off the TARGET document -- so the extra classes are accounted for
+    # by the bundle rather than by this check agreeing with the emitter about a number.
+    for branch_at, named in sorted(answers.items()):
+        if len(named) == 1:
+            continue
+        branch = doc[kw][int(branch_at.rsplit("/", 1)[1])]
+        head, _ = bundle.split_ref(branch["$ref"])
+        target = bundle.document_for(head, set(tree_population()))
+        raw = bundle.read(BUNDLE, target)
+        into = lower_union.keyword(raw)
+        assert sorted(named) == sorted(
+            f"{branch_at}/{into}/{j}" for j in range(len(raw[into]))
+        ), (document, branch_at, target, sorted(named))
+    return answers
+
+
+def _branch_pointer(node: ast.ClassDef) -> str:
+    """The ``__adcp_schema__`` pointer one emitted class declares, off the module's AST.
+
+    Read off the ``SchemaRef`` call's ``pointer`` keyword, which is the provenance the
+    emitter wrote; a reader deriving it from the class NAME would be asking §4's naming
+    rules a question about identity, which is the thing names are not.
+    """
+    for statement in node.body:
+        if not isinstance(statement, ast.AnnAssign) or not isinstance(statement.target, ast.Name):
+            continue
+        if statement.target.id != "__adcp_schema__" or not isinstance(statement.value, ast.Call):
+            continue
+        for keyword in statement.value.keywords:
+            if keyword.arg == "pointer" and isinstance(keyword.value, ast.Constant):
+                return str(keyword.value.value)
+    raise AssertionError(f"{node.name} declares no __adcp_schema__ pointer")
+
+
+def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
+    """§4's exit condition, over every emitted union root and every one of its branches.
+
+    The four paths are not interchangeable and the specification says why: a core-schema
+    hook covers the three pydantic validates THROUGH -- a nested field, a ``TypeAdapter``,
+    ``model_validate`` -- and reaches ``Base(**data)`` not at all, because
+    ``BaseModel.__init__`` validates with ``self_instance=self`` and the object is already
+    allocated.  So all four are asserted, on the same payload, for each arm.
+
+    The payload is DRAWN from the branch's own node rather than written, so this cannot
+    pass by hand-picking an instance that happens to resolve.  ``strict_validate`` is the
+    fifth path and is graded by ``check_pair``; it is included here because it is the
+    production entry point and it must agree with the other four about the class.
+
+    **"RESOLVES TO ITS BRANCH" IS DISPATCH REACHING THE BRANCH, AND DISPATCH DOES NOT
+    STOP AT A BRANCH THAT IS A UNION ROOT.**  Each of the five lines asserted
+    ``type(got) is branch``, which is the right claim for a branch that is a leaf and the
+    wrong one for a branch that composes a union of its own: §5's nested row makes such a
+    branch a union BASE, so the hook fires again inside it and the class that comes back
+    is one of ITS branches -- a proper subclass of the branch, reached by dispatch, which
+    is the sentence holding and not failing.
+
+    That is ``adcp-client-python-1bj`` and the row is a MISDIAGNOSIS, measured here:
+    ``adagents.json``'s ``AdCPAgentsAuthorizationCommunityFormatRegistry`` is the root's
+    ``#/oneOf/1`` and the class returned is
+    ``…CommunityFormatRegistryBranch0``, declared at
+    ``#/oneOf/1/allOf/0/anyOf/0`` -- a branch OF that branch and a subclass of it, not
+    "another branch of the root admitting a payload drawn from this one".  No two
+    branches of ``adagents.json`` overlap; the ``is`` was reading two dispatch hops as a
+    wrong answer to one.
+
+    So what is asserted is :func:`_dispatched_to` -- the class is the branch, or a class
+    the branch's own branch list reaches, transitively -- AND that all five paths return
+    the SAME class, which is the property the five-way comparison was really for and
+    which an ``is`` against a fixed expectation stated only by accident.
+    """
+    assert emitted_union_bases()
+    graded_arms = 0
+    for document in emitted_union_bases():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+
+        class Holder(BaseModel):
+            v: base  # type: ignore[valid-type]
+
+        adapter = TypeAdapter(base)
+        for branch in base._branch_models:
+            payload = _an_instance(branch.__adcp_schema__)
+            paths = {
+                "model_validate": type(base.model_validate(payload)),
+                "TypeAdapter": type(adapter.validate_python(payload)),
+                "a nested field": type(Holder.model_validate({"v": payload}).v),
+                "Base(**data)": type(base(**payload)),
+                "strict_validate": type(base.strict_validate(payload)),
+            }
+            assert len(set(paths.values())) == 1, (document, branch, payload, paths)
+            for path, got in paths.items():
+                assert _dispatched_to(branch, got), (document, branch, path, got, payload)
+            graded_arms += 1
+    assert graded_arms == sum(
+        len(bundle.read(BUNDLE, d)[lower_union.keyword(bundle.read(BUNDLE, d))])
+        for d in emitted_union_bases()
+    ), graded_arms
+
+
+def _dispatched_to(branch: type, got: type) -> bool:
+    """Is ``got`` the class dispatch reaches from ``branch``?
+
+    ``branch`` itself, or a class one of the union bases beneath it names in its OWN
+    ``_branch_models`` -- transitively, because a nested union's branch may compose a
+    third.  The walk is over the DECLARED lists (``__dict__``) and not the inherited
+    attribute, so the relation is "this base dispatches to that class" and never "that
+    class happens to inherit a list"; an unrelated consumer subclass of ``branch`` is
+    therefore not reached, which is the distinction
+    ``test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema`` is about.
+
+    Not ``issubclass``, which would admit that consumer subclass and so would stop the
+    check from grading the dispatch at all.
+    """
+    seen: set[type] = set()
+    frontier = [branch]
+    while frontier:
+        at = frontier.pop()
+        if at is got:
+            return True
+        if at in seen:
+            continue
+        seen.add(at)
+        frontier += list(at.__dict__.get("_branch_models", ()))
+    return False
+
+
+def _an_instance(ref: SchemaRef) -> Any:
+    """One instance the node at ``ref`` admits: **the HELD one, its own ``examples``, or a draw.**
+
+    **THE LADDER IS READING 1's AND IT IS THE SAME LADDER ``check_accepts`` CLIMBS** --
+    "the store, then the document's own ``examples``, then the draw" -- and this call site
+    was the last reader of a union branch's node that climbed none of it.  It drew, every
+    run, from the full resolved branch node, and that is where both union tests' 900 s park
+    was: measured over the 443 arms of this tree's 115 emitted union bases, one arm
+    (``adagents.json#/oneOf/1``) exceeds 20 s on its own and three more are cut at it,
+    while the median arm is under a second -- so the two tests below are a park and not a
+    cost, and the cap is what they report rather than a verdict.
+
+    **THE STORE IS THE ACCEPTS CHECK'S OWN STORE, UNDER THE ACCEPTS CHECK'S OWN KEY, AND
+    THAT IS WHY THIS IS NOT A SECOND WITNESS.**  A union branch is a GRADED PAIR: the
+    branch class carries ``__adcp_schema__``, that pair is in :func:`graded`, and reading
+    1's accepts check has already drawn an instance of exactly this node and committed it
+    to the floor under ``harness.corpus_key(identity_of(ref))``.  So there is nothing to
+    hold here that is not held, and no key that is not already keyed -- what changes is
+    that these tests grade the instance reading 1 grades instead of a fresh one.  Measured
+    over this tree: **443 of 443 arms hit the committed floor and the held instance is
+    admitted by the arm's own resolved node**, 0 misses and 0 rejections.
+
+    **AND A HELD ENTRY THAT CANNOT STAND IN IS LOUD, never a silent re-draw**, which is
+    :func:`harness.corpus_defect`'s whole contract one key space over: a store answering
+    with an instance the node refuses is broken, and a fallback would hide it for as long
+    as it kept happening.  The screen is the RESOLVED node, because that is what the
+    instance is offered to below.
+
+    ``ref`` and not two schemas, because the identity the store is keyed on is a statement
+    about the NODE and not about our rendering of it (:func:`identity_of`) -- a caller
+    handed only the dict could not compute it, which is how the three call sites below came
+    to draw.  The document root is read here for the reason it was passed before: it is the
+    resolution scope a LOCAL ``$ref`` in a sub-node needs.
+
+    Architecture §4 leaves a local reference in the
+    record as written, so a BRANCH node can say ``{"$ref": "#/definitions/x"}`` -- a
+    pointer relative to the DOCUMENT root.  Handed the node alone,
+    ``hypothesis_jsonschema``'s generator raises ``_RefResolutionError``, which is a
+    statement about the GENERATOR wearing the model's name: ``harness.check_pair``
+    resolves the same way for the same reason and ``adcp.types._base._refuse_at``
+    evolves a document-rooted validator for the production path.  Reached at
+    ``core/reporting-delivery-method.json``'s and
+    ``core/reporting-dataset-share-destination.json``'s branches when row .3 stopped
+    inlining a local reference.
+
+    **AND THE DRAW IS ``harness.one_instance``, WHICH IS THE SEAM AND NOT A SECOND ONE.**
+    This function called ``hypothesis_jsonschema.from_schema`` itself, and that is the
+    whole of why this file could not be run to completion on this box.  ``one_instance``
+    is where the three rules the harness applies to a draw are installed -- §8's
+    combinator COVER (``a_combinator_is_covered_and_never_enumerated``), the
+    canonicalisation memo and the validator-class cache -- and its own docstring already
+    states the rule this violated: "Every derived draw in this module arrives here ... One
+    seam, so reading 2 cannot stay blocked where reading 1 is not."  A draw outside it gets
+    the library exactly as it ships.
+
+    **Measured with a profiler rather than inferred**, which is the only way this was
+    findable: at 1 h 19 m into a ``tests/test_emit.py`` run, 2,687 of 2,688 items reported
+    and nine of ten workers idle, ``py-spy dump`` on the tenth showed
+    ``merged_as_strategies (_from_schema.py:101)`` -- the power-set enumeration the cover
+    replaces -- under it ``CacheableSchema.__init__`` -> ``json.dumps``, the library's
+    validator cache keying on the node's TEXT, and ``canonicalish`` recursing through
+    ``merged`` eighteen frames deep.  ``pytest-timeout``'s 900 s backstop had not fired,
+    for the reason ``pyproject.toml`` measures: a one-shot ``signal.alarm`` that
+    ``hypothesis``'s garbage-collection callback swallows leaves nothing to fire.  So the
+    run was unobtainable, and it was unobtainable at a call site no pair's verdict passes
+    through.
+    """
+    schema = schema_at(ref)
+    try:
+        schema = harness.resolve(schema, store={}, referrer=schema_at(SchemaRef(ref.document, "#")))
+    except Exception:  # any resolution failure falls back to the node
+        pass
+    #: **THE STORE FIRST**, under the accepts check's own key, which is what makes this the
+    #: witness reading 1 grades rather than a second one.  An identity this suite cannot
+    #: compute -- a document outside the portable set -- is a miss and not a raise: the
+    #: ladder then answers the way it answered before the store was read at all.
+    held = None
+    try:
+        held = corpus.STORE.get(
+            harness.corpus_key(identity_of(ref), custom_formats=FORMAT_STRATEGIES)
+        )
+    except Exception:  # noqa: BLE001 -- a node this suite cannot name has no entry
+        held = None
+    if isinstance(held, list) and held:
+        #: Loud, never a silent re-draw: :func:`harness.corpus_defect` re-offers the held
+        #: instance to the node, and a store answering with one the node refuses is broken
+        #: in a way a fallback would hide for as long as it kept happening.
+        defect = harness.corpus_defect(schema, held, 1)
+        assert not defect, (f"{ref.document}{ref.pointer}", defect)
+        return held[0]
+    #: **THEN THE NODE'S OWN ``examples``** -- JSON Schema's own keyword for "here is a
+    #: valid instance of this schema", screened by the node (:func:`harness.stated_instances`).
+    stated = harness.stated_instances(schema)
+    if stated:
+        return stated[0]
+    return harness.one_instance(schema, {})
+
+
+def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:
+    """§4's declaring-class test, and the thing membership cannot express.
+
+    The base is the class that DECLARES ``_branch_models``.  A subclass declared
+    elsewhere -- which is how D7 says a consumer refines an emitted class -- inherits the
+    attribute and so is NOT the base, and gets its own model shape back.  Membership
+    (``cls in cls._branch_models``) admits both "is a branch" and "is an unrelated
+    subclass", and it is only the second that matters once the schema is being replaced:
+    under membership a consumer's refinement would be validated as the union and come
+    back as a BRANCH, discarding the consumer's own fields.
+
+    Asserted on every emitted union root, with the refinement declared here -- outside the
+    generated module, which is the position the rule is about.
+    """
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+        branch = base._branch_models[0]
+
+        class Refinement(base):  # type: ignore[misc, valid-type]
+            mine: int | None = None
+
+        assert "_branch_models" not in Refinement.__dict__
+        arm = _an_instance(branch.__adcp_schema__)
+        got = Refinement.model_validate({**arm, "mine": 7})
+        assert type(got) is Refinement, (document, type(got))
+        assert got.mine == 7, document
+        # and the branches still get their own shape, which is the other half of the rule.
+        # The arm's OWN payload, because a branch whose node declares
+        # ``additionalProperties: false`` refuses ``mine`` -- correctly, and that is a fact
+        # about the branch's document rather than about the dispatch.
+        assert type(branch.model_validate(arm)) is branch, document
+
+
+def test_a_union_base_instance_and_a_branch_each_serialise_as_what_they_are() -> None:
+    """§4's fourth mechanic, as the design owner settled it on 2026-10-27.
+
+    **The serialiser dispatches on the instance's own class and each class serialises
+    through its own plain model schema**: "a branch serialises the branch's fields; a
+    base serialises the base's ... a value serialises as what it is."  So the expectation
+    is DERIVED from each class's own field set rather than listed, and both directions
+    are graded on every emitted base.
+
+    Both of the readings the old sentence admitted are what this test fails on, and both
+    were live on this tree:
+
+    * the base's model schema ALONE in the slot -- a BRANCH reached through a base-typed
+      field comes back as the base's fields and the arm's own are dropped silently
+      (the second arm below);
+    * the branches' union with that schema last -- a BASE instance matches no arm, the
+      fallback infers a model, finds the same class and recurses, and
+      ``model_dump_json`` raises ``PydanticSerializationError: Circular reference
+      detected`` while ``model_dump()`` returns the INSTANCE instead of a dict (the
+      first arm, and ``adcp-client-python-2fn``).  It was unreachable until §14 step 9:
+      while a root declaring ``properties`` refused, every base had NO fields and
+      matched the plain arm trivially.
+
+    A base instance is reached through ``model_construct``, since every validating path
+    returns a branch -- and it is a legitimate value either way, because ``__new__``
+    covers ``Base(**data)`` and validates it.
+    """
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+
+        class Holder(BaseModel):
+            v: base  # type: ignore[valid-type]
+
+        # **A base serialises the BASE's fields**, which is its own plain model schema
+        # and nothing else: no branch's field appears, and no field of its own is
+        # missing.  ``model_construct`` fills each field's default, so the key set is
+        # the base's own -- empty for a base whose root declares no property, which is
+        # what this read as a literal ``{}`` while every base was in that state.
+        held = base.model_construct()
+        assert json.loads(held.model_dump_json()) == held.model_dump(mode="json"), document
+        assert set(held.model_dump()) == set(held.__dict__), document
+        assert not set(held.model_dump()) - set(base.model_fields), document
+
+        branch = base._branch_models[0]
+        payload = _an_instance(branch.__adcp_schema__)
+        instance = base.strict_validate(payload)
+        # **A branch serialises the BRANCH's fields**, through a base-typed field, in
+        # both modes -- the arm's own keys survive the dispatch and the payload's
+        # values arrive.
+        dumped = json.loads(Holder(v=instance).model_dump_json())["v"]
+        assert set(payload) <= set(dumped), (document, sorted(payload), sorted(dumped))
+        assert set(dumped) == set(type(instance).model_fields), document
+        assert Holder(v=instance).model_dump(mode="json")["v"] == dumped, document
+
+
+def test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary() -> None:
+    """``_branch_combinator()``, and why it is a fact the emitter has to write.
+
+    A document satisfying no branch fails each branch at FIELD validation, where pydantic
+    reports ``missing`` -- a keyword the document does not use.  The mixin re-labels that
+    with the document's own combinator, which is not recoverable at run time from the
+    branches.
+
+    **The tree now exercises both combinators, so the loop below reads each document's
+    own.**  It was 6 of 6 ``oneOf``, which is why the loop hard-coded ``"oneOf"`` and
+    the ``anyOf`` branch was graded only on the fixture at the end --
+    ``salesagent-j3k2l.19`` emits ``core/canonical-account-ref.json``, whose root
+    combinator is ``anyOf``, and the hard-coded expectation reddened on it. Asserting
+    the DOCUMENT'S keyword instead is what the test claims in the first place: a
+    refusal names the document's own vocabulary. The fixture stays, because it is now
+    a second grader of the ``anyOf`` branch rather than the only one, and it is also
+    what grades ``_ROOT_REQUIRED``.
+    """
+    assert emitted_union_bases()
+    assert {lower_union.keyword(bundle.read(BUNDLE, d)) for d in emitted_union_bases()} == {"anyOf", "oneOf"}
+    for document in emitted_union_bases():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+        with pytest.raises(ValidationError) as caught:
+            base.model_validate({"__adcp_harness__": "no branch admits this"})
+        # **``_ROOT_REQUIRED`` decides WHICH of the two refusals the document's own
+        # vocabulary calls for, and the split is the mixin's own sentence**: "A
+        # root-required field that is absent is reported as ``required`` at its own
+        # location, because that is what the document refuses on and it is not the
+        # branches' doing.  Anything else is the combinator."  §14 step 9 gives the
+        # population its first non-empty ``_ROOT_REQUIRED``, so the arm that was graded
+        # only by the constructed fixture below is graded by live documents too -- and
+        # the expectation is DERIVED from the class's own fact rather than listed.
+        expected = (
+            [("required", (name,)) for name in base._ROOT_REQUIRED]
+            if base._ROOT_REQUIRED
+            else [(lower_union.keyword(bundle.read(BUNDLE, document)), ())]
+        )
+        assert [(e["type"], e["loc"]) for e in caught.value.errors()] == expected, (
+            document,
+            caught.value.errors(),
+        )
+
+    # the anyOf arm, and the _ROOT_REQUIRED split, neither of which the population reaches
+    class AnyOfBase(BranchDispatchMixin, AdCPBaseModel):
+        __adcp_schema__ = SchemaRef("fixture.json", "#")
+        _branch_models: ClassVar[tuple[type, ...]] = ()
+        _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ("root_key",)
+
+        @classmethod
+        def _branch_combinator(cls) -> str:
+            return "anyOf"
+
+        root_key: str | None = None
+
+    class Arm(AnyOfBase):
+        __adcp_schema__ = SchemaRef("fixture.json", "#/anyOf/0")
+        tag: Literal["arm"]
+
+    AnyOfBase._branch_models = (Arm,)
+    AnyOfBase.model_rebuild(force=True)
+
+    with pytest.raises(ValidationError) as caught:
+        AnyOfBase.model_validate({"root_key": "present", "tag": "wrong"})
+    assert [e["type"] for e in caught.value.errors()] == ["anyOf"]
+
+    # ... and ``_ROOT_REQUIRED`` is what separates the two kinds on that same path: the
+    # payload below also satisfies no branch, and the reason the DOCUMENT refuses it is a
+    # field the root requires, not the choice of arm.  pydantic reports neither -- it
+    # reports one ``missing`` per field per branch -- which is why the root's required set
+    # has to be written onto the class.
+    with pytest.raises(ValidationError) as caught:
+        AnyOfBase.model_validate({"tag": "wrong"})
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("required", ("root_key",))]
+    # The control: a payload that DOES satisfy the arm is accepted, so the two refusals
+    # above are not a base that refuses everything.
+    assert type(AnyOfBase.model_validate({"root_key": "p", "tag": "arm"})) is Arm
+
+
+def test_the_serializer_is_set_on_the_schema_the_wrapper_holds_and_not_on_a_definitions_node() -> None:
+    """§4's last sentence, which the emitted population does not reach.
+
+    §4 says the ``serialization`` key goes on the schema the wrapper HOLDS because "most
+    roots come back as a ``definitions`` node wrapping the ``function-wrap``", and a
+    ``serialization`` key on a ``definitions`` node is not consulted.  **Measured on this
+    step's own output, none of the 6 bases does**: ``handler(source)`` returns
+    ``{"type": "model"}`` for all six, because ``lower/union.py`` refuses a root that
+    declares its own properties, so an emitted base has no field to reference anything and
+    its schema has no definitions to hoist.
+
+    So the clause is live code with 0 sites in the tree, and it is graded here instead --
+    by handing the hook a handler that returns a ``definitions`` node and asserting where
+    the key landed.  Said rather than left implicit: perturbing the unwrap reddens this
+    test and nothing else.
+    """
+    from pydantic_core import core_schema
+
+    model_node = core_schema.model_schema(
+        A2UIBoundValueStub := type("A2UIBoundValueStub", (), {}), core_schema.any_schema()
+    )
+    wrapped_in_definitions = core_schema.definitions_schema(model_node, [core_schema.int_schema()])
+
+    class Handler:
+        def __call__(self, source: Any) -> Any:
+            return json.loads(json.dumps(wrapped_in_definitions, default=str)) or wrapped_in_definitions
+
+        def generate_schema(self, obj: Any) -> Any:
+            return core_schema.any_schema()
+
+    class Fixture(BranchDispatchMixin):
+        _branch_models: ClassVar[tuple[type, ...]] = (A2UIBoundValueStub,)
+
+    got = Fixture.__get_pydantic_core_schema__(Fixture, Handler())
+    assert got["type"] == "definitions", got["type"]
+    assert "serialization" not in got, "a serialization key on a definitions node is not consulted"
+    assert got["schema"]["type"] == "function-wrap", got["schema"]["type"]
+    assert got["schema"]["serialization"]["type"] == "function-wrap"
+
+    # and the other arm: a plain model schema comes back as the function-wrap itself
+    class PlainHandler(Handler):
+        def __call__(self, source: Any) -> Any:
+            return core_schema.model_schema(A2UIBoundValueStub, core_schema.any_schema())
+
+    plain = Fixture.__get_pydantic_core_schema__(Fixture, PlainHandler())
+    assert plain["type"] == "function-wrap", plain["type"]
+    assert plain["serialization"]["type"] == "function-wrap"
+
+    # the measurement the docstring states, re-taken here so it cannot go stale silently
+    assert emitted_union_bases()
+    #: Every union base the tree carries, split by whether its root states fields of its
+    #: own -- which is §14 step 9's doing: §5's union row compiles a root's
+    #: ``properties`` and its conjuncts' onto the base, so a base is no longer always
+    #: field-less.  Both halves are asserted non-empty, because the wrap serializer this
+    #: test is about behaves differently on the two and a one-sided population would
+    #: grade only the half that was already green.
+    fieldless, with_fields = [], []
+    for document in emitted_union_bases():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+        (with_fields if base.model_fields else fieldless).append(document)
+    claimed("union bases whose root states no field of its own", fieldless)
+    claimed("union bases carrying the root's own fields", with_fields)
+
+
+def test_a_branch_with_no_derivable_identity_takes_its_index_and_the_document_emits() -> None:
+    """D3's last rule, which is a FALLBACK and not a refusal
+    (``adcp-client-python-10l.41``).
+
+    A branch is named by its ``title``, else by the discriminator ``const``, else by its
+    sorted required set, else by its INDEX among the branches -- ``<Base>Branch<i>``.
+    This test asserted the refusal §4's fourth rung retires: a name is not an acceptance
+    fact, so deriving one from the branch's own position neither widens nor narrows, and
+    the refusal was minting a verdict where the section states a terminus.
+
+    What the index must NOT be is a reading of the neighbourhood.  The rule a previous
+    generator reached for -- name the sole classed branch after its PARENT -- makes a
+    class name a function of what its siblings happen to be, so adding a branch renames
+    an unrelated class.  An index is a fact of the branch's own position, so the control
+    below adds a THIRD branch and asserts the first two keep their names;
+    ``tests/test_names_collision.py`` grades the same property on the rule alone.
+
+    Graded on a bundle of its own, because the fallback has to be reachable with every
+    OTHER keyword satisfied: in the 3.2 bundle an identity-less branch usually sits beside
+    a keyword that refuses first.  The second control is the same document with a title
+    on the first arm, which takes rung 1 and proves the index is reached only last.
+
+    **The first branch is CLOSED, and that is one of the "other keywords satisfied".**
+    §4's third dispatch source reached this fixture at ``salesagent-j3k2l.67``: with both
+    branches open and the first requiring nothing, ``{"b": ...}`` satisfies BOTH, so the
+    branches overlap and the dispatch refuses at ``/`` before any branch is named.
+    ``additionalProperties: false`` on the first branch makes it forbid the ``b`` the
+    second requires, which separates the pair -- and it adds no identity, so the branch
+    still has no ``title``, no ``const`` pin and no ``required`` set, which is what this
+    test is about.
+    """
+    nameless = {
+        "title": "Nameless",
+        "type": "object",
+        "oneOf": [
+            {
+                "type": "object",
+                "properties": {"a": {"type": "string"}},
+                "additionalProperties": False,
+            },
+            {"type": "object", "properties": {"b": {"type": "string"}}, "required": ["b"]},
+        ],
+    }
+    (BUNDLE_FIXTURE := Path(tempfile.mkdtemp())) / "x.json"
+    (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(nameless))
+    out = emit.emit(BUNDLE_FIXTURE, ["x.json"])
+    assert out.refusals == {}, out.refusals
+    assert out.emitted == {"x.json": "adcp.types._schemas.x"}, out.emitted
+    # The FIRST arm has no identity and takes the index; the SECOND states ``required``,
+    # which is rung 3 and outranks it -- so the two rungs are visible in one module.
+    assert "class NamelessBranch0(Nameless)" in out.files["x.py"], out.files["x.py"]
+    assert "class NamelessB(Nameless)" in out.files["x.py"], out.files["x.py"]
+
+    # The row's acceptance criterion through the whole emitter: a branch APPENDED to the
+    # combinator adds a class and moves no existing name.
+    grown = json.loads(json.dumps(nameless))
+    grown["oneOf"].append({"type": "object", "properties": {"c": {"type": "string"}},
+                           "required": ["c"]})
+    (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(grown))
+    added = emit.emit(BUNDLE_FIXTURE, ["x.json"])
+    assert added.refusals == {}, added.refusals
+    assert "class NamelessBranch0(Nameless)" in added.files["x.py"], added.files["x.py"]
+    assert "class NamelessB(Nameless)" in added.files["x.py"], added.files["x.py"]
+    assert "class NamelessC(Nameless)" in added.files["x.py"], added.files["x.py"]
+
+    # And the index is the LAST rung: a title on the same branch takes rung 1 and the
+    # positional name is not emitted at all.
+    titled = json.loads(json.dumps(nameless))
+    titled["oneOf"][0]["title"] = "The First Arm"
+    (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(titled))
+    control = emit.emit(BUNDLE_FIXTURE, ["x.json"])
+    assert control.refusals == {}, control.refusals
+    assert "TheFirstArm" in control.files["x.py"], control.files["x.py"]
+    assert "Branch0" not in control.files["x.py"], control.files["x.py"]
+    shutil.rmtree(BUNDLE_FIXTURE)
+
+
+def test_every_union_root_emits_and_one_that_does_not_is_refused_by_name_and_pointer() -> None:
+    """**EVERY UNION ROOT THE SELECTOR CLAIMS EMITS, so the refused half is EMPTY** --
+    which is reading 3's own population statement and the strongest form this check has
+    had.
+
+    It held a by-keyword PROFILE of the refused half: one line per refused document, so
+    "a row that clears a refusal DELETES ITS LINE" -- the design the profile was written
+    for, against a keyword -> count total that accounted for nothing by name.  Every line
+    is deleted now.  ``adagents.json`` was the last ``anyOf`` entry and ``brand.json`` the
+    last ``$ref`` one; both emit, both bind their root to a base over
+    ``BranchDispatchMixin``, and a profile of nothing is not a profile.
+
+    **WHAT REPLACES IT IS AN EQUALITY BETWEEN TWO DERIVATIONS AND NOT A PIN ON ZERO.**
+    ``populations.union_root`` selects the roots off the bundle and ``Emitted.emitted`` is
+    what the run wrote; asserting the two sets EQUAL reddens the moment any one root
+    stops emitting, and names it -- which no floor over the refused half can do, because
+    a floor over an empty set is the vacuity ``nodeset.claimed`` exists to catch and that
+    is the red this replaces.  The emitted half keeps its ``claimed``, because ITS
+    emptiness would be a defect rather than a fact.
+
+    The refusal loop stays and now ranges over nothing BY DERIVATION: the day a root
+    refuses, the equality fails first and this loop says by name, pointer and keyword
+    which one and on what -- which is the claim the title makes.
+    """
+    out = compiled(BUNDLE, population())
+    roots = union_roots()
+    emitted = [d for d in roots if d in out.emitted]
+    refused = [d for d in roots if d in out.refusals]
+    claimed("union roots the selector claims", roots)
+    # The two halves PARTITION the selector's roots, by name, and ``emitted`` IS the
+    # emitted set -- three readings of one run that cannot disagree.
+    partitions(roots, emitted=emitted, refused=refused)
+    claimed("union roots this step emits", emitted, inside=roots)
+    assert emitted == emitted_unions()
+    # **THE EQUALITY, over NAMES and in the direction that reports.**  Every root the
+    # selector claims is one the run emitted; a root that stops emitting is named here
+    # before any assertion about a refusal's shape is reached.
+    assert set(emitted) == set(roots), sorted(set(roots) - set(emitted))
+
+    # **AND IF ONE EVER REFUSES, BY NAME, POINTER AND KEYWORD.**  Empty by the equality
+    # above rather than by a pinned zero, so this loop cannot be the thing that passes:
+    # it is unreachable exactly while the equality holds, and the equality is what fails
+    # when it becomes reachable.
+    for document in refused:
+        row = out.refusals[document]
+        assert row["keyword"] and row["pointer"], document
+
+
+def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_non_object() -> None:
+    """The narrowing step 5's branches were the first population to reach.
+
+    JSON Schema applies ``properties`` only to objects and asserts nothing about anything
+    else, so ``{"properties": {...}, "required": [...]}`` with no ``type`` ADMITS a
+    string and a number.  No class can, so the model is narrower than its document -- and
+    it is the accepts check that reports it, as ``model_type`` on a valid instance.
+
+    ``lower_object`` read ``type in (None, "object")`` until this step, and 0 of the 43
+    documents emitted before it exercise the ``None`` arm, so the tolerance was latent.
+    Both halves are asserted here: that the document really does admit a non-object, and
+    that the emitter refuses at ``type``.
+
+    **The node here has nothing enclosing it, and that is the whole of what this test
+    grades.**  A node stating no ``type`` whose ENCLOSING node constrains the instance
+    to an object admits no non-object at all, so there is nothing for its class to be
+    narrower than and it emits -- ``core/activation-key.json`` and
+    ``core/reporting-write-destination.json`` are that case, declaring ``type: object``
+    at their own root.  ``tests/test_applied_schema.py`` grades that distinction, in
+    both directions and over the whole bundle.
+    """
+    node = {"properties": {"a": {"type": "string"}}, "required": ["a"]}
+    for admitted in ("hello", 42, [1], {"a": "x"}):
+        assert jsonschema.Draft7Validator(node).is_valid(admitted), admitted
+
+    into = Path(tempfile.mkdtemp())
+    (into / "x.json").write_text(json.dumps({"title": "X", **node}))
+    out = emit.emit(into, ["x.json"])
+    assert out.refusals["x.json"]["keyword"] == "type", out.refusals
+    (into / "x.json").write_text(json.dumps({"title": "X", "type": "object", **node}))
+    assert emit.emit(into, ["x.json"]).refusals == {}  # the control: type: object emits
+    shutil.rmtree(into)
+
+    # **And no emitted document ADMITS a non-object at a root its class claims.**
+    #
+    # This was "no emitted document has a bare root", read off the raw document's own
+    # ``type`` key, and it was an empty list until step 4's row emitted the
+    # ``formats/canonical/`` family -- 7 documents whose root states ``properties``
+    # and no ``type`` of its own because the type arrives through an ``allOf``
+    # conjunct.  ``allOf`` CONJOINS, so a conjunct's ``type`` IS the root's, which is
+    # the same reading ``_composed`` exists for above and the same mistake a bare
+    # read made there (see ``test_extra_follows_the_schema_...``).
+    #
+    # So the population is no longer required to be empty -- it is 7 and growing --
+    # and what is asserted of each member is the CLAIM: the document refuses an
+    # instance of every other type, asked of ``jsonschema`` exactly as the first
+    # half above asks it.  That is strictly more than the previous spelling said: an
+    # empty list asserted nothing about any document, and this grades 7.
+    bare = [
+        d
+        for d in sorted({g.ref.document for g in graded()})
+        if bundle.read(BUNDLE, d).get("type") is None and "properties" in bundle.read(BUNDLE, d)
+    ]
+    # Non-empty rather than counted: the claim is asserted OF EACH MEMBER below, so
+    # what this needs is that there is a member -- an empty list asserted nothing about
+    # any document, which is the state this check was in before.  The count went 7 -> 9
+    # when two more ``formats/canonical`` documents emitted, which is a correct move,
+    # and every later row that makes such a document emittable moves it again.
+    claimed("graded documents stating properties with no root type", bare)
+    for document in bare:
+        doc = schema_at(SchemaRef(document, "#"))
+        # ``doc`` IS the root here -- the pair is the document's own ``#`` -- so it is
+        # what a conjunct's local pointer resolves against.
+        assert _composed(doc, doc).get("type") == "object", (document, _composed(doc, doc))
+        for admitted in ("hello", 42, [1], None, True):
+            assert not jsonschema.Draft7Validator(doc).is_valid(admitted), (document, admitted)
+
+
+def test_a_root_is_exactly_one_kind_so_the_populations_do_not_overlap() -> None:
+    """**``emit.ROWS`` is deleted, so a collision is unrepresentable rather than caught.**
+
+    This graded a build failure on a table built to collide, because no bundle document
+    could reach one.  §14 step 5 removes the table: §5 says "root and non-root are one
+    path", so a root reaches ``emit._decide`` like every other node and a dispatch on a
+    node's KIND reaches exactly one arm.  ``emit.AmbiguousRoot`` goes with it -- a build
+    failure with no way to occur is a shape the structure no longer has, not a check
+    that was dropped.
+
+    What survives is the half that was always a fact about the DOCUMENTS: the six
+    population predicates do not overlap, which is what the union clause in
+    ``populations.declares_its_own_root_kind`` is for -- without it ``is_object_root``
+    and ``union_root`` both count 35 documents and ``is_scalar_root`` and ``union_root``
+    both count 1.  Two steps counting one document is what the epic's arithmetic reads
+    off, so the measurement is worth keeping even though the dispatch cannot be
+    ambiguous.
+    """
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        counting = [c.__name__ for c in ROOT_POPULATIONS if c(doc)]
+        assert len(counting) <= 1, (document, counting)
+    # the control: every predicate counts something, so the assertion above is not
+    # satisfied by predicates nothing matches
+    counted = {c.__name__: 0 for c in ROOT_POPULATIONS}
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        for c in ROOT_POPULATIONS:
+            if c(doc):
+                counted[c.__name__] += 1
+    assert all(counted.values()), counted
+
+
+def test_the_union_arm_and_step_fives_population_read_one_definition_of_a_union() -> None:
+    """The walk and the measurement cannot disagree about what a union root is.
+
+    ``lower.union.keyword`` is where the keyword read lives, ``emit._decide``'s union arm
+    is what dispatches on it, and ``populations.union_root`` is built on that same
+    function -- so there is no second definition for the two to drift through.  It
+    asserted ``emit.ROWS`` held exactly one entry whose selector was this predicate;
+    §14 step 5 deleted the table, and what is left is the one reading plus step 7's
+    narrowing, asserted in both directions below.
+    """
+    from codegen.lower import rules, union
+
+    assert union.keyword is not None
+
+    # Both arms of the loop below range over a set of nodes, and each one is named
+    # non-empty: an empty bundle would run the loop zero times and say nothing about
+    # either arm -- "every union root carries a keyword" and "every non-root carrying
+    # one spells a presence rule" would both hold for free.
+    claimed(
+        "documents whose root carries oneOf or anyOf",
+        [d for d in bundle.portable(BUNDLE) if populations.union_root(bundle.read(BUNDLE, d))],
+    )
+    claimed(
+        "documents carrying the keyword without being a union root",
+        [
+            d
+            for d in bundle.portable(BUNDLE)
+            if not populations.union_root(bundle.read(BUNDLE, d))
+            and union.keyword(bundle.read(BUNDLE, d)) is not None
+        ],
+    )
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        # The row's selector is the lowering's own read NARROWED by step 7's: a
+        # combinator of ``required`` groups carries the keyword and is a rule, not a
+        # union, and ``populations.union_root`` is where the two steps' readings meet
+        # (a lowering cannot import another lowering, D13).  So the selector implies
+        # the keyword and not the reverse, and the gap is exactly the presence-only
+        # roots -- asserted in both directions, so neither can drift.
+        if populations.union_root(doc):
+            assert union.keyword(doc) is not None, document
+        elif union.keyword(doc) is not None:
+            kw = union.keyword(doc)
+            assert rules.presence_only({kw: doc[kw]}), document
+
+
+def _pydantic_names(json_schema_keywords: set[str]) -> set[str]:
+    """The ``Field`` kwarg each JSON Schema constraint renders as.
+
+    Derived from the compiler's own ``Constraints`` model, which declares every
+    field under its JSON-Schema alias -- so this mapping is the compiler's and
+    not a second copy of it that could drift.
+    """
+    from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
+
+    by_alias = {f.alias: name for name, f in Constraints.model_fields.items() if f.alias}
+    # ``minItems``/``maxItems`` are the one place the alias table is a step short of
+    # the rendering: pydantic v2 bounds a LIST with ``min_length``/``max_length``,
+    # and dmcg renders ``Field(min_length=1)`` for a document's ``minItems: 1`` --
+    # measured on ``brand/get-brand-identity-request.json``'s ``fields``, which step
+    # 6's array row is what made reachable.  Both spellings are admitted for those
+    # two keywords, so the test still refuses a kwarg no keyword of the document
+    # renders.
+    extra = {"minItems": "min_length", "maxItems": "max_length"}
+    out = {by_alias[k] for k in json_schema_keywords if k in by_alias}
+    return out | {extra[k] for k in json_schema_keywords if k in extra}
+
+
+def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
+    """D2's root-scalar row: a node with no field to hang itself on is an alias.
+
+    A wrapper class would be a second name for the same node (P2), and every
+    referencing model would then carry an object where the document carries a
+    string.  The alias carries its document's own ``description``, which an
+    earlier rendering dropped at all five of this population's scalar roots
+    because an alias has no docstring slot -- a ``Field(description=...)`` does.
+
+    The population is ``populations.is_scalar_root`` itself and not ``type in SCALAR``,
+    because those are two different sets: all 214 of the bundle's root enums
+    declare ``type: "string"``, and D2 makes them CLASSES.  Reading the row's own
+    selector is what keeps this test from asserting the scalar row's outcome over
+    the enumeration row's documents.
+    """
+    graded_aliases = 0
+    for document in sorted({g.ref.document for g in graded()}):
+        doc = bundle.read(BUNDLE, document)
+        if not populations.is_scalar_root(doc):
+            continue
+        tree = ast.parse(_source(document))
+        assigned = {
+            t.id
+            for n in tree.body
+            if isinstance(n, ast.Assign)
+            for t in n.targets
+            if isinstance(t, ast.Name)
+        }
+        assert _symbol(document) in assigned, document
+        assert [n for n in tree.body if isinstance(n, ast.ClassDef)] == [], document
+        graded_aliases += 1
+    assert graded_aliases, "no scalar root was graded"
+
+    control = "core/creative-revision-id.json"
+    doc = bundle.read(BUNDLE, control)
+    schema = __import__(
+        "adcp.types._schemas.core.creative_revision_id", fromlist=["strict_validate"]
+    )
+    emitted = TypeAdapter(getattr(schema, _symbol(control))).json_schema()
+    assert emitted["minLength"] == doc["minLength"]
+    assert emitted["maxLength"] == doc["maxLength"]
+    assert emitted["description"] == doc["description"]
+
+
+# --------------------------------------------------------------------------- #
+# step 6: containers and mappings
+# --------------------------------------------------------------------------- #
+def _assigned(mod: compiler.Module) -> ir.Module:
+    """One walked module with §4's symbols assigned, which is what the renderer takes.
+
+    §14 step 7: the walk declares at a POINTER and ``codegen/lower/names.py`` assigns
+    every name in one pass, so a test that renders a hand-lowered module runs the pass
+    exactly as ``emit.decidable`` does rather than reading a name off the walk.
+    """
+    bound = names.assign(mod)
+    assert not isinstance(bound, Refusal), bound
+    return bound
+
+
+def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any, str]:
+    """Lower a document written HERE, and return its model and the module text.
+
+    A constructed document is not in the shipped package, so ``_document`` cannot
+    read it and ``strict_validate`` has no schema -- which is why a constructed pair
+    is graded by an ``accept`` the test builds from the same document, exactly as the
+    narrowing fixture above is.  Everything else is the real
+    pipeline: the walk decides, the compiler renders, and the text is executed rather
+    than inspected, so a test cannot pass on a rendering that does not run.
+
+    ``binds`` supplies a symbol for a ``$ref``, keyed by the target's document path.
+    The import the walk emits names a sibling MODULE, which does not exist here, so
+    the symbol is pre-bound in the namespace instead -- the import itself is asserted
+    separately, off ``mod.imports``.
+
+    **The targets are DATA now** (§14 step 7): the run resolves every reference site
+    before the document is parsed, so the fixture states the answers rather than a
+    binder, keyed by the SITE ``(uri, pointer)`` the way ``emit.resolve`` keys them.  And
+    the NAMES are assigned after the walk, so the text is rendered from what
+    ``lower/names.py`` returns.
+    """
+    held = binds or {}
+    sites: dict[tuple[str, str], compiler.Target] = {}
+    for pointer, uri, _ in bundle.references(doc):
+        for path, (name, _type) in held.items():
+            if uri.endswith(path):
+                module = f".{path.rsplit('/', 1)[-1].removesuffix('.json')}"
+                # No :class:`compiler.Shape`, so the fixture's targets are the
+                # aliases and enumerations they have always been: ``Target.kind`` has no
+                # default, so which of §4's three root outcomes a target is gets stated
+                # here rather than inferred from the absent shape.
+                sites[(uri, pointer)] = compiler.Target(
+                    module, name, kind=compiler.TargetKind.ANNOTATION
+                )
+                break
+        else:
+            raise AssertionError(f"the fixture binds no target for {uri}")
+
+    mod, _ = emit.lower_document(
+        "constructed.json", doc, sites, reserved=render.RESERVED
+    )
+    bound = names.assign(mod)
+    assert not isinstance(bound, Refusal), bound
+    text = render.module(bound, emit.exported(mod, bound))
+    module = types.ModuleType("_constructed_fixture")
+    module.__dict__.update(dict(held.values()))
+    # D5's aliases are reached by an ABSOLUTE import, so they survive the strip
+    # below -- and a constructed document can derive a shape the INSTALLED module
+    # has no site for, which is an ``ImportError`` here rather than a test failure
+    # anyone can read.  The RUN's own alias module is the emitter's output, so it is
+    # executed into this namespace and its import line dropped: the same pre-binding
+    # a ``$ref`` target gets, for the same reason, and the annotation stays the
+    # compiler's.
+    if mod.aliases:
+        exec(render.constraints_module(mod.aliases), module.__dict__)
+    alias_import = f"from {constraints_module.MODULE} import"
+    # Registered, because ``from __future__ import annotations`` makes every
+    # annotation a string and pydantic resolves it against the defining module's
+    # globals -- a bare ``exec`` dict has no module to be found through.
+    sys.modules[module.__name__] = module
+    try:
+        exec(  # executing the compiler's own output is the point
+            "\n".join(
+                line
+                for line in text.splitlines()
+                if not line.startswith("from .") and not line.startswith(alias_import)
+            ),
+            module.__dict__,
+        )
+    finally:
+        del sys.modules[module.__name__]
+    return module.__dict__[bound.root], text
+
+
+def _accept_of(doc: dict, model: Any) -> Any:
+    """The entry point a constructed pair is offered instances through.
+
+    The schema half first and the constructor second, which is the order
+    ``strict_validate`` uses -- so the accepts check here measures the same thing it
+    measures on a shipped class.
+    """
+
+    def accept(payload: Any) -> Any:
+        jsonschema.Draft7Validator(
+            doc, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
+        ).validate(payload)
+        return model.model_validate(payload) if isinstance(model, type) else payload
+
+    return accept
+
+
+def test_every_root_reaches_one_arm_and_the_populations_partition_the_bundle() -> None:
+    """**``emit.ROWS`` is deleted; both halves of this claim moved with it.**
+
+    §14 step 5 removes the table of root selectors and §5's "root and non-root are one
+    path" is what replaced it -- a document is the per-node dispatch at ROOT, and a
+    dispatch on a node's KIND reaches exactly one arm.  So the two halves this asserted
+    are now a measurement and a property:
+
+    * the MEASUREMENT.  Six predicates in ``tests/populations.py`` count six steps'
+      documents, and a root counted twice would mean two steps counted one document --
+      which is what the epic's arithmetic is read off.  The one-population half is named
+      NON-EMPTY, so it is not satisfied by predicates that count nothing.
+    * the PROPERTY.  A collision is unrepresentable, so there is no build failure left to
+      grade on a fixture.  What IS gradeable is that every root the bundle holds reaches
+      an arm and the arm answers BY NAME, which is the loop below over the roots no
+      population counts.
+
+    **The roots no population counts are not waiting for a row**: they are DATA
+    documents with no schema keyword at the root, conditional-only documents and a bare
+    root ``$ref``, and each is refused on the keyword its kind is read from -- at its own
+    position now, in the reference arm and in the typeless arm, rather than by
+    ``lower_document`` reporting the absence of a row.  How many there are is a function
+    of the predicates -- it was 21 before ``composes_at_the_root``'s two-reading hole
+    closed and 7 after -- so it is the MEMBERSHIP that is asserted and not the size.
+    """
+    documents = claimed("bundle.portable", bundle.portable(BUNDLE))
+    by_count: dict[int, set[str]] = {}
+    for document in sorted(documents):
+        doc = bundle.read(BUNDLE, document)
+        n = sum(1 for counts in ROOT_POPULATIONS if counts(doc))
+        by_count.setdefault(n, set()).add(document)
+    assert sorted(by_count) == [0, 1], {k: len(v) for k, v in by_count.items()}  # never two
+    partitions(
+        documents,
+        counted_by_one_population=by_count[1],
+        counted_by_no_population=by_count[0],
+    )
+    claimed("documents exactly one population counts", by_count[1], inside=documents)
+
+    uncounted = claimed("roots no population counts", by_count[0], inside=documents)
+    out = compiled(BUNDLE, sorted(uncounted))
+    # **The arm ANSWERS, and an answer is an emission or a refusal** --
+    # ``adcp-client-python-10l.20`` is what makes the first half live.  §4's table gives
+    # a root stating no schema keyword a PERMISSIVE ROOT MODEL and §5's group (a) gives a
+    # root stating only ``if``/``then`` the same shape with the conditional as a rule, so
+    # two of the three shapes this loop found refusing now emit.  Both halves are graded
+    # here by name, because "every root reaches an arm" is the property and "the arm
+    # refuses" was only ever how it was observed.
+    emitted_here = claimed(
+        "uncounted roots that emit",
+        {d for d in uncounted if d in out.emitted},
+        inside=uncounted,
+    )
+    partitions(
+        uncounted,
+        emitted=emitted_here,
+        refused={d for d in uncounted if d in out.refusals},
+    )
+    # **WHICH ARM ANSWERED IS SPLIT OFF THE DOCUMENT, because they are not one arm.**
+    # This asserted ``RootModelDecl`` of every emitter and called each one "§4's third
+    # root shape"; ``core/signal-pricing-option.json`` is not one -- it states a BARE
+    # ROOT ``$ref`` and nothing else, so §4's reference arm answers it and binds the
+    # target's class under this document's own name, with no root model anywhere.  It
+    # also cannot be re-lowered here: ``emit.lower_document`` with no ``sites`` is a
+    # document lowered OUTSIDE a run, and the reference arm's own answer for an
+    # unresolved site is a verdict (``compiler.unresolved``), so the standalone call
+    # refused a document the run emits.
+    through_a_reference = {d for d in emitted_here if "$ref" in bundle.read(BUNDLE, d)}
+    partitions(
+        emitted_here,
+        through_the_reference_arm=through_a_reference,
+        through_a_permissive_root_model=emitted_here - through_a_reference,
+    )
+    for document in sorted(emitted_here):
+        # **THE ARM ANSWERED BY NAME, read off the RUN and keyed on the ROOT POINTER.**
+        # The two maps partition the run's symbol table, so a root bound by identity to
+        # another pointer's declaration is answered too, and no spelling enters it.
+        at_the_root = {**out.adopted[document], **out.declared[document]}
+        assert at_the_root.get(""), (document, sorted(at_the_root))
+    for document in sorted(emitted_here - through_a_reference):
+        # §4's third root shape, so the module declares a ``RootModelDecl`` and nothing
+        # else answers for the root.
+        built = emit.lower_document(document, bundle.read(BUNDLE, document))
+        assert not isinstance(built, Refusal), (document, built)
+        module, _ = built
+        assert any(
+            isinstance(d, ir.RootModelDecl) for d in module.declarations
+        ), (document, [type(d).__name__ for d in module.declarations])
+    for document in sorted(uncounted - emitted_here):
+        where = out.refusals[document]
+        assert where["pointer"] == "/", (document, where)
+        # The keyword is one the DOCUMENT states, or ``type`` where the root states no
+        # kind keyword at all -- which is the arm reading the document rather than
+        # reporting that nothing claimed it.
+        assert where["keyword"] == "type" or where["keyword"] in bundle.read(
+            BUNDLE, document
+        ), (document, where)
+
+
+
+def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
+    """Step 6's first defect, over every array site the emitted population has.
+
+    The generator this pipeline replaces read ``minItems`` on a named property and
+    carried it and read the same keyword on a mapping value and dropped it.  So the
+    assertion is on WHICH NODE the bound landed on, site by site, derived from the
+    document rather than from a list:
+
+    * the document's ``minItems``/``maxItems`` reach the model's own schema at the
+      ARRAY, where pydantic spells them ``minItems``/``maxItems`` again;
+    * the element's node carries no length fact the document does not state there,
+      which is what "not on its elements" means -- a bound moved down renders
+      ``minLength`` on the item and the array unbounded.
+
+    Both denominators are asserted, so neither half can pass by looking at nothing.
+    """
+    arrays: set[tuple[SchemaRef, str]] = set()
+    bounded: set[tuple[SchemaRef, str, str]] = set()
+    for row in graded():
+        if row.ref.pointer != "#" or not isinstance(row.model, type):
+            continue
+        if not hasattr(row.model, "model_json_schema"):
+            continue  # D2's enumeration row emits a class that is not a model
+        doc = schema_at(row.ref)
+        emitted = row.model.model_json_schema()
+        for key, sub in (doc.get("properties") or {}).items():
+            if sub.get("type") != "array":
+                continue
+            arrays.add((row.ref, key))
+            mine = _rendered(emitted, key, row.model)
+            assert mine.get("type") == "array", (row.ref, key, mine)
+            for keyword in ("minItems", "maxItems"):
+                assert mine.get(keyword) == sub.get(keyword), (row.ref, key, keyword, mine)
+                if keyword in sub:
+                    bounded.add((row.ref, key, keyword))
+            item = _unwrap(mine.get("items") or {}, emitted.get("$defs", {}))
+            declared = sub.get("items") or {}
+            # **THIS IS RED AT 64131600f AND IT IS RIGHT TO BE.**  Not a stale
+            # constant: 4 mismatches over 2 properties of
+            # ``core/attestation-capabilities.json``, whose elements state
+            # ``{"type": "string", "format": "uri"}`` and nothing about length,
+            # while the model's element carries ``minLength: 1, maxLength: 2083``.
+            # Those are pydantic ``HttpUrl``'s own bounds, which D5's format row
+            # brings in with the type, and they make the model NARROWER than its
+            # document.  Proved through the production entry point rather than
+            # inferred from the rendered schema: on an instance drawn from the
+            # document by ``hypothesis_jsonschema`` with one 2,220-character https
+            # URI substituted, ``jsonschema`` with the draft's own format checker
+            # reports no error and ``strict_validate`` refuses with
+            # ``url_too_long``.  The owner is D5's ``FORMAT_TYPES`` in
+            # ``codegen/emit.py``, not this test, and re-pointing the assertion
+            # would hide a live narrowing -- so it stays as written and
+            # ``salesagent-j3k2l.29`` carries the finding.
+            for keyword in ("minLength", "maxLength", "minItems", "maxItems"):
+                assert item.get(keyword) == declared.get(keyword), (row.ref, key, keyword, item)
+    # The denominator is TOP-LEVEL array properties of an emitted root, not every
+    # array node: an array nested inside another array's ``items`` has no property
+    # node of its own to read a bound at, so this loop cannot reach one and the bound
+    # it carries rides on the inner array's own annotated type.
+    # Stated so the set is not read as "every array".  Both halves non-empty rather
+    # than counted: the per-keyword assertion inside the loop is the obligation and it
+    # needs an array to have been reached, and the bounded half needs a bound to have
+    # been read.  The two counts this replaces moved together at every row that
+    # added an emitted root.
+    claimed("top-level array properties of an emitted root", arrays)
+    claimed("array bounds compared", bounded)
+
+
+def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it() -> None:
+    """Why ``uniqueItems`` is D6's rule on the nearest class and not a constraint.
+
+    The reason is a measurement and not a reading of D6: ``Constraints`` declares
+    ``unique_items`` under the alias ``uniqueItems``, so the keyword is ACCEPTED and
+    sets the field -- and the renderer then emits no ``Field`` at all, because
+    pydantic v2 removed ``unique_items``.  Carrying it through ``constraints=`` would
+    therefore be a model wider than its document, silently.
+
+    So the keyword takes two channels, never ``constraints=``: a RULE narrows the
+    constructor (D6), and ``json_schema_extra`` states the FACT on the model's own
+    rendered schema, which is the same channel ``Property.format`` takes for the same
+    reason -- ``uniqueItems`` is the one rule keyword a faithful model states as a fact
+    at a pointer (``codegen.keywords``, ``rendered=True``), and with only the validator
+    enforcing it the model's schema would state nothing where the document states the
+    keyword.
+
+    **Both channels exist at BOTH of §2's places a rule hangs**, which is the half this
+    test asserted the opposite of until ``adcp-client-python-10l.29``: on the nearest
+    class the rule is ``UniqueItems`` on its tuple and the fact is on the field holding
+    the array, and where no class sits above the array the rule is a ``Distinct`` on the
+    array's own annotated type and the fact is a ``Field(json_schema_extra=…)`` beside it
+    in the same ``Annotated``.
+
+    Four cells: the keyword sets the constraints model, the rendering drops it, a class
+    states both halves, and an array NO class holds states both halves too.
+    """
+    from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
+
+    assert Constraints.model_fields["unique_items"].alias == "uniqueItems"
+    assert Constraints(uniqueItems=True).model_fields_set == {"unique_items"}
+
+    listed = ir.TypeRef(container="list", of=(ir.TypeRef("str"),))
+    kept = render.alias(ir.AliasDecl("Kept", replace(listed, facts={"minItems": 1})))
+    dropped = render.alias(ir.AliasDecl("Dropped", replace(listed, facts={"uniqueItems": True})))
+    assert "min_length=1" in kept.text, kept.text
+    assert "Field" not in dropped.text, dropped.text  # the fact has no rendering
+
+    held = {
+        "title": "U",
+        "type": "object",
+        "properties": {"a": {"type": "array", "items": {"type": "string"}, "uniqueItems": True}},
+    }
+    mod, _ = emit.lower_document("u.json", held, reserved=render.RESERVED)
+    bound = _assigned(mod)
+    text = render.module(bound, emit.exported(mod, bound))
+    assert "UniqueItems('a')" in text, text
+    assert "json_schema_extra={'uniqueItems': True}" in text, text
+
+    # **An array with no class above it CARRIES THE RULE ON ITS OWN TYPE**, which is
+    # §2's second place a rule hangs -- "where no class sits above the value ... the rule
+    # hangs off the value's own annotated type as an after-validator (``AtLeastOne``,
+    # ``NotValue``, ``Distinct``)".  A mapping value is one of those positions.
+    #
+    # **This probe asserted the OPPOSITE at ``adcp-client-python-10l.21`` and the
+    # assertion was the defect.**  It read §5(b)'s withdrawn row -- "``uniqueItems`` and
+    # ``contains`` where even a named type cannot hold the rule ... the duplicate check is
+    # the schema half's alone" -- and declared an approximation here.  A named type holds
+    # the rule perfectly well; what was missing was that ``_runtime`` declared none of the
+    # three kinds, so "we cannot express it" was standing in for "nobody wrote it".  The
+    # three cells below are the faithful answer, and the one that matters is the first:
+    # the module declares NOTHING, because there is nothing to declare.
+    on_a_value, _ = emit.lower_document(
+        "v.json",
+        {
+            "title": "V",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "uniqueItems": True,
+                    },
+                }
+            },
+        },
+        reserved=render.RESERVED,
+    )
+    assert on_a_value.approximations == [], on_a_value.approximations
+    bound_on_a_value = _assigned(on_a_value)
+    on_the_value = render.module(
+        bound_on_a_value, emit.exported(on_a_value, bound_on_a_value)
+    )
+    # The RULE, on the mapping's VALUE type and not on the field holding the mapping --
+    # a rule written there would be about the dict and not about each array in it.
+    assert "dict[str, Annotated[list[str]," in on_the_value, on_the_value
+    assert "AfterValidator(Distinct())" in on_the_value, on_the_value
+    # And the FACT beside it, so the keyword is stated at the array's own pointer: this
+    # is the same ``json_schema_extra`` channel the class-level half takes above, for the
+    # same measured reason -- pydantic v2 removed ``unique_items``.
+    assert "json_schema_extra={'uniqueItems': True}" in on_the_value, on_the_value
+
+    # And on the bundle: NO document refuses on this keyword and NO document declares a
+    # widening for it, in either direction, over the whole emitted population.  The two
+    # empty sets are the row's exit condition and the named set below is what makes them
+    # evidence rather than vacuous -- a reading that stopped reaching the keyword would
+    # satisfy both emptinesses and move the third.
+    #
+    # The history, because the count moved four times and a number says nothing about
+    # which document moved: the five sites that REFUSED at ``adcp-client-python-10l.20``
+    # became five DECLARATIONS at ``.21`` (plus six more carried to a REFERRER by §8's
+    # "a declaration travels with the fact it is about", for 11 over ``population()`` and
+    # 13 over the portable set), and at ``.29`` all of them become the rule itself.  The
+    # ``definitions`` entries are back in their own documents' modules, because the rule
+    # lives on the ALIAS the entry emits and a referrer imports that symbol -- so the
+    # fact has one spelling again (P2) rather than a declaration per referrer.
+    out = compiled(BUNDLE, population())
+    blocked = {
+        d: out.refusals[d]["pointer"]
+        for d, r in out.refusals.items()
+        if r["keyword"] == "uniqueItems"
+    }
+    assert blocked == {}, blocked
+    declaring = {
+        a.document: a.pointer
+        for declared_for in out.approximations.values()
+        for a in declared_for
+        if a.keyword == "uniqueItems"
+    }
+    assert declaring == {}, declaring
+    enforcing = claimed(
+        "documents whose module binds a Distinct to an array no class holds",
+        {
+            d
+            for d in out.emitted
+            if "Distinct(" in out.files[f"{emit.module_file(d, PACKAGES)}.py"]
+        },
+        inside=set(out.emitted),
+    )
+    # **TWO MORE at ``adcp-client-python-10l.21``'s third instalment**, both documents
+    # released by §5(a)'s first bullet -- a ``type`` word beside a NESTED combinator is in
+    # every branch already -- and each carries a ``uniqueItems`` at one of the four
+    # positions §2 names for the value-level half rather than a new kind of position.
+    assert enforcing == {
+        "core/account-authorization.json",  # a mapping value
+        "core/audience-characteristic.json",  # a oneOf branch
+        "core/daast-tracker-constraints.json",  # a definitions entry
+        "core/postal-area-support.json",  # a mapping value (its typed extras store)
+        "core/vast-tracker-constraints.json",  # a definitions entry
+        "error-details/requote-required.json",  # a oneOf branch
+        "media-buy/acceptance-policy-profile.json",  # a mapping value
+    }, sorted(enforcing)
+
+
+def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rule() -> None:
+    """§4's root-array row, WRITTEN at ``adcp-client-python-10l.20``.
+
+    §4's table: "an array at a root -> ``RootModel[list[X]]``".  The row was refused by
+    name on the ground that "all five root arrays of this bundle refuse on a keyword of
+    a later step, so a ``RootModel`` base would be a class no document reaches and no
+    pair grades" -- and the keyword in question was this row's own ``uniqueItems``,
+    which §5's group (a) answers with the root model's rule tuple.  So the two halves
+    land together and the measurement is the partition below: **all five root arrays
+    EMIT** at ``adcp-client-python-10l.21``'s third instalment.  It was four, with the
+    fifth refusing inside its own ``items`` -- which is where a root array's obstruction
+    lands, because the row lowers the element first -- and that fifth was
+    ``media-buy/product-refinement.json``, released when a ``type`` word beside a NESTED
+    combinator stopped refusing.
+
+    Three facts per emitted root array, each the half the old refusal was paying for:
+
+    * the symbol is an ``AdCPRootModel`` and carries ``__adcp_schema__``, so it is a
+      PAIR and the three checks reach it (§8 of the architecture document: "each must
+      carry ``__adcp_schema__``, ``strict_validate`` and a rule tuple exactly as a class
+      does");
+    * ``uniqueItems`` is RENDERED in ``model_json_schema()``, through the
+      ``json_schema_extra`` channel ``ir.Field.distinct`` names -- pydantic v2 removed
+      ``unique_items``, so nothing else reaches the model's schema and the one rule
+      keyword §8 of the semantics document has a faithful model state as a FACT would be
+      stated nowhere;
+    * the rule FIRES: a duplicate is refused by the one validator ``RuleBound``
+      installs, which is what makes "the keyword is enforced, not dropped" true rather
+      than claimed.
+    """
+    out = compiled(BUNDLE, population())
+    roots = claimed(
+        "root arrays in the bundle",
+        [d for d in bundle.portable(BUNDLE) if bundle.read(BUNDLE, d).get("type") == "array"],
+        inside=bundle.portable(BUNDLE),
+    )
+    partitions(
+        set(roots),
+        emitted_as_a_root_model={d for d in roots if d not in out.refusals},
+        refused_inside_its_items={d for d in roots if d in out.refusals},
+    )
+    # **The residue is EMPTY at ``adcp-client-python-10l.21``'s third instalment, and
+    # ALL FIVE root arrays emit.**  It held ``media-buy/product-refinement.json``, whose
+    # ``/items`` is a worded nested union -- ``type: object`` beside a ``oneOf`` -- which
+    # §5(a)'s first bullet answers and §14 step 9 lists first among the faithful rows, so
+    # the fifth array's element lowers and the document emits.  The docstring's "four of
+    # the five" is now five of the five.
+    #
+    # The clause STAYS, over whatever the part holds, because a root array arriving with
+    # an unlowerable element is the thing it reads for: the refusal is INSIDE the element
+    # rather than at the shape, since the row lowers the element first.  The partition
+    # above is what reddens when the part fills again, with the document named.
+    for odd in sorted(d for d in roots if d in out.refusals):
+        assert out.refusals[odd]["pointer"].startswith("/items"), out.refusals[odd]
+
+    # The hand-built control: nothing else wrong with it, so it reaches the shape.
+    built = emit.lower_document(
+        "r.json", {"title": "R", "type": "array", "items": {"type": "string"}}
+    )
+    assert not isinstance(built, Refusal), built
+    module, _symbol = built
+    (declared,) = [d for d in module.declarations if isinstance(d, ir.RootModelDecl)]
+    assert declared.type.container == "list", declared
+    assert [of.path for of in declared.type.of] == ["str"], declared
+
+    # And on the tree, which is the half a hand-built declaration cannot answer.
+    rows = {g.ref.document: g for g in graded() if g.ref.pointer == "#"}
+    emitted_roots = claimed(
+        "root arrays that emit", {d for d in roots if d not in out.refusals}, inside=set(roots)
+    )
+    # **The two groups are NAMED and not counted**, which is
+    # ``test_every_check_names_its_set``'s rule 1: how many root arrays state
+    # ``uniqueItems`` is a census over the bundle, so an equality on it is a quantity
+    # every emitting row moves and no row can agree with.  The PARTITION says the same
+    # thing by name, so a root array that starts or stops stating the keyword is read as
+    # the document it is.
+    partitions(
+        emitted_roots,
+        states_uniqueItems={
+            d for d in emitted_roots if bundle.read(BUNDLE, d).get("uniqueItems") is True
+        },
+        states_no_uniqueItems={
+            d for d in emitted_roots if bundle.read(BUNDLE, d).get("uniqueItems") is not True
+        },
+    )
+    for document in sorted(emitted_roots):
+        model = rows[document].model
+        assert issubclass(model, AdCPRootModel), (document, model.__mro__)
+        rendered = model.model_json_schema()
+        assert rendered["type"] == "array", (document, rendered)
+        if bundle.read(BUNDLE, document).get("uniqueItems") is not True:
+            # The other half of the partition, asserted the other way round: no rule and
+            # no rendered fact where the document states none, so the loop cannot pass by
+            # writing the keyword onto every root array.
+            assert "uniqueItems" not in rendered, (document, rendered)
+            assert not any(
+                isinstance(rule, UniqueItems) for rule in bound_rules(model)
+            ), (document, bound_rules(model))
+            continue
+        # The fact, rendered as §8 of the semantics document has a faithful model state it.
+        assert rendered.get("uniqueItems") is True, (document, rendered)
+        # The rule, keyed on the root model's one field and FIRING.
+        assert UniqueItems(ir.ROOT_FIELD) in bound_rules(model), (document, model)
+
+    class Distinctly(AdCPRootModel):
+        root: list[str]
+        __adcp_schema__: ClassVar[SchemaRef] = SchemaRef("r.json", "#")
+        _adcp_rules: ClassVar[tuple[Rule, ...]] = (UniqueItems(ir.ROOT_FIELD),)
+
+    assert Distinctly.model_validate(["a", "b"]).root == ["a", "b"]
+    with pytest.raises(ValidationError) as refused_duplicate:
+        Distinctly.model_validate(["a", "a"])
+    assert refused_duplicate.value.errors()[0]["type"] == "uniqueItems"
+
+
+def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
+    """D5's key rule, and the honest denominator for it.
+
+    **EIGHT mapping sites in the emitted population constrain their key, and each one's
+    key TYPE is named.**  This read "no mapping site ... constrains its key", with the
+    zero asserted so the key rule could not be read as covered by the bundle; the zero
+    inverted to one at ``salesagent-j3k2l.29`` (``core/product-change-map.json``'s root
+    ``propertyNames: {"minLength": 1}``), and to three at ``salesagent-j3k2l.64``, which
+    lowers a key's PATTERN as well -- so the sites are asserted BY NAME with the key type
+    each one emits, which is what a count could not say.
+
+    Every OTHER mapping the committed tree carries is still ``dict[str, ...]``, which
+    is the document's own reading rather than a default -- silence about keys means
+    every string, and typing it further would be the SDK inventing a constraint.
+
+    The one key kind that needs no name is the one that is graded behaviourally: a
+    ``propertyNames`` ``$ref`` NAMES the key type, so the key is that type, the module
+    IMPORTS it, and the model then refuses a key the key type refuses.  A second pattern
+    still refuses by name -- that is two value schemas for one mapping value.
+
+    **A CLOSED key set is the eighth site and the first of its kind, at
+    ``adcp-client-python-onq``.**  This read "a closed key set is a MODEL and not a
+    mapping and still refuses by name", which ``adcp-client-python-10l.20`` retired:
+    ``propertyNames: {"enum": […]}`` is ``dict[Literal[…], V]``, and pydantic renders
+    that back as the document's own keyword.  Its one site in the bundle --
+    ``core/store-item.json`` ``/properties/hours`` -- was behind the chain through
+    ``core/catchment.json`` until §5's "A union of presence-only branches that also
+    forbid" (2026-10-27) decided it, so the arm had no live site and this list no entry
+    of that kind.  It names a ``Literal`` and not an alias, which is why the loop below
+    branches on the document's keyword.
+    """
+    constrained: list[tuple[str, str]] = []
+    mappings: set[tuple[str, str]] = set()
+    for row in graded():
+        doc = schema_at(row.ref)
+        # **The pointers the DOCUMENT ITSELF writes a ``$ref`` at**, so an INLINED copy
+        # of another document's authored mapping is not counted as this one's.  §3 has
+        # ``bundle.record`` inline a remote target, so a referrer's record carries a copy
+        # of the target's mapping while its MODULE imports the target's class -- the key
+        # alias is spelled where the mapping is declared, which is the target's module.
+        # The set is therefore one entry per AUTHORED mapping, which is the denominator
+        # ``adcp-client-python-10l.3`` already corrected this test to: that row removed
+        # the delegated resolver's copies for exactly this reason, and a remote inline is
+        # the same thing by the other mechanism (measured at
+        # ``governance/policy-entry.json`` and
+        # ``media-buy/acceptance-policy-catalog.json``, which both reach
+        # ``media-buy/acceptance-policy-profile.json``'s ``region_aliases``).
+        inlined = tuple(
+            f"{p}/" for p, _, _ in bundle.references(bundle.read(BUNDLE, row.ref.document))
+        )
+        # **THE POSITION IS THE DOCUMENT'S AND NOT THE PAIR'S, which is what makes "one
+        # entry per AUTHORED mapping" true rather than intended**
+        # (``adcp-client-python-10l.55``).  ``pointer`` is relative to the PAIR's node, so
+        # a mapping inside a document with two graded pairs above it was two entries, and
+        # the prefix test just above compared that relative pointer against a
+        # document-absolute reference list and so did not bite at a nested pair at all.
+        # Both are the same mistake: the authored POSITION of a mapping is a fact about
+        # the document, and a pair is only how the walk reached it.
+        #
+        # So the key is ``(document, the document-absolute pointer)`` and the entries
+        # collapse onto it -- which is also what the loop below needs, since it opens the
+        # document's own packaged schema and reads the node at that pointer.  A ROOT pair
+        # prepends ``""``, so every entry pinned before this row is unchanged; what the
+        # change removes is four copies of ``core/creative-localization-readback.json``'s
+        # two mappings that ``creative/sync-creatives-response.json`` inlines through
+        # ``/properties/localization``, and the duplicate readings of two authored
+        # mappings that are reached from more than one pair.
+        at = row.ref.pointer.lstrip("#")
+        for pointer, node in bundle.nodes(doc):
+            if node.get("type") == "object" and "properties" not in node:
+                where = f"{at}{pointer}" or "/"
+                mappings.add((f"{row.ref.document}#", where))
+                if {"propertyNames", "patternProperties"} & set(node) and not f"{at}{pointer}".startswith(
+                    inlined
+                ):
+                    constrained.append((f"{row.ref.document}#", where))
+    constrained = sorted(set(constrained))
+    # The mapping population is asserted NON-EMPTY rather than counted -- the claim is
+    # about the constrained keys among them, which are named, and the denominator's
+    # job is to say that mappings were reached at all.  A count of them is a reading of
+    # one emitted tree: it was 1,528 when every pair graded here was, and 1,750 once
+    # eleven more documents brought their nodes with them.
+    claimed("mapping nodes of a graded pair", mappings)
+    # The six added at ``salesagent-j3k2l.41`` are the documents whose constrained-key
+    # mappings the walk could not reach before: three carry a mapping's own key COUNT,
+    # which now rides on a generic alias, and ``reported-outcome-error``'s three are
+    # inside the definitions its bounded-value union reaches.
+    #
+    # **9 -> 7 AT ``adcp-client-python-10l.3``, AND NO AUTHORED SITE LEFT THE SET.**
+    # Architecture §4 decides that a local ``$ref`` stays as written in the record, so
+    # ``governance/reported-outcome-error.json``'s ``/properties/details`` and
+    # ``/properties/ext`` are now the reference ``{"$ref":
+    # "#/definitions/bounded_object"}`` and not a copy of the mapping -- the mapping is
+    # still in the set, once, at ``/definitions/bounded_object``, which is where the
+    # document authors it.  The two positions that left were the delegated resolver's
+    # COPIES of that one node, so the set is now one entry per authored mapping, which
+    # is the honest denominator this test's own docstring asks for.  The key type is
+    # still graded at each of them, and ``test_a_local_reference_is_left_in_the_record``
+    # in ``tests/test_fragment_ref.py`` is what says the references survive.
+    #
+    # **7 -> 8 AT ``adcp-client-python-onq``, and the eighth is the first CLOSED key set
+    # in the emitted population.**  ``core/store-item.json`` ``/properties/hours`` states
+    # ``propertyNames: {"enum": [...]}``, which §5's group (a) lowers to
+    # ``dict[Literal[…], V]`` -- §14 step 9's arm, which had no live site until this row
+    # released the document from its chain through ``core/catchment.json``.  It is a
+    # constrained key of a different KIND from the other seven: those name an
+    # ``adcp.types.constraints`` alias, and a closed set names a ``Literal`` instead, so
+    # the loop below branches on the document's own keyword rather than on a count.
+    #
+    # **8 -> 10 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and both are
+    # §5(b)'s two widened rows letting the walk reach a mapping it never reached.**
+    # ``media-buy/acceptance-policy-profile.json`` carries the ``uniqueItems`` §5(b)
+    # declares, on the VALUE of the very mapping whose key states a ``propertyNames``
+    # pattern.  The other is ``core/creative-assets.json``, the first
+    # ``patternProperties`` site in the emitted population, and its KEY is a bare
+    # ``str`` -- which is §5(b)'s reading and the one the branch below is for: a
+    # non-``false`` ``additionalProperties`` admits every key already, so the key is
+    # faithful and the pattern's VALUE typing is the fact dropped and declared.
+    #
+    # **10 -> 11 AT ``adcp-client-python-10l.21``'s THIRD INSTALMENT.**
+    # ``core/geo-breakdown-support.json`` emits behind
+    # ``core/postal-area-support.json``, whose ``/propertyNames`` is a worded nested
+    # union -- the ``type`` word §5(a)'s first bullet puts in every branch -- and its
+    # ``/properties/metro`` is a mapping whose key states a ``pattern``, so it joins by
+    # the mechanism the other ten joined by and not by a change to what the test means.
+    # **11 -> 14 AT ``adcp-client-python-10l.55``, and the three are three authored
+    # mappings in three newly emitting documents.**
+    # ``core/assets/asset-union.json`` emits -- a ``$ref`` branch onto a union root is
+    # §4's two bases, once the gate asks ``compiler.TargetKind`` rather than whether the
+    # target has a ``compiler.Shape`` -- and three of the documents chained behind it come
+    # with it.  The three mappings are ``core/creative-localization.json``'s
+    # ``target_variants/items/properties/assets``,
+    # ``core/creative-localization-readback.json``'s ``definitions/resolvedAssets`` and
+    # ``creative/sync-creatives-response.json``'s
+    # ``creatives/items/properties/assignment_errors``; every one states
+    # ``patternProperties`` with a non-``false`` ``additionalProperties``, so its KEY is a
+    # bare ``str`` -- §5(b)'s reading, which is the branch below and the same answer
+    # ``core/creative-assets.json`` already takes.
+    #
+    # **And the denominator's own sentence is TRUE now rather than intended**: one entry
+    # per AUTHORED mapping, keyed by the document and the pointer the document writes it
+    # at.  The three documents are what made the difference visible -- ``assets`` sits
+    # inside ``core/creative-localization.json``'s root pair AND inside its
+    # ``target_variants/items`` pair, and ``assignment_errors`` inside three of
+    # ``sync-creatives-response``'s, so a per-pair key graded one authored node two and
+    # three times.  Four more entries were ``sync-creatives-response`` re-counting
+    # ``creative-localization-readback``'s two mappings, which the record inlines through
+    # ``/properties/localization`` and which that document's own module is what spells.
+    assert constrained == [
+        ("core/creative-assets.json#", "/"),
+        ("core/creative-localization-readback.json#", "/definitions/resolvedAssets"),
+        (
+            "core/creative-localization.json#",
+            "/properties/target_variants/items/properties/assets",
+        ),
+        ("core/geo-breakdown-support.json#", "/properties/metro"),
+        ("core/geo-region-support.json#", "/properties/countries"),
+        ("core/product-change-map.json#", "/"),
+        ("core/store-item.json#", "/properties/hours"),
+        (
+            "creative/sync-creatives-response.json#",
+            "/oneOf/0/properties/creatives/items/properties/assignment_errors",
+        ),
+        ("governance/reported-outcome-error.json#", "/definitions/bounded_object"),
+        ("media-buy/acceptance-policy-profile.json#", "/properties/region_aliases"),
+        ("trusted-match/identity-match-response.json#", "/properties/tmpx_providers"),
+        ("trusted-match/publisher-targeting-kv-config.json#", "/properties/targeting_kv_mapping"),
+        ("trusted-match/publisher-tmpx-config.json#", "/properties/tmpx_macro_mapping"),
+        (
+            "trusted-match/publisher-tmpx-config.json#",
+            "/properties/tmpx_macro_mapping/additionalProperties",
+        ),
+    ], constrained
+    assert set(constrained) <= mappings, constrained
+    # ... and each of them is NAMED rather than widened.  The symbol is asked of the
+    # namer rather than written here, so a rename moves this with it (the precedent is
+    # ``tests/test_emit_product.py``'s narrowing case), and the CONSTRAINT each symbol
+    # is derived from is read off the document rather than restated -- so the key type
+    # carries the document's own bound and not a bound this test chose.
+    spelled = {kw for kw, _ in constraints_module.SPELLING}
+    for document, pointer in constrained:
+        path = document.removesuffix("#")
+        # **The node is read off the RESOLVED schema, which is where the set above came
+        # from.**  Read off ``bundle.read`` instead -- the document as written -- a
+        # pointer whose node is a local ``$ref`` resolves to the reference itself and
+        # neither key keyword is there, so the site died with a ``KeyError`` rather than
+        # failing an assertion.  Latent until a document whose constrained mapping sits
+        # behind a ``#/definitions`` reference emitted
+        # (``governance/reported-outcome-error.json``, ``salesagent-j3k2l.41``).
+        node = harness.at(schema_at(SchemaRef(path, "#")), pointer if pointer != "/" else "")
+        # **§5(b)'s WIDENED shape: the pattern is DROPPED and the key is a bare ``str``**
+        # (added 2026-10-27).  A ``patternProperties`` beside a non-``false``
+        # ``additionalProperties`` admits every key the pattern does not match, so the
+        # document's key set IS every string and a bare ``str`` is faithful there; what
+        # the model drops is the pattern's value typing, which the module DECLARES.  So
+        # the assertion is the declaration rather than a key alias -- a key alias here
+        # would be a model narrower than its document, which is the direction §2 forbids.
+        if node.get("additionalProperties") is not False and "patternProperties" in node:
+            assert "dict[str," in _source(path), document
+            # **The declaration is looked for on the MODULE AND on every class the module
+            # defines, and what is asserted is that the POINTER is declared**
+            # (``adcp-client-python-10l.55``).  §7 puts an approximation on the object
+            # holding the node's schema -- "beside the module for an alias", on the CLASS
+            # otherwise, which is the split ``graded()`` already draws -- and
+            # ``render.declared_at``'s containment rule means every class whose own
+            # pointer CONTAINS this one carries it.  So the honest reading is membership
+            # and not a single holder: a module-only read found the root positions this
+            # test held until now and nothing at a nested one, and unpacking one holder
+            # finds three for ``creative/sync-creatives-response.json`` -- the union base
+            # at ``#``, the branch at ``#/oneOf/0`` and the item class that states the
+            # mapping.  Re-deriving which of them SHOULD carry it would be a second copy
+            # of the containment rule.
+            holder = importlib.import_module(
+                emit.PACKAGE + "." + emit.module_path(path).replace("/", ".")
+            )
+            at = f"#{'' if pointer == '/' else pointer}"
+            assert at in {
+                one.pointer
+                for held in (holder, *(v for v in vars(holder).values() if isinstance(v, type)))
+                for one in harness.declarations_of(held)
+                if one.keyword == "patternProperties"
+            }, (document, pointer)
+            continue
+        key = node.get("propertyNames") or {"pattern": next(iter(node["patternProperties"]))}
+        # **A CLOSED key set is a ``Literal`` and not an alias**, so it is read off the
+        # document's own keyword: ``constraints.symbol`` answers for a BOUND on a string
+        # and an ``enum`` is not one -- it closes the value set, which §5's group (a)
+        # lowers to ``Literal`` of the members, in the document's own order.
+        if "enum" in key:
+            members = ", ".join(repr(m) for m in key["enum"])
+            # **A NAMED key enumeration is its own symbol and not a ``Literal``**, which
+            # is the second half of §5's ``propertyNames`` row: "where the key node
+            # carries a ``title`` the ``StrEnum`` is the key type and renders the same
+            # way".  The two arms are told apart by the document's own ``title``, and the
+            # SYMBOL is read off the emitted module rather than spelled here -- the same
+            # rule the alias name below follows -- so a rename moves this with it.
+            #
+            # First reached at ``adcp-client-python-10l.21``'s third instalment:
+            # ``core/geo-breakdown-support.json``'s ``/properties/metro`` states
+            # ``propertyNames: {"$ref": <enums/metro-system.json>}``, which
+            # ``bundle.record`` inlines into the key node -- so the node carries the
+            # enum AND the target's title, and the module imports ``MetroAreaSystem``.
+            if "title" in key:
+                module = importlib.import_module(
+                    emit.PACKAGE + "." + emit.module_path(path).replace("/", ".")
+                )
+                named = claimed(
+                    f"{document} key enumerations stating {pointer}'s members",
+                    [
+                        value.__name__
+                        for value in vars(module).values()
+                        if isinstance(value, type)
+                        and issubclass(value, enum.Enum)
+                        and [m.value for m in value] == list(key["enum"])
+                    ],
+                )
+                assert any(f"dict[{one}," in _source(path) for one in named), (
+                    document,
+                    sorted(named),
+                )
+                continue
+            assert f"dict[Literal[{members}]," in _source(path), (document, members)
+            continue
+        facts = {k: v for k, v in key.items() if k in spelled}
+        named = constraints_module.symbol("string", facts)
+        assert named is not None, (document, facts)
+        assert f"dict[{named}," in _source(path), (document, named)
+
+    # A $ref key: the key IS that type, imported, and it refuses what the type
+    # refuses.  The bound symbol is an ``Annotated`` alias because that is what a
+    # root-scalar reference TARGET actually is in this pipeline -- and a key type has
+    # to be hashable, which a ``RootModel`` wrapper is not.
+    Tag = Annotated[str, Field(pattern="^[a-z]+$")]
+    doc = {
+        "title": "Keyed",
+        "type": "object",
+        "properties": {
+            "m": {
+                "type": "object",
+                "propertyNames": {"$ref": "https://x/core/tag.json"},
+                "additionalProperties": {"type": "integer"},
+            }
+        },
+    }
+    model, text = _constructed(doc, binds={"core/tag.json": ("Tag", Tag)})
+    assert "dict[Tag, int]" in text, text
+    mod, _ = emit.lower_document(
+        "constructed.json",
+        doc,
+        {
+            (uri, pointer): compiler.Target(
+                ".tag", "Tag", kind=compiler.TargetKind.ANNOTATION
+            )
+            for pointer, uri, _ in bundle.references(doc)
+        },
+    )
+    assert (".tag", "Tag") in mod.imports
+    model.model_validate({"m": {"abc": 1}})  # the key type admits it
+    with pytest.raises(ValidationError):
+        model.model_validate({"m": {"ABC": 1}})  # and refuses what it refuses
+
+    # **A CONSTRAINED KEY IS A TYPE, in both of the document's spellings, and the two
+    # spellings emit ONE type.**  Each is lowered by the real pipeline, the rendered
+    # annotation is asserted against the namer's own symbol, and the model is then
+    # offered a key the bound admits and a key it refuses -- so the key is a type and
+    # not a comment.  Both were VERDICTS before ``salesagent-j3k2l.64``.
+    for key_node, spelled, admits, refuses in (
+        ({"type": "string", "pattern": "^a"}, {"pattern": "^a"}, "abc", "zzz"),
+        ({"type": "string", "minLength": 2}, {"minLength": 2}, "ab", "a"),
+        (
+            {"type": "string", "minLength": 2, "pattern": "^a"},
+            {"minLength": 2, "pattern": "^a"},
+            "ab",
+            "a",
+        ),
+    ):
+        model, text = _constructed(
+            {
+                "title": "K",
+                "type": "object",
+                "properties": {
+                    "m": {
+                        "type": "object",
+                        "propertyNames": key_node,
+                        "additionalProperties": {"type": "integer"},
+                    }
+                },
+            }
+        )
+        named = constraints_module.symbol("string", spelled)
+        assert f"dict[{named}, int]" in text, (spelled, named, text)
+        model.model_validate({"m": {admits: 1}})
+        with pytest.raises(ValidationError):
+            model.model_validate({"m": {refuses: 1}})
+
+    # The ``patternProperties`` spelling says the same thing and emits the same type:
+    # ONE owner for the key rule, so a ``propertyNames`` pattern and a
+    # ``patternProperties`` pattern cannot come to be read two different ways.  The
+    # ``additionalProperties: false`` is what closes the keys to the ones the pattern
+    # matches, which is what a typed key already says -- without it the document
+    # admits every key the pattern does not match and refuses.
+    patterned = {
+        "title": "PP",
+        "type": "object",
+        "properties": {
+            "m": {
+                "type": "object",
+                "patternProperties": {"^x_": {"type": "integer"}},
+                "additionalProperties": False,
+            }
+        },
+    }
+    model, text = _constructed(patterned)
+    rendered = f'dict[{constraints_module.symbol("string", {"pattern": "^x_"})}, int]'
+    assert rendered in text, (rendered, text)
+    model.model_validate({"m": {"x_a": 1}})
+    with pytest.raises(ValidationError):
+        model.model_validate({"m": {"y_a": 1}})
+    # ... and the SAME rendered annotation as the other spelling of it, which is what
+    # "one owner for the key rule" comes to in the output.
+    _, other = _constructed(
+        {
+            "title": "PP",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "propertyNames": {"pattern": "^x_"},
+                    "additionalProperties": {"type": "integer"},
+                }
+            },
+        }
+    )
+    assert rendered in other, (rendered, other)
+    # **An unclosed ``patternProperties`` admits every key the pattern does not match,
+    # so a typed key would REFUSE one the document admits -- and §5(b) answers that with
+    # a declared WIDENING instead of a verdict** (``7c11a596``, landed at
+    # ``adcp-client-python-10l.21``).  The mapping is ``dict[str, Any]``: the key is a
+    # bare ``str``, which is faithful because every key is admitted, and the pattern's
+    # VALUE typing is the fact dropped.  Measured under ``Draft7Validator``, which is why
+    # the verdict was wrong: the shape accepts ``{"x_a": "ok"}``, refuses ``{"x_a": 1}``
+    # and accepts ``{"other": 123}``, so the obstruction is not the document's.
+    #
+    # Both arms of the old refusal, each with what it declares: an ABSENT
+    # ``additionalProperties`` (draft-07's ``true``) drops the pattern alone, and a TYPED
+    # one drops the ``additionalProperties`` value typing beside it, because the pattern
+    # takes the keys it matches and this takes the rest.
+    for ap, keywords_dropped in (
+        (None, ["patternProperties"]),
+        ({"type": "string"}, ["additionalProperties", "patternProperties"]),
+    ):
+        node = {"type": "object", "patternProperties": {"^x_": {"type": "integer"}}}
+        if ap is not None:
+            node["additionalProperties"] = ap
+        widened, _ = emit.lower_document(
+            "pp0.json",
+            {"title": "PP0", "type": "object", "properties": {"m": node}},
+            reserved=render.RESERVED,
+        )
+        assert sorted(one.keyword for one in widened.approximations) == keywords_dropped, (
+            ap,
+            widened.approximations,
+        )
+        for one in widened.approximations:
+            assert one.pointer == "#/properties/m", one
+            assert one.rung == Rung.CONTAINER.value, one
+            assert one.kind == WIDENED, one
+            assert one.attribution == keywords.address(one.keyword), one
+        # The FACT is the document's own value for the keyword, which is what lets §8
+        # look for it in the document and find it.
+        declared = {one.keyword: one.fact for one in widened.approximations}
+        assert declared["patternProperties"] == node["patternProperties"], declared
+        if ap is not None:
+            assert declared["additionalProperties"] == ap, declared
+    # Two statements about one key type is one too many for a dict[K, V].
+    caught = refusal_from(emit.lower_document(
+        "pp1.json",
+        {
+            "title": "PP1",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "patternProperties": {"^x_": {"type": "integer"}},
+                    "propertyNames": {"minLength": 2},
+                    "additionalProperties": False,
+                }
+            },
+        },
+    ))
+    assert caught.keyword == "propertyNames", caught.keyword
+    # An ``anyOf`` key is a UNION of key types, which is a row of its own and still
+    # refuses -- named here so the key rule's residue is asserted and not assumed.
+    _refused = refusal_from(emit.lower_document(
+        "ko.json",
+        {
+            "title": "KO",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "propertyNames": {
+                        "anyOf": [{"pattern": "^a"}, {"$ref": "https://x/core/tag.json"}]
+                    },
+                }
+            },
+        },
+    ))
+    # Two patterns are two key types with two value types, which is not a dict[K, V].
+    caught = refusal_from(emit.lower_document(
+        "pp2.json",
+        {
+            "title": "PP2",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "patternProperties": {"^x_": {"type": "integer"}, "^y_": {"type": "string"}},
+                }
+            },
+        },
+    ))
+    assert caught.keyword == "patternProperties", caught.keyword
+
+    # **A closed key set is the mapping's KEY TYPE, and the refusal that stood here is
+    # retired at ``adcp-client-python-10l.20``** (§5's group (a): "A `Literal` of the
+    # members is the key type, and Pydantic renders `dict[Literal[…], V]` back as
+    # `propertyNames: {enum: […]}` -- the document's own keyword, rendered and gradable.
+    # Faithful, not wide.").  The reading that refused -- a closed key set is a MODEL
+    # whose keys are its fields -- would have had to invent a `properties` map the
+    # document does not state, one optional field per member, because `propertyNames`
+    # closes the key set without requiring any of it.
+    built = emit.lower_document(
+        "e.json",
+        {
+            "title": "E",
+            "type": "object",
+            "properties": {
+                "m": {"type": "object", "propertyNames": {"enum": ["mon", "tue"]}}
+            },
+        },
+    )
+    assert not isinstance(built, Refusal), built
+    keyed, _ = built
+    (field,) = keyed.at[""].fields
+    assert field.type.container == "dict", field.type
+    assert field.type.key == ir.TypeRef(literals=("mon", "tue")), field.type.key
+
+    # **AND THE BUNDLE'S ONE TYPE-POSITION SITE, WHICH IS NOW LIVE.**  §14 step 9's
+    # ``Literal``/``StrEnum`` key at KEY was graded on the constructed document above and
+    # on nothing else, because its one real site -- ``core/store-item.json``
+    # ``#/properties/hours`` -- was refused through a CHAIN: the document references
+    # ``core/catchment.json``, whose three branches each state ``required`` plus a ``not``
+    # of required groups, which §5 decided nowhere.
+    #
+    # ``adcp-client-python-onq`` decided it (§5, "A union of presence-only branches that
+    # also forbid", 2026-10-27) and the chain released with it.  So the arm is graded at
+    # its LIVE site here: the key type is the ``propertyNames`` enum as a ``Literal``, in
+    # the module the run writes, with every member of the document's own enum in it.
+    hours = bundle.read(BUNDLE, "core/store-item.json")
+    members = hours["properties"]["hours"]["propertyNames"]["enum"]
+    out = compiled(BUNDLE, ["core/store-item.json"])
+    assert "core/store-item.json" not in out.refusals, out.refusals
+    assert "core/catchment.json" not in out.refusals, out.refusals
+    written = out.files["core/store_item.py"]
+    key = f"dict[Literal[{', '.join(repr(m) for m in members)}], "
+    assert key in written, written
+    # and the shape that released it, read off the document beside the rule it became:
+    # every branch states ``required`` and a ``not`` and no property.
+    branches = bundle.read(BUNDLE, "core/catchment.json")["oneOf"]
+    assert [sorted(b) for b in branches] == [["not", "required"]] * 3, branches
+    catchment = out.files["core/catchment.py"]
+    assert "PresenceGroups((Presence(require=('travel_time', 'transport_mode')," in catchment
+
+
+def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() -> None:
+    """§5's one ``propertyNames`` position that has no key type to annotate.
+
+    A RULE position constrains which keys a conditional TESTS, so there is no key
+    type to carry a bound and no value to hang a validator on -- which makes it the
+    one position the carrier rule does not reach, and §5 says it states nothing.  It
+    is therefore ADMITTED rather than refused, and this grades both halves: the
+    document lowers, and what it lowers to carries no trace of the keyword.
+
+    **The second half is what the test is for.**  "Not refused" is free -- a keyword
+    nothing reads is not refused either -- so the claim is checked against the one
+    thing that distinguishes silence from a drop: the SAME key schema at a TYPE
+    position is READ, and there it is the mapping's key type.  One keyword, two
+    positions, two answers, and the position is what decides.
+
+    *The type position used to REFUSE and ``adcp-client-python-10l.20`` retired that*
+    (§5's group (a)), so the contrast is now between stating nothing and stating the
+    key rather than between stating nothing and refusing -- which is a stronger
+    contrast for this test's own purpose: both halves now produce a module, and the
+    difference is what the module says.
+
+    Measured over the 1,054 portable documents: 3 of the bundle's 4 ``enum`` key
+    schemas sit at a rule position, and 2 of their documents EMIT -- so the position
+    is reached by the run and not only by the probe below.  The third's document
+    refuses at its root on ``allOf``, which is another row's keyword.
+    """
+    at_a_rule = {
+        f"{document}#{pointer}"
+        for document in sorted(bundle.portable(BUNDLE))
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document))
+        if "propertyNames" in node
+        and set(pointer.strip("/").split("/")) & set(bundle.CONDITIONAL)
+    }
+    claimed("key schemas at a rule position", at_a_rule)
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    assert sorted(at_a_rule) == [
+        "core/catalog-item-availability-state.json#/allOf/0/else",
+        "core/catalog-item-availability-update-result.json#/allOf/0/then",
+        "media-buy/sync-catalogs-response.json#/oneOf/1/allOf/0/then",
+    ], sorted(at_a_rule)
+    for name in ("core/catalog-item-availability-state.json",
+                 "core/catalog-item-availability-update-result.json"):
+        assert name in out.emitted, (name, out.refusals.get(name))
+        # The keyword reaches the output in no spelling: it is not a key type, not a
+        # rule, and not a ``json_schema_extra`` fact.
+        assert "propertyNames" not in _source(name), name
+    # **The third one EMITS at ``adcp-client-python-10l.21``'s second instalment**, and
+    # the claim this line makes is the one it always made, in the stronger direction:
+    # the key schema at ``/oneOf/1/allOf/0/then`` is not what blocks the document, and
+    # now nothing does.  §4's FOURTH separator is what cleared it -- one branch forbids
+    # ``status == "submitted"`` and another pins ``status`` to that very ``const``, so
+    # the two are disjoint in fact and now by derivation (``adcp-client-python-10l.27``).
+    # It was ``allOf`` at ``/`` before ``adcp-client-python-10l.20`` and ``oneOf`` at
+    # ``/`` after it; the pointer has now left the refusal set entirely.
+    assert "media-buy/sync-catalogs-response.json" in out.emitted, out.refusals.get(
+        "media-buy/sync-catalogs-response.json"
+    )
+    # And the keyword still reaches the output in no spelling, which is the same claim
+    # the two documents above carry.
+    assert "propertyNames" not in _source("media-buy/sync-catalogs-response.json")
+
+    # And the probe, both positions, one key schema.  The rule position lowers and
+    # states only the conditional the ``if``/``then`` pair is about...
+    # TWO members, not one: pydantic renders a one-member ``Literal`` back as
+    # ``propertyNames: {const: …}``, which is draft-07's own equivalent spelling and a
+    # different keyword from the one the assertion below is about.  The bundle's own site
+    # has seven, so two is the smaller end of the real shape rather than a special case.
+    key = {"enum": ["s", "t"]}
+    mod, symbol = emit.lower_document(
+        "r.json",
+        {
+            "title": "R",
+            "type": "object",
+            "properties": {"s": {"type": "string"}},
+            "allOf": [
+                {
+                    "if": {"properties": {"s": {"const": "x"}}, "required": ["s"]},
+                    "then": {"required": ["s"], "propertyNames": key},
+                }
+            ],
+        },
+    )
+    text = "\n".join(one.text for one in render.blocks(_assigned(mod).declarations))
+    assert symbol == "R"
+    assert "ConditionalRequired" in text, text
+    assert "propertyNames" not in text and "s" in text, text
+    # ... while the same key schema at a TYPE position is READ, and it is a `Literal`
+    # of the members: §5's group (a), implemented at ``adcp-client-python-10l.20``.
+    #
+    # **The refusal that stood here is retired, and this is the half that proves the
+    # replacement is FAITHFUL rather than a substitution.**  §5's group (a): "A
+    # `Literal` of the members is the key type, and Pydantic renders
+    # `dict[Literal[…], V]` back as `propertyNames: {enum: […]}` -- the document's own
+    # keyword, rendered and gradable.  Faithful, not wide."  Three things are asserted
+    # and the second and third are what "faithful" means:
+    #
+    # * the KEY TYPE is the `Literal`, read off the rendered text;
+    # * the model's own schema states the document's own keyword back, so the fact is
+    #   RENDERED rather than dropped and excused by a declaration;
+    # * the key set is ENFORCED -- an undeclared key is refused -- so nothing widened.
+    #
+    # One keyword, two positions, two answers, and the position is still what decides:
+    # the rule position states nothing (above) and the type position states the key.
+    built = emit.lower_document(
+        "t.json",
+        {
+            "title": "T",
+            "type": "object",
+            "properties": {"m": {"type": "object", "propertyNames": key,
+                                 "additionalProperties": {"type": "string"}}},
+        },
+    )
+    assert not isinstance(built, Refusal), built
+    keyed, _ = built
+    keyed_text = "\n".join(one.text for one in render.blocks(_assigned(keyed).declarations))
+    assert "dict[Literal['s', 't'], str]" in keyed_text, keyed_text
+
+    # Rendered back under the document's own keyword, and enforcing.  Asserted on the
+    # TYPE rather than on the emitted module, because a constructed document is not in
+    # the shipped package and so has no ``strict_validate`` to reach (``_constructed``).
+    adapter = TypeAdapter(dict[Literal["s", "t"], str])
+    assert adapter.json_schema()["propertyNames"] == {"enum": ["s", "t"]}, adapter.json_schema()
+    assert adapter.validate_python({"s": "v"}) == {"s": "v"}
+    with pytest.raises(ValidationError):
+        adapter.validate_python({"u": "v"})
+
+
+def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
+    """D8's typed row, and the EXTRAS STORE now has exactly one live document.
+
+    Measured: 727 documents mention ``additionalProperties`` and 51 carry a typed one.
+    11 of the 51 emit, and the extras store needs a node declaring ``properties`` AND
+    a typed ``additionalProperties`` -- the bundle has 14 such nodes, and ONE of their
+    documents emits: ``core/canonical-media-buy-features.json``, which
+    ``salesagent-j3k2l.28`` unblocked.  Until then the store was reached by 0
+    documents and graded only by the constructed one at the end of this test.
+
+    **The one document is also where the store's first defect showed**, which is the
+    reason to say "one" rather than to stop asserting the number: dmcg reported a
+    ``typing.Dict`` import for an annotation it rendered ``dict[str, bool]``, so the
+    module carried an import it does not use.  Fixed in ``render.klass`` by the
+    rule the ``ConfigDict`` line beside it already follows -- take the imports the
+    rendered annotation's own names call for.  A mechanism with a population of 0 is
+    green for free; this one has 1, and that is what found it.
+    """
+    # ``lowered_nodes`` and not the whole walk, for the reason that helper states: a
+    # typed ``additionalProperties`` inside a section entry nothing declares reaches no
+    # class, so there is no extras store and no mapping for this check to find.
+    # ``a2ui/si-catalog.json`` is the document that showed it -- its dead section
+    # states one at ``/definitions/AppHandoff/properties/apps/additionalProperties`` --
+    # and it is excluded by the rule rather than by name (``salesagent-j3k2l.71``).
+    typed = [
+        d
+        for d in bundle.portable(BUNDLE)
+        if any(
+            isinstance(n.get("additionalProperties"), dict) and n["additionalProperties"]
+            for _, n in lowered_nodes(d)
+        )
+    ]
+    # Non-empty, and inside the bundle: how many documents carry a typed
+    # ``additionalProperties`` is a property of the bundle version, and what this
+    # clause needs is a population for the emitted list below to be drawn from.
+    claimed("documents carrying a typed additionalProperties", typed, inside=bundle.portable(BUNDLE))
+    mentions = [
+        d
+        for d in bundle.portable(BUNDLE)
+        if "additionalProperties" in bundle.schema_keywords(bundle.read(BUNDLE, d))
+    ]
+    claimed("documents mentioning additionalProperties", mentions, inside=bundle.portable(BUNDLE))
+    assert set(typed) <= set(mentions), sorted(set(typed) - set(mentions))
+    out = compiled(BUNDLE, population())
+    # The emitted list and the store sites are DIFFERENT facts, and both are asserted:
+    # a typed ``additionalProperties`` on a node with no ``properties`` is a MAPPING,
+    # which the row above lowers, while the extras store needs a node declaring BOTH.
+    # The bundle has 14 of the second kind and exactly one of them is in a document
+    # this run emits, so the store is graded by that document and by the constructed
+    # probe at the end -- a count of emitted documents says nothing about it.
+    #
+    # Re-measured at 64131600f (``salesagent-j3k2l.29``).  The 14 is unchanged and is
+    # over the bundle; the emitted list is over ``population()`` and grew from 1.  The
+    # previous revision said the 14 "all sit under ``definitions``", which is not
+    # true of this bundle -- 4 of them are at a document's own root -- so the reason
+    # recorded here is now the measured one: none of the 14 is in an emitted document.
+    #
+    # 10 -> 11 at ``salesagent-j3k2l.21``, and the eleventh is NAMED rather than
+    # counted because the cause has to be attributable: ``core/geo-place-area.json``
+    # joins because its two ``$ref`` targets now emit.  ``core/geo-place-system.json``
+    # and ``core/geo-place-type.json`` are each a root ``anyOf`` of SCALARS whose
+    # untitled first branch carries an ``enum`` -- this row's own population -- so
+    # both lower to a root alias and the document that references them is no longer
+    # chained to their refusals.  Its typed ``additionalProperties`` is at
+    # ``/properties/value_labels/additionalProperties``, a node with no
+    # ``properties``, so it is the MAPPING path and the store assertion below is
+    # unchanged by it: the one emitted store site is still
+    # ``core/canonical-media-buy-features.json``.
+    #
+    # 11 -> 13 at ``salesagent-j3k2l.64``, and both are NAMED for the same reason:
+    # ``core/geo-region-support.json`` and
+    # ``trusted-match/identity-match-response.json`` each refused on a patterned KEY
+    # and now emit.  Both are the MAPPING path again -- the typed
+    # ``additionalProperties`` is the value schema of the very mapping whose key
+    # carries the pattern -- so the store assertion below is unchanged by them too.
+    #
+    # 13 -> 16 at ``salesagent-j3k2l.41``, all three NAMED for the same reason:
+    # ``governance/reported-outcome-error.json`` and the two ``trusted-match`` configs
+    # each refused on a fact at a position with no field -- an array bound on a union
+    # branch, and a mapping's own key count -- and each now emits with that fact on a
+    # named type.  All three are the MAPPING path, so the store assertion below is
+    # unchanged by them.
+    #
+    # **16 -> 20 at ``adcp-client-python-10l.20``, and all four are §14 step 9's.**
+    # ``brand/get-brand-identity-response.json`` and
+    # ``brand/search-brands-response.json`` are union roots whose own siblings now
+    # compile onto the base; ``core/media-buy-features.json`` emits behind
+    # ``core/format-option-ref.json``, which the same row cleared.  Two of the four are
+    # a STORE site rather than the mapping path, which is the first time this population
+    # has moved the store list below -- and that list names them.
+    #
+    # **20 -> 21 at ``adcp-client-python-onq``, and the twenty-first is NAMED.**
+    # ``core/store-item.json`` was chained to ``core/catchment.json``, whose three
+    # branches each state ``required`` plus a ``not`` over ``required`` -- §5's "A union
+    # of presence-only branches that also forbid" (2026-10-27) decides them and the
+    # chain released.  Its typed ``additionalProperties`` is at
+    # ``/properties/hours/additionalProperties``, a node with NO ``properties`` beside
+    # it, so it is the MAPPING path and the store list below is unchanged by it.  (It is
+    # also §14 step 9's one live ``Literal``-at-KEY site, graded in
+    # ``test_a_mapping_is_a_dict_whose_key_comes_from_the_document``.)
+    #
+    # **21 -> 24 at ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and all three are
+    # §5(b)'s ``uniqueItems`` row.**  ``core/account-authorization.json`` is the row's own
+    # site -- its ``field_scopes`` mapping value carries the keyword -- and
+    # ``media-buy/acceptance-policy-profile.json`` and
+    # ``governance/policy-entry.json`` behind it; each declares a typed
+    # ``additionalProperties`` of its own.  All three are the MAPPING path, so the store
+    # list below is unchanged by them.
+    #
+    # **``brand.json`` joins at ``adcp-client-python-857``, and it is the STORE path six
+    # times over** -- the first addition to this list the extras store's own defect was
+    # holding back, and the one that more than doubles the store list below.  It declared an
+    # ``AliasDecl`` and then a ``ClassDecl`` at ``/definitions/colors`` and refused:
+    # §4 parses a class's extras store at the CLASS's pointer, the store was reaching
+    # the walk's per-node entry, and that entry names the node at a pointer the bundle's
+    # ``$ref``\\ s name.  Four of the document's six store sites sit at such a pointer
+    # (``colors``, ``fonts``, ``border_radius``, ``elevation``), so the walk met the
+    # collision at the first of them and the other five sites were never graded.
+    # ``lower.objects.declare_object`` sends the store to the DISPATCH now.  Named rather
+    # than counted, and the six rows are in the store list below.
+    emitted_typed = sorted(set(typed) & set(out.emitted))
+    assert emitted_typed == [
+        "a2ui/component.json",
+        "brand.json",
+        "brand/get-brand-identity-response.json",
+        "brand/search-brands-response.json",
+        "collection/get-collection-list-response.json",
+        "core/account-authorization.json",
+        "core/account-change.json",
+        "core/canonical-media-buy-features.json",
+        # **TWO MORE at ``adcp-client-python-10l.21``'s third instalment**, and both
+        # arrive behind §5(a)'s first bullet: ``core/postal-area-support.json``'s
+        # ``/propertyNames`` is a worded nested union, so the document emits and its
+        # typed extras store is the one whose rendered annotation found the import
+        # filter's bug (``render.klass``); ``core/geo-breakdown-support.json`` emits
+        # behind it, and its ``/properties/metro`` is a MAPPING with a typed
+        # ``additionalProperties`` rather than a store.  Named rather than counted.
+        "core/geo-breakdown-support.json",
+        "core/geo-place-area.json",
+        "core/geo-region-support.json",
+        "core/media-buy-features.json",
+        "core/postal-area-support.json",
+        "core/product-change-map.json",
+        "core/reporting-file-entry.json",
+        "core/store-item.json",
+        "core/tasks-list-response.json",
+        "error-details/vendor-error-codes.json",
+        # **ONE MORE at ``adcp-client-python-10l.45``**, and it is the MAPPING path
+        # rather than a store, so the store list below is unchanged by it.  The document
+        # is reached only through a ``$ref`` onto ``core/attestation-reference.json``,
+        # whose one obstruction was a type list with a constrained arm; the walk lifts
+        # each arm's own keywords now (``harness._type_list``), so both emit.  Its typed
+        # ``additionalProperties`` are the record's inlined copies of
+        # ``governance/reported-outcome-error.json``'s ``bounded_object``, which is
+        # already in this list on its own account.
+        "governance/get-plan-audit-logs-response.json",
+        "governance/policy-entry.json",
+        "governance/reported-outcome-error.json",
+        "media-buy/acceptance-policy-profile.json",
+        "property/property-feature-result.json",
+        "protocol/list-tasks-response.json",
+        "sponsored-intelligence/si-ui-element.json",
+        "trusted-match/identity-match-response.json",
+        "trusted-match/publisher-targeting-kv-config.json",
+        "trusted-match/publisher-tmpx-config.json",
+    ], emitted_typed
+    # ``core/account-change.json`` JOINED at ``adcp-client-python-10l.20``: §5's ``$ref``
+    # row at CONJ made a non-class target the composing node's own TYPE, which cleared
+    # its ``/properties/ext/allOf/0`` conjunct, and the document declares a typed
+    # ``additionalProperties`` of its own.  Named in the list above rather than counted.
+    store = [
+        (d, pointer or "/")
+        for d in bundle.portable(BUNDLE)
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, d))
+        if isinstance(node.get("additionalProperties"), dict)
+        and node["additionalProperties"]
+        and "properties" in node
+    ]
+    claimed("nodes declaring properties beside a typed additionalProperties", store)
+    # TWO of the 14, named: the store stopped being a mechanism with no document the
+    # moment ``salesagent-j3k2l.28`` let the first one emit, and the pointer is the
+    # root's own node.  Asserted as the rows rather than as a count, so a third
+    # document joining them is read as a new site and not as a number going up.  The
+    # second arrived at ``salesagent-j3k2l.41``: ``reported-outcome-error``'s root
+    # declares ``properties`` beside a typed ``additionalProperties``, so it is the
+    # STORE path and not the mapping one.
+    # **TWO -> FOUR at ``adcp-client-python-10l.20``, and both additions are §14 step
+    # 9's**: a union root whose own siblings compile onto the base emits, so
+    # ``brand/get-brand-identity-response.json``'s branch declares ``fonts`` -- a node
+    # with ``properties`` AND a typed ``additionalProperties``, which is the store's own
+    # shape at a BRANCH rather than at a root, and the first site of it this population
+    # has ever reached -- and ``core/media-buy-features.json`` emits behind
+    # ``core/format-option-ref.json``, which the same row cleared.  The mechanism is
+    # unchanged; what grew is the population it is graded over, which is what this list
+    # is for.
+    # **A FIFTH emitted store site at ``adcp-client-python-10l.21``'s third instalment**,
+    # and it is the one that found ``render.klass``' import filter: the root of
+    # ``core/postal-area-support.json`` declares ``properties`` AND a typed
+    # ``additionalProperties`` whose value is a ``uniqueItems`` array no class sits above,
+    # so the store's annotation carries ``AfterValidator(Distinct())`` -- the first store
+    # in the tree whose annotation holds a CALL, which the four-character split hid every
+    # name inside.
+    # **FIVE -> ELEVEN at ``adcp-client-python-857``, and all six are ``brand.json``'s.**
+    # The document is the store's own defect report: §4 parses the store at the CLASS's
+    # pointer, the store was reaching the walk's per-node entry, and that entry named the
+    # node at ``/definitions/colors`` -- a pointer the document's own ``$ref`` names --
+    # so an ``AliasDecl`` landed where ``declare_object`` was about to write the
+    # ``ClassDecl``.  Four of the six (``colors``, ``fonts``, ``border_radius``,
+    # ``elevation``) sit at a bundle-named pointer and would each have collided; the
+    # walk reported the first.  The store now reaches the DISPATCH, which makes no
+    # statement about a pointer the store does not own, and the six sites are graded
+    # for the first time.  They are also the first store sites BELOW a document root
+    # that are not inside a union branch.
+    assert [row for row in store if row[0] in out.emitted] == [
+        ("brand.json", "/definitions/colors"),
+        ("brand.json", "/definitions/fonts"),
+        ("brand.json", "/definitions/border_radius"),
+        ("brand.json", "/definitions/elevation"),
+        ("brand.json", "/definitions/spacing/properties/scale"),
+        ("brand.json", "/definitions/visual_guidelines/properties/type_scale"),
+        ("brand/get-brand-identity-response.json", "/oneOf/0/properties/fonts"),
+        ("core/canonical-media-buy-features.json", "/"),
+        ("core/media-buy-features.json", "/"),
+        ("core/postal-area-support.json", "/"),
+        ("governance/reported-outcome-error.json", "/"),
+    ], store
+    # and it really does carry the store, read off the emitted module
+    assert "__pydantic_extra__: dict[str, bool]" in _source(
+        "core/canonical-media-buy-features.json"
+    )
+    # and the import it does NOT need is gone.  Read off the typing import line and
+    # not off the whole module, because ``ConfigDict(`` contains ``Dict`` -- the same
+    # trap the rule in ``render.klass`` is written to avoid.
+    (typing_line,) = [
+        line
+        for line in _source("core/canonical-media-buy-features.json").splitlines()
+        if line.startswith("from typing import ")
+    ]
+    assert "Dict" not in typing_line.split("import ", 1)[1].split(", "), typing_line
+
+    doc = {
+        "title": "Typed",
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "additionalProperties": {"type": "integer"},
+    }
+    model, text = _constructed(doc)
+    assert model.model_config["extra"] == "allow"
+    assert "__pydantic_extra__: dict[str, int]" in text, text
+    model.model_validate({"a": "x", "extra": 3})
+    with pytest.raises(ValidationError):
+        model.model_validate({"a": "x", "extra": "not an int"})
+
+
+def test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined() -> None:
+    """Every file of the tree IMPORTED, which is one obligation and not a derivation.
+
+    ``graded()`` imports the tree too, but at COLLECTION time, and the SECOND question is
+    the one it cannot ask: a module that imports while leaving a class unresolved binds
+    its pairs and reports ``harness_error`` on each of them, three test files from the
+    one-line defect that caused it.  This asks both of a module, once, and names it.
+
+    It no longer stands behind its own precondition, which is what it stood behind: a
+    module that did not import used to raise inside ``graded()`` at parametrize time and
+    take this file's collection -- and therefore this test -- down with it.  ``graded()``
+    records such a module in :data:`UNIMPORTABLE` and steps over it now, so an
+    unimportable module reddens checks and errors nothing.  The obligation over a fresh
+    tree in a CHILD process, which is where it belongs for the same decision's other
+    clause, is ``tests/test_the_tree_imports.py``'s; this is the in-process reading of it
+    over the same tree, and it costs the import the pairing is already paying for.
+
+    **Measured at ``adcp-client-python-10l.21``, which is why this exists.**
+    ``render.klass`` filters the typed ``__pydantic_extra__`` annotation's reported
+    imports by the names the rendered line uses, and the filter split the hint on four
+    characters -- ``[``, ``]``, ``,`` and ``|`` -- so a CALL inside the annotation hid
+    every name in it.  ``core/postal-area-support.json``'s extras store holds a
+    ``uniqueItems`` array, which §2 renders as
+    ``Annotated[…, Field(json_schema_extra={…}), AfterValidator(Distinct())]``, and none
+    of ``Field``, ``AfterValidator`` or ``Distinct`` was imported: the module raised
+    ``PydanticUserError: not fully defined`` on first touch and 11 pairs reported
+    ``harness_error`` three test files away.
+
+    ``model_json_schema()`` is what asks the second half: an unresolved forward reference
+    survives the import and fails only when pydantic is asked to build the schema, which
+    is exactly the shape ``__pydantic_extra__`` produced.
+    """
+    modules = claimed(
+        "modules of the emitted tree",
+        [
+            info.name
+            for info in pkgutil.walk_packages([str(TREE)], "adcp.types._schemas.")
+            if not info.ispkg
+        ],
+    )
+    unresolved: list[tuple[str, str]] = []
+    for name in sorted(modules):
+        module = importlib.import_module(name)
+        for value in vars(module).values():
+            if (
+                isinstance(value, type)
+                and issubclass(value, BaseModel)
+                and value.__module__ == name
+            ):
+                try:
+                    value.model_json_schema()
+                except Exception as why:  # the failure is the finding
+                    unresolved.append((f"{name}.{value.__name__}", str(why)[:200]))
+    assert unresolved == [], unresolved
+
+
+def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
+    """Step 6's second defect: draft-07 applies a constraint to its own type only.
+
+    Two live sites, both ``["number", "string"]`` on ``error-details/conflict.json``
+    and both carrying no other keyword -- so the per-arm SPLIT has no live site and is
+    graded on a constructed document.  Both denominators stated.
+
+    Three cells, and the middle one is the defect:
+
+    * a keyword lands on the arm whose type defines it, and the arm beside it is
+      unconstrained -- the model admits a short string where the document does;
+    * the same keyword applied to every arm makes the model NARROWER, which the
+      accepts check sees;
+    * a keyword no arm can carry constrains nothing and refuses by name, rather than
+      being dropped into a model wider than its document.
+    """
+    live = [
+        (row.ref, key)
+        for row in graded()
+        if row.ref.pointer == "#" and isinstance(row.model, type)
+        for key, sub in (schema_at(row.ref).get("properties") or {}).items()
+        if isinstance(sub.get("type"), list)
+    ]
+    # Non-empty, which is what the loop below needs: the per-site assertion is the
+    # obligation and an empty list would satisfy all of it.  The count went 2 -> 11 as
+    # documents carrying a DECLARED null beside their type emitted, and it moves again
+    # on every row that adds one, so the set is claimed and the size is not.
+    claimed("live multi-type property sites", live)
+    for ref, key in live:
+        doc = schema_at(ref)
+        model = next(r.model for r in graded() if r.ref == ref)
+        # The document's own key, not ``compiler.field_name``'s: the rendered schema
+        # is ``by_alias`` and an aliased property is carried under the document's
+        # key.  Indexed WITHOUT ``_rendered``, because this test reads the ``anyOf``
+        # branch set and ``_rendered`` folds a ``T | None`` out of it.
+        node = model.model_json_schema()["properties"][key]
+        declared = doc["properties"][key]["type"]
+        # pydantic has no spelling for a type LIST but a union, so the document's
+        # types come back as branches.  **A ``null`` the DOCUMENT DECLARES is one of
+        # them**, and D4's null for a merely optional property is not -- the two are
+        # the same branch and different facts, which is the conflation
+        # ``test_a_declared_null_is_never_read_as_absence`` grades.  So the branch set
+        # is compared against the document's own list, and the presence branch is
+        # dropped only where the document declares no null to account for it.
+        # **A branch that is a ``$ref`` is the arm that became a CLASS, and a class is an
+        # object.**  §4's table makes "an object with ``properties``" a model class
+        # whatever else its node says, so a ``type`` LIST naming ``object`` beside a
+        # property map renders one arm as the nested class pydantic hoists into
+        # ``$defs`` -- the "nested class hoisted to ``$defs``" reading
+        # ``harness._normalize`` already takes.  Read as a branch with no ``type`` this raised
+        # ``KeyError``, which names no document and is §9's "a crash is not an outcome".
+        # Measured at ``adcp-client-python-10l.20``: one site, and it arrived with
+        # ``core/delivery-metrics.json`` --
+        # ``/properties/quartile_data``, ``["object", "null"]`` beside ``properties``.
+        branches = ["object" if "$ref" in b else b["type"] for b in node["anyOf"]]
+        if "null" not in declared:
+            branches = [b for b in branches if b != "null"]
+        assert sorted(branches) == sorted(declared), (ref, key, node)
+    # **A branch carrying its own CONSTRAINT folds too, and it folds to the type list
+    # PLUS the per-arm fact.**  This read the other way round -- the fold required every
+    # branch to be bare and this asserted that a constrained one was left alone -- and
+    # that reading is what refused ``core/attestation-reference.json`` and the 43
+    # documents referencing it.  The new reading is not weaker: the keyword arrives at
+    # the node the document states it on, so it is READ where it was previously
+    # unreadable, and the four ways a model can be wrong about it are each asserted
+    # below.  ``harness._type_list`` is the lift and ``keywords.ARM`` is what says which
+    # arm a key belongs to.
+    normalize = harness._normalize  # the normalization under test
+    assert normalize(
+        {"anyOf": [{"type": "string", "minLength": 2}, {"type": "integer"}]}, {}
+    ) == {"type": ["string", "integer"], "minLength": 2}
+    # The model's own shape for the bundle's one such node: pydantic has no spelling of
+    # ``dict[str, Any]`` that omits ``additionalProperties: true``, so the ``object`` arm
+    # carries a key the document is silent about -- and the lift reads the branch the way
+    # ``_silent_about_extras`` reads the node, which is why the arm counts as BARE here.
+    assert normalize(
+        {"anyOf": [{"additionalProperties": True, "type": "object"}, {"minLength": 1, "type": "string"}]},
+        {},
+    ) == {"type": ["object", "string"], "minLength": 1}
+    # And the shapes that are NOT a type list are still left alone, each for its own
+    # reason, because the lift is only lossless where all four gates hold.  An ``enum``
+    # is in no arm and applies to every instance, so lifting it would refuse every
+    # object; a repeated word is not a type list at all; ``integer`` and ``number`` share
+    # the numeric arm, so two branches have two values for one position; and a branch
+    # holding a SUBSCHEMA is a class on the model's side, which the document spells
+    # inline -- 7 pairs of this bundle fall from ``pass`` without that last gate.
+    for branches in (
+        [{"type": "object"}, {"type": "string", "enum": ["a"]}],
+        [{"type": "object"}, {"type": "string", "description": "d"}],
+        [{"type": "string", "minLength": 1}, {"type": "string", "maxLength": 3}],
+        [{"type": "integer", "minimum": 0}, {"type": "number", "minimum": 1}],
+        [{"type": "boolean"}, {"type": "object", "properties": {"k": {"type": "string"}}}],
+        [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1}],
+    ):
+        assert normalize({"anyOf": branches}, {}) == {"anyOf": branches}, branches
+
+    # The bare case renders as a union of the document's own types, and nothing else.
+    doc = {
+        "title": "Multi",
+        "type": "object",
+        "required": ["v"],
+        "properties": {"v": {"type": ["number", "string"]}},
+    }
+    model, text = _constructed(doc)
+    assert "v: float | str" in text, text
+    accept = _accept_of(doc, model)
+    assert check_accepts(doc, accept, examples=50).outcome == "pass"
+
+    # **A CONSTRAINED arm is NAMED, and this is the rendering that forces it to be.**
+    # The split needs the bound on the ARM; the compiler's ``DataType`` carries no
+    # constraint, so a keyword left on the node reaches the FIELD and bounds the whole
+    # union -- the string's ``minLength`` applied to the integer arm. Measured here on
+    # the compiler directly, so the alternative has its own evidence rather than a
+    # reference to it.
+    escaped = render.alias(
+        ir.AliasDecl(
+            "Escaped",
+            ir.TypeRef(
+                container="union",
+                of=(ir.TypeRef("str"), ir.TypeRef("int")),
+                facts={"minLength": 4},
+            ),
+        )
+    )
+    assert "Annotated[str | int, Field(min_length=4)]" in escaped.text, escaped.text
+
+    # **D5's alias module removed that obstacle, so the node EMITS.**  The arm is
+    # asserted to carry its own bound, because a cell that only stopped asserting the
+    # refusal would pass for a row that silently dropped the bound onto the field
+    # again.  That the document's own ``anyOf`` of arms lifts back to the type list it
+    # spells is asserted on ``harness._normalize`` above.
+    named = constraints_module.symbol("string", {"minLength": 4})
+
+    # The arm IS nameable, and that model's accepted set is the document's --
+    # the integer arm takes no string bound.  Built from the alias the emitter uses,
+    # which the walk's own rendering is asserted against below.
+    arm_alias = {"StrMinLen4": None}
+    exec(render.constraints_module({named: ("string", {"minLength": 4}, None)}), arm_alias)
+
+    class Armed(AdCPBaseModel):
+        v: arm_alias[named] | int  # type: ignore[name-defined,valid-type]
+
+    assert Armed.model_validate({"v": 1}).v == 1
+    assert Armed.model_validate({"v": "abcd"}).v == "abcd"
+    with pytest.raises(ValidationError):
+        Armed.model_validate({"v": "abc"})  # the string arm keeps its own bound
+
+    # **And the node now EMITS, over the bundle's own population.**  This asserted the
+    # empty list -- "0 multi-type node in an EMITTED document states a constraint with
+    # two or more live arms" -- which was true only because the row refused every
+    # document carrying one.  The set is named instead of counted, so a node arriving
+    # here is attributable: the bundle has exactly one, and it is the site
+    # ``adcp-client-python-10l.45`` names.
+    from codegen.lower import containers as lower_containers
+
+    emitted = compiled(BUNDLE, population()).emitted
+    carried = frozenset().union(*lower_containers.ARM.values())
+    assert sorted(
+        (d, p)
+        for d in emitted
+        for p, node in bundle.nodes(bundle.read(BUNDLE, d))
+        if isinstance(node.get("type"), list)
+        and set(node) & carried
+        and len([k for k in node["type"] if k != "null"]) > 1
+    ) == [
+        (
+            "core/attestation-reference.json",
+            "/properties/embedded_credential/properties/value",
+        )
+    ]
+
+    # **A null arm no longer refuses: it is an ARM.** The refusal stood on what the
+    # document-side reading could not lift, and that reading takes a null arm now -- so
+    # the cell asserts the EMISSION and the annotation, because a cell that only stopped
+    # asserting the refusal would pass for a row that silently dropped the arm.
+    mod, symbol = emit.lower_document(
+        "mn.json",
+        {"title": "MN", "type": "object", "properties": {"v": {"type": ["string", "null"]}}},
+    )
+    assert symbol == "MN"
+    assert "v: str | None" in "\n".join(
+        one.text for one in render.blocks(_assigned(mod).declarations)
+    ), mod.declarations
+
+    # A keyword no arm can carry constrains nothing, so it refuses by name.
+    caught = refusal_from(emit.lower_document(
+        "m.json",
+        {
+            "title": "M",
+            "type": "object",
+            "properties": {"v": {"type": ["boolean", "null"], "minLength": 1}},
+        },
+    ))
+    assert caught.keyword in ("minLength", "type"), caught.keyword
+
+
+
+
+#: The documents this test asserted as REFUSED in an earlier revision and that now
+#: emit, each at the row that named the inner type its refusal asked for.  Read off
+#: the run rather than off the tree, so none of it can pass on a stale file.  A name
+#: moves INTO this map when a row clears it and never out, which is why it is a map and
+#: not a count: a count said only that the group had changed size.
+_WAS_REFUSED_INSIDE_A_CONTAINER: dict[str, tuple[str, ...]] = {
+    "an inner scalar constraint, named in the alias module": (
+        "brand/rights-terms.json",
+        "property/property-list-filters.json",
+    ),
+    # salesagent-j3k2l.41: a format with no type selected, at an array ELEMENT.
+    "an inner format, named in the alias module": (
+        "core/requirements/html-asset-requirements.json",
+        "core/requirements/javascript-asset-requirements.json",
+        "core/requirements/url-asset-requirements.json",
+    ),
+    # salesagent-j3k2l.41: a mapping's own key count, on a mapping that is itself
+    # another mapping's value.  The alias is GENERIC, which is what lets it be named
+    # without the value type in the symbol.
+    "a container's own bound, named by a generic alias": (
+        "trusted-match/publisher-targeting-kv-config.json",
+        "trusted-match/publisher-tmpx-config.json",
+    ),
+}
+
+
+def test_a_constraint_inside_a_container_is_named_and_nothing_is_left_refused() -> None:
+    """D5's alias module, read from the side it was built for, and the residual.
+
+    A constraint on what is INSIDE a container has no slot in the compiler's
+    ``DataType``, so putting the node in ``list[...]`` would drop the fact and widen
+    the model.  **This test used to assert the REFUSAL that stood in for the answer**
+    -- 15 documents over 8 distinct inner constraints, with the detail naming what
+    D5's alias module would have to name -- and the alias module is what retires it.
+    Naming the inner type is the whole of the fix: once the constraint is on the
+    type, ``dict[str, StrMinLen1]`` and ``list[StrMatchingEFC12812]`` are plain
+    references and ``compiler.carried`` sees nothing to carry.
+
+    Three halves, and the third is now EMPTY:
+
+    * the inner type IS named, at a set of container positions in a set of modules;
+    * every document an earlier revision of this test named BY NAME as refused now
+      emits -- the two on an inner ``^[A-Z]{2}$``, then the three on ``format:
+      hostname`` inside an array's ``items`` and the two on a mapping's own
+      ``minProperties``/``maxProperties`` (``salesagent-j3k2l.41``);
+    * and the residual is empty.  An empty part is asserted as empty and not
+      ``claimed``: the design asks for this one to be nothing, and the two directions
+      above are what keep that from being a derivation that matches nothing -- a
+      refusal still minted at this position would land in the map and redden here,
+      while a document that stopped emitting reddens in the loop above it.
+
+    ``codegen/constraints.py``'s docstring used to exclude a constrained container by
+    the NAMING rule rather than by omission -- the symbol would have to carry the value
+    type, and a value type is a domain word.  That holds for a NON-generic alias and
+    that is the premise that changed: a parameter is not a domain word, so
+    ``NonEmptyList[T]`` and ``DictMaxProperties32[K, V]`` name the bound for every
+    content type at once and the use site supplies the contents.
+
+    That the inner fact survives into the model's rendered schema is graded by
+    ``test_an_arrays_bound_is_the_lists_and_not_its_elements``, which compares the
+    document's ``items`` keywords against the model's at every array property, so
+    it is not restated here.
+    """
+    out = compiled(BUNDLE, population())
+
+    # Every document the earlier revisions named as refused HERE, now emitted.
+    #
+    # **THE DENOMINATOR IS THE BUNDLE'S PORTABLE SET AND NOT ``population()``, which is
+    # the narrower claim this clause could not make.**  ``population()`` is the union of
+    # the seven STEP selectors, and a document reached only through the reference closure
+    # is emitted without any selector naming it: ``brand/rights-terms.json`` is portable,
+    # is in ``out.emitted``, and is in none of the seven -- its one ``$ref`` sits deeper
+    # than a property's own schema or its items, so ``references_a_property`` is False
+    # too.  So the containment reddened on a document the list is RIGHT about, while the
+    # thing the list claims -- that each one emits -- was never reached.  The emission is
+    # the assertion below and it is kept separate from the denominator on purpose: one
+    # says the names are documents of this bundle, the other says what became of them.
+    released = claimed(
+        "documents once refused on a constraint inside a container",
+        {d for names in _WAS_REFUSED_INSIDE_A_CONTAINER.values() for d in names},
+        inside=set(bundle.portable(BUNDLE)),
+    )
+    assert released <= set(out.emitted), sorted(released - set(out.emitted))
+
+    # And the residual, read off the refusal DETAIL the one producer writes
+    # (``compiler.carried``), so a refusal minted at any of the three positions it
+    # serves lands here whichever lowering asked.
+    inner = {
+        d: r for d, r in out.refusals.items() if "ir.TypeRef carries no constraint" in r["detail"]
+    }
+    assert inner == {}, inner
+
+    # And the naming, as the SET of container positions whose INNER type is a symbol
+    # the module imports from ``adcp.types.constraints``.  Both halves non-empty rather
+    # than a pair of counts: the claim is that the inner type IS named at a real
+    # position in a real module, and (23, 13) was a reading of one emitted tree that
+    # every row adding a constrained container moves.
+    positions: set[tuple[str, str]] = set()
+    modules: set[str] = set()
+    for rel, text in sorted(out.files.items()):
+        if not rel.endswith(".py"):
+            continue
+        parsed = ast.parse(text)
+        aliases = {
+            alias.name
+            for n in ast.walk(parsed)
+            if isinstance(n, ast.ImportFrom) and n.module == constraints_module.MODULE
+            for alias in n.names
+        }
+        for n in ast.walk(parsed):
+            if not (
+                isinstance(n, ast.Subscript)
+                and isinstance(n.value, ast.Name)
+                and n.value.id in ("list", "dict")
+            ):
+                continue
+            for name in ast.walk(n.slice):
+                if isinstance(name, ast.Name) and name.id in aliases:
+                    positions.add((rel, name.id))
+                    modules.add(rel)
+    claimed("container positions whose inner type is a named constraint", positions)
+    claimed("modules naming an inner constraint type", modules)
+    assert {rel for rel, _ in positions} == modules, (sorted(positions), sorted(modules))
+
+
+# --------------------------------------------------------------------------- #
+# the run itself
+# --------------------------------------------------------------------------- #
+def test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle() -> None:
+    """§10's one-document property, asserted DIRECTLY: "one document's module is the
+    same text whether it is emitted alone or with the whole bundle, because the
+    per-document ``named`` set is ``bundle.named(edges)``, a function of the bundle and
+    not of the run's document set."
+
+    It is the stronger half of §14 step 7's check and it is that step's own: a byte
+    compare proves the tree did not move, and this proves no part of a module can move
+    with the run's document SET -- which is the coupling §9 forbids ("do not decide one
+    document's output by a census over the run: a name, a shape or an import that depends
+    on which other documents the run includes makes a one-document emission and a
+    whole-bundle emission disagree about the same document").
+
+    **The document is chosen to be a REAL test and not a leaf**, and the three things
+    that make it one are asserted here rather than assumed:
+
+    * it CONTENT-DEDUPS, and in the shape §4's own sentence describes: three pointers
+      adopt a class an earlier position declared, each under the name ITS OWN position
+      derives -- ``/oneOf/1/properties/dimensions`` binds ``PreviewRenderUrlDimensions``
+      and is declared as ``PreviewRenderHtmlDimensions``, which is "every later position
+      binding its own derived name to that class by identity";
+    * it IMPORTS ACROSS DOCUMENTS, so the module's import block is derived from two
+      document paths and the target had to be lowered and NAMED first -- which is what
+      the dependency order §10 computes is for;
+    * it declares more than its root, so the symbol table has nested names in it.
+
+    A leaf scalar would satisfy the property for free.
+    """
+    document = "creative/preview-render.json"
+    rel = emit.module_file(document, PACKAGES) + ".py"
+    whole = compiled(BUNDLE, population())
+    assert document in whole.emitted, sorted(whole.refusals)[:5]
+    # The three facts that make this document a real test of the property, each read as
+    # the names themselves rather than as a count: a pinned count is not a ratchet.
+    assert whole.adopted[document] == {
+        "/oneOf/1/properties/dimensions": "PreviewRenderUrlDimensions",
+        "/oneOf/2/properties/dimensions": "PreviewRenderUrlDimensions",
+        "/oneOf/2/properties/embedding": "PreviewRenderUrlEmbedding",
+    }, whole.adopted[document]
+    assert whole.declared[document] == {
+        "": "PreviewRender",
+        "/oneOf/0": "PreviewRenderUrl",
+        "/oneOf/0/properties/dimensions": "PreviewRenderUrlDimensions",
+        "/oneOf/0/properties/embedding": "PreviewRenderUrlEmbedding",
+        "/oneOf/1": "PreviewRenderHtml",
+        "/oneOf/1/properties/dimensions": "PreviewRenderHtmlDimensions",
+        "/oneOf/1/properties/embedding": "PreviewRenderHtmlEmbedding",
+        "/oneOf/2": "PreviewRenderBoth",
+        "/oneOf/2/properties/dimensions": "PreviewRenderBothDimensions",
+        "/oneOf/2/properties/embedding": "PreviewRenderBothEmbedding",
+    }, whole.declared[document]
+    imported = [
+        line for line in whole.files[rel].splitlines() if line.startswith("from ..")
+    ]
+    assert imported == [
+        "from ..core.preview_renderer_metadata import PreviewRendererMetadata"
+    ], imported
+
+    alone = compiled(BUNDLE, [document])
+    assert alone.files[rel] == whole.files[rel]
+    # And the two tables the naming pass produces are the same, which says the text
+    # agreeing is not two different symbol tables rendering alike.
+    assert alone.declared[document] == whole.declared[document]
+    assert alone.adopted[document] == whole.adopted[document]
+
+
+def test_the_one_document_property_holds_for_a_name_the_DOMAIN_decided() -> None:
+    """§9's one-document property at the one scope that could break it, and the reason
+    this test exists beside the one above is that the one above **cannot reach it**.
+
+    §1 (2026-10-30) widened §4's collision rule to DOMAIN scope: no
+    ``adcp.types.<domain>.<Name>`` may name two declarations, so resolving a collision
+    needs the domain's other exported names and naming stopped being a function of one
+    document and its reference closure.  §9 was kept rather than amended, on the
+    distinction its own ruling draws -- **the RUN is not the BUNDLE**: the prohibition is
+    about the run's DOCUMENT SET, the argument list, and a domain's exported names are read
+    off the bundle, which is pinned and is an input to every run alike.
+
+    **So this property is now the whole of what makes that legal, and the test above does
+    not grade it.**  ``creative/preview-render.json`` is in no collision, so its text is the
+    same under a run-scoped reading and a bundle-scoped one; the cheap, wrong implementation
+    -- a census over the run's own lowered modules -- leaves that test GREEN.  §9's ruling
+    refuses it in those words, and this is the population fix.
+
+    **The document is chosen to grade the HARDEST half, which is the fixed point.**
+    ``emit.domain_exports`` repeats §4's step until no two documents of one domain export one
+    name, and ``content-standards/create-content-standards-request.json`` is the only place
+    in this bundle where one round is not enough: its two branches collide with
+    ``update-content-standards-request``'s on ``FailItemUrl`` and ``PassItemUrl``, both move
+    in round one, and **both move onto the same NEW name** --
+    ``CalibrationExemplarsFailItemUrl`` -- which only a second round can see.  A
+    single-round implementation leaves two collisions standing and every cheaper reading
+    leaves this document's text run-dependent, so the symbols pinned below are exactly the
+    ones no shortcut produces.
+
+    Named and not counted, because these are the symbols a consumer writes.
+    """
+    document = "content-standards/create-content-standards-request.json"
+    other = "content-standards/update-content-standards-request.json"
+    rel = emit.module_file(document, PACKAGES) + ".py"
+    whole = compiled(BUNDLE, population())
+    assert document in whole.emitted, sorted(whole.refusals)[:5]
+
+    # The collision is across MODULES of one domain, which is why §4's module scope never
+    # reached it, and BOTH sides moved -- §4's "all N lengthen" at the wider scope.
+    assert emit.domain(document) == emit.domain(other) == "content_standards"
+    # §3a keys the export record on the MODULE, so a document is turned into one by D1
+    # (``emit.module_path``) and the record is asked with that.
+    mine, theirs = emit.module_path(document), emit.module_path(other)
+    for short in ("FailItemUrl", "PassItemUrl", "CalibrationExemplarsFailItemUrl"):
+        assert short not in whole.surface[mine], (short, whole.surface[mine])
+        assert short not in whole.surface[theirs], (short, whole.surface[theirs])
+    assert (
+        whole.surface[mine]["CreateContentStandardsRequestCalibrationExemplarsFailItemUrl"]
+        == "branch"
+    ), whole.surface[mine]
+    assert (
+        whole.surface[theirs]["UpdateContentStandardsRequestCalibrationExemplarsFailItemUrl"]
+        == "branch"
+    ), whole.surface[theirs]
+    # And the ROOT axis, on the shape §4 decides with no new rung: an async response's root
+    # against the same-named branch of its sync response.  Read off the same run, so this
+    # costs no second compile.
+    submitted = "creative/get-creative-features-async-response-submitted.json"
+    response = "creative/get-creative-features-response.json"
+    assert whole.surface[emit.module_path(submitted)]["GetCreativeFeaturesSubmitted"] == "root"
+    assert "GetCreativeFeaturesSubmitted" not in whole.surface[emit.module_path(response)]
+    assert (
+        whole.surface[emit.module_path(response)]["GetCreativeFeaturesResponseSubmitted"]
+        == "branch"
+    )
+
+    alone = compiled(BUNDLE, [document])
+    assert other not in alone.emitted, (
+        f"{other} is in this run's closure, so the collision would be resolved by the "
+        "module scope and this test would not reach the domain scope it exists for"
+    )
+    assert alone.files[rel] == whole.files[rel]
+    assert alone.declared[document] == whole.declared[document]
+    assert alone.surface[mine] == whole.surface[mine]
+
+
+def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
+    """P10, and D8's compare: the tree equals f(bundle, emitter, pinned compiler),
+    so a defect is fixed in one of those and nothing rewrites the output.
+
+    It compares the whole file set and every byte of it.  The previous revision of
+    this test compared against a recorded earlier output of the same emitter,
+    which P10 forbids for the reason this step demonstrates: the renderer changed
+    and the recorded text was the OLD renderer's, so the comparison graded the
+    change rather than the inputs.
+
+    **Over :func:`tree_population` and not :func:`population`
+    (``adcp-client-python-10l.73``)**, which is the same defect read at the
+    population rather than at the bytes: the comparison was against the emission of
+    the seven STEP selectors' union, while 47 of the tree's files were there because
+    an earlier run reached their documents through a ``$ref`` from a named one.  Both
+    sides of a byte compare can be stale together when the set one of them is drawn
+    from depends on when it was last written.  The population is the bundle's own
+    portable set now, so the closure adds nothing to it -- asserted below, because a
+    closure that reached outside the population would mean the tree carries a module
+    for a document ``bundle.portable`` rejects.
+    """
+    out = compiled(BUNDLE, tree_population())
+    # The closure is INSIDE the population, which is what makes this population the
+    # whole answer rather than a seed.  A reference target outside it would be a
+    # module in the tree for a document the bundle does not call portable, and the
+    # prune below would then be deciding about a file no population names.
+    assert not set(out.emitted) - set(tree_population())
+    # The alias module is written BESIDE the tree, because an alias belongs to no
+    # document and so has no domain to live under (D5), and it is public where
+    # ``_schemas`` is not.  ``write`` takes that directory explicitly and has no
+    # default for it, so a run over part of the population cannot replace the
+    # committed module with a shorter one -- see ``emit.write``.
+    emit.write(out, tmp_path / "_schemas", tmp_path)
+
+    def tree(root: Path) -> dict[str, str]:
+        return {
+            str(p.relative_to(root)): p.read_text()
+            for p in root.rglob("*")
+            if p.is_file() and "__pycache__" not in p.parts
+        }
+
+    committed, emitted = tree(COMMITTED), tree(tmp_path / "_schemas")
+    assert sorted(emitted) == sorted(committed)
+    for rel in sorted(emitted):
+        assert emitted[rel] == committed[rel], rel
+    # What sits BESIDE the tree, as the set the run INTENDS and not a floor, and DERIVED
+    # rather than listed because a new domain joins it: §1's public module per domain
+    # (``emit.domain_modules``), plus the alias module (D5) and the envelope bases
+    # (``codegen/lower/envelope.py``).  The last two hold types that belong to no
+    # document, so neither has a domain to live under and neither can sit inside the
+    # private tree.  Every one of them is compared byte for byte below.
+    #
+    # The domain half is read off this run's own export record, which is the one place §1's
+    # export set is decided, so a domain that stops being emitted reddens here by NAME.
+    #
+    # **The record is keyed on the MODULE and a module that exports NOTHING contributes no
+    # domain** (§3a, 2026-11-02, and ``emit.domain_modules``): §3a's catalogue module is on
+    # the record because the run wrote it, nothing in it is a type a consumer writes, and a
+    # public ``<namespace>.py`` re-exporting it would carry an empty ``__all__``.  §1's
+    # surface is stated over what is EXPORTED, which is the one case where that reading and
+    # "every module the run wrote" differ: 1,058 modules on the record, 4 of them exporting
+    # none, 23 domains with a public module and a 24th (``common``) without one.
+    domains = {
+        f"{emit.module_domain(module)}.py"
+        for module, exported in out.surface.items()
+        if exported
+    }
+    assert sorted(out.beside) == sorted(domains | {"constraints.py", "envelopes.py"}), (
+        sorted(out.beside)
+    )
+    for rel in sorted(out.beside):
+        assert (tmp_path / rel).read_text() == (COMMITTED.parent / rel).read_text(), rel
+
+
+def test_a_document_whose_path_is_also_a_directorys_is_that_packages_root() -> None:
+    """``docs/plan/architecture.md``, the layout rule beside ``write`` (2026-10-29):
+    where the bundle holds both a document at path ``P`` and a directory at path ``P``,
+    the two are ONE NAMESPACE and the document is its root.
+
+    **The cost the rule names is the thing this holds**, in the rule's own words: "one
+    ``__init__.py`` carries content where the others are markers, and
+    ``emit.relative_module``'s hop arithmetic has to agree with it, which is a check a
+    test can hold".  The arithmetic is the half that goes wrong first and is silent when
+    it does -- a leading dot too few resolves to a module that EXISTS, just the wrong
+    one -- so it is read off the EMITTED module's own import block rather than restated
+    here.
+
+    The defect this replaces was measured: ``brand.py`` holding 113 classes beside a
+    0-byte ``brand/__init__.py``, where Python resolves the dotted name to the package,
+    the module is unimportable, and the run reports the document as emitted.  Three
+    things make that impossible now and each is a clause below -- the file is the
+    package's own ``__init__``, the empty marker does not overwrite it, and the name
+    Python resolves is the one ``emit`` recorded.
+    """
+    roots = claimed("documents whose path is also a directory's", bundle.package_roots(BUNDLE))
+    out = compiled(BUNDLE, tree_population())
+    emitting = claimed(
+        "package roots this run emits", roots & set(out.emitted), inside=tree_population()
+    )
+
+    for document in sorted(emitting):
+        stem = emit.module_path(document)
+        # Clause 1: the FILE is the package's own ``__init__`` and the NAME is the
+        # package.  Both read off the production functions, and the second is what
+        # keeps ``__init__`` out of the dotted name -- a package's ``__init__`` IS the
+        # package, and ``...brand.__init__`` would import its body a second time.
+        assert emit.module_file(document, roots) == f"{stem}/__init__"
+        assert emit.module_name(document) == f"{emit.PACKAGE}.{stem.replace('/', '.')}"
+        assert out.emitted[document] == emit.module_name(document)
+
+        # Clause 2: the empty package MARKER did not overwrite it.  ``emit`` writes a
+        # 0-byte ``__init__.py`` for every directory the tree has, and that loop runs
+        # after the modules are written -- a plain assignment there is the same
+        # unimportable-module defect arriving from the other side.
+        rel = f"{stem}/__init__.py"
+        assert out.files[rel], rel
+        assert not (TREE / f"{stem}.py").exists(), f"{stem}.py is shadowed by {stem}/"
+
+        # Clause 3: THE HOP ARITHMETIC, read off the module's own import block.  The
+        # file sits one level below ``_schemas``, so every import of a module OUTSIDE
+        # its own package needs two dots where a top-level module needs one.  Asserted
+        # per import and against the production derivation, so a dot miscounted in
+        # either direction names the import it got wrong.
+        tree = ast.parse((TREE / rel).read_text())
+        relative = [n for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and n.level]
+        assert relative, f"{rel} has no relative import; clause 3 grades nothing"
+        for node in relative:
+            spelled = "." * node.level + (node.module or "")
+            target = next(
+                d
+                for d in out.emitted
+                if emit.relative_module(document, d, roots) == spelled
+            )
+            assert emit.relative_module(document, target, roots) == spelled
+            # Two dots at least, because the package root is never at the tree's top
+            # level: one dot from inside ``brand/`` names ``brand`` itself.
+            assert node.level >= 2, (rel, spelled)
+
+    # Clause 4: NOTHING in the tree spells a package's body as ``__init__``.  That is
+    # the import Python answers with a SECOND module object for one file, which is the
+    # defect ``codegen/__main__.py``'s own docstring records at the ``runpy`` boundary.
+    # Over the whole tree rather than over the roots, because the spelling is wrong
+    # wherever it appears and a future root would make it reachable from elsewhere.
+    for path in sorted(TREE.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.ImportFrom):
+                assert "__init__" not in (node.module or ""), (path, node.module)
+                assert all(a.name != "__init__" for a in node.names), path
+
+    # Clause 5: the cycle the layout makes POSSIBLE is absent -- and ONLY ONE OF THE TWO
+    # DIRECTIONS IS A CYCLE, which is the correction this clause carries.
+    #
+    # **A submodule importing its package root is not a cycle, and asserting that it was
+    # forbade the import §1 requires.**  Python initialises a package before any module
+    # under it runs, so by the time ``brand/get_brand_identity_response.py``'s body
+    # executes, ``adcp.types._schemas.brand`` is in ``sys.modules`` and COMPLETE -- there
+    # is no partially-initialised module for it to read.  Measured as the first import of
+    # a fresh interpreter: ``import
+    # adcp.types._schemas.brand.get_brand_identity_response`` succeeds, and
+    # ``tests/test_the_tree_imports.py`` imports all 31 package modules besides.  What the
+    # old assertion ruled out was the two edges the bundle actually states --
+    # ``brand/get-brand-identity-response.json`` and ``brand/search-brands-response.json``
+    # each name five and four of ``brand.json``'s own nodes -- so the only way to satisfy
+    # it was to COPY those classes, which is the second spelling §1's one-import-path rule
+    # exists to forbid.
+    #
+    # So the direction that IS a cycle is graded, STRENGTHENED past the spelling it used
+    # to read, and the other direction is graded for the thing that can really go wrong
+    # there: the import binds the root module's own class object and not a copy.
+    borrowing: set[tuple[str, str, str]] = set()
+    for document in sorted(emitting):
+        stem = emit.module_path(document)
+        inward = {
+            d
+            for d in out.emitted
+            if d != document and emit.module_path(d).startswith(f"{stem}/")
+        }
+        # (a) THE CYCLE: the root's ``__init__`` reaches no module under its own package.
+        # Read off the RESOLVED target rather than off ``level == 1``, because
+        # ``from ..brand.rights_terms import X`` is the same cycle in a spelling that test
+        # missed -- a package's ``__init__`` importing its own child has to finish
+        # initialising the package the child is about to ask for.
+        own = ast.parse((TREE / f"{stem}/__init__.py").read_text())
+        for node in ast.walk(own):
+            if not isinstance(node, ast.ImportFrom) or not node.level:
+                continue
+            up = Path(f"{stem}/__init__").parent
+            for _ in range(node.level - 1):
+                up = up.parent
+            resolved = str(up / (node.module or "").replace(".", "/"))
+            assert resolved == stem or not resolved.startswith(f"{stem}/"), (
+                f"{stem}/__init__.py imports its own package: {node.module} -> {resolved}"
+            )
+        # (b) §1's ONE IMPORT PATH across that edge.  The submodule's name for the symbol
+        # is the ROOT MODULE's own object, so a consumer's ``isinstance`` holds against
+        # the class the root validates into -- which is what a copy would break and what
+        # the refusal this clause used to make would have forced.
+        for other in sorted(inward):
+            text = (TREE / f"{emit.module_file(other, roots)}.py").read_text()
+            spelled = emit.relative_module(other, document, roots)
+            if f"from {spelled} import " not in text:
+                continue
+            borrowed = sorted(
+                {
+                    alias.name
+                    for node in ast.walk(ast.parse(text))
+                    if isinstance(node, ast.ImportFrom)
+                    and "." * node.level + (node.module or "") == spelled
+                    for alias in node.names
+                }
+            )
+            held = importlib.import_module(out.emitted[other])
+            at_the_root = importlib.import_module(out.emitted[document])
+            for name in claimed(f"{other}'s names borrowed from {document}", borrowed):
+                assert getattr(held, name) is getattr(at_the_root, name), (other, name)
+                borrowing.add((other, document, name))
+    # And the identity half ranges over something: a bundle whose package root has no
+    # submodule referencing its nodes gives clause 5(b) nothing to grade, and a clause
+    # that grades nothing is indistinguishable from one that holds.
+    claimed("(submodule, package root, symbol) borrowings", borrowing)
+
+
+#: A two-document bundle for the prune: both documents emit, and the second is then
+#: rewritten so that it REFUSES, which is the only way a file stops being intended.
+#: Hand-built rather than cut from the 3.2 bundle, because the scenario needs a
+#: document whose emission is turned OFF between two runs and no bundle document can
+#: be asked to do that without editing the bundle.
+def _prunable(bundle_dir: Path, name: str, extra: dict[str, Any] | None = None) -> None:
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    (bundle_dir / f"{name}.json").write_text(
+        json.dumps(
+            {
+                "title": name.title(),
+                "type": "object",
+                "properties": {"a": {"type": "string"}},
+                **(extra or {}),
+            }
+        )
+    )
+
+
+#: What makes the second document stop emitting.  A conjunct whose ``type`` is not
+#: ``object``: a conjunction of ``object`` and ``string`` admits no instance at all, so
+#: no class can stand for it and the refusal is a VERDICT -- the obstruction is the
+#: document's, not unwritten code's.
+#:
+#: **Third fixture for this slot, and the first whose refusal no row can claim.**  It
+#: was ``not: {}`` until step 7 lowered a ``not``; then
+#: ``{"allOf": [{"required": ["a"]}]}``, which read as "a conjunct with no
+#: ``properties`` has no base to subclass" -- until ``salesagent-j3k2l.43`` lowered
+#: exactly that as section 2's requiredness overlay and both fixtures stopped refusing
+#: anything.  Each time the comment said the next row would move it and each time the
+#: test caught it, because the refusal is ASSERTED rather than assumed.  A DEFERRAL is
+#: the wrong kind of thing to build a fixture on: it means "no row has written this
+#: yet", so a fixture resting on one has a scheduled expiry.  A verdict does not.
+_STOPS_EMITTING = {"allOf": [{"type": "string", "properties": {"a": {"type": "string"}}}]}
+
+
+def test_write_removes_a_file_the_run_no_longer_intends(tmp_path) -> None:
+    """The prune, graded by making a document stop emitting.
+
+    This is the defect's whole shape: a stale ``.py``/``.json`` pair is
+    INDISTINGUISHABLE from a real emission to everything that reads the tree -- the
+    class imports, carries ``__adcp_schema__``, and answers ``strict_validate`` --
+    so the harness can grade a class the current compiler would not produce, which
+    is the one thing §2's per-class schema reference exists to make impossible.
+
+    It was caught before this only by ``test_the_committed_tree_is_what_a_fresh_run_emits``
+    comparing file SETS, which fails at the GATE and leaves the operator to derive
+    the stale set and delete it by hand.  Two lanes did exactly that
+    (``salesagent-j3k2l.22``, 4 files, and ``.26``), so every change that added a
+    refusal was a two-step job with nothing enforcing the second step.
+
+    PROBED by removing the two lines in ``emit.write`` that delete: this test then
+    fails on the last assertion with ``goes.json`` and ``goes.py`` still in the tree.
+    """
+    bundle_dir, tree, package = tmp_path / "bundle", tmp_path / "tree", tmp_path / "package"
+    package.mkdir()
+
+    _prunable(bundle_dir, "stays")
+    _prunable(bundle_dir, "goes")
+    documents = ["goes.json", "stays.json"]
+    first = emit.emit(bundle_dir, documents)
+    assert first.refusals == {}, first.refusals
+    emit.write(first, tree, package)
+
+    def kinds(root: Path) -> list[str]:
+        return sorted(str(p.relative_to(root)) for p in root.rglob("*") if p.is_file())
+
+    assert kinds(tree) == ["__init__.py", "goes.json", "goes.py", "stays.json", "stays.py"]
+
+    # The document stops emitting, which is what every row that adds a refusal does
+    # to some document.  Asserted, not assumed -- see ``_STOPS_EMITTING``.
+    _prunable(bundle_dir, "goes", _STOPS_EMITTING)
+    second = emit.emit(bundle_dir, documents)
+    assert sorted(second.refusals) == ["goes.json"], second.refusals
+    assert sorted(second.emitted) == ["stays.json"], sorted(second.emitted)
+
+    emit.write(second, tree, package)
+    assert kinds(tree) == ["__init__.py", "stays.json", "stays.py"]
+
+
+def test_a_partial_run_prunes_nothing(tmp_path) -> None:
+    """The other half, and the reason a prune was tried here once and removed.
+
+    ``write`` is the same function the README's ONE-DOCUMENT command reaches.  A
+    one-document run intends one document's files, so a prune that did not ask the
+    run's scope would delete the other 676 modules of the committed tree -- and a
+    command whose demonstration wipes the tree gets run once.  ``package`` is the
+    discriminator already present for D5's alias module, which is a whole-run
+    artifact for the same reason, so the two whole-run effects are gated on one
+    fact and there is no second flag to forget.
+
+    Without this test the prune's gate is ungraded and the obvious "simplification"
+    -- prune unconditionally -- passes the test above.
+    """
+    bundle_dir, tree = tmp_path / "bundle", tmp_path / "tree"
+    _prunable(bundle_dir, "stays")
+    _prunable(bundle_dir, "goes")
+    emit.write(emit.emit(bundle_dir, ["goes.json", "stays.json"]), tree, tmp_path / "package")
+
+    # The whole population is still both documents and ``goes`` still emits; what
+    # changes is that this run NAMES one of them, so it intends one document's files.
+    partial = emit.emit(bundle_dir, ["stays.json"])
+    assert sorted(partial.emitted) == ["stays.json"], sorted(partial.emitted)
+    emit.write(partial, tree)
+
+    survived = sorted(str(p.relative_to(tree)) for p in tree.rglob("*") if p.is_file())
+    assert survived == ["__init__.py", "goes.json", "goes.py", "stays.json", "stays.py"]
+
+
+def test_the_emitter_writes_only_the_file_kinds_the_prune_removes() -> None:
+    """``emit.EMITTED_SUFFIXES`` bounds what ``write`` will delete, and it is a
+    DECLARATION -- so this grades it against the emitter's actual output.
+
+    Derived from ``Emitted.files`` instead, the bound has a hole exactly where it
+    matters: a whole-population run that emitted nothing derives ``{".py"}`` from
+    its lone ``__init__.py`` and silently leaves every stale document behind.  So
+    the constant is written down, and this is what keeps it in step.  Both
+    directions redden: a third file kind in the tree, and a narrowed constant.
+
+    The committed tree is the emitter's output byte for byte -- the test above
+    asserts exactly that -- so reading the kinds off it costs nothing, where a
+    second whole-population emit costs the run again.
+    """
+    kinds = {p.suffix for p in TREE.rglob("*") if p.is_file() and "__pycache__" not in p.parts}
+    assert kinds == emit.EMITTED_SUFFIXES, sorted(kinds)
+
+
+def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> None:
+    """Broken on purpose, because the guard cannot otherwise be reached.
+
+    An alias's name is DERIVED, so two distinct constraints colliding is possible
+    in principle -- a SHA-256 prefix collision is the realistic way -- and the
+    damage is the worst kind: one alias annotating two fields, stating on one of
+    them a constraint its own document does not. No bundle input can produce the
+    collision, so the digest is forced to a constant and the real emitter is run.
+
+    The ``_digest`` patch is also the control for the opposite mistake. The
+    collision is caught at the ASSIGNMENT: a dict keyed by name cannot catch it
+    afterwards, because the second write replaces the first and any later check
+    re-derives the survivor and agrees with itself. Before ``record`` existed
+    this run emitted a tree with one alias at two shapes and a GREEN suite.
+    """
+    monkeypatch.setattr(constraints_module, "_digest", lambda pattern: "C0111DED")
+    with pytest.raises(constraints_module.AliasCollision) as caught:
+        compiled(BUNDLE, population())
+    assert "StrMatchingC0111DED" in str(caught.value), str(caught.value)
+    assert "two distinct constraints" in str(caught.value)
+
+    # The control: with the real digest, the same run resolves the same shapes and
+    # does not raise -- so the guard is firing on the collision and not on the run.
+    # The run's own artifacts are named rather than COUNTED, because a count here is a
+    # count of what the run writes beside the tree and a second such artifact arrived
+    # (``codegen/lower/envelope.py``) without changing anything this test is about.
+    monkeypatch.undo()
+    assert sorted(compiled(BUNDLE, population()).beside) == [
+        "constraints.py",
+        "envelopes.py",
+    ]
+
+
+def _is_type_variable(node: ast.Assign) -> bool:
+    """Is this module-level assignment a type VARIABLE rather than an alias.
+
+    ``T = TypeVar("T")`` is machinery and not a name the module provides: a generic
+    container alias (``NonEmptyList = Annotated[list[T], Field(min_length=1)]``) is
+    subscripted at the use site, so the parameter is never imported anywhere and
+    counting it as a declared alias would make the reverse direction below red
+    forever.  Matched on the CALL being ``TypeVar``, so an alias whose value happens
+    to be any other call is still counted.
+    """
+    value = node.value
+    return isinstance(value, ast.Call) and getattr(value.func, "id", "") == "TypeVar"
+
+
+def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_named() -> None:
+    """D5's alias module, in BOTH directions, with its denominators.
+
+    ``test_the_emitted_tree_still_declares_every_module_it_imports`` (in
+    ``tests/test_enum.py``) holds this obligation for a RELATIVE import and skips
+    an absolute one, and an emitted module names ``adcp.types.constraints``
+    absolutely -- so that test does not cover this edge and this one does. The
+    failure it exists for is real and was met: a run whose alias module was not
+    written left every module importing a symbol that did not exist, and the
+    probe trees raised ``ImportError`` on ``StrMinLen2``.
+
+    PROBED, by deleting one declared alias: the import direction reddens, but as
+    an ``ImportError`` while this MODULE is collected rather than here -- the
+    tree is imported at module scope to build the pairing. So that direction is
+    a second statement of something already loud, and what this test adds is the
+    REVERSE direction, the absolute-import spelling, and the denominators.
+
+    The reverse direction is the one that catches the opposite defect: a module
+    holding an alias no document needs. It is EMPTY today, and ``AdCPUrl`` is
+    the one name that could legitimately sit in it -- D5 declares that one
+    whatever the run met, so a consumer can import it -- but it does not,
+    because ``FORMAT_TYPES`` points 12 modules' fields at it.
+    """
+    imported: dict[str, set[str]] = {}
+    for module in sorted(TREE.rglob("*.py")):
+        tree = ast.parse(module.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == constraints_module.MODULE:
+                assert not node.level, (module, "an alias is imported absolutely")
+                for alias in node.names:
+                    imported.setdefault(alias.name, set()).add(str(module.relative_to(TREE)))
+
+    # A name this module provides is one it ASSIGNS or one it RE-EXPORTS.  D5's two
+    # URL arms are one of each: ``AdCPUrl`` is ours and is an assignment, and
+    # ``HttpUrl`` is pydantic's, re-exported here with no assignment so that nothing
+    # in this package restates what pydantic defines -- the import IS the
+    # declaration, and both arms are then named in the one module a consumer reads.
+    module = ast.parse((TREE.parent / "constraints.py").read_text())
+    declared = {
+        node.targets[0].id
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and isinstance(node.targets[0], ast.Name)
+        and not _is_type_variable(node)
+    }
+    reexported = {
+        alias.asname or alias.name
+        for node in module.body
+        if isinstance(node, ast.ImportFrom) and node.module == "pydantic"
+        for alias in node.names
+    }
+    assert constraints_module.HTTP_URL in reexported, reexported
+    declared |= {constraints_module.HTTP_URL}
+    claimed("aliases the module declares", declared)
+    claimed("aliases the tree imports", imported)
+    assert set(imported) - declared == set(), "imported and not declared"
+    assert declared - set(imported) == set(), "declared and never named"
+
+    # The denominators, so neither direction can pass over an empty set: every alias is
+    # reachable at this one path and nowhere else (no flat root, no second spelling),
+    # and the module is not a dumping ground.  Each one is the NON-EMPTINESS of a set
+    # and not its size: every count here was over the committed tree, so each one moved
+    # as the ``population()`` run grew -- ``declared`` was 133 and is 141 at this base,
+    # red on every tree that emitted one more constrained shape -- while the two
+    # DIRECTIONS above are what the test is for and they are set equalities already.
+    claimed(
+        "(module, alias) pairs",
+        {(where, alias) for alias, wheres in imported.items() for where in wheres},
+    )
+    # And the two names that are a DECISION really are annotating fields: ``AdCPUrl`` is
+    # ours and ``HttpUrl`` is pydantic's, and D5 points fields at both.
+    claimed("modules naming AdCPUrl", imported[constraints_module.URL])
+    claimed("modules naming HttpUrl", imported[constraints_module.HTTP_URL])
+
+
+def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
+    """P7: determinism is a precondition of grading, not a fix.
+
+    Argument order is NOT what this grades, and a test that compared a forward
+    run with a reversed one was kept here until it was probed: ``emit`` sorts its
+    documents, so no permutation of its arguments can change the output and the
+    comparison could not fail.  P7 holds for order by construction.
+
+    What CAN vary between runs is set iteration -- the import lines come out of a
+    ``set[tuple[str, str]]`` -- and that varies by hash seed, not by anything a
+    caller passes.  So the two runs are two processes with different
+    ``PYTHONHASHSEED`` values, which is the perturbation this property has.
+
+    **THE REPORT IS OUTPUT TOO, and comparing only the tree is the hole this
+    property had.**  A refused document writes no module, so every sentence the run
+    says about it lives on stdout and nowhere in ``files`` -- and a refusal that
+    names a set's members names them in hash order.  Measured on
+    ``core/product-format-declaration.json``, whose two undeclared required names
+    came out ``['format_kind', 'params']`` at 32 of the seeds 0..63 and
+    ``['params', 'format_kind']`` at the other 32, reaching 8 report lines over the
+    published bundle: its own refusal plus the 7 documents whose chained refusal
+    quotes it (``adcp-client-python-42v``).  The tree was identical at every one of
+    them, so the tree comparison could not see it.  Both halves are compared here
+    rather than in two tests because they are one property of one pair of runs.
+
+    **AND THE CHILD'S EXIT STATUS IS READ, which is the defect that made this a NAME
+    with no cause for a whole inventory** (``adcp-client-python-qzx.17``).  A run that
+    refused everything and a run that emitted nothing were the same observation to this
+    clause: it collected the tree off a directory and compared two of them, and the
+    ``trees[0] and`` guard was the only thing standing between two empty dicts and a
+    pass.  Both children had in fact died on the first line of the build, and the
+    comparison was over nothing.  A clause that shells a child and never reads its
+    status is a check that cannot fail.
+
+    **The bundle is the PUBLISHED one, because ``--bundle`` is D9's ARGUMENT and the
+    patch set is part of the BUILD** -- ``codegen/__main__.py`` applies
+    ``patch.for_build`` to whatever it is handed, so the child reads the patched bundle
+    either way and ``population()``, taken from the patched bundle here, is the right
+    set for it.  This is the declaration
+    ``tests/test_the_run_writes_its_verdicts.py`` already reaches for, and the reason it
+    is not ``BUNDLE``: handing the command the patched directory used to apply the table
+    twice.  It is now a no-op that says so, which is why this clause can grade the exit
+    status at all -- but the published bundle is still what the argument means, and a
+    report with one fewer line about its own input is the one a reader of two runs wants.
+    """
+    cmd = [sys.executable, "-m", "codegen", "--bundle", str(fresh.PUBLISHED), "--tree"]
+    trees = []
+    reports = []
+    progress = []
+    for seed in ("0", "12345"):
+        into = Path(tempfile.mkdtemp())
+        env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": SUBPROCESS_PATH}
+        done = subprocess.run(
+            [*cmd, str(into), *population()], check=False, cwd=REPO, env=env, capture_output=True
+        )
+        assert done.returncode == 0, (
+            f"the run exited {done.returncode} at PYTHONHASHSEED={seed}, so the tree and "
+            "the report compared below are whatever it managed before dying:\n"
+            f"{done.stdout.decode()[-2000:]}\n{done.stderr.decode()[-4000:]}"
+        )
+        trees.append({str(p.relative_to(into)): p.read_text() for p in sorted(into.rglob("*.py"))})
+        reports.append(done.stdout.decode())
+        progress.append(done.stderr.decode())
+        shutil.rmtree(into)
+    assert trees[0] and trees[0] == trees[1]
+    assert reports[0] and reports[0] == reports[1]
+
+    # **AND THE REPORT STILL SAYS WHAT THE RUN WROTE**, which is the half the equality
+    # above cannot hold on its own: deleting a line makes two reports agree.  The verdict
+    # table's row count and its path are the sentence that moved off stdout's
+    # non-deterministic neighbour (``adcp-client-python-qzx.1``), so they are named here
+    # -- a report that stops reporting them fails this, where before it would have been
+    # the shortest way to make the property green.
+    # The file name is the RUN's own constant, read the way
+    # ``tests/test_the_run_writes_its_verdicts.py`` reads it -- a local import, because
+    # ``codegen.__main__`` is the module ``runpy`` binds and a module-level import here
+    # would be a second object for one file.
+    from codegen.__main__ import VERDICTS
+
+    named = re.search(r"verdicts (\d+) rows -> (\S+)", reports[0])
+    assert named, reports[0]
+    assert int(named.group(1)) > 0, named.group(0)
+    assert named.group(2).endswith(VERDICTS), named.group(0)
+
+    # **THE WALL CLOCK IS ON STDERR AND NOT IN THE OUTPUT**, asserted in both directions
+    # so neither half can drift back.  A duration is the one thing the run says that no
+    # input decides, and while it was on stdout this property failed on it alone -- the
+    # two reports differed by ``50.3 s`` against ``48.8 s`` and agreed on all 159,876
+    # other characters, so every refusal sentence it exists to compare went ungraded.
+    assert not re.search(r"\(\d+\.\d s[;)]", reports[0]), reports[0]
+    assert re.search(r"\(\d+\.\d s\)", progress[0]), progress[0]
+
+
+def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
+    """D12, graded through the entry point that breaks it.
+
+    ``python -m codegen`` runs the emitter through ``codegen/__main__.py``, which is
+    the one file ``runpy`` binds as ``__main__``.  When the command was ``python -m
+    codegen.emit`` and ``Refusal`` was defined in that module, a lowering that
+    imported ``codegen.emit`` to raise one raised a DIFFERENT class from the one
+    ``main``'s ``except`` names, so every refusal escaped as an unhandled traceback
+    and the run wrote nothing -- while the in-process path, which imports the module
+    once, stayed green.  Three lanes measured that independently.  The entry-point
+    module is what makes the two paths the same import graph, and this test is where
+    the command itself is graded.
+
+    So this runs the CLI, over a bundle whose two documents are one emittable and
+    one refused, and requires the refusal to be REPORTED: exit 1, the document
+    and its keyword on stdout, no traceback, and the other document written.
+    """
+    (tmp_path / "ok.json").write_text(
+        json.dumps({"title": "Ok", "type": "object", "properties": {"a": {"type": "string"}}})
+    )
+    # A conjunct whose ``type`` is not ``object``, which is the shape ``_STOPS_EMITTING``
+    # carries and for the reason stated there: this fixture was ``not: {}`` until step 7
+    # lowered a ``not``, then a ``required``-only conjunct until ``salesagent-j3k2l.43``
+    # lowered that as section 2's requiredness overlay, and both times the fixture
+    # stopped refusing anything. A conjunction of ``object`` and ``string`` admits no
+    # instance, so its refusal is a VERDICT and no row can claim it -- which is what a
+    # fixture asserting "this document is refused" has to rest on.
+    (tmp_path / "no.json").write_text(
+        json.dumps(
+            {
+                "title": "No",
+                "type": "object",
+                "properties": {"a": {"type": "string"}},
+                **_STOPS_EMITTING,
+            }
+        )
+    )
+    into = tmp_path / "out"
+    done = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "codegen",
+            "--bundle",
+            str(tmp_path),
+            "--tree",
+            str(into),
+            "ok.json",
+            "no.json",
+        ],
+        check=False,
+        cwd=REPO,
+        env={**os.environ, "PYTHONPATH": SUBPROCESS_PATH},
+        capture_output=True,
+        text=True,
+    )
+    assert "Traceback" not in done.stderr, done.stderr
+    assert done.returncode == 1, (done.returncode, done.stdout, done.stderr)
+    assert "refused no.json" in done.stdout, done.stdout
+    # ``on type:`` and not ``on allOf:``: step 4's row claims this root, so the walk
+    # reaches the conjunct and names the keyword that actually stopped it -- here the
+    # conjunct's own ``type``, because a conjunction of ``object`` and ``string`` admits
+    # no instance.  It read ``on required:`` while ``_STOPS_EMITTING`` was a
+    # ``required``-only conjunct, and ``salesagent-j3k2l.43`` lowered that as section 2's
+    # requiredness overlay; the fixture moved with it, for the reason stated there.
+    assert "on type:" in done.stdout, done.stdout
+    assert (into / "ok.py").exists()
+    assert not (into / "no.py").exists()
+
+
+def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
+    """The walk terminates, graded on a bundle built so that it would not.
+
+    The 3.2 bundle's reference graph is acyclic -- a three-colour DFS over its
+    3,094 document-to-document edges finds 0 cycles -- so this branch is
+    unreachable from it, which is exactly why it gets a bundle of its own instead
+    of a comment saying it cannot happen.  Two modules importing each other's
+    symbol at module scope is an ImportError, not a type, so a cycle has to refuse
+    before it is written.
+    """
+    ref = "https://example.org/whatever/{}.json"
+    for name, other in (("a", "b"), ("b", "a")):
+        (tmp_path / f"{name}.json").write_text(
+            json.dumps(
+                {
+                    "title": name.upper(),
+                    "type": "object",
+                    "required": [other],
+                    "properties": {other: {"$ref": ref.format(other)}},
+                }
+            )
+        )
+    out = emit.emit(tmp_path, ["a.json", "b.json"])
+    assert out.emitted == {}
+    assert sorted(out.refusals) == ["a.json", "b.json"]
+    for document, row in out.refusals.items():
+        assert row["keyword"] == "$ref", (document, row)
+        assert "cycle" in row["detail"], (document, row)
+
+
+# --------------------------------------------------------------------------- #
+# step 7: D6's six keyword families
+# --------------------------------------------------------------------------- #
+# step 7: D6's six keyword families
+# --------------------------------------------------------------------------- #
+# **The four tests that stood here are deleted with the machinery they graded.**
+# They asserted that ``steps()`` found a site for each of D6's six families, that a
+# stepped whole-instance keyword bit the document that states it, that an
+# unsatisfiable step reported an outcome rather than a harness error, and that
+# ``force_path`` held a sibling ``if`` through ``then``/``else``.  Every one of them
+# graded the step machinery, and section 6 removed it: "a step site asserts that
+# ``jsonschema`` rejects a payload violating the schema it was handed. The generated
+# class takes no part in the outcome."  So those four tests graded a property of a
+# third-party validator and of a mutation helper with no consumer.
+#
+# **What grades D6's rules instead is immediately below, and it always did.**
+# ``RULE_VIOLATIONS`` carries a hand-written payload per rule and routes it through
+# ``model_validate`` -- the class's OWN validation, which is where section 6 says an
+# an invalid payload reaches pydantic's own validators -- and asserts the keyword
+# both halves name.  That
+# is the check the deleted four were standing next to rather than doing.
+
+
+#: Every emitted class that carries a rule, with a payload that violates exactly
+#: that rule and the JSON Schema keyword both halves must name.  The payloads are
+#: written here and not drawn, because a rule is about key PRESENCE and no
+#: generator draws from the document's complement.
+RULE_VIOLATIONS = (
+    ("core/format-id.json", {"agent_url": "https://a.example/", "id": "x", "width": 1},
+     "dependencies"),
+    ("core/budget-range.json", {"currency": "USD"}, "anyOf"),
+    ("core/webhook-challenge-response.json", {"challenge": "A" * 40, "token": "A" * 40}, "not"),
+)
+
+
+def _root(document: str) -> Any:
+    return next(g for g in graded() if g.ref == SchemaRef(document, "#")).model
+
+
+def test_a_rule_narrows_the_constructor_and_both_halves_name_one_keyword() -> None:
+    """D6 and D4 together, on the classes that carry a rule.
+
+    A rule narrows ``model_validate``; the document decides acceptance through
+    ``strict_validate``.  Both must refuse the same payload and both must report
+    the DOCUMENT'S OWN keyword as the error ``type`` -- which is why
+    ``_base._refuse`` and the after-validator raise through one function.  Two
+    error shapes for one keyword is what that shares away.
+    """
+    for document, payload, keyword in RULE_VIOLATIONS:
+        model = _root(document)
+        for how in ("model_validate", "strict_validate"):
+            with pytest.raises(ValidationError) as caught:
+                getattr(model, how)(payload)
+            assert [e["type"] for e in caught.value.errors()] == [keyword], (
+                document,
+                how,
+                caught.value.errors(),
+            )
+
+
+def test_only_the_model_validate_path_observes_a_rule() -> None:
+    """A rule is INVISIBLE to every check the harness has, measured by removing it.
+
+    Every pair is offered its instance through ``strict_validate``, whose schema
+    half validates against the document -- so the refusal is implied by the
+    control whatever the rules say.  With the after-validator returning before it
+    evaluates anything, each payload above is ACCEPTED by the constructor and every
+    rule-carrying pair still grades green.
+
+    That is the whole justification for a rule being class data rather than a
+    schema fragment, and it is the reason the tests above are the only instrument
+    that can see one.
+
+    **The short-circuit is the module-level ``refuse`` and NOT the validator
+    method**, and that is measured rather than chosen: pydantic compiles a
+    ``model_validator`` into the class's core schema at class creation, so
+    assigning over ``RuleBound._enforce_adcp_rules`` renames something nothing
+    calls -- probed, and ``model_validate`` still refused.  The compiled validator
+    looks ``refuse`` up in ``_runtime``'s globals on every call, so patching that
+    name disables exactly the rule half.  ``_base._refuse`` holds its own
+    reference from an ``import ... from``, so the SCHEMA half keeps refusing,
+    which is what lets the two be separated at all.
+    """
+    carriers = sorted({document for document, _payload, _keyword in RULE_VIOLATIONS})
+    before = [check_pair(pair_of(g)) for g in graded()
+              if g.ref.document in carriers and g.ref.pointer == "#"]
+    claimed("documents carrying a rule violation fixture", carriers)
+    assert len(before) == len(carriers), (len(before), carriers)
+    assert all(r.outcome == "pass" for r in before), [(r.name, r.outcome) for r in before]
+
+    runtime = sys.modules[RuleBound.__module__]
+    original = runtime.refuse
+    try:
+        runtime.refuse = lambda _name, _errors: None
+        accepted = 0
+        for document, payload, keyword in RULE_VIOLATIONS:
+            _root(document).model_validate(payload)  # the rule half is gone: it builds
+            with pytest.raises(ValidationError) as caught:
+                _root(document).strict_validate(payload)  # the schema half still refuses
+            assert caught.value.errors()[0]["type"] == keyword, document
+            accepted += 1
+        assert accepted == len(RULE_VIOLATIONS), (accepted, len(RULE_VIOLATIONS))
+        after = [check_pair(pair_of(g)) for g in graded()
+                 if g.ref.document in carriers and g.ref.pointer == "#"]
+        assert [r.outcome for r in after] == [r.outcome for r in before]
+    finally:
+        runtime.refuse = original
+
+    for document, payload, keyword in RULE_VIOLATIONS:
+        with pytest.raises(ValidationError) as caught:
+            _root(document).model_validate(payload)
+        assert caught.value.errors()[0]["type"] == keyword, document
+
+
+#: Every rule kind, with the population of nodes the LOWERING writes it from and
+#: how many of those are a node ``lower_object`` can reach today (an object node
+#: with ``properties``).  The second number is why three kinds have no emitted
+#: carrier in this tree: a node inside an ``allOf`` conjunct is not a class here.
+#: **THE EIGHT RULE KINDS, BY NAME.**  The claim is that every kind the lowering can
+#: write IS written from a real bundle node -- a kind nothing writes is dead code -- and
+#: that is a statement about the NAMES.  The three counts each kind used to carry
+#: (sites, documents, reachable sites) were a reading of one bundle version, and two of
+#: them restated what the loop already asserts: the reachable count's own identity is
+#: asserted for ``UniqueItems`` below, where it is a property of the lowering and not a
+#: coincidence of this bundle.
+#:
+#: ``NegatedConditional`` is the one kind with NO reachable site: it is written only at
+#: nodes inside an ``allOf`` conjunct, which is not a class here at all, so it is named
+#: here as the part that is expected to be empty rather than read as a gap.
+RULE_KINDS = frozenset(
+    {
+        "UniqueItems",
+        "ForbiddenGroups",
+        "RequiredGroups",
+        # §5's "A union of presence-only branches that also forbid" (2026-10-27): the
+        # kind whose clauses ARE the branches, each carrying its own required group and
+        # its own forbidden groups.  Its carrier is ``core/catchment.json``.
+        "PresenceGroups",
+        "ConditionalRequired",
+        "PropertyCount",
+        "Dependencies",
+        "NegatedConditional",
+    }
+)
+#: The one kind the bundle gives no node a class can carry the rule at.
+UNREACHABLE_RULE_KINDS = frozenset({"NegatedConditional"})
+
+
+def test_every_rule_kind_is_written_from_a_real_bundle_node() -> None:
+    """The lowering, graded over the bundle rather than over an invented fixture.
+
+    Three of the six rule kinds have NO emitted carrier in this tree, and the
+    reason is structural rather than an oversight: every document in the bundle
+    that states a ``min``/``maxProperties`` or a conditional ALSO states an array
+    property or an ``enum``, which are steps 6 and 3 -- measured document by
+    document on all ten of them.  A ``NegatedConditional`` is written only at
+    nodes inside an ``allOf`` conjunct, which is not a class here at all.
+
+    So they are graded where they CAN be: the lowering against real nodes (here),
+    and each dataclass against two plain arguments (below), which is exactly why
+    ``Rule.errors`` takes ``keys`` and ``values`` and never a model.
+
+    ``UniqueItems`` is the opposite case and the reason it is a seventh kind rather
+    than a seventh ambition: its keyword is read off a property's own declaration, so
+    every node it is written at HAS a ``properties`` map and its reachable count
+    equals its site count -- asserted below rather than remarked on.
+    """
+    everywhere: dict[str, int] = {}
+    documents: dict[str, set[str]] = {}
+    reachable: dict[str, int] = {}
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        for _pointer, node in bundle.nodes(doc):
+            if not isinstance(node, dict):
+                continue
+            for source in rules.lower_declaration(node, keywords.Position.ROOT).rules:
+                # The kind is the runtime dataclass's own name, read off the INSTANCE:
+                # ``rules.lower`` composes values now and ``codegen.render`` writes the
+                # constructor expression (architecture §7), so a kind cannot be read out
+                # of text that no longer exists here.
+                kind = type(source).__name__
+                everywhere[kind] = everywhere.get(kind, 0) + 1
+                documents.setdefault(kind, set()).add(document)
+                if "properties" in node:
+                    reachable[kind] = reachable.get(kind, 0) + 1
+    # Named before anything is asserted of the members: an empty walk would make the
+    # three clauses below hold over nothing, and "a rule kind nothing writes is dead
+    # code" is exactly the claim that cannot be read off an empty measurement.
+    claimed("rule kinds written from a bundle node", everywhere)
+    measured = {
+        kind: (everywhere[kind], len(documents[kind]), reachable.get(kind, 0))
+        for kind in everywhere
+    }
+    assert set(measured) == RULE_KINDS, sorted(measured)  # one nothing writes is dead code
+    for kind, (sites, docs, _reachable) in sorted(measured.items()):
+        assert sites and docs, (kind, measured[kind])
+    # And WHICH kinds have no node a class can carry them at, named rather than read
+    # off a zero in a table of counts.
+    assert {k for k, (_s, _d, r) in measured.items() if not r} == UNREACHABLE_RULE_KINDS, measured
+    # ``uniqueItems``'s own identity, stated so a lowering that started reading the
+    # keyword off a node with no ``properties`` map would redden here: the kind is
+    # read off a property's declaration, so every site it is written at is reachable.
+    sites, _documents, reachable = measured["UniqueItems"]
+    assert sites == reachable, measured["UniqueItems"]
+
+
+def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
+    """Each dataclass, graded without pydantic and without a document.
+
+    ``Rule.errors(keys, values)`` is the whole protocol, which is what makes the
+    three kinds with no emitted carrier gradeable at all.  Each row is the rule,
+    the keys that arrived, and the JSON Schema keyword it must name -- or ``None``
+    where the instance satisfies it, so each kind is exercised in both directions
+    and a rule that refuses everything could not pass this.
+    """
+    from adcp.types._runtime import (
+        ConditionalRequired,
+        Dependencies,
+        ForbiddenGroups,
+        Match,
+        NegatedConditional,
+        Presence,
+        PresenceGroups,
+        PropertyCount,
+        RequiredGroups,
+        UniqueItems,
+    )
+
+    cases = [
+        (Dependencies("width", ("height",)), {"width"}, "dependencies"),
+        (Dependencies("width", ("height",)), {"width", "height"}, None),
+        (Dependencies("width", ("height",)), {"height"}, None),
+        (PropertyCount(minimum=2), {"a"}, "minProperties"),
+        (PropertyCount(minimum=2), {"a", "b"}, None),
+        (PropertyCount(maximum=1), {"a", "b"}, "maxProperties"),
+        (PropertyCount(maximum=1), {"a"}, None),
+        (ForbiddenGroups((("a", "b"),)), {"a", "b"}, "not"),
+        (ForbiddenGroups((("a", "b"),)), {"a"}, None),
+        (RequiredGroups((("a",), ("b",)), "anyOf"), set(), "anyOf"),
+        (RequiredGroups((("a",), ("b",)), "anyOf"), {"b"}, None),
+        (RequiredGroups((("a",), ("b",)), "oneOf"), {"a", "b"}, "oneOf"),
+        (RequiredGroups((("a",), ("b",)), "oneOf"), {"a"}, None),
+        (RequiredGroups((("a",), ("b",)), "oneOf"), set(), "oneOf"),
+        # ``PresenceGroups``: the two halves are PAIRED, so a name one clause forbids is
+        # only forbidden to that clause.  ``{"b"}`` satisfies the second clause and the
+        # first forbids ``b`` -- which a root-level ``ForbiddenGroups`` over the union of
+        # the ``not``s would refuse, and which the document admits.
+        (
+            PresenceGroups(
+                (Presence(("a",), (("b",),)), Presence(("b",), (("a",),))), "oneOf"
+            ),
+            {"b"},
+            None,
+        ),
+        (
+            PresenceGroups(
+                (Presence(("a",), (("b",),)), Presence(("b",), (("a",),))), "oneOf"
+            ),
+            {"a", "b"},
+            "oneOf",  # 0 clauses hold: each forbids the other's name
+        ),
+        (
+            PresenceGroups(
+                (Presence(("a",), (("b",),)), Presence(("b",), (("a",),))), "oneOf"
+            ),
+            set(),
+            "oneOf",
+        ),
+        (
+            PresenceGroups((Presence(("a",), (("b", "c"),)),), "anyOf"),
+            {"a", "b"},
+            None,  # a multi-name group forbids the GROUP, not either name alone
+        ),
+        (
+            PresenceGroups((Presence(("a",), (("b", "c"),)),), "anyOf"),
+            {"a", "b", "c"},
+            "anyOf",
+        ),
+        (ConditionalRequired((Match("u", True, ("p",)),), require=("x",)), {"u"}, "required"),
+        (ConditionalRequired((Match("u", True, ("p",)),), require=("x",)), {"u", "x"}, None),
+        (ConditionalRequired((Match("u", True, ("p",)),), forbid=("x",)), {"u", "x"}, "not"),
+        (NegatedConditional((Match("u", True, ("p",)),), require=("x",)), {"u"}, None),
+        (NegatedConditional((Match("u", True, ("p",)),), require=("x",)), set(), "required"),
+    ]
+    seen: set[str] = set()
+    for rule, keys, keyword in cases:
+        values = dict.fromkeys(keys, "p")
+        got = [e[0] for e in rule.errors(frozenset(keys), values)]
+        assert got == ([keyword] if keyword else []), (rule, keys, got)
+        seen.add(type(rule).__name__)
+
+    # ``UniqueItems`` is judged on the VALUE and not on which keys arrived, so its
+    # fixture is a values map.  Six rows, each a reading this kind has to get right:
+    # distinct, repeated, draft-07's ``true != 1`` against Python's ``True == 1``,
+    # the unhashable items that rule ``set[X]`` out as an annotation, a non-array
+    # value (a union arm the keyword says nothing about), and an absent key.
+    for rule, values, keyword in [
+        (UniqueItems("t"), {"t": ["a", "b"]}, None),
+        (UniqueItems("t"), {"t": ["a", "a"]}, "uniqueItems"),
+        (UniqueItems("t"), {"t": [True, 1, 1.0]}, "uniqueItems"),  # 1 == 1.0, true != 1
+        (UniqueItems("t"), {"t": [True, 1]}, None),
+        (UniqueItems("t"), {"t": [{"a": 1}, {"a": 1}]}, "uniqueItems"),
+        (UniqueItems("t"), {"t": "not an array"}, None),
+        (UniqueItems("t"), {}, None),
+    ]:
+        got = [e[0] for e in rule.errors(frozenset(values), values)]
+        assert got == ([keyword] if keyword else []), (rule, values, got)
+        seen.add(type(rule).__name__)
+
+    assert seen == set(RULE_KINDS), seen
+
+
+#: **THE THREE VALUE-RULE KINDS, AND THE EMITTED SITE EACH IS REACHED AT.**  §2 names
+#: them -- "where no class sits above the value ... the rule hangs off the value's own
+#: annotated type as an after-validator (``AtLeastOne``, ``NotValue``, ``Distinct``)" --
+#: and ``src/adcp/types/_runtime.py`` declared NONE of them until this row: 0 emitted
+#: each, against ``UniqueItems`` at 212 and ``ForbiddenGroups`` at 64, so the
+#: class-level path was well travelled and the value-level path had never been walked.
+#:
+#: Each row is a DOCUMENT and a POSITION, so the set is the claim that each kind is
+#: reached from a real bundle node at the position §2 puts it at -- not that it exists.
+#: The payloads are below: one the document REFUSES and one it ADMITS, so a validator
+#: that refused everything could not pass either.
+#:
+#: ``Distinct`` carries three rows because its three positions are three different
+#: renderings -- inside ``dict[K, V]``, as a module-level alias, as one arm of a union
+#: -- and a row that only worked at one of them is the defect this names.  A root array
+#: is the fourth position §2 lists and is deliberately NOT here: it is a root model,
+#: which carries a rule TUPLE exactly as a class does, so ``UniqueItems('root')``
+#: reaches it and no validator is needed (``lower.containers.array``).
+VALUE_RULE_CARRIERS: dict[str, list[tuple[str, str]]] = {
+    "Distinct": [
+        ("core/account-authorization.json", "MAPV"),
+        ("core/daast-tracker-constraints.json", "DEF"),
+        ("error-details/requote-required.json", "BRANCH"),
+    ],
+    #: ``NotValue`` carries TWO rows because its two positions are two different
+    #: readings of §2's second half.  ROOT is a root alias: the node's own ``not`` beside
+    #: its own type.  **CONJ is one conjunct stating the TYPE and another the RULE**
+    #: (``adcp-client-python-10l.21``, ``intersect.the_conjuncts_own_type``), so §2's
+    #: intersection has to compose the two before either reaches an ``ir.TypeRef`` -- and
+    #: that reading was the unwritten half, which is why 9 nodes refused there.
+    "NotValue": [
+        ("core/iana-timezone.json", "ROOT"),
+        ("core/delivery-metric-aggregate.json", "CONJ"),
+    ],
+    "AtLeastOne": [("core/product-execution-requirement.json", "PROP")],
+}
+
+
+def test_each_value_rule_kind_refuses_on_the_value_alone() -> None:
+    """Each kind, graded without pydantic and without a document.
+
+    ``ValueRule.__call__(value)`` is the whole protocol -- the sibling of
+    ``Rule.errors(keys, values)`` and deliberately not the same one, because a rule on
+    a type is handed the one value its annotation is about and a rule on a class is
+    handed the keys that arrived.  Each row is the rule, the value, and the JSON Schema
+    keyword it must name, or ``None`` where the value satisfies it.
+    """
+    from adcp.types._runtime import AtLeastOne, Distinct, NotValue
+
+    cases: list[tuple[Any, Any, str | None]] = [
+        (Distinct(), ["a", "b"], None),
+        (Distinct(), ["a", "a"], "uniqueItems"),
+        # draft-07's equality and not Python's: ``1 == 1.0`` is one value and
+        # ``true != 1`` is two.  ``_same`` is shared with ``UniqueItems``, so the two
+        # kinds cannot come to disagree about what a repeat IS.
+        (Distinct(), [True, 1, 1.0], "uniqueItems"),
+        (Distinct(), [True, 1], None),
+        (Distinct(), [{"a": 1}, {"a": 1}], "uniqueItems"),
+        # Not a list: the annotated type can be one arm of a union whose other arms are
+        # not arrays, and ``uniqueItems`` says nothing about those.
+        (Distinct(), "not an array", None),
+        (NotValue(("x",)), "y", None),
+        (NotValue(("x",)), "x", "not"),
+        (NotValue((1,)), True, None),  # draft-07 again: ``true`` is not ``1``
+        (NotValue(("x", "y")), "y", "not"),
+        (AtLeastOne(values=("p",)), ["q", "p"], None),
+        (AtLeastOne(values=("p",)), ["q"], "contains"),
+        (AtLeastOne(values=("p",)), [], "contains"),
+        (AtLeastOne(pinned=(("effect", "blocked"),)), [{"effect": "blocked"}], None),
+        (AtLeastOne(pinned=(("effect", "blocked"),)), [{"effect": "allowed"}], "contains"),
+        (AtLeastOne(pinned=(("effect", "blocked"),)), "not an array", None),
+    ]
+    seen: set[str] = set()
+    for rule, value, keyword in cases:
+        try:
+            assert rule(value) is value, (rule, value)
+            got = None
+        except PydanticCustomError as refusal:
+            got = refusal.type
+        assert got == keyword, (rule, value, got)
+        seen.add(type(rule).__name__)
+    assert seen == set(VALUE_RULE_CARRIERS), seen
+
+
+def test_every_value_rule_kind_is_enforced_by_the_class_the_tree_emitted() -> None:
+    """The three kinds, through the EMITTED annotation and not through a fixture.
+
+    The test above grades the dataclass; this grades the pipeline that reaches it --
+    the lowering writing the rule onto ``ir.TypeRef.validators``, the renderer composing
+    ``Annotated[…, AfterValidator(…)]``, and the three places that annotation sits.  A
+    refusal here names the DOCUMENT's own keyword, which is what makes the two halves of
+    ``strict_validate`` read alike.
+
+    **Both directions per site**, because a narrowing is the failure that matters: the
+    admitted payload is one the DOCUMENT accepts, so a rule written where the document
+    states none would redden here rather than only in the accepts draw.
+    """
+    from adcp.types._schemas.core.account_authorization import AccountAuthorization
+    from adcp.types._schemas.core.daast_tracker_constraints import DAASTTrackerConstraints
+    from adcp.types._schemas.core.delivery_metric_aggregate import (
+        DeliveryMetricAggregateStandard,
+    )
+    from adcp.types._schemas.core.iana_timezone import IANATimezoneIdentifier
+    from adcp.types._schemas.core.product_execution_requirement import (
+        Connection,
+    )
+    from adcp.types._schemas.error_details.requote_required import RequoteRequiredDetails
+
+    # (kind, document, build, the payload the document refuses, one it admits).
+    sites = [
+        (
+            "Distinct",
+            "core/account-authorization.json",
+            AccountAuthorization.model_validate,
+            {"allowed_tasks": ["get_products"], "field_scopes": {"k": ["a", "a"]}},
+            {"allowed_tasks": ["get_products"], "field_scopes": {"k": ["a", "b"]}},
+        ),
+        (
+            "Distinct",
+            "core/daast-tracker-constraints.json",
+            DAASTTrackerConstraints.model_validate,
+            {"daast_versions": ["1.0", "1.0"]},
+            {"daast_versions": ["1.0", "1.1"]},
+        ),
+        (
+            "Distinct",
+            "error-details/requote-required.json",
+            RequoteRequiredDetails.model_validate,
+            {"envelope_field": ["a", "a"]},
+            {"envelope_field": ["a", "b"]},
+        ),
+        (
+            "NotValue",
+            "core/iana-timezone.json",
+            TypeAdapter(IANATimezoneIdentifier).validate_python,
+            "inventory_local",
+            "America/New_York",
+        ),
+        (
+            # §5's ``$ref`` row at CONJ: ``metric_id`` is ``allOf: [{$ref: <an enum>},
+            # {not: {enum: [...]}}]``, so the enumeration is the field's own TYPE and the
+            # ``not`` is the rule on it.  Both payloads are the DOCUMENT's own answer --
+            # ``Draft7Validator`` admits the first and refuses the second.
+            "NotValue",
+            "core/delivery-metric-aggregate.json",
+            DeliveryMetricAggregateStandard.model_validate,
+            {"scope": "standard", "metric_id": "viewability", "value": 1.0},
+            {"scope": "standard", "metric_id": "impressions", "value": 1.0},
+        ),
+        (
+            "AtLeastOne",
+            "core/product-execution-requirement.json",
+            Connection.model_validate,
+            {"connection_type": "advertiser_account", "required_for": ["list_creatives"]},
+            {
+                "connection_type": "advertiser_account",
+                "required_for": ["list_creatives", "create_media_buy"],
+            },
+        ),
+    ]
+    # The keyword each kind refuses on is the DOCUMENT's own, read off the rule rather
+    # than listed beside it: one spelling, so a kind that started naming something else
+    # reddens here.
+    keyword = {"Distinct": "uniqueItems", "NotValue": "not", "AtLeastOne": "contains"}
+    claimed(
+        "value-rule kinds enforced by an emitted class",
+        {kind for kind, *_ in sites},
+        inside=set(VALUE_RULE_CARRIERS),
+    )
+    assert {kind for kind, *_ in sites} == set(VALUE_RULE_CARRIERS)
+    assert sorted((k, d) for k, d, *_ in sites) == sorted(
+        (kind, document)
+        for kind, carried in VALUE_RULE_CARRIERS.items()
+        for document, _position in carried
+    )
+    for kind, document, build, refused, admitted in sites:
+        with pytest.raises(ValidationError) as caught:
+            build(refused)
+        assert keyword[kind] in {e["type"] for e in caught.value.errors()}, (
+            document,
+            caught.value.errors(),
+        )
+        build(admitted)  # the document admits it, so the model must
+
+
+def test_a_presence_clause_keeps_its_two_halves_paired_to_its_own_branch() -> None:
+    """``core/catchment.json``: the measurement that chose ``PresenceGroups``.
+
+    §5, "A union of presence-only branches that also forbid" (2026-10-27).  The
+    document states three catchment methods and each branch forbids the other two, so
+    the ``not`` is PER BRANCH.  The decision was that one rule carries the branches as
+    clauses with both halves paired, and the alternative -- a ``RequiredGroups`` over
+    the R*ᵢ* beside a root-level ``ForbiddenGroups`` over the union of the F*ᵢ* --
+    is wrong because the hoisted ``not`` forbids every group unconditionally.
+
+    Three assertions and the third is the one that banks the design:
+
+    1. the DOCUMENT's own verdict on two payloads, from ``jsonschema`` over the
+       ``oneOf`` itself -- which is the whole of what the rule renders, and carries no
+       ``$ref``, so the claim "the document admits this" is checked and not asserted;
+    2. the RULE the walk writes, on the same two payloads, agreeing with it;
+    3. the PERTURBATION: the hoisted pair, with both halves DERIVED from the same
+       document rather than written out, refuses the payload the document admits.
+
+    A later row that "simplifies" the paired clauses back into two rules reddens (3).
+    """
+    doc = bundle.read(BUNDLE, "core/catchment.json")
+    branches = doc["oneOf"]
+    admitted = {"catchment_id": "drive", "radius": {"value": 1, "unit": "km"}}
+    refused = {**admitted, "geometry": {"type": "Polygon", "coordinates": []}}
+
+    # (1) the document's own verdict, on the statement the rule renders.
+    validator = jsonschema.Draft7Validator({"oneOf": branches})
+    assert validator.is_valid(admitted), sorted(validator.iter_errors(admitted))
+    assert not validator.is_valid(refused)
+
+    # (2) the rule the walk writes for it, on the same two payloads.
+    (rule,) = [
+        r
+        for r in rules.lower_declaration(doc, keywords.Position.ROOT).rules
+        if type(r).__name__ == "PresenceGroups"
+    ]
+    assert rule.combinator == "oneOf", rule
+    assert len(rule.clauses) == len(branches), rule
+    for payload, refuses in ((admitted, False), (refused, True)):
+        keys = frozenset(payload)
+        got = [e[0] for e in rule.errors(keys, payload)]
+        assert got == (["oneOf"] if refuses else []), (payload, got)
+
+    # (3) **THE PERTURBATION.**  Both halves of the hoisted pair are read off the same
+    # document: the required groups are the branches' ``required``, the forbidden
+    # groups are the union of the branches' ``not``s, in document order and
+    # deduplicated.  Neither is hand-written, so this measures the design and not a
+    # fixture.
+    from adcp.types._runtime import ForbiddenGroups, RequiredGroups
+
+    hoisted_required = tuple(tuple(b["required"]) for b in branches)
+    hoisted_forbidden: list[tuple[str, ...]] = []
+    for branch in branches:
+        for group in schema_parse.required_groups(branch["not"], keywords.Position.RULE) or []:
+            if group not in hoisted_forbidden:
+                hoisted_forbidden.append(group)
+    assert sorted(hoisted_forbidden) == [("geometry",), ("radius",), ("travel_time",)]
+    pair = (
+        RequiredGroups(hoisted_required, "oneOf"),
+        ForbiddenGroups(tuple(hoisted_forbidden)),
+    )
+    keys = frozenset(admitted)
+    hoisted_says = [e[0] for rule_ in pair for e in rule_.errors(keys, admitted)]
+    # The ``RequiredGroups`` half is content -- one group is satisfied -- and the
+    # ``ForbiddenGroups`` half refuses on ``radius``, which is the very name the
+    # satisfied branch REQUIRES.  So the hoisted pair refuses a payload the document
+    # admits, which is the fact ``PresenceGroups`` exists to avoid.
+    assert hoisted_says == ["not"], hoisted_says
+
+
+def test_a_conditional_that_narrows_a_value_is_the_schemas_and_not_a_rules() -> None:
+    """The ceiling D6 accepts, measured rather than written in a docstring.
+
+    A rule is expressible only as a statement about key PRESENCE.
+    ``core/canvas-constraint.json``'s ``if unit == "percent" then x.maximum = 100``
+    is a statement about a VALUE, so it gets no rule: the constructor builds the
+    violating payload and the schema half refuses the same payload on ``maximum``.
+
+    Refusing the document for it instead would cost the whole ``if`` population --
+    186 documents state one -- for a constraint the accepted set already enforces.
+    """
+    document = "core/canvas-constraint.json"
+    schema = bundle.read(BUNDLE, document)
+    violating = {
+        "constraint": "safe_area",
+        "region": {"x": 101, "y": 0, "width": 1, "height": 1, "unit": "percent"},
+    }
+    assert conforms(schema, violating) is False
+    assert violated_keywords(schema, violating) == ["maximum"]
+    # The root's own rules are the dependency and nothing else: the conditional
+    # sits at /properties/region/allOf/0 and says `x.maximum = 100`, which is a
+    # statement about a VALUE and so reduces to no rule at all.
+    assert rules.lower_declaration(schema, keywords.Position.ROOT).rules == [
+        Dependencies("breakpoint_id", ("state_id",))
+    ], rules.lower_declaration(schema, keywords.Position.ROOT).rules
+    # And the expression the renderer writes for it, so the SPELLING of the constructor
+    # is graded here too: the kinds are frozen dataclasses declared in the runtime
+    # (architecture §7) and the call is ``codegen.render``'s.
+    assert render._rule(rules.lower_declaration(schema, keywords.Position.ROOT).rules[0]) == (
+        "Dependencies('breakpoint_id', ('state_id',))"
+    )
+    region = schema["properties"]["region"]
+    assert isinstance(region["allOf"][0]["if"], dict)
+    assert rules.lower_declaration(region, keywords.Position.ROOT).rules == [], region
+    # **THE DOCUMENT EMITS NOW, so the claim is graded on a CLASS.**  This line
+    # asserted the document was refused -- "so the pair above is a harness control
+    # rather than a class: it refuses on `enum`, which is step 3's row" -- and step
+    # 3's row emits it at 64131600f (``salesagent-j3k2l.29``), refusals ``{}``.  The
+    # inversion hands the test a strictly better instrument than the refusal was: the
+    # ceiling D6 accepts is now observable on the emitted class, so it is asserted
+    # there.  ``model_validate`` ACCEPTS the violating payload, because no rule
+    # observes a statement about a VALUE, and the schema half refuses the same
+    # payload on ``maximum`` -- which is the whole of what this test claims, now
+    # measured on the production entry point instead of on a document's absence.
+    assert compiled(BUNDLE, [document]).refusals == {}, "it refused once; see above"
+    emitted = next(g for g in graded() if g.ref == SchemaRef(document, "#"))
+    assert [type(r).__name__ for r in emitted.model.__dict__.get("_adcp_rules", ())] == [
+        "Dependencies"
+    ], emitted.model.__dict__.get("_adcp_rules")
+    assert emitted.model.model_validate(violating), "a value rule is not a rule"
+    with pytest.raises(ValidationError) as caught:
+        emitted.accept(violating)
+    assert [e["type"] for e in caught.value.errors()] == ["maximum"], caught.value.errors()
+
+
+def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() -> None:
+    """The keyword is stepped, the tree now carries it, and a rule holds every site.
+
+    This test replaces one that recorded a BAD PROBE: ``uniqueItems`` was stepped at
+    462 sites over 198 documents and 0 of them was on an emitted pair, so breaking
+    the step's duplicate forcing reddened only its own exclusivity assertion.  Both
+    halves of that recording are kept and the second is inverted rather than
+    dropped -- the keyword is still stepped, and every site the tree now carries is
+    held by a class whose rule refuses a duplicate.
+
+    Three directions, because the second alone would pass for a class that renders
+    the fact and enforces nothing:
+
+    1. the bundle still STATES the keyword, counted off ``bundle.nodes`` (the
+       population did not go quiet);
+    2. the tree carries it, at a NON-EMPTY set of sites, and every one of them is a
+       ``properties/<name>`` array whose holding class states ``UniqueItems`` for
+       that field -- so a site the lowering missed reddens here;
+    3. one of those classes REFUSES a duplicate through ``model_validate``, which is
+       the only path a rule is observable on (D4 leaves acceptance to the schema).
+    """
+    # Direction 1, read off the bundle's own walk rather than off ``steps()``, which
+    # section 6 deleted: the step census read 462 sites over these same 198 documents
+    # because a step merged the positions stating ONE fact, and the occurrence count
+    # is the figure that does not depend on a mutation helper existing.
+    stating = [
+        (document, pointer)
+        for document in bundle.portable(BUNDLE)
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document))
+        if isinstance(node, dict) and "uniqueItems" in node
+    ]
+    # Both denominators, as non-emptiness and not as two counts: the claim is that the
+    # keyword has sites in the bundle for direction 2 to find in the tree, and the two
+    # figures were a reading of one bundle version (the step census read 462 over these
+    # same documents because a step merged the positions stating ONE fact).
+    claimed("bundle nodes stating uniqueItems", stating)
+    claimed("documents stating uniqueItems", {document for document, _ in stating})
+
+    carried = [
+        f"{document}{pointer or '/'}"
+        for document in sorted({g.ref.document for g in graded()})
+        for pointer, node in bundle.nodes(schema_at(SchemaRef(document, "#")))
+        if isinstance(node, dict) and "uniqueItems" in node
+    ]
+    assert carried, "the tree emits no document carrying the keyword; the step is unreached"
+
+    # Direction 2, over EVERY class the tree ships rather than over the carried sites:
+    # the ``UniqueItems`` keys a class states and the keys its own node's properties
+    # declare distinct are the SAME SET.  Read off the raw bundle document at the
+    # class's own pointer, not off the packaged one -- a resolved document inlines a
+    # ``$ref``'s nodes, so a site at ``/properties/vendor/properties/countries`` there
+    # belongs to the TARGET's class and is graded on the target's own pair (14 of the
+    # carried sites are that).  The gate is spelled here rather than called, so a
+    # lowering that stopped reading the keyword reddens.
+    # **Read off each class's OWN declaration (``__dict__``) and not through the
+    # MRO.**  ``_adcp_rules`` is a class attribute, so ``getattr`` on a SUBCLASS
+    # answers its base's tuple, and the two sides of this comparison were then at
+    # different scopes: the document side is this class's own node, and the class side
+    # was its node's rules plus every base's.  Measured at 64131600f over all 1,034
+    # pairs, that is exactly one disagreement -- ``core/assets/catalog-asset.json#``,
+    # whose root is ``allOf: [{$ref: core/catalog.json}]`` and whose class declares no
+    # rules of its own, so ``getattr`` reported ``Catalog``'s
+    # ``UniqueItems('conversion_events')`` against a document that declares no such
+    # property.  Reading the class's own declaration gives 0 disagreements, and it is
+    # the same attribution rule the raw-document read above is chosen for: a site
+    # belongs to the class that DECLARES it and is graded on that class's own pair.
+    # 173 of the tree's classes declare a rule tuple, so this is not an empty read.
+    wrong: list[str] = []
+    for g in graded():
+        if not isinstance(g.model, type):
+            continue  # D2's root-scalar alias: no class, and no rule tuple to read
+        raw = dict(bundle.nodes(bundle.read(BUNDLE, g.ref.document)))
+        node = raw.get(g.ref.pointer.removeprefix("#"))
+        if not isinstance(node, dict):
+            continue  # a class at a pointer the raw walk does not reach
+        # **The node's own ``properties`` AND every inline conjunct's**, which is the
+        # one map ``lower.composition.lower_composition`` builds: a draft-07 ``allOf`` conjunct
+        # applies to the same instance, so its ``properties`` are this node's fields and
+        # a ``uniqueItems`` among them is this class's rule.  Reading the node's own
+        # ``properties`` alone put the two sides at different scopes again -- the same
+        # defect as the MRO read above, from the document side -- and reported
+        # ``core/demographic-targeting-intent.json#/properties/age`` as stating two
+        # ``UniqueItems`` against a document of ``[]``, where the document states both
+        # inside ``/properties/age/allOf/1/properties``.
+        #
+        # A ``$ref`` conjunct is SKIPPED, by the attribution rule this comparison is
+        # already built on: those properties are the target's and are graded on the
+        # target's own pair.  The nested ``allOf`` is followed because production
+        # follows it (section 5's ``allOf`` row at CONJ).
+        declares: dict[str, Any] = dict(node.get("properties") or {})
+        unread = list(node.get("allOf") or [])
+        while unread:
+            conjunct = unread.pop(0)
+            if not isinstance(conjunct, dict):
+                continue
+            keys = set(intersect.declaring(conjunct, keywords.Position.CONJ))
+            if keys == {"$ref"}:
+                continue
+            unread.extend(conjunct.get("allOf") or [])
+            declares.update(conjunct.get("properties") or {})
+        want = sorted(
+            key
+            for key, declaration in declares.items()
+            if isinstance(declaration, dict)
+            and declaration.get("type") == "array"
+            and declaration.get("uniqueItems") is True
+        )
+        # **A ROOT MODEL's array is the ROOT and not a property**, which is §5's group
+        # (a) at the position §2 gives it: "A root array is a root model, and a root
+        # model carries a rule tuple exactly as a class does, so `Distinct` and
+        # `AtLeastOne` reach it.  The keyword is enforced, not dropped."  So the
+        # document's own node IS the array, the rule is keyed on the root model's one
+        # pydantic field, and ``want`` is read off that node rather than off a
+        # ``properties`` map the document does not have there.  Landed at
+        # ``adcp-client-python-10l.20``; 4 pairs over the committed tree.
+        if node.get("type") == "array":
+            want = [ir.ROOT_FIELD] if node.get("uniqueItems") is True else []
+        got = sorted(
+            r.key
+            for r in g.model.__dict__.get("_adcp_rules", ())
+            if type(r).__name__ == "UniqueItems"
+        )
+        if got != want:
+            wrong.append(f"{g.ref.document}{g.ref.pointer}: states {got}, the document {want}")
+    assert wrong == [], wrong
+    held = [
+        g
+        for g in graded()
+        if isinstance(g.model, type)
+        and any(
+            type(r).__name__ == "UniqueItems" for r in g.model.__dict__.get("_adcp_rules", ())
+        )
+    ]
+    # 87 at 64131600f, declared by the classes themselves; >= so the test states a
+    # floor rather than a count over the emitted population, which moves every merge.
+    assert len(held) >= 19, len(held)  # the keyword's own population, not an empty loop
+
+    # Direction 3: the rule, on the constructor, on a class the tree ships.
+    from adcp.types._schemas.core.property import Property as PropertyModel
+
+    ok = {"property_type": "website", "name": "n", "identifiers": [{"type": "domain", "value": "a"}]}
+    assert PropertyModel.model_validate({**ok, "tags": ["a", "b"]}).tags == ["a", "b"]
+    with pytest.raises(ValidationError) as caught:
+        PropertyModel.model_validate({**ok, "tags": ["a", "a"]})
+    assert caught.value.errors()[0]["type"] == "uniqueItems", caught.value.errors()
+
+    assert "uniqueItems" in rules.KEYWORDS(keywords.Position.ROOT), (
+        "the keyword must not block an object lowering"
+    )
+    # **This line used to assert the OPPOSITE and the design reversed under it.**  It
+    # read ``not any("UniqueItems" in source for source in RULE_KIND_POPULATION)``,
+    # which iterated that constant's KEYS; it was written at ``438240878`` when it had
+    # six names and no ``UniqueItems``, and ``d50d26481`` made ``UniqueItems`` the
+    # seventh rule kind and left the line standing -- so it asserted a falsehood about
+    # its own module-level constant for months, with no number to re-point.
+    # The fact that is true now is the one the kind was added for, and its arithmetic
+    # (sites == reachable, over the bundle) is graded by
+    # ``test_every_rule_kind_is_written_from_a_real_bundle_node``.
+    assert "UniqueItems" in RULE_KINDS, sorted(RULE_KINDS)
+
+
+# --------------------------------------------------------------------------- #
+# D2's `const` row: a pinned value is a `Literal` (salesagent-j3k2l.16)
+# --------------------------------------------------------------------------- #
+def _const_nodes() -> list[tuple[str, str, dict]]:
+    """Every ``const`` node in the bundle, at a schema position, with its pointer.
+
+    Derived from ``bundle.nodes`` rather than from a key search, for that walk's own
+    reason: a ``const`` holds INSTANCE data, so a value inside one may itself be an
+    object with a property named ``const``.
+    """
+    return [
+        (document, pointer, node)
+        for document in bundle.portable(BUNDLE)
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document))
+        if "const" in node
+    ]
+
+
+def test_a_const_node_is_a_literal_over_the_value_it_pins() -> None:
+    """The row, end to end on a document written here, and graded in both directions.
+
+    The value's own JSON type is what the node admits, so the three shapes the bundle
+    writes are all here -- a ``const`` with the document's ``type`` word beside it,
+    one without, and a boolean.
+    """
+    doc = {
+        "title": "Pinned",
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "typed": {"type": "string", "const": "collection_list_changed"},
+            "typeless": {"const": "asap"},
+            "flag": {"type": "boolean", "const": True},
+        },
+        "required": ["typed", "typeless", "flag"],
+    }
+    model, text = _constructed(doc)
+    # the import is the COMPILER's: the row adds none, and dmcg reports the one its
+    # own rendering needs.
+    assert "from typing import ClassVar, Literal" in text, text
+    assert "typed: Literal['collection_list_changed']" in text, text
+    assert "typeless: Literal['asap']" in text, text
+    assert "flag: Literal[True]" in text, text
+
+    # and the Literal is the accepted set, not an annotation: the pinned value in,
+    # anything else out.
+    accept = _accept_of(doc, model)
+    assert accept({"typed": "collection_list_changed", "typeless": "asap", "flag": True})
+    with pytest.raises(Exception):  # noqa: B017 -- either half may refuse first
+        accept({"typed": "something_else", "typeless": "asap", "flag": True})
+
+
+def test_a_pinned_value_carrying_a_dot_renders_whole() -> None:
+    """The regression this row was built on top of, and it is the compiler's seam.
+
+    The annotation used to be spelled in the WALK -- ``Type(f"Literal[{value!r}]",
+    local=True)``, in ``lower.union._literal`` -- and reached dmcg as a ``Reference``
+    PATH, where ``treat_dot_as_module`` reads a dot as a module qualifier and keeps
+    the last segment.  ``Literal['account.status_changed']`` rendered as
+    ``status_changed']`` and ``core/account_status_changed_webhook.py`` did not parse.
+    Measured the other way on the same type manager: ``data_type(literals=[...])``
+    renders the value whole, escapes it, and reports its own import.
+
+    **0 of the 25 distinct Literals the old spelling actually emitted carries a dot**,
+    which is why the defect was latent -- while **103 of the bundle's ``const``
+    values, over 37 documents, do**.  Both denominators are asserted, because the
+    first alone reads as a claim about the bundle and the second alone does not say
+    why nothing caught it.
+    """
+    dotted = [v for _, _, n in _const_nodes() if isinstance(v := n["const"], str) and "." in v]
+    # The bundle's own dotted pins, non-empty: the sentence this denominator supports
+    # is "the bundle HAS dotted const values while the old spelling emitted none of
+    # them", and that is a statement about two sets being non-empty and empty -- the
+    # second is asserted on the next line but one.  103 was one bundle version's count
+    # of the first.
+    claimed("bundle const values carrying a dot", set(dotted))
+    emitted_dotted = [
+        node["const"]
+        for g in graded()
+        for _, node in bundle.nodes(schema_at(SchemaRef(g.ref.document, "#")))
+        if isinstance(node.get("const"), str) and "." in node["const"]
+    ]
+    assert emitted_dotted, "no dotted pin reaches the tree; this regression is ungraded"
+
+    model, text = _constructed(
+        {
+            "title": "Dotted",
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "notification_type": {"type": "string", "const": "account.status_changed"}
+            },
+            "required": ["notification_type"],
+        }
+    )
+    assert "Literal['account.status_changed']" in text, text
+    assert (
+        model.model_json_schema()["properties"]["notification_type"]["const"]
+        == "account.status_changed"
+    )
+    # the quoting is the compiler's too, which a hand-built f-string would also own
+    _, quoted = _constructed(
+        {
+            "title": "Quoted",
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"k": {"type": "string", "const": "it's"}},
+            "required": ["k"],
+        }
+    )
+    assert 'Literal["it\'s"]' in quoted, quoted
+
+
+def _const_refusal(node: dict) -> Refusal:
+    """The refusal a document whose one property is ``node`` lowers to."""
+    doc = {"title": "Bad", "type": "object", "properties": {"k": node}, "required": ["k"]}
+    caught = refusal_from(emit.lower_document("bad.json", doc))
+    return caught
+
+
+def test_a_const_that_cannot_be_a_literal_is_refused_by_name() -> None:
+    """Fire probe for both of the row's refusals, each made to fail.
+
+    Both have a population of 0 in this bundle
+    (``test_the_const_row_claims_no_root_and_lowers_every_const_node`` asserts the
+    value types), so a hand-built node is the only way to reach either -- and a
+    refusal nothing reaches is a refusal nobody has read.
+
+    ``codegen.lower.const.LITERALS`` is also graded against the COMPILER's own slot
+    rather than taken on trust, because that is where it comes from: a pin bump that
+    widened or narrowed ``DataType.literals`` would otherwise leave the row refusing
+    a value the compiler can now spell, or admitting one it cannot.
+    """
+    annotation = str(DataType.model_fields["literals"].annotation)
+    assert {t.__name__ for t in lower_const.LITERALS} == {
+        name for name in ("bool", "int", "str", "float", "bytes") if f"[{name}," in annotation
+    }, annotation
+
+    # the four types the slot has no spelling for: without the refusal each of these
+    # is a pydantic ValidationError raised inside dmcg, naming no document.
+    for value, name in (({}, "dict"), ([], "list"), (None, "NoneType"), (1.5, "float")):
+        node = {"const": value} if value is not None else {"type": "null", "const": None}
+        r = _const_refusal(node)
+        assert r.keyword == "const", r
+        assert r.pointer == "/properties/k", r
+        assert f"a const of {name} has no Literal" in r.detail, r
+
+    # ... and the null node written the other way round IS answered, by the branch that
+    # owns that node kind
+    _, text = _constructed(
+        {
+            "title": "Nulled",
+            "type": "object",
+            "properties": {"k": {"type": "null"}},
+            "required": ["k"],
+        }
+    )
+    assert "k: None" in text, text
+
+    # a const its own type REFUSES: the node admits nothing, so a Literal of the
+    # value would be a model wider than its schema.
+    r = _const_refusal({"type": "string", "const": 3})
+    assert r.keyword == "const", r
+    assert "the node admits nothing" in r.detail, r
+    # ... and the same node with an agreeing type word does NOT refuse
+    model, _ = _constructed(
+        {
+            "title": "Agrees",
+            "type": "object",
+            "properties": {"k": {"type": "integer", "const": 3}},
+            "required": ["k"],
+        }
+    )
+    assert model.model_json_schema()["properties"]["k"]["const"] == 3
+
+
+def test_a_keyword_beside_a_const_is_decided_by_the_pin() -> None:
+    """A constraint of the value beside a ``const``: the PIN decides it, both ways.
+
+    **This test asserted the row DEFERRED the keyword, and that was the defect**
+    (``adcp-client-python-10l.35``).  ``minLength`` lowers at every position the walk
+    decides a node at, so "a later D2 row does" promised a row nobody would write; §2's
+    intersection rule reaches the shape for real -- a root's constrained property merged
+    with a branch's ``{"const": v}`` -- and ``core/postal-country-system.json`` was
+    refused on it, blocking five more documents through a ``$ref``.
+
+    What the row owes is the intersection, and a one-member value set makes it a
+    validation: the pin satisfies the constraint, and ``Literal[v]`` is exactly the
+    document's own set; or it does not, and the node admits NOTHING.  Both directions
+    below, on the same keyword.
+
+    :data:`codegen.lower.const.CLAIMS` names ``format`` beside the pin and the type word
+    and nothing else, because the node's own FACTS are not a property of the row: they
+    are whatever the document states beside this pin, derived once by the parser from the
+    table (``codegen.schema.parse.value_facts``), and
+    :func:`codegen.lower.const.lower` claims them beside ``CLAIMS``.  ``format`` is in
+    ``CLAIMS`` and not in the facts for the reason ``value_facts`` excludes it -- "the
+    kind consumes it in a field of its own" -- and the row's answer for it is the other
+    one of the two: a fact is decided by the pin and DROPPED, a ``format`` RIDES.
+    ``test_a_format_beside_a_const_rides_on_the_annotation`` grades that arm.
+    """
+    assert lower_const.CLAIMS == frozenset({"type", "const", "format"})
+    # the pin CONTRADICTS the constraint: the node admits nothing, so a Literal of the
+    # value would be a model wider than its schema.  Reported on ``const``, which is the
+    # keyword the node is refused BY -- the sibling is stated plainly and is satisfiable.
+    r = _const_refusal({"type": "string", "const": "x", "minLength": 2})
+    assert r.keyword == "const", r
+    assert r.pointer == "/properties/k", r
+    assert "does not satisfy the minLength 2" in r.detail, r
+    assert "the node admits nothing" in r.detail, r
+    assert r.kind is refusal_module.Kind.VERDICT, r
+    # the pin SATISFIES it: the Literal is the document's whole set and the keyword is
+    # consumed rather than deferred to a row that cannot exist.
+    model, _ = _constructed(
+        {
+            "title": "Satisfies",
+            "type": "object",
+            "properties": {"k": {"type": "string", "const": "xyz", "minLength": 2}},
+            "required": ["k"],
+        }
+    )
+    assert model.model_json_schema()["properties"]["k"]["const"] == "xyz"
+    # and the shape the bundle actually reaches, which is the one the bead names: §2's
+    # intersection puts the root's ``pattern`` beside a branch's pin.
+    patterned, _ = _constructed(
+        {
+            "title": "Patterned",
+            "type": "object",
+            "properties": {"k": {"type": "string", "pattern": "^[A-Z]{2}$", "const": "US"}},
+            "required": ["k"],
+        }
+    )
+    assert patterned.model_json_schema()["properties"]["k"]["const"] == "US"
+
+
+def test_a_format_beside_a_const_rides_on_the_annotation() -> None:
+    """A ``format`` beside a pin: the row consumes it and the ANNOTATION carries it.
+
+    **This was ``refusal.DEFERRED_TO_A_LATER_ROW``, and that was row ``10l.35``'s defect
+    arriving a second time.**  The sentence -- "this step lowers no such keyword (a later
+    D2 row does)" -- promises a row for a position that needs one, and ``format`` needs
+    none: its cell LOWERS at every one of §3's nine positions, so there is no later row
+    to write and the promise could never be kept.  The first clause below is that, read
+    off the table rather than restated, which is the one reading that cannot go stale if
+    a cell moves.
+
+    **The row's answer is §5's ``format`` row's own fallback.**  Its first choice --
+    "Selects a TYPE where the document's draft asserts the format and a type is named"
+    -- has nothing to select at a pin: §5's ``const`` row already decides the type, and a
+    ``Literal`` of one URI string is narrower than any URL type a ``uri`` could name, so
+    substituting one would WIDEN a node whose whole content is one value. So the row
+    takes "Otherwise rides as ``json_schema_extra={"format": …}`` on the field", which is
+    ``ir.Decided.format`` and ``render._field``, exactly as an unselected format on
+    a plain scalar does.
+
+    **Both halves name it, and that is why this is not an approximation.** A fact the
+    model drops is the thing §2's ladder is for; a ridden format is RENDERED, so the
+    model carries the document's own keyword at the position the bundle reaches the
+    shape at, which the rendering assertion below reads off the class itself.
+
+    The shape is §2's intersection rule again and the population is **2**, measured over
+    the nodes the walk decides: ``core/attestation-reference.json``'s ``claim_type`` is
+    ``{"type": "string", "format": "uri"}`` and two documents restate it with a pin.  So
+    the last clause asserts the bundle's own two, by name -- neither refuses on
+    ``format`` any more.
+    """
+    for position in keywords.Position:
+        cell = keywords.cell("format", position)
+        assert cell is not None and keywords.lowers(cell), position
+
+    doc = {
+        "title": "Pinned",
+        "type": "object",
+        "properties": {
+            "claim_type": {
+                "type": "string",
+                "format": "uri",
+                "const": "https://adcontextprotocol.org/claims/rights/grant",
+            }
+        },
+        "required": ["claim_type"],
+    }
+    model, text = _constructed(doc)
+    rendered = model.model_json_schema()["properties"]["claim_type"]
+    assert rendered["const"] == "https://adcontextprotocol.org/claims/rights/grant", rendered
+    assert rendered["format"] == "uri", rendered
+    assert "AnyUrl" not in text and "HttpUrl" not in text, text
+
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    on_format = {
+        document: r["pointer"]
+        for document, r in out.refusals.items()
+        if r["keyword"] == "format"
+    }
+    assert on_format == {}, on_format
+
+
+def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
+    """The row's population, and why it is NOT an entry in ``emit.ROWS``.
+
+    Four facts, each asserted over the whole bundle rather than over the emitted
+    tree, because the claim is about the row's reach and not about today's tree:
+
+    * **0 of the 1,054 documents carries a ``const`` at its ROOT**, so there is no
+      root kind for a row to claim, nothing goes into
+      ``populations.declares_its_own_root_kind``, and the table's partition is untouched;
+    * the vocabulary beside a ``const`` is ``type`` and ``description`` and nothing
+      else, which is what makes ``CLAIMS`` two keywords;
+    * no node writes both an ``enum`` and a ``const``, so ``_decide``'s two branches do
+      not overlap and their order there is not a precedence;
+    * **0 documents refuse on ``const``** over the whole portable population -- the
+      row claims D2's keyword in full, so there is no deferral left.
+    """
+    nodes = _const_nodes()
+    # The row's reach, as the non-empty set of nodes and documents it covers rather
+    # than as a pair of counts over one bundle version.  The facts are the four in the
+    # docstring and every one of them is already a set equality or an empty part.
+    claimed("bundle nodes stating const", {(d, p) for d, p, _ in nodes})
+    claimed("documents stating const", {d for d, _, _ in nodes})
+    assert [(d, p) for d, p, _ in nodes if p == ""] == []
+
+    beside: set[str] = set()
+    for _, _, node in nodes:
+        beside |= {k for k in node if k != "const" and not k.startswith("x-")}
+    assert beside == {"type", "description"}, beside
+    assert [(d, p) for d, p, n in nodes if "enum" in n] == []
+
+    portable = bundle.portable(BUNDLE)
+    out = compiled(BUNDLE, portable)
+    assert len(out.emitted) + len(out.refusals) == len(portable)
+    on_const = {d: r for d, r in out.refusals.items() if r["keyword"] == "const"}
+    assert on_const == {}, on_const
+
+
+def test_every_portable_document_is_emitted_or_refused_by_name() -> None:
+    """The epic's exit condition, asserted at run time against the BUNDLE'S OWN SIZE.
+
+    The arithmetic alone is not the condition and has been green while it was false:
+    two sets whose sizes sum correctly can still both miss a document and double-count
+    another.  So this asserts the PARTITION -- total and disjoint, by name -- and it
+    derives the population from ``bundle.portable`` rather than restating a count.
+    A literal here (it read ``1054``) stops being the bundle's size the moment the
+    bundle changes, and then the assertion says only that the number is still that
+    number.
+
+    Each refusal additionally names its pointer and the keyword it refused on, which
+    is the rest of the condition: a document is accounted for by NAME, POINTER and
+    KEYWORD, never by a tally.
+    """
+    portable = set(bundle.portable(BUNDLE))
+    out = compiled(BUNDLE, sorted(portable))
+    emitted, refused = set(out.emitted), set(out.refusals)
+
+    assert portable, "empty population: the assertion below would pass vacuously"
+    assert emitted | refused == portable, {
+        "neither emitted nor refused": sorted(portable - (emitted | refused)),
+        "accounted for but not portable": sorted((emitted | refused) - portable),
+    }
+    assert emitted & refused == set(), sorted(emitted & refused)
+    assert len(emitted) + len(refused) == len(portable)
+
+    unnamed = {
+        d: r for d, r in out.refusals.items() if not r.get("keyword") or r.get("pointer") is None
+    }
+    assert unnamed == {}, unnamed
+
+
+def test_identical_content_is_one_class_and_different_content_is_never_one() -> None:
+    """D3's content dedup, over every node of every document the whole bundle emits.
+
+    **One class, one name per position, and both halves graded.**  D3's dedup is a
+    statement about classes, and D3's naming rule derives a name per POSITION, so the
+    emitted shape is one class with an alias at every other position
+    (``emit.bind_the_same_node``).  That has two ways to go wrong -- a second CLASS, or a
+    name that does not reach the one class -- and the four clauses are one per way plus
+    the two directions of the equality.  Each is computed over a population this asserts
+    the size of (D14), and each was perturbed and recorded as reddening in
+    salesagent-j3k2l.38's notes:
+
+    1. a content group declares one name PER POSITION and they are all distinct, so a
+       field cannot be typed by a sibling position's name and a position cannot go
+       unnamed.
+    2. every one of those names binds ONE OBJECT, by IDENTITY in the imported module.
+       This is the clause that says an alias is an alias: if any of them were a second
+       class, or an ``Annotated`` wrapper rather than the class, ``is`` would fail here.
+       It is also what makes clause 1 safe -- distinct names over one object is the
+       intended shape, distinct names over two objects is the defect.
+    3. every ADOPTION's two nodes really are identical.  This is the direction that
+       matters more than the other three: they can all be satisfied by collapsing
+       everything, and this is what says the collapse never joined two nodes the
+       document separates.
+    4. exactly one position in a group declares the CLASS, and it is the FIRST in the
+       document's own key order.  That decides which name the class is spelled with,
+       which is public, so a flip in walk order reddens here instead of renaming an
+       export.
+
+    **The population is read off the walk's own two records**, ``Emitted.declared`` and
+    ``Emitted.adopted``, rather than off the emitted text: a module's text has two class
+    statements and no way to say which node each one lowered, which is why the defect
+    this grades survived a suite that reads the tree.  The groups are built by §4's own
+    equality over the parsed nodes, which is what the collapse is keyed on since §14
+    step 5 deleted ``emit.content_key`` -- so the check and the collapse cannot come to
+    disagree about what identical means, and §9's open question is about exactly that
+    disagreement between two instruments.  The one thing read off the TREE is the
+    identity in clause 2, because identity is a property of the imported module and of
+    nothing else.
+
+    **The nodes are PARSED, and clause 3 now states §4's own sentence.**  §4: two nodes
+    "are equal exactly when they state the same thing about an instance -- which is §4's
+    content dedup read off the type system rather than off a JSON serialisation with a
+    position bit appended", which is what ``pointer`` and ``position`` being excluded from
+    :class:`codegen.schema.nodes.Base`'s equality buys and what ``applied`` being COMPARED
+    is.  So clause 3 asserts all three and keeps the two it had: the two declarations are
+    equal, the one position fact the decision reads is equal, and **the two parsed NODES
+    are equal**.  The third is the §4 reading, it is strictly stronger than the first two
+    taken together, and it is now what the MEMO itself is keyed on -- the other two are
+    kept because each names the fact the deleted key read, so a collapse that stopped
+    reading one reddens by name rather than only through the node comparison.
+
+    The walk is ``bundle.nodes_at``, which carries the POSITION the descent column assigns
+    -- so each node is parsed AT ITS OWN POSITION rather than at an invented one, and the
+    parse here is the production parse.  Measured over all 1,054 portable documents:
+    ``bundle.nodes`` and ``bundle.nodes_at`` agree on the pointer SEQUENCE for every one,
+    so the population this clause ranges over is the population it ranged over before.
+    """
+    portable = sorted(bundle.portable(BUNDLE))
+    out = compiled(BUNDLE, portable)
+    # The document TOTAL is not restated here: it is another test's assertion and it
+    # moves whenever a row admits more of the bundle, which would make this check's
+    # failure read as a dedup defect.  What this one needs is only that the loop below
+    # has documents to run over.
+    assert out.emitted, "nothing emitted: every assertion below would pass vacuously"
+
+    groups: set[tuple[str, str]] = set()
+    adoptions: set[tuple[str, str]] = set()
+    declared: set[tuple[str, str]] = set()
+    identities: set[tuple[str, str]] = set()
+    unverifiable: set[str] = set()
+    for document in sorted(out.emitted):
+        doc = bundle.read(BUNDLE, document)
+        # The per-pointer facts the memo reads, built the way ``lower_document`` builds
+        # them, so the nodes compared here are the nodes the walk compares.
+        source = schema_parse.Source(
+            document=document, applied_at=bundle.constrained_to_object(doc)
+        )
+        # ONE walk: document order, the nodes, and the POSITION the descent column gives
+        # each -- so the parse below is the production parse at the production position.
+        walked = list(bundle.nodes_at(doc))
+        order = {pointer: i for i, (pointer, _, _) in enumerate(walked)}
+        at = {pointer: node for pointer, node, _ in walked}
+        parsed = {
+            pointer: schema_parse.parse(
+                node, pointer=pointer, position=position, source=source
+            )
+            for pointer, node, position in walked
+        }
+        # The groups the memo's own equality induces, which is §4's: two nodes are equal
+        # exactly when they state the same thing about an instance.  ``emit.content_key``
+        # -- ``json.dumps([the mapping, applied])`` -- is DELETED with §14 step 5's
+        # carrier, and ``emit.the_same_node`` is the production reading of what replaces
+        # it; the groups are built here by the same linear scan it makes, in walk order,
+        # because a node carrying mappings is not hashable.
+        groups_here: list[tuple[Any, list[str]]] = []
+        for pointer in at:
+            node = parsed[pointer]
+            for other, members in groups_here:
+                if other == node:
+                    members.append(pointer)
+                    break
+            else:
+                groups_here.append((node, [pointer]))
+        by_content = {str(i): members for i, (_, members) in enumerate(groups_here)}
+
+        here = out.declared[document]
+        declared |= {(document, pointer) for pointer in here}
+        assert set(here) <= set(at), (document, sorted(set(here) - set(at)))
+        # Clause 1's other half, and the one that refuses the reading this row started
+        # with: an adopted position DECLARES a name of its own.  Binding the field
+        # straight to the class symbol instead leaves the position undeclared, and then
+        # every clause below runs over a one-member group and passes.
+        assert set(out.adopted[document]) <= set(here), (
+            document,
+            sorted(set(out.adopted[document]) - set(here)),
+        )
+
+        for pointer, symbol in out.adopted[document].items():
+            adoptions.add((document, pointer))
+            declaring = [p for p, s in here.items() if s == symbol]
+            assert len(declaring) == 1, (document, symbol, declaring)
+            # Clause 3: the adopting node and the node whose CLASS it took are the same
+            # node.  The equality is the production one, so an equality weakened to
+            # collapse two different nodes would weaken this comparison in step and the
+            # clause would pass vacuously -- which is this file's own rule about a fixture
+            # derived from the thing it grades.  The two clauses below it name the facts
+            # the deleted string key read, so neither can go quietly.
+            assert at[pointer] == at[declaring[0]], (document, pointer, declaring[0])
+            assert parsed[pointer].applied == parsed[declaring[0]].applied, (
+                document,
+                pointer,
+                declaring[0],
+            )
+            # §4's own sentence: equal exactly when they state the same thing about an
+            # instance.  ``pointer`` and ``position`` are excluded from the kinds'
+            # equality and ``applied`` is not, so this is the dedup read off the type
+            # system -- and it is what the string key above is supposed to encode.
+            assert parsed[pointer] == parsed[declaring[0]], (document, pointer, declaring[0])
+
+        for key, pointers in by_content.items():
+            reached = [p for p in pointers if p in here]
+            if len(pointers) < 2 or not reached:
+                continue
+            groups.add((document, key))
+            # Clause 1: one name per position, all distinct.
+            symbols = [here[p] for p in reached]
+            assert len(set(symbols)) == len(symbols), (document, pointers, symbols)
+            # Clause 4: exactly one of them declares the CLASS -- the rest adopted it --
+            # and it is the first of the group in the document's own key order.
+            owning = [p for p in reached if p not in out.adopted[document]]
+            assert len(owning) == 1, (document, pointers, owning)
+            assert order[owning[0]] == min(order[p] for p in reached), (document, owning)
+            # Clause 2: every one of those names is the SAME OBJECT.  Read off the
+            # imported module, because identity is a property of the module and of
+            # nothing else -- the text cannot say whether ``X = Y`` produced an alias or
+            # a copy.  A module the committed tree does not carry would make this clause
+            # silent, so the skip is counted and asserted EMPTY below rather than passed
+            # over.  It can no longer have a member: the tree is emitted from
+            # ``bundle.portable`` since ``adcp-client-python-10l.73``, which is the very
+            # set this loop runs over, so every document it reaches has a module.
+            if importlib.util.find_spec(out.emitted[document]) is not None:
+                module = importlib.import_module(out.emitted[document])
+                bound = [getattr(module, s) for s in symbols]
+                assert all(b is bound[0] for b in bound), (document, symbols)
+                identities |= {(document, s) for s in symbols}
+            else:
+                unverifiable.add(document)
+
+    # THE DENOMINATORS, each one a named NON-EMPTY set.  A dedup check whose population
+    # reaches one instance is the defect salesagent-j3k2l.38 is about -- the ceiling it
+    # replaced counted 36 bundle repeats and asserted that 0 were REACHED -- so every
+    # one of them is asserted to have members and a run that collapses nothing fails
+    # here rather than passing over an empty loop.  ``identities`` is the set of NAMES
+    # clause 2 compared, so it is the one that says the identity check ran at all, and
+    # ``unverifiable`` is the groups it could not reach, which is the part asserted
+    # EMPTY.
+    #
+    # The five counts this replaces (1426 / 9 / 10 / 19 / 7) all moved together at every
+    # row that emitted a module -- ``declared`` went 1413 -> 1426 at
+    # ``salesagent-j3k2l.21`` alone -- and none of them is a fact the four clauses do
+    # not already assert per member.
+    # **IT HAD ONE MEMBER AND HAS NONE, and the clause that named it said why it would
+    # go** (``adcp-client-python-10l.73``): "this one leaves the moment the populations
+    # meet".  The member was ``core/targeting-overlay-support.json`` -- a ``type`` word
+    # beside a NESTED combinator stopped refusing it (§5(a)'s first bullet) and no step
+    # selector claimed it, so the committed tree, written from ``population()``, carried
+    # no module for clause 2 to import.  The tree is emitted from ``bundle.portable``
+    # now, which is the set this loop ranges over, so the gap is closed at the
+    # population rather than exempted at the member.
+    #
+    # Asserted as the DERIVED equality of the two populations and then as the empty
+    # skip, in that order, so the reason comes before the consequence: if the tree's
+    # population ever narrows again this names the documents it dropped, rather than
+    # reporting a dedup group that went unchecked.
+    assert set(out.emitted) <= set(tree_population()), sorted(
+        set(out.emitted) - set(tree_population())
+    )
+    assert unverifiable == set(), sorted(unverifiable)
+    claimed("declared (document, pointer) names", declared)
+    claimed("content groups reached", groups)
+    claimed("adoptions", adoptions)
+    claimed("names whose identity clause 2 compared", identities)
+    claimed("documents with an adoption", {d for d in out.adopted if out.adopted[d]})
+
+
+def test_a_refusals_kind_is_declared_by_its_producer_and_a_chain_takes_its_targets() -> None:
+    """``Refusal``'s own contract, which is what makes the partition unanswerable by grep.
+
+    Four assertions, one per way the kind could go back to being a reading of
+    English:
+
+    * ``kind`` has no default, so a producer cannot omit it and inherit whatever
+      the default happens to say.
+    * a delegating kind REQUIRES the refusal it delegates to, and a self-answering
+      kind refuses one -- so a chained refusal cannot be constructed without the
+      target, and ``resolved`` is never a guess.
+    * ``resolved`` follows a chain of any depth, by carrying the object and not by
+      parsing the sentence the producer writes for the reader.
+    * ``is_a_verdict`` refuses a delegating kind rather than answering for it: a
+      caller holding one has read ``kind`` where it meant ``resolved``.
+
+    The LAST one is the fix for the instance that reddened the metric by 86: a
+    chain onto a DEFERRED target is pending, and the only thing that can say so is
+    the target's own declared kind.
+    """
+    from codegen.refusal import Kind
+
+    with pytest.raises(TypeError):
+        Refusal("x", "/", "no kind passed")  # type: ignore[call-arg]
+    with pytest.raises(TypeError, match="needs"):
+        Refusal("x", "/", "chained with no target", kind=Kind.CHAINED)
+    with pytest.raises(TypeError, match="takes no"):
+        Refusal(
+            "x",
+            "/",
+            "a target it does not delegate to",
+            kind=Kind.VERDICT,
+            through=Refusal("y", "/", "t", kind=Kind.VERDICT),
+        )
+
+    deferred = Refusal("allOf", "/allOf/0", "a later D2 row lowers this one", kind=Kind.DEFERRED)
+
+    def chain(target: Refusal, at: str) -> Refusal:
+        """One link, written once, so a three-link chain has one spelling."""
+        return Refusal(
+            "$ref", at, f"its target x.json is refused: {target}", kind=Kind.CHAINED, through=target
+        )
+
+    one = chain(deferred, "/p")
+    two = chain(one, "/q")
+    assert (one.kind, one.resolved) == (Kind.CHAINED, Kind.DEFERRED)
+    assert (two.kind, two.resolved) == (Kind.CHAINED, Kind.DEFERRED)
+    assert refusal_module.is_a_verdict(two.resolved) is False
+
+    final = Refusal("oneOf", "/", "there is no pointer to the conjunction", kind=Kind.VERDICT)
+    onto_final = chain(final, "/p")
+    assert onto_final.resolved is Kind.VERDICT
+    assert refusal_module.is_a_verdict(onto_final.resolved) is True
+
+    with pytest.raises(ValueError, match="delegates"):
+        refusal_module.is_a_verdict(Kind.CHAINED)
+
+
+def test_the_first_refusal_is_the_earliest_in_the_document_and_not_in_the_sort() -> None:
+    """Section 6's rule for which refusal a document is refused on.
+
+    "A document refused by a child's refusal is refused once, on the earliest refusal in
+    DOCUMENT ORDER, which keeps the report a function of the document and not of the
+    walk's iteration."  ``codegen.refusal.first_refusal`` is section 2's one combinator
+    for it, and the whole of its contract is that the order it answers in is the order of
+    the SEQUENCE it is handed -- so this grades the two halves separately:
+
+    * the combinator returns the earliest ELEMENT, and in particular does not sort.  A
+      pointer string cannot be ordered: ``/properties/zz`` sorts after ``/properties/aa``
+      and ``/items/10`` before ``/items/2``, while document order is neither.  The probe
+      is a pair whose sequence order and sorted order disagree, which is what a sort
+      snuck in later would get wrong.
+    * the WALK hands it the children in the document's own order, so a document with two
+      refusing properties is refused on the one the document declares FIRST -- and
+      swapping the two keys in the document swaps the refusal.  That second clause is
+      the one that makes the first mean something: a combinator reading its argument's
+      order says nothing unless the argument is in document order.
+
+    Two properties and not one, because a single refusing property is reported the same
+    way under every ordering rule there is.
+    """
+    from codegen.refusal import Kind, Refusal, first_refusal
+
+    later = Refusal("additionalProperties", "/properties/zz", "d", kind=Kind.VERDICT)
+    earlier = Refusal("additionalProperties", "/properties/aa", "d", kind=Kind.VERDICT)
+    assert first_refusal([later, earlier]) is later, "it sorted, or it reversed"
+    assert first_refusal([earlier, later]) is earlier
+    assert first_refusal([]) is None
+    assert first_refusal(["not a refusal", later]) is later, (
+        "it reads the sequence for the FIRST refusal and passes over what is not one"
+    )
+
+    # The walk's own order.  An object declaring no property and refusing every
+    # additional one admits only the empty object, which ``containers.mapping`` refuses
+    # as a VERDICT at the node's own pointer -- so each property refuses on its own
+    # keyword at its own pointer and the two differ in nothing but which key the document
+    # states first.
+    closed = {"type": "object", "additionalProperties": False}
+
+    def refusing(first: str, second: str) -> Refusal:
+        return refusal_from(
+            emit.lower_document(
+                "order.json",
+                {
+                    "title": "Order",
+                    "type": "object",
+                    "properties": {first: dict(closed), second: dict(closed)},
+                },
+            )
+        )
+
+    assert refusing("zz", "aa").pointer == "/properties/zz"
+    assert refusing("aa", "zz").pointer == "/properties/aa"
+    # And the document that refused produced NOTHING, which is section 6's other half:
+    # a ``Refusal`` is not a module, so there is no partially-populated module for the
+    # run to write -- the partial model section 2 of the semantics document forbids is
+    # unrepresentable rather than merely avoided.
+    assert not isinstance(refusing("zz", "aa"), tuple)
+
+
+#: **§8's pinned VERDICT SET, by document**, which replaced the verdict CEILING on
+#: 2026-10-27 (``7c11a596``): "the count is not monotone under progress ... What is
+#: pinned instead is the SET, named by document, so a verdict arriving is attributable
+#: and a verdict arriving for a NEW reason reddens.  The figure to drive to zero is
+#: ``refused``, and the verdict column is a reading of it."
+#:
+#: Over the 1,054 PORTABLE documents, which is the population the test below emits.  A
+#: document leaving is a row clearing it; a document arriving is a claim that its
+#: obstruction belongs to the document, to pydantic or to the pointer space, and it has
+#: to be read as that claim rather than absorbed by a number.
+VERDICTS = frozenset(
+    {
+        # **49 -> 46 at ``adcp-client-python-10l.21``'s FIFTH instalment: FOUR LEFT by
+        # EMITTING and ONE JOINED by getting further.**  §5's ``properties`` row at CONJ
+        # is written now, so a conjunct restating a property the base declares composes
+        # per key instead of refusing, and ``emit.inherited_sites`` resolves the
+        # reference sites §2's intersection carries in from a base.  The four that left
+        # are ``account/list-account-changes-response.json`` and
+        # ``core/package-delivery-metric-value.json``, each of which refused on a ``$ref``
+        # the intersection produced at a pointer no edge of its own text carries, plus
+        # ``media-buy/get-media-buy-delivery-response.json`` and
+        # ``media-buy/media-buy-delivery-webhook-result.json``, both chained behind the
+        # second of them.  The one that joined is
+        # ``media-buy/get-media-buys-response.json``: its own restatement of
+        # ``indicators`` stopped refusing, so it reaches a chain through
+        # ``core/canonical-proposal.json`` -- a verdict this set already names -- and it
+        # arrives as that document's claim and not as a new one.
+        #
+        # **83 -> 49 at ``adcp-client-python-10l.21``'s FOURTH instalment, and all 34 that
+        # left are ONE CLAIM BEING WITHDRAWN rather than 34 documents clearing.**  Nothing
+        # emitted that did not emit before -- emitted is 885 on both trees, over the same
+        # 885 documents, and the 169 refusals are the same documents at the same pointers
+        # on the same keywords.  What changed is that ``lower_composition``'s restatement
+        # arm stopped MINTING ``Kind.VERDICT`` by hand and reads it off the cell
+        # (``compiler.kind_for``), which answers DEFERRED for every keyword that arm
+        # reports on: ``docs/plan/rebuild-plan.md`` §5(b) DECIDES the row at rung KEYWORD
+        # and nobody has written it, so the obstruction belongs to unwritten code and not
+        # to the document, to pydantic or to the pointer space.  §9's first rule is that a
+        # refusal for code nobody has written is a deferral, "because minting a verdict for
+        # unwritten code reports clearable work as finished" -- and that is exactly what
+        # the comment below recorded when ELEVEN of the fourteen documents that joined at
+        # the third instalment resolved to this very row.
+        #
+        # 13 of the 34 refuse at the arm itself and 21 chain to one that does.  The 13 are
+        # ``brand/verify-brand-claim-response.json``,
+        # ``brand/verify-brand-claims-response.json``,
+        # ``core/assets/daast-asset.json``, ``core/assets/daast-tracker-asset.json``,
+        # ``core/assets/display-tag-asset.json``, ``core/assets/pixel-tracker-asset.json``,
+        # ``core/assets/url-asset.json``, ``core/assets/vast-asset.json``,
+        # ``core/assets/vast-tracker-asset.json``,
+        # ``core/tracker-execution-selector.json``,
+        # ``governance/check-governance-response.json``,
+        # ``media-buy/get-media-buys-response.json`` and
+        # ``signals/get-signals-response.json``.
+        #
+        # **69 -> 80 at ``adcp-client-python-10l.21``'s third instalment, and the set is
+        # named in BOTH directions because a verdict count is not monotone under
+        # progress.**  THREE LEFT -- ``core/assets/card-asset.json``,
+        # ``core/offering.json`` and ``core/signal-pricing-option.json``, each a chain
+        # whose target now emits.  FOURTEEN JOINED, and not one of them is a new KIND of
+        # verdict: every one is a document that got FURTHER and reached a verdict another
+        # row already owns.  Eleven resolve to §5(b)'s restatement row (an ``allOf``
+        # restatement that neither matches nor narrows, which §5(b) decides as a declared
+        # widening and nobody has written) or to D3's branch-identity row; two are
+        # ``core/package-delivery-metric-value.json`` and
+        # ``media-buy/get-products-request.json``, which carry the
+        # unresolved-target sentence filed as ``adcp-client-python-g31``; and
+        # ``media-buy/get-products-request.json`` reaches its chain only because its own
+        # worded nested union stopped refusing.
+        # **SIX JOIN AT ``adcp-client-python-10l.21``'s SEVENTH INSTALMENT, AND THE RISE
+        # WAS PREDICTED BEFORE THE ROW WAS WRITTEN.**  §2's intersection rule writes the
+        # composition at ``items`` and the base's reference survives it as a conjunct, so
+        # ``core/assets/vast-asset.json`` emits -- and ``core/assets/asset-union.json``
+        # was CHAINED behind it.  With its target emitting the walk gets further and the
+        # union reports its own obstruction at ``/oneOf/3``: a ``$ref`` BRANCH onto a
+        # union ROOT, "VASTAsset is not a class, so it cannot be a base (a scalar root is
+        # an Annotated alias, and subclassing one is a TypeError at import)".
+        # ``vast-asset``'s own root is a union, so the branch names no class, and a
+        # ``$ref`` branch onto a union root is a separate obstruction that no row has
+        # written.
+        #
+        # Five more arrive as that document's claim and not as new ones -- each was
+        # already a DEFERRED chain through it and re-resolves with it:
+        # ``core/localized-creative-asset.json`` at ``/allOf/0``, then
+        # ``core/creative-localization-readback.json`` and
+        # ``core/creative-localization.json`` behind that, then
+        # ``creative/list-creatives-response.json`` and
+        # ``creative/sync-creatives-response.json`` behind those.
+        #
+        # Row ``10l.30`` measured the same document independently -- 210 of its 235
+        # inseparable ``$ref``-branch pairs -- so two lanes have now found the same
+        # obstruction from two directions.
+        #
+        # **ALL SIX OF THOSE LEAVE AT ``adcp-client-python-10l.55``, FIVE BY EMITTING AND
+        # ONE BY BECOMING A DEFERRAL.**  The branch row asked whether the target had a
+        # :class:`compiler.Shape` and reported the answer as "is not a class"; §4's three
+        # root outcomes make those two different questions, because a UNION root is a
+        # class (``BranchDispatchMixin`` plus the model base) whose shape
+        # ``emit.answer`` nulled on §5's ``$ref`` row at CONJ -- another POSITION's answer.
+        # The gate reads :class:`compiler.TargetKind` now, so a scalar root still refuses
+        # and a union root is the base §4 says it is.
+        #
+        # The five that EMIT are ``core/assets/asset-union.json`` itself and four of the
+        # documents chained behind it: ``core/localized-creative-asset.json``,
+        # ``core/creative-localization-readback.json``,
+        # ``core/creative-localization.json`` and
+        # ``creative/sync-creatives-response.json``.  The sixth,
+        # ``creative/list-creatives-response.json``, re-resolves onto a DIFFERENT chain
+        # and is a DEFERRAL there: ``/properties/creatives/items/properties/rights/items``
+        # -> ``core/rights-constraint.json`` -> ``core/attestation-reference.json``, which
+        # refuses at ``/properties/embedded_credential/properties/value`` on ``minLength``
+        # -- a constrained arm of a type list beside another live arm, which is row
+        # ``10l.45`` and unwritten code rather than the document's problem.  So the
+        # verdict term falls by 6 and ``accounted`` by 1, which is the correction the
+        # floor below reports.
+        #
+        # **FOUR LEAVE AT ``adcp-client-python-10l.43``, ALL FOUR BY EMITTING, AND THEY
+        # ARE ONE ROUTING GAP AND NOT FOUR DOCUMENTS.**  ``lower.composition.lower_composition``'s
+        # ``$ref``-conjunct arm asked the binder for every reference, so a LOCAL pointer --
+        # a pointer into the document being written, which is not a binding at all -- got
+        # ``emit.answer``'s loud answer as the DOCUMENT's verdict.  The arm branches on the
+        # parser's document half now and routes a local pointer through
+        # ``compiler.local_reference`` (``lower.composition._conjunct_base``), which is the resolver
+        # ``lower.references.lower`` has always reached for the same reference met the
+        # other way.  The two sites were ``core/account-identity-change-preview.json`` at
+        # ``/definitions/nonblocking_impacts/items/allOf/0`` (``#/definitions/impact``) and
+        # ``core/registry-event.json`` at ``/oneOf/0/properties/payload/allOf/0``
+        # (``#/$defs/propertyPayload``); ``account/sync-accounts-response.json`` and
+        # ``core/registry-feed-response.json`` were CHAINED behind them and leave with
+        # their targets.  ``architecture.md`` §2's division is why this was a defect and
+        # not an outcome: "a defect in the compiler itself ... is not an outcome of any
+        # document", and reporting it as a document's verdict charged four documents for a
+        # route that was missing.
+        "media-buy/update-media-buy-request.json",
+        "media-buy/get-products-request.json",
+        # **THREE LEAVE BY EMITTING AT ``adcp-client-python-10l.41``**:
+        # ``core/requirements/asset-requirements.json``, whose 12 bare ``$ref`` branches
+        # state no title and pin no ``const``, so §4's FOURTH branch rung names them
+        # ``AssetRequirementsBranch0`` through ``...Branch11``; and
+        # ``core/requirements/catalog-requirements.json`` and
+        # ``core/requirements/offering-asset-constraint.json``, which were chained behind
+        # it and emit with it.  The refusal they carried was D3 minting a verdict where
+        # §4 states a fallback -- "a branch with no title, no pinned ``const`` and no
+        # ``required`` set takes its index among the branches" -- and a name is not an
+        # acceptance fact, so nothing about what these documents accept has moved.
+        "content-standards/list-content-standards-response.json",
+        "content-standards/get-content-standards-response.json",
+        "content-standards/content-standards.json",
+        'brand.json',
+        'core/canonical-proposal.json',
+        'media-buy/get-media-buys-response.json',
+        'core/package-signal-targeting-group.json',
+        'core/package-signal-targeting-groups.json',
+        'core/package-signal-targeting.json',
+        'core/product-filters.json',
+        'core/product-signal-targeting-option.json',
+        'core/signal-pricing-option.json',
+        'core/targeting-input.json',
+        'core/targeting.json',
+        'core/vendor-pricing-option.json',
+        # ``creative/get-creative-features-response.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41`` and the document EMITS: its ``/oneOf/0`` is a bare
+        # ``$ref`` with no title of its own, so §4's fourth rung names it
+        # ``GetCreativeFeaturesResponseBranch0`` beside the two arms that state titles.
+        'media-buy/accept-proposal-response.json',
+        'media-buy/buy-products-response.json',
+        'media-buy/commercial-terms.json',
+        'media-buy/control-media-buy-request.json',
+        'media-buy/get-products-targeting-resolution.json',
+        'media-buy/legacy-purchase-continuation-input.json',
+        'media-buy/media-buy-commitment-response.json',
+        'media-buy/package-control.json',
+        'media-buy/package-request.json',
+        'media-buy/package-update.json',
+        'media-buy/product-purchase-input.json',
+        'media-buy/product-purchase.json',
+        'media-buy/refine-proposals-request.json',
+        'media-buy/refine-proposals-response.json',
+        'media-buy/request-proposals-response.json',
+        'property/create-property-list-response.json',
+        'property/get-property-list-response.json',
+        'property/list-property-lists-response.json',
+        'property/property-list.json',
+        'property/update-property-list-response.json',
+        'trusted-match/provider-registration.json',
+        # **ONE joined at ``adcp-client-python-10l.34`` and LEFT at
+        # ``adcp-client-python-10l.50``, and the verdict with it.**  §8's composition rule
+        # reached a union at any position, so
+        # ``formats/canonical/seller_rendered_stateful_display.json`` stopped refusing on
+        # the sibling carrier at ``/properties/transitions/items`` and declared a base
+        # plus one class per branch -- and two nodes of the document then derived one
+        # class name, because the fold CONCATENATED every hop to the root and the two
+        # concatenations agreed: the branch at ``/oneOf/5`` pins
+        # ``trigger: "media_event"`` and was spelled
+        # ``<root>TransitionsItemMediaEvent``, and the base's own property
+        # ``media_event`` was spelled ``<root>TransitionsItem`` + ``MediaEvent``.
+        # §4's name rules are read as a POSITION now and the two positions are two
+        # chains -- ``(<root>, TransitionsItemMediaEvent)`` for the branch and
+        # ``(<root>, TransitionsItem, MediaEvent)`` for the property -- so §4's own
+        # spellings are ``TransitionsItemMediaEvent`` and ``MediaEvent``, which collide
+        # with nothing and need no collision step at all.  The document EMITS, and the
+        # ONE naming collision left in the bundle is
+        # ``trusted-match/provider-registration.json`` above, where the two chains are
+        # equal and no ancestor separates them (``adcp-client-python-10l.42``).
+        #
+        # **SIX JOINED AT ``adcp-client-python-10l.45``, and all six are documents
+        # GETTING FURTHER into an obstruction this set already owns.**  Nothing new is
+        # claimed and nothing is absorbed by a number: the document-side walk lifts a
+        # type list whose arm carries a constraint (``harness._type_list``), so
+        # ``core/attestation-reference.json`` emits, and the chain that stood on it
+        # re-roots onto what each document's own text runs into next.
+        #
+        # ``core/audience-evidence.json`` is the ONE primary verdict of the six: its
+        # ``/properties/attestation_refs/items/allOf/1/properties/subject/allOf/0``
+        # states a ``$ref`` at a CONJUNCT whose target is not a class, which §5's
+        # ``$ref`` row at CONJ makes the node's own TYPE -- a clause that does not hold
+        # at a node declaring no field, and the same claim
+        # ``core/requirements/asset-requirements.json`` above already carries.  The other
+        # five are CHAINS onto it: ``core/audience-evidence-selection.json`` through
+        # ``/properties/evidence``, ``core/package.json`` through that, and
+        # ``core/media-buy.json``, ``media-buy/create-media-buy-response.json`` and
+        # ``media-buy/update-media-buy-response.json`` through ``core/package.json``.
+        # Each was CHAINED-onto-a-deferral before and is CHAINED-onto-a-verdict now, so
+        # what moved is the resolved kind and not the kind: ``accounted`` counts them,
+        # which is the whole reason the resolved split exists.
+        #
+        # The two documents that did NOT join are the two the row cleared outright --
+        # ``core/attestation-reference.json`` and
+        # ``governance/get-plan-audit-logs-response.json``, which emit -- and two more
+        # left the chain to mint their own DEFERRALS rather than verdicts
+        # (``core/rights-constraint.json`` and
+        # ``core/rights-attestation-evaluation.json``, on a ``format`` this step does
+        # not lower).
+        "core/audience-evidence.json",
+        "core/audience-evidence-selection.json",
+        "core/package.json",
+        "core/media-buy.json",
+        "media-buy/create-media-buy-response.json",
+        "media-buy/update-media-buy-response.json",
+        #
+        # **SIX JOINED AT ``adcp-client-python-10l.35``, and every one arrives on a
+        # verdict this set already names rather than on a new claim.**  The ``const`` and
+        # ``enum`` rows deferred a ``pattern`` §2's intersection rule put beside their
+        # value set -- "a later D2 row does", of a keyword that lowers at every position,
+        # so the promised row cannot exist.  Both rows claim it now (the PIN decides a
+        # constraint of its own value), and ``core/postal-country-system.json`` gets
+        # further and reports its OWN obstruction at ``/anyOf/4``: D3's branch-naming
+        # row, "no title, no discriminator const and no required set".  That is the SAME
+        # verdict ``core/requirements/asset-requirements.json`` and
+        # ``creative/get-creative-features-response.json`` already carry above, and the
+        # branch earns it for the reason D3 names -- it pins a ``const`` on BOTH its
+        # properties, so no single property is the discriminator and the branch has no
+        # identity to derive a name from.
+        #
+        # The other five were already DEFERRED chains through it and re-resolve with it,
+        # outward along the ``$ref`` edges: ``core/postal-area.json`` at
+        # ``/anyOf/0/allOf/0``, then ``core/offering.json`` and
+        # ``core/product-offer-filters.json`` behind that, then
+        # ``media-buy/product-discovery-criteria.json`` and
+        # ``media-buy/list-products-request.json`` behind those.  ``accounted`` rose
+        # 961 -> 967 and the emitted set is byte-identical, which is what "a verdict
+        # arriving is attributable" means here: nothing stopped emitting, nothing started
+        # refusing, and six documents stopped being counted as clearable work that no row
+        # was going to clear.
+        #
+        # **ONE OF THE SIX LEFT AT ``adcp-client-python-10l.41``, BY EMITTING, AND THE
+        # FIVE BEHIND IT STAYED.**  ``core/postal-country-system.json``'s ``/anyOf/4``
+        # through ``/anyOf/9`` state no title, and 4 through 8 pin a ``const`` on BOTH
+        # their properties, so §4's second rung declines to choose by spelling -- but §4's
+        # FOURTH rung names them, ``PostalCountrySystemBranch4`` through ``...Branch9``,
+        # and the document emits.  The five chained behind it re-resolve one pointer on
+        # rather than clearing: ``core/postal-area.json`` conjoins the now-emitting
+        # document at ``/anyOf/0/allOf/0``, and what it resolves to is a plain ``A | B``
+        # and not a class, so §5's ``$ref`` row at CONJ refuses it -- a PRIMARY verdict of
+        # its own now, on ``allOf``, with the other four still chained behind it.  So the
+        # set loses one member and gains none, and the obstruction the four carry is the
+        # same document's as before.
+        "core/postal-area.json",
+        "core/offering.json",
+        "core/product-offer-filters.json",
+        "media-buy/product-discovery-criteria.json",
+        "media-buy/list-products-request.json",
+        # **A SEVENTH JOINS THAT SAME CHAIN AT ``adcp-client-python-10l.66``, and it is
+        # the sixth document behind the verdict named just above rather than a new
+        # claim.**  ``lower/union.py``'s ``_plan`` deferred a branch that is ITSELF a
+        # ``oneOf``/``anyOf`` of shapes -- "a later D2 row does", of a keyword whose cell
+        # at BRANCH is a lowering effect at rung JOIN -- which is the fourth handler of
+        # the defect the six above record.  The branch loop writes the cell's own answer
+        # now (the siblings become a base, each branch a subclass, and the enclosing
+        # union's base is that base's base), so ``media-buy/proposal-refinement.json``
+        # gets past ``/oneOf/1`` and reports its real obstruction: a ``$ref`` at
+        # ``/properties/criteria`` onto ``media-buy/product-discovery-criteria.json``,
+        # which is in this set two lines up, and the chain runs out to
+        # ``core/postal-country-system.json``'s ``/anyOf/4`` branch-naming verdict.
+        # ``accounted`` rose 958 -> 959 and the emitted set is byte-identical: nothing
+        # stopped emitting, nothing started refusing, and one more document stopped being
+        # counted as clearable work that no row was going to clear.
+        "media-buy/proposal-refinement.json",
+    }
+)
+
+
+def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending() -> None:
+    """The exit condition is ``emitted + VERDICTS``, and it is not ``emitted + refused``.
+
+    ``test_every_portable_document_is_emitted_or_refused_by_name`` proves the
+    partition is total and disjoint.  It cannot tell a refusal apart from a
+    placeholder, and ``emitted + refused == 1054`` is green while nothing does.
+
+    **THE KIND IS AN ARGUMENT ITS PRODUCER PASSES, AND THIS TEST READS NOTHING
+    ELSE.**  Four times the number this computes was wrong, always optimistically,
+    and every time because the kind of a refusal was decided by reading its
+    English.  ``refusal.Kind``'s docstring carries all four.  The first three were
+    each fixed by reading the sentence more carefully -- a constant instead of a
+    regex, then a recursion through the quoted chain -- and the fourth was the same
+    bug again, so the fix is to stop reading it: every producer declares a
+    ``Kind``, ``refusal.is_a_verdict`` takes one and holds no string, and this test
+    partitions by ``resolved`` rather than by any spelling it could invent.
+
+    Measured on the tree that shared the conjunct reader: of 363 refusals, **155**
+    declare ``VERDICT``, **38** declare ``DEFERRED``, **1** declares
+    ``UNRESOLVED`` and **169** declare ``CHAINED``; resolving the chains through
+    ``through=`` gives **297 VERDICT**, **65 DEFERRED** and **1 UNRESOLVED**.  So
+    the exit condition stands at 691 + 297 = **988 of 1054**, with 66 pending.
+
+    **A FIFTH KIND CANNOT BE ABSORBED, which is the thing this test exists for.**
+    It asserted ``deferred + transitive + chained_pending + verdicts == total``
+    over four buckets it named itself, and that assertion was green through every
+    one of the four instances -- a new category just landed in whichever bucket
+    its sentence happened not to match.  The partition is now built from the three
+    named sets of ``Kind`` members, and the FIRST assertion below is that those
+    three cover ``Kind`` exactly.  A new member reddens there before a single
+    document is counted, and nothing can route around it, because a ``Kind`` is
+    the only thing a producer can pass.
+    """
+    portable = bundle.portable(BUNDLE)
+    out = compiled(BUNDLE, portable)
+
+    # **The grading assertion, and it comes first.**  Every ``Kind`` is final,
+    # pending or delegating, and no member is two of those -- so a fifth kind is a
+    # red test and not a silent reclassification.  Probed by adding a member: this
+    # fails, with the member named, before anything below runs.
+    named = (
+        refusal_module.FINAL_KINDS,
+        refusal_module.PENDING_KINDS,
+        refusal_module.DELEGATING_KINDS,
+    )
+    assert set().union(*named) == set(refusal_module.Kind), {
+        "a Kind no set names": sorted(set(refusal_module.Kind) - set().union(*named)),
+        "named but not a Kind": sorted(set().union(*named) - set(refusal_module.Kind)),
+    }
+    for i, one in enumerate(named):
+        for other in named[i + 1 :]:
+            assert one & other == set(), sorted(one & other)
+    assert (
+        refusal_module.RESOLVED_KINDS
+        == refusal_module.FINAL_KINDS | refusal_module.PENDING_KINDS
+    )
+
+    assert out.refusals, "no refusals: every assertion below would pass vacuously"
+
+    declared = collections.Counter(r["kind"] for r in out.refusals.values())
+    resolved = collections.Counter(r["resolved"] for r in out.refusals.values())
+
+    # A producer cannot emit a kind this partition does not name, and a DELEGATING
+    # kind never survives to be counted: ``Refusal.resolved`` follows it at
+    # construction.  Both halves are asserted over the population rather than
+    # trusted, because both are what the four instances got wrong.
+    assert set(declared) <= set(refusal_module.Kind), sorted(
+        set(declared) - set(refusal_module.Kind)
+    )
+    assert set(resolved) <= refusal_module.RESOLVED_KINDS, sorted(
+        set(resolved) - refusal_module.RESOLVED_KINDS
+    )
+    assert sum(resolved.values()) == len(out.refusals), (dict(resolved), len(out.refusals))
+
+    verdicts = {d for d, r in out.refusals.items() if refusal_module.is_a_verdict(r["resolved"])}
+    assert len(verdicts) == sum(resolved[k] for k in refusal_module.FINAL_KINDS), len(verdicts)
+
+    # **The chain is graded by what it RESOLVES TO, and both answers must occur.**
+    # The old reading took a chained refusal's outer sentence and called all 171 of
+    # them verdicts; the reading before that recursed into the quoted text.  Neither
+    # is here: the producer passes ``through=`` the target's own refusal and
+    # ``Refusal.resolved`` carries the target's answer.  Measured on this tree, 169
+    # refusals are chained and they split **142 verdict / 27 deferred** -- so a
+    # ``through=`` dropped at that producer would make all 169 resolve to
+    # ``CHAINED``, which the assertion above refuses, and a ``through=`` pointed at
+    # the wrong refusal would move this split.
+    #
+    # All three moved with ``salesagent-j3k2l.40``, and the DIRECTIONS are the point:
+    # 2 chained refusals became emissions (171 -> 169), and 12 that resolved to
+    # DEFERRED now resolve elsewhere -- 10 to VERDICT (132 -> 142) and 2 of them out
+    # of the refusal set entirely (39 -> 27).  A chain's floor on the DEFERRED side
+    # falls as rows land, so it is re-measured rather than held; what it grades is
+    # that both answers still occur, with a denominator beside each.
+    #
+    # Re-measured again at ``salesagent-j3k2l.28``, in the directions this paragraph
+    # already names: 169 -> 166 chained, because 3 more chained refusals became
+    # emissions, and the DEFERRED side fell hardest (27 -> 20) because the three
+    # refusals that row closed were deferrals that others chained to.  142 -> 146 on
+    # the verdict side.
+    chained = {d: r for d, r in out.refusals.items() if r["kind"] == refusal_module.Kind.CHAINED}
+    # **166 -> 158, 146 -> 144 and 20 -> 14 at ``salesagent-j3k2l.21``, and the
+    # DIRECTION is the point these floors exist for.** They fall as rows land: seven
+    # of this row's eleven emissions were chained refusals, and
+    # ``core/geo-place-requirement.json`` stopped being chained at all -- its target
+    # cleared, so it now refuses directly on its own ``pattern``. Eight chains left
+    # the refusal set. The deferred side fell hardest again (20 -> 14) because what
+    # this row cleared were deferrals that others chained to.
+    # **The DEFERRED side fell 14 -> 5 at ``salesagent-j3k2l.41``, which is the floor
+    # doing its job and not a regression.**  That row cleared five deferrals other
+    # documents chained to -- a default on a required property, a format inside a
+    # container, a format on a union branch, and an array's and a mapping's own bound
+    # on one -- so 12 chains left the refusal set with them (158 is unchanged because
+    # 12 chains also arrived: a document whose first refusal cleared now chains to its
+    # NEXT target).  The VERDICT side rose 144 -> 153 for the same reason: three of
+    # those chains now resolve to ``uniqueItems`` with no class above the array, which
+    # its producer mints as a verdict.  Both floors are re-measured on this tree, which
+    # is what the paragraphs above do at every row.
+    # **158 -> 152 AND THE DEFERRED SIDE 5 -> 1 AT ``salesagent-j3k2l.43``, WHICH IS THE
+    # FLOOR BEING LOWERED AND HAS TO BE SAID OUT LOUD.**  A chain floor falls when a row
+    # clears a TARGET other documents chained to, and that is the whole of what this row
+    # did: 10 pending documents cleared, so the chains onto them left the refusal set.
+    #
+    # The split is what makes it attributable rather than a number going down.  The
+    # deferred chains were 5 and are 1, and the 4 that left are exactly this row's four
+    # inheritors -- ``core/media-buy-support-requirements.json``,
+    # ``error-details/execution-requirement-unmet.json``,
+    # ``core/demographic-targeting-resolution.json`` and
+    # ``core/package-targeting-resolution.json``, each of which chained to a conjunct the
+    # reader now lowers and each of which now emits.  The one left is
+    # ``creative/validate-input-response.json``, chained to
+    # ``creative/validate-input-result.json``'s ``required`` refusal, which is row
+    # ``salesagent-j3k2l.56``'s and not this one's.  The verdict chains fell 153 -> 151
+    # for the same reason in the other kind: a document whose chain target now EMITS
+    # either emits with it or refuses directly, and ``media-buy/control-media-buy-response.json``
+    # is the measured instance -- it chained through ``core/canonical-media-buy-action.json``
+    # and now carries its own verdict at
+    # ``/oneOf/0/properties/warnings/items/allOf/1/properties/code``.
+    #
+    # So a falling chain floor is the SIGN of an emitting row rather than a regression,
+    # and the thing that distinguishes the two is naming which chains left and where
+    # their documents went -- which is what the paragraph above does.
+    # **151 -> 126 AND 1 -> 29 AT ``adcp-client-python-10l.2``, AND THE TWO MOVES ARE
+    # ONE MOVE: no chain left the refusal set and none arrived (155 before, 155 after),
+    # and 25 of them re-resolved from VERDICT to DEFERRED because their TARGETS did.**
+    # That row makes a refusal's kind a reading of the keyword table's cell instead of
+    # an argument chosen at the raise site, and two raise sites were passing VERDICT for
+    # a cell the semantics document decides compiles: the ``$ref``-sibling screen and
+    # the nested-union sibling screen.  A chained refusal carries its target's answer
+    # through ``through=``, so re-minting 26 direct refusals moved 25 chains with them.
+    #
+    # A chain floor falling because the target's KIND changed is a different event from
+    # one falling because the target EMITTED, and the two are told apart by the figure
+    # beside it: emitted is 747 on both trees and the refusal set is the same 307
+    # documents at the same pointers on the same keywords.  Nothing cleared; what moved
+    # is what the report CLAIMS about 51 documents, which is the row's whole purpose.
+    # **152 -> 144 AND 126 -> 50 AT ``adcp-client-python-10l.5``, AND BOTH MOVES ARE
+    # EMISSION.**  21 documents left the refusal set (748 -> 769 over the portable
+    # population), and 8 of them were the TARGET of a chain, so 8 chains left with
+    # them: §5's ``$ref`` row now compiles a CONSTRAINING sibling to nothing and
+    # reports it, where it refused the document as a verdict.  The verdict half of the
+    # split fell further because one raise site stopped MINTING its kind -- a ``$ref``
+    # conjunct whose target is not a class is §5's own CONJ case and §14 step 8's
+    # unwritten cell, so ``kind_for`` answers DEFERRED where the site passed VERDICT,
+    # and the 1 direct refusal that re-minted carried its chains with it.
+    #
+    # **144 -> 127 AT ``adcp-client-python-10l.20``, AND THE MOVE IS EMISSION.**  Three
+    # of §14 step 9's rows landed -- a non-class target as a composing node's own TYPE,
+    # a root ARRAY as a root model, and a root stating no schema keyword (or only a
+    # conditional) as a permissive root model -- and 29 documents left the refusal set
+    # (769 -> 798 over the portable population).  14 of the 29 were reached only through
+    # a chain, so 14 chains left with them, and three more chains re-rooted onto their
+    # own documents' obstructions.
+    #
+    # A FLOOR and not an equality, which is the shape this assertion has always had: a
+    # chain count falls whenever a target emits, so an equality would oblige every later
+    # emitting row to loosen it -- §9's "a pin with no denominator is not a ratchet",
+    # read at the one quantity in this test that moves with emission.  The floor is
+    # therefore re-measured on the tree, and what it still catches is the defect it was
+    # written for: a run that stops minting CHAINED at all, which would read 0.
+    # **127 -> 105 AT ``adcp-client-python-10l.21``'s THIRD INSTALMENT, AND THE MOVE IS
+    # EMISSION.**  Two of §14 step 9's rows landed -- a ``type`` word beside a NESTED
+    # combinator is in every branch already, and a ``not`` beside a conjoined type hangs
+    # off the value's own annotated type -- and 37 documents left the refusal set over
+    # the portable population (845 -> 885).  26 of the 37 were reached only through a
+    # chain, so 26 chains left with them, and four more re-rooted onto their own
+    # documents' obstructions.
+    # **105 -> 98 AT THE SEVENTH INSTALMENT, AND THE MOVE IS EMISSION PLUS ONE CHAIN
+    # THAT RE-ROOTED.**  §2's intersection rule writes the composition at ``items`` and
+    # the base's reference survives it as a conjunct, so ``core/assets/vast-asset.json``
+    # and ``core/assets/daast-asset.json`` emit and 11 documents left the refusal set
+    # over the portable population (897 -> 908).  NINE of the ten chains that left are
+    # those documents' inheritors -- ``core/offering-asset-group.json`` and the eight
+    # ``*-item.json`` documents -- and the tenth is
+    # ``core/assets/asset-union.json``, which stopped being chained at all: its target
+    # emits, so the walk gets further and it mints its OWN verdict at ``/oneOf/3``, a
+    # ``$ref`` branch onto a union root.
+    # **98 -> 94 AT ``adcp-client-python-10l.55``, AND ALL FOUR ARE EMISSION.**  That
+    # ``/oneOf/3`` verdict is gone -- the branch row reads ``compiler.TargetKind`` instead
+    # of asking whether the target has a ``compiler.Shape``, so a union root is the base
+    # §4 says it is -- and ``core/assets/asset-union.json`` emits with four of the five
+    # documents that chained behind it: ``core/localized-creative-asset.json``,
+    # ``core/creative-localization-readback.json``, ``core/creative-localization.json``
+    # and ``creative/sync-creatives-response.json``.  The fifth,
+    # ``creative/list-creatives-response.json``, is STILL CHAINED and is counted here:
+    # its chain re-rooted onto ``core/rights-constraint.json`` ->
+    # ``core/attestation-reference.json``, whose ``minLength`` on a constrained arm of a
+    # type list is row ``10l.45``'s deferral.  So the floor falls by exactly the four
+    # that emit, which is the move this floor's own paragraph above says it is re-measured
+    # for.
+    # **94 -> 90, BY TWO ROWS INDEPENDENTLY, AND BOTH REASONS COMPOSE.**  The floor is
+    # the measured value read from below, so it records each fall rather than predicting
+    # one; two lanes lowered it from 94 in the same hour and the merge takes the lower.
+    #
+    # ``adcp-client-python-10l.45`` took it to 90: the walk lifts a type list whose
+    # arm carries a constraint (``harness._type_list``), so
+    # ``core/attestation-reference.json`` emits -- it was the PRIMARY deferral, not a
+    # chain -- and with it ``governance/get-plan-audit-logs-response.json``, reached only
+    # through a chain onto it.  The other three stopped being chains because the walk
+    # gets further and each mints its OWN primary refusal:
+    # ``core/rights-constraint.json`` and ``core/rights-attestation-evaluation.json``
+    # DEFERRED on a ``format`` this step does not lower, and
+    # ``core/audience-evidence.json`` a VERDICT on §5's ``$ref`` row at CONJ.
+    #
+    # ``adcp-client-python-10l.43`` took it to 92, and both of ITS two are emission: a
+    # local pointer reached through an ``allOf`` conjunct asks
+    # ``compiler.local_reference`` now instead of the binder
+    # (``lower.composition._conjunct_base``), so ``core/account-identity-change-preview.json`` and
+    # ``core/registry-event.json`` emit, and the two chains behind them leave with their
+    # targets -- ``account/sync-accounts-response.json`` and
+    # ``core/registry-feed-response.json``.
+    #
+    # On the merged tree ``chained`` is 96, above both floors: the two falls are real and
+    # other merges re-rooted documents INTO the chained set over the same period, which
+    # moves this count up and is why a floor and not an equality.
+    assert len(chained) >= 90, len(chained)
+    split = collections.Counter(r["resolved"] for r in chained.values())
+    # **AND THE VERDICT HALF ROSE 32 -> 37 AT THE SEVENTH INSTALMENT, WHICH IS A
+    # PREDICTED RISE AND NOT A REGRESSION.**  The floor below is deliberately NOT raised
+    # to 37: §8 retired the verdict ceiling because the count "is not monotone under
+    # progress", and a floor re-measured upward here would oblige the row that clears
+    # ``core/assets/asset-union.json``'s obstruction to loosen it.  What moved is
+    # attributable by name -- the five chains through ``asset-union`` re-resolved from
+    # DEFERRED to VERDICT when it stopped being chained and minted its own, so the
+    # deferred half fell 76 -> 61 by the same five plus the ten that left ``chained``.
+    # **50 -> 44 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and this floor
+    # falls for the reason the one above it does.**  It is a floor on the VERDICT half of
+    # the chains, so it moves whenever a verdict stops being one -- and §8 retired the
+    # verdict ceiling on exactly that ground (``7c11a596``): the count "is not monotone
+    # under progress", so a pin in either direction on it obliges a row that clears a
+    # verdict to loosen one.  §5(b)'s ``patternProperties`` and ``uniqueItems`` rows are
+    # declared widenings now and 29 verdicts left the tree with them.  What this still
+    # catches is what it was written for: a run that stops minting the kind at all.
+    #
+    # **44 -> 33 AT THE FOURTH INSTALMENT, and the eleven are the SAME eleven chains the
+    # :data:`VERDICTS` set names: nothing cleared and nothing re-rooted.**  The
+    # restatement arm reads its kind off the cell instead of passing ``Kind.VERDICT`` by
+    # hand, so the 13 direct refusals re-minted as deferrals and the chains onto them
+    # carry the target's new answer through ``through=``.  ``len(chained)`` is 109 on both
+    # trees and the DEFERRED half rose by the same 11, which is what tells this apart from
+    # a target emitting: a chain that leaves the refusal set leaves ``chained`` with it.
+    #
+    # **33 -> 32 AT THE FIFTH INSTALMENT, AND THE MOVE IS EMISSION**, which the two
+    # counts beside it say together.  ``len(chained)`` is 109 on the base tree and 107
+    # on this one: four chains LEFT because their targets emit --
+    # ``core/assets/card-asset.json`` and ``core/product-card-reference-asset.json``
+    # (deferred), ``media-buy/get-media-buy-delivery-response.json`` and
+    # ``media-buy/media-buy-delivery-webhook-result.json`` (verdict, both behind
+    # ``core/package-delivery-metric-value.json``) -- and two JOINED, because
+    # ``media-buy/get-media-buys-response.json`` (verdict) and
+    # ``signals/get-signals-response.json`` (deferred) cleared their OWN restatement
+    # obstruction and re-rooted onto a chain through a target refused for another row's
+    # reason.  Verdict 33 - 2 + 1 = 32, deferred 76 - 2 + 1 = 75.
+    #
+    # **32 -> 30 AT ``adcp-client-python-10l.43``, AND THE MOVE IS EMISSION.**  The two
+    # chains the floor above lost are the same two counted here, because both were
+    # ``resolved=verdict``: ``account/sync-accounts-response.json`` and
+    # ``core/registry-feed-response.json`` each quoted a target whose own refusal was the
+    # conjunct-local routing gap's VERDICT, and both targets emit.  The deferred half is
+    # unmoved at 62, which is what says nothing re-rooted.
+    assert split[refusal_module.Kind.VERDICT] >= 30, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
+    # and the chains run deep enough that the propagation is exercised more than once
+    assert (
+        max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())
+        >= 5
+    ), "no chain deeper than one link: the propagation through through= grades nothing"
+
+    # Shrink-only: a row lands, deferrals become emissions, these fall.
+    #
+    # **1053 -> 967 and 1 -> 87, moved by `salesagent-j3k2l.37`, and the number
+    # FALLING is the instrument working.**  Nothing about what emits changed -- 686
+    # before and after -- and 86 documents moved out of `verdict` because their
+    # producers say in their own text that the lowering for the position has not
+    # been written.  47 directly and 39 through a chain.  The rule applied to every
+    # one of the 29 live producers, and the table of which producer got which kind,
+    # is `docs/plan/j3k2l37-prediction.md`; the three biggest movers are
+    # `product.py`'s "a later D2 row lowers this one" (12), `union.py`'s "a branch
+    # composes once that reader is shared" (10) and `compiler.py`'s
+    # default-on-a-required-property (1 directly, 5 through chains).
+    #
+    # **967 -> 988 and 87 -> 66, moved by `salesagent-j3k2l.40`**, which shared the
+    # conjunct reader: a union BRANCH that composes is lowered by
+    # `lower.composition.lower_composition` with the union base as `bases`, so all 10
+    # documents waiting on "a branch composes once that reader is shared" cleared
+    # that row -- 3 emitted, 6 accounted as verdicts, and 1 (`adagents.json`) moved
+    # on to the NEXT gap, which is why the product row's deferral reads 13 here and
+    # 12 before.  12 chained refusals released with them.
+    # `docs/plan/j3k2l40-prediction.md` carries the prediction and its grade.
+    #
+    # Each pin is the value MEASURED on this tree and each was fire-probed one step
+    # tighter (`deferred <= 64`, `unresolved <= 0`, `accounted >= 989`,
+    # `chained >= 170`, and the two chain floors at 143 and 28), so each is known to
+    # grade rather than to sit loose.  Probed as six separate runs and not as
+    # arithmetic over one measurement: the assertions are ORDERED, so a tightened pin
+    # that an earlier one pre-empts is never reached and the arithmetic cannot say so.
+    #
+    # **UNRESOLVED IS AT 0 SINCE ``salesagent-j3k2l.71``, AND THE CEILING MOVES WITH
+    # IT RATHER THAN SITTING ONE ABOVE THE MEASUREMENT.**  That row's document
+    # (``a2ui/si-catalog.json``) was the kind's only instance in the bundle, and it
+    # emits: its 24 remote references are inside a section entry nothing declares, so
+    # the carried document decides without them.  **No document of the 3.2 bundle
+    # reaches ``Kind.UNRESOLVED`` any more**, which is worth saying rather than
+    # leaving as a pin with slack: the class is live code with no live instance, so
+    # what still grades it is ``tests/test_fragment_ref.py``'s constructed bundle,
+    # where a remote reference inside a DECLARED entry refuses on it.  The kind is
+    # kept, because the obligation it reports is real and a later bundle can carry
+    # one; the ceiling is 0 so a document arriving at it is loud here.
+    #
+    # **IT WAS LOUD, AND THE DOCUMENT ARRIVED ONE ROW LATER -- 0 -> 1 at
+    # ``salesagent-j3k2l.67``, MEASURED ON THE MERGED TREE AND NOT ON EITHER BRANCH.**
+    # That row admits ``discriminator`` beside a nested union (§6's row: it constrains
+    # nothing, so its cell compiles to NOTHING and no fact is dropped), so
+    # ``core/requirements/catalog-field-binding.json`` gets one pointer further than its
+    # old ``discriminator`` VERDICT and reaches
+    # ``#/definitions/ScalarBinding/properties/ext``, whose target ``core/ext.json`` is
+    # remote and inside an entry the document DOES declare -- which is precisely the
+    # shape the paragraph above says still refuses.  So the kind has a live instance
+    # again and the document MOVED rather than cleared: out of the verdict column and
+    # into the pending one, on this row's own ground.  Named rather than counted, for
+    # the reason a ceiling going UP exists.
+    # **65 -> 67 at ``adcp-client-python-10l.2``, A CEILING GOING UP, AND IT IS THE ROW
+    # WORKING RATHER THAN A REGRESSION.**  Measured on the whole portable set at that
+    # row's tip: deferred 16 -> 67, verdict 290 -> 239, emitted 747 on both trees and
+    # the refusal set the same 307 documents at the same pointers on the same keywords.
+    # Fifty-one documents moved out of the verdict column, 26 directly and 25 through a
+    # chain, because the kind is now read off the keyword table's cell rather than
+    # passed at a raise site -- and §9's first rule is that a refusal for code nobody
+    # has written is a DEFERRAL, never a verdict, because minting one reports clearable
+    # work as finished.  The ceiling rises to the measurement, and the direction is
+    # named: this is a pin ADMITTING that 51 documents are clearable, where before it
+    # recorded them as decided.
+    # **1 -> 0 AT ``adcp-client-python-10l.3``, AND THE KIND HAS NO LIVE INSTANCE
+    # AGAIN.**  ``core/requirements/catalog-field-binding.json`` EMITS: its last refusal
+    # was the reference at ``#/definitions/ScalarBinding/properties/ext``, which the
+    # delegated resolver left in the carried document because it descended neither
+    # ``definitions`` nor ``$defs``, and ``bundle.record`` descends a section entry like
+    # any other subschema position (architecture §4, §11) -- so the record inlines it and
+    # the carried document decides locally.  Measured on the whole portable set at that
+    # row's tip: emitted 747 -> 748, refused 307 -> 306, deferred 67 and verdict 239 on
+    # both trees, and the remaining 306 refusals the same documents at the same pointers
+    # on the same keywords.  Architecture §13 item 5 says this kind is retired by §4's
+    # resolver; the kind itself is row .6's to remove, and until then the ceiling at 0 is
+    # what makes a document arriving at it loud.
+    # **67 -> 108 AT ``adcp-client-python-10l.5``, A CEILING GOING UP AGAIN, AND IT IS
+    # THE SAME EVENT THE ROW BEFORE IT RECORDED: a kind that was MINTED AT A RAISE SITE
+    # read off the cell instead.**  Measured on the whole portable set at this row's
+    # tip: emitted 748 -> 769, refused 306 -> 285, deferred 67 -> 108, verdict 239 ->
+    # 177.  One raise site changed -- a ``$ref`` conjunct whose target is not a class --
+    # and §5's ``$ref`` row at CONJ DECIDES that case ("the target is this node's own
+    # TYPE, and the other conjuncts and the ``allOf``'s siblings constrain it"), with
+    # §14 step 8 naming the step that writes it.  So the compilation is decided and
+    # merely unwritten, which §9's first rule makes a deferral: a verdict claims the
+    # obstruction belongs to the document, to pydantic or to the pointer space, and it
+    # belongs to none of the three.  62 documents moved out of the verdict column, 1
+    # directly and the rest through a chain.
+    #
+    # The ceiling rises to the measurement and the direction is named: this pin ADMITS
+    # that 62 more documents are clearable where before it recorded them as decided.
+    # **108 -> 109 AT ``adcp-client-python-10l.5``'s SECOND HALF, A CEILING GOING UP BY
+    # ONE, AND IT IS THE THIRD INSTANCE OF THE SAME EVENT: a kind MINTED AT A RAISE SITE
+    # read off the cell instead.**  Measured on the whole portable set across §14 step
+    # 5's one-path change: emitted 769 on both trees and the SAME 769 documents, refused
+    # 285 on both trees and the SAME 285 documents, deferred 108 -> 109 and verdict
+    # 177 -> 176.
+    #
+    # **Exactly one document moved, by name**:
+    # ``creative/list-creatives-response.json`` at
+    # ``/properties/creatives/items``.  That node carries a nested ``oneOf`` beside an
+    # ``additionalProperties``, and §5's ``allOf`` row ("beside a union → the same, onto
+    # the base") plus ``nodes.Union.conjuncts`` put the union arm BEFORE the ``allOf``
+    # arm -- where ``emit.ROWS`` gave a composing union ROOT to the union row and
+    # ``_decide`` gave every other position to the ``allOf`` arm, so root and non-root
+    # disagreed about the precedence.  With one path the node reaches the union arm,
+    # whose sibling screen is ``compiler.check_keywords`` and therefore reads the KIND
+    # OFF THE CELL (``compiler.kind_for``); ``lower_composition``'s
+    # ``_refuse_a_combinator_of_shapes`` had passed ``Kind.VERDICT`` by hand.
+    #
+    # Both refusals name the same mechanism -- a sibling of a nested union -- so what
+    # changed is which of two spellings of it answered, and the cell's answer is the one
+    # architecture §3 decides ("a refusal's kind is derived from the cell and never
+    # chosen at a raise site").  §9's first rule makes it a DEFERRAL: ``nodes.Union``
+    # carries the siblings and §14 step 8 writes them onto the base, so the compilation
+    # is decided and merely unwritten, and a verdict would claim the obstruction belongs
+    # to the document, to pydantic or to the pointer space when it belongs to none.
+    #
+    # The ceiling rises to the measurement and the direction is named: this pin ADMITS
+    # that one more document is clearable where before it recorded it as decided.
+    #
+    # **109 -> 153 AT ``adcp-client-python-10l.20``, and the move is 85 VERDICTS LEAVING**
+    # (§14 step 9).  ``union.ROOT_CONJUNCTS`` minted a VERDICT for 61 documents and the
+    # chain carried it to more; §8's pairing rule answers all of them, so what each of
+    # those documents now reports is its next obstruction -- and almost every one of
+    # those is unwritten code: §4's UNDERDETERMINED row for 16 roots whose branches
+    # genuinely overlap, step 7's row for 11 whose branches constrain only key presence,
+    # and the chains behind both.  Measured on this tree: verdict 168 -> 83, deferred
+    # 83 -> 153 over the portable set, and 75 / 150 over ``population()``, which is what
+    # this test counts.
+    #
+    # **This ceiling rising is the ratchet working and not loosening**, by this test's
+    # own sentence above: a deferral records CLEARABLE work and a verdict records the
+    # obstruction as the document's, so a verdict becoming a deferral is a claim being
+    # withdrawn.  The figure that may not rise is the VERDICT count, which fell by 85,
+    # and §9's "do not pin the approximation count" is the same reasoning one step on.
+    #
+    # **153 -> 130 AT ``adcp-client-python-onq``, and that half is EMISSION.**  §5's "A
+    # union of presence-only branches that also forbid" (2026-10-27) decides the six
+    # documents whose combinator states ``required`` plus a per-branch ``not``, and
+    # ``PresenceGroups`` carries them: over the portable set, emitted 818 -> 825 and
+    # refused 236 -> 229, so 23 deferrals left -- 7 as emissions and 16 onto their next
+    # keyword.
+    #
+    # **130 -> 140 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and every one of
+    # the ten is a VERDICT BECOMING A DEFERRAL**, which is the move this ceiling's own
+    # sentence above calls the ratchet working: "a deferral records CLEARABLE work and a
+    # verdict records the obstruction as the document's, so a verdict becoming a deferral
+    # is a claim being withdrawn".  §5(b)'s ``patternProperties`` row moved 15 documents
+    # off the verdict column (7c11a596) and §5(b)'s ``uniqueItems`` row moved 8 more; 13
+    # of those emit and the rest get further and report their next obstruction, which is
+    # unwritten code in every case.  Measured over the portable set: emitted 825 -> 844,
+    # refused 229 -> 210, verdict 99 -> 70, deferred 130 -> 140.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 140, resolved[refusal_module.Kind.DEFERRED]
+    # And the half that MAY NOT RISE, pinned at the measurement §14 step 9 left it at:
+    # a verdict says the obstruction belongs to the document, so a row that mints one
+    # where a deferral stood is charging a document for work nobody has done (§9).
+    #
+    # **83 -> 99 AT ``adcp-client-python-onq``, AND THIS CEILING GOING UP HAS TO BE
+    # GRADED AGAINST THE SENTENCE ABOVE RATHER THAN ALLOWED.**  The test of the guarded
+    # event is whether a RAISE SITE or a CELL changed its answer.  Neither did: that row
+    # adds a rule kind, a branch reading and one §5 cell (``oneOf``/``anyOf``'s
+    # ``compiles``), and it changes no cell's ``effect`` and no site's ``kind``.  What
+    # moved is WHICH obstruction each document reaches first, because the deferral in
+    # front of it is answered -- and the 16 documents are named, with the verdict each
+    # now reports:
+    #
+    # * 15 resolve to §5's own DECIDED verdict at ``core/creative-asset.json`` and
+    #   ``core/creative-manifest.json`` ``#/properties/assets``: an
+    #   ``additionalProperties`` that is not ``false`` beside ``patternProperties``,
+    #   where "the model would be narrower than its document" and the obstruction is the
+    #   DOCUMENT's -- ``lower/containers.py`` states that decision and 7 bundle sites
+    #   already carried it.  They are the two documents themselves plus
+    #   ``core/creative-representation.json``,
+    #   ``core/creative-representation-set.json``, ``core/creative-variant.json``,
+    #   ``creative/get-creative-delivery-response.json``,
+    #   ``creative/get-creative-features-request.json``,
+    #   ``creative/list-creatives-response.json``,
+    #   ``creative/preview-creative-request.json``,
+    #   ``creative/sync-creatives-request.json``,
+    #   ``creative/validate-input-request.json``,
+    #   ``media-buy/build-creative-request.json``,
+    #   ``trusted-match/context-match-response.json``, ``trusted-match/offer.json`` and
+    #   ``trusted-match/provider-context-match-response.json``.
+    # * 1 is ``core/media-buy-frequency-cap-capability.json``, which reaches the
+    #   RE-EXPORT verdict at ``/properties/max_impressions_constraints``: a restated
+    #   property re-uses a field whose type its base module imports rather than
+    #   declares.  ``core/product-signal-targeting-option.json`` already carried that
+    #   verdict, so this is a second instance of a decided shape and not a new claim.
+    #   **Both left the set at ``adcp-client-python-81c``, and the verdict with them.**
+    #   A symbol the base merely imported is reachable from the module that DECLARES it,
+    #   so ``lower.composition._reused`` takes it from there: ``core/media-buy-frequency-cap``
+    #   ``-capability.json`` EMITS, and ``core/product-signal-targeting-option.json``
+    #   stays in the set on its NEXT obstruction -- a chain through
+    #   ``core/vendor-pricing-option.json``, which resolves to a verdict of its own.  The
+    #   paragraph above stands as the record of a verdict that was decided and is not.
+    #
+    # So every one of the 16 is a document moving ONTO a verdict already decided and
+    # already live in the tree, and none of them is a deferral re-minted as a verdict.
+    # The ceiling rises to the measurement, the direction is named, and what it still
+    # catches is the event it was written for: a row whose raise sites start charging
+    # documents for unwritten work.
+    #
+    # **THE CEILING IS RETIRED AT ``7c11a596`` AND THE NAMED SET REPLACES IT.**  §8: "the
+    # VERDICT count is not pinned either, and a ceiling on it was the wrong instrument.
+    # It is not monotone under progress, measured in both directions within one day:
+    # clearing ``union.ROOT_CONJUNCTS`` moved it DOWN 85 ... clearing ``onq``'s Group A
+    # moved it UP 16 ... Both moves are documents progressing, and a ceiling that forbids
+    # the second while rewarding the first is §9's pin with no denominator -- it would
+    # oblige a row that unblocks a document to loosen it.  What is pinned instead is the
+    # SET, named by document, so a verdict arriving is attributable and a verdict
+    # arriving for a NEW reason reddens."
+    #
+    # So this is the set and not the count, and a count below is derived from it rather
+    # than asserted beside it.  Measured at ``adcp-client-python-10l.21``'s second
+    # instalment, where the set FELL from 99 to 70: §5(b)'s ``patternProperties`` row
+    # (15 documents) and §5(b)'s ``uniqueItems`` row (8 and their chains) are declared
+    # widenings now, and a widening is not a verdict.
+    assert set(VERDICTS) == {
+        d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.VERDICT
+    }, sorted(
+        {d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.VERDICT}
+        ^ set(VERDICTS)
+    )
+    assert resolved[refusal_module.Kind.VERDICT] == len(VERDICTS), resolved[
+        refusal_module.Kind.VERDICT
+    ]
+    # **THE ``unresolved`` PIN IS GONE WITH THE KIND, AT ``adcp-client-python-10l.6``,
+    # AND WHAT REPLACES IT IS THE RETIREMENT ITSELF.**  Architecture §3: "UNRESOLVED
+    # disappears.  It named a reference the delegated resolver did not reach, and the
+    # resolver in §4 reaches every position", and §13 item 5 records that the kind "is
+    # not in the document" at all.  The ceiling read ``<= 0`` and the paragraphs above
+    # are the history of it going 0 -> 1 -> 0; the measurement at this row's base is 0
+    # again, with the kind carried by no refusal of the 285.
+    #
+    # A ceiling at 0 over a kind that cannot be constructed is a pin on nothing, so the
+    # assertion becomes the SET OF KINDS: a resolved refusal carries a verdict or a
+    # deferral and there is no third.  That reddens if a row reintroduces the kind, which
+    # is what the ceiling was for, and it cannot be satisfied by a kind nothing mints.
+    #
+    # What the check it fed became: a reference surviving ``bundle.record`` at a position
+    # the package's own validation decides through is the INLINER disagreeing with
+    # ``bundle.undecidable_references``, which is a property of the COMPILER and not of
+    # any document -- so ``emit`` raises ``refusal.BuildFailure`` there (§2's one
+    # exception, which no layer catches) and mints no kind.  The obligation is unchanged
+    # and reported one layer up.
+    assert refusal_module.RESOLVED_KINDS == {
+        refusal_module.Kind.VERDICT,
+        refusal_module.Kind.DEFERRED,
+    }, sorted(refusal_module.RESOLVED_KINDS)
+    assert not hasattr(refusal_module.Kind, "UNRESOLVED"), "§3 retires the kind"
+    assert set(resolved) <= refusal_module.RESOLVED_KINDS, sorted(resolved)
+
+    # Grow-only: what the exit condition actually counts.
+    #
+    # **988 -> 986 at ``adcp-client-python-10l.2``, AND A FLOOR FALLING HERE IS THE ONE
+    # MOVE THIS PIN EXISTS TO MAKE VISIBLE.**  ``accounted`` is ``emitted + VERDICTS``,
+    # so it falls when verdicts do: 290 -> 239, with emitted unchanged at 747 and the
+    # refusal set the same 307 documents at the same pointers on the same keywords.  No
+    # document stopped emitting and none started refusing -- measured by diffing the two
+    # reports document by document.
+    #
+    # The 51 that moved were counted as FINISHED and are not: each is a cell the
+    # semantics document decides and the walk has not written, which §9 calls a DEFERRAL
+    # and which the old reading minted as a verdict against the document.  The two
+    # biggest producers are the ``$ref``-sibling screen (the five ``const``-beside-a-
+    # ``$ref`` documents the epic names, plus the siblings at ``pattern``) and the
+    # nested-union sibling screen, and 25 chains carried their targets' new answer.  So
+    # the number this floor reads fell by 51 and the number of documents this compiler
+    # finishes fell by 0; re-pointing it DOWN is the pin reporting the correction rather
+    # than absorbing it.
+    # **986 -> 987 at ``adcp-client-python-10l.3``, a floor RISING, and the move is one
+    # emission: ``core/requirements/catalog-field-binding.json``, whose unresolved
+    # reference the record inlines.  Verdicts are unchanged at 239, so the whole of the
+    # rise is the emitted term.
+    # **987 -> 946 at ``adcp-client-python-10l.5``, and the fall is the same correction
+    # the fall before it was, measured the same way.**  ``accounted`` is
+    # ``emitted + VERDICTS``, so the two terms moved in opposite directions: emitted
+    # 748 -> 769 (+21, every one of them named in the row's delivery note, and 0
+    # documents stopped emitting) and verdicts 239 -> 177 (-62).  Net -41.
+    #
+    # The 62 were counted as FINISHED and are not.  One raise site was passing VERDICT
+    # for a cell §5 decides -- a ``$ref`` conjunct whose target is not a class, which
+    # §5's ``$ref`` row at CONJ makes "this node's own TYPE" and §14 step 8 writes --
+    # and 61 chains carried the new answer.  §9's first rule is that a refusal for code
+    # nobody has written is a DEFERRAL, so re-pointing this floor DOWN is the pin
+    # reporting the correction rather than absorbing it.  The emitted term is what rose
+    # and nothing it counts moved the other way.
+    # **946 -> 945 at ``adcp-client-python-10l.5``'s SECOND HALF, and the -1 is the
+    # verdict term alone.**  ``accounted`` is ``emitted + VERDICTS``: emitted is 769 on
+    # both trees and the same 769 documents, and verdicts 177 -> 176.  The one document
+    # is ``creative/list-creatives-response.json``, named and attributed at the deferred
+    # ceiling above -- a kind that was minted at a raise site is read off the cell -- so
+    # re-pointing this floor DOWN is the pin reporting the correction rather than
+    # absorbing it.  Nothing stopped emitting and nothing started refusing.
+    # **945 -> 901 at ``adcp-client-python-10l.20``, and the fall is the same correction
+    # the two before it were, measured the same way.**  ``accounted`` is
+    # ``emitted + VERDICTS``, so the two terms moved in opposite directions: emitted
+    # 803 -> 818 (+15, every one named in the row's delivery note, and 0 documents
+    # stopped emitting) and verdicts 168 -> 83 (-85).  Net -44.
+    #
+    # The 85 were counted as FINISHED and are not.  ``union.ROOT_CONJUNCTS`` minted a
+    # VERDICT for 61 documents on the ground that "there is no pointer to the conjunction
+    # for a branch class to name", and §8's pairing rule gives it one -- so every one of
+    # those documents now reports its NEXT obstruction, and almost every one of those is
+    # unwritten code: §4's UNDERDETERMINED row for 16 roots whose branches genuinely
+    # overlap, step 7's row for 11 whose branches constrain only key presence, and the
+    # chains behind both.  §9's first rule is that a refusal for code nobody has written
+    # is a DEFERRAL, so re-pointing this floor DOWN is the pin reporting the correction
+    # rather than absorbing it.  The emitted term is what rose and nothing it counts
+    # moved the other way.
+    accounted = len(out.emitted) + len(verdicts)
+    assert accounted >= 901, (accounted, len(out.emitted), len(verdicts))
+
+    # And the gap between the two readings, stated so it cannot be read as closed.
+    pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)
+    assert accounted + pending == len(portable), (accounted, pending, len(portable))
+
+    # **A document the pending count loses has to turn up in the EMITTED count**
+    # (§6, "and the emitted count never decreases", and the paragraph beginning
+    # "The second term exists because the first one makes refusing a legal way to
+    # finish a row").  ``accounted >= 988`` counts a verdict and a class alike, so a
+    # row that emits its common case and refuses its edge satisfies it either way:
+    # `salesagent-j3k2l.40` moved pending 87 -> 66 while emitted rose 686 -> 691 and
+    # verdicts 281 -> 297, sixteen of its twenty-one documents resolved by deciding
+    # never to generate them, and the figure read that row as the day's largest step.
+    #
+    # The two terms are COUPLED and that is the whole content of this pin.  Held
+    # apart -- ``emitted >= 691`` beside ``pending <= 66`` -- they are both satisfied
+    # by refusing a document, because emitted stays 691 while pending falls to 65;
+    # the signs are only opposite once clearing a pending document COSTS an emission.
+    # ``max(0, ...)`` is the never-decreases half: a bundle that grows the pending set
+    # cannot buy back room under the emitted floor.
+    #
+    # Fire-probed as five runs of this test on this tree, swapping the two literals
+    # and nothing else, so each half is perturbed on its own: ``691, 66`` passes (the
+    # tree as delivered), ``686, 87`` fails -- that is .40's own trade, 21 cleared for
+    # 5 emitted, and it is the instance this pin exists for -- ``691, 76`` fails (ten
+    # cleared with emitted flat, a row finished entirely by refusing), ``686, 71``
+    # passes (five cleared for the five .40 really emitted), and ``692, 66`` fails on
+    # the floor alone with pending unmoved.  The three failures all land HERE and not
+    # on an earlier assertion, which the ordering makes worth stating.
+    #
+    # **RE-POINTED 691, 66 -> 705, 48 BY ``salesagent-j3k2l.28``, AND THE FOUR IT DID
+    # NOT EMIT ARE NAMED HERE, which is the only form a re-point may take.**  That row
+    # cleared 18 pending: 14 by emitting, and 4 by reaching a VERDICT.  It minted none
+    # of those four.  Each is a CHAINED refusal whose first blocker was one of the
+    # three one-sided-fold deferrals the row removed, and whose SECOND blocker was a
+    # verdict already being produced for its target at ``760e898c6`` -- so the walk got
+    # FURTHER and found the real refusal, which is the opposite of the trade this pin
+    # exists to refuse.  Measured by A/B against the base's ``codegen/``, with each
+    # target's verdict read off its own refusal:
+    #
+    #   core/targeting-overlay-requirements.json -> core/geo-region-requirement.json
+    #       /properties/countries/propertyNames on ``pattern`` -- the key-pattern
+    #       verdict, whose constant ``salesagent-j3k2l.64`` deleted when the typed key
+    #       began to emit, so both targets emit today and the chain is gone
+    #   core/targeting-overlay-support.json      -> core/geo-region-support.json
+    #       the same verdict at the same pointer, and gone the same way
+    #   media-buy/package-control.json -> core/targeting-input.json ->
+    #       core/targeting-unknown-age-eligibility-constraint.json at ``/`` on ``if``:
+    #       a root is exactly one kind and this one's is read from ``if``
+    #   media-buy/package-update.json  -> core/optimization-goal.json at
+    #       /oneOf/0/properties/standard/allOf/0 on ``allOf``: ViewabilityStandard is
+    #       an alias, so it cannot be a base (D2)
+    #
+    # Four producers, none of them that row's, and all four already firing at the base.
+    # A re-point whose 4 could not be named and attributed would be the trade wearing
+    # this pin's clothes; these can, so the pin moves and the names stay here.
+    # **RE-POINTED 705, 48 -> 744, 12 BY ``salesagent-j3k2l.43``, AND IT CLEARED NONE BY
+    # REFUSING**, which is the cheapest form the re-point above says a re-point may take:
+    # the row names the four it did not emit because it had four; this row has none.
+    # Measured over the whole portable set at its own tip: pending 22 -> 12, and every
+    # one of the 10 turns up in the emitted count -- 6 on their own ground
+    # (``core/collection-selection``, ``core/placement-selection``,
+    # ``core/media-buy-frequency-cap-requirement``, ``core/product-execution-requirement``,
+    # ``media-buy/sync-catalogs-request``, ``core/demographic-targeting-intent``) and 4
+    # released through a ``$ref`` chain onto them.  Emitted rose by 13 rather than 10
+    # because 3 VERDICTS became classes: ``core/audience-evidence-requirements``,
+    # ``core/canonical-media-buy-action`` and ``core/forecast-rate-range``, each refused
+    # for a restatement the intersection rule now merges instead of refusing.  Verdicts
+    # therefore FELL, 301 -> 298, which is the one direction this pin does not measure
+    # and is reported beside it rather than folded in.
+    emitted_pin, pending_pin = 744, 12
+    assert len(out.emitted) >= emitted_pin + max(0, pending_pin - pending), {
+        "emitted, and its pin": (len(out.emitted), emitted_pin),
+        "pending, and its pin": (pending, pending_pin),
+        "pending cleared since the pin": pending_pin - pending,
+        "emitted gained since the pin": len(out.emitted) - emitted_pin,
+        "cleared by refusing instead of emitting": max(0, pending_pin - pending)
+        - (len(out.emitted) - emitted_pin),
+    }
+
+
+def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
+    """Measured on the pinned compiler, because a fact the model ADDS is the
+    renderer's and never the document's.
+
+    A one-member ``Literal`` renders ``const`` AND the type word of its own accord --
+    not a one-member ``enum``, and not the ``const`` alone -- so there is nothing for
+    the row to restate and restating it is what would add a fact.  Asserted against
+    pydantic here rather than assumed, because which of the three it renders is a
+    function of the version and the whole admission below rests on it.
+
+    The TYPELESS const nodes are then the only place the model states a type word the
+    document does not, and a ``const``'s own value is what the node already admits: the
+    population is named here so a row that starts restating the word has a denominator
+    to redden against.
+    """
+    assert TypeAdapter(Literal["x"]).json_schema() == {"const": "x", "type": "string"}
+    assert TypeAdapter(Literal[3]).json_schema() == {"const": 3, "type": "integer"}
+    assert TypeAdapter(Literal[True]).json_schema() == {"const": True, "type": "boolean"}
+
+    typeless = [(d, p, n) for d, p, n in _const_nodes() if "type" not in n]
+    # Non-empty, which is what the loop below needs: the derivation is asserted at
+    # every member, so the denominator's job is to say there are members.  832 was one
+    # bundle version's count of them.
+    claimed("typeless const nodes", {(d, p) for d, p, _ in typeless})
+
+    # The pin's own value is what the node admits, read off the DOCUMENT: a ``Literal``
+    # over it renders the type word the value's JSON type already forces, so the model
+    # restates nothing the document has not already fixed.
+    for document, pointer, node in typeless:
+        rendered = TypeAdapter(Literal[node["const"]]).json_schema()["type"]
+        assert jsonschema.Draft7Validator(node).is_valid(node["const"]), (document, pointer)
+        for other in ("s" if rendered != "string" else 1, [], {}, None):
+            assert not jsonschema.Draft7Validator(node).is_valid(other), (
+                document,
+                pointer,
+                rendered,
+                other,
+            )
+
+    # The record leaves a const node whole, and does so wherever it reaches one --
+    # ``test_a_const_node_inlined_through_a_ref_keeps_its_annotations`` below is the
+    # same assertion through a reference.
+    node = bundle.record(
+        BUNDLE, "collection/collection-list-changed-webhook.json", set(bundle.portable(BUNDLE))
+    )
+    event = node["properties"]["event"]
+    assert event["const"] == "collection_list_changed"
+    assert event["type"] == "string"
+    assert event["description"]
+
+
+def test_a_const_node_inlined_through_a_ref_keeps_its_annotations() -> None:
+    """A const node reached through a ``$ref`` is the whole node, annotations and all.
+
+    ``canonicalish`` reduces a node whose value set is FINITE to that set alone and
+    drops every annotation at it -- but only when the node is INLINED through a
+    ``$ref``, which is why the test above saw a whole node and an earlier inliner did
+    not.  ``bundle.record`` is this package's own inliner and performs no such
+    reduction, so the two copies are the SAME node.
+
+    Measured on the live pair that forced the earlier row:
+    ``core/agent-encryption-key.json``'s ``kty`` and the copy
+    ``core/authorized-agent-base.json`` inlines, key for key.
+    """
+    known = set(bundle.portable(BUNDLE))
+    own = bundle.record(BUNDLE, "core/agent-encryption-key.json", known)["properties"]["kty"]
+    assert own["const"] == "OKP"
+    assert own["type"] == "string"
+    assert own["description"]
+    through = bundle.record(BUNDLE, "core/authorized-agent-base.json", known)
+    inlined = through["properties"]["encryption_keys"]["items"]["properties"]["kty"]
+    assert inlined == own, (inlined, own)
+
+
+def test_the_const_row_has_exactly_one_lowering() -> None:
+    """DRY, as a structural claim rather than as a reading.
+
+    ``lower.union._literal`` was D2's ``const`` row scoped to one branch property,
+    written there because nothing claimed the keyword in full.  This claims it in
+    full, so the second copy is gone and so is the ``decided=`` plumbing that existed
+    for its one caller -- a keyword with two lowerings is two places for the refusal
+    set and the rendered annotation to disagree, and they did disagree: the dot
+    mangling above was in one of them.
+    """
+    assert not hasattr(lower_union, "_literal")
+    assert "decided" not in inspect.signature(objects.fields).parameters
+    assert "decided" not in inspect.signature(objects.lower_object).parameters
+    # union still NAMES the keyword, and only in its branch screen: that row is an
+    # attribution row (a bare const branch is a scalar branch) and not a lowering.
+    # Asserted by resolving the name rather than by grepping for the word, which
+    # "constrains" would match: the one place a Literal can be BUILT is the row.
+    assert "const" in lower_union.BRANCH_CLAIMS
+    builds = [
+        name
+        for name, module in (
+            ("compiler", compiler),
+            # ADDED AT ``adcp-client-python-g4z``, and for the reason the ``enum`` entry
+            # below records: §5's ``allOf`` row and the object row left ``compiler.py``
+            # for modules of their own, and a scan that names modules by hand narrows its
+            # own reach every time code moves out of one it names.
+            ("composition", composition),
+            ("objects", objects),
+            ("union", lower_union),
+            ("const", lower_const),
+            # ADDED AT ``salesagent-j3k2l.21``, and adding it is the point rather than
+            # bookkeeping: ``lower.enum.literal`` builds a ``Literal`` too, and without
+            # this entry the walk below could not see it -- the assertion would have gone
+            # on reading ``["const"]`` while a second row built the same annotation.
+            ("enum", lower_enum),
+        )
+        for node in ast.walk(ast.parse(inspect.getsource(module)))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "TypeRef"
+        and any(k.arg == "literals" for k in node.keywords)
+    ]
+    # **THE INVARIANT IS ONE LOWERING PER KEYWORD, not one builder of ``Literal``**, and
+    # D2's amendment is what makes the distinction visible: a ``const`` is a one-member
+    # value set and an ``enum`` no name reaches is the same construct with more members,
+    # so both render a ``Literal`` and each keyword still has exactly one lowering. Two
+    # rows, two keywords; what this refuses is a THIRD builder, or either keyword
+    # acquiring a second.
+    assert builds == ["const", "enum"], builds
+    # The document this row attributes used to be ``core/start-timing.json``, refused on
+    # ``type`` at ``/oneOf/0`` for being a scalar branch. It EMITS now -- a union root of
+    # scalars is an alias (``salesagent-j3k2l.21``) and its ``const`` branch is the
+    # ``Literal`` arm of one -- so the attribution row has no refused document left to
+    # point at. Measured over all 1,054 portable documents: **0** are refused on a
+    # branch's own non-object type. The row stays, asserted above by resolving the name
+    # in ``BRANCH_CLAIMS``; what is asserted here instead is the emitted shape, which is
+    # the same claim read off the artifact rather than off a refusal.
+    module = emit.lower_document("core/start-timing.json", bundle.read(BUNDLE, "core/start-timing.json"))[0]
+    assert "Literal['asap']" in "\n".join(
+        one.text for one in render.blocks(_assigned(module).declarations)
+    ), module.declarations
+
+
+# --------------------------------------------------------------------------- #
+# a conjunct contributes every part of itself, and the composition the document-side fold reads
+# --------------------------------------------------------------------------- #
+#: The population every clause of :func:`test_every_conjunct_contributes_every_part_of_itself`
+#: runs over, stated rather than read back off the structure it grades (D14).  All of it is
+#: measured over ``population()``, the steps' own union, which the identity clauses need
+#: only because they import the class the node declared -- and every document in it has a
+#: module, since ``population()`` is a PART of the population the committed tree is
+#: emitted from (``tree_population``, ``adcp-client-python-10l.73``).  The counts below
+#: are this population's and move with it, which is why it is the narrower of the two:
+#: widening them is a measurement this row did not take.
+#:
+#: The per-part sets PARTITION the conjunct sites -- `partitions` reports a site no part
+#: claims and a site two parts claim, each by name -- so a conjunct moving from one part
+#: to another is named rather than showing up as two integers that both changed.  The
+#: field and name counts are a second AXIS over the same sites rather than a second count
+#: of them: a row that stopped declaring a conjunct's properties would leave the
+#: ``fields`` part the same size and drop the key count.
+#:
+#: The walk below descends into a conjunct's OWN ``allOf`` the way
+#: ``lower.composition.lower_composition``'s worklist does, so a nested conjunct is counted here
+#: and its rule is one of the sources clause 4 reads.  One such conjunct is in the
+#: committed tree today (``core/demographic-targeting-intent.json`` at
+#: ``/properties/age/allOf/1/allOf/0``, an ``if``/``then``), and dropping the production
+#: push leaves the class one rule short of the sources, which is what clause 4 catches.
+#: The cases the decision names, which is what the partition's parts are keyed by: a
+#: conjunct is a base, or it contributes any combination of fields, requiredness and a
+#: rule, or it contributes nothing.  Stated as the CASES and not as their sizes -- the
+#: sizes were nine integers and `tests/test_every_check_names_its_set.py` refuses an
+#: equality on a derived count, for the reason it gives: every emitting row moves them,
+#: so two rows in flight compute two different correct values and no merge picks a side.
+CONJUNCT_PARTS = (
+    "base",
+    "nothing",
+    "fields",
+    "required",
+    "rule",
+    "fields+required",
+    "fields+rule",
+    "required+rule",
+    "fields+required+rule",
+)
+
+#: The parts of :data:`CONJUNCT_PARTS` this population does not hold, asserted empty BY
+#: NAME.  `partitions` is satisfied by an empty part without saying so, and a part with
+#: no member today is the one the next cleared document arrives in.
+#:
+#: ``nothing`` was empty HERE with one member over the whole bundle --
+#: ``creative/sync-creatives-response.json`` at
+#: ``/oneOf/0/properties/creatives/items/allOf/2``, an ``x-adcp-validation`` extension --
+#: "and that node is not one the emitted tree declares a class at".
+#: **IT IS NOW, AT ``adcp-client-python-10l.55``, AND THE SITE THAT ARRIVED IS THE ONE
+#: THIS ENTRY PREDICTED BY NAME.**  That document chained four deep onto
+#: ``core/assets/asset-union.json``, whose ``$ref`` branch onto a UNION root the branch
+#: row refused for not being a class; the gate reads ``compiler.TargetKind`` now, the
+#: document emits, and the node its ``/oneOf/0/properties/creatives/items`` composes is a
+#: class with that conjunct on it.  So every part of :data:`CONJUNCT_PARTS` has a site and
+#: this tuple is EMPTY -- which is the direction it exists for, said for the fourth time.
+#: **``fields+required`` LEFT at ``adcp-client-python-10l.20``**, which is the direction
+#: this tuple exists for: "a part with no member today is the one the next cleared
+#: document arrives in".  §5's ``$ref`` row at CONJ made a non-class target the composing
+#: node's own TYPE, which cleared ``core/delivery-metrics.json`` and 20 documents with it
+#: -- and 14 of them state a conjunct declaring ``properties`` AND ``required`` together
+#: (the ``core/*-delivery-metrics.json`` family's ``/allOf/1``, plus
+#: ``core/frequency-cap.json``).  The reader handled that part already; what it had no
+#: SITE for was the pairing, and now it does.
+#: **``required+rule`` left with it**, one site: ``core/media-buy-frequency-cap.json``
+#: at ``/allOf/1``, which states ``required`` beside a rule keyword and nothing else.
+#: **``fields+required+rule`` LEFT at ``adcp-client-python-81c``**, one site:
+#: ``core/media-buy-frequency-cap-capability.json`` at ``/allOf/1``, whose conjunct
+#: states ``properties``, ``required`` and a ``not`` together.  That document emitted for
+#: the first time when ``lower.composition._reused`` stopped refusing a re-used field whose type
+#: names a symbol the base IMPORTED and started taking it from the declaring module --
+#: which is the direction this tuple exists for, again.
+CONJUNCT_PARTS_WITH_NO_SITE = ()
+
+#: Every conjunct in the WHOLE portable set that states ``additionalProperties``, as
+#: ``"<document> <pointer>"``.  Section 5's ``additionalProperties`` row gives four
+#: readings at CONJ and this names the sites that choose between them: ``true`` is the
+#: identity and contributes nothing, and the reader lowers that one alone because it is
+#: the only one with a site.  Stated as the SITES and not as a count, so a conjunct that
+#: starts stating ``false`` or a typed value arrives here by name rather than moving an
+#: integer -- and the reader refuses it, which is the pairing this set exists to keep
+#: visible.
+CONJUNCTS_STATING_EXTRA = {
+    "core/demographic-targeting-intent.json /properties/age/allOf/1",
+    "creative/sync-creatives-request.json /properties/creatives/items/allOf/1",
+    "media-buy/get-media-buy-delivery-response.json"
+    " /properties/media_buy_deliveries/items/properties/totals/allOf/1",
+    "media-buy/media-buy-delivery-webhook-result.json"
+    " /properties/media_buy_deliveries/items/properties/totals/allOf/1",
+    "media-buy/media-buy-delivery-webhook-result.json"
+    " /properties/media_buy_deliveries/items/properties/by_package/items/allOf/1",
+}
+
+#: Every conjunct in the WHOLE portable set carrying its own ``allOf``, same spelling.
+#: Section 5's ``allOf`` row at CONJ -- "the same rule applied to the conjunct's own
+#: conjuncts" -- and these are the three sites that exercise it.
+NESTED_CONJUNCT_SITES = {
+    "adagents.json /oneOf/1/properties/formats/items/allOf/1",
+    "core/demographic-targeting-intent.json /properties/age/allOf/1",
+    "core/geo-delivery-metrics.json /allOf/1",
+}
+
+#: The one nested conjunct whose rule reaches a class the committed tree carries, and the
+#: rule it reaches as.  The other two sites sit in documents that refuse for an unrelated
+#: cause (``adagents.json`` on its ``anyOf`` conjunct, ``core/geo-delivery-metrics.json``
+#: on a ``$ref`` whose target is a verdict), so this pair is the whole of what the nested
+#: arm can be graded ON TODAY -- which is why it is asserted by name rather than counted.
+NESTED_CONJUNCT_RULE = (
+    "core/demographic-targeting-intent.json",
+    "Age",
+    "ConditionalRequired",
+)
+
+
+def test_a_conjunct_states_the_extra_identity_and_composes_its_own_conjuncts() -> None:
+    """Section 5's two CONJ clauses the reader had no case for, and their populations.
+
+    The ``allOf`` row says CONJ -> "the same rule applied to the conjunct's own
+    conjuncts", and the ``additionalProperties`` row says CONJ -> ``true`` is the
+    identity and contributes nothing.  A conjunct carrying either fell outside the
+    reader's admission set, so the keyword screen refused it and the document was
+    deferred to a row nobody had scheduled.
+
+    Three clauses, and the first two are what keep the arms from being derivations that
+    match nothing:
+
+    1. the sites stating ``additionalProperties`` are :data:`CONJUNCTS_STATING_EXTRA`,
+       and every one of them states ``True``.  The second half is the reason the reader
+       lowers the identity alone: a site stating ``false`` or a typed value would land in
+       this set and the reader refuses it, as a DEFERRAL naming the clause.
+    2. the sites carrying their own ``allOf`` are :data:`NESTED_CONJUNCT_SITES`, and
+       every one of them carries a non-empty list of schemas.
+    3. the one nested conjunct reachable through an emitted class contributes its rule TO
+       THAT CLASS (:data:`NESTED_CONJUNCT_RULE`).  This is the clause that reddens if the
+       worklist stops pushing a conjunct's own conjuncts: the class keeps its fields and
+       loses the ``ConditionalRequired``, which no count of conjuncts would show.
+
+    Both sets are asserted non-empty before they are compared, because a walk that
+    selected nothing would satisfy every clause over an empty loop.
+    """
+    extra: set[str] = set()
+    nested: set[str] = set()
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        for pointer, node in bundle.nodes(doc):
+            if not isinstance(node.get("allOf"), list):
+                continue
+            for index, conjunct in enumerate(node["allOf"]):
+                if not isinstance(conjunct, dict):
+                    continue
+                where = f"{document} {pointer}/allOf/{index}"
+                if "additionalProperties" in conjunct:
+                    extra.add(where)
+                    assert conjunct["additionalProperties"] is True, (
+                        where,
+                        conjunct["additionalProperties"],
+                    )
+                if "allOf" in conjunct:
+                    nested.add(where)
+                    assert isinstance(conjunct["allOf"], list) and conjunct["allOf"], (
+                        where,
+                        conjunct["allOf"],
+                    )
+                    assert all(isinstance(c, dict) for c in conjunct["allOf"]), where
+
+    assert extra, "no conjunct states additionalProperties: clause 1 would say nothing"
+    assert nested, "no conjunct carries its own allOf: clause 2 would say nothing"
+    assert extra == CONJUNCTS_STATING_EXTRA, extra ^ CONJUNCTS_STATING_EXTRA
+    assert nested == NESTED_CONJUNCT_SITES, nested ^ NESTED_CONJUNCT_SITES
+
+    document, symbol, rule = NESTED_CONJUNCT_RULE
+    out = compiled(BUNDLE, [document])
+    assert document in out.emitted, out.refusals.get(document)
+    cls = getattr(importlib.import_module(out.emitted[document]), symbol)
+    spelled = [type(r).__name__ for r in cls.__dict__.get("_adcp_rules", ())]
+    assert rule in spelled, (document, symbol, spelled)
+
+
+def test_every_conjunct_contributes_every_part_of_itself() -> None:
+    """D7's conjunct contribution rule, over every conjunct of every composing class.
+
+    "A conjunct contributes every part of itself, and each part lowers by the decision
+    that covers it."  The reader implemented two of the parts and refused a conjunct
+    whose parts fell under two of them, so the clauses below are one per PART, each
+    asserted on the CLASS the node declared rather than on the compiler's own reading of
+    the conjunct:
+
+    1. a ``$ref`` conjunct is a BASE -- the symbol its target declares is in the class's
+       MRO.  Resolved through ``bundle.split_ref`` and the target's own ``declared``
+       record, so a conjunct bound to the wrong class reddens rather than being counted.
+    2. a conjunct's ``properties`` are this class's FIELDS, by key.
+    3. a conjunct's ``required`` is this class's requiredness, and the field it names
+       carries NO DEFAULT -- which is D7's requiredness overlay in the words D7 uses, and
+       the half that was silently satisfied by an inherited optional field.
+    4. a conjunct's D6 rule reaches the class's ``_adcp_rules``, counted against every
+       node whose rules are this class's: the node itself and every conjunct that
+       contributes anything.  The COUNT is what catches the defect this row fixed -- a
+       conjunct the loop did not hand to ``rules_at`` leaves the tuple short.
+    5. a name draft-07 does not define contributes NOTHING and is REPORTED: the run
+       records the drop at that conjunct's pointer, and the class has no field for it.
+
+    Each clause's population is counted and asserted at a stated literal below, and the
+    per-part counts are asserted to PARTITION the conjunct total -- so a clause that
+    stops matching anything fails here instead of passing over an empty loop.
+    """
+    from codegen.lower import rules as rules_lowering
+
+    out = compiled(BUNDLE, population())
+    assert out.emitted, "nothing emitted: every clause below would pass vacuously"
+    known = set(bundle.portable(BUNDLE))
+
+    documents: set[str] = set()
+    composing: set[str] = set()
+    sites: set[str] = set()
+    #: Composing nodes whose declaration is an ``Annotated`` alias and not a class, which
+    #: is §5's ``$ref`` row at CONJ answering with the node's own TYPE.  Named below.
+    not_a_class: set[str] = set()
+    field_keys = required_names = foreign_names = 0
+    # Keyed by the decision's own cases and holding the SITES, so a part is a set this
+    # check can partition rather than an integer it can only compare.  Seeded with every
+    # case, so a part with no member today is named and asserted empty rather than
+    # absent from the partition (D14).
+    parts: dict[str, set[str]] = {name: set() for name in CONJUNCT_PARTS}
+    for document in sorted(out.emitted):
+        doc = bundle.read(BUNDLE, document)
+        here = out.declared[document]
+        module = importlib.import_module(out.emitted[document])
+        for pointer, node in bundle.nodes(doc):
+            if not isinstance(node.get("allOf"), list) or pointer not in here:
+                continue
+            composing.add(f"{document} {pointer}")
+            documents.add(document)
+            # **Clause 0: the class imported below IS this run's output** -- D14's "a
+            # clause detects a defect only in what its INPUT can change".  Every clause
+            # after it reads the COMMITTED module, and these clauses claim to grade the
+            # EMITTER, so without this one they are graded by nothing: measured by
+            # perturbation, removing the line that binds a ``$ref`` conjunct as a base
+            # left clauses 1 to 3 green, because the module on disk still had the base.
+            # ``test_the_committed_tree_is_what_a_fresh_run_emits`` is the tie D14 says
+            # carries every committed-tree reader; this states it for the modules whose
+            # conjuncts this grades, so the tie is part of THIS clause's input.
+            rel = f"{emit.module_file(document, PACKAGES)}.py"
+            written = out.files[rel]
+            assert written == (TREE / rel).read_text(), document
+            declared_here = getattr(module, here[pointer])
+            if not isinstance(declared_here, type):
+                # **A COMPOSING NODE THAT IS NOT A CLASS, and §5's ``$ref`` row at CONJ
+                # is the sentence** (``adcp-client-python-10l.55``): "where it is not a
+                # class declaring fields -- a scalar, an enum, a container, or a union
+                # root -- the target is this node's own TYPE".  So the node declares an
+                # ``Annotated`` ALIAS and there is no class for clauses 0 to 4 to read: a
+                # conjunct's ``properties`` are not fields of anything, and
+                # ``_adcp_rules`` has no class to be bound on.
+                #
+                # Named rather than skipped, and the name is the whole of the handling:
+                # the conjuncts of such a node never enter ``sites``, so the partition
+                # below is over the conjuncts of the nodes that ARE classes and stays
+                # total.  One member over this population, and it arrived when
+                # ``core/assets/asset-union.json`` began emitting -- the first ROOT whose
+                # whole content is a composition onto a union root.
+                not_a_class.add(f"{document} {pointer}")
+                continue
+            cls = declared_here
+            ancestry = {base.__name__ for base in cls.__mro__}
+            rule_nodes = [node]
+            # The SAME worklist ``lower.composition.lower_composition`` walks, because section 5's
+            # ``allOf`` row says CONJ -> the same rule applied to the conjunct's own
+            # conjuncts: a nested conjunct contributes to THIS class, so a walk that
+            # stopped at depth one would read its rule as absent and clause 4 would grade
+            # the class against sources that leave it out.
+            unread = [(f"{pointer}/allOf/{i}", c) for i, c in enumerate(node["allOf"])]
+            while unread:
+                where, conjunct = unread.pop(0)
+                if not isinstance(conjunct, dict):
+                    continue
+                if isinstance(conjunct.get("allOf"), list):
+                    unread.extend(
+                        (f"{where}/allOf/{j}", c) for j, c in enumerate(conjunct["allOf"])
+                    )
+                sites.add(f"{document} {where}")
+                keys = set(intersect.declaring(conjunct, keywords.Position.CONJ))
+                # Clause 5.  The name is dropped, the drop is on the record at this
+                # conjunct's own pointer, and nothing on the class answers to it.  A
+                # dropped name is one whose CELL says the drop is REPORTED -- §7's row,
+                # which said REFUSE until the effect retired and says NOTHING with
+                # ``reported`` set now.
+                #
+                # Read off the RAW conjunct and not off ``keys``: such a key states
+                # nothing about an instance, so ``keywords.declares`` answers no and
+                # ``declaring`` leaves it out.  There is nothing to subtract from ``keys``
+                # for that reason, and it is also why the note is a function of the
+                # DOCUMENT (``bundle.reported_drops``) rather than of this worklist --
+                # the same document states the keyword at ``/then``, where no conjunct
+                # encloses it and a reader of conjuncts alone was told nothing.
+                reported = {
+                    k
+                    for k in conjunct
+                    if (c := keywords.cell(k, keywords.Position.CONJ)) is not None
+                    and c.reported
+                }
+                for name in sorted(reported):
+                    foreign_names += 1
+                    assert any(
+                        line.startswith(f"{where}: {name}:")
+                        for line in out.carries_nothing.get(document, [])
+                    ), (document, where, name, out.carries_nothing.get(document))
+                    assert names.field_name(name, render.RESERVED) not in cls.model_fields, (document, where)
+                    assert name not in keys, (document, where, name)
+                if keys == {"$ref"}:
+                    # Clause 1.
+                    parts["base"].add(f"{document} {where}")
+                    head, into = bundle.split_ref(conjunct["$ref"])
+                    target = bundle.document_for(head, known)
+                    assert target is not None, (document, where, conjunct["$ref"])
+                    assert out.declared[target][into] in ancestry, (
+                        document,
+                        where,
+                        out.declared[target][into],
+                        sorted(ancestry),
+                    )
+                    continue
+                named = []
+                if "properties" in keys:
+                    # Clause 2.
+                    named.append("fields")
+                    for key in conjunct["properties"]:
+                        field_keys += 1
+                        assert names.field_name(key, render.RESERVED) in cls.model_fields, (
+                            document,
+                            where,
+                            key,
+                            sorted(cls.model_fields),
+                        )
+                if "required" in keys:
+                    # Clause 3.
+                    named.append("required")
+                    for key in conjunct["required"]:
+                        required_names += 1
+                        field = cls.model_fields[names.field_name(key, render.RESERVED)]
+                        assert field.is_required(), (document, where, key)
+                if keys & frozenset(
+                    compiler.declaration_rule_sources(conjunct, keywords.Position.CONJ)
+                ):
+                    named.append("rule")
+                if keys:
+                    rule_nodes.append(conjunct)
+                parts["+".join(named) or "nothing"].add(f"{document} {where}")
+            # Clause 4, over the whole conjunct list at once, because a class binds
+            # ``_adcp_rules`` ONCE: the tuple is as long as the sources every node whose
+            # rules are this class's states.  ``rules.lower`` is the production reduction,
+            # which is what makes a DROPPED conjunct the only thing this can catch -- and
+            # that is the defect, since a reduction that renders nothing is D4's answer
+            # and not a contribution.
+            sources = [
+                src
+                for one in rule_nodes
+                for src in rules_lowering.lower_declaration(
+                    one, keywords.Position.CONJ
+                ).rules
+            ]
+            # ``cls.__dict__`` and not ``getattr``: ``_adcp_rules`` is a ``ClassVar``, so
+            # a subclass that declares none reads its BASE's tuple and the clause would
+            # grade the base's rules against this node's sources.  Measured on
+            # ``account/report-usage-response.json``, whose two conjuncts are both bare
+            # ``$ref``s and whose class answered with ``ProtocolEnvelope``'s
+            # ``ForbiddenGroups``.
+            assert len(cls.__dict__.get("_adcp_rules", ())) == len(sources), (
+                document,
+                pointer,
+                sources,
+            )
+
+    # **The three sets this check ranges over, named and refused empty**, and then the
+    # per-part PARTITION over the conjunct sites.  All of it was an equality on a count
+    # until `tests/test_every_check_names_its_set.py` refused it: nine part counts and
+    # five totals is one bundle version's reading of quantities every emitting row
+    # moves, so two rows in flight compute two different correct values and a merge
+    # resolves it by picking a side.  A partition over the SITES says the same thing and
+    # says it by name -- a conjunct that moved from one part to another is reported as
+    # the site it is, not as two integers that both changed.
+    claimed("documents whose class composes", documents, inside=set(out.emitted))
+    claimed("composing nodes", composing)
+    # The composing nodes that declare no class, by NAME: §5's ``$ref`` row at CONJ makes
+    # a non-class target the node's own TYPE, so the node is an alias and the clauses
+    # above have nothing to read.  Pinned by name because the set is how a reader knows
+    # which nodes the partition below does NOT range over.
+    assert not_a_class == {"core/localized-creative-asset.json "}, sorted(not_a_class)
+    partitions(
+        claimed("conjuncts of a composing node", sites),
+        **{name.replace("+", "_"): members for name, members in parts.items()},
+    )
+    # The parts the decision names and this population does not hold.  Asserted empty BY
+    # NAME, because a part with no member today is the one the next cleared document
+    # arrives in, and `partitions` is satisfied by an empty part without saying so.
+    for name in CONJUNCT_PARTS_WITH_NO_SITE:
+        assert not parts[name], (name, sorted(parts[name]))
+
+    # The second AXIS over the same sites: a row that stopped declaring a conjunct's
+    # properties would leave the `fields` part the same size and drop the key count.
+    # Floors, because an emitting row only adds -- the direction `ratchet` requires.
+    grows = (
+        "an emitting row only adds composing classes, so every count read off their "
+        "conjuncts rises; a fall means a document that lowered stopped lowering"
+    )
+    ratchet("property keys a conjunct declares", field_keys, at_least=9, because=grows)
+    ratchet("names a conjunct requires", required_names, at_least=2, because=grows)
+    ratchet("names draft-07 does not define", foreign_names, at_least=1, because=grows)
+    ratchet(
+        "names the run carries nothing for",
+        sum(len(v) for v in out.carries_nothing.values()),
+        at_least=1,
+        because=(
+            "a name the run admits and renders nothing for is reported rather than "
+            "dropped in silence, and the channel has three writers -- a constraining "
+            "sibling of $ref, a prefixed key with no row, and a cell whose drop is "
+            "reported -- so a writer that stops writing lowers this without reddening "
+            "any clause above"
+        ),
+    )
+

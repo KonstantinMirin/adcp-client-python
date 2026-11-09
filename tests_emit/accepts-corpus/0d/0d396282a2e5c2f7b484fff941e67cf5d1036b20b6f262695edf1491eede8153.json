@@ -1,0 +1,1 @@
+[{"format_kind": "coordinated_placements", "params": {"components": [{"component_id": "a", "format_option_ref": {"format_option_id": "", "scope": "product"}, "placement_ref": {"placement_id": ""}, "required": true}, {"component_id": "a", "format_option_ref": {"format_option_id": "", "scope": "product"}, "placement_ref": {"placement_id": ""}, "required": true}]}}]

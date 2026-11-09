@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "allOf": [
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "items": {
+          "enum": [
+            "postal_code",
+            "custom"
+          ]
+        },
+        "minItems": 1,
+        "type": "array",
+        "uniqueItems": true
+      },
+      "description": "Declares supported postal area systems. Native support is keyed by ISO 3166-1 alpha-2 country with arrays of country-local postal systems. Deprecated country-fused boolean aliases may be included during migration.",
+      "properties": {
+        "AT": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "AU": {
+          "items": {
+            "const": "postcode"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "BR": {
+          "items": {
+            "const": "cep"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "CA": {
+          "items": {
+            "enum": [
+              "fsa",
+              "full"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "CH": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "DE": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "FR": {
+          "items": {
+            "const": "code_postal"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "GB": {
+          "items": {
+            "enum": [
+              "outward",
+              "full"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "IN": {
+          "items": {
+            "const": "pin"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "US": {
+          "items": {
+            "enum": [
+              "zip",
+              "zip_plus_four"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "ZA": {
+          "items": {
+            "const": "postal_code"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "at_plz": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "au_postcode": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "ca_fsa": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "ca_full": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "ch_plz": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "de_plz": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "fr_code_postal": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "gb_full": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "gb_outward": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "us_zip": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "us_zip_plus_four": {
+          "$ref": "#/definitions/Shared1"
+        }
+      },
+      "propertyNames": {
+        "anyOf": [
+          {
+            "pattern": "^[A-Z]{2}$"
+          },
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "deprecated": true,
+            "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
+            "enum": [
+              "us_zip",
+              "us_zip_plus_four",
+              "gb_outward",
+              "gb_full",
+              "ca_fsa",
+              "ca_full",
+              "de_plz",
+              "fr_code_postal",
+              "au_postcode",
+              "ch_plz",
+              "at_plz"
+            ],
+            "title": "Country-Fused Postal Code System",
+            "type": "string"
+          }
+        ]
+      },
+      "title": "Postal Area Support",
+      "type": "object"
+    },
+    {
+      "minProperties": 1,
+      "properties": {
+        "at_plz": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "au_postcode": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "ca_fsa": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "ca_full": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "ch_plz": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "de_plz": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "fr_code_postal": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "gb_full": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "gb_outward": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "us_zip": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "us_zip_plus_four": {
+          "$ref": "#/definitions/Shared2"
+        }
+      },
+      "type": "object"
+    }
+  ],
+  "definitions": {
+    "Shared0": {
+      "items": {
+        "const": "plz"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared1": {
+      "deprecated": true,
+      "type": "boolean"
+    },
+    "Shared2": {
+      "const": true
+    }
+  },
+  "description": "Non-vacuous postal capability used for hard targeting requirements and product overlay support. At least one native system array or true-valued deprecated alias is required. The general seller-capabilities postal schema remains permissive for backward compatibility, but an empty or false-only map cannot satisfy a hard discovery requirement.",
+  "title": "Positive Postal Area Support"
+}

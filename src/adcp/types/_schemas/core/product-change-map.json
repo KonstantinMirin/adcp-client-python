@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": {
+    "enum": [
+      "include",
+      "omit"
+    ]
+  },
+  "description": "Product IDs mapped to deterministic membership actions. Object keys are product identifiers, so contradictory actions for one product cannot be represented.",
+  "minProperties": 1,
+  "propertyNames": {
+    "minLength": 1,
+    "x-entity": "product"
+  },
+  "title": "Product Change Map",
+  "type": "object"
+}

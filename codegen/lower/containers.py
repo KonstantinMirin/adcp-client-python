@@ -1,0 +1,1005 @@
+"""D2's container rows: an array, a mapping, a multi-type node, and the roots that
+are neither an object with properties nor a scalar.
+
+A container is a node whose SHAPE is one fact and whose CONTENTS are another node.
+So every row here is the same two halves -- the contents, lowered by recursing
+through ``compiler.decide``, and the container's own bound, carried on the FIELD
+holding the container and not on what is inside it.  **Which half a keyword belongs
+to is the whole of this module**, and getting it wrong is the defect class it exists
+to remove: the generator this pipeline replaces read ``minItems`` on a named property
+and carried it, read the same keyword on a mapping VALUE and dropped it, and read a
+``minLength`` on a ``["object", "string"]`` node and applied it to the object arm.
+The first makes a model wider than its schema and the third makes one narrower.
+
+**What this module does not build, each with the population that says so.**  A
+mechanism whose population is empty is green for free, so each of these refuses by
+name instead, and the refusal carries what the document said:
+
+* **D2's root-array ``RootModel[list[X]]`` row.**  All 5 root arrays of the bundle
+  refuse on a keyword that is not this step's: 4 carry ``uniqueItems: true`` at the
+  root (D6's rule, step 7) and ``media-buy/product-refinement.json`` refuses inside
+  its ``items``.  So a ``RootModel`` base would be a class no document reaches and no
+  pair grades.  :func:`root` lowers the element FIRST, so the refusal names the
+  element type the row would have wrapped rather than just the shape.
+* **An inner constraint this module cannot name.**  A constraint on what is INSIDE
+  a container has no slot in the compiler's ``DataType``, and D5's answer is to
+  resolve the inner type to a NAME -- one the bundle itself gives a titled root,
+  then one pydantic gives, then an alias emitted in ``adcp.types.constraints``.
+  **That module now exists** (``codegen/constraints.py``), so ``compiler.lower_node``
+  hands this module an inner type whose constraints are already on the type and
+  :func:`_inner` sees none: ``dict[str, StrMinLen1]`` and
+  ``list[StrMatchingEFC12812]`` are plain references and need nothing from the
+  compiler, which is what D5 says naming the type buys.  :func:`_inner` still
+  refuses what is still unnameable -- a constraint keyword
+  ``codegen.constraints.SPELLING`` has no word for, and a ``format`` no type is
+  selected for -- because those would be DROPPED rather than carried, and the
+  detail names the constraint so the refusal says what would have to be named.
+* **A closed key set as a model.**  ``propertyNames`` with an ``enum`` closes the
+  keys, and D5 reads a closed key set as a model whose keys are its fields.  Its one
+  type-position site is ``core/store-item.json#/properties/hours``, and that document
+  carries ``enum`` (step 3's keyword), so it refuses before any mapping is lowered.
+  :func:`_key` refuses it by name with the key set in the detail.
+
+**A MAPPING'S KEY IS A TYPE (§2), AND THE DOCUMENT'S TWO SPELLINGS OF A PATTERNED
+KEY ARE ONE TYPE.**  ``propertyNames: {"pattern": P}`` beside
+``additionalProperties: V`` and ``patternProperties: {P: V}`` beside
+``additionalProperties: false`` both say "every key matches ``P`` and its value
+matches ``V``", and ``dict[Annotated[str, StringConstraints(pattern=P)], V]`` is
+that -- so :func:`_key` owns the key rule for both and :func:`mapping` only decides
+where in the document the expression sits.  Both arms REFUSED as verdicts on the
+ground that pydantic renders the key back as ``patternProperties`` rather than as the
+keyword the document spelled.  The ``patternProperties`` arm's premise was simply
+wrong: ``patternProperties`` is the keyword that document states.  And the rendering
+settles nothing either way: what the two spellings have to agree about is the KEYS the
+mapping admits, which the accepts draw places and the dump hands back for the
+document's own validator to re-read.  So neither arm refuses.
+
+Measured over the 1,054 portable documents of the 3.2 bundle: **40 key sites in 28
+documents** -- 26 ``propertyNames`` in 21 documents and 14 ``patternProperties`` in
+9.  Of the 26, 13 constrain the key's TEXT (8 ``pattern`` alone, 5 ``pattern`` with
+both length bounds), 3 constrain only its LENGTH, 5 name the key type by ``$ref``, 4
+close the key set with an ``enum`` -- 3 of those at a RULE position, where
+``propertyNames`` states nothing on the model and is admitted, and 1 at a type
+position, which refuses -- and 1 is an ``anyOf`` union of key types, which is a row
+of its own.  All 14 ``patternProperties`` sites state exactly one expression, so none
+reaches the two-pattern refusal, and they split 5 / 7 / 2 on whether the document
+CLOSES its keys (see :func:`mapping`'s ``additionalProperties`` arm).  **9 documents
+name one of these as their FIRST refusal** (8 on the key ``pattern``, 1 on
+``patternProperties``), and all 9 clear: 3 emit and 6 refuse further on, each on
+another row's keyword.
+
+**Typed ``additionalProperties`` is implemented and reaches one document**, which is
+the opposite case and is why it is built rather than refused: it is this row's named
+defect, so the mechanism exists and is graded on documents derived from the bundle's
+own nodes with the later steps' keywords removed by name (``tests/test_emit.py``).
+Measured: 727 documents mention ``additionalProperties`` and 51 carry a typed one.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
+
+from adcp.types._runtime import UniqueItems
+from codegen import bundle, compiler, ir
+from codegen.compiler import Module
+from codegen.keywords import Position, declares
+from codegen.lower import approximate, names, rules
+from codegen.refusal import Kind, Refusal
+from codegen.schema import nodes
+from codegen.schema import parse as nodes_parse
+
+#: An ARRAY's own bounds, in the document's spelling, and the ones a field holding
+#: the array can carry.  ``uniqueItems`` is deliberately absent, and the reason is
+#: measured rather than taken from D6: ``Constraints(uniqueItems=True)`` populates
+#: dmcg's ``unique_items`` and the renderer emits NO ``Field`` at all -- bare
+#: ``list[str]`` -- because pydantic v2 removed ``unique_items``.  Carrying the
+#: keyword through ``constraints=`` would therefore be a model wider than its
+#: document, silently.  D6 already puts ``uniqueItems`` in step 7's rule set; this
+#: says what the alternative costs.
+#:
+#: It is absent from this set and ADMITTED BY THE SCREEN anyway
+#: (:data:`_ARRAY_CLAIMS`), because the keyword is a RULE at every position and never a
+#: bound: on a class it is ``UniqueItems``, on a root model the same rule keyed on
+#: ``root``, and anywhere else a ``Distinct`` on the array's own annotated type
+#: (``lower.rules.on_a_value``).  The ``json_schema_extra`` the renderer derives from the
+#: rule is what puts the FACT back in the model's schema, which is the channel
+#: ``constraints=`` could not be.
+BOUNDS = ("minItems", "maxItems")
+
+#: The cells the array row CONSUMES, plus the two it claims in order to refuse or
+#: carry them by name.  This is the row's own coverage and not an admission list: the
+#: table admits every annotation, the definition sections and the ``x-`` namespace at
+#: every position, so none of them is named here.
+#:
+#: ``uniqueItems`` and ``contains`` are both in here and both LOWERED, by
+#: ``lower.rules.on_a_value``: §2's second place a rule hangs is the value's own
+#: annotated type, and this row is what reaches it for an array.  Each was carried and
+#: dropped before -- ``uniqueItems`` with an approximation declared for it, ``contains``
+#: silently -- and what changed is not the position but that the three value-rule kinds
+#: exist.
+#:
+#: **``contains`` keeps the row's refusal of TRANSCRIPTION, which is a different
+#: ceiling.**  §5's row states the PREDICATE and never the subschema, so a ``contains``
+#: whose predicate is a bound, a pattern, a nested ``contains`` or a ``$ref`` reaches
+#: ``contains_predicate`` and comes back ``None`` -- and then it is CARRIED exactly as
+#: every one of them was: ``strict_validate`` enforces the keyword from the document and
+#: the constructor is wider, which is the direction D4 permits and the one the accepts
+#: draw cannot fault.  ``X.model_validate(["a"])`` builds for such a document
+#: while ``X.strict_validate`` of the same payload refuses -- the identical pair
+#: ``lower/rules.py`` records for ``core/canvas-constraint.json``.
+#:
+#: Measured over every node of every portable document: 120 ``contains`` sites in 46
+#: documents, **18 on a node whose ``type`` is ``array``** -- what this set admits -- and
+#: 102 on a TYPELESS node, which is a ``contains``-only ``allOf`` conjunct or a node
+#: inside another ``contains``.  Those 102 are not admitted here and are not this row's
+#: position; no document of the deferred population is blocked at one.
+#:
+#: ``allOf`` is in here for :func:`_the_conjuncts_constrain_the_array`'s reason: §5's
+#: ``$ref`` row at CONJ makes a CONTAINER its node's own TYPE rather than a base, so an
+#: array stating an ``allOf`` is an array whose conjuncts constrain it and this row is
+#: the one that reads them.  The conjuncts' OWN keywords are screened per conjunct, at
+#: the conjunct's own pointer, by that function.
+_ARRAY_CLAIMS = frozenset({"type", "items", "uniqueItems", "contains", "allOf", *BOUNDS})
+
+#: A MAPPING's own bounds -- how many keys it may carry -- in the document's spelling,
+#: and the ones a field holding the mapping can carry.  The same shape as
+#: :data:`BOUNDS` and for the same reason: a bound on the container is the container's,
+#: so it rides on the field rather than on ``K`` or ``V``.
+#:
+#: **Translated by the RENDERER and not here** (``render.KEY_COUNT``), because the
+#: translation is pydantic's rather than the document's: dmcg's ``Constraints`` has no
+#: ``minProperties`` field at all and silently sets nothing for one, while its length
+#: channel renders ``Field(min_length=..., max_length=...)``, which pydantic renders
+#: back as ``minProperties``/``maxProperties`` on a ``dict`` -- the document's own
+#: spelling, and the bound binds the CONSTRUCTOR with it.  Measured on pydantic 2.13.5:
+#: ``Annotated[dict[str, int], Field(min_length=1, max_length=4)]`` renders
+#: ``{"type": "object", "minProperties": 1, "maxProperties": 4}`` and refuses ``{}``
+#: and a five-key object while accepting a one-key one.
+#:
+#: These are NOT D6 rules even though :func:`compiler.rule_sources` names them, and
+#: the difference is the position: D6's ``PropertyCount`` reads a model's
+#: ``__pydantic_fields_set__``, and a mapping has no fields -- it is a ``dict`` -- so
+#: the rule cannot carry this node's bound and the annotation is the only place it can
+#: live.  A node with ``properties`` goes the other way and is step 7's.
+KEY_BOUNDS = ("minProperties", "maxProperties")
+
+#: **§5's ``propertyNames`` row read as a CLAIM SET: the five answers that row gives a
+#: KEY, and nothing else** (``adcp-client-python-zxf``).  The row is "a ``$ref`` -> that
+#: type; ``minLength``/``maxLength`` -> a length-bounded ``str``; ``pattern`` -> an
+#: annotated ``str``; ``enum`` -> a ``Literal`` of the members ...; ``anyOf`` -> a union
+#: of key types", and ``type`` joins them because the PARSER supplies ``type: string`` at
+#: this position (``schema.parse._key``) -- a key is a string, and the word is the
+#: parser's rather than a fact of the document.
+#:
+#: Everything else is a cell this handler has no code for, which is what makes it a
+#: DEFERRAL: :func:`_key` writes no answer for an object key node, and §4 derives no name
+#: at KEY for one to be declared under.
+KEY_CLAIMS = frozenset({"type", "$ref", "minLength", "maxLength", "pattern", "enum", "anyOf"})
+
+#: Why a keyword outside :data:`KEY_CLAIMS` is refused, in the row's own terms.
+_NO_KEY_ANSWER = (
+    "section 5's propertyNames row gives a KEY five answers -- a $ref, "
+    "minLength/maxLength, pattern, enum, anyOf -- and names none for this keyword, so "
+    "there is no key TYPE for it to compile to; a node the object row would claim is "
+    "declared a class at a position section 4 derives no name for (lower.names.Unnamed), "
+    "which renders as an unparseable class statement rather than as an outcome"
+)
+
+#: Which constraint keywords each ``type`` can carry, for a node whose ``type`` is a
+#: LIST.  draft-07 applies a constraint keyword only to an instance OF the type it is
+#: defined for and ignores it for every other type, so a multi-type node means "this
+#: keyword on this arm" -- and a keyword no arm can carry constrains nothing at all,
+#: so it is refused rather than dropped.  Applying it to every arm instead is the
+#: narrowing half of the same defect.
+#: **It is ``codegen/keywords.py``'s now**, reached through ``codegen/schema/parse.py``,
+#: and the move is one step further than §2's: the parser makes the CUT once, and the
+#: document-side fold that lifts a union's arms back onto a type list
+#: (``harness._type_list``) is that cut's INVERSE, so the two must read one declaration
+#: or they disagree silently about which arm owns a keyword.  §9 forbids the verifier the
+#: walk and permits it the keyword table, so the table is in the table.  Re-bound here so this module's own screen keeps
+#: one spelling of it, and ``parse.value_facts`` reads the same rows to derive what
+#: ``ir.FACTS`` was.
+ARM = nodes_parse.ARM
+
+
+def _inner(decided: ir.Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
+    """The decided type of something INSIDE a container, named where it needs to be.
+
+    A constraint or a format on an inner node has nowhere to go: the compiler's
+    ``DataType`` carries neither, so putting the node inside ``list[...]`` or
+    ``dict[str, ...]`` would drop the fact and widen the model.  Section 2's answer is
+    to NAME the inner type, and ``compiler.carried`` is the one place the three
+    positions with no field ask for that name -- an ELEM and a MAPV here, and a union
+    BRANCH in ``lower.union``.  A shape the alias module cannot spell still refuses
+    there rather than being dropped.  This module's docstring carries the population.
+    """
+    return compiler.carried(decided, pointer, what, mod)
+
+
+def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
+    """The type of a container's CONTENTS -- its element, or its mapping's value.
+
+    One function for the two, because the two are the same question asked at two
+    pointers: the node is a schema of its own, at a pointer of its own, and the
+    container is one type word above it.  A container's KEY and a multi-type ARM are
+    not that question and do not come here -- an arm is the node RE-CUT to one type,
+    so its annotations are the node's own and the field holding the union already
+    carries them, and a ``propertyNames`` node is a statement about a key rather than
+    a value at a pointer of its own.
+
+    **An ANNOTATION on an inner node had nowhere to go either, and unlike a constraint
+    it was dropped in SILENCE.**  :func:`_inner` refuses a constraint and a ``format``
+    by name because dropping one would widen the model; a ``description`` narrows
+    nothing, so it was dropped with no refusal and no rendering -- and §6 says a
+    ``description`` is never folded, so a dropped one is the EMITTER's to fix.
+    Measured over the bundle: **4 such dropped descriptions over 4
+    pairs**, every one of them ``.../additionalProperties/description`` and every one
+    of them ``'Component properties'`` -- ``a2ui/component.json``,
+    ``a2ui/surface.json`` and the two ``sponsored-intelligence`` responses that compose
+    a surface (``salesagent-j3k2l.28``).
+
+    **The node is NAMED, which is the mechanism this pipeline already has for a node
+    whose facts need a carrier.**  ``names.name_the_node`` declares the
+    ``Annotated`` alias a fragment-referenced node already gets, from the same
+    ``names.alias_for`` -- so the annotation a container's contents carry and the
+    annotation a referenced node carries have ONE spelling, and ``dict[str, X]`` where
+    ``X`` is a local symbol is a plain reference the compiler needs nothing extra for.
+    The name is D3's nested rule, and ``lower/names.py`` assigns it in its own pass, so
+    none is derived here.
+
+    It returns the named TYPE directly, refusal included: ``name_the_node`` answers
+    ``ir.TypeRef | Refusal``, which is this function's own signature, so there is no
+    unwrapping step between the two and no second place a refusal could be re-wrapped.
+
+    Gated on the type not being LOCAL already: a node D2 makes a class, or one the walk
+    has named, carries its own description in its own declaration, and a second alias
+    over it would be a second name for one node (P2).  ``compiler.Module.declare``
+    refuses a symbol or a pointer twice by name, so a collision is a refusal rather
+    than a silent overwrite.
+
+    What this still drops is every annotation ``names.alias_for`` does not carry -- a
+    ``default`` on an inner node has no slot on an alias, and the drop narrows nothing a
+    consumer can be refused for, which is the safe direction.  0 inner nodes of the
+    bundle state one.
+    """
+    pointer = node.pointer
+    decided = compiler.lower_node(node, mod)
+    if isinstance(decided, Refusal):
+        return decided
+    if not decided.type.local and node.description:
+        # **The node's OWN name is asked for FIRST, and the order is the P2 rule rather
+        # than a preference.**  A described node is named here anyway, and
+        # ``names.alias_for`` puts the description, the constraints and the ``format`` on
+        # that one alias -- so asking :func:`_inner` first would resolve a SECOND name
+        # for the same node in ``adcp.types.constraints``, which this declaration then
+        # does not reference: two names for one node, and a line in a public module
+        # nothing reads.  Measured on ``trusted-match/publisher-tmpx-config.json``,
+        # whose described mapping value recorded ``DictMinProperties1MaxProperties2``
+        # and then rendered its bound inline under its own name.
+        return names.name_the_node(mod, pointer, node, decided)
+    return _inner(decided, pointer, what, mod)
+
+
+def _the_conjuncts_constrain_the_array(node: nodes.Array) -> tuple[Any, ...] | Refusal:
+    """§5's ``$ref`` row at CONJ, reached through the node's own ``type`` word: the array
+    is the TYPE and its conjuncts are RULES on it.
+
+    "Where it is not -- a scalar, an enum, **a container**, or a union root, whose
+    instance is one of its branches -- it is not a class a model can extend: the target
+    is this node's own TYPE, and the other conjuncts and the ``allOf``'s siblings
+    constrain it, which is §2's intersection at a node that declares no fields of its
+    own."  :func:`intersect.the_conjuncts_own_type` is that clause where the type comes
+    from a ``$ref`` conjunct; this is the same clause where it comes from the node's own
+    ``type: array`` beside its own ``items``, and the array a node declares for itself is
+    as little a class a model can extend as one it names by reference.
+
+    **Where the rules hang is §2's and not this function's**, and the two halves are
+    ``lower.rules``'s: ``on_a_value`` is the value half -- "where no class sits above the
+    value ... the rule hangs off the value's own annotated type as an after-validator
+    (``AtLeastOne``, ``NotValue``, ``Distinct``)" -- and :func:`lower_declaration` is the
+    class half.  §5's ``contains`` row is what makes the value half the one an array's
+    conjunct takes at EVERY position: "Every position → an ``AtLeastOne`` after-validator
+    on the array's own annotated type, **because no class has a kind for it**."  So a
+    conjunct whose rules come back on the CLASS half is a shape this row does not answer,
+    and it refuses rather than hanging a statement about an array's contents off the
+    fields of whatever class happens to hold the array.
+
+    **Nothing here mints a kind**: a refusal reports on the conjunct's own keyword and
+    ``compiler.kind_for`` reads the kind off that keyword's cell at CONJ
+    (``docs/plan/architecture.md`` §3).
+
+    Measured over every node of the 1,054 portable documents -- the 4 composing arrays
+    ``schema.parse``'s arm order measured, which are this function's whole population:
+
+    * ``media-buy/legacy-purchase-continuation-input.json`` ``/properties/accepted_losses``
+      and ``media-buy/request-proposals-response.json``
+      ``/properties/purchase_continuation/oneOf/1/properties/losses``, each two conjuncts
+      stating a bare ``contains: {"const": ...}`` -> two ``AtLeastOne(values=(v,))``.  Two
+      existential quantifiers over one list are two independent after-validators, so there
+      is no intersection to compute and nothing is dropped.
+    * ``media-buy/refine-proposals-request.json`` ``/properties/refinements`` and
+      ``media-buy/refine-proposals-response.json`` ``/properties/results``, each one
+      conjunct stating ``if: {"contains": ...}`` with ``then: {"items": ...}``.  §5's
+      ``if`` row reads a ``Match`` clause list "where it states ``required`` plus
+      ``properties`` with ``const`` or ``enum`` values; **otherwise nothing, and the
+      schema half answers**" -- this ``if`` states a ``contains`` -- and §5's ``then`` row
+      gives its ``properties`` "nothing on the model; the schema half narrows the value",
+      which its ``items`` takes for the same reason.  Both cells are ``rendered=False``,
+      so there is no fact at the pointer to carry and no widening to declare: this is
+      the ceiling ``lower/rules.py`` already states once for the whole module ("nothing
+      here refuses a document ... ``CanvasConstraint.model_validate`` builds while
+      ``strict_validate`` refuses"), not a fact the annotation drops where a cell says it
+      should carry one.
+    """
+    out: list[Any] = []
+    for conjunct in node.conjuncts:
+        raw = conjunct.raw
+        if not isinstance(raw, Mapping):
+            # ``allOf: [3]`` is a malformed document, which is why
+            # :attr:`nodes.Conjunct.raw` travels as the document wrote it.  §4 gives the
+            # parser the SHAPE faults and the row raises them, so this is a VERDICT about
+            # the document and not a cell's answer.
+            return Refusal(
+                "allOf",
+                conjunct.pointer,
+                f"an allOf conjunct is {raw!r}, not a schema",
+                kind=Kind.VERDICT,
+            )
+        sources = compiler.declaration_rule_sources(raw, Position.CONJ)
+        on_a_class = rules.lower_declaration(raw, Position.CONJ).rules
+        if on_a_class:
+            # §2's FIRST half asked at a node that is a LIST: the statement is about which
+            # keys an instance supplied, and a list supplies none.  Hanging it on the class
+            # whose field holds the array would make it a statement about THAT class's
+            # fields, which is a different claim about a different instance.  0 sites over
+            # the portable population; written so the first one is loud.
+            return Refusal(
+                "allOf",
+                conjunct.pointer,
+                f"a conjunct of this array states {sorted(sources)}, which section 5 "
+                f"lowers to {', '.join(sorted(type(r).__name__ for r in on_a_class))} -- a "
+                "rule on the nearest CLASS, and the nearest class's fields are not this "
+                "list's contents.  Section 5's contains row is why an array's conjunct "
+                "takes section 2's OTHER half at every position ('because no class has a "
+                "kind for it'), and the three value kinds it names there (AtLeastOne, "
+                "NotValue, Distinct) are each about a VALUE",
+                kind=compiler.kind_for("allOf", Position.CONJ),
+            )
+        unread = [
+            key
+            for key in sorted(raw)
+            if declares(key, Position.CONJ)
+            and key not in sources
+            and key != "contains"
+        ]
+        if unread:
+            # A conjunct restating the array's own type facts -- ``items``, ``minItems``,
+            # a ``properties`` map -- is §2's intersection over DECLARATIONS, which this
+            # row does not compute: the array is already decided from the node's own
+            # declaration and an :class:`codegen.ir.TypeRef` has no slot for the
+            # conjunction of two.  0 sites over the portable population.  Reported on the
+            # conjunct's FIRST such keyword, with the kind that keyword's own cell gives.
+            return Refusal(
+                unread[0],
+                conjunct.pointer,
+                f"a conjunct of this array states {unread}, which section 5's $ref row at "
+                "CONJ does not answer for a container: the array is this node's own TYPE, "
+                "decided from its own items and bounds, and a conjunct restating one of "
+                "those is section 2's intersection over DECLARATIONS -- computed before a "
+                "node is decided, with no slot on an ir.TypeRef for the conjunction of two "
+                "decided types",
+                kind=compiler.kind_for(unread[0], Position.CONJ),
+            )
+        # ``rules.contains_source`` and not ``raw.get("contains")``: §4 names
+        # ``lower/rules.py`` the one reader of a rule source, and this module is not it
+        # (``tests/test_import_rule.py``'s ``MAY_READ_A_DECLARATION``, which may shrink and
+        # may not grow).  The keyword read and the position gate are unchanged.
+        out.extend(rules.on_a_value(sources, contains=rules.contains_source(raw)))
+    return tuple(out)
+
+
+# --------------------------------------------------------------------------- #
+# the rows
+# --------------------------------------------------------------------------- #
+def array(node: nodes.Array, mod: Module) -> ir.Decided | Refusal:
+    """``list[X]``, with ``minItems``/``maxItems`` on the LIST and not on ``X``.
+
+    The bound comes back in the document's own spelling and rides on the field
+    holding the list, where dmcg renders it ``Field(min_length=...)`` -- pydantic
+    spells a list's length bound the way it spells a string's, and the document does
+    not, which is exactly why the two are decided here and spelled by the compiler.
+    """
+    pointer, position = node.pointer, node.position
+    refused = compiler.check_keywords(node, _ARRAY_CLAIMS, mod=mod)  # the walk's own check
+    if refused is not None:
+        return refused
+    # **§2's rules on the VALUE, where no class above the array can hold one.**  The
+    # reading is ``lower.rules.on_a_value``'s -- §2's second half, in the module that
+    # holds its first half -- and what this row decides is the POSITION gate on
+    # ``uniqueItems``, because this row is what knows which positions have a class or a
+    # root model above the array:
+    #
+    # * PROP -- the class whose field holds the array states it, as
+    #   :class:`adcp.types._runtime.UniqueItems` written by ``lower.rules._distinct``.
+    #   467 of the bundle's 485 sites.
+    # * ROOT -- a root model, which "carries a rule tuple exactly as a class does" (§5's
+    #   group (a)), so the ``UniqueItems(ir.ROOT_FIELD)`` written at the end of this
+    #   function is the answer and no validator is needed.  4 sites.
+    # * everything else -- a mapping value, a ``definitions`` entry, a combinator branch
+    #   -- has neither, so §2's other half applies and the rule hangs off the array's own
+    #   annotated type.  **14 sites, measured: 6 at a mapping value, 5 inside a
+    #   combinator branch and 3 at a ``definitions``/``$defs`` entry.**
+    #
+    # **This arm used to DECLARE AN APPROXIMATION** -- §5(b)'s "``uniqueItems`` and
+    # ``contains`` where even a named type cannot hold the rule", withdrawn 2026-10-27 --
+    # and it was 13 of the tree's 17 declarations.  A named type holds the rule perfectly
+    # well; the three kinds simply had not been written, so "we cannot express it" was
+    # standing in for "nobody wrote it".  The keyword is enforced now, not dropped, and
+    # ``render._bound_to_the_type`` writes the ``json_schema_extra={"uniqueItems": true}``
+    # beside it from the rule itself, so the fact the rule enforces is stated in the
+    # model's own schema beside it rather than only enforced.
+    #
+    # ``contains`` is passed at EVERY position and is not gated, because there is no
+    # class-level kind for it: §5's row puts an ``AtLeastOne`` on the array's own
+    # annotated type at a field position too.  A predicate the row declines to transcribe
+    # comes back ``None`` and the keyword is CARRIED exactly as it was before this row,
+    # which is this module's own ``_ARRAY_CLAIMS`` comment and D4.
+    bound = rules.on_a_value(
+        node.rules,
+        distinct=node.distinct and position not in (Position.ROOT, Position.PROP),
+        contains=node.contains,
+    )
+    # §5's ``$ref`` row at CONJ, reached through this node's own ``type`` word: the array
+    # is the TYPE and the conjuncts constrain it.  The node's OWN statement comes first
+    # and the conjuncts follow in document order, so the rendered annotation is a function
+    # of the document's content and not of a dict's iteration (P7).
+    conjoined = _the_conjuncts_constrain_the_array(node)
+    if isinstance(conjoined, Refusal):
+        return conjoined
+    bound = (*bound, *conjoined)
+    bounds = dict(node.bounds)
+    if "items" not in node.declares:
+        # ``{"type": "array"}`` admits a list of anything, and ``Any`` is that set --
+        # the same reading D2 gives a typeless node.  A bound on the list is still
+        # the list's, so it is carried.
+        element = ir.TypeRef("typing.Any")
+    elif node.element is None:
+        return Refusal(
+            "items",
+            pointer,
+            "items is a list, which is draft-07 tuple validation: each position is its "
+            "own schema and the shape is a fixed-length tuple, not a list[X]",
+            kind=Kind.VERDICT,
+        )
+    else:
+        # **§4's ELEM rule as a HOP**: ``<Parent>Item``, recorded against the array's
+        # own pointer so ``lower/names.py`` folds it onto whatever the array is called.
+        mod.hops[node.element.pointer] = names.Item(pointer)
+        lowered = _contents(node.element, "the element", mod)
+        if isinstance(lowered, Refusal):
+            return lowered
+        element = lowered
+    if position is Position.ROOT:
+        # **§4's root-array row, WRITTEN** (§14 step 9): "an array at a root ->
+        # ``RootModel[list[X]]``".
+        #
+        # It was ``containers.root``, reached through a selector
+        # (``bundle``'s deleted ``is_container_root``) and a dispatch table (``emit.ROWS``) §5
+        # retires: "root and non-root are one path", so what ROOT changes is this arm's
+        # ANSWER and not which arm answers.  The element is lowered FIRST -- the code
+        # above, unchanged -- so the root model wraps the element type this row decided.
+        #
+        # **The BOUND and the ``uniqueItems`` go onto the root model's own TYPE and its
+        # own RULE TUPLE**, which is §2's two halves at a position with no field: a
+        # ``minItems``/``maxItems`` is a constraint of the list and rides in
+        # :attr:`codegen.ir.TypeRef.facts` exactly as it does on a property's type, and
+        # ``uniqueItems`` is a RULE, which a root model carries like any class ("a root
+        # model carries a rule tuple exactly as a class does", §5's own row).  The rule is keyed on
+        # ``"root"`` -- a root model's one pydantic field, which is where
+        # ``_runtime.supplied`` finds the value -- and ``render.root_model`` derives the
+        # ``json_schema_extra`` half from that same rule rather than from a second flag,
+        # so the strip and the rendered fact are one claim (``ir.Field.distinct``'s own
+        # reasoning at a root).
+        #
+        # The old refusal's measurement is what this arm clears: "all five root arrays of
+        # this bundle refuse on a keyword of a later step: 4 carry ``uniqueItems: true``
+        # at the root and ``media-buy/product-refinement.json`` refuses inside its
+        # ``items``".  Those 4 are this arm's population and the 5th still refuses inside
+        # its element, where the obstruction is.
+        return compiler.declare_root_model(
+            mod,
+            pointer,
+            node,
+            ir.TypeRef(container="list", of=(element,), facts=bounds, validators=bound),
+            rules=(UniqueItems(ir.ROOT_FIELD),) if node.distinct else (),
+        )
+    return ir.Decided(ir.TypeRef(container="list", of=(element,), validators=bound), bounds)
+
+
+def mapping(node: nodes.Mapping_, mod: Module) -> ir.Decided | Refusal:
+    """``dict[K, V]`` for an object node that declares no property.
+
+    The node has no field to hang a class on and no property name to derive a class
+    name from, so D2 makes it an annotation.  Its VALUE comes from
+    ``additionalProperties`` or from the one ``patternProperties`` schema, and its KEY
+    from the document (:func:`_key`) -- ``str`` only where the document says nothing
+    about keys, which is a faithful reading and not a default.
+
+    **How many keys it may carry is the mapping's own bound**, so it rides on the field
+    holding the mapping (:data:`KEY_BOUNDS`), which is where every container bound in
+    this module goes.
+    """
+    pointer, position = node.pointer, node.position
+    refused = compiler.check_keywords(  # the walk's own check
+        node,
+        {"type", "additionalProperties", "patternProperties", "propertyNames", *KEY_BOUNDS},
+        mod=mod,
+    )
+    if refused is not None:
+        return refused
+    bounds = dict(node.bounds)
+    if node.patterns is not None:
+        if node.patterns != 1:
+            return Refusal(
+                "patternProperties",
+                pointer,
+                f"{node.patterns if node.patterns >= 0 else '?'} patterns, and a "
+                "mapping has one key type: two patterns are a union of key types whose "
+                "value types differ per branch, which is a rule and not a dict[K, V]",
+                kind=Kind.VERDICT,
+            )
+        # ``additionalProperties`` ABSENT is draft-07's ``true``, which is what
+        # :attr:`nodes.Base.extra` being ``None`` means (§2: absent and ``true`` are
+        # different statements, and this refusal is the one place they say the same).
+        stated_extra = True if node.extra is None else node.extra
+        if stated_extra is not False:
+            # **§5(b), added 2026-10-27: a DECLARED WIDENING, and it WAS a verdict.**
+            # This arm refused "two value schemas for one mapping value type", and §9's
+            # own test fails it on all three counts -- the obstruction is not the
+            # document's, not the pointer space's, and not pydantic's, since a
+            # key-pattern check is expressible as a rule.  Measured under
+            # ``Draft7Validator``: ``{"patternProperties": {"^x_": {"type": "string"}},
+            # "additionalProperties": true}`` accepts ``{"x_a": "ok"}``, refuses
+            # ``{"x_a": 1}`` and accepts ``{"other": 123}``.  Draft-07 is perfectly
+            # clear: keys matching the pattern take the pattern's schema and every
+            # other key is unconstrained.
+            #
+            # Rung CONTAINER: the mapping is ``dict[str, Any]``, the pattern's VALUE
+            # TYPING is the fact dropped, and ``strict_validate`` still enforces it from
+            # the document.  The KEY stays a bare ``str`` and that is faithful rather
+            # than widened -- a non-``false`` ``additionalProperties`` admits every key
+            # already, so the key set the document states IS every string.  Attribution
+            # ours, and the one sentence is that a faithful answer is a rule family for
+            # "keys matching this pattern take this type", which no row has written.
+            #
+            # Measured over the 1,054 portable documents, the 14 ``patternProperties``
+            # sites split 5 / 7 / 2: **5 state ``additionalProperties: false``** and are
+            # lowered faithfully below; **7 state ``true``** and are this arm's; and **2
+            # state nothing**, both at a RULE position
+            # (``core/creative-manifest.json#/allOf/1/then/properties/assets`` and
+            # ``core/creative-representation.json#/allOf/2/then/properties/assets``),
+            # which §5 lowers to nothing anyway.
+            if "propertyNames" in node.declares:
+                # The widening drops the pattern expression, so a ``propertyNames``
+                # beside it is a SECOND statement about the same key that this arm has
+                # no rung-and-fact pair for: the parser reads the pattern as the key
+                # (:func:`_key`) and never reads this keyword at a patterned node, so
+                # lowering here would drop it in silence.  DEFERRED and not a verdict --
+                # what is missing is a written case, which is §2's division -- and
+                # population 0: no node of the bundle states both, so the first document
+                # to state them decides the rendering.
+                return Refusal(
+                    "propertyNames",
+                    pointer,
+                    "beside patternProperties and a non-false additionalProperties: the "
+                    "pattern is dropped by section 5(b)'s widening, so this is a second "
+                    "statement about the same key with no declaration of its own, and "
+                    "the key would be widened to str in silence",
+                    kind=Kind.DEFERRED,
+                )
+            approximate.declare(
+                mod, pointer, "patternProperties", position, node.patterned
+            )
+            if isinstance(stated_extra, Mapping) and stated_extra:
+                # A TYPED ``additionalProperties`` beside the pattern types the keys the
+                # pattern does NOT match, so ``dict[str, Any]`` drops that value typing
+                # too, and ``harness.check_widening`` puts each declaration to a draw of
+                # its own.  Population
+                # 0 over this bundle -- every patterned node states ``true``, ``false`` or
+                # nothing -- and declared rather than refused because the rung is the same
+                # one: the mapping is already ``dict[str, Any]``.
+                approximate.declare(
+                    mod, pointer, "additionalProperties", position, stated_extra
+                )
+            return ir.Decided(
+                ir.TypeRef(
+                    container="dict", of=(ir.TypeRef("typing.Any"),), key=ir.TypeRef("str")
+                ),
+                bounds,
+            )
+        if "propertyNames" in node.declares:
+            # Two statements about ONE key type, and the dict carries one.  Not in the
+            # bundle at any node, and refused rather than left out: this row reads the
+            # ``patternProperties`` expression AS the key (below), so a
+            # ``propertyNames`` beside it would be dropped in silence -- the model
+            # wider than its document, which is §2's named failure.
+            return Refusal(
+                "propertyNames",
+                pointer,
+                "beside patternProperties, which is two statements about one key type; "
+                "a dict[K, V] has one K and this row reads the pattern expression as it",
+                kind=Kind.VERDICT,
+            )
+        # **The expression constrains the KEY, and the key is a type (§2).**  So the
+        # expression is handed to :func:`_key`, which is where D5 resolves a key's
+        # annotated ``str`` -- one owner for the key rule, so a ``propertyNames``
+        # pattern and a ``patternProperties`` pattern cannot come to be read two
+        # different ways.  What this row adds over the ``propertyNames`` spelling is
+        # only WHERE the expression sits in the document.
+        #
+        # The two spellings say the same thing and pydantic renders both back as
+        # ``patternProperties``, which for THIS one is the document's own keyword --
+        # measured on pydantic 2.13.5: ``dict[Annotated[str,
+        # StringConstraints(pattern="^x_")], int]`` renders ``{"type": "object",
+        # "patternProperties": {"^x_": {"type": "integer"}}}``.  The
+        # ``additionalProperties: false`` the document states beside it (5 of the
+        # bundle's 14 sites) is what makes the two equivalent -- it closes the keys to
+        # the ones the pattern matches, which is what a typed key already says -- and what
+        # a draw places at such a node is a key the pattern matches holding a value of the
+        # stated type, so the value schema and the key expression are each GRADED rather
+        # than excused.
+        expr = node.pattern
+        if expr is None:
+            # **A crash is not an outcome** (§9), and this is the one place the row met
+            # that rule.  :attr:`nodes.Mapping_.pattern` is the parser's record of the
+            # single entry's key where that key is a STRING and ``None`` where it is not,
+            # so the two fields can disagree -- ``patterns == 1`` with no expression --
+            # and ``bundle.escape_key(None)`` was then a ``TypeError`` naming no
+            # document, pointer or keyword.  A malformed document is a property of the
+            # DOCUMENT (§4's shape-validation rule), so it is a VERDICT.  Population 0,
+            # necessarily: ``json.loads`` gives every object key as a string, so no
+            # bundle document can reach it and nothing moves -- what changes is that the
+            # unreachable arm names a document instead of stopping the run.
+            return Refusal(
+                "patternProperties",
+                pointer,
+                "its one entry's key is not a string, so there is no expression to "
+                "constrain the mapping's key type with",
+                kind=Kind.VERDICT,
+            )
+        # ``bundle.escape_key``: §11 puts a pointer segment speller in the SOURCE
+        # layer, and §14 step 5 moved it there out of ``compiler.py``.  The ONE
+        # pointer this module spells, and the parser §4 declares is what retires it --
+        # a node's pointer is assigned when the node is built.
+        key = _key(node.key, mod)
+        if isinstance(key, Refusal):
+            return key
+        patterned = _value(
+            node.value,
+            f"{pointer}/patternProperties/{bundle.escape_key(expr)}",
+            pointer,
+            mod,
+            keyword="patternProperties",
+        )
+        if isinstance(patterned, Refusal):
+            return patterned
+        return ir.Decided(
+            ir.TypeRef(container="dict", of=(patterned,), key=key),
+            bounds,
+        )
+
+    ap = True if node.extra is None else node.extra
+    if ap is False:
+        return Refusal(
+            "additionalProperties",
+            pointer,
+            "an object declaring no property and refusing every additional one admits "
+            "only the empty object, which is a rule on a value and not a type",
+            kind=Kind.VERDICT,
+        )
+    key = _key(node.key, mod)
+    if isinstance(key, Refusal):
+        return key
+    value = _value(node.value, f"{pointer}/additionalProperties", pointer, mod, stated=ap)
+    if isinstance(value, Refusal):
+        return value
+    return ir.Decided(ir.TypeRef(container="dict", of=(value,), key=key), bounds)
+
+
+def _value(
+    node: nodes.Node | None,
+    pointer: str,
+    parent: str,
+    mod: Module,
+    *,
+    keyword: str = "additionalProperties",
+    stated: Any = None,
+) -> ir.TypeRef | Refusal:
+    """A mapping's value type; ``Any`` for ``true`` and for the empty schema.
+
+    ``true`` and ``{}`` are the same schema -- every value -- and ``Any`` is that set.
+
+    ``keyword`` is which of the two spellings the value was read off, and it exists
+    so a refusal names THE DOCUMENT'S OWN WORD: a mapping's value comes from
+    ``additionalProperties`` or from the one ``patternProperties`` schema, and a
+    refusal reading "additionalProperties is not a schema" at a document that states
+    no such keyword is a refusal a reader cannot act on.
+    """
+    if node is None:
+        # ``true`` and ``{}`` are the same schema -- every value -- and the parser reads
+        # both as NO VALUE NODE, which is what ``Any`` is.  Anything else that is not a
+        # schema refuses by the DOCUMENT'S OWN WORD, which is what ``keyword`` is for.
+        if stated is True or stated == {} or stated is None:
+            return ir.TypeRef("typing.Any")
+        return Refusal(keyword, pointer, f"not a schema: {stated!r}", kind=Kind.VERDICT)
+    # **§4's MAPV rule as a HOP**: ``<Parent>Value``, against the MAPPING's own pointer --
+    # which for an extras store is the CLASS's, because the parser builds the store at the
+    # class's pointer (§4) and the store therefore shares the class's name entry.
+    mod.hops[node.pointer] = names.Value(parent)
+    return _contents(node, "the value", mod)
+
+
+def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
+    """A mapping's key type, from the document (D5), with ``str`` the last resort.
+
+    The order is the document's own: a ``$ref`` NAMES the key type, so the key is
+    that type and the module imports it; an ``enum`` CLOSES the key set, which D5
+    reads as a model rather than a mapping; anything that constrains the key's text
+    is a named annotated ``str``, which is D5's alias module (see this module's
+    docstring); and silence means ``str``.
+
+    Silence is a reading and not a fallback: the document says nothing about keys, so
+    the key is every string, and typing it further would be the SDK inventing a
+    constraint the document does not state.
+
+    **A key's LENGTH and a key's PATTERN both lower, and the split that used to be
+    here was a statement about how pydantic RENDERS a key rather than about the key.**
+    Both go
+    through the walk, so D5's rung 3 names the shape and no spelling is invented
+    here.  What differs is only what pydantic renders the resulting ``dict`` as,
+    measured on 2.13.5:
+
+    * ``dict[Annotated[str, StringConstraints(min_length=1)], V]`` renders
+      ``{"additionalProperties": ..., "propertyNames": {"minLength": 1}}`` -- the
+      document's own two keywords, both of them.
+    * ``dict[Annotated[str, StringConstraints(pattern=...)], V]`` renders
+      ``{"patternProperties": {"<expr>": ...}}`` -- which is the document's own
+      keyword where the document spells it ``patternProperties`` (:func:`mapping`),
+      and pydantic's own equivalent spelling where the document spells it
+      ``propertyNames`` plus ``additionalProperties``.
+
+    The pattern arm REFUSED, as a verdict, on the second of those: the rendering is
+    not the document's spelling.  Two things were wrong with that.  The kind, first --
+    a rendering this project had not yet read is a reading we owe and so a DEFERRAL,
+    never a verdict, which names a document's own property.  And then the premise: the
+    two spellings state the same thing, so there is one shape and the keys it admits
+    are the same keys.  The bound ENFORCES either way (``{"AB": 1}`` accepted,
+    ``{"abc": 1}`` refused for ``^[A-Z]{2}$``), which is what the accepts draw places
+    and the dump hands back, so nothing about the model ever needed the refusal.
+    """
+    if node is None:
+        return ir.TypeRef("str")
+    # **§5's propertyNames row names FIVE answers at KEY and an OBJECT node is none of
+    # them, so it refuses BY NAME rather than reaching the walk**
+    # (``adcp-client-python-zxf``).  §4 derives NO name at this position
+    # (:class:`names.Unnamed`), whose own docstring already claimed "a declaration that
+    # needed one would ... refuse by name" -- and it did not: a key node the object row
+    # claims is declared a CLASS at this pointer, the names pass spells it ``""``, and
+    # the module the run writes is ``class (AdCPBaseModel):`` beside ``dict[, Any]``.
+    # That is a SyntaxError with neither a verdict nor a deferral beside it, which is the
+    # one outcome §9 forbids outright -- "a crash is not an outcome" -- so the screen runs
+    # BEFORE the dispatch and the keyword that reaches it is the one reported.
+    #
+    # Measured over the 1,054 portable documents: 0 key nodes state any of the eight, so
+    # this moves no document.  Every key node the bundle states is a SCALAR -- 5 ``type``,
+    # 13 ``pattern``, 6 ``minLength``, 7 ``maxLength`` -- and the first bundle version to
+    # state an object ``propertyNames`` is reported instead of breaking a consumer's
+    # import.
+    #
+    # **The gate is the PARSER's classification and not a keyword list**, which is what
+    # keeps it off the twelve KEY cells that already prove: a key node stating ``minimum``
+    # or ``format`` or ``contains`` is a SCALAR or a CONTAINER, the walk lowers it, and
+    # §4's missing name costs nothing because nothing is declared.  Only a
+    # :class:`nodes.Object` reaches the row that declares a class, so only that kind is
+    # screened -- and the keyword the screen then names is the one the document wrote.
+    if isinstance(node, nodes.Object):
+        refused = compiler.check_keywords(node, KEY_CLAIMS, _NO_KEY_ANSWER, mod=mod)
+        if refused is not None:
+            return refused
+    if isinstance(node, nodes.Reference):
+        # The one key kind that needs no alias: the bundle already names the type, so
+        # P2 applies unchanged -- an import, and no constraint of the target copied.
+        return _key_type(node, mod)
+    # **An ``enum`` KEY goes through the walk like every other key, and the arm that
+    # refused it is retired** (§14 step 9).  §5's group (a): "`propertyNames` with an
+    # `enum`, and `enum` at KEY.  Both rows refuse 'by name with the key set'.  A
+    # `Literal` of the members is the key type, and Pydantic renders `dict[Literal[…],
+    # V]` back as `propertyNames: {enum: […]}` -- the document's own keyword, rendered
+    # and gradable.  Faithful, not wide."
+    #
+    # The refusal that stood here read the closed key set as a MODEL whose keys are its
+    # fields.  That reading is not wrong about what the document means and it is not the
+    # one §4's table gives: a node without ``properties`` is ``dict[K, V]``, and
+    # ``propertyNames`` types the K.  A model would have to invent a field per member --
+    # each one optional, since ``propertyNames`` closes the key set without requiring any
+    # of it -- which states a ``properties`` map the document does not.  The ``Literal``
+    # key states exactly the keyword the document states, and pydantic renders it back
+    # under that name, which is the whole of why this is faithful rather than a
+    # substitution.
+    #
+    # Nothing is special-cased here: the enum node is lowered by the same walk as a
+    # ``$ref`` key and a constrained one, and ``lower.enum.resolves_no_name`` is what
+    # makes an untitled one a ``Literal`` -- because KEY supplies no name, which
+    # :func:`_key_type` already states as ``names.Unnamed()``.
+    # Through the walk, so the key is D5's named shape and this row spells nothing: a
+    # length-bounded key resolves to ``constraints.StrMinLen1`` and is recorded there,
+    # and a key the alias module has no spelling for comes back with its constraints
+    # still on it and ``_inner`` refuses by name.  ``type: string`` is supplied where
+    # the document leaves it out, because ``propertyNames`` applies to a key and a JSON
+    # key is a string: without it the node is typeless and the walk reads it as
+    # ``Any``, which would drop the bound.
+    # **§2's FIRST node rewrite, retired.**  The ``type: string`` word is the PARSER's,
+    # supplied once at KEY (``schema.parse._key``) -- ``propertyNames`` applies to a key
+    # and a JSON key is a string -- so this row no longer hands the dispatch a mapping the
+    # document does not state, and §9's "never refuse a keyword the walk itself inserted"
+    # is held by the reading being the parser's.
+    return _key_type(node, mod)
+
+
+def _key_type(node: nodes.Node, mod: Module) -> ir.TypeRef | Refusal:
+    """The key's own decided type, named where its facts need a carrier.
+
+    One expression for the two arms of :func:`_key` that reach the walk -- a ``$ref``
+    key and a constrained one -- so the two cannot come to read a refusal differently.
+    """
+    # **The one position §4's nested rule derives NO name for**, and ``names.Unnamed`` is
+    # that statement: ``propertyNames`` constrains a KEY, and §4's rule names a property,
+    # an element or a value.  A declaration that needed a name here would collide with the
+    # other unnamed position and refuse by name.
+    mod.hops[node.pointer] = names.Unnamed()
+    decided = compiler.lower_node(node, mod)
+    if isinstance(decided, Refusal):
+        return decided
+    return _inner(decided, node.pointer, "the key", mod)
+
+
+def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
+    """``X | Y`` for a node whose ``type`` is a list, each keyword on its OWN arm.
+
+    An arm is the node re-cut to one type, carrying only the keywords that type can
+    carry (:data:`ARM`), and lowered by the same ``compiler.lower_node`` as any other
+    node -- so a string arm gets its ``minLength`` and the ``number`` arm beside it does
+    not.
+    That is draft-07's own semantics: a constraint keyword applies to instances of the
+    type it is defined for and is ignored for every other type.
+
+    A keyword no arm can carry constrains nothing, and it refuses by name: dropping it
+    silently makes the model wider than its document, and applying it to every arm
+    makes it narrower.  Both halves of that are this row's named defect.
+
+    **An arm that DOES carry a constraint is an arm, and it refused TWICE before it
+    emitted.**  The split only exists if the constraint can sit on the arm, and the
+    compiler's ``DataType`` carries none -- so before D5's alias module the keyword
+    reached the FIELD and bounded the whole union, ``Annotated[str | int,
+    Field(min_length=4)]``, applying the string's bound to the integer arm.  The alias
+    module removed that: ``StrMinLen4 | int`` is what it lowers to, and that model's
+    accepted set IS the document's -- which the accepts draw says, since the document
+    admits a four-character string and an integer and the annotation takes both.  The
+    refusal then stood on the READING instead: the fold that lifts a union's arms back
+    onto a ``type`` list fired only where every branch was a bare type, so a node whose
+    arm carried a constraint had no composed node to read the ``minLength`` at -- an
+    instrument defect in the same place as the ``null`` arm's below, fixed the same way:
+    ``harness._type_list`` lifts each arm's own keywords back onto the list it folds to,
+    reading ``keywords.ARM``, which is the CUT this row makes.  So the document's fact is
+    read where it belongs and the refusal is retired rather than restated with a new
+    reason.
+
+    It was worth 1 primary refusal -- ``core/attestation-reference.json`` at
+    ``/properties/embedded_credential/properties/value``, ``["object", "string"]``
+    with ``minLength`` -- and 43 documents transitively, which was the largest cascade
+    per primary refusal in the report.
+
+    **A ``null`` arm is an ARM, and it used to refuse on the instrument.**  ``None``
+    was always a perfectly good arm and the compiler always folded it with D4's own
+    ``| None`` on an optional property, so ``str | None`` came out either way; what
+    had no answer was READING the document at such a node.  The fold read a ``null``
+    branch as D4's rendering of ABSENCE and unwrapped it, so a document declaring
+    ``["string", "null"]`` and a document with a merely optional ``{"type": "string"}``
+    came back as one node, with the declared ``null`` gone from the reading of both.
+    That is the instrument defect ``salesagent-j3k2l.21`` names, and it is fixed where
+    it lived: ``harness._normalize`` takes ``declared_null`` from its caller, so a
+    reading of the DOCUMENT folds the branch into the type list where the document
+    declares one and a declaration at that node's ``type`` meets the fact the document
+    states.  So the refusal is retired rather than restated with a new reason.
+
+    It was worth 3 documents -- ``core/delivery-metrics.json``,
+    ``core/error.json`` and ``core/webhook-activity-record.json`` -- and
+    ``["string", "null"]`` is ``str | None``, the most ordinary thing pydantic has.
+    """
+    pointer = node.pointer
+    kinds = list(node.words)
+    if not kinds or len(set(kinds)) != len(kinds) or not all(isinstance(k, str) for k in kinds):
+        return Refusal("type", pointer, f"not a set of type names: {kinds!r}", kind=Kind.VERDICT)
+    unknown = sorted(set(kinds) - set(ARM))
+    if unknown:
+        return Refusal("type", pointer, f"unknown type(s) {unknown}", kind=Kind.VERDICT)
+    carried = frozenset().union(*(ARM[k] for k in kinds))
+    refused = compiler.check_keywords(  # the walk's own check
+        node,
+        {"type", *carried},
+        f"no arm of {sorted(kinds)} can carry it, so it constrains nothing",
+        mod=mod,
+    )
+    if refused is not None:
+        return refused
+    # **THE CONSTRAINED-ARM REFUSAL STOOD HERE AND IS RETIRED, on the instrument's side
+    # and not by a widening here.**  It fired where the node stated a keyword some arm
+    # carries and more than one arm was live, and its reason was never the rendering --
+    # D5's alias module puts the bound on the arm's own type, so ``StrMinLen1 | dict[str,
+    # Any]`` is what this lowers to and the string's keyword never reaches the field to
+    # bound the object arm.  Its reason was the READING: ``harness._normalize`` lifted a
+    # union's branches back onto a ``type`` LIST only where every branch was a bare
+    # ``{"type": X}``, so a node whose arm carried a constraint came back stating neither
+    # the type list nor the keyword.
+    #
+    # That is an instrument defect in the same place as the ``null`` arm's, and it is
+    # fixed in the same place: ``harness._type_list`` lifts each arm's own keywords back
+    # onto the type list it folds to, reading ``keywords.ARM`` -- the very table this row
+    # cuts by -- so the fold is the cut's inverse and the document's ``type`` list and
+    # ``minLength`` are both read at the node they belong to.
+    #
+    # Nothing is admitted in exchange.  A fold the gates do not admit leaves the node a
+    # combinator, which states no fact in ``harness.FOLDED_FACTS``, so a declaration at
+    # it is reported UNPROVED rather than passing blind -- the fail-safe direction, and
+    # the reason this row does not need to re-derive the fold's conditions to know it is
+    # safe to emit.  Measured
+    # over all 1,054 portable documents: 1 multi-type node states a keyword with two
+    # live arms, 0 repeat a type word, and 0 state a keyword two live arms carry.
+    #
+    # **§2's SECOND node rewrite, retired on the multi-type side.**  The cut -- one
+    # mapping per type word, each holding only the keywords that word can carry -- is a
+    # reading the PARSER makes once (``schema.parse.ARM``), at the position that implies
+    # it, and each member arrives here as a node of its own kind.  This row re-cut the
+    # node and handed each piece back to the dispatch, which is the defect §2 names.
+    arms: list[ir.TypeRef] = []
+    # **The arms are lowered in the document's own ``type`` order and the FIRST refusal
+    # returns** (§6), which is :func:`codegen.refusal.first_refusal` fused with the map:
+    # the parser cut the node into one member per word in the order the list states them
+    # (``schema.parse.ARM``), so the arm a refusal names is the earliest one in the
+    # document and not the one iteration happened to reach first.
+    for kind, member in zip(kinds, node.members, strict=True):
+        at = f"{pointer}/type/{kind}"  # not a real pointer; it names the ARM that refused
+        # No hop: the parser cuts each member at the node's OWN pointer, because it is
+        # the same instance re-read under one of its admissible words (§4), so a member
+        # inherits the name entry the node's own parent recorded.
+        decided = compiler.lower_node(member, mod)
+        if isinstance(decided, Refusal):
+            return decided
+        arm = _inner(decided, at, f"the {kind!r} arm", mod)
+        if isinstance(arm, Refusal):
+            return arm
+        arms.append(arm)
+    unique = ir.deduped(arms)  # document order, deduped; see ir.deduped for why not a hash
+    if len(unique) == 1:
+        return ir.Decided(unique[0])
+    return ir.Decided(ir.TypeRef(container="union", of=unique))
+
+
+# --------------------------------------------------------------------------- #
+# **the container ROOT row is gone, and §5 is why**
+# --------------------------------------------------------------------------- #
+# ``root`` declared the module for a document whose root is a container, and it was
+# reached through ``bundle``'s deleted ``is_container_root`` and ``emit.ROWS``.  §5 deletes
+# both: "Root
+# and non-root are one path.  There is no second table of root selectors.  A document is
+# ``parse(raw, position=ROOT)`` followed by ``decide``.  The only thing ROOT adds is the
+# module wrapper."
+#
+# So its three halves went to the three places that own them.  A mapping root and a
+# multi-type root have no field to hang themselves on, so they stay what :func:`mapping`
+# and :func:`multi_type` already decide and ``emit.lower_document`` wraps the ANNOTATION
+# in the module-level alias -- which is the wrapper §5 names, shared with D2's
+# root-scalar row and no longer reached through a selector.  An array root is D2's
+# ``RootModel[list[X]]`` row and refuses at the position, inside :func:`array`, where the
+# element is already lowered.

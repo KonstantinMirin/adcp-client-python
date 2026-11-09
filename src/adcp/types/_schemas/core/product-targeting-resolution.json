@@ -1,0 +1,185 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared2": {
+      "required": [
+        "selector"
+      ]
+    }
+  },
+  "description": "Discovery-only targeting resolution bound to a configured Product. modifications sparsely disclose product-specific differences from get_products.targeting_overlay. Request-level brief interpretation and package execution details are not valid here.",
+  "properties": {
+    "effective_targeting_digest": {
+      "description": "Optional digest of the canonical effective targeting overlay. Until AdCP defines a cross-implementation canonicalization algorithm, this value is an opaque seller audit handle and buyers MUST NOT attempt to reproduce or compare it across sellers.",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "ext": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "modifications": {
+      "description": "Ordered changes applied to the requested targeting_overlay. Sellers apply entries in array order and MUST validate the complete resulting overlay before returning the product.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Sparse, buyer-reviewable change from targeting requested in get_products to targeting bound to a returned configured product. Entries are applied in array order to the original targeting_overlay; after every entry, the complete result MUST validate against targeting.json. A seller MUST NOT emit two replace operations for the same path or combine replace and remove_values on the same path. Selecting the configured product_id accepts the ordered result.",
+        "discriminator": {
+          "propertyName": "operation"
+        },
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "applied": {
+                "description": "Complete replacement value. It MUST validate against targeting.json at path; the seller then validates the complete effective overlay. This operation may narrow or broaden only as an explicit buyer-visible proposal."
+              },
+              "ext": {
+                "$ref": "#/definitions/Shared0"
+              },
+              "operation": {
+                "const": "replace",
+                "type": "string"
+              },
+              "path": {
+                "description": "RFC 6901 JSON Pointer to one complete targeting value relative to targeting_overlay, for example /demographics/age. Array indexes are forbidden by protocol semantics even if syntactically valid JSON Pointer; target a stable whole dimension instead.",
+                "pattern": "^(?:/(?:[^~/]|~[01])*)+$",
+                "type": "string"
+              },
+              "reason": {
+                "$ref": "#/definitions/Shared1"
+              }
+            },
+            "required": [
+              "operation",
+              "path",
+              "applied",
+              "reason"
+            ],
+            "title": "Replace targeting value",
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "else": {
+                  "not": {
+                    "$ref": "#/definitions/Shared2"
+                  }
+                },
+                "if": {
+                  "properties": {
+                    "path": {
+                      "enum": [
+                        "/geo_postal_areas",
+                        "/geo_postal_areas_exclude"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ]
+                },
+                "then": {
+                  "$ref": "#/definitions/Shared2"
+                }
+              }
+            ],
+            "properties": {
+              "ext": {
+                "$ref": "#/definitions/Shared0"
+              },
+              "operation": {
+                "const": "remove_values",
+                "type": "string"
+              },
+              "path": {
+                "description": "Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.",
+                "enum": [
+                  "/geo_countries",
+                  "/geo_countries_exclude",
+                  "/geo_regions",
+                  "/geo_regions_exclude",
+                  "/geo_postal_areas",
+                  "/geo_postal_areas_exclude",
+                  "/audience_include",
+                  "/audience_exclude",
+                  "/device_platform",
+                  "/device_platform_exclude",
+                  "/device_type",
+                  "/device_type_exclude",
+                  "/browser",
+                  "/browser_exclude",
+                  "/language"
+                ],
+                "type": "string"
+              },
+              "reason": {
+                "$ref": "#/definitions/Shared1"
+              },
+              "selector": {
+                "additionalProperties": false,
+                "description": "Stable identity of exactly one postal-area group in the requested array. Required only for postal-area paths. Zero or multiple matches make the modification invalid.",
+                "properties": {
+                  "country": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+                    "pattern": "^[A-Z]{2}$",
+                    "title": "Country Code",
+                    "type": "string"
+                  },
+                  "system": {
+                    "$ref": "#/definitions/Shared1"
+                  }
+                },
+                "required": [
+                  "country",
+                  "system"
+                ],
+                "type": "object"
+              },
+              "values": {
+                "description": "Values removed from the requested set. Values absent from that set are invalid rather than no-ops.",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "operation",
+              "path",
+              "values",
+              "reason"
+            ],
+            "title": "Remove targeting set values",
+            "type": "object"
+          }
+        ],
+        "title": "Targeting Modification",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "modifications"
+  ],
+  "title": "Product Targeting Resolution",
+  "type": "object"
+}

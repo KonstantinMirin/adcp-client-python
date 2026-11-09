@@ -1,0 +1,3252 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "type": "string"
+    },
+    "Shared10": {
+      "format": "uri-template"
+    },
+    "Shared11": {
+      "format": "uri",
+      "pattern": "^https?://(?:[A-Za-z0-9._~!$&'()*+,;=:%-]+@)?(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?|\\[[0-9A-Fa-f:.]+\\])(?::[0-9]{1,5})?(?:[/?#]|$)"
+    },
+    "Shared12": {
+      "pattern": "^https?://(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?|\\[[0-9A-Fa-f:.]+\\])(?::[0-9]{1,5})?(?:[/?#](?:[^%\\s\\u0000-\\u001F\\u007F\"<>`\\\\]|%[0-9A-Fa-f]{2}|%%[A-Za-z0-9_.:-]+%%)*)?$"
+    },
+    "Shared13": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/Shared20"
+        },
+        {
+          "$ref": "#/definitions/Shared21"
+        },
+        {
+          "$ref": "#/definitions/Shared22"
+        },
+        {
+          "$ref": "#/definitions/Shared23"
+        },
+        {
+          "if": {
+            "$ref": "#/definitions/Shared32"
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Shared49"
+                },
+                {
+                  "$ref": "#/definitions/Shared41"
+                },
+                {
+                  "$ref": "#/definitions/Shared31"
+                }
+              ]
+            },
+            "properties": {
+              "encoding": {
+                "$ref": "#/definitions/Shared37"
+              },
+              "mapping_status": {
+                "const": "unresolved"
+              },
+              "operation": {
+                "$ref": "#/definitions/Shared36"
+              },
+              "required": {
+                "$ref": "#/definitions/Shared38"
+              },
+              "unavailable_behavior": {
+                "$ref": "#/definitions/Shared36"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "translate_to_native"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "encoding": {
+                "$ref": "#/definitions/Shared37"
+              },
+              "mapping_status": {
+                "$ref": "#/definitions/Shared39"
+              }
+            },
+            "required": [
+              "performed_by",
+              "translation_target"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "$ref": "#/definitions/Shared40"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "not": {
+              "$ref": "#/definitions/Shared41"
+            },
+            "properties": {
+              "mapping_status": {
+                "$ref": "#/definitions/Shared39"
+              }
+            },
+            "required": [
+              "performed_by"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dialect": {
+                "$ref": "#/definitions/Shared42"
+              },
+              "operation": {
+                "$ref": "#/definitions/Shared40"
+              }
+            },
+            "required": [
+              "dialect",
+              "operation"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/Shared33"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "$ref": "#/definitions/Shared36"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Shared49"
+                },
+                {
+                  "$ref": "#/definitions/Shared41"
+                }
+              ]
+            },
+            "properties": {
+              "encoding": {
+                "$ref": "#/definitions/Shared37"
+              },
+              "required": {
+                "$ref": "#/definitions/Shared38"
+              },
+              "unavailable_behavior": {
+                "$ref": "#/definitions/Shared36"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "location": {
+                "properties": {
+                  "context": {
+                    "const": "opaque"
+                  }
+                },
+                "required": [
+                  "context"
+                ]
+              }
+            },
+            "required": [
+              "location"
+            ]
+          },
+          "then": {
+            "properties": {
+              "encoding": {
+                "$ref": "#/definitions/Shared37"
+              },
+              "operation": {
+                "$ref": "#/definitions/Shared36"
+              },
+              "required": {
+                "$ref": "#/definitions/Shared38"
+              },
+              "unavailable_behavior": {
+                "$ref": "#/definitions/Shared36"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/definitions/Shared34"
+          },
+          "then": {
+            "properties": {
+              "encoding": {
+                "$ref": "#/definitions/Shared44"
+              },
+              "location": {
+                "properties": {
+                  "context": {
+                    "enum": [
+                      "url_query_value",
+                      "url_path_segment"
+                    ]
+                  }
+                }
+              },
+              "operation": {
+                "$ref": "#/definitions/Shared40"
+              },
+              "performed_by": {
+                "$ref": "#/definitions/Shared43"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "required"
+            ]
+          },
+          "then": {
+            "properties": {
+              "unavailable_behavior": {
+                "const": "reject"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unavailable_behavior": {
+                "const": "omit_parameter"
+              }
+            },
+            "required": [
+              "unavailable_behavior"
+            ]
+          },
+          "then": {
+            "properties": {
+              "location": {
+                "properties": {
+                  "context": {
+                    "const": "url_query_value"
+                  }
+                }
+              },
+              "operation": {
+                "$ref": "#/definitions/Shared40"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unavailable_behavior": {
+                "$ref": "#/definitions/Shared36"
+              }
+            },
+            "required": [
+              "unavailable_behavior"
+            ]
+          },
+          "then": {
+            "properties": {
+              "operation": {
+                "$ref": "#/definitions/Shared36"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unavailable_behavior": {
+                "const": "dialect_sentinel"
+              }
+            },
+            "required": [
+              "unavailable_behavior"
+            ]
+          },
+          "then": {
+            "properties": {
+              "dialect": {
+                "const": "iab_vast"
+              },
+              "operation": {
+                "$ref": "#/definitions/Shared40"
+              },
+              "required": {
+                "$ref": "#/definitions/Shared38"
+              }
+            }
+          }
+        }
+      ],
+      "description": "The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.",
+      "properties": {
+        "declaration_id": {
+          "description": "Identifier unique within the enclosing asset, used to correlate validation results.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "type": "string",
+          "x-entity": "macro_declaration"
+        },
+        "dialect": {
+          "$ref": "#/definitions/Shared18"
+        },
+        "dialect_namespace": {
+          "description": "Authority-controlled registry or mapping URI. Required for IAB VAST, IAB DAAST, and vendor dialects.",
+          "format": "uri",
+          "type": "string"
+        },
+        "dialect_revision": {
+          "description": "Immutable registry/mapping revision, release, commit, or digest. Required for IAB VAST, IAB DAAST, and vendor dialects.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "dialect_semantic": {
+          "description": "Exact semantic identifier in the cited dialect, such as `CACHEBUSTING`, `PLAYERSTATE`, or a documented vendor name. This is not inferred from token spelling.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "encoding": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "$ref": "#/definitions/Shared28"
+            },
+            {
+              "$ref": "#/definitions/Shared29"
+            },
+            {
+              "$ref": "#/definitions/Shared30"
+            }
+          ],
+          "description": "Encoding for the concrete value. Translation/preservation uses `none` at depth zero.",
+          "properties": {
+            "depth": {
+              "$ref": "#/definitions/Shared27"
+            },
+            "kind": {
+              "$ref": "#/definitions/Shared26"
+            }
+          },
+          "required": [
+            "kind",
+            "depth"
+          ],
+          "title": "Macro Encoding",
+          "type": "object"
+        },
+        "location": {
+          "additionalProperties": false,
+          "properties": {
+            "context": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Syntactic occurrence context supported by the first macro contract. Substitution inside arbitrary JavaScript, JSON, or HTML text is intentionally not inferred; use `opaque` and preserve it unless a later governed context is added.",
+              "enum": [
+                "url_query_value",
+                "url_path_segment",
+                "opaque"
+              ],
+              "title": "Macro Value Context",
+              "type": "string"
+            },
+            "field": {
+              "description": "Asset field containing this occurrence.",
+              "enum": [
+                "url",
+                "markup",
+                "content",
+                "ad_request_url",
+                "clickthrough_url"
+              ],
+              "type": "string"
+            },
+            "occurrence": {
+              "description": "Zero-based occurrence of this exact token within the named field.",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "field",
+            "occurrence",
+            "context"
+          ],
+          "type": "object"
+        },
+        "mapping_status": {
+          "$ref": "#/definitions/Shared19"
+        },
+        "operation": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "The next authorized operation on the current source token.",
+          "enum": [
+            "translate_to_native",
+            "resolve_value",
+            "preserve"
+          ],
+          "enumDescriptions": {
+            "preserve": "Leave the source bytes unchanged because no safe local operation is established.",
+            "resolve_value": "Insert the concrete runtime value using the declared encoding contract.",
+            "translate_to_native": "Replace the current token with a declared downstream-native token; no concrete runtime value is inserted at this step."
+          },
+          "title": "Macro Processing Operation",
+          "type": "string"
+        },
+        "performed_by": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Actor authorized to perform the declared translation or value resolution. Omitted for preservation.",
+          "enum": [
+            "buyer",
+            "creative_agent",
+            "seller",
+            "request_executor",
+            "source_ad_server"
+          ],
+          "enumDescriptions": {
+            "buyer": "The buyer agent acts before submission.",
+            "creative_agent": "The creative agent executing build_creative, preview_creative, or validate_input performs the declared build-time operation.",
+            "request_executor": "The component executing the governed request acts, whether a client player, publisher player, SSAI service, or another request executor.",
+            "seller": "The AdCP seller or its execution adapter acts during trafficking or serving.",
+            "source_ad_server": "The originating creative/ad server acts on its own native token."
+          },
+          "title": "Macro Processing Actor",
+          "type": "string"
+        },
+        "required": {
+          "description": "Whether terminal delivery must fail if the declared operation cannot complete.",
+          "type": "boolean"
+        },
+        "token": {
+          "description": "Exact byte-preserved token expression at this occurrence, including delimiters.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "translation_target": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "$ref": "#/definitions/Shared20"
+            },
+            {
+              "$ref": "#/definitions/Shared21"
+            },
+            {
+              "if": {
+                "$ref": "#/definitions/Shared32"
+              },
+              "then": false
+            },
+            {
+              "$ref": "#/definitions/Shared22"
+            },
+            {
+              "if": {
+                "properties": {
+                  "dialect": {
+                    "$ref": "#/definitions/Shared42"
+                  }
+                },
+                "required": [
+                  "dialect"
+                ]
+              },
+              "then": {
+                "$ref": "#/definitions/Shared33"
+              }
+            },
+            {
+              "$ref": "#/definitions/Shared23"
+            },
+            {
+              "if": {
+                "$ref": "#/definitions/Shared34"
+              },
+              "then": {
+                "properties": {
+                  "encoding": {
+                    "$ref": "#/definitions/Shared44"
+                  },
+                  "performed_by": {
+                    "$ref": "#/definitions/Shared43"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Required only for `translate_to_native`. The output token contract that replaces this declaration after translation.",
+          "properties": {
+            "dialect": {
+              "$ref": "#/definitions/Shared18"
+            },
+            "dialect_namespace": {
+              "format": "uri",
+              "type": "string"
+            },
+            "dialect_revision": {
+              "$ref": "#/definitions/Shared25"
+            },
+            "dialect_semantic": {
+              "$ref": "#/definitions/Shared25"
+            },
+            "encoding": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Shared28"
+                },
+                {
+                  "$ref": "#/definitions/Shared29"
+                },
+                {
+                  "$ref": "#/definitions/Shared30"
+                }
+              ],
+              "description": "Exact encoding profile applied to a concrete substitution value. `rfc3986` encodes UTF-8 bytes outside the RFC 3986 unreserved set once per depth. `iab_vast_uri` follows the cited IAB VAST macro registry, including its array serialization rules, and is exactly one pass.",
+              "properties": {
+                "depth": {
+                  "$ref": "#/definitions/Shared27"
+                },
+                "kind": {
+                  "$ref": "#/definitions/Shared26"
+                }
+              },
+              "required": [
+                "kind",
+                "depth"
+              ],
+              "title": "Macro Encoding",
+              "type": "object"
+            },
+            "mapping_status": {
+              "$ref": "#/definitions/Shared19"
+            },
+            "next_operation": {
+              "const": "resolve_value",
+              "type": "string"
+            },
+            "performed_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Protocol role authorized to translate the token or bind its concrete value.",
+              "enum": [
+                "buyer",
+                "creative_agent",
+                "seller",
+                "request_executor",
+                "source_ad_server"
+              ],
+              "enumDescriptions": {
+                "buyer": "The buyer agent acts before submission.",
+                "creative_agent": "The creative agent executing build_creative, preview_creative, or validate_input performs the declared build-time operation.",
+                "request_executor": "The component executing the governed request acts, whether a client player, publisher player, SSAI service, or another request executor.",
+                "seller": "The AdCP seller or its execution adapter acts during trafficking or serving.",
+                "source_ad_server": "The originating creative/ad server acts on its own native token."
+              },
+              "title": "Macro Processing Actor",
+              "type": "string"
+            },
+            "token": {
+              "$ref": "#/definitions/Shared25"
+            },
+            "universal_semantic": {
+              "$ref": "#/definitions/Shared24"
+            }
+          },
+          "required": [
+            "token",
+            "dialect",
+            "dialect_semantic",
+            "mapping_status",
+            "next_operation",
+            "performed_by",
+            "encoding"
+          ],
+          "title": "Macro Translation Target",
+          "type": "object"
+        },
+        "unavailable_behavior": {
+          "description": "Action when the responsible actor has no value. Omission is legal only for a complete URL query-value occurrence; dialect sentinels require a cited dialect rule.",
+          "enum": [
+            "preserve",
+            "omit_parameter",
+            "dialect_sentinel",
+            "reject"
+          ],
+          "type": "string"
+        },
+        "universal_semantic": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Verified AdCP universal meaning. Present only when mapping_status is `verified_universal`.",
+          "enum": [
+            "MEDIA_BUY_ID",
+            "PACKAGE_ID",
+            "CREATIVE_ID",
+            "CACHEBUSTER",
+            "TIMESTAMP",
+            "CLICK_URL",
+            "GDPR",
+            "GDPR_CONSENT",
+            "US_PRIVACY",
+            "GPP_STRING",
+            "GPP_SID",
+            "IP_ADDRESS",
+            "LIMIT_AD_TRACKING",
+            "DEVICE_TYPE",
+            "OS",
+            "OS_VERSION",
+            "DEVICE_MAKE",
+            "DEVICE_MODEL",
+            "USER_AGENT",
+            "APP_BUNDLE",
+            "APP_NAME",
+            "COUNTRY",
+            "REGION",
+            "CITY",
+            "ZIP",
+            "DMA",
+            "LAT",
+            "LONG",
+            "DEVICE_ID",
+            "DEVICE_ID_TYPE",
+            "DOMAIN",
+            "PAGE_URL",
+            "REFERRER",
+            "KEYWORDS",
+            "PLACEMENT_ID",
+            "FOLD_POSITION",
+            "AD_WIDTH",
+            "AD_HEIGHT",
+            "VIDEO_ID",
+            "VIDEO_TITLE",
+            "VIDEO_DURATION",
+            "VIDEO_CATEGORY",
+            "CONTENT_GENRE",
+            "CONTENT_RATING",
+            "PLAYER_WIDTH",
+            "PLAYER_HEIGHT",
+            "POD_POSITION",
+            "POD_SIZE",
+            "AD_BREAK_ID",
+            "STATION_ID",
+            "COLLECTION_NAME",
+            "INSTALLMENT_ID",
+            "AUDIO_DURATION",
+            "TMPX",
+            "IMPRESSION_ID",
+            "AXEM",
+            "CATALOG_ID",
+            "SKU",
+            "GTIN",
+            "OFFERING_ID",
+            "JOB_ID",
+            "HOTEL_ID",
+            "FLIGHT_ID",
+            "VEHICLE_ID",
+            "LISTING_ID",
+            "STORE_ID",
+            "PROGRAM_ID",
+            "DESTINATION_ID",
+            "CREATIVE_VARIANT_ID",
+            "APP_ITEM_ID",
+            "ITEM_NAME",
+            "ITEM_DESCRIPTION",
+            "ITEM_TAGLINE",
+            "ITEM_PRICE",
+            "ITEM_PRICE_CURRENCY"
+          ],
+          "enumDescriptions": {
+            "AD_BREAK_ID": "Unique ad break identifier",
+            "AD_HEIGHT": "Ad slot height in pixels",
+            "AD_WIDTH": "Ad slot width in pixels",
+            "APP_BUNDLE": "App bundle ID (domain or numeric)",
+            "APP_ITEM_ID": "Mobile app identifier for the catalog item being rendered",
+            "APP_NAME": "Human-readable app name",
+            "AUDIO_DURATION": "Audio content duration in seconds",
+            "AXEM": "AXE contextual metadata (encoded blob). Legacy \u2014 in TMP, use Offer creative_data for dynamic creative values and TMPX for exposure tracking.",
+            "CACHEBUSTER": "Random number to prevent caching",
+            "CATALOG_ID": "Buyer-defined catalog identifier from the catalog's catalog_id field",
+            "CITY": "City name",
+            "CLICK_URL": "Publisher's click tracking URL (auto-inserted by sales agent)",
+            "COLLECTION_NAME": "Program or collection name",
+            "CONTENT_GENRE": "Content genre (news, sports, comedy, etc.)",
+            "CONTENT_RATING": "Content rating (G, PG, TV-14, etc.)",
+            "COUNTRY": "ISO 3166-1 alpha-2 country code",
+            "CREATIVE_ID": "AdCP creative identifier",
+            "CREATIVE_VARIANT_ID": "Seller-assigned creative variant identifier, passed through at serve time",
+            "DESTINATION_ID": "Travel destination identifier for the catalog item being rendered",
+            "DEVICE_ID": "Mobile advertising ID (IDFA/AAID)",
+            "DEVICE_ID_TYPE": "Type of device ID (idfa, aaid)",
+            "DEVICE_MAKE": "Device manufacturer",
+            "DEVICE_MODEL": "Device model identifier",
+            "DEVICE_TYPE": "Device category (mobile, tablet, desktop, ctv, dooh)",
+            "DMA": "Nielsen DMA code (US TV markets)",
+            "DOMAIN": "Domain where ad is shown",
+            "FLIGHT_ID": "Flight route identifier for the catalog item being rendered",
+            "FOLD_POSITION": "Position relative to fold (above_fold, below_fold)",
+            "GDPR": "GDPR applicability flag (1=applies, 0=doesn't apply)",
+            "GDPR_CONSENT": "IAB TCF 2.0 consent string",
+            "GPP_SID": "GPP Section ID(s) indicating applicable privacy framework sections",
+            "GPP_STRING": "Global Privacy Platform consent string",
+            "GTIN": "Global Trade Item Number for the catalog item being rendered",
+            "HOTEL_ID": "Hotel property identifier for the catalog item being rendered",
+            "IMPRESSION_ID": "Opaque, collision-resistant identifier for one impression opportunity. Used for impression deduplication, cross-vendor reconciliation, pixel-retry dedup, and TMP cross-identity exposure dedup. Minted by the publisher, ad-decision layer, or buyer at {TMPX} decode; required upstream for TMP context-only impressions where {TMPX} is absent.",
+            "INSTALLMENT_ID": "Installment identifier (podcast episode, print issue, etc.)",
+            "IP_ADDRESS": "User IP address (often masked for privacy, may return empty)",
+            "ITEM_DESCRIPTION": "Description of the catalog item being rendered (catalog_field: description). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+            "ITEM_NAME": "Name/title of the catalog item being rendered (catalog_field: name). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+            "ITEM_PRICE": "Price amount of the catalog item being rendered (catalog_field: price.amount). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+            "ITEM_PRICE_CURRENCY": "ISO 4217 currency code of the catalog item being rendered (catalog_field: price.currency). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+            "ITEM_TAGLINE": "Short promotional tagline of the catalog item being rendered (catalog_field: tagline). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+            "JOB_ID": "Job posting identifier for the catalog item being rendered",
+            "KEYWORDS": "Page keywords (comma-separated)",
+            "LAT": "Latitude coordinate",
+            "LIMIT_AD_TRACKING": "Limit Ad Tracking enabled (1=limited, 0=allowed)",
+            "LISTING_ID": "Real estate listing identifier for the catalog item being rendered",
+            "LONG": "Longitude coordinate",
+            "MEDIA_BUY_ID": "AdCP media buy identifier",
+            "OFFERING_ID": "AdCP offering identifier for the catalog item being rendered",
+            "OS": "Operating system (iOS, Android, tvOS, Roku, etc.)",
+            "OS_VERSION": "OS version number",
+            "PACKAGE_ID": "AdCP package identifier",
+            "PAGE_URL": "Full page URL (encoded)",
+            "PLACEMENT_ID": "Global Placement ID (IAB standard)",
+            "PLAYER_HEIGHT": "Video player height in pixels",
+            "PLAYER_WIDTH": "Video player width in pixels",
+            "POD_POSITION": "Position within ad break",
+            "POD_SIZE": "Total ads in the ad break",
+            "PROGRAM_ID": "Education program identifier for the catalog item being rendered",
+            "REFERRER": "HTTP referrer URL",
+            "REGION": "State/province/region code",
+            "SKU": "Product SKU identifier for the catalog item being rendered",
+            "STATION_ID": "Radio station or podcast identifier",
+            "STORE_ID": "Store location identifier for the catalog item being rendered",
+            "TIMESTAMP": "Unix timestamp in milliseconds",
+            "TMPX": "TMP exposure token \u2014 HPKE-encrypted identity tokens for per-user exposure tracking. Produced by Identity Match, substituted into creative tracking URLs, received by the buyer's impression pixel.",
+            "USER_AGENT": "Full user agent string",
+            "US_PRIVACY": "US Privacy (CCPA) string",
+            "VEHICLE_ID": "Vehicle listing identifier for the catalog item being rendered",
+            "VIDEO_CATEGORY": "IAB content category",
+            "VIDEO_DURATION": "Content duration in seconds",
+            "VIDEO_ID": "Content video identifier",
+            "VIDEO_TITLE": "Content video title",
+            "ZIP": "Postal code"
+          },
+          "title": "Universal Macro",
+          "type": "string"
+        }
+      },
+      "required": [
+        "declaration_id",
+        "token",
+        "dialect",
+        "dialect_semantic",
+        "mapping_status",
+        "operation",
+        "location",
+        "encoding",
+        "required",
+        "unavailable_behavior"
+      ],
+      "title": "Macro Declaration",
+      "type": "object",
+      "x-adcp-validation": {
+        "spec": "docs/creative/universal-macros.mdx#declared-source-token-contracts",
+        "verifier_constraints": {
+          "adcp_semantic_identity": "when dialect is adcp, dialect_semantic must equal universal_semantic",
+          "asset_field": "location.field must exist on and be permitted by the containing asset type",
+          "catalog_universal_profile": "catalog semantics require seller resolve_value in a URL context with exactly one rfc3986 pass",
+          "declaration_id_uniqueness": "declaration_id must be unique within the containing asset",
+          "omit_parameter_scope": "omit_parameter requires the token to occupy the complete URL query-parameter value",
+          "token_occurrence": "location must identify the declared zero-based occurrence of token in location.field"
+        }
+      }
+    },
+    "Shared14": {
+      "items": {
+        "$ref": "#/definitions/Shared17"
+      }
+    },
+    "Shared15": {
+      "items": {
+        "properties": {
+          "location": {
+            "properties": {
+              "field": {
+                "const": "content"
+              }
+            }
+          }
+        }
+      }
+    },
+    "Shared16": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Shared24"
+        },
+        {
+          "description": "Custom or publisher-specific macro name",
+          "type": "string"
+        }
+      ]
+    },
+    "Shared17": {
+      "properties": {
+        "location": {
+          "properties": {
+            "field": {
+              "const": "url"
+            }
+          }
+        }
+      }
+    },
+    "Shared18": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Governed family for a creative macro token. `vendor` is qualified by an authority-controlled namespace and immutable revision on the declaration/capability; AdCP does not enumerate companies as dialects. `unknown` is declaration-only and always byte-preserved.",
+      "enum": [
+        "adcp",
+        "iab_vast",
+        "iab_daast",
+        "vendor",
+        "unknown"
+      ],
+      "enumDescriptions": {
+        "adcp": "AdCP universal macro syntax and semantics.",
+        "iab_daast": "IAB DAAST macro syntax, qualified by the referenced specification/registry revision.",
+        "iab_vast": "IAB VAST macro syntax, qualified by the referenced live-registry revision.",
+        "unknown": "The token namespace cannot be established. Preserve the token unchanged and never advertise it as resolvable.",
+        "vendor": "A vendor- or platform-owned macro namespace, qualified by its authoritative URI and immutable revision."
+      },
+      "title": "Macro Dialect Family",
+      "type": "string"
+    },
+    "Shared19": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Evidence level connecting a dialect-local macro meaning to the AdCP universal vocabulary.",
+      "enum": [
+        "verified_universal",
+        "dialect_defined",
+        "unresolved"
+      ],
+      "enumDescriptions": {
+        "dialect_defined": "The dialect defines the token, but no AdCP universal semantic is asserted.",
+        "unresolved": "No safe meaning is established; the token remains byte-preserved.",
+        "verified_universal": "The cited dialect mapping verifies an AdCP universal semantic."
+      },
+      "title": "Macro Mapping Status",
+      "type": "string"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Provenance metadata for this asset, overrides manifest-level provenance",
+      "properties": {
+        "ai_tool": {
+          "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
+          "properties": {
+            "name": {
+              "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')",
+              "type": "string"
+            },
+            "provider": {
+              "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')",
+              "type": "string"
+            },
+            "version": {
+              "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "type": "object"
+        },
+        "c2pa": {
+          "description": "C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.",
+          "properties": {
+            "manifest_url": {
+              "description": "URL to the C2PA manifest store for this content",
+              "format": "uri",
+              "type": "string"
+            }
+          },
+          "required": [
+            "manifest_url"
+          ],
+          "type": "object"
+        },
+        "created_time": {
+          "description": "When this content was created or generated (ISO 8601)",
+          "format": "date-time",
+          "type": "string"
+        },
+        "declared_at": {
+          "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "declared_by": {
+          "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
+          "properties": {
+            "agent_url": {
+              "description": "URL of the agent or service that declared this provenance",
+              "format": "uri",
+              "type": "string"
+            },
+            "role": {
+              "description": "Role of the declaring party in the supply chain",
+              "enum": [
+                "creator",
+                "advertiser",
+                "agency",
+                "platform",
+                "tool"
+              ],
+              "enumDescriptions": {
+                "advertiser": "The brand or advertiser that owns the content",
+                "agency": "Agency acting on behalf of the advertiser",
+                "creator": "The party that created or generated the content",
+                "platform": "Ad platform or publisher that processed the content",
+                "tool": "Automated tool or service that attached provenance metadata"
+              },
+              "type": "string"
+            }
+          },
+          "required": [
+            "role"
+          ],
+          "type": "object"
+        },
+        "digital_source_type": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "IPTC-aligned classification of AI involvement in producing this content",
+          "enum": [
+            "digital_capture",
+            "digital_creation",
+            "trained_algorithmic_media",
+            "composite_with_trained_algorithmic_media",
+            "algorithmic_media",
+            "composite_capture",
+            "composite_synthetic",
+            "human_edits",
+            "data_driven_media"
+          ],
+          "enumDescriptions": {
+            "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
+            "composite_capture": "Multiple digital captures composited together without AI",
+            "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
+            "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
+            "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)",
+            "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
+            "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
+            "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
+            "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)"
+          },
+          "title": "Digital Source Type",
+          "type": "string"
+        },
+        "disclosure": {
+          "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
+          "properties": {
+            "jurisdictions": {
+              "description": "Jurisdictions where disclosure obligations apply",
+              "items": {
+                "properties": {
+                  "country": {
+                    "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')",
+                    "type": "string"
+                  },
+                  "label_text": {
+                    "description": "Required disclosure label text for this jurisdiction, in the local language",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)",
+                    "type": "string"
+                  },
+                  "regulation": {
+                    "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')",
+                    "type": "string"
+                  },
+                  "render_guidance": {
+                    "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
+                    "minProperties": 1,
+                    "properties": {
+                      "ext": {
+                        "$ref": "#/definitions/Shared0"
+                      },
+                      "min_duration_ms": {
+                        "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "persistence": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "How long the disclosure must persist during content playback or display",
+                        "enum": [
+                          "continuous",
+                          "initial",
+                          "flexible"
+                        ],
+                        "enumDescriptions": {
+                          "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                          "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion",
+                          "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration."
+                        },
+                        "title": "Disclosure Persistence",
+                        "type": "string"
+                      },
+                      "positions": {
+                        "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
+                        "items": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
+                          "enum": [
+                            "prominent",
+                            "footer",
+                            "audio",
+                            "subtitle",
+                            "overlay",
+                            "end_card",
+                            "pre_roll",
+                            "companion"
+                          ],
+                          "title": "Disclosure Position",
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "country",
+                  "regulation"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "required": {
+              "description": "The declaring party's claim that AI disclosure is required for this content under applicable regulations. This is a declared signal carried through the supply chain \u2014 useful as a routing and audit input \u2014 not a regulatory determination made by the protocol. Receiving parties remain responsible for their own jurisdictional analysis and should not treat `required: false` as compliance cover.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "required"
+          ],
+          "type": "object"
+        },
+        "embedded_provenance": {
+          "description": "Provenance metadata embedded within the content stream. Each entry declares one embedding layer: structured provenance data carried inside the content itself, as distinct from sidecar references (c2pa.manifest_url). Embedded provenance survives operations that break sidecar and file-level bindings: ad-server transcoding, CMS ingestion, copy-paste, reformatting, and CDN re-encoding. For ad-tech pipelines where content passes through multiple intermediaries, embedded provenance is the reliable path for provenance that persists from declaration through delivery. This is a declaration by the embedding party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).",
+          "items": {
+            "properties": {
+              "embedded_at": {
+                "description": "When the provenance data was embedded (ISO 8601)",
+                "format": "date-time",
+                "type": "string"
+              },
+              "method": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "How provenance data is carried within the content",
+                "enum": [
+                  "manifest_wrapper",
+                  "provenance_markers"
+                ],
+                "enumDescriptions": {
+                  "manifest_wrapper": "A provenance manifest embedded in the file container per format-specific rules (e.g., JUMBF box in JPEG, C2PATextManifestWrapper in plaintext per C2PA Section A.7). The manifest travels with the file but is tied to the file's byte structure.",
+                  "provenance_markers": "Invisible markers embedded within the content stream that encode or reference a provenance record. Designed to survive reformatting, copy-paste, CMS ingestion, and ad-server transcoding that breaks file-level bindings."
+                },
+                "title": "Embedded Provenance Method",
+                "type": "string"
+              },
+              "provider": {
+                "description": "Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context \u2014 not a wire identifier.",
+                "type": "string"
+              },
+              "standard": {
+                "description": "Standard the embedding conforms to, if any (e.g., 'c2pa' for C2PA Section A.7 text manifest embedding)",
+                "type": "string"
+              },
+              "verify_agent": {
+                "additionalProperties": false,
+                "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
+                "properties": {
+                  "agent_url": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
+                    "format": "uri",
+                    "pattern": "^https://",
+                    "title": "HTTPS URL",
+                    "type": "string"
+                  },
+                  "feature_id": {
+                    "description": "Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `encypher.markers_present_v2`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "agent_url"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "method",
+              "provider"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "ext": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "human_oversight": {
+          "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
+          "enum": [
+            "none",
+            "prompt_only",
+            "selected",
+            "edited",
+            "directed"
+          ],
+          "enumDescriptions": {
+            "directed": "Human directed the creative process with AI as an assistive tool",
+            "edited": "Human edited or refined AI-generated output",
+            "none": "Fully automated with no human involvement in generation",
+            "prompt_only": "Human provided the prompt or instructions but did not review outputs",
+            "selected": "Human selected from multiple AI-generated candidates"
+          },
+          "type": "string"
+        },
+        "synthetic_depiction": {
+          "description": "Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.",
+          "type": "boolean"
+        },
+        "verification": {
+          "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+          "items": {
+            "properties": {
+              "confidence": {
+                "description": "Confidence score of the verification result (0.0 to 1.0)",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "details_url": {
+                "description": "URL to the full verification report",
+                "format": "uri",
+                "type": "string"
+              },
+              "result": {
+                "description": "Verification outcome",
+                "enum": [
+                  "authentic",
+                  "ai_generated",
+                  "ai_modified",
+                  "inconclusive"
+                ],
+                "type": "string"
+              },
+              "verified_by": {
+                "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')",
+                "type": "string"
+              },
+              "verified_time": {
+                "description": "When the verification was performed (ISO 8601)",
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "verified_by",
+              "result"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "watermarks": {
+          "description": "Content watermarks applied to this asset. Each entry declares one watermarking layer: a content modification that encodes an identifier or fingerprint within the asset. Watermarks differ from embedded provenance: a watermark encodes an identifier (who generated it, who owns it), while embedded provenance carries or references a structured provenance record (the full chain of custody). A single asset may carry both. Aligns with C2PA action taxonomy: c2pa.watermarked.bound (watermark linked to a C2PA manifest) and c2pa.watermarked.unbound (watermark independent of any manifest). This is a declaration by the watermarking party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).",
+          "items": {
+            "properties": {
+              "c2pa_action": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "C2PA action classification for this watermark",
+                "enum": [
+                  "c2pa.watermarked.bound",
+                  "c2pa.watermarked.unbound"
+                ],
+                "enumDescriptions": {
+                  "c2pa.watermarked.bound": "Watermark linked to a C2PA manifest for this asset. The watermark and manifest are mutually reinforcing: the manifest references the watermark, and the watermark can be used to locate the manifest.",
+                  "c2pa.watermarked.unbound": "Watermark independent of any C2PA manifest. Applied before any provenance signing event (e.g., by the AI generator at creation time) or in pipelines where no manifest is present."
+                },
+                "title": "C2PA Watermark Action",
+                "type": "string"
+              },
+              "embedded_at": {
+                "description": "When the watermark was applied (ISO 8601)",
+                "format": "date-time",
+                "type": "string"
+              },
+              "media_type": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Media category of the watermarked content",
+                "enum": [
+                  "audio",
+                  "image",
+                  "video",
+                  "text"
+                ],
+                "enumDescriptions": {
+                  "audio": "Watermark applied to audio content (e.g., spread-spectrum, echo hiding)",
+                  "image": "Watermark applied to image content (e.g., spatial domain, frequency domain)",
+                  "text": "Watermark applied to text content (e.g., synonym substitution, structural modification)",
+                  "video": "Watermark applied to video content (e.g., per-frame image watermarking, temporal watermarking)"
+                },
+                "title": "Watermark Media Type",
+                "type": "string"
+              },
+              "provider": {
+                "description": "Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context \u2014 not a wire identifier.",
+                "type": "string"
+              },
+              "verify_agent": {
+                "additionalProperties": false,
+                "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
+                "properties": {
+                  "agent_url": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
+                    "format": "uri",
+                    "pattern": "^https://",
+                    "title": "HTTPS URL",
+                    "type": "string"
+                  },
+                  "feature_id": {
+                    "description": "Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `imatag.watermark_detected`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "agent_url"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "media_type",
+              "provider"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Shared20": {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "iab_vast",
+              "iab_daast",
+              "vendor"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "required": [
+          "dialect_namespace",
+          "dialect_revision"
+        ]
+      }
+    },
+    "Shared21": {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "adcp",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "dialect_namespace"
+              ]
+            },
+            {
+              "required": [
+                "dialect_revision"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "Shared22": {
+      "else": {
+        "not": {
+          "$ref": "#/definitions/Shared31"
+        }
+      },
+      "if": {
+        "properties": {
+          "mapping_status": {
+            "$ref": "#/definitions/Shared35"
+          }
+        },
+        "required": [
+          "mapping_status"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/Shared31"
+      }
+    },
+    "Shared23": {
+      "if": {
+        "properties": {
+          "dialect": {
+            "const": "adcp"
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialect_semantic": {
+            "$ref": "#/definitions/Shared24"
+          },
+          "mapping_status": {
+            "$ref": "#/definitions/Shared35"
+          }
+        },
+        "required": [
+          "universal_semantic"
+        ]
+      }
+    },
+    "Shared24": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Standardized macro placeholders for dynamic value substitution in creative tracking URLs. Macros are replaced with actual values at impression time. See docs/creative/universal-macros.mdx for detailed documentation.",
+      "enum": [
+        "MEDIA_BUY_ID",
+        "PACKAGE_ID",
+        "CREATIVE_ID",
+        "CACHEBUSTER",
+        "TIMESTAMP",
+        "CLICK_URL",
+        "GDPR",
+        "GDPR_CONSENT",
+        "US_PRIVACY",
+        "GPP_STRING",
+        "GPP_SID",
+        "IP_ADDRESS",
+        "LIMIT_AD_TRACKING",
+        "DEVICE_TYPE",
+        "OS",
+        "OS_VERSION",
+        "DEVICE_MAKE",
+        "DEVICE_MODEL",
+        "USER_AGENT",
+        "APP_BUNDLE",
+        "APP_NAME",
+        "COUNTRY",
+        "REGION",
+        "CITY",
+        "ZIP",
+        "DMA",
+        "LAT",
+        "LONG",
+        "DEVICE_ID",
+        "DEVICE_ID_TYPE",
+        "DOMAIN",
+        "PAGE_URL",
+        "REFERRER",
+        "KEYWORDS",
+        "PLACEMENT_ID",
+        "FOLD_POSITION",
+        "AD_WIDTH",
+        "AD_HEIGHT",
+        "VIDEO_ID",
+        "VIDEO_TITLE",
+        "VIDEO_DURATION",
+        "VIDEO_CATEGORY",
+        "CONTENT_GENRE",
+        "CONTENT_RATING",
+        "PLAYER_WIDTH",
+        "PLAYER_HEIGHT",
+        "POD_POSITION",
+        "POD_SIZE",
+        "AD_BREAK_ID",
+        "STATION_ID",
+        "COLLECTION_NAME",
+        "INSTALLMENT_ID",
+        "AUDIO_DURATION",
+        "TMPX",
+        "IMPRESSION_ID",
+        "AXEM",
+        "CATALOG_ID",
+        "SKU",
+        "GTIN",
+        "OFFERING_ID",
+        "JOB_ID",
+        "HOTEL_ID",
+        "FLIGHT_ID",
+        "VEHICLE_ID",
+        "LISTING_ID",
+        "STORE_ID",
+        "PROGRAM_ID",
+        "DESTINATION_ID",
+        "CREATIVE_VARIANT_ID",
+        "APP_ITEM_ID",
+        "ITEM_NAME",
+        "ITEM_DESCRIPTION",
+        "ITEM_TAGLINE",
+        "ITEM_PRICE",
+        "ITEM_PRICE_CURRENCY"
+      ],
+      "enumDescriptions": {
+        "AD_BREAK_ID": "Unique ad break identifier",
+        "AD_HEIGHT": "Ad slot height in pixels",
+        "AD_WIDTH": "Ad slot width in pixels",
+        "APP_BUNDLE": "App bundle ID (domain or numeric)",
+        "APP_ITEM_ID": "Mobile app identifier for the catalog item being rendered",
+        "APP_NAME": "Human-readable app name",
+        "AUDIO_DURATION": "Audio content duration in seconds",
+        "AXEM": "AXE contextual metadata (encoded blob). Legacy \u2014 in TMP, use Offer creative_data for dynamic creative values and TMPX for exposure tracking.",
+        "CACHEBUSTER": "Random number to prevent caching",
+        "CATALOG_ID": "Buyer-defined catalog identifier from the catalog's catalog_id field",
+        "CITY": "City name",
+        "CLICK_URL": "Publisher's click tracking URL (auto-inserted by sales agent)",
+        "COLLECTION_NAME": "Program or collection name",
+        "CONTENT_GENRE": "Content genre (news, sports, comedy, etc.)",
+        "CONTENT_RATING": "Content rating (G, PG, TV-14, etc.)",
+        "COUNTRY": "ISO 3166-1 alpha-2 country code",
+        "CREATIVE_ID": "AdCP creative identifier",
+        "CREATIVE_VARIANT_ID": "Seller-assigned creative variant identifier, passed through at serve time",
+        "DESTINATION_ID": "Travel destination identifier for the catalog item being rendered",
+        "DEVICE_ID": "Mobile advertising ID (IDFA/AAID)",
+        "DEVICE_ID_TYPE": "Type of device ID (idfa, aaid)",
+        "DEVICE_MAKE": "Device manufacturer",
+        "DEVICE_MODEL": "Device model identifier",
+        "DEVICE_TYPE": "Device category (mobile, tablet, desktop, ctv, dooh)",
+        "DMA": "Nielsen DMA code (US TV markets)",
+        "DOMAIN": "Domain where ad is shown",
+        "FLIGHT_ID": "Flight route identifier for the catalog item being rendered",
+        "FOLD_POSITION": "Position relative to fold (above_fold, below_fold)",
+        "GDPR": "GDPR applicability flag (1=applies, 0=doesn't apply)",
+        "GDPR_CONSENT": "IAB TCF 2.0 consent string",
+        "GPP_SID": "GPP Section ID(s) indicating applicable privacy framework sections",
+        "GPP_STRING": "Global Privacy Platform consent string",
+        "GTIN": "Global Trade Item Number for the catalog item being rendered",
+        "HOTEL_ID": "Hotel property identifier for the catalog item being rendered",
+        "IMPRESSION_ID": "Opaque, collision-resistant identifier for one impression opportunity. Used for impression deduplication, cross-vendor reconciliation, pixel-retry dedup, and TMP cross-identity exposure dedup. Minted by the publisher, ad-decision layer, or buyer at {TMPX} decode; required upstream for TMP context-only impressions where {TMPX} is absent.",
+        "INSTALLMENT_ID": "Installment identifier (podcast episode, print issue, etc.)",
+        "IP_ADDRESS": "User IP address (often masked for privacy, may return empty)",
+        "ITEM_DESCRIPTION": "Description of the catalog item being rendered (catalog_field: description). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_NAME": "Name/title of the catalog item being rendered (catalog_field: name). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_PRICE": "Price amount of the catalog item being rendered (catalog_field: price.amount). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_PRICE_CURRENCY": "ISO 4217 currency code of the catalog item being rendered (catalog_field: price.currency). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_TAGLINE": "Short promotional tagline of the catalog item being rendered (catalog_field: tagline). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "JOB_ID": "Job posting identifier for the catalog item being rendered",
+        "KEYWORDS": "Page keywords (comma-separated)",
+        "LAT": "Latitude coordinate",
+        "LIMIT_AD_TRACKING": "Limit Ad Tracking enabled (1=limited, 0=allowed)",
+        "LISTING_ID": "Real estate listing identifier for the catalog item being rendered",
+        "LONG": "Longitude coordinate",
+        "MEDIA_BUY_ID": "AdCP media buy identifier",
+        "OFFERING_ID": "AdCP offering identifier for the catalog item being rendered",
+        "OS": "Operating system (iOS, Android, tvOS, Roku, etc.)",
+        "OS_VERSION": "OS version number",
+        "PACKAGE_ID": "AdCP package identifier",
+        "PAGE_URL": "Full page URL (encoded)",
+        "PLACEMENT_ID": "Global Placement ID (IAB standard)",
+        "PLAYER_HEIGHT": "Video player height in pixels",
+        "PLAYER_WIDTH": "Video player width in pixels",
+        "POD_POSITION": "Position within ad break",
+        "POD_SIZE": "Total ads in the ad break",
+        "PROGRAM_ID": "Education program identifier for the catalog item being rendered",
+        "REFERRER": "HTTP referrer URL",
+        "REGION": "State/province/region code",
+        "SKU": "Product SKU identifier for the catalog item being rendered",
+        "STATION_ID": "Radio station or podcast identifier",
+        "STORE_ID": "Store location identifier for the catalog item being rendered",
+        "TIMESTAMP": "Unix timestamp in milliseconds",
+        "TMPX": "TMP exposure token \u2014 HPKE-encrypted identity tokens for per-user exposure tracking. Produced by Identity Match, substituted into creative tracking URLs, received by the buyer's impression pixel.",
+        "USER_AGENT": "Full user agent string",
+        "US_PRIVACY": "US Privacy (CCPA) string",
+        "VEHICLE_ID": "Vehicle listing identifier for the catalog item being rendered",
+        "VIDEO_CATEGORY": "IAB content category",
+        "VIDEO_DURATION": "Content duration in seconds",
+        "VIDEO_ID": "Content video identifier",
+        "VIDEO_TITLE": "Content video title",
+        "ZIP": "Postal code"
+      },
+      "title": "Universal Macro",
+      "type": "string"
+    },
+    "Shared25": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared26": {
+      "enum": [
+        "none",
+        "rfc3986",
+        "iab_vast_uri"
+      ],
+      "type": "string"
+    },
+    "Shared27": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared28": {
+      "if": {
+        "properties": {
+          "kind": {
+            "$ref": "#/definitions/Shared45"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "depth": {
+            "$ref": "#/definitions/Shared46"
+          }
+        }
+      }
+    },
+    "Shared29": {
+      "if": {
+        "properties": {
+          "kind": {
+            "$ref": "#/definitions/Shared47"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "depth": {
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "Shared3": {
+      "description": "File size in bytes",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared30": {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "iab_vast_uri"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "depth": {
+            "$ref": "#/definitions/Shared48"
+          }
+        }
+      }
+    },
+    "Shared31": {
+      "required": [
+        "universal_semantic"
+      ]
+    },
+    "Shared32": {
+      "properties": {
+        "dialect": {
+          "const": "unknown"
+        }
+      },
+      "required": [
+        "dialect"
+      ]
+    },
+    "Shared33": {
+      "properties": {
+        "performed_by": {
+          "const": "request_executor"
+        }
+      }
+    },
+    "Shared34": {
+      "properties": {
+        "universal_semantic": {
+          "enum": [
+            "CATALOG_ID",
+            "SKU",
+            "GTIN",
+            "OFFERING_ID",
+            "JOB_ID",
+            "HOTEL_ID",
+            "FLIGHT_ID",
+            "VEHICLE_ID",
+            "LISTING_ID",
+            "STORE_ID",
+            "PROGRAM_ID",
+            "DESTINATION_ID",
+            "ITEM_NAME",
+            "ITEM_DESCRIPTION",
+            "ITEM_TAGLINE",
+            "ITEM_PRICE",
+            "ITEM_PRICE_CURRENCY"
+          ]
+        }
+      },
+      "required": [
+        "universal_semantic"
+      ]
+    },
+    "Shared35": {
+      "const": "verified_universal"
+    },
+    "Shared36": {
+      "const": "preserve"
+    },
+    "Shared37": {
+      "properties": {
+        "depth": {
+          "$ref": "#/definitions/Shared46"
+        },
+        "kind": {
+          "$ref": "#/definitions/Shared45"
+        }
+      }
+    },
+    "Shared38": {
+      "const": false
+    },
+    "Shared39": {
+      "enum": [
+        "verified_universal",
+        "dialect_defined"
+      ]
+    },
+    "Shared4": {
+      "description": "Integrated loudness in LUFS",
+      "type": "number"
+    },
+    "Shared40": {
+      "const": "resolve_value"
+    },
+    "Shared41": {
+      "required": [
+        "translation_target"
+      ]
+    },
+    "Shared42": {
+      "enum": [
+        "iab_vast",
+        "iab_daast"
+      ]
+    },
+    "Shared43": {
+      "const": "seller"
+    },
+    "Shared44": {
+      "properties": {
+        "depth": {
+          "$ref": "#/definitions/Shared48"
+        },
+        "kind": {
+          "$ref": "#/definitions/Shared47"
+        }
+      }
+    },
+    "Shared45": {
+      "const": "none"
+    },
+    "Shared46": {
+      "const": 0
+    },
+    "Shared47": {
+      "const": "rfc3986"
+    },
+    "Shared48": {
+      "const": 1
+    },
+    "Shared49": {
+      "required": [
+        "performed_by"
+      ]
+    },
+    "Shared5": {
+      "description": "True peak level in dBFS",
+      "type": "number"
+    },
+    "Shared6": {
+      "description": "URL to captions file (WebVTT, SRT, etc.)",
+      "format": "uri",
+      "type": "string",
+      "x-accessibility": true
+    },
+    "Shared7": {
+      "description": "URL to audio description track for visually impaired users",
+      "format": "uri",
+      "type": "string",
+      "x-accessibility": true
+    },
+    "Shared8": {
+      "description": "URL to text transcript of the audio content",
+      "format": "uri",
+      "type": "string",
+      "x-accessibility": true
+    },
+    "Shared9": {
+      "description": "Self-declared accessibility properties for this opaque creative",
+      "properties": {
+        "alt_text": {
+          "description": "Text alternative describing the creative content",
+          "type": "string"
+        },
+        "keyboard_navigable": {
+          "description": "Whether the creative can be fully operated via keyboard",
+          "type": "boolean"
+        },
+        "motion_control": {
+          "description": "Whether the creative respects prefers-reduced-motion or provides pause/stop controls",
+          "type": "boolean"
+        },
+        "screen_reader_tested": {
+          "description": "Whether the creative has been tested with screen readers",
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "x-accessibility": true
+    }
+  },
+  "description": "A flight route within a flight-type catalog. Carries origin/destination, airline, pricing, and schedule data that platforms use for flight ads and dynamic travel remarketing. Maps to Google DynamicFlightsAsset, Meta flight catalogs, and similar formats.",
+  "examples": [
+    {
+      "data": {
+        "airline": "KLM",
+        "description": "Direct flights from Amsterdam to New York, daily departures.",
+        "destination": {
+          "airport_code": "JFK",
+          "city": "New York"
+        },
+        "flight_id": "ams-jfk-summer",
+        "image_url": "https://images.acmeair.com/routes/ams-jfk.jpg",
+        "origin": {
+          "airport_code": "AMS",
+          "city": "Amsterdam"
+        },
+        "price": {
+          "amount": 449,
+          "currency": "EUR"
+        },
+        "tags": [
+          "direct",
+          "transatlantic"
+        ],
+        "url": "https://acmeair.com/flights/ams-jfk"
+      },
+      "description": "Direct transatlantic route"
+    },
+    {
+      "data": {
+        "destination": {
+          "airport_code": "LIS",
+          "city": "Lisbon"
+        },
+        "flight_id": "bcn-lis-q4",
+        "origin": {
+          "airport_code": "BCN",
+          "city": "Barcelona"
+        },
+        "price": {
+          "amount": 39,
+          "currency": "EUR"
+        },
+        "tags": [
+          "budget",
+          "short-haul"
+        ],
+        "url": "https://acmeair.com/flights/bcn-lis"
+      },
+      "description": "Budget European route"
+    }
+  ],
+  "properties": {
+    "airline": {
+      "description": "Airline name or IATA airline code.",
+      "type": "string"
+    },
+    "arrival_time": {
+      "description": "Arrival date and time (ISO 8601).",
+      "format": "date-time",
+      "type": "string"
+    },
+    "assets": {
+      "description": "Typed creative asset pools for this flight. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (destination hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
+        "description": "A structured group of creative assets within an offering, identified by a group ID and asset type. Enables offerings to carry per-group creative pools (headlines, images, videos) using the same vocabulary as format-level asset definitions.",
+        "examples": [
+          {
+            "data": {
+              "asset_group_id": "headlines",
+              "asset_type": "text",
+              "items": [
+                {
+                  "asset_type": "text",
+                  "content": "Shop the Summer Sale"
+                },
+                {
+                  "asset_type": "text",
+                  "content": "50% Off Everything"
+                },
+                {
+                  "asset_type": "text",
+                  "content": "Summer Savings Event"
+                }
+              ]
+            },
+            "description": "Headline text assets"
+          },
+          {
+            "data": {
+              "asset_group_id": "images_landscape",
+              "asset_type": "image",
+              "items": [
+                {
+                  "asset_type": "image",
+                  "height": 628,
+                  "url": "https://cdn.acme.com/hero.jpg",
+                  "width": 1200
+                },
+                {
+                  "asset_type": "image",
+                  "height": 628,
+                  "url": "https://cdn.acme.com/hero2.jpg",
+                  "width": 1200
+                }
+              ]
+            },
+            "description": "Landscape image assets"
+          }
+        ],
+        "properties": {
+          "asset_group_id": {
+            "description": "Identifies the creative role this group fills. Values are defined by each canonical format declaration's offering_asset_constraints \u2014 not protocol constants. Discover creative-agent declarations via get_adcp_capabilities creative.supported_formats[] and sales-product declarations via Product.format_options[] (e.g., 'headlines', 'images', or 'videos').",
+            "type": "string"
+          },
+          "asset_type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "The content type of all items in this group.",
+            "enum": [
+              "image",
+              "video",
+              "audio",
+              "text",
+              "markdown",
+              "html",
+              "css",
+              "javascript",
+              "zip",
+              "vast",
+              "daast",
+              "url",
+              "webhook",
+              "brief",
+              "catalog",
+              "published_post"
+            ],
+            "title": "Asset Content Type",
+            "type": "string"
+          },
+          "ext": {
+            "$ref": "#/definitions/Shared0"
+          },
+          "items": {
+            "description": "The assets in this group. Each item carries an `asset_type` discriminator that selects the matching asset schema. Note: the group-level `asset_type` declares the expected type; individual items must also self-tag so validators can narrow errors. Intentionally excludes `brief-asset` and `catalog-asset` \u2014 those are campaign-input metadata types, not delivery-ready creative assets suitable for a pooled offering group. See core/assets/asset-union.json for the full asset-variant union.",
+            "items": {
+              "discriminator": {
+                "propertyName": "asset_type"
+              },
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Text content asset",
+                  "properties": {
+                    "asset_type": {
+                      "const": "text",
+                      "description": "Discriminator identifying this as a text asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "content": {
+                      "description": "Text content",
+                      "type": "string"
+                    },
+                    "language": {
+                      "description": "Optional language claim for this text. In a materialized creative localization variant, localized-creative-asset.json requires this value to use /schemas/core/locale-tag.json and conformance requires exact equality with the enclosing variant locale. General non-localized assets retain the legacy unconstrained string for compatibility.",
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "content"
+                  ],
+                  "title": "Text Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Image asset with URL and dimensions",
+                  "properties": {
+                    "alt_text": {
+                      "description": "Alternative text for accessibility",
+                      "type": "string",
+                      "x-accessibility": true
+                    },
+                    "asset_type": {
+                      "const": "image",
+                      "description": "Discriminator identifying this as an image asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "breakpoint_id": {
+                      "description": "Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one breakpoint declared on the selected state (semantic validators resolve it). Omit for ordinary image slots.",
+                      "type": "string"
+                    },
+                    "file_size_bytes": {
+                      "description": "Image file size in bytes. Required by agents that advertise a max_file_size_kb constraint.",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "focal_point": {
+                      "description": "Normalized `[x, y]` coordinates (0\u20131 from top-left) of the image's visual anchor. Seller-side renderers crop toward the focal point when deriving renditions across breakpoints and aspect ratios; absent, cropping falls back to center-weighted defaults.",
+                      "items": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "type": "array"
+                    },
+                    "format": {
+                      "description": "Image file format (jpg, png, gif, webp, etc.)",
+                      "type": "string"
+                    },
+                    "height": {
+                      "description": "Height in pixels",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "pixel_ratio": {
+                      "description": "Intrinsic pixels per logical render pixel (for example `2` for a 600\u00d7500 image intended to render at 300\u00d7250). Optional because a validator can infer the ratio when the target format declares logical dimensions. When supplied, it MUST agree with both `width / logical_width` and `height / logical_height`; it is never a substitute for the intrinsic `width` and `height` fields.",
+                      "exclusiveMinimum": 0,
+                      "type": "number"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "state_id": {
+                      "description": "Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it). Omit for ordinary image slots.",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "URL to the image asset",
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "width": {
+                      "description": "Width in pixels",
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "url",
+                    "width",
+                    "height"
+                  ],
+                  "title": "Image Asset",
+                  "type": "object"
+                },
+                {
+                  "$comment": "Dimension policy is deliberate and differs by asset type: a hosted `video` asset requires width/height (intrinsic pixels of a concrete file), while the `vast` asset omits them entirely (renditions are selected per-MediaFile by the player at serve time). Do not infer that AdCP forces a single width/height onto all video \u2014 only onto hosted files.",
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "A hosted video file delivered directly (e.g., an MP4 you host), with URL and technical specifications including audio track properties. `width` and `height` are required because a hosted video file has intrinsic, native pixel dimensions that are known when the file is created. Tag-delivered video uses the separate `vast` asset, which carries no `width`/`height`: a VAST response resolves geometry per-`MediaFile` at serve time, so there is no single width/height for the ad. Aspect-ratio and size *constraints* (what a placement accepts) belong on the format/requirements layer, not on the asset.",
+                  "properties": {
+                    "asset_type": {
+                      "const": "video",
+                      "description": "Discriminator identifying this as a video asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "audio_bit_depth": {
+                      "description": "Audio bit depth",
+                      "enum": [
+                        16,
+                        24,
+                        32
+                      ],
+                      "type": "integer"
+                    },
+                    "audio_bitrate_kbps": {
+                      "description": "Audio bitrate in kilobits per second",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "audio_channels": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Audio channel configuration",
+                      "enum": [
+                        "mono",
+                        "stereo",
+                        "5.1",
+                        "7.1"
+                      ],
+                      "title": "Audio Channel Layout",
+                      "type": "string"
+                    },
+                    "audio_codec": {
+                      "description": "Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)",
+                      "type": "string"
+                    },
+                    "audio_description_url": {
+                      "$ref": "#/definitions/Shared7"
+                    },
+                    "audio_loudness_lufs": {
+                      "$ref": "#/definitions/Shared4"
+                    },
+                    "audio_sampling_rate_hz": {
+                      "description": "Audio sampling rate in Hz (e.g., 44100, 48000)",
+                      "type": "integer"
+                    },
+                    "audio_true_peak_dbfs": {
+                      "$ref": "#/definitions/Shared5"
+                    },
+                    "captions_url": {
+                      "$ref": "#/definitions/Shared6"
+                    },
+                    "chroma_subsampling": {
+                      "description": "Chroma subsampling format",
+                      "enum": [
+                        "4:2:0",
+                        "4:2:2",
+                        "4:4:4"
+                      ],
+                      "type": "string"
+                    },
+                    "color_space": {
+                      "description": "Color space of the video",
+                      "enum": [
+                        "rec709",
+                        "rec2020",
+                        "rec2100",
+                        "srgb",
+                        "dci_p3"
+                      ],
+                      "type": "string"
+                    },
+                    "container_format": {
+                      "description": "Video container format (mp4, webm, mov, etc.)",
+                      "type": "string"
+                    },
+                    "duration_ms": {
+                      "description": "Video duration in milliseconds",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "file_size_bytes": {
+                      "$ref": "#/definitions/Shared3"
+                    },
+                    "frame_rate": {
+                      "description": "Frame rate as string to preserve precision (e.g., '23.976', '29.97', '30')",
+                      "type": "string"
+                    },
+                    "frame_rate_type": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Whether the video uses a constant or variable frame rate. Broadcast and SSAI contexts require constant frame rate for seamless splicing.",
+                      "enum": [
+                        "constant",
+                        "variable"
+                      ],
+                      "enumDescriptions": {
+                        "constant": "Constant frame rate (CFR) \u2014 each frame occupies an identical time interval",
+                        "variable": "Variable frame rate (VFR) \u2014 frame intervals may differ"
+                      },
+                      "title": "Frame Rate Type",
+                      "type": "string"
+                    },
+                    "gop_interval_seconds": {
+                      "description": "GOP/keyframe interval in seconds",
+                      "type": "number"
+                    },
+                    "gop_type": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Group of Pictures structure. SSAI and broadcast require closed GOPs for clean splice points; open GOPs may produce artifacts at ad boundaries.",
+                      "enum": [
+                        "closed",
+                        "open"
+                      ],
+                      "enumDescriptions": {
+                        "closed": "Each GOP is independently decodable \u2014 required for SSAI and broadcast splicing",
+                        "open": "GOPs may reference frames from adjacent GOPs \u2014 not suitable for splicing"
+                      },
+                      "title": "GOP Type",
+                      "type": "string"
+                    },
+                    "has_audio": {
+                      "description": "Whether the video contains an audio track",
+                      "type": "boolean"
+                    },
+                    "hdr_format": {
+                      "description": "HDR format if applicable, or 'sdr' for standard dynamic range",
+                      "enum": [
+                        "sdr",
+                        "hdr10",
+                        "hdr10_plus",
+                        "hlg",
+                        "dolby_vision"
+                      ],
+                      "type": "string"
+                    },
+                    "height": {
+                      "description": "Height in pixels \u2014 the video file's intrinsic native height. Required: a hosted file always has concrete dimensions. (Tag-delivered video carries no height; see the `vast` asset.)",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "moov_atom_position": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Position of the moov atom in an MP4 container. 'start' enables progressive download without buffering the entire file; required for streaming ad delivery.",
+                      "enum": [
+                        "start",
+                        "end"
+                      ],
+                      "enumDescriptions": {
+                        "end": "moov atom at end of file \u2014 requires full download before playback can begin",
+                        "start": "moov atom at beginning of file \u2014 enables progressive download and streaming delivery"
+                      },
+                      "title": "Moov Atom Position",
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "scan_type": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Video scan method. Modern digital delivery requires progressive scan; interlaced is retained for broadcast legacy content.",
+                      "enum": [
+                        "progressive",
+                        "interlaced"
+                      ],
+                      "enumDescriptions": {
+                        "interlaced": "Alternating lines drawn in two passes per frame (legacy broadcast)",
+                        "progressive": "All lines of each frame are drawn in sequence"
+                      },
+                      "title": "Scan Type",
+                      "type": "string"
+                    },
+                    "transcript_url": {
+                      "description": "URL to text transcript of the video content",
+                      "format": "uri",
+                      "type": "string",
+                      "x-accessibility": true
+                    },
+                    "url": {
+                      "description": "URL to the video asset",
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "video_bit_depth": {
+                      "description": "Video bit depth",
+                      "enum": [
+                        8,
+                        10,
+                        12
+                      ],
+                      "type": "integer"
+                    },
+                    "video_bitrate_kbps": {
+                      "description": "Video stream bitrate in kilobits per second",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "video_codec": {
+                      "description": "Video codec used (h264, h265, vp9, av1, prores, etc.)",
+                      "type": "string"
+                    },
+                    "width": {
+                      "description": "Width in pixels \u2014 the video file's intrinsic native width. Required: a hosted file always has concrete dimensions. (Tag-delivered video carries no width; see the `vast` asset.)",
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "url",
+                    "width",
+                    "height"
+                  ],
+                  "title": "Video Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Audio asset with URL and technical specifications",
+                  "properties": {
+                    "asset_type": {
+                      "const": "audio",
+                      "description": "Discriminator identifying this as an audio asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "bit_depth": {
+                      "description": "Bit depth",
+                      "enum": [
+                        16,
+                        24,
+                        32
+                      ],
+                      "type": "integer"
+                    },
+                    "bitrate_kbps": {
+                      "description": "Bitrate in kilobits per second",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "channels": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Channel configuration",
+                      "enum": [
+                        "mono",
+                        "stereo",
+                        "5.1",
+                        "7.1"
+                      ],
+                      "title": "Audio Channel Layout",
+                      "type": "string"
+                    },
+                    "codec": {
+                      "description": "Audio codec used (aac, aac_lc, he_aac, pcm, mp3, vorbis, opus, flac, ac3, eac3, etc.)",
+                      "type": "string"
+                    },
+                    "container_format": {
+                      "description": "Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)",
+                      "type": "string"
+                    },
+                    "duration_ms": {
+                      "description": "Audio duration in milliseconds",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "file_size_bytes": {
+                      "$ref": "#/definitions/Shared3"
+                    },
+                    "loudness_lufs": {
+                      "$ref": "#/definitions/Shared4"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "sampling_rate_hz": {
+                      "description": "Sampling rate in Hz (e.g., 44100, 48000, 96000)",
+                      "type": "integer"
+                    },
+                    "transcript_url": {
+                      "$ref": "#/definitions/Shared8"
+                    },
+                    "true_peak_dbfs": {
+                      "$ref": "#/definitions/Shared5"
+                    },
+                    "url": {
+                      "description": "URL to the audio asset",
+                      "format": "uri",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "url"
+                  ],
+                  "title": "Audio Asset",
+                  "type": "object"
+                },
+                {
+                  "$comment": "Fallback table is also rendered in docs/creative/asset-types.mdx (URL Asset section). Keep the two in sync \u2014 schema description is the normative source for conformance tools; mdx is the human-readable copy.",
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "URL reference asset. `url_type` declares the mechanism a receiver uses to invoke the URL (`clickthrough`, display `ad_request`, `tracker_pixel`, or `tracker_script`) and is distinct from the URL's purpose, which the format declares in `url-asset-requirements.role`. Senders SHOULD include `url_type` on every URL asset. When `url_type` is absent, receivers SHOULD fall back to the format's role: clickthrough/landing_page \u2192 `clickthrough`; impression_tracker/click_tracker \u2192 `tracker_pixel`; viewability_tracker \u2192 `tracker_script`; third_party_tracker and display ad requests have no safe fallback. When neither `url_type` nor a format-side role is available, receivers MUST NOT silently pick a mechanism. VAST/DAAST tag URLs are not URL assets \u2014 use `asset_type: \"vast\"` or `asset_type: \"daast\"`.",
+                  "properties": {
+                    "asset_type": {
+                      "const": "url",
+                      "description": "Discriminator identifying this as a URL asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Description of what this URL points to",
+                      "type": "string"
+                    },
+                    "macro_declarations": {
+                      "description": "One declaration per token occurrence in `url`; declaration_id values MUST be unique and every location MUST identify an existing occurrence. Absence retains legacy opaque transport behavior.",
+                      "items": {
+                        "allOf": [
+                          {
+                            "$ref": "#/definitions/Shared13"
+                          },
+                          {
+                            "$ref": "#/definitions/Shared17"
+                          }
+                        ],
+                        "title": "URL Macro Declaration"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "state_id": {
+                      "description": "Binding used only when this URL populates a `seller_rendered_stateful_display` `state_click_urls` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it); at most one entry per state. Omit for ordinary URL slots.",
+                      "type": "string"
+                    },
+                    "url": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Shared10"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared11"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared12"
+                        }
+                      ],
+                      "description": "URL reference carrying plain, AdCP, IAB, or declared vendor macro syntax. Buyers preserve token delimiters; the authoritative declaration determines the processing operation and encoding.",
+                      "title": "Macro-bearing URL",
+                      "type": "string",
+                      "x-adcp-validation": {
+                        "spec": "docs/creative/universal-macros.mdx#template-syntax",
+                        "verifier_constraints": {
+                          "macro_aware_uri": "mask recognized token lexical forms with an RFC3986 unreserved sentinel, whether declared or on the undeclared 3.x compatibility path, then require a valid absolute HTTP or HTTPS URI; masking assigns no semantics"
+                        }
+                      }
+                    },
+                    "url_type": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Mechanism a receiver uses to invoke this URL: `clickthrough` for a user destination, `ad_request` for a third-party display creative request, `tracker_pixel` for an event HTTP request, or `tracker_script` for a script include. SHOULD be present on every URL asset.",
+                      "enum": [
+                        "clickthrough",
+                        "ad_request",
+                        "tracker_pixel",
+                        "tracker_script"
+                      ],
+                      "title": "URL Asset Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "url"
+                  ],
+                  "title": "URL Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Inline HTML content asset. For seller-hosted HTML5 banner bundles, use the zip asset type. For third-party display markup or paired redirects, use the display_tag asset so the trafficking representation remains explicit.",
+                  "properties": {
+                    "accessibility": {
+                      "$ref": "#/definitions/Shared9"
+                    },
+                    "asset_type": {
+                      "const": "html",
+                      "description": "Discriminator identifying this as an HTML asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "content": {
+                      "description": "HTML content",
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "version": {
+                      "description": "HTML version (e.g., 'HTML5')",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "content"
+                  ],
+                  "title": "HTML Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Markdown-formatted text content following CommonMark specification",
+                  "properties": {
+                    "allow_raw_html": {
+                      "default": false,
+                      "description": "Whether raw HTML blocks are allowed in the markdown. False recommended for security.",
+                      "type": "boolean"
+                    },
+                    "asset_type": {
+                      "const": "markdown",
+                      "description": "Discriminator identifying this as a markdown asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "content": {
+                      "description": "Markdown content following CommonMark spec with optional GitHub Flavored Markdown extensions",
+                      "type": "string"
+                    },
+                    "language": {
+                      "description": "Optional language claim for this markdown. In a materialized creative localization variant, localized-creative-asset.json requires this value to use /schemas/core/locale-tag.json and conformance requires exact equality with the enclosing variant locale. General non-localized assets retain the legacy unconstrained string for compatibility.",
+                      "type": "string"
+                    },
+                    "markdown_flavor": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "default": "commonmark",
+                      "description": "Markdown flavor used. CommonMark for strict compatibility, GFM for tables/task lists/strikethrough.",
+                      "enum": [
+                        "commonmark",
+                        "gfm"
+                      ],
+                      "title": "Markdown Flavor",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "content"
+                  ],
+                  "title": "Markdown Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "VAST (Video Ad Serving Template) tag for third-party video or audio ad serving. Unlike a hosted media asset, a VAST tag carries no single `width`/`height`: a response can return multiple renditions and the player selects one at serve time. Standardized VAST audio support begins at 4.1 and uses MediaFile width and height values of 0; older audio-in-VAST versions are seller-declared legacy interoperability. Dimensional, duration, MIME-type, and codec constraints live on the format/requirements layer, not on this asset.",
+                  "discriminator": {
+                    "propertyName": "delivery_type"
+                  },
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "delivery_type": {
+                          "const": "url",
+                          "description": "Discriminator indicating VAST is delivered via URL endpoint",
+                          "type": "string"
+                        },
+                        "macro_declarations": {
+                          "$ref": "#/definitions/Shared14"
+                        },
+                        "url": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "anyOf": [
+                            {
+                              "$ref": "#/definitions/Shared10"
+                            },
+                            {
+                              "$ref": "#/definitions/Shared11"
+                            },
+                            {
+                              "$ref": "#/definitions/Shared12"
+                            }
+                          ],
+                          "description": "URL endpoint returning VAST XML. Macro delimiters remain byte-preserved; declarations distinguish occurrences in this locator URL from occurrences in inline or fetched VAST content.",
+                          "title": "Macro-bearing URL",
+                          "type": "string",
+                          "x-adcp-validation": {
+                            "spec": "docs/creative/universal-macros.mdx#template-syntax",
+                            "verifier_constraints": {
+                              "macro_aware_uri": "mask recognized token lexical forms with an RFC3986 unreserved sentinel, whether declared or on the undeclared 3.x compatibility path, then require a valid absolute HTTP or HTTPS URI; masking assigns no semantics"
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "delivery_type",
+                        "url"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "content": {
+                          "description": "Inline VAST XML content",
+                          "type": "string"
+                        },
+                        "delivery_type": {
+                          "const": "inline",
+                          "description": "Discriminator indicating VAST is delivered as inline XML content",
+                          "type": "string"
+                        },
+                        "macro_declarations": {
+                          "$ref": "#/definitions/Shared15"
+                        }
+                      },
+                      "required": [
+                        "delivery_type",
+                        "content"
+                      ]
+                    }
+                  ],
+                  "properties": {
+                    "asset_type": {
+                      "const": "vast",
+                      "description": "Discriminator identifying this as a VAST asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "audio_description_url": {
+                      "$ref": "#/definitions/Shared7"
+                    },
+                    "captions_url": {
+                      "$ref": "#/definitions/Shared6"
+                    },
+                    "duration_ms": {
+                      "description": "Expected media duration in milliseconds (if known)",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "macro_declarations": {
+                      "description": "One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.",
+                      "items": {
+                        "$ref": "#/definitions/Shared13"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "tracking_events": {
+                      "description": "Tracking events supported by this VAST tag",
+                      "items": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Tracking events for VAST video and audio ads. Includes the IAB VAST 4.2 `Tracking@event` enumeration (vast_4.2.xsd `TrackingEvents_type`, lines 112\u2013136), plus AdCP-flattened representations of the `Impression`, `Error`, `VideoClicks`, and `ViewableImpression` elements (which live in dedicated VAST elements, not under `<TrackingEvents>` \u2014 they are surfaced here so a single declared list can cover everything a measurement vendor wants to track). Audio players execute only events applicable to and present in the audio VAST document; visual viewability, fullscreen, expand, collapse, and interactive events are not implied by `audio_vast`. `fullscreen` / `exitFullscreen` are retained for VAST 2.x / 3.x video compatibility (VAST 4.0+ replaced them with `playerExpand` / `playerCollapse`). `measurableImpression` is an AdCP extension for MRC measurability signals.",
+                        "enum": [
+                          "impression",
+                          "creativeView",
+                          "loaded",
+                          "start",
+                          "firstQuartile",
+                          "midpoint",
+                          "thirdQuartile",
+                          "complete",
+                          "mute",
+                          "unmute",
+                          "pause",
+                          "resume",
+                          "rewind",
+                          "skip",
+                          "playerExpand",
+                          "playerCollapse",
+                          "fullscreen",
+                          "exitFullscreen",
+                          "progress",
+                          "acceptInvitation",
+                          "adExpand",
+                          "adCollapse",
+                          "minimize",
+                          "overlayViewDuration",
+                          "otherAdInteraction",
+                          "interactiveStart",
+                          "clickTracking",
+                          "customClick",
+                          "close",
+                          "closeLinear",
+                          "error",
+                          "viewable",
+                          "notViewable",
+                          "viewUndetermined",
+                          "measurableImpression",
+                          "viewableImpression"
+                        ],
+                        "title": "VAST Tracking Event",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "vast_version": {
+                      "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Exact VAST version declared by the supplied URL response or inline document. Required by the 3.2 canonical `video_vast` and `audio_vast` manifest paths; optional only on the deprecated named-format compatibility path. Receivers MUST NOT relabel or synthesize a newer version merely because the destination accepts it.",
+                      "enum": [
+                        "2.0",
+                        "3.0",
+                        "4.0",
+                        "4.1",
+                        "4.2",
+                        "4.3"
+                      ],
+                      "title": "VAST Version",
+                      "type": "string"
+                    },
+                    "vpaid_enabled": {
+                      "description": "Whether VPAID (Video Player-Ad Interface Definition) is supported",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "asset_type"
+                  ],
+                  "title": "VAST Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "DAAST (Digital Audio Ad Serving Template) tag for third-party audio ad serving",
+                  "discriminator": {
+                    "propertyName": "delivery_type"
+                  },
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "delivery_type": {
+                          "const": "url",
+                          "description": "Discriminator indicating DAAST is delivered via URL endpoint",
+                          "type": "string"
+                        },
+                        "macro_declarations": {
+                          "$ref": "#/definitions/Shared14"
+                        },
+                        "url": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "anyOf": [
+                            {
+                              "$ref": "#/definitions/Shared10"
+                            },
+                            {
+                              "$ref": "#/definitions/Shared11"
+                            },
+                            {
+                              "$ref": "#/definitions/Shared12"
+                            }
+                          ],
+                          "description": "URL endpoint returning DAAST XML. Macro delimiters remain byte-preserved and are processed only under attached occurrence declarations.",
+                          "title": "Macro-bearing URL",
+                          "type": "string",
+                          "x-adcp-validation": {
+                            "spec": "docs/creative/universal-macros.mdx#template-syntax",
+                            "verifier_constraints": {
+                              "macro_aware_uri": "mask recognized token lexical forms with an RFC3986 unreserved sentinel, whether declared or on the undeclared 3.x compatibility path, then require a valid absolute HTTP or HTTPS URI; masking assigns no semantics"
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "delivery_type",
+                        "url"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "content": {
+                          "description": "Inline DAAST XML content",
+                          "type": "string"
+                        },
+                        "delivery_type": {
+                          "const": "inline",
+                          "description": "Discriminator indicating DAAST is delivered as inline XML content",
+                          "type": "string"
+                        },
+                        "macro_declarations": {
+                          "$ref": "#/definitions/Shared15"
+                        }
+                      },
+                      "required": [
+                        "delivery_type",
+                        "content"
+                      ]
+                    }
+                  ],
+                  "properties": {
+                    "asset_type": {
+                      "const": "daast",
+                      "description": "Discriminator identifying this as a DAAST asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "companion_ads": {
+                      "description": "Whether companion display ads are included",
+                      "type": "boolean"
+                    },
+                    "daast_version": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "DAAST specification version",
+                      "enum": [
+                        "1.0",
+                        "1.1"
+                      ],
+                      "title": "DAAST Version",
+                      "type": "string"
+                    },
+                    "duration_ms": {
+                      "description": "Expected audio duration in milliseconds (if known)",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "macro_declarations": {
+                      "description": "One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.",
+                      "items": {
+                        "$ref": "#/definitions/Shared13"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "tracking_events": {
+                      "description": "Tracking events supported by this DAAST tag",
+                      "items": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Tracking events for audio ads. Aligned to the IAB DAAST 1.1 `Tracking@event` enumeration from \u00a73.2.1.7 of the spec (creativeView, start, firstQuartile, midpoint, thirdQuartile, complete, mute, unmute, pause, rewind, resume, skip, progress) \u2014 plus `close` (referenced descriptively in DAAST 1.1 \u00a73.2.4.2 contrasting it with `skip`), and AdCP-flattened representations of the `Impression`, `Error`, and click elements (`<Impression>`, `<Error>`, and the click children of `<AdInteractions>`) so a single declared list can cover everything a measurement vendor wants to track. `viewable` / `notViewable` / `viewUndetermined` and `measurableImpression` / `viewableImpression` are AdCP extensions for OM-SDK Audio measurability signals (DAAST 1.1 itself does not define a `<ViewableImpression>` element). DAAST 1.1 audio-incompatible video events are deliberately omitted: no `loaded`, `playerExpand` / `playerCollapse`, `fullscreen` / `exitFullscreen`, `acceptInvitation`, `adExpand` / `adCollapse`, `minimize`, `overlayViewDuration`, or `interactiveStart`.",
+                        "enum": [
+                          "impression",
+                          "creativeView",
+                          "start",
+                          "firstQuartile",
+                          "midpoint",
+                          "thirdQuartile",
+                          "complete",
+                          "mute",
+                          "unmute",
+                          "pause",
+                          "resume",
+                          "rewind",
+                          "skip",
+                          "progress",
+                          "clickTracking",
+                          "customClick",
+                          "close",
+                          "error",
+                          "viewable",
+                          "notViewable",
+                          "viewUndetermined",
+                          "measurableImpression",
+                          "viewableImpression"
+                        ],
+                        "title": "DAAST Tracking Event",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "transcript_url": {
+                      "$ref": "#/definitions/Shared8"
+                    }
+                  },
+                  "required": [
+                    "asset_type"
+                  ],
+                  "title": "DAAST Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "CSS stylesheet asset",
+                  "properties": {
+                    "asset_type": {
+                      "const": "css",
+                      "description": "Discriminator identifying this as a CSS asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "content": {
+                      "description": "CSS content",
+                      "type": "string"
+                    },
+                    "media": {
+                      "description": "CSS media query context (e.g., 'screen', 'print')",
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "content"
+                  ],
+                  "title": "CSS Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Inline JavaScript content asset. For third-party display ad markup, use the display_tag asset with delivery_type `inline_markup`; for measurement scripts use a typed tracker; for seller-hosted HTML5 bundles use zip.",
+                  "properties": {
+                    "accessibility": {
+                      "$ref": "#/definitions/Shared9"
+                    },
+                    "asset_type": {
+                      "const": "javascript",
+                      "description": "Discriminator identifying this as a JavaScript asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "content": {
+                      "description": "JavaScript content",
+                      "type": "string"
+                    },
+                    "module_type": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "JavaScript module type",
+                      "enum": [
+                        "esm",
+                        "commonjs",
+                        "script"
+                      ],
+                      "title": "JavaScript Module Type",
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "content"
+                  ],
+                  "title": "JavaScript Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Bundled creative asset delivered as a zip archive \u2014 typically an HTML5 banner with index.html plus supporting CSS, JS, images, and fonts. Receivers unpack the zip, validate internal structure, and serve contents from CDN. Distinct from inline HTML (html asset) and from third-party tag URLs (url asset with url_type tracker_script).",
+                  "examples": [
+                    {
+                      "data": {
+                        "allowed_inner_extensions": [
+                          "html",
+                          "css",
+                          "js",
+                          "png",
+                          "jpg",
+                          "svg",
+                          "json"
+                        ],
+                        "asset_type": "zip",
+                        "backup_image_url": "https://cdn.acme.example/creatives/spring-300x250-backup.jpg",
+                        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                        "entry_point": "index.html",
+                        "max_file_size_kb": 200,
+                        "url": "https://cdn.acme.example/creatives/spring-300x250-html5.zip"
+                      },
+                      "description": "HTML5 banner bundle with backup image"
+                    }
+                  ],
+                  "properties": {
+                    "accessibility": {
+                      "$ref": "#/definitions/Shared9"
+                    },
+                    "allowed_inner_extensions": {
+                      "description": "File extensions permitted inside the zip (e.g., ['html', 'css', 'js', 'png', 'jpg', 'svg', 'webp', 'json', 'woff2']). Receivers may reject zips containing other extensions.",
+                      "items": {
+                        "$ref": "#/definitions/Shared1"
+                      },
+                      "type": "array"
+                    },
+                    "asset_type": {
+                      "const": "zip",
+                      "description": "Discriminator identifying this as a zip-bundled asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "backup_image_url": {
+                      "description": "Fallback image URL for environments that cannot render the bundled creative (e.g., non-HTML5 endpoints, ad blockers). Recommended for HTML5 banners.",
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "digest": {
+                      "description": "Optional SHA-256 content digest of the zip archive (sha256:<hex>) for integrity verification. Lets receivers detect tampered or stale archives.",
+                      "pattern": "^sha256:[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "entry_point": {
+                      "description": "Relative path to the entry file within the zip (typically 'index.html'). Receivers default to 'index.html' if absent.",
+                      "type": "string"
+                    },
+                    "max_file_size_kb": {
+                      "description": "Maximum file size in kilobytes. Receivers should reject zips exceeding this.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "url": {
+                      "description": "URL where the zip archive is hosted. Must be HTTPS.",
+                      "format": "uri",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "url"
+                  ],
+                  "title": "Zip Asset",
+                  "type": "object"
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Webhook for server-side dynamic content rendering (DCO)",
+                  "properties": {
+                    "asset_type": {
+                      "const": "webhook",
+                      "description": "Discriminator identifying this as a webhook asset. See /schemas/creative/asset-types for the registry.",
+                      "type": "string"
+                    },
+                    "method": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "default": "POST",
+                      "description": "HTTP method",
+                      "enum": [
+                        "GET",
+                        "POST"
+                      ],
+                      "title": "HTTP Method",
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "$ref": "#/definitions/Shared2"
+                    },
+                    "required_macros": {
+                      "description": "Universal macros that must be provided for webhook to function",
+                      "items": {
+                        "$ref": "#/definitions/Shared16"
+                      },
+                      "type": "array"
+                    },
+                    "response_type": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Expected content type of webhook response",
+                      "enum": [
+                        "html",
+                        "json",
+                        "xml",
+                        "javascript"
+                      ],
+                      "title": "Webhook Response Type",
+                      "type": "string"
+                    },
+                    "security": {
+                      "description": "Security configuration for webhook calls",
+                      "properties": {
+                        "api_key_header": {
+                          "description": "Header name for API key (e.g., 'X-API-Key')",
+                          "type": "string"
+                        },
+                        "hmac_header": {
+                          "description": "Header name for HMAC signature (e.g., 'X-Signature')",
+                          "type": "string"
+                        },
+                        "method": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Authentication method",
+                          "enum": [
+                            "hmac_sha256",
+                            "api_key",
+                            "none"
+                          ],
+                          "title": "Webhook Security Method",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "method"
+                      ],
+                      "type": "object"
+                    },
+                    "supported_macros": {
+                      "description": "Universal macros that can be passed to webhook (e.g., DEVICE_TYPE, COUNTRY). See docs/creative/universal-macros.mdx for full list.",
+                      "items": {
+                        "$ref": "#/definitions/Shared16"
+                      },
+                      "type": "array"
+                    },
+                    "timeout_ms": {
+                      "default": 500,
+                      "description": "Maximum time to wait for response in milliseconds",
+                      "maximum": 5000,
+                      "minimum": 10,
+                      "type": "integer"
+                    },
+                    "url": {
+                      "description": "Webhook URL to call for dynamic content",
+                      "format": "uri",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "asset_type",
+                    "url",
+                    "response_type",
+                    "security"
+                  ],
+                  "title": "Webhook Asset",
+                  "type": "object"
+                }
+              ]
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "asset_group_id",
+          "asset_type",
+          "items"
+        ],
+        "title": "Offering Asset Group",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "departure_time": {
+      "description": "Departure date and time (ISO 8601).",
+      "format": "date-time",
+      "type": "string"
+    },
+    "description": {
+      "description": "Route description or promotional text.",
+      "type": "string"
+    },
+    "destination": {
+      "additionalProperties": false,
+      "description": "Arrival airport or city.",
+      "properties": {
+        "airport_code": {
+          "description": "IATA airport code.",
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "city": {
+          "description": "City name.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "airport_code"
+      ],
+      "type": "object"
+    },
+    "ext": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "flight_id": {
+      "description": "Unique identifier for this flight route or offer.",
+      "type": "string"
+    },
+    "image_url": {
+      "description": "Promotional image URL (typically a destination photo).",
+      "format": "uri",
+      "type": "string"
+    },
+    "origin": {
+      "additionalProperties": false,
+      "description": "Departure airport or city.",
+      "properties": {
+        "airport_code": {
+          "description": "IATA airport code (e.g., 'AMS', 'JFK', 'LHR').",
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "city": {
+          "description": "City name (e.g., 'Amsterdam', 'New York').",
+          "type": "string"
+        }
+      },
+      "required": [
+        "airport_code"
+      ],
+      "type": "object"
+    },
+    "price": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Ticket price or starting fare.",
+      "examples": [
+        {
+          "data": {
+            "amount": 29.99,
+            "currency": "USD"
+          },
+          "description": "One-time purchase price"
+        },
+        {
+          "data": {
+            "amount": 189,
+            "currency": "EUR",
+            "period": "night"
+          },
+          "description": "Hotel nightly rate"
+        },
+        {
+          "data": {
+            "amount": 85000,
+            "currency": "USD",
+            "period": "year"
+          },
+          "description": "Annual salary"
+        }
+      ],
+      "properties": {
+        "amount": {
+          "description": "Monetary amount in the specified currency.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "currency": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP').",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency Code",
+          "type": "string"
+        },
+        "period": {
+          "description": "Billing period. 'night' for hotel rates, 'month' or 'year' for salaries and rentals, 'one_time' for purchase prices. Omit when the period is obvious from context (e.g., a vehicle price is always one-time).",
+          "enum": [
+            "night",
+            "month",
+            "year",
+            "one_time"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "title": "Price",
+      "type": "object"
+    },
+    "tags": {
+      "description": "Tags for filtering (e.g., 'direct', 'red-eye', 'business-class').",
+      "items": {
+        "$ref": "#/definitions/Shared1"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "url": {
+      "description": "Booking page URL for this route.",
+      "format": "uri",
+      "type": "string"
+    }
+  },
+  "required": [
+    "flight_id",
+    "origin",
+    "destination"
+  ],
+  "title": "Flight Item",
+  "type": "object"
+}

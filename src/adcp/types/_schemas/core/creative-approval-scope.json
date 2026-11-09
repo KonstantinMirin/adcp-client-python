@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "approval_status": {
+            "const": "rejected"
+          }
+        },
+        "required": [
+          "approval_status"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/Shared0"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "approval_status": {
+            "enum": [
+              "approved",
+              "pending_review"
+            ]
+          }
+        },
+        "required": [
+          "approval_status"
+        ]
+      },
+      "then": {
+        "not": {
+          "$ref": "#/definitions/Shared0"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "rejection_reason"
+      ]
+    }
+  },
+  "description": "Approval outcome for one publisher or placement scope inside a package\u2013creative assignment. Used when a multi-publisher package does not have one uniform approval outcome.",
+  "properties": {
+    "approval_status": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Aggregate approval state of a creative on a specific package. Mixed publisher or placement eligibility uses partially_approved plus approval_scopes on the assignment.",
+          "enum": [
+            "pending_review",
+            "approved",
+            "partially_approved",
+            "rejected"
+          ],
+          "enumDescriptions": {
+            "approved": "Creative has been approved and is eligible for delivery across the whole package\u2013creative assignment.",
+            "partially_approved": "A multi-publisher or multi-placement assignment is eligible in at least one scope but not uniformly eligible across all scopes. Inspect approval_scopes for the complete per-scope outcomes.",
+            "pending_review": "Creative has been submitted and is awaiting platform review",
+            "rejected": "Creative was rejected by the platform, including change requests; see rejection_reason for required fixes and re-upload via sync_creatives"
+          },
+          "title": "Creative Approval Status",
+          "type": "string"
+        },
+        {
+          "enum": [
+            "pending_review",
+            "approved",
+            "rejected"
+          ]
+        }
+      ]
+    },
+    "rejection_reason": {
+      "description": "Human-readable explanation when this scope is rejected.",
+      "type": "string"
+    },
+    "scope": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Publisher or placement to which this approval outcome applies.",
+      "properties": {
+        "placement_id": {
+          "description": "Optional placement ID within publisher_domain. Omit to scope the assertion or evaluation to all delivery for the publisher in the enclosing object.",
+          "type": "string",
+          "x-entity": "placement"
+        },
+        "publisher_domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Domain where the publisher's adagents.json is hosted.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "publisher_domain"
+      ],
+      "title": "Indicator Scope",
+      "type": "object"
+    }
+  },
+  "required": [
+    "scope",
+    "approval_status"
+  ],
+  "title": "Scoped creative approval",
+  "type": "object"
+}

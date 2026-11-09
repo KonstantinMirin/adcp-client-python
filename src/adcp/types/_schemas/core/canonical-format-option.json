@@ -1,0 +1,1897 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "tracker_execution_contract"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/Shared2"
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "publisher_domain"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/Shared2"
+      }
+    },
+    {
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "format_shape"
+              ]
+            },
+            {
+              "required": [
+                "format_schema"
+              ]
+            }
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "format_kind": {
+            "$ref": "#/definitions/Shared12"
+          }
+        },
+        "required": [
+          "format_kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "format_shape",
+          "format_schema",
+          "canonical_formats_only"
+        ]
+      }
+    }
+  ],
+  "definitions": {
+    "Shared0": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared1": {
+      "default": false,
+      "type": "boolean"
+    },
+    "Shared10": {
+      "else": {
+        "not": {
+          "$ref": "#/definitions/Shared14"
+        }
+      },
+      "if": {
+        "properties": {
+          "mapping_status": {
+            "$ref": "#/definitions/Shared27"
+          }
+        },
+        "required": [
+          "mapping_status"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/Shared14"
+      }
+    },
+    "Shared11": {
+      "if": {
+        "properties": {
+          "dialect": {
+            "const": "adcp"
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialect_semantic": {
+            "$ref": "#/definitions/Shared5"
+          },
+          "mapping_status": {
+            "$ref": "#/definitions/Shared27"
+          }
+        },
+        "required": [
+          "universal_semantic"
+        ]
+      }
+    },
+    "Shared12": {
+      "const": "custom"
+    },
+    "Shared13": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "depth": {
+                "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "$ref": "#/definitions/Shared36"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "depth": {
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "iab_vast_uri"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "depth": {
+                "$ref": "#/definitions/Shared37"
+              }
+            }
+          }
+        }
+      ],
+      "description": "Exact encoding profile applied to a concrete substitution value. `rfc3986` encodes UTF-8 bytes outside the RFC 3986 unreserved set once per depth. `iab_vast_uri` follows the cited IAB VAST macro registry, including its array serialization rules, and is exactly one pass.",
+      "properties": {
+        "depth": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "none",
+            "rfc3986",
+            "iab_vast_uri"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "depth"
+      ],
+      "title": "Macro Encoding",
+      "type": "object"
+    },
+    "Shared14": {
+      "required": [
+        "universal_semantic"
+      ]
+    },
+    "Shared15": {
+      "properties": {
+        "universal_semantic": {
+          "enum": [
+            "CATALOG_ID",
+            "SKU",
+            "GTIN",
+            "OFFERING_ID",
+            "JOB_ID",
+            "HOTEL_ID",
+            "FLIGHT_ID",
+            "VEHICLE_ID",
+            "LISTING_ID",
+            "STORE_ID",
+            "PROGRAM_ID",
+            "DESTINATION_ID",
+            "ITEM_NAME",
+            "ITEM_DESCRIPTION",
+            "ITEM_TAGLINE",
+            "ITEM_PRICE",
+            "ITEM_PRICE_CURRENCY"
+          ]
+        }
+      },
+      "required": [
+        "universal_semantic"
+      ]
+    },
+    "Shared16": {
+      "properties": {
+        "performed_by": {
+          "const": "request_executor"
+        }
+      }
+    },
+    "Shared17": {
+      "description": "Stable identifier unique within the materialized execution contract.",
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "tracker_execution_selector"
+    },
+    "Shared18": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Actor responsible for initiating a buyer-supplied tracker under a seller-authored execution contract. This v1 vocabulary is intentionally narrower than the macro resolver actor vocabulary.",
+      "enum": [
+        "seller",
+        "request_executor"
+      ],
+      "title": "Tracker Execution Actor",
+      "type": "string"
+    },
+    "Shared19": {
+      "description": "Complete set of permitted initiation environments. Exactly one path is selected for each logical event occurrence.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Environment in which the responsible actor initiates a tracker. A selector may permit both values, but exactly one path is used for each logical event occurrence.",
+        "enum": [
+          "client",
+          "server"
+        ],
+        "title": "Tracker Firing Path",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared2": {
+      "required": [
+        "format_option_id"
+      ]
+    },
+    "Shared20": {
+      "items": {
+        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
+        "enum": [
+          "2.0",
+          "3.0",
+          "4.0",
+          "4.1",
+          "4.2",
+          "4.3"
+        ],
+        "title": "VAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared21": {
+      "enum": [
+        "creativeView",
+        "loaded",
+        "start",
+        "firstQuartile",
+        "midpoint",
+        "thirdQuartile",
+        "complete",
+        "mute",
+        "unmute",
+        "pause",
+        "resume",
+        "rewind",
+        "skip",
+        "playerExpand",
+        "playerCollapse",
+        "fullscreen",
+        "exitFullscreen",
+        "progress",
+        "acceptInvitation",
+        "adExpand",
+        "adCollapse",
+        "minimize",
+        "overlayViewDuration",
+        "otherAdInteraction",
+        "interactiveStart",
+        "close",
+        "closeLinear"
+      ],
+      "type": "string"
+    },
+    "Shared22": {
+      "default": "linear",
+      "enum": [
+        "linear",
+        "non_linear",
+        "companion"
+      ],
+      "type": "string"
+    },
+    "Shared23": {
+      "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
+      "type": "string"
+    },
+    "Shared24": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported DAAST (Digital Audio Ad Serving Template) specification versions",
+        "enum": [
+          "1.0",
+          "1.1"
+        ],
+        "title": "DAAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared25": {
+      "enum": [
+        "creativeView",
+        "start",
+        "firstQuartile",
+        "midpoint",
+        "thirdQuartile",
+        "complete",
+        "mute",
+        "unmute",
+        "pause",
+        "resume",
+        "rewind",
+        "skip",
+        "progress",
+        "close"
+      ],
+      "type": "string"
+    },
+    "Shared26": {
+      "default": "linear",
+      "enum": [
+        "linear",
+        "companion"
+      ],
+      "type": "string"
+    },
+    "Shared27": {
+      "const": "verified_universal"
+    },
+    "Shared28": {
+      "const": "resolve_value"
+    },
+    "Shared29": {
+      "const": "seller"
+    },
+    "Shared3": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Governed family for a creative macro token. `vendor` is qualified by an authority-controlled namespace and immutable revision on the declaration/capability; AdCP does not enumerate companies as dialects. `unknown` is declaration-only and always byte-preserved.",
+      "enum": [
+        "adcp",
+        "iab_vast",
+        "iab_daast",
+        "vendor",
+        "unknown"
+      ],
+      "enumDescriptions": {
+        "adcp": "AdCP universal macro syntax and semantics.",
+        "iab_daast": "IAB DAAST macro syntax, qualified by the referenced specification/registry revision.",
+        "iab_vast": "IAB VAST macro syntax, qualified by the referenced live-registry revision.",
+        "unknown": "The token namespace cannot be established. Preserve the token unchanged and never advertise it as resolvable.",
+        "vendor": "A vendor- or platform-owned macro namespace, qualified by its authoritative URI and immutable revision."
+      },
+      "title": "Macro Dialect Family",
+      "type": "string"
+    },
+    "Shared30": {
+      "enum": [
+        "iab_vast",
+        "iab_daast"
+      ]
+    },
+    "Shared31": {
+      "required": [
+        "custom_event_name"
+      ]
+    },
+    "Shared32": {
+      "anyOf": [
+        {
+          "not": {
+            "required": [
+              "target"
+            ]
+          }
+        },
+        {
+          "properties": {
+            "target": {
+              "const": "linear"
+            }
+          },
+          "required": [
+            "target"
+          ]
+        }
+      ]
+    },
+    "Shared33": {
+      "properties": {
+        "target": {
+          "const": "companion"
+        }
+      },
+      "required": [
+        "target"
+      ]
+    },
+    "Shared34": {
+      "required": [
+        "offset"
+      ]
+    },
+    "Shared35": {
+      "not": {
+        "$ref": "#/definitions/Shared34"
+      }
+    },
+    "Shared36": {
+      "const": "rfc3986"
+    },
+    "Shared37": {
+      "const": 1
+    },
+    "Shared38": {
+      "const": "creativeView"
+    },
+    "Shared39": {
+      "const": "progress"
+    },
+    "Shared4": {
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared5": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Standardized macro placeholders for dynamic value substitution in creative tracking URLs. Macros are replaced with actual values at impression time. See docs/creative/universal-macros.mdx for detailed documentation.",
+      "enum": [
+        "MEDIA_BUY_ID",
+        "PACKAGE_ID",
+        "CREATIVE_ID",
+        "CACHEBUSTER",
+        "TIMESTAMP",
+        "CLICK_URL",
+        "GDPR",
+        "GDPR_CONSENT",
+        "US_PRIVACY",
+        "GPP_STRING",
+        "GPP_SID",
+        "IP_ADDRESS",
+        "LIMIT_AD_TRACKING",
+        "DEVICE_TYPE",
+        "OS",
+        "OS_VERSION",
+        "DEVICE_MAKE",
+        "DEVICE_MODEL",
+        "USER_AGENT",
+        "APP_BUNDLE",
+        "APP_NAME",
+        "COUNTRY",
+        "REGION",
+        "CITY",
+        "ZIP",
+        "DMA",
+        "LAT",
+        "LONG",
+        "DEVICE_ID",
+        "DEVICE_ID_TYPE",
+        "DOMAIN",
+        "PAGE_URL",
+        "REFERRER",
+        "KEYWORDS",
+        "PLACEMENT_ID",
+        "FOLD_POSITION",
+        "AD_WIDTH",
+        "AD_HEIGHT",
+        "VIDEO_ID",
+        "VIDEO_TITLE",
+        "VIDEO_DURATION",
+        "VIDEO_CATEGORY",
+        "CONTENT_GENRE",
+        "CONTENT_RATING",
+        "PLAYER_WIDTH",
+        "PLAYER_HEIGHT",
+        "POD_POSITION",
+        "POD_SIZE",
+        "AD_BREAK_ID",
+        "STATION_ID",
+        "COLLECTION_NAME",
+        "INSTALLMENT_ID",
+        "AUDIO_DURATION",
+        "TMPX",
+        "IMPRESSION_ID",
+        "AXEM",
+        "CATALOG_ID",
+        "SKU",
+        "GTIN",
+        "OFFERING_ID",
+        "JOB_ID",
+        "HOTEL_ID",
+        "FLIGHT_ID",
+        "VEHICLE_ID",
+        "LISTING_ID",
+        "STORE_ID",
+        "PROGRAM_ID",
+        "DESTINATION_ID",
+        "CREATIVE_VARIANT_ID",
+        "APP_ITEM_ID",
+        "ITEM_NAME",
+        "ITEM_DESCRIPTION",
+        "ITEM_TAGLINE",
+        "ITEM_PRICE",
+        "ITEM_PRICE_CURRENCY"
+      ],
+      "enumDescriptions": {
+        "AD_BREAK_ID": "Unique ad break identifier",
+        "AD_HEIGHT": "Ad slot height in pixels",
+        "AD_WIDTH": "Ad slot width in pixels",
+        "APP_BUNDLE": "App bundle ID (domain or numeric)",
+        "APP_ITEM_ID": "Mobile app identifier for the catalog item being rendered",
+        "APP_NAME": "Human-readable app name",
+        "AUDIO_DURATION": "Audio content duration in seconds",
+        "AXEM": "AXE contextual metadata (encoded blob). Legacy \u2014 in TMP, use Offer creative_data for dynamic creative values and TMPX for exposure tracking.",
+        "CACHEBUSTER": "Random number to prevent caching",
+        "CATALOG_ID": "Buyer-defined catalog identifier from the catalog's catalog_id field",
+        "CITY": "City name",
+        "CLICK_URL": "Publisher's click tracking URL (auto-inserted by sales agent)",
+        "COLLECTION_NAME": "Program or collection name",
+        "CONTENT_GENRE": "Content genre (news, sports, comedy, etc.)",
+        "CONTENT_RATING": "Content rating (G, PG, TV-14, etc.)",
+        "COUNTRY": "ISO 3166-1 alpha-2 country code",
+        "CREATIVE_ID": "AdCP creative identifier",
+        "CREATIVE_VARIANT_ID": "Seller-assigned creative variant identifier, passed through at serve time",
+        "DESTINATION_ID": "Travel destination identifier for the catalog item being rendered",
+        "DEVICE_ID": "Mobile advertising ID (IDFA/AAID)",
+        "DEVICE_ID_TYPE": "Type of device ID (idfa, aaid)",
+        "DEVICE_MAKE": "Device manufacturer",
+        "DEVICE_MODEL": "Device model identifier",
+        "DEVICE_TYPE": "Device category (mobile, tablet, desktop, ctv, dooh)",
+        "DMA": "Nielsen DMA code (US TV markets)",
+        "DOMAIN": "Domain where ad is shown",
+        "FLIGHT_ID": "Flight route identifier for the catalog item being rendered",
+        "FOLD_POSITION": "Position relative to fold (above_fold, below_fold)",
+        "GDPR": "GDPR applicability flag (1=applies, 0=doesn't apply)",
+        "GDPR_CONSENT": "IAB TCF 2.0 consent string",
+        "GPP_SID": "GPP Section ID(s) indicating applicable privacy framework sections",
+        "GPP_STRING": "Global Privacy Platform consent string",
+        "GTIN": "Global Trade Item Number for the catalog item being rendered",
+        "HOTEL_ID": "Hotel property identifier for the catalog item being rendered",
+        "IMPRESSION_ID": "Opaque, collision-resistant identifier for one impression opportunity. Used for impression deduplication, cross-vendor reconciliation, pixel-retry dedup, and TMP cross-identity exposure dedup. Minted by the publisher, ad-decision layer, or buyer at {TMPX} decode; required upstream for TMP context-only impressions where {TMPX} is absent.",
+        "INSTALLMENT_ID": "Installment identifier (podcast episode, print issue, etc.)",
+        "IP_ADDRESS": "User IP address (often masked for privacy, may return empty)",
+        "ITEM_DESCRIPTION": "Description of the catalog item being rendered (catalog_field: description). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_NAME": "Name/title of the catalog item being rendered (catalog_field: name). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_PRICE": "Price amount of the catalog item being rendered (catalog_field: price.amount). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_PRICE_CURRENCY": "ISO 4217 currency code of the catalog item being rendered (catalog_field: price.currency). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_TAGLINE": "Short promotional tagline of the catalog item being rendered (catalog_field: tagline). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "JOB_ID": "Job posting identifier for the catalog item being rendered",
+        "KEYWORDS": "Page keywords (comma-separated)",
+        "LAT": "Latitude coordinate",
+        "LIMIT_AD_TRACKING": "Limit Ad Tracking enabled (1=limited, 0=allowed)",
+        "LISTING_ID": "Real estate listing identifier for the catalog item being rendered",
+        "LONG": "Longitude coordinate",
+        "MEDIA_BUY_ID": "AdCP media buy identifier",
+        "OFFERING_ID": "AdCP offering identifier for the catalog item being rendered",
+        "OS": "Operating system (iOS, Android, tvOS, Roku, etc.)",
+        "OS_VERSION": "OS version number",
+        "PACKAGE_ID": "AdCP package identifier",
+        "PAGE_URL": "Full page URL (encoded)",
+        "PLACEMENT_ID": "Global Placement ID (IAB standard)",
+        "PLAYER_HEIGHT": "Video player height in pixels",
+        "PLAYER_WIDTH": "Video player width in pixels",
+        "POD_POSITION": "Position within ad break",
+        "POD_SIZE": "Total ads in the ad break",
+        "PROGRAM_ID": "Education program identifier for the catalog item being rendered",
+        "REFERRER": "HTTP referrer URL",
+        "REGION": "State/province/region code",
+        "SKU": "Product SKU identifier for the catalog item being rendered",
+        "STATION_ID": "Radio station or podcast identifier",
+        "STORE_ID": "Store location identifier for the catalog item being rendered",
+        "TIMESTAMP": "Unix timestamp in milliseconds",
+        "TMPX": "TMP exposure token \u2014 HPKE-encrypted identity tokens for per-user exposure tracking. Produced by Identity Match, substituted into creative tracking URLs, received by the buyer's impression pixel.",
+        "USER_AGENT": "Full user agent string",
+        "US_PRIVACY": "US Privacy (CCPA) string",
+        "VEHICLE_ID": "Vehicle listing identifier for the catalog item being rendered",
+        "VIDEO_CATEGORY": "IAB content category",
+        "VIDEO_DURATION": "Content duration in seconds",
+        "VIDEO_ID": "Content video identifier",
+        "VIDEO_TITLE": "Content video title",
+        "ZIP": "Postal code"
+      },
+      "title": "Universal Macro",
+      "type": "string"
+    },
+    "Shared6": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Protocol role authorized to translate the token or bind its concrete value.",
+      "enum": [
+        "buyer",
+        "creative_agent",
+        "seller",
+        "request_executor",
+        "source_ad_server"
+      ],
+      "enumDescriptions": {
+        "buyer": "The buyer agent acts before submission.",
+        "creative_agent": "The creative agent executing build_creative, preview_creative, or validate_input performs the declared build-time operation.",
+        "request_executor": "The component executing the governed request acts, whether a client player, publisher player, SSAI service, or another request executor.",
+        "seller": "The AdCP seller or its execution adapter acts during trafficking or serving.",
+        "source_ad_server": "The originating creative/ad server acts on its own native token."
+      },
+      "title": "Macro Processing Actor",
+      "type": "string"
+    },
+    "Shared7": {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "iab_vast",
+              "iab_daast",
+              "vendor"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "required": [
+          "dialect_namespace",
+          "dialect_revision"
+        ]
+      }
+    },
+    "Shared8": {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "adcp",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "dialect_namespace"
+              ]
+            },
+            {
+              "required": [
+                "dialect_revision"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "Shared9": {
+      "if": {
+        "properties": {
+          "dialect": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": false
+    }
+  },
+  "description": "Compact canonical creative-format declaration. Legacy named-format links are intentionally absent; params are validated against the canonical schema selected by format_kind without inlining every format union into product discovery. Format-option processing metadata such as macro_resolution_capabilities stays at this object's top level and is not part of canonical params.",
+  "properties": {
+    "applies_to_channels": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Standardized advertising media channels describing how buyers allocate budget. Channels are planning abstractions, not technical substrates. See the Media Channel Taxonomy specification for detailed definitions.",
+        "enum": [
+          "display",
+          "olv",
+          "social",
+          "search",
+          "ctv",
+          "linear_tv",
+          "radio",
+          "streaming_audio",
+          "podcast",
+          "dooh",
+          "ooh",
+          "print",
+          "cinema",
+          "email",
+          "gaming",
+          "retail_media",
+          "influencer",
+          "affiliate",
+          "product_placement",
+          "sponsored_intelligence"
+        ],
+        "enumDescriptions": {
+          "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
+          "cinema": "Movie theater advertising",
+          "ctv": "Connected TV and streaming on television screens",
+          "display": "Digital display advertising (banners, native, rich media) across web and app",
+          "dooh": "Digital out-of-home buying context, including inventory on venue-operated screens and audio players",
+          "email": "Email advertising and sponsored newsletter content",
+          "gaming": "In-game advertising across platforms",
+          "influencer": "Creator and influencer marketing partnerships",
+          "linear_tv": "Traditional broadcast and cable television",
+          "olv": "Online video advertising outside CTV (pre-roll, outstream, in-app video)",
+          "ooh": "Classic out-of-home (physical billboards, transit, etc.)",
+          "podcast": "Podcast advertising (host-read or dynamically inserted)",
+          "print": "Newspapers, magazines, and other print publications",
+          "product_placement": "Product placement, branded content, and sponsorship integrations",
+          "radio": "Traditional AM/FM radio broadcast",
+          "retail_media": "Retail media networks and commerce marketplaces (Amazon, Walmart, Instacart)",
+          "search": "Search engine advertising and search networks",
+          "social": "Social media platforms (Facebook, Instagram, TikTok, LinkedIn, etc.)",
+          "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow",
+          "streaming_audio": "Digital audio streaming services (Spotify, Pandora, etc.)"
+        },
+        "title": "Media Channel",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "canonical_formats_only": {
+      "$ref": "#/definitions/Shared1"
+    },
+    "display_name": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "experimental": {
+      "$ref": "#/definitions/Shared1"
+    },
+    "format_kind": {
+      "enum": [
+        "image",
+        "html5",
+        "display_tag",
+        "image_carousel",
+        "video_hosted",
+        "video_vast",
+        "audio_hosted",
+        "audio_vast",
+        "audio_daast",
+        "sponsored_placement",
+        "native_in_feed",
+        "responsive_creative",
+        "agent_placement",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "format_option_id": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "format_schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Reference to a platform extension definition. The agent that owns the URI is authoritative for the extension's schema. Buyers fetch the definition once per content digest and cache it. Platform extensions are typically bundled in `get_products` responses under an `extensions` map keyed by `uri@digest`, eliminating the need for a separate fetch.\n\n**Within a single response**, multiple references to the same `uri` MUST carry the same `digest` \u2014 divergent digests in one response indicate producer-side error (e.g., concurrent extension revision mid-render). Buyers encountering divergent digests for the same URI MUST fail closed: treat all references to that URI as unresolved and surface a validation error rather than picking one branch silently. **Across responses**, digest divergence is normal \u2014 extension authors revise their schemas, the new digest differs, the cache key changes, and the buyer refetches. Cache by `uri@digest`, not by `uri` alone.",
+      "examples": [
+        {
+          "digest": "sha256:a3f5b7c9d8e2f1a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2",
+          "uri": "https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel"
+        }
+      ],
+      "properties": {
+        "digest": {
+          "description": "SHA-256 content digest of the extension definition (sha256:<hex>). Used to detect drift \u2014 if the agent revises the extension, the digest changes and cached definitions become invalid.",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "uri": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "HTTPS URL identifying the extension. `https://` is mandatory \u2014 `http://`, `file://`, `data:`, and other schemes are rejected at the schema layer (defense-in-depth on top of the fetch-contract normative rules). The URI base is the owning agent's URL; the path identifies the extension within that agent. Example: 'https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel'. The full fetch contract \u2014 SSRF allowlist, response-size cap, $ref sandbox, schema-compile bounds \u2014 is documented on `product-format-declaration.json#format_schema` and applies to ALL fetches of this reference shape regardless of whether the field is named `format_schema` (load-bearing for validation) or `platform_extensions` (informational); the *transport* rules are identical, only the *consumption* semantics differ.",
+          "format": "uri",
+          "pattern": "^https://",
+          "title": "HTTPS URL",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "digest"
+      ],
+      "title": "Platform Extension Reference",
+      "type": "object"
+    },
+    "format_shape": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "locale_policy": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Seller-declared locale eligibility for one product or placement format declaration. Each accepted_language_ranges entry is a concrete canonical BCP 47 language range evaluated with RFC 4647 section 3.3.1 Basic Filtering: fr accepts fr, fr-CA, and fr-FR, while fr-CA accepts only fr-CA and its more-specific descendants. Ranges are ORed and wildcards are not supported. Presence is a hard assignment constraint, not a preference: at least one materialized creative locale variant must match. The seller filters the creative to eligible variants before applying buyer-declared strict Lookup, locale_fallbacks, or default behavior; buyer policy can never select a seller-ineligible variant.",
+      "properties": {
+        "accepted_language_ranges": {
+          "description": "Concrete canonical BCP 47 language ranges accepted by this format option. RFC 4647 Basic Filtering is directional: seller range fr accepts variant fr-CA, but seller range fr-CA does not accept variant fr or fr-FR. Use zxx explicitly for language-neutral creative; und means unknown and is not a wildcard.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A well-formed BCP 47 language tag used by AdCP only as language identity. Script and region may refine that identity; other valid BCP 47 subtags remain part of tag matching but do not make this a general locale-settings object. It does not determine currency, time zone, number/date formatting, market, or legal jurisdiction. The AdCP canonical wire profile requires lower-case language and variants, title-case script, and upper-case region (for example `en-US`, `zh-Hant-TW`, or `x-private`). RFC 5646 comparisons are case-insensitive and its case regularization is optional; AdCP intentionally requires this stricter single wire spelling and receivers MUST reject differently cased tags rather than silently normalizing them. The schema pattern enforces the AdCP casing profile and extension structure for commonly used tags; conforming receivers additionally validate the complete RFC 5646 grammar and registry rules. Every new AdCP field carrying BCP 47 language identity or a concrete language range MUST reference this schema instead of declaring independent string constraints.",
+            "examples": [
+              "en-US",
+              "es-ES",
+              "zh-Hant-TW",
+              "x-private"
+            ],
+            "maxLength": 63,
+            "minLength": 2,
+            "pattern": "^(?:[a-z]{2,8}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?|x(?:-[a-z0-9]{1,8})+)$",
+            "title": "Language Tag",
+            "type": "string",
+            "x-adcp-validation": {
+              "spec": "docs/protocol/language-and-localization.mdx#one-language-tag-primitive",
+              "verifier_constraints": {
+                "canonical_wire_profile": "adcp_bcp47_casing",
+                "non_profile": "reject",
+                "rfc5646_comparison": "case_insensitive",
+                "semantic_scope": "language_identity_only",
+                "well_formed": "rfc5646"
+              }
+            }
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "accepted_language_ranges"
+      ],
+      "title": "Creative Locale Policy",
+      "type": "object",
+      "x-adcp-validation": {
+        "spec": "docs/creative/canonical-formats.mdx#creative-locale-policy",
+        "verifier_constraints": {
+          "assignment_eligibility": "at_least_one_materialized_variant_must_match",
+          "assignment_policy_lifecycle": "snapshot_effective_policy_at_acceptance_catalog_changes_apply_only_to_new_or_changed_assignments",
+          "capability_gate": "seller_must_advertise_creative.localization_and_creative.has_creative_library",
+          "legacy_projection": "no_product_or_placement_format_id_may_project_to_a_locale_constrained_option",
+          "placement_narrowing": "product_policy_absent_allows_any_placement_policy_else_every_placement_range_must_be_contained_by_a_product_range",
+          "range_matching": "rfc4647_basic_filtering",
+          "selection_precedence": "filter_seller_eligible_variants_before_buyer_lookup_fallback_or_default",
+          "serve_default": "when_unmatched_locale_action_is_serve_default_default_locale_variant_id_must_reference_an_eligible_variant",
+          "wildcards": "not_supported"
+        }
+      }
+    },
+    "macro_resolution_capabilities": {
+      "description": "Binding format-option processing capabilities for exact macro dialect identities, semantics, operations, actors, contexts, and encodings. Absence means undeclared, not supported on the opt-in declared-token path. Seller-wide capabilities are only a ceiling. This field does not claim that a buyer tracker asset is honored or fired.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "$ref": "#/definitions/Shared7"
+          },
+          {
+            "$ref": "#/definitions/Shared8"
+          },
+          {
+            "$ref": "#/definitions/Shared9"
+          },
+          {
+            "$ref": "#/definitions/Shared10"
+          },
+          {
+            "$ref": "#/definitions/Shared11"
+          },
+          {
+            "if": {
+              "$ref": "#/definitions/Shared15"
+            },
+            "then": {
+              "properties": {
+                "operation": {
+                  "$ref": "#/definitions/Shared28"
+                },
+                "performed_by": {
+                  "$ref": "#/definitions/Shared29"
+                },
+                "supported_contexts": {
+                  "items": {
+                    "enum": [
+                      "url_query_value",
+                      "url_path_segment"
+                    ]
+                  }
+                },
+                "supported_encodings": {
+                  "items": {
+                    "properties": {
+                      "depth": {
+                        "$ref": "#/definitions/Shared37"
+                      },
+                      "kind": {
+                        "$ref": "#/definitions/Shared36"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "depth"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "$ref": "#/definitions/Shared28"
+                }
+              },
+              "required": [
+                "operation"
+              ]
+            },
+            "then": {
+              "not": {
+                "required": [
+                  "translation_target"
+                ]
+              },
+              "required": [
+                "supported_encodings"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "dialect": {
+                  "$ref": "#/definitions/Shared30"
+                },
+                "operation": {
+                  "$ref": "#/definitions/Shared28"
+                }
+              },
+              "required": [
+                "dialect",
+                "operation"
+              ]
+            },
+            "then": {
+              "$ref": "#/definitions/Shared16"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "const": "translate_to_native"
+                }
+              },
+              "required": [
+                "operation"
+              ]
+            },
+            "then": {
+              "not": {
+                "required": [
+                  "supported_encodings"
+                ]
+              },
+              "required": [
+                "translation_target"
+              ]
+            }
+          }
+        ],
+        "description": "One exact processing capability for one governed dialect semantic, operation, actor, occurrence context, and encoding set. Entries are intentionally semantic-specific; they do not create a semantics \u00d7 maximum-depth cross-product. Seller-wide capabilities are only a ceiling and the selected product format option is binding.",
+        "properties": {
+          "dialect": {
+            "$ref": "#/definitions/Shared3"
+          },
+          "dialect_namespace": {
+            "$ref": "#/definitions/Shared4"
+          },
+          "dialect_revision": {
+            "$ref": "#/definitions/Shared0"
+          },
+          "dialect_semantic": {
+            "$ref": "#/definitions/Shared0"
+          },
+          "mapping_status": {
+            "enum": [
+              "verified_universal",
+              "dialect_defined"
+            ],
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "translate_to_native",
+              "resolve_value"
+            ],
+            "type": "string"
+          },
+          "performed_by": {
+            "$ref": "#/definitions/Shared6"
+          },
+          "supported_contexts": {
+            "items": {
+              "allOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Syntactic occurrence context supported by the first macro contract. Substitution inside arbitrary JavaScript, JSON, or HTML text is intentionally not inferred; use `opaque` and preserve it unless a later governed context is added.",
+                  "enum": [
+                    "url_query_value",
+                    "url_path_segment",
+                    "opaque"
+                  ],
+                  "title": "Macro Value Context",
+                  "type": "string"
+                },
+                {
+                  "not": {
+                    "const": "opaque"
+                  }
+                }
+              ]
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "supported_encodings": {
+            "description": "Exact supported encoding profiles, not a maximum depth. Required for value resolution.",
+            "items": {
+              "$ref": "#/definitions/Shared13"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "translation_target": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "$ref": "#/definitions/Shared7"
+              },
+              {
+                "$ref": "#/definitions/Shared8"
+              },
+              {
+                "$ref": "#/definitions/Shared9"
+              },
+              {
+                "$ref": "#/definitions/Shared10"
+              },
+              {
+                "if": {
+                  "properties": {
+                    "dialect": {
+                      "$ref": "#/definitions/Shared30"
+                    }
+                  },
+                  "required": [
+                    "dialect"
+                  ]
+                },
+                "then": {
+                  "$ref": "#/definitions/Shared16"
+                }
+              },
+              {
+                "$ref": "#/definitions/Shared11"
+              },
+              {
+                "if": {
+                  "$ref": "#/definitions/Shared15"
+                },
+                "then": {
+                  "properties": {
+                    "encoding": {
+                      "properties": {
+                        "depth": {
+                          "$ref": "#/definitions/Shared37"
+                        },
+                        "kind": {
+                          "$ref": "#/definitions/Shared36"
+                        }
+                      }
+                    },
+                    "performed_by": {
+                      "$ref": "#/definitions/Shared29"
+                    }
+                  }
+                }
+              }
+            ],
+            "description": "The exact downstream-native token produced by a `translate_to_native` operation. The output asset replaces the source declaration with a declaration for this token and its next operation.",
+            "properties": {
+              "dialect": {
+                "$ref": "#/definitions/Shared3"
+              },
+              "dialect_namespace": {
+                "$ref": "#/definitions/Shared4"
+              },
+              "dialect_revision": {
+                "$ref": "#/definitions/Shared0"
+              },
+              "dialect_semantic": {
+                "$ref": "#/definitions/Shared0"
+              },
+              "encoding": {
+                "$ref": "#/definitions/Shared13"
+              },
+              "mapping_status": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Evidence level connecting a dialect-local macro meaning to the AdCP universal vocabulary.",
+                "enum": [
+                  "verified_universal",
+                  "dialect_defined",
+                  "unresolved"
+                ],
+                "enumDescriptions": {
+                  "dialect_defined": "The dialect defines the token, but no AdCP universal semantic is asserted.",
+                  "unresolved": "No safe meaning is established; the token remains byte-preserved.",
+                  "verified_universal": "The cited dialect mapping verifies an AdCP universal semantic."
+                },
+                "title": "Macro Mapping Status",
+                "type": "string"
+              },
+              "next_operation": {
+                "const": "resolve_value",
+                "type": "string"
+              },
+              "performed_by": {
+                "$ref": "#/definitions/Shared6"
+              },
+              "token": {
+                "$ref": "#/definitions/Shared0"
+              },
+              "universal_semantic": {
+                "$ref": "#/definitions/Shared5"
+              }
+            },
+            "required": [
+              "token",
+              "dialect",
+              "dialect_semantic",
+              "mapping_status",
+              "next_operation",
+              "performed_by",
+              "encoding"
+            ],
+            "title": "Macro Translation Target",
+            "type": "object"
+          },
+          "universal_semantic": {
+            "$ref": "#/definitions/Shared5"
+          }
+        },
+        "required": [
+          "dialect",
+          "dialect_semantic",
+          "mapping_status",
+          "operation",
+          "performed_by",
+          "supported_contexts"
+        ],
+        "title": "Macro Processing Capability",
+        "type": "object",
+        "x-adcp-validation": {
+          "spec": "docs/creative/universal-macros.mdx#capability-matching-and-validation",
+          "verifier_constraints": {
+            "adcp_semantic_identity": "when dialect is adcp, dialect_semantic must equal universal_semantic",
+            "translation_chain": "a translate_to_native entry is usable only when the same capability set contains an exact resolve_value entry for translation_target"
+          }
+        }
+      },
+      "minItems": 1,
+      "type": "array",
+      "x-adcp-validation": {
+        "verifier_constraints": {
+          "translation_chain_closure": "every translate_to_native entry must have an exact matching resolve_value entry for its translation_target in this same array"
+        }
+      }
+    },
+    "params": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "publisher_domain": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A lowercase DNS domain name, dot-separated LDH labels. Extracted unchanged from the 54 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
+      "type": "string"
+    },
+    "sample_render_url": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
+      "format": "uri",
+      "pattern": "^https://",
+      "title": "HTTPS URL",
+      "type": "string"
+    },
+    "seller_preference": {
+      "enum": [
+        "preferred",
+        "accepted",
+        "discouraged"
+      ],
+      "type": "string"
+    },
+    "technical_requirements_complete": {
+      "description": "When true, every technical creative-acceptance constraint for this declaration layer is expressed and omitted technical fields mean no constraint. When false or absent, omitted technical fields are undeclared and MUST NOT be inferred. The effective contract is complete only when every applicable declaration layer asserts true.",
+      "type": "boolean"
+    },
+    "tracker_execution_contract": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Seller- or publisher-authored production commitment for first-class manifest tracker execution. Presence requires a stable format_option_id. Creative-agent projections MUST strip this authority-bearing field.",
+      "properties": {
+        "complete": {
+          "description": "Whether honored is the complete set. complete:true with an empty honored array explicitly supports no buyer-supplied trackers.",
+          "type": "boolean"
+        },
+        "honored": {
+          "description": "Exact tracker/event selectors the seller accepts and initiates once per manifest instance for each logical event occurrence. selector_id and structural selector identity are each unique within this array.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "One exact first-class manifest tracker selector in a seller production execution contract. AdCP 3.2 supports pixel_tracker, vast_tracker, and daast_tracker only; URL-slot selectors are not part of this union.",
+            "discriminator": {
+              "propertyName": "asset_type"
+            },
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "else": {
+                      "not": {
+                        "$ref": "#/definitions/Shared31"
+                      }
+                    },
+                    "if": {
+                      "properties": {
+                        "event": {
+                          "$ref": "#/definitions/Shared12"
+                        }
+                      },
+                      "required": [
+                        "event"
+                      ]
+                    },
+                    "then": {
+                      "$ref": "#/definitions/Shared31"
+                    }
+                  }
+                ],
+                "properties": {
+                  "asset_type": {
+                    "const": "pixel_tracker",
+                    "type": "string"
+                  },
+                  "custom_event_name": {
+                    "description": "Required only when event is custom.",
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "event": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Closed AdCP event vocabulary for renderer-fired pixel trackers. Impression and viewability values through `viewable_video_50` map to IAB OpenRTB Native event tracker types 1-4. `audible_video_complete` is an AdCP-defined first-class event, not an assigned IAB Native event type; Native reserves 500+ for exchange-specific use. `click` represents Native click trackers and `custom` is the explicit adopter-defined extension point.",
+                    "enum": [
+                      "impression",
+                      "viewable_mrc_50",
+                      "viewable_mrc_100",
+                      "viewable_video_50",
+                      "audible_video_complete",
+                      "click",
+                      "custom"
+                    ],
+                    "title": "Pixel Tracking Event",
+                    "type": "string"
+                  },
+                  "execution_actor": {
+                    "$ref": "#/definitions/Shared18"
+                  },
+                  "firing_paths": {
+                    "$ref": "#/definitions/Shared19"
+                  },
+                  "method": {
+                    "const": "img",
+                    "description": "AdCP 3.2 execution contracts cover image-pixel initiation only; JavaScript response evaluation is outside this contract version.",
+                    "type": "string"
+                  },
+                  "selector_id": {
+                    "$ref": "#/definitions/Shared17"
+                  }
+                },
+                "required": [
+                  "selector_id",
+                  "asset_type",
+                  "event",
+                  "method",
+                  "execution_actor",
+                  "firing_paths"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "allOf": [
+                      {
+                        "if": {
+                          "$ref": "#/definitions/Shared32"
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_event": {
+                              "enum": [
+                                "creativeView",
+                                "loaded",
+                                "start",
+                                "firstQuartile",
+                                "midpoint",
+                                "thirdQuartile",
+                                "complete",
+                                "mute",
+                                "unmute",
+                                "pause",
+                                "resume",
+                                "rewind",
+                                "skip",
+                                "playerExpand",
+                                "playerCollapse",
+                                "fullscreen",
+                                "exitFullscreen",
+                                "progress",
+                                "otherAdInteraction",
+                                "interactiveStart",
+                                "closeLinear"
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "target": {
+                              "const": "non_linear"
+                            }
+                          },
+                          "required": [
+                            "target"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_event": {
+                              "enum": [
+                                "creativeView",
+                                "acceptInvitation",
+                                "adExpand",
+                                "adCollapse",
+                                "minimize",
+                                "overlayViewDuration",
+                                "otherAdInteraction",
+                                "close"
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "$ref": "#/definitions/Shared33"
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_event": {
+                              "$ref": "#/definitions/Shared38"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "else": {
+                          "$ref": "#/definitions/Shared35"
+                        },
+                        "if": {
+                          "properties": {
+                            "vast_event": {
+                              "$ref": "#/definitions/Shared39"
+                            }
+                          },
+                          "required": [
+                            "vast_event"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "#/definitions/Shared34"
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "vast_event": {
+                              "enum": [
+                                "skip",
+                                "progress"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "vast_event"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_versions": {
+                              "items": {
+                                "enum": [
+                                  "3.0",
+                                  "4.0",
+                                  "4.1",
+                                  "4.2",
+                                  "4.3"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "vast_event": {
+                              "const": "fullscreen"
+                            }
+                          },
+                          "required": [
+                            "vast_event"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_versions": {
+                              "items": {
+                                "enum": [
+                                  "2.0",
+                                  "3.0"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "vast_event": {
+                              "const": "exitFullscreen"
+                            }
+                          },
+                          "required": [
+                            "vast_event"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_versions": {
+                              "items": {
+                                "const": "3.0"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "vast_event": {
+                              "enum": [
+                                "playerExpand",
+                                "playerCollapse",
+                                "adExpand",
+                                "adCollapse",
+                                "minimize",
+                                "overlayViewDuration",
+                                "otherAdInteraction"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "vast_event"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_versions": {
+                              "items": {
+                                "enum": [
+                                  "4.0",
+                                  "4.1",
+                                  "4.2",
+                                  "4.3"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "vast_event": {
+                              "const": "loaded"
+                            }
+                          },
+                          "required": [
+                            "vast_event"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_versions": {
+                              "items": {
+                                "enum": [
+                                  "4.1",
+                                  "4.2",
+                                  "4.3"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "vast_event": {
+                              "const": "interactiveStart"
+                            }
+                          },
+                          "required": [
+                            "vast_event"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_versions": {
+                              "items": {
+                                "enum": [
+                                  "4.2",
+                                  "4.3"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "$comment": "VAST 4.0 omitted closeLinear; VAST 4.1 restored it from VAST 3.0. The 4.0 gap is intentional.",
+                        "if": {
+                          "properties": {
+                            "vast_event": {
+                              "const": "closeLinear"
+                            }
+                          },
+                          "required": [
+                            "vast_event"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "vast_versions": {
+                              "items": {
+                                "enum": [
+                                  "3.0",
+                                  "4.1",
+                                  "4.2",
+                                  "4.3"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "definitions": {
+                      "vast_event": {
+                        "$ref": "#/definitions/Shared21"
+                      },
+                      "vast_offset": {
+                        "$ref": "#/definitions/Shared23"
+                      },
+                      "vast_target": {
+                        "$ref": "#/definitions/Shared22"
+                      },
+                      "vast_versions": {
+                        "$ref": "#/definitions/Shared20"
+                      }
+                    },
+                    "description": "Shared VAST TrackingEvents constraints used by tracker assets and production execution selectors. The target/event matrix is closed, progress alone carries offset, and selector version arrays may contain only versions in which the event exists.",
+                    "properties": {
+                      "offset": {
+                        "$ref": "#/definitions/Shared23"
+                      },
+                      "target": {
+                        "$ref": "#/definitions/Shared22"
+                      },
+                      "vast_event": {
+                        "$ref": "#/definitions/Shared21"
+                      },
+                      "vast_versions": {
+                        "$ref": "#/definitions/Shared20"
+                      }
+                    },
+                    "title": "VAST Tracker Constraints",
+                    "type": "object"
+                  }
+                ],
+                "properties": {
+                  "asset_type": {
+                    "const": "vast_tracker",
+                    "type": "string"
+                  },
+                  "execution_actor": {
+                    "$ref": "#/definitions/Shared18"
+                  },
+                  "firing_paths": {
+                    "$ref": "#/definitions/Shared19"
+                  },
+                  "offset": {
+                    "$ref": "#/definitions/Shared23"
+                  },
+                  "selector_id": {
+                    "$ref": "#/definitions/Shared17"
+                  },
+                  "target": {
+                    "$ref": "#/definitions/Shared22"
+                  },
+                  "vast_event": {
+                    "$ref": "#/definitions/Shared21"
+                  },
+                  "vast_versions": {
+                    "$ref": "#/definitions/Shared20"
+                  }
+                },
+                "required": [
+                  "selector_id",
+                  "asset_type",
+                  "vast_versions",
+                  "vast_event",
+                  "target",
+                  "execution_actor",
+                  "firing_paths"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "allOf": [
+                      {
+                        "if": {
+                          "$ref": "#/definitions/Shared32"
+                        },
+                        "then": {
+                          "properties": {
+                            "daast_event": {
+                              "enum": [
+                                "creativeView",
+                                "start",
+                                "firstQuartile",
+                                "midpoint",
+                                "thirdQuartile",
+                                "complete",
+                                "mute",
+                                "unmute",
+                                "pause",
+                                "resume",
+                                "rewind",
+                                "skip",
+                                "progress"
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "$ref": "#/definitions/Shared33"
+                        },
+                        "then": {
+                          "properties": {
+                            "daast_event": {
+                              "$ref": "#/definitions/Shared38"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "else": {
+                          "$ref": "#/definitions/Shared35"
+                        },
+                        "if": {
+                          "properties": {
+                            "daast_event": {
+                              "$ref": "#/definitions/Shared39"
+                            }
+                          },
+                          "required": [
+                            "daast_event"
+                          ]
+                        },
+                        "then": {
+                          "$ref": "#/definitions/Shared34"
+                        }
+                      }
+                    ],
+                    "definitions": {
+                      "daast_event": {
+                        "$ref": "#/definitions/Shared25"
+                      },
+                      "daast_offset": {
+                        "$ref": "#/definitions/Shared23"
+                      },
+                      "daast_target": {
+                        "$ref": "#/definitions/Shared26"
+                      },
+                      "daast_versions": {
+                        "$ref": "#/definitions/Shared24"
+                      }
+                    },
+                    "description": "Shared DAAST tracker vocabulary and execution-selector constraints. The legacy asset vocabulary retains AdCP's historical close extension, while the closed standards selector matrix excludes it. Progress alone carries offset in selectors.",
+                    "properties": {
+                      "daast_event": {
+                        "$ref": "#/definitions/Shared25"
+                      },
+                      "daast_versions": {
+                        "$ref": "#/definitions/Shared24"
+                      },
+                      "offset": {
+                        "$ref": "#/definitions/Shared23"
+                      },
+                      "target": {
+                        "$ref": "#/definitions/Shared26"
+                      }
+                    },
+                    "title": "DAAST Tracker Constraints",
+                    "type": "object"
+                  }
+                ],
+                "properties": {
+                  "asset_type": {
+                    "const": "daast_tracker",
+                    "type": "string"
+                  },
+                  "daast_event": {
+                    "$ref": "#/definitions/Shared25"
+                  },
+                  "daast_versions": {
+                    "$ref": "#/definitions/Shared24"
+                  },
+                  "execution_actor": {
+                    "$ref": "#/definitions/Shared18"
+                  },
+                  "firing_paths": {
+                    "$ref": "#/definitions/Shared19"
+                  },
+                  "offset": {
+                    "$ref": "#/definitions/Shared23"
+                  },
+                  "selector_id": {
+                    "$ref": "#/definitions/Shared17"
+                  },
+                  "target": {
+                    "$ref": "#/definitions/Shared26"
+                  }
+                },
+                "required": [
+                  "selector_id",
+                  "asset_type",
+                  "daast_versions",
+                  "daast_event",
+                  "target",
+                  "execution_actor",
+                  "firing_paths"
+                ],
+                "type": "object"
+              }
+            ],
+            "title": "Tracker Execution Selector"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "complete",
+        "honored"
+      ],
+      "title": "Tracker Execution Contract",
+      "type": "object",
+      "x-adcp-validation": {
+        "asset_normalization": "Before selector matching, omitted pixel_tracker.method becomes img, omitted VAST/DAAST target becomes linear, and offset on a non-progress asset is ignored and removed. Existing 3.x asset schemas remain structurally permissive; the selector schema supplies the closed event/target matrix for contract matching.",
+        "cardinality": "Each accepted manifest tracker instance is initiated exactly once in total for each logical event occurrence; identical URLs are not deduplicated.",
+        "format_slot_satisfiability": "Every asset_type named by honored MUST have at least one matching first-class slot in the effective selected canonical format declaration. A contract cannot promise execution for an asset shape that the same format rejects structurally.",
+        "layer_derivation": "Publisher, placement, and seller effective-contract derivation is evaluated over atomic tuples of normalized non-version selector identity, one exact version (or null for pixel), execution_actor, and one firing_path. For a complete parent, every child tuple MUST exist in the parent, the child remains complete, and array compression MUST NOT create a version/path cross-product. An incomplete or omitted parent is not a ceiling: a child may add or omit affirmative tuples for its narrower scope, but remains incomplete until every applicable layer is complete. Omission from an incomplete child is undeclared, not an assertion that the tuple is unsupported.",
+        "selector_id_unique": true,
+        "structural_selector_identity_unique": true,
+        "version_sets": "For one non-version selector identity, version sets must be identical or disjoint; overlapping unequal sets are invalid."
+      }
+    }
+  },
+  "required": [
+    "format_kind",
+    "params"
+  ],
+  "title": "Canonical Format Option",
+  "type": "object",
+  "x-adcp-validation": {
+    "verifier_constraints": {
+      "canonical_params": {
+        "custom": "validate params against fetched format_schema uri and digest",
+        "non_custom": "validate params against /schemas/formats/canonical/{format_kind}.json",
+        "on_violation": "reject_product"
+      }
+    }
+  }
+}

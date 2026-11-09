@@ -1,0 +1,220 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Requirements for video creative assets. These define the technical constraints for video files.",
+  "properties": {
+    "aspect_ratio": {
+      "description": "Required aspect ratio (e.g., '16:9', '9:16')",
+      "pattern": "^\\d+:\\d+$",
+      "type": "string"
+    },
+    "audio_channels": {
+      "description": "Accepted audio channel configurations",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Audio channel configuration for audio and video assets",
+        "enum": [
+          "mono",
+          "stereo",
+          "5.1",
+          "7.1"
+        ],
+        "title": "Audio Channel Layout",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "audio_codecs": {
+      "description": "Accepted audio codecs (e.g., ['aac', 'pcm', 'ac3'])",
+      "items": {
+        "enum": [
+          "aac",
+          "pcm",
+          "ac3",
+          "eac3",
+          "mp3",
+          "opus",
+          "vorbis",
+          "flac"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "audio_required": {
+      "description": "Whether the video must include an audio track",
+      "type": "boolean"
+    },
+    "audio_sample_rates": {
+      "description": "Accepted audio sample rates in Hz (e.g., [44100, 48000])",
+      "items": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "type": "array"
+    },
+    "codecs": {
+      "description": "Accepted video codecs",
+      "items": {
+        "enum": [
+          "h264",
+          "h265",
+          "vp8",
+          "vp9",
+          "av1",
+          "prores"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "containers": {
+      "description": "Accepted video container formats",
+      "items": {
+        "enum": [
+          "mp4",
+          "webm",
+          "mov",
+          "avi",
+          "mkv"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "frame_rate_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Required frame rate type. Broadcast and SSAI require constant frame rate for seamless splicing.",
+      "enum": [
+        "constant",
+        "variable"
+      ],
+      "enumDescriptions": {
+        "constant": "Constant frame rate (CFR) \u2014 each frame occupies an identical time interval",
+        "variable": "Variable frame rate (VFR) \u2014 frame intervals may differ"
+      },
+      "title": "Frame Rate Type",
+      "type": "string"
+    },
+    "frame_rates": {
+      "description": "Accepted frame rates in frames per second (e.g., [24, 30, 60])",
+      "items": {
+        "minimum": 1,
+        "type": "number"
+      },
+      "type": "array"
+    },
+    "gop_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Required GOP structure. SSAI and broadcast require closed GOPs for clean splice points.",
+      "enum": [
+        "closed",
+        "open"
+      ],
+      "enumDescriptions": {
+        "closed": "Each GOP is independently decodable \u2014 required for SSAI and broadcast splicing",
+        "open": "GOPs may reference frames from adjacent GOPs \u2014 not suitable for splicing"
+      },
+      "title": "GOP Type",
+      "type": "string"
+    },
+    "loudness_lufs": {
+      "description": "Target integrated loudness in LUFS (e.g., -24 for broadcast, -16 for streaming)",
+      "type": "number"
+    },
+    "loudness_tolerance_db": {
+      "description": "Acceptable deviation from loudness_lufs target in dB (e.g., 2 means -22 to -26 LUFS for a -24 target)",
+      "minimum": 0,
+      "type": "number"
+    },
+    "max_bitrate_kbps": {
+      "description": "Maximum video bitrate in kilobits per second",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_duration_ms": {
+      "description": "Maximum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_file_size_kb": {
+      "description": "Maximum file size, where 1 KB is exactly 1,000 bytes",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_gop_interval_seconds": {
+      "description": "Maximum keyframe interval in seconds. SSAI typically requires 1-2 second intervals.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "max_height": {
+      "description": "Maximum height in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_width": {
+      "description": "Maximum width in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_bitrate_kbps": {
+      "description": "Minimum video bitrate in kilobits per second",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_duration_ms": {
+      "description": "Minimum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_gop_interval_seconds": {
+      "description": "Minimum keyframe interval in seconds",
+      "minimum": 0,
+      "type": "number"
+    },
+    "min_height": {
+      "description": "Minimum height in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_width": {
+      "description": "Minimum width in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "moov_atom_position": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Required moov atom position in MP4 container. 'start' enables progressive download without buffering the entire file.",
+      "enum": [
+        "start",
+        "end"
+      ],
+      "enumDescriptions": {
+        "end": "moov atom at end of file \u2014 requires full download before playback can begin",
+        "start": "moov atom at beginning of file \u2014 enables progressive download and streaming delivery"
+      },
+      "title": "Moov Atom Position",
+      "type": "string"
+    },
+    "scan_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Required scan type. Modern delivery requires progressive scan.",
+      "enum": [
+        "progressive",
+        "interlaced"
+      ],
+      "enumDescriptions": {
+        "interlaced": "Alternating lines drawn in two passes per frame (legacy broadcast)",
+        "progressive": "All lines of each frame are drawn in sequence"
+      },
+      "title": "Scan Type",
+      "type": "string"
+    },
+    "true_peak_dbfs": {
+      "description": "Maximum true peak level in dBFS (e.g., -2 for broadcast)",
+      "type": "number"
+    }
+  },
+  "title": "Video Asset Requirements",
+  "type": "object"
+}

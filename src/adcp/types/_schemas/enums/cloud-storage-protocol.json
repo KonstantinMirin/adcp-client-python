@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Cloud storage protocols supported for offline file delivery",
+  "enum": [
+    "s3",
+    "gcs",
+    "azure_blob"
+  ],
+  "title": "Cloud Storage Protocol",
+  "type": "string"
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Unambiguous reference to an item availability overlay in one immutable incarnation of a buyer-managed catalog.",
+  "properties": {
+    "catalog_generation": {
+      "description": "Opaque seller-issued token for the referenced catalog incarnation. It remains stable across ordinary upserts and feed refreshes, changes when a deleted catalog_id is recreated, and MUST never be reused for that account and catalog_id.",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "catalog_generation"
+    },
+    "catalog_id": {
+      "description": "Buyer-assigned catalog ID.",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "catalog"
+    },
+    "item_id": {
+      "description": "Exact canonical item key used by Catalog.ids. For typed catalogs this is the type-specific identifier field; for product, inventory, and promotion catalogs it is the stable normalized source identifier retained during ingestion.",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "catalog_item"
+    }
+  },
+  "required": [
+    "catalog_id",
+    "catalog_generation",
+    "item_id"
+  ],
+  "title": "Catalog Item Availability Reference",
+  "type": "object"
+}

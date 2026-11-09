@@ -1,0 +1,119 @@
+# WORDS UPSTREAM'S OWN FLAT SURFACE RESOLVES TO A CLASS THEIR HAND-WRITTEN LAYER DECLARES.
+#
+# Derived from upstream 9.6.1's own `src/adcp/types/_eager.py` -- the module their
+# `adcp/types/__init__.py` resolves every flat `__getattr__` through, so it IS the authority
+# for what a flat word means on their wheel. A word bound there from `_generated`, `domains.**`,
+# `aliases` or `_forward_compat` names a GENERATED class and the alias is owed; a word bound
+# from any OTHER module of theirs names a class their hand-written layer declares, and
+# `_forward_compat` is excluded from the hand-written side because it re-exports the generated
+# class after patching it rather than declaring one.
+#
+# `final-state.md` reading 10: 'AND WHERE UPSTREAM'S NAME MEANS A DIFFERENT SET OF VALUES, AN
+# ALIAS IS A DEFECT AND NOT A BRIDGE ... An alias there hands a caller something that silently
+# is not what it asked for, which is worse than an import error. That name takes a migration
+# note naming both sets.' Proved per element on the leading case: their
+# `canonical_creative.Format` requires [format_kind, params]; `core/format.json` requires
+# [format_id, name]; the two share no required element, so they are disjoint on their face and
+# need no further argument.
+#
+# Re-derive: survey/node_keyed_aliases.py --refresh-hand-written <their _eager.py>
+word	their declaring module
+AccountResponse	adcp.types.projections
+AgentConfig	adcp.types.core
+BrandSource	adcp.types.registry
+BusinessEntityResponse	adcp.types.projections
+CanonicalFormatKindStr	adcp.types.canonical_creative
+CreateMediaBuyErrorResponse	adcp.types.canonical_creative
+CreateMediaBuyResponse	adcp.types.canonical_creative
+CreateMediaBuyResponse1	adcp.types.canonical_creative
+CreateMediaBuySubmittedResponse	adcp.types.canonical_creative
+CreateMediaBuySuccessResponse	adcp.types.canonical_creative
+Creative	adcp.types.canonical_creative
+CreativeAsset	adcp.types.canonical_creative
+CreativeFilters	adcp.types.canonical_creative
+CreativeManifest	adcp.types.canonical_creative
+CreativeVariant	adcp.types.canonical_creative
+Format	adcp.types.canonical_creative
+GetCreativeDeliveryResponse	adcp.types.canonical_creative
+GetMediaBuyDeliveryResponse	adcp.types.canonical_creative
+GetMediaBuysResponse	adcp.types.canonical_creative
+GetProductsRequest	adcp.types.canonical_creative
+GetProductsResponse	adcp.types.canonical_creative
+LegacyBuildCreativeErrorResponse	adcp.types.legacy
+LegacyBuildCreativeRequest	adcp.types.legacy
+LegacyBuildCreativeResponse	adcp.types.legacy
+LegacyBuildCreativeResponse1	adcp.types.legacy
+LegacyBuildCreativeResponse2	adcp.types.legacy
+LegacyBuildCreativeResponse3	adcp.types.legacy
+LegacyBuildCreativeResponse4	adcp.types.legacy
+LegacyBuildCreativeResponse5	adcp.types.legacy
+LegacyBuildCreativeResponse6	adcp.types.legacy
+LegacyBuildCreativeSubmittedResponse	adcp.types.legacy
+LegacyBuildCreativeSuccessResponse	adcp.types.legacy
+LegacyCreateMediaBuyErrorResponse	adcp.types.legacy
+LegacyCreateMediaBuyRequest	adcp.types.legacy
+LegacyCreateMediaBuySubmittedResponse	adcp.types.legacy
+LegacyCreateMediaBuySuccessResponse	adcp.types.legacy
+LegacyCreativeAsset	adcp.types.legacy
+LegacyCreativeFilters	adcp.types.legacy
+LegacyFormat	adcp.types.legacy
+LegacyFormatId	adcp.types.legacy
+LegacyFormatReferenceStructuredObject	adcp.types.legacy
+LegacyGetCreativeDeliveryResponse	adcp.types.legacy
+LegacyGetMediaBuyDeliveryResponse	adcp.types.legacy
+LegacyGetMediaBuysResponse	adcp.types.legacy
+LegacyGetProductsRequest	adcp.types.legacy
+LegacyGetProductsResponse	adcp.types.legacy
+LegacyListCreativeFormatsRequest	adcp.types.legacy
+LegacyListCreativeFormatsResponse	adcp.types.legacy
+LegacyListCreativesRequest	adcp.types.legacy
+LegacyListCreativesResponse	adcp.types.legacy
+LegacyPackage	adcp.types.legacy
+LegacyPackageRequest	adcp.types.legacy
+LegacyPackageUpdate	adcp.types.legacy
+LegacyPlacement	adcp.types.legacy
+LegacyPreviewCreativeBatchResponse	adcp.types.legacy
+LegacyPreviewCreativeRequest	adcp.types.legacy
+LegacyPreviewCreativeResponse	adcp.types.legacy
+LegacyPreviewCreativeResponse1	adcp.types.legacy
+LegacyPreviewCreativeResponse2	adcp.types.legacy
+LegacyPreviewCreativeResponse3	adcp.types.legacy
+LegacyPreviewCreativeResponse4	adcp.types.legacy
+LegacyPreviewCreativeSingleResponse	adcp.types.legacy
+LegacyPreviewCreativeSubmittedResponse	adcp.types.legacy
+LegacyPreviewCreativeVariantResponse	adcp.types.legacy
+LegacyProduct	adcp.types.legacy
+LegacyProductFilters	adcp.types.legacy
+LegacyProductFormatDeclaration	adcp.types.legacy
+LegacySyncCreativesRequest	adcp.types.legacy
+LegacyUpdateMediaBuyRequest	adcp.types.legacy
+ListCreativesRequest	adcp.types.canonical_creative
+ListCreativesResponse	adcp.types.canonical_creative
+MEDIA_BUY_LEGACY_STATUS_VALUES	adcp.types.media_buy_status_helpers
+Member	adcp.types.core
+Package	adcp.types.canonical_creative
+PackageRequest	adcp.types.canonical_creative
+PackageUpdate	adcp.types.canonical_creative
+Placement	adcp.types.canonical_creative
+Policy	adcp.types.core
+PolicyExemplar	adcp.types.core
+PolicyExemplars	adcp.types.core
+PolicyHistory	adcp.types.core
+PolicyRevision	adcp.types.core
+PolicySummary	adcp.types.core
+Product	adcp.types.canonical_creative
+ProductFilters	adcp.types.canonical_creative
+ProductFormatDeclaration	adcp.types.canonical_creative
+Protocol	adcp.types.core
+ResolvedBrand	adcp.types.core
+ResolvedProperty	adcp.types.core
+SchemaVariant	adcp.types.variants
+SyncCreativesRequest	adcp.types.canonical_creative
+TaskResult	adcp.types.core
+UpdateMediaBuyErrorResponse	adcp.types.canonical_creative
+UpdateMediaBuyResponse	adcp.types.canonical_creative
+UpdateMediaBuyResponse1	adcp.types.canonical_creative
+UpdateMediaBuyResponse3	adcp.types.canonical_creative
+UpdateMediaBuySubmittedResponse	adcp.types.canonical_creative
+UpdateMediaBuySuccessResponse	adcp.types.canonical_creative
+WebhookMetadata	adcp.types.core

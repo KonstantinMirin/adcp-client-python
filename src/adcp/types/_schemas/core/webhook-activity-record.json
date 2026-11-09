@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Single webhook delivery attempt surfaced to a calling principal as a buyer-side debug aid. Represents one HTTP attempt of a logical webhook fire from the seller to the buyer's registered endpoint \u2014 retries of the same logical fire share `idempotency_key` and differ by `attempt`. This is the canonical record shape for any AdCP resource that exposes a `webhook_activity[]` log on its read API; see snapshot-and-log.mdx \u00a7 Webhook activity log pattern for the full normative contract (scoping, retention, three-state presence, request-field conventions).",
+  "properties": {
+    "attempt": {
+      "description": "1-indexed retry counter for this logical fire. Initial fire is attempt=1; retries increment. Sellers MUST emit one record per attempt, so a successful first-attempt fire appears as a single record with `attempt: 1` and a 3-attempt retry trail appears as three records sharing `idempotency_key`.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "completed_at": {
+      "description": "ISO 8601 timestamp when the seller observed the response (or terminal timeout / connection error \u2014 for `timeout` and `connection_error` outcomes, `completed_at` is set to the moment the seller declared the attempt terminal). Explicitly `null` when the attempt is still in flight or queued for retry (status `pending`); MUST be set as `null` rather than omitted so callers can distinguish 'still in flight' from 'field missing'.",
+      "format": "date-time",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "error_message": {
+      "description": "Short human-readable server-side classification of why this attempt did not succeed (e.g., `connection refused`, `TLS handshake timeout`, `HTTP 503 Service Unavailable`). Explicitly `null` for `success` (MUST be set as `null` rather than omitted). Sellers MUST NOT include request headers, request body content, or response body content in this field \u2014 payload surfacing is reserved for a future `include_webhook_payloads` extension and is subject to stricter access controls. Sellers SHOULD also avoid including buyer-endpoint internal hostnames, stack traces, or other implementation detail leaked by the response \u2014 keep it a stable classification string.",
+      "maxLength": 500,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Resource-specific extension slot. Adopters MAY surface a resource-specific cross-reference (e.g., `creative_id` on a creative-lifecycle record, `media_buy_id` on a record nested inside an account-level read) under `ext` rather than adding top-level fields \u2014 the canonical record shape stays uniform across resources and the `ext` envelope absorbs per-resource needs. Top-level extensions are not permitted (`additionalProperties: false`).",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "fired_at": {
+      "description": "ISO 8601 timestamp when the seller initiated the HTTP request for this attempt.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "http_status_code": {
+      "description": "HTTP status code returned by the buyer's endpoint. Explicitly `null` when no HTTP response was received (status `timeout`, `connection_error`, or `pending`); MUST be set as `null` rather than omitted.",
+      "maximum": 599,
+      "minimum": 100,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "idempotency_key": {
+      "description": "Equals the `idempotency_key` carried in the webhook payload itself (see docs/building/by-layer/L3/webhooks.mdx \u00a7 Dedup by `idempotency_key`). Stable across retry attempts of the same logical fire \u2014 retries with `attempt` > 1 reuse this key. Buyers correlate this surface with their own endpoint logs via this exact field; the spec deliberately reuses the payload key rather than minting a parallel `delivery_id` so callers do not need a join table. Format is sender-defined; callers MUST treat as opaque.",
+      "type": "string"
+    },
+    "notification_id": {
+      "description": "Optional event-layer identifier copied verbatim from the webhook payload. For fires whose payload carries `notification_id`, sellers SHOULD populate this field on newly recorded attempts and, when populated, MUST copy the payload value without transformation. The field remains optional in AdCP 3.2 so sellers can return retained activity records created before they persisted event identity. Point-in-time delivery-report fires do not define `notification_id` and omit this field. Re-emissions of the same logical event have different `idempotency_key` values but reuse `notification_id`, allowing buyers to distinguish a re-emission from a transport retry. Callers MUST treat the value as opaque.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "notification_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Notification type carried by this fire, verbatim from the webhook payload. Includes delivery-report types (`scheduled`, `final`, `delayed`, `adjusted`, `window_update`), health notifications (`impairment`), and account-anchored indicator or creative-assignment invalidations from the shared registry. All share the same persistent-channel webhook contract and the same buyer-side debug need.",
+      "enum": [
+        "scheduled",
+        "final",
+        "delayed",
+        "adjusted",
+        "window_update",
+        "impairment",
+        "creative.status_changed",
+        "creative.assignment_changed",
+        "indicators.changed",
+        "creative.purged",
+        "account.status_changed",
+        "account.change_recorded",
+        "product.created",
+        "product.updated",
+        "product.priced",
+        "product.removed",
+        "signal.created",
+        "signal.updated",
+        "signal.priced",
+        "signal.removed",
+        "wholesale_feed.bulk_change",
+        "capabilities.changed",
+        "reporting.delivery_ready",
+        "reporting.status_changed",
+        "reporting.ledger_changed",
+        "principal.changed"
+      ],
+      "enumDescriptions": {
+        "account.change_recorded": "Experimental (account.change_feed) account-anchored invalidation. Sent once per committed material change represented in `list_account_changes`, including changes made through AdCP, a seller operator or system, another authorized principal, or a connected platform. Payload: `account-change-recorded-webhook.json`. Receivers drain from their own persisted feed cursor and then call the change record's repair task; the webhook is not authoritative current state. **notification_id**: equals `change_id`. Transport retries reuse one `idempotency_key`; deliberate re-emission uses a new delivery key with the same notification_id.",
+        "account.status_changed": "Account-anchored fire. Sent when an account lifecycle status changes after the initial sync_accounts result, including `pending_approval -> active`, `pending_approval -> rejected`, `active -> payment_required`, `active -> suspended`, recovery back to `active`, and terminal `closed`. Fires per subscriber against each `notification_configs[]` entry whose `event_types` includes this value. Payload: `account-status-changed-webhook.json`. The payload does not include the full account document or setup.url; receivers SHOULD re-run `list_accounts` for the account_id and reconcile from the authoritative account snapshot. **notification_id**: stable per (account_id, previous_status, status, observed_at) \u2014 re-emissions reuse the id; a fresh transition cycle receives a new id.",
+        "adjusted": "Off-cadence delivery report fire indicating that the seller has revised a prior window's metrics (e.g., IVT filtering applied, attribution model run, makegood adjustment). Buyers SHOULD replace prior values for the affected window. **notification_id**: absent \u2014 point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only.",
+        "capabilities.changed": "Agent-anchored fire. Sent when the seller's advertised `get_adcp_capabilities` document materially changes. Fires per subscriber against each caller-scoped agent `notification_configs[]` entry managed through `sync_principal` or `sync_agent_notification_configs` whose `event_types` includes this value. Payload: `capabilities-changed-webhook.json`. The payload does not include the full capability document; receivers SHOULD re-run `get_adcp_capabilities`, compare `adcp.capability_changes.capabilities_version` or `last_modified` when present, and update their cache from that fresh response. **notification_id**: stable per material capability revision; re-emissions of the same revision reuse the id, and a later material revision receives a new id.",
+        "creative.assignment_changed": "Optional account-anchored invalidation for any seller that can detect assignment or approval changes, including inline-only sellers without an indicator catalog. Sent when a package\u2013creative relationship is assigned, unassigned, or its aggregate/scoped approval outcome changes. Payload identifies account, media buy, package, and creative; receivers repair through get_media_buys. list_creatives may provide a bounded reverse projection but is not required. **notification_id**: stable per logical assignment change across re-emissions.",
+        "creative.purged": "Account-anchored fire. Sent when a creative is destroyed from the seller's library (retention sweep, takedown, legal erasure). Fires per subscriber against each `notification_configs[]` entry whose `event_types` includes this value. Soft purges retain a tombstone on `list_creatives` (with `include_purged: true`) for the webhook retention window and form a conformant snapshot/log pair. Hard purges do not retain a tombstone because compelled legal erasure forbids read-side recovery; they are explicitly outside the snapshot/log contract, and the webhook is the buyer's only signal. Payload: `creative-purged-webhook.json`. **notification_id**: stable per (creative_id, purge event); not coalesced (purge is a discrete destruction event).",
+        "creative.status_changed": "Account-anchored fire. Sent when a creative in the account's library transitions status by seller or system initiative \u2014 `pending_review \u2192 approved`/`rejected`, `approved \u2192 pending_review` (re-review), `approved \u2192 suspended` (recoverable dependency/authorization loss), `suspended \u2192 approved` (recovery), `suspended \u2192 rejected` (terminal dependency/authorization loss), `approved \u2192 rejected` (post-approval revocation), `approved \u2192 archived` (seller-initiated). Fires per subscriber against each `notification_configs[]` entry whose `event_types` includes this value. Buyer-initiated transitions (archive, unarchive, resubmit) do NOT fire \u2014 those are acknowledged on the `sync_creatives` response path. Payload: `creative-status-changed-webhook.json`. **notification_id**: stable per (creative_id, transition) \u2014 re-emissions reuse the id; a fresh transition gets a new id.",
+        "delayed": "Off-cadence delivery report fire indicating that the seller has detected late-arriving data for a prior window. Buyers SHOULD reconcile the affected window against this fire. **notification_id**: absent \u2014 point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only.",
+        "final": "Terminal delivery report fire. Sent once after the media buy reaches a terminal lifecycle state (completed, canceled, rejected). Carries final delivery aggregates. **notification_id**: absent \u2014 point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only.",
+        "impairment": "Dependency state change fire. Sent when a resource referenced by the buy enters an offline state that affects delivery for at least one package. Payload carries the impairment object and the buy's updated health. See impairment.json and the impairment.coherence assertion. **notification_id**: equals `impairment.impairment_id`. Stable across re-emissions of the same open impairment and across the closing fire that signals resolution; a new impairment for the same resource after closure receives a new id.",
+        "indicators.changed": "Account-anchored invalidation. Sent to subscribed buyers when the semantic indicator assertion set or evaluated coverage changes on a media buy, package, or package\u2013creative assignment, including invalidation after a material in-place creative update. A timestamp-only reevaluation does not fire. Payload identifies the relationship and affected types; get_media_buys is the universal repair path and creative-library sellers may additionally declare list_creatives. **notification_id**: stable per logical snapshot change across re-emissions.",
+        "principal.changed": "Caller-anchored invalidation. Sent when the seller changes the authenticated principal's standing configuration through a seller-driven transition that does not advance configuration_version: a reporting destination moving between validating, ready, action_required, and rejected, a setup action nearing or passing expires_at, a proof invalidation, or a change to the accepted declarations intersection. Not fired for the caller's own mutations \u2014 the sync response already reports those. Payload: `principal-changed-webhook.json`, an invalidation signal only; receivers repair by re-reading `get_principal`. **notification_id**: stable per logical principal-state transition; re-emissions reuse the id, and a later distinct transition receives a new id.",
+        "product.created": "Sent when a new product is added to the seller's wholesale product feed for the subscriber's account scope. Payload: `wholesale-feed-webhook.json` carrying a `product.created` event with the full post-change Product object. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "product.priced": "Sent when product pricing changes in the seller's wholesale product feed for the subscriber's account scope. Payload: `wholesale-feed-webhook.json` carrying a `product.priced` event with the full post-change `pricing_options[]`, optional retired pricing ids, and optional `effective_at`. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "product.removed": "Sent when a product is no longer available in the seller's wholesale product feed for the subscriber's account scope. Payload: `wholesale-feed-webhook.json` carrying a `product.removed` event with the product id, optional removal reason, and cache scope. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "product.updated": "Sent when product metadata changes in the seller's wholesale product feed for the subscriber's account scope. Payload: `wholesale-feed-webhook.json` carrying a `product.updated` event with the changed Product object when available and indicator `changed_fields[]`. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "reporting.delivery_ready": "Experimental account-anchored readiness doorbell, managed-delivery tier only (it names a materialization at a destination; Core configurations never fire it). Fires after one immutable reporting materialization is observable through the intended consumer path. Payload: `reporting-delivery-ready-webhook.json`; it carries identities and readiness metadata, never report rows or credentials. Receivers repair missed, duplicate, or out-of-order fires through `get_reporting_status`. **notification_id**: stable per reporting_materialization_id reaching its ready state across re-emissions; a new retry/materialization receives a new id.",
+        "reporting.ledger_changed": "Experimental account-anchored invalidation, valid in every reporting tier including Core. Fires for each newly committed revision or post-official adjustment whether or not obligation health changes. Payload: `reporting-ledger-changed-webhook.json`; it carries the immutable record identity but no rows or credentials. Receivers repair missed, duplicate, or out-of-order fires from their own durable get_reporting_status changes_after checkpoint. **notification_id**: stable per reporting_revision_id or reporting_adjustment_id; re-emissions reuse it.",
+        "reporting.status_changed": "Experimental account-anchored invalidation, valid in every reporting tier including Core. Fires when an obligation or configuration health state transitions in either direction \u2014 waiting to delayed, delayed to action_required, and recovery back to healthy or complete \u2014 including purely clock-driven transitions that no positive doorbell would ever announce. Payload: `reporting-status-changed-webhook.json`; it carries identifiers, the new health, and stable issue ids, never report rows. Push is optional in every tier: polling `get_reporting_status` remains the authoritative recovery path, and receivers repair every fire through it. **notification_id**: stable per (reporting_obligation_id or delivery_config_id, health transition); re-emissions reuse the id, and a later distinct transition receives a new id.",
+        "scheduled": "Scheduled delivery report fire. Fired at the cadence the buyer registered on reporting_webhook (e.g., hourly, daily). Carries the window's delivery metrics. **notification_id**: absent \u2014 point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only.",
+        "signal.created": "Sent when a new signal is added to the seller's wholesale signals feed for the subscriber's account scope. Payload: `wholesale-feed-webhook.json` carrying a `signal.created` event with the post-change signal identifiers and available metadata. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "signal.priced": "Sent when signal pricing changes in the seller's wholesale signals feed for the subscriber's account scope. Payload: `wholesale-feed-webhook.json` carrying a `signal.priced` event with the full post-change `pricing_options[]`, optional retired pricing ids, and optional `effective_at`. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "signal.removed": "Sent when a signal is no longer available in the seller's wholesale signals feed for the subscriber's account scope. Payload: `wholesale-feed-webhook.json` carrying a `signal.removed` event with the signal id, optional removal reason, and cache scope. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "signal.updated": "Sent when signal metadata changes in the seller's wholesale signals feed for the subscriber's account scope. Payload: `wholesale-feed-webhook.json` carrying a `signal.updated` event with the changed signal data when available and indicator `changed_fields[]`. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "wholesale_feed.bulk_change": "Sent when one operation changes too many wholesale product-feed or wholesale signals-feed entities for useful per-entity pushes. Payload: `wholesale-feed-webhook.json` carrying a `wholesale_feed.bulk_change` event with one affected entity type, approximate count, and repair recommendation. Receivers repair products through `list_products` (or deprecated 3.x `get_products`) and signals through `get_signals`. **notification_id**: equals `event.event_id`; re-emissions of the same logical change reuse the same value under a new `idempotency_key`.",
+        "window_update": "Off-cadence delivery report fire indicating that a wider measurement window supersedes an earlier window for the same reporting period (for example, C3 superseding live or C7 superseding C3). Buyers SHOULD replace the slice named by `supersedes_window` with the new `measurement_window` data. **notification_id**: absent \u2014 point-in-time data event with no persistent state id (snapshot-and-log Rule 1). Dedupe by `idempotency_key` only."
+      },
+      "title": "Notification Type",
+      "type": "string"
+    },
+    "payload_size_bytes": {
+      "description": "Size of the request body the seller sent, in bytes. Useful for diagnosing oversized-payload rejections from the buyer's gateway.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "response_time_ms": {
+      "description": "Wall-clock latency between request send and response receipt, in milliseconds. Explicitly `null` when the attempt did not complete (`timeout`, `connection_error`, `pending`); MUST be set as `null` rather than omitted.",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "sequence_number": {
+      "description": "Sequence number from the webhook payload. Surfaced here so the buyer can spot stale-sequence drops and gaps without correlating against their own endpoint log. Absent for notification types that do not carry a sequence number.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "status": {
+      "description": "Outcome of this attempt. `success` \u2014 response received with 2xx (`http_status_code` populated). `failed` \u2014 response received with non-2xx (`http_status_code` populated). `timeout` \u2014 no response within the seller's configured timeout (`http_status_code` null). `connection_error` \u2014 DNS / TLS / socket failure before any HTTP response (`http_status_code` null). `pending` \u2014 attempt is in flight or queued for retry (`completed_at` null, `http_status_code` null). The `timeout` / `connection_error` split is intentional and operationally distinct: `timeout` typically signals a slow / overloaded buyer endpoint, `connection_error` typically signals it is unreachable or misconfigured.",
+      "enum": [
+        "success",
+        "failed",
+        "timeout",
+        "connection_error",
+        "pending"
+      ],
+      "type": "string"
+    },
+    "subscriber_id": {
+      "description": "Identifies which registered webhook subscriber received this fire. **Required on records from account-anchored notification channels** (`notification_configs[]` registered via `sync_accounts`) \u2014 every subscriber has a `subscriber_id` at registration time, the seller MUST echo it on every fire and every activity record. **Optional on records from per-resource push channels** (`push_notification_config` on a media buy or task) \u2014 the calling principal is unambiguous in single-subscriber configurations and the field MAY be omitted; sellers MUST populate it once `reporting_webhook` adopts multi-subscriber (per #3009 in AdCP 4.0). Buyers MUST NOT use absence as a signal that no other subscribers exist; that information is not exposed by this surface.",
+      "type": "string"
+    },
+    "url": {
+      "description": "Target URL for this fire. Query string and fragment MUST be stripped before surfacing \u2014 buyers commonly stash bearer tokens in the query string and sellers MUST NOT echo those back through this debug surface. Sellers SHOULD additionally redact path segments matching obvious secret patterns (e.g., a path segment that is high-entropy random material or matches a UUID / token format). Buyers matching this against their own configured URL should compare by origin + path; query strings will not match and that mismatch is expected.",
+      "format": "uri",
+      "type": "string"
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "fired_at",
+    "notification_type",
+    "attempt",
+    "status",
+    "url"
+  ],
+  "title": "Webhook Activity Record",
+  "type": "object"
+}

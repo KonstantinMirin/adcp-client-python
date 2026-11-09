@@ -1,0 +1,1 @@
+[{"destination": {"destination_ref": "0", "mode": "existing"}, "format": "csv", "orchestration": "consumer_managed", "pattern": "file_transfer", "transport": "a"}]

@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Cryptographic digest of logical reporting rows under an immutable canonicalization contract.",
+  "properties": {
+    "algorithm": {
+      "const": "sha256",
+      "type": "string"
+    },
+    "canonicalization_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "canonicalization_sha256": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "canonicalization_uri": {
+      "description": "Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.",
+      "format": "uri",
+      "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+      "type": "string"
+    },
+    "value": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "algorithm",
+    "value",
+    "canonicalization_id",
+    "canonicalization_uri",
+    "canonicalization_sha256"
+  ],
+  "title": "Reporting Canonical Content Digest",
+  "type": "object",
+  "x-status": "experimental"
+}

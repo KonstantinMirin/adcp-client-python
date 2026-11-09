@@ -1,0 +1,415 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
+  "description": "A single bookable unit within a collection \u2014 one episode, issue, event, or rotation period. The parent collection's kind indicates how to interpret each installment: TV/podcast episodes, print issues, live event airings, newsletter editions, or DOOH rotation periods. Installments inherit collection-level fields they don't override: content_rating defaults to the collection's baseline, guest_talent is additive to the collection's recurring talent, and topics add context beyond the collection's genre.",
+  "properties": {
+    "ad_inventory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Break-based ad inventory for this installment. For non-break formats (host reads, integrations), use product placements.",
+      "properties": {
+        "expected_breaks": {
+          "description": "Number of planned ad breaks in the installment",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_ad_duration_seconds": {
+          "description": "Maximum duration in seconds for a single ad within a break. Buyers need this to know whether their creative fits.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "supported_formats": {
+          "description": "Ad format types supported in breaks (e.g., 'video', 'audio', 'display')",
+          "items": {
+            "$ref": "#/definitions/Shared0"
+          },
+          "type": "array"
+        },
+        "total_ad_seconds": {
+          "description": "Total seconds of ad time across all breaks",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unplanned_breaks": {
+          "description": "Whether ad breaks are dynamic and driven by live conditions (sports timeouts, election coverage). When false, all breaks are pre-defined.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expected_breaks"
+      ],
+      "title": "Ad Inventory Configuration",
+      "type": "object"
+    },
+    "collection_id": {
+      "deprecated": true,
+      "description": "Deprecated publisher-domain-free parent collection shorthand. Use collection_ref. It is unambiguous only when the enclosing product addresses one publisher namespace.",
+      "type": "string",
+      "x-entity": "collection"
+    },
+    "collection_ref": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Canonical parent collection identity. Products spanning multiple collections or publisher namespaces MUST use this field.",
+      "properties": {
+        "collection_id": {
+          "description": "Collection ID from the publisher's adagents.json collection catalog.",
+          "minLength": 1,
+          "type": "string",
+          "x-entity": "collection"
+        },
+        "publisher_domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Domain where the adagents.json declaring this collection is hosted.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "publisher_domain",
+        "collection_id"
+      ],
+      "title": "Collection Reference",
+      "type": "object"
+    },
+    "content_rating": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Installment-specific content rating. Overrides the collection's baseline content_rating when present.",
+      "properties": {
+        "rating": {
+          "description": "Rating value within the system (e.g., 'TV-PG', 'R', 'explicit')",
+          "type": "string"
+        },
+        "system": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Rating system used",
+          "enum": [
+            "tv_parental",
+            "mpaa",
+            "podcast",
+            "esrb",
+            "bbfc",
+            "fsk",
+            "acb",
+            "chvrs",
+            "csa",
+            "pegi",
+            "custom"
+          ],
+          "enumDescriptions": {
+            "acb": "Australian Classification Board (G, PG, M, MA15+, R18+)",
+            "bbfc": "British Board of Film Classification (U, PG, 12A, 12, 15, 18, R18)",
+            "chvrs": "Canadian Home Video Rating System (G, PG, 14A, 18A, R, A)",
+            "csa": "Conseil superieur de l'audiovisuel / Arcom (-10, -12, -16, -18) \u2014 France",
+            "custom": "Publisher-defined rating system with free-form values",
+            "esrb": "Entertainment Software Rating Board (E, E10+, T, M, AO) \u2014 US/Canada",
+            "fsk": "Freiwillige Selbstkontrolle der Filmwirtschaft (0, 6, 12, 16, 18) \u2014 Germany",
+            "mpaa": "Motion Picture Association film ratings (G, PG, PG-13, R, NC-17)",
+            "pegi": "Pan European Game Information (3, 7, 12, 16, 18) \u2014 pan-European gaming",
+            "podcast": "Podcast content advisories (clean, explicit)",
+            "tv_parental": "US TV Parental Guidelines (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA)"
+          },
+          "title": "Content Rating System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "rating"
+      ],
+      "title": "Content Rating",
+      "type": "object"
+    },
+    "deadlines": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Booking, cancellation, and material submission deadlines for this installment. Present when the installment has time-sensitive inventory that requires advance commitment or material delivery.",
+      "minProperties": 1,
+      "properties": {
+        "booking_deadline": {
+          "description": "Last date/time to book a placement in this installment (ISO 8601). After this point, the seller will not accept new bookings.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "cancellation_deadline": {
+          "description": "Last date/time to cancel without penalty (ISO 8601). Cancellations after this point may incur fees per the seller's terms.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "material_deadlines": {
+          "description": "Stages for creative material submission. Items MUST be in chronological order by due_at (earliest first). Typical pattern: 'draft' for raw materials the seller will process, 'final' for production-ready assets. Print example: draft artwork then press-ready PDF. Influencer example: talking points then approved script.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
+            "description": "A deadline for creative material submission. Sellers declare stages to distinguish draft materials (e.g., talking points, raw artwork) from production-ready assets (e.g., approved scripts, press-ready PDFs).",
+            "properties": {
+              "due_at": {
+                "description": "When materials for this stage are due (ISO 8601)",
+                "format": "date-time",
+                "type": "string"
+              },
+              "label": {
+                "description": "What the seller needs at this stage (e.g., 'Talking points and brand guidelines', 'Press-ready PDF with bleed')",
+                "type": "string"
+              },
+              "stage": {
+                "description": "Submission stage identifier. Use 'draft' for materials that need seller processing and 'final' for production-ready assets. Sellers may define additional stages.",
+                "examples": [
+                  "draft",
+                  "final"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "stage",
+              "due_at"
+            ],
+            "title": "Material Deadline",
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "title": "Installment Deadlines",
+      "type": "object"
+    },
+    "derivative_of": {
+      "additionalProperties": false,
+      "description": "When this installment is a clip, highlight, or recap derived from a full installment. The source installment_id must reference an installment within the same response.",
+      "properties": {
+        "installment_id": {
+          "description": "The source installment this content is derived from",
+          "type": "string",
+          "x-entity": "installment"
+        },
+        "type": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "What kind of derivative content this is",
+          "enum": [
+            "clip",
+            "highlight",
+            "recap",
+            "trailer",
+            "bonus"
+          ],
+          "enumDescriptions": {
+            "bonus": "Supplementary content (behind-the-scenes, extended interviews, deleted segments)",
+            "clip": "Short excerpt from the source installment",
+            "highlight": "Editorially curated best-of segment from the source installment",
+            "recap": "Summary of the source installment's content",
+            "trailer": "Promotional content for the source installment"
+          },
+          "title": "Derivative Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "installment_id",
+        "type"
+      ],
+      "type": "object"
+    },
+    "duration_seconds": {
+      "description": "Expected duration of the installment in seconds",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "flexible_end": {
+      "description": "Whether the end time is approximate (live events, sports)",
+      "type": "boolean"
+    },
+    "guest_talent": {
+      "description": "Installment-specific guests and talent. Additive to the collection's recurring talent.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
+        "description": "A person associated with a collection or installment, with an optional link to their brand.json identity",
+        "properties": {
+          "brand_url": {
+            "description": "URL to this person's brand.json entry. Enables buyer agents to evaluate the talent's brand identity and associations.",
+            "format": "uri",
+            "type": "string"
+          },
+          "name": {
+            "description": "Person's name as credited on the collection",
+            "type": "string"
+          },
+          "role": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Role of this person on the collection or installment",
+            "enum": [
+              "host",
+              "guest",
+              "creator",
+              "cast",
+              "narrator",
+              "producer",
+              "correspondent",
+              "commentator",
+              "analyst"
+            ],
+            "enumDescriptions": {
+              "analyst": "Color commentator or subject matter analyst",
+              "cast": "Regular or recurring cast member",
+              "commentator": "Play-by-play or event commentator",
+              "correspondent": "Reporter or field correspondent",
+              "creator": "Collection creator or showrunner",
+              "guest": "Guest appearing on a specific installment",
+              "host": "Primary host or anchor of the collection",
+              "narrator": "Narrator or voiceover",
+              "producer": "Executive or lead producer with on-screen presence"
+            },
+            "title": "Talent Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "name"
+        ],
+        "title": "Talent",
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "installment_id": {
+      "description": "Unique identifier for this installment within the collection",
+      "type": "string",
+      "x-entity": "installment"
+    },
+    "installment_number": {
+      "description": "Installment number within the season (e.g., '3', '47')",
+      "type": "string"
+    },
+    "name": {
+      "description": "Installment title",
+      "type": "string"
+    },
+    "scheduled_at": {
+      "description": "When the installment airs or publishes (ISO 8601)",
+      "format": "date-time",
+      "type": "string"
+    },
+    "season": {
+      "description": "Season identifier (e.g., '1', '2024', 'spring_2026')",
+      "type": "string"
+    },
+    "special": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Installment-specific event context. When present, this installment is anchored to a real-world event. Overrides the collection-level special when present.",
+      "properties": {
+        "category": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Category of the event",
+          "enum": [
+            "awards",
+            "championship",
+            "concert",
+            "conference",
+            "election",
+            "festival",
+            "gala",
+            "holiday",
+            "premiere",
+            "product_launch",
+            "reunion",
+            "tribute"
+          ],
+          "enumDescriptions": {
+            "awards": "Awards ceremony (Grammys, Emmys, Oscars)",
+            "championship": "Championship or tournament event (Super Bowl, World Cup, Olympics)",
+            "concert": "Live concert or music event",
+            "conference": "Industry conference or summit",
+            "election": "Election coverage or political event",
+            "festival": "Festival event (film, music, cultural)",
+            "gala": "Gala, fundraiser, or formal event",
+            "holiday": "Holiday special or seasonal event",
+            "premiere": "Premiere or launch event",
+            "product_launch": "Product reveal or launch event",
+            "reunion": "Reunion or anniversary special",
+            "tribute": "Tribute or memorial special"
+          },
+          "title": "Special Category",
+          "type": "string"
+        },
+        "ends": {
+          "description": "When the event ends (ISO 8601). Omit for single-day events.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the event (e.g., 'Olympics 2028', 'Super Bowl LXI')",
+          "type": "string"
+        },
+        "starts": {
+          "description": "When the event starts (ISO 8601)",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Special",
+      "type": "object"
+    },
+    "status": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Lifecycle status of the installment",
+      "enum": [
+        "scheduled",
+        "tentative",
+        "live",
+        "postponed",
+        "cancelled",
+        "aired",
+        "published"
+      ],
+      "enumDescriptions": {
+        "aired": "Already broadcast (live/linear content)",
+        "cancelled": "Will not happen",
+        "live": "Currently airing or streaming right now",
+        "postponed": "Was scheduled but delayed to a future date",
+        "published": "Already released (on-demand content)",
+        "scheduled": "Confirmed, will happen as planned",
+        "tentative": "May not happen (e.g., playoff Game 7 depends on Game 6)"
+      },
+      "title": "Installment Status",
+      "type": "string"
+    },
+    "topics": {
+      "description": "Content topics for this installment. Uses the same taxonomy as the collection's genre_taxonomy when present. Enables installment-level brand safety evaluation beyond content_rating.",
+      "items": {
+        "$ref": "#/definitions/Shared0"
+      },
+      "type": "array"
+    },
+    "valid_until": {
+      "description": "When this installment data expires and should be re-queried. Agents should re-query before committing budget to products with tentative installments.",
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "required": [
+    "installment_id"
+  ],
+  "title": "Installment",
+  "type": "object"
+}

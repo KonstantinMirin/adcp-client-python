@@ -1,0 +1,1 @@
+[{"max_impressions_constraints": {"allowed_values": [1]}, "supported_control_modes": ["max_impressions"], "supported_per_units": ["custom"], "window_constraints": [{"allowed_intervals": [1], "unit": "days"}]}]

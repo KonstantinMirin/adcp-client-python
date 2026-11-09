@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Whether producer delivery evidence is sufficient or an authenticated consumer receipt is required.",
+  "enum": [
+    "delivery_only",
+    "consumer_receipt"
+  ],
+  "title": "Reporting Reconciliation Mode",
+  "type": "string",
+  "x-status": "experimental"
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.",
+  "enum": [
+    "observed",
+    "declared",
+    "derived",
+    "inferred",
+    "modeled",
+    "projected"
+  ],
+  "title": "Audience Evidence Methodology",
+  "type": "string"
+}

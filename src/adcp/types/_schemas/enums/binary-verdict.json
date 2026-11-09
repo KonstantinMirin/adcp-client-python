@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Strictly two-outcome evaluation result used for overall record-level verdicts in content standards tasks. For per-feature breakdowns that include warning and unevaluated states, see feature-check-status.",
+  "enum": [
+    "pass",
+    "fail"
+  ],
+  "enumDescriptions": {
+    "fail": "The evaluated record failed one or more content standard checks",
+    "pass": "The evaluated record meets all applicable content standards"
+  },
+  "title": "Binary Verdict",
+  "type": "string"
+}

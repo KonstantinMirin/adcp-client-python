@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Canonical renderer-facing logo slot. Use when selecting a logo variant from brand.json for a specific UI or creative placement.",
+  "enum": [
+    "logo_card_light",
+    "logo_card_dark",
+    "profile_mark",
+    "favicon",
+    "app_icon",
+    "social_profile_mark",
+    "nav_header",
+    "footer",
+    "email_header",
+    "watermark",
+    "ad_end_card",
+    "co_brand_lockup",
+    "marketplace_listing"
+  ],
+  "enumDescriptions": {
+    "ad_end_card": "Advertising end card, especially video or CTV.",
+    "app_icon": "Application icon or launcher icon.",
+    "co_brand_lockup": "Co-brand, partner, sponsor, or secondary-mark lockup.",
+    "email_header": "Email header logo.",
+    "favicon": "Browser favicon or similarly tiny tab/bookmark icon.",
+    "footer": "Footer logo.",
+    "logo_card_dark": "Logo rendered in a card or framed placement on a dark background.",
+    "logo_card_light": "Logo rendered in a card or framed placement on a light background.",
+    "marketplace_listing": "Marketplace, catalog, directory, or store listing logo.",
+    "nav_header": "Primary navigation header logo.",
+    "profile_mark": "Small square logo mark for profile-style UI. Distinct from brand.json's top-level animated or conversational avatar object.",
+    "social_profile_mark": "Social profile logo mark or feed identity mark.",
+    "watermark": "Subtle watermark or bug."
+  },
+  "title": "Logo Slot",
+  "type": "string"
+}

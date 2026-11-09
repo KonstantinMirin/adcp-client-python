@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Machine-readable availability state for an SI offering or a matching product. Provides a structured counterpart to the free-string availability_summary and aligns to the same vocabulary as the free-string unavailable_reason (sold_out, expired, region_restricted, inactive) plus positive in-stock states.",
+  "enum": [
+    "available",
+    "limited",
+    "sold_out",
+    "expired",
+    "region_restricted",
+    "inactive"
+  ],
+  "enumDescriptions": {
+    "available": "In stock and orderable.",
+    "expired": "Offering is past its end date (see expires_at). Corresponds to unavailable_reason 'expired'.",
+    "inactive": "Campaign paused or ended by the seller. Corresponds to unavailable_reason 'inactive'.",
+    "limited": "Available but constrained (low stock, limited sizes/variants, or limited time).",
+    "region_restricted": "Not available in the requesting region. Corresponds to unavailable_reason 'region_restricted'.",
+    "sold_out": "Inventory exhausted. Corresponds to unavailable_reason 'sold_out'."
+  },
+  "title": "Offering Availability Status",
+  "type": "string"
+}

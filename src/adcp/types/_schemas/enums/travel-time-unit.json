@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Time unit for isochrone (travel-time catchment) calculations.",
+  "enum": [
+    "min",
+    "hr"
+  ],
+  "enumDescriptions": {
+    "hr": "Hours",
+    "min": "Minutes"
+  },
+  "title": "Travel Time Unit",
+  "type": "string"
+}

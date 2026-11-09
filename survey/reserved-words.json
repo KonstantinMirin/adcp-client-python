@@ -1,0 +1,110 @@
+{
+  "_": "The reserved-word sets of the four SDK target languages, committed as DATA so the collision figure is re-derivable without trusting a predicate somebody typed into a script. Every set carries the normative source it was copied from and the count that source states. `survey/keyword_collisions.py` reads this file and cross-checks the two sets a running interpreter can confirm (`python.hard_keywords` against `keyword.kwlist`, `python.soft_keywords` against `keyword.softkwlist`), so a drift between this file and CPython is a refusal rather than a wrong number.",
+
+  "python": {
+    "language_version": "3.12",
+    "hard_keywords": {
+      "source": "The Python Language Reference 3.12 section 2.3.1 'Keywords' (https://docs.python.org/3.12/reference/lexical_analysis.html#keywords), which is what CPython's `Lib/keyword.py` is generated from (`Grammar/python.gram`). Re-derivable: `python3.12 -c 'import keyword; print(keyword.kwlist)'`.",
+      "count": 35,
+      "cannot_be_an_identifier": true,
+      "words": ["False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"]
+    },
+    "soft_keywords": {
+      "source": "The Python Language Reference 3.12 section 2.3.2 'Soft Keywords' (https://docs.python.org/3.12/reference/lexical_analysis.html#soft-keywords). Re-derivable: `python3.12 -c 'import keyword; print(keyword.softkwlist)'`.",
+      "count": 4,
+      "cannot_be_an_identifier": false,
+      "why_it_is_a_softer_class": "A soft keyword IS a valid identifier -- `match = 1`, `type = 4`, `_ = 5` all bind -- so it needs no mangling anywhere. Measured on CPython 3.12.13: all four assign.",
+      "words": ["_", "case", "match", "type"]
+    },
+    "enum_protocol": {
+      "source": "`enum` -- Support for enumerations, Python 3.12 (https://docs.python.org/3.12/library/enum.html); CPython `Lib/enum.py`, where `Enum.name` and `Enum.value` are declared as `types.DynamicClassAttribute`.",
+      "count": 2,
+      "cannot_be_an_identifier": false,
+      "why_it_is_a_softer_class": "`DynamicClassAttribute` exists PRECISELY so that a member may be called `name` or `value`: the descriptor raises on class access, `EnumType.__getattr__` then resolves the name out of `_member_map_`, and the member comes back. Measured on CPython 3.12.13: `class K(StrEnum): name = 'name'` gives `K.name -> <K.name: 'name'>`, `K['name']` the same object, and `K('name') is K.name`. So these two cost a mangling only where a SECOND attribute per member is also wanted -- see `alias_cost` in the instrument.",
+      "words": ["name", "value"]
+    }
+  },
+
+  "typescript": {
+    "language_version": "TypeScript 5.9.3 over ECMA-262 (ES2024)",
+    "reserved_words": {
+      "source": "ECMA-262 section 12.7.2 'Keywords and Reserved Words', the `ReservedWord` production (https://tc39.es/ecma262/#sec-keywords-and-reserved-words).",
+      "count": 38,
+      "words": ["await", "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "import", "in", "instanceof", "new", "null", "return", "super", "switch", "this", "throw", "true", "try", "typeof", "var", "void", "while", "with", "yield"]
+    },
+    "strict_mode_reserved_words": {
+      "source": "ECMA-262 section 12.7.2, the words that 'cannot be used as identifiers in strict mode code' (https://tc39.es/ecma262/#sec-keywords-and-reserved-words); the early errors are section 13.1.1.",
+      "count": 8,
+      "words": ["implements", "interface", "let", "package", "private", "protected", "public", "static"]
+    },
+    "type_position_keywords": {
+      "source": "Not an ECMA-262 set: these are TypeScript's own predeclared TYPE names. Measured against `tsc 5.9.3 --strict --target es2022 --noEmit`, which is how the list was confirmed rather than read off a spec that does not state it (the normative TypeScript grammar is `src/compiler/types.ts`, and the last published language specification -- v1.8 section 2.2.3 -- predates most of these).",
+      "count": 9,
+      "where_it_bites": "`export type any = string` is an error; `export const any = 1` is NOT. So these collide only in a TYPE-ALIAS-NAME position and nowhere else.",
+      "words": ["any", "boolean", "never", "number", "object", "string", "symbol", "undefined", "unknown"]
+    },
+    "object_prototype": {
+      "source": "ECMA-262 section 20.1.3, the properties of `Object.prototype` (https://tc39.es/ecma262/#sec-properties-of-the-object-prototype-object), plus the `__proto__` accessor of section B.2.2.1. A TypeScript `enum` compiles to a plain object, so a member spelled like one of these shadows an inherited property of it.",
+      "count": 8,
+      "cannot_be_an_identifier": false,
+      "why_it_is_a_softer_class": "Measured: `tsc 5.9.3 --strict` accepts `enum E { constructor = \"constructor\" }`. A member shadowing `Object.prototype` is legal and only matters to code that reflects over the enum object. This is TypeScript's nearest analogue of Python's `Enum.name`/`Enum.value` and of Java's `Enum.name()`, and it is listed so the protocol-collision count can be stated for all four targets rather than for two.",
+      "words": ["__proto__", "constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "toString", "valueOf"]
+    },
+    "enum_member_names_may_be_reserved_words": {
+      "source": "Measured, not asserted. `tsc 5.9.3 --strict --target es2022 --noEmit` accepts `export enum E { class = \"class\", if = \"if\", new = \"new\", pass = \"pass\", global = \"global\", name = \"name\", value = \"value\", await = \"await\", let = \"let\", enum = \"enum\", true = \"true\", null = \"null\", constructor = \"constructor\", function = \"function\", var = \"var\", typeof = \"typeof\", in = \"in\", delete = \"delete\" }` with exit status 0, and accepts a quoted member name `enum E2 { \"media-buy\" = \"media-buy\" }` as well.",
+      "why": "An `EnumMember`'s name is a `PropertyName`, which admits any `IdentifierName` -- and `IdentifierName`, unlike `Identifier`, includes every reserved word. This is the same rule that makes `{ class: 1 }` a legal object literal."
+    }
+  },
+
+  "go": {
+    "language_version": "go1.26.8",
+    "keywords": {
+      "source": "The Go Programming Language Specification, 'Keywords' (https://go.dev/ref/spec#Keywords), which states 'The following keywords are reserved and may not be used as identifiers' and lists 25.",
+      "count": 25,
+      "words": ["break", "case", "chan", "const", "continue", "default", "defer", "else", "fallthrough", "for", "func", "go", "goto", "if", "import", "interface", "map", "package", "range", "return", "select", "struct", "switch", "type", "var"]
+    },
+    "predeclared_identifiers": {
+      "source": "The Go Programming Language Specification, 'Predeclared identifiers' (https://go.dev/ref/spec#Predeclared_identifiers): 22 types, 3 constants, the zero value `nil`, and 18 functions. Cross-checked against the toolchain's own `$(go env GOROOT)/src/builtin/builtin.go` at go1.26.8, which declares exactly these 44 names plus six documentation placeholders (`Type`, `Type1`, `IntegerType`, `FloatType`, `ComplexType`, `TypeOrExpr`) that are not predeclared identifiers and are excluded.",
+      "count": 44,
+      "shadowable": true,
+      "why_it_is_still_listed": "A predeclared identifier is in the universe block, so a declaration in any inner scope shadows it legally. It is listed because the shadow is silent: a package-level `const Error = \"error\"` leaves `error` usable, but a local `len := 3` makes `len(x)` a compile error later in the same function, and a reader of the generated file cannot see which it is.",
+      "words": ["any", "append", "bool", "byte", "cap", "clear", "close", "comparable", "complex", "complex64", "complex128", "copy", "delete", "error", "false", "float32", "float64", "imag", "int", "int8", "int16", "int32", "int64", "iota", "len", "make", "max", "min", "new", "nil", "panic", "print", "println", "real", "recover", "rune", "string", "true", "uint", "uint8", "uint16", "uint32", "uint64", "uintptr"]
+    },
+    "exported_identifiers_are_capitalised": {
+      "source": "The Go Programming Language Specification, 'Exported identifiers' (https://go.dev/ref/spec#Exported_identifiers): an identifier is exported if 'the first character of the identifier's name is a Unicode upper case letter'.",
+      "why_it_matters_here": "Every Go keyword and every predeclared identifier is entirely lower-case, so capitalising the first rune escapes all 69 of them outright. What capitalisation does NOT escape -- and what no other target language's convention escapes either -- is two values in one enum that differ only by case or by a separator. That is the Go-specific collision this instrument measures."
+    }
+  },
+
+  "java": {
+    "language_version": "Java SE 21",
+    "keywords": {
+      "source": "The Java Language Specification, Java SE 21, section 3.9 'Keywords' (https://docs.oracle.com/javase/specs/jls/se21/html/jls-3.html#jls-3.9): 50 character sequences 'formed from ASCII letters', plus the underscore, 'reserved ... and cannot be used as identifiers'.",
+      "count": 51,
+      "words": ["_", "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const", "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float", "for", "goto", "if", "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "package", "private", "protected", "public", "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while"]
+    },
+    "literals": {
+      "source": "The Java Language Specification, Java SE 21, sections 3.10.3 (`true`, `false`) and 3.10.8 (`null`). They are not keywords but they may not be used as identifiers either.",
+      "count": 3,
+      "words": ["true", "false", "null"]
+    },
+    "contextual_keywords": {
+      "source": "The Java Language Specification, Java SE 21, section 3.9: 'a contextual keyword ... is a keyword only where it appears in a specific context, and is otherwise an ordinary identifier'.",
+      "count": 17,
+      "cannot_be_an_identifier": false,
+      "why_it_is_a_softer_class": "A contextual keyword is a legal identifier everywhere else, so an enum constant may be called `record` or `var` or `yield`. Listed so that a hit on one is reported as the soft class it is instead of being silently counted with the 51.",
+      "words": ["exports", "module", "non-sealed", "open", "opens", "permits", "provides", "record", "requires", "sealed", "to", "transitive", "uses", "var", "when", "with", "yield"]
+    },
+    "enum_members": {
+      "source": "`java.lang.Enum`, Java SE 21 API (https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Enum.html), plus the two static methods the compiler synthesises onto every enum class (JLS 21 section 8.9.3: `values()` and `valueOf(String)`).",
+      "count": 6,
+      "cannot_be_an_identifier": false,
+      "why_it_is_a_softer_class": "Java puts fields and methods in SEPARATE namespaces (JLS 21 section 6.5.6 resolves an `ExpressionName` against fields and section 15.12 resolves a `MethodName` against methods), and an enum constant is a static FIELD. So `enum E { name }` declares `E.name` beside the inherited `name()` and both resolve: a constant spelled like one of these is a readability hazard, not a compile error. `Enum.name` itself is a PRIVATE field of `Enum`, and a private field is not inherited, so it is not shadowed either.",
+      "words": ["compareTo", "getDeclaringClass", "name", "ordinal", "valueOf", "values"]
+    },
+    "constants_are_upper_snake_by_convention": {
+      "source": "The Java Language Specification, Java SE 21, section 6.1 'Declarations': 'The names of constants in interface types should be, and `final` variables of class types may conventionally be, a sequence of one or more words, acronyms, or abbreviations, all uppercase, with components separated by underscore characters.' Section 8.9.1's own examples (`SUNDAY`, `MONDAY`, ... ; `MERCURY`, `VENUS`) are enum constants written that way.",
+      "why_it_matters_here": "Every one of the 51 keywords and all three literals are entirely lower-case, and `String.toUpperCase` moves every one of them, so UPPER_SNAKE escapes the whole hard class -- and it escapes the six `Enum` member names too. What it does NOT escape is the case/separator fold, which it makes STRICTLY WORSE than Go's: `clickTag` and `clickTAG` both become `CLICK_TAG` under a camel-aware split and `CLICKTAG` under a naive one."
+    }
+  }
+}

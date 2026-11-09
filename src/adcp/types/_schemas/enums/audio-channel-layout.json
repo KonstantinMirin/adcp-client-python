@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Audio channel configuration for audio and video assets",
+  "enum": [
+    "mono",
+    "stereo",
+    "5.1",
+    "7.1"
+  ],
+  "title": "Audio Channel Layout",
+  "type": "string"
+}

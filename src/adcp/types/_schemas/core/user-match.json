@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "required": [
+        "uids"
+      ]
+    },
+    {
+      "required": [
+        "hashed_email"
+      ]
+    },
+    {
+      "required": [
+        "hashed_phone"
+      ]
+    },
+    {
+      "required": [
+        "click_id"
+      ]
+    },
+    {
+      "required": [
+        "client_ip",
+        "client_user_agent"
+      ]
+    }
+  ],
+  "description": "User identifiers for attribution matching. Supports universal IDs, hashed identifiers, click IDs, and probabilistic matching.",
+  "properties": {
+    "click_id": {
+      "description": "Platform click identifier (fbclid, gclid, ttclid, ScCid, etc.)",
+      "type": "string"
+    },
+    "click_id_type": {
+      "description": "Type of click identifier (e.g. fbclid, gclid, ttclid, msclkid, ScCid)",
+      "type": "string"
+    },
+    "client_ip": {
+      "description": "Client IP address for probabilistic matching",
+      "type": "string"
+    },
+    "client_user_agent": {
+      "description": "Client user agent string for probabilistic matching",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "hashed_email": {
+      "description": "SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace. Pseudonymous PII, not anonymous \u2014 the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "hashed_phone": {
+      "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Buyer must normalize to E.164 before hashing. Pseudonymous PII, not anonymous \u2014 the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "uids": {
+      "description": "Universal ID values for user matching",
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Universal ID type",
+            "enum": [
+              "rampid",
+              "rampid_derived",
+              "id5",
+              "uid2",
+              "euid",
+              "pairid",
+              "maid",
+              "hashed_email",
+              "publisher_first_party",
+              "world_id_nullifier",
+              "other"
+            ],
+            "enumDescriptions": {
+              "euid": "European Unified ID",
+              "hashed_email": "SHA-256 hashed email address. Pseudonymous PII, not anonymous \u2014 unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+              "id5": "ID5 universal ID",
+              "maid": "Mobile Advertising ID (IDFA/GAID)",
+              "other": "Other universal ID type (specify in ext)",
+              "pairid": "Publisher Addressable Identity via IAB Tech Lab PAIR. The OpenRTB profile uses User.eids[].source pair-protocol.com, EID.mm 3, EID.matcher set to the publisher's canonical ads.txt ownerdomain, and uids[].atype 3. The URL-safe Base64-encoded KsKp Publisher Identifier must be interpreted with that matcher scope. It is stable across a publisher's advertiser matches only within a Ks key epoch; Ks rotates every 30 days, and current and prior Publisher Identifiers can overlap during rollover. TMP identity objects do not carry matcher or ownerdomain, so a bridge requires an authenticated out-of-band binding to preserve PAIR scope.",
+              "publisher_first_party": "Publisher's own first-party identifier, opaque to buyers",
+              "rampid": "LiveRamp RampID maintained form (XY, 32 bytes on the wire)",
+              "rampid_derived": "LiveRamp RampID derived form (Xi, 48 bytes on the wire)",
+              "uid2": "Unified ID 2.0",
+              "world_id_nullifier": "World ID nullifier \u2014 a Sybil-resistant, relying-party-scoped, unlinkable pseudonym. Carries NO personhood or age assertion on its own; trust comes only from an accompanying verified `attestation`, never from this type tag. Distinct from the `world_id` value in the age-verification-method enum, which names a method, not an identifier."
+            },
+            "title": "UID Type",
+            "type": "string"
+          },
+          "value": {
+            "description": "Universal ID value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "title": "User Match",
+  "type": "object"
+}

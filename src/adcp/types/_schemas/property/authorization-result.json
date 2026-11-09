@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Result of validating sales agent authorization for a property. Checks if the sales agent is listed in the property's adagents.json.",
+  "properties": {
+    "publisher_domain": {
+      "description": "The publisher domain where adagents.json was checked",
+      "type": "string"
+    },
+    "sales_agent_url": {
+      "description": "The sales agent URL that was validated",
+      "format": "uri",
+      "type": "string"
+    },
+    "status": {
+      "description": "Authorization status: authorized (agent in adagents.json), unauthorized (agent not in adagents.json), unknown (could not fetch or parse adagents.json)",
+      "enum": [
+        "authorized",
+        "unauthorized",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "violation": {
+      "additionalProperties": false,
+      "description": "Details about the authorization failure (only present for unauthorized status)",
+      "properties": {
+        "code": {
+          "description": "Machine-readable violation code",
+          "type": "string"
+        },
+        "message": {
+          "description": "Human-readable violation description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "Authorization Result",
+  "type": "object"
+}

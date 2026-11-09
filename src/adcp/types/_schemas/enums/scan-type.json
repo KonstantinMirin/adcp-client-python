@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Video scan method. Modern digital delivery requires progressive scan; interlaced is retained for broadcast legacy content.",
+  "enum": [
+    "progressive",
+    "interlaced"
+  ],
+  "enumDescriptions": {
+    "interlaced": "Alternating lines drawn in two passes per frame (legacy broadcast)",
+    "progressive": "All lines of each frame are drawn in sequence"
+  },
+  "title": "Scan Type",
+  "type": "string"
+}

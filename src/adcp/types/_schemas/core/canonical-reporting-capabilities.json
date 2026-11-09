@@ -1,0 +1,791 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "type": "boolean"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Available frequencies for delivery reports and metrics updates. Weekly and quarterly match audience-currency publication cycles in measured channels (e.g. weekly OOH/radio increments, quarterly circulation updates); post_campaign is a single report after the flight ends. Buy-side agents MUST treat a product's declared frequencies as an optimization-eligibility gate: a buyer MUST NOT make mid-flight optimization decisions against metrics whose declared cadence is quarterly or post_campaign \u2014 such data describes a period that has closed, and optimizing on it means acting on a model of the channel that is false at decision time.",
+      "enum": [
+        "hourly",
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "post_campaign"
+      ],
+      "title": "Reporting Frequency",
+      "type": "string"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Standard delivery and performance metrics available for reporting. Most values name flat numeric fields of `core/delivery-metrics.json`. Leaf identities address a single numeric value nested inside an object-shaped metric so it can be declared, committed, aggregated, and sorted individually: `quartile_25`/`quartile_50`/`quartile_75`/`quartile_100` resolve to `quartile_data.q1_views`\u2013`q4_views`, and `viewable_rate`/`viewable_impressions`/`measurable_impressions`/`viewed_seconds` resolve to the same-named fields of `viewability`. Structured nested identities `viewed_seconds_percentiles` and `viewed_seconds_histogram` make the corresponding optional distribution carriers discoverable, committable, and requestable, but not aggregatable or sortable. The nested object or array remains the canonical carrier \u2014 nested identities never introduce duplicate flat response fields. Container tokens such as `viewability`, `quartile_data`, `dooh_metrics`, and `time_based_views` declare their documented nested surface. **Container subsumption applies only to numeric leaves**: `viewability` subsumes `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds`; `quartile_data` subsumes `quartile_25`, `quartile_50`, `quartile_75`, and `quartile_100`. This rule applies to capability declaration, `required_metrics` filtering, format `reported_metrics` intersection, and `requested_metrics` selection. Optional structured identities MUST be declared explicitly: `viewability` alone does not satisfy `viewed_seconds_percentiles` or `viewed_seconds_histogram`. Requesting any nested identity selects its canonical carrier in the response. A nested identity declaration does not imply sibling values or the carrier's non-metric fields.",
+      "enum": [
+        "impressions",
+        "spend",
+        "clicks",
+        "ctr",
+        "views",
+        "completed_views",
+        "completion_rate",
+        "conversions",
+        "conversion_value",
+        "commissionable_value",
+        "roas",
+        "cost_per_acquisition",
+        "new_to_brand_rate",
+        "leads",
+        "reach",
+        "frequency",
+        "grps",
+        "engagements",
+        "engagement_rate",
+        "follows",
+        "saves",
+        "profile_visits",
+        "viewability",
+        "viewable_rate",
+        "viewable_impressions",
+        "measurable_impressions",
+        "viewed_seconds",
+        "viewed_seconds_percentiles",
+        "viewed_seconds_histogram",
+        "quartile_data",
+        "quartile_25",
+        "quartile_50",
+        "quartile_75",
+        "quartile_100",
+        "time_based_views",
+        "dooh_metrics",
+        "ooh_metrics",
+        "cost_per_click",
+        "cost_per_completed_view",
+        "cpm",
+        "downloads",
+        "units_sold",
+        "new_to_brand_units",
+        "plays",
+        "incremental_sales_lift",
+        "brand_lift",
+        "foot_traffic",
+        "conversion_lift",
+        "brand_search_lift"
+      ],
+      "title": "Available Metric",
+      "type": "string"
+    },
+    "Shared3": {
+      "items": {
+        "const": "plz"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared4": {
+      "deprecated": true,
+      "type": "boolean"
+    },
+    "Shared5": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Audience measurement systems for demographic notation in GRP forecasts and pricing, across video and audio channels. Specifies how demographics are written, not whose panel produced the numbers \u2014 provider identity is measurement_source.",
+      "enum": [
+        "nielsen",
+        "nielsen_audio",
+        "barb",
+        "agf",
+        "oztam",
+        "mediametrie",
+        "custom"
+      ],
+      "enumDescriptions": {
+        "agf": "AGF Videoforschung (Germany). Erwachsene notation + age bands. Examples: E 14-49, E 14+",
+        "barb": "BARB (UK). NRS social grade + age bands. Examples: ABC1 Adults, 16-34, Adults",
+        "custom": "Publisher-defined demographic notation",
+        "mediametrie": "Mediametrie (France). Named segments + age bands",
+        "nielsen": "Nielsen notation. Prefix: P(ersons), M(en), W(omen), A(dults), C(hildren), T(eens) + age range. Examples: P18-49, M25-54, W35+",
+        "nielsen_audio": "Nielsen Audio (US radio, formerly Arbitron). Same P/M/W/A prefix + age-range notation as Nielsen TV, measured on the PPM/diary radio panel. Examples: P25-54, A18+, W25-54",
+        "oztam": "OzTAM (Australia). Age/gender bands, 4+ measurement universe"
+      },
+      "title": "Demographic System",
+      "type": "string"
+    },
+    "Shared6": {
+      "required": [
+        "demographic"
+      ]
+    },
+    "Shared7": {
+      "required": [
+        "demographic_system"
+      ]
+    }
+  },
+  "description": "Compact product reporting contract. Vendor metrics use identity-only BrandKey references and do not inline brand or creative assets.",
+  "properties": {
+    "available_metrics": {
+      "items": {
+        "$ref": "#/definitions/Shared2"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "available_reporting_frequencies": {
+      "items": {
+        "$ref": "#/definitions/Shared1"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "date_range_support": {
+      "enum": [
+        "date_range",
+        "lifetime_only"
+      ],
+      "type": "string"
+    },
+    "expected_delay_minutes": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "measurement_windows": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
+        "description": "A measurement maturation stage for any channel where billing-grade data is produced in phases rather than arriving final on day one. Each window represents an accumulation or processing stage with its own expected availability. Examples: broadcast/linear TV (live \u2192 C3 \u2192 C7 DVR accumulation), DOOH (tentative plays \u2192 post-IVT/fraud-check final), digital (raw impressions \u2192 GIVT filtered \u2192 SIVT filtered), podcast (7-day downloads \u2192 30-day downloads), audio/radio (tentative \u2192 diary/panel-certified). Sellers whose data is final on first delivery omit this.",
+        "properties": {
+          "description": {
+            "description": "Human-readable description of what this window measures",
+            "examples": [
+              "Live broadcast impressions only",
+              "Live plus 7 days of time-shifted viewing",
+              "Tentative plays before IVT and fraud-check processing",
+              "Final plays after IVT and fraud-check processing",
+              "Impressions after sophisticated invalid-traffic filtering"
+            ],
+            "maxLength": 500,
+            "type": "string"
+          },
+          "duration_days": {
+            "description": "Number of days of accumulation included in this window before processing begins. For broadcast, this is DVR accumulation (0 = live only, 3 = live + 3 days DVR, 7 = live + 7 days DVR). For channels without an accumulation period (DOOH tentative\u2192final, digital IVT filtering), this is 0 \u2014 maturation is entirely vendor processing time captured in expected_availability_days.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expected_availability_days": {
+            "description": "Expected number of days after delivery before this window's data is available from the measurement vendor. Captures accumulation time plus vendor processing time. Examples: broadcast C7 from VideoAmp ~22 days (7-day accumulation + ~15-day processing); DOOH tentative plays same-day; DOOH final (post-IVT/fraud-check) ~1 day; digital post-SIVT ~2\u20133 days.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "is_guarantee_basis": {
+            "description": "Whether this window is the basis for delivery guarantees, reconciliation, and invoicing. A product typically has one guarantee basis window (e.g., C7 for most US broadcast, post-IVT final for DOOH). Buyers reconcile against the guarantee basis window's final numbers.",
+            "type": "boolean"
+          },
+          "window_id": {
+            "description": "Identifier for this maturation stage. Standard broadcast values: 'live' (real-time viewers only), 'c3' (live + 3 days time-shifted), 'c7' (live + 7 days time-shifted). Standard values for other channels include 'tentative' (provisional data available quickly), 'final' (post-processing certified data), 'post_ivt' (digital after invalid-traffic filtering), 'post_sivt' (digital after sophisticated-IVT filtering), 'downloads_7d' / 'downloads_30d' (podcast download maturation). Sellers may define custom IDs.",
+            "examples": [
+              "live",
+              "c3",
+              "c7",
+              "tentative",
+              "final",
+              "post_ivt",
+              "downloads_30d"
+            ],
+            "maxLength": 50,
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_id",
+          "duration_days"
+        ],
+        "title": "Measurement Window",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "reporting_delivery_offering_ids": {
+      "description": "Product-scoped subset of get_adcp_capabilities.media_buy.reporting_delivery.offerings[].offering_id that packages using this product can satisfy. This binds seller-wide managed-delivery offerings to product/package eligibility. An empty array explicitly declares no managed offering; absence means product-level applicability is unknown and MUST NOT be inferred from the seller-wide list. Account, seat, credential, or provider constraints may narrow support further during sync_accounts validation.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Identifier of one seller-advertised managed reporting-delivery offering, matching get_adcp_capabilities.media_buy.reporting_delivery.offerings[].offering_id. Shared by the legacy and canonical product reporting capabilities.",
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+        "title": "Reporting Delivery Offering ID",
+        "type": "string",
+        "x-entity": "reporting_offering"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "supports_audience_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_collection_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_collection_property_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_creative_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_demographic_breakdown": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "age"
+          ]
+        },
+        {
+          "required": [
+            "demographic_systems"
+          ]
+        }
+      ],
+      "description": "Product-scoped demographic breakdown capability. Reporting capability is independent of demographic targeting capability: a product can execute an exact buyer age predicate while its measurement source reports only fixed age intervals. Buyers compare requested reporting ranges with this declaration before requesting by_demographic rows and MUST NOT infer reporting alignment from Product.demographic_targeting.",
+      "properties": {
+        "age": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "reporting_modes": {
+                    "contains": {
+                      "const": "exact_predicates"
+                    }
+                  }
+                },
+                "required": [
+                  "reporting_modes"
+                ]
+              },
+              "then": {
+                "required": [
+                  "min_reportable_age",
+                  "max_reportable_age",
+                  "supports_unbounded_min",
+                  "supports_unbounded_max"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "reporting_modes": {
+                    "contains": {
+                      "const": "enumerated_intervals"
+                    }
+                  }
+                },
+                "required": [
+                  "reporting_modes"
+                ]
+              },
+              "then": {
+                "required": [
+                  "intervals"
+                ]
+              }
+            }
+          ],
+          "description": "Machine-comparable age ranges this product can report.",
+          "properties": {
+            "intervals": {
+              "description": "Fixed reportable age intervals for enumerated_intervals. Bounds are authoritative capability data, not a protocol-wide bucket taxonomy. Optional native labels identify the measurement-system code returned with the interval.",
+              "items": {
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "if": {
+                      "$ref": "#/definitions/Shared6"
+                    },
+                    "then": {
+                      "$ref": "#/definitions/Shared7"
+                    }
+                  },
+                  {
+                    "if": {
+                      "$ref": "#/definitions/Shared7"
+                    },
+                    "then": {
+                      "$ref": "#/definitions/Shared6"
+                    }
+                  }
+                ],
+                "properties": {
+                  "age": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": true,
+                    "anyOf": [
+                      {
+                        "required": [
+                          "min"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "max"
+                        ]
+                      }
+                    ],
+                    "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
+                    "properties": {
+                      "include_unknown": {
+                        "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+                        "type": "boolean"
+                      },
+                      "max": {
+                        "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
+                        "maximum": 150,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "min": {
+                        "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
+                        "maximum": 150,
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "include_unknown"
+                    ],
+                    "title": "Demographic Age Range",
+                    "type": "object"
+                  },
+                  "demographic": {
+                    "description": "Optional native demographic label returned for this interval.",
+                    "minLength": 1,
+                    "pattern": "\\S",
+                    "type": "string"
+                  },
+                  "demographic_system": {
+                    "$ref": "#/definitions/Shared5"
+                  }
+                },
+                "required": [
+                  "age"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "max_reportable_age": {
+              "description": "Highest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.",
+              "maximum": 150,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "min_reportable_age": {
+              "description": "Lowest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.",
+              "maximum": 150,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "reporting_modes": {
+              "description": "Ways this product can produce age rows. exact_predicates accepts requested canonical age predicates within the declared bounds. enumerated_intervals reports only the exact intervals declared in intervals; buyers may aggregate adjacent complete intervals but MUST NOT treat a wider or narrower interval as the requested audience.",
+              "items": {
+                "enum": [
+                  "exact_predicates",
+                  "enumerated_intervals"
+                ],
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "supports_unbounded_max": {
+              "description": "Whether exact_predicates accepts a canonical age predicate with max omitted. Required when that mode is declared.",
+              "type": "boolean"
+            },
+            "supports_unbounded_min": {
+              "description": "Whether exact_predicates accepts a canonical age predicate with min omitted. Required when that mode is declared.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "reporting_modes"
+          ],
+          "type": "object"
+        },
+        "demographic_systems": {
+          "description": "Measurement-system notations this product may return. A code remains opaque unless its capability interval and response row also carry a canonical age predicate.",
+          "items": {
+            "$ref": "#/definitions/Shared5"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "may_suppress_small_cells": {
+          "description": "Whether privacy, policy, or measurement thresholds may suppress otherwise reportable demographic rows. When true, buyers must inspect by_demographic_suppressed before testing whether rows reconcile to package totals.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "may_suppress_small_cells"
+      ],
+      "title": "Demographic Reporting Capability",
+      "type": "object"
+    },
+    "supports_device_platform_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_device_type_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_format_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_geo_breakdown": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Declares which geographic levels and classification systems are available for by_geo reporting breakdowns in product-level reporting_capabilities.",
+      "properties": {
+        "country": {
+          "description": "Supports country-level geo breakdown (ISO 3166-1 alpha-2)",
+          "type": "boolean"
+        },
+        "metro": {
+          "additionalProperties": {
+            "$ref": "#/definitions/Shared0"
+          },
+          "description": "Metro area breakdown support. Keys are metro-system enum values; true means supported.",
+          "propertyNames": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Metro area classification systems for geographic targeting",
+            "enum": [
+              "nielsen_dma",
+              "uk_itl1",
+              "uk_itl2",
+              "eurostat_nuts2",
+              "custom"
+            ],
+            "title": "Metro Area System",
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "postal_area": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "items": {
+              "enum": [
+                "postal_code",
+                "custom"
+              ]
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "description": "Postal area breakdown support. Prefer the native country-keyed map where each ISO 3166-1 alpha-2 country lists supported country-local postal systems. Deprecated legacy country-fused postal-system boolean maps remain accepted for compatibility.",
+          "properties": {
+            "AT": {
+              "$ref": "#/definitions/Shared3"
+            },
+            "AU": {
+              "items": {
+                "const": "postcode"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "BR": {
+              "items": {
+                "const": "cep"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "CA": {
+              "items": {
+                "enum": [
+                  "fsa",
+                  "full"
+                ]
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "CH": {
+              "$ref": "#/definitions/Shared3"
+            },
+            "DE": {
+              "$ref": "#/definitions/Shared3"
+            },
+            "FR": {
+              "items": {
+                "const": "code_postal"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "GB": {
+              "items": {
+                "enum": [
+                  "outward",
+                  "full"
+                ]
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "IN": {
+              "items": {
+                "const": "pin"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "US": {
+              "items": {
+                "enum": [
+                  "zip",
+                  "zip_plus_four"
+                ]
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "ZA": {
+              "items": {
+                "const": "postal_code"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "at_plz": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "au_postcode": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "ca_fsa": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "ca_full": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "ch_plz": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "de_plz": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "fr_code_postal": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "gb_full": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "gb_outward": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "us_zip": {
+              "$ref": "#/definitions/Shared4"
+            },
+            "us_zip_plus_four": {
+              "$ref": "#/definitions/Shared4"
+            }
+          },
+          "propertyNames": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{2}$"
+              },
+              {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "deprecated": true,
+                "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
+                "enum": [
+                  "us_zip",
+                  "us_zip_plus_four",
+                  "gb_outward",
+                  "gb_full",
+                  "ca_fsa",
+                  "ca_full",
+                  "de_plz",
+                  "fr_code_postal",
+                  "au_postcode",
+                  "ch_plz",
+                  "at_plz"
+                ],
+                "title": "Country-Fused Postal Code System",
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Postal Area Support",
+          "type": "object"
+        },
+        "region": {
+          "description": "Supports region/state-level geo breakdown (ISO 3166-2)",
+          "type": "boolean"
+        }
+      },
+      "title": "Geographic Breakdown Support",
+      "type": "object"
+    },
+    "supports_installment_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_installment_property_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_keyword_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_placement_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_placement_property_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_property_breakdown": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "supports_spot_breakdown": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Product-scoped spot-level as-run reporting capability. Presence means the seller can report stable spot identities and actual airing timestamps. available_metrics declares which delivery metrics may eventually be populated at spot grain; an empty array means the product provides airing evidence only.",
+      "properties": {
+        "available_metrics": {
+          "description": "Metrics available at spot grain. A declared metric may be absent from a provisional measurement window and appear when a later window supersedes it. A metric omitted from this declaration is not promised at spot grain even when it is available at package grain.",
+          "items": {
+            "$ref": "#/definitions/Shared2"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "available_metrics"
+      ],
+      "title": "Spot Reporting Capability",
+      "type": "object"
+    },
+    "supports_webhooks": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "timezone": {
+      "description": "Explicit reporting-period timezone for this product. It may equal Account.timezone or differ when the upstream platform reports on a separate boundary.",
+      "type": "string"
+    },
+    "vendor_metrics": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "metric_id": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Identifier for a vendor-defined metric within the vendor's vocabulary. Stable lookup key; the vendor publishes the canonical list (with category, methodology, and standard alignment) in `brand.json` `agents[type='measurement']`. Lowercase with underscores so a future enum promotion into `available-metric.json` is a literal string lift. Identifier is namespaced by the vendor \u2014 the same `metric_id` may mean different things in different vendors' vocabularies.",
+            "examples": [
+              "attention_units",
+              "gco2e_per_impression",
+              "demographic_reach",
+              "co_view_index",
+              "incremental_lift_percent"
+            ],
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Vendor Metric ID",
+            "type": "string",
+            "x-entity": "vendor_metric"
+          },
+          "vendor": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+            "properties": {
+              "brand_id": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+                "examples": [
+                  "tide",
+                  "cheerios",
+                  "air_jordan",
+                  "nike",
+                  "pampers"
+                ],
+                "pattern": "^[a-z0-9_]+$",
+                "title": "Brand ID",
+                "type": "string",
+                "x-entity": "advertiser_brand"
+              },
+              "countries": {
+                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+                "items": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+                  "pattern": "^[A-Z]{2}$",
+                  "title": "Country Code",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "domain": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "title": "Domain Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "domain"
+            ],
+            "title": "Brand Key",
+            "type": "object"
+          }
+        },
+        "required": [
+          "vendor",
+          "metric_id"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "windowed_pull_granularities": {
+      "items": {
+        "$ref": "#/definitions/Shared1"
+      },
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "available_reporting_frequencies",
+    "expected_delay_minutes",
+    "timezone",
+    "supports_webhooks",
+    "available_metrics",
+    "date_range_support"
+  ],
+  "title": "Canonical Reporting Capabilities",
+  "type": "object"
+}

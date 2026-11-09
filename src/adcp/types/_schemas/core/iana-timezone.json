@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Concrete timezone identifier in the implementation's supported IANA Time Zone Database, such as America/New_York, CET, or UTC.",
+  "maxLength": 255,
+  "minLength": 1,
+  "not": {
+    "const": "inventory_local"
+  },
+  "pattern": "^[A-Za-z0-9._+-]+(?:/[A-Za-z0-9._+-]+)*$",
+  "title": "IANA Timezone Identifier",
+  "type": "string",
+  "x-adcp-validation": {
+    "iana_timezone": "value_must_resolve_in_the_implementations_supported_IANA_TZDB"
+  },
+  "x-added-in": "3.2.0"
+}

@@ -1,0 +1,243 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "required": [
+        "volume"
+      ]
+    },
+    {
+      "required": [
+        "cost_per"
+      ]
+    }
+  ],
+  "description": "Reverse-forecast planning input: a goal plus a volume, a cost_per target, or both (at least one). Goals use the forecastable-metric and event-type vocabularies, so forecast points always carry the goal's metric or event key in metrics, with forecast_range_unit 'clicks' or 'conversions' where those units apply. volume and cost_per define the request shapes and answers, which travel on proposals. list_products returns no proposals, so there the field is inert for every seller, declaring or not: it does not filter or rank products, produces no answer, and MUST NOT cause a rejection beyond schema validation. On request_proposals and proposal refinement, sellers not declaring media_buy.outcome_target MUST reject the field with UNSUPPORTED_FEATURE rather than silently ignore it; declaring sellers MAY reject a goal they cannot plan against at all (for example 'spend', which restates budget) with INVALID_REQUEST naming criteria.outcome_target.goal. A planning input, not a delivery guarantee: obligations arise only at proposal finalization.",
+  "properties": {
+    "cost_per": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Average cost the buyer will pay per goal result: BiddingPolicy.cost_per plus a currency. It requires a goal expressible as a canonical optimization goal; otherwise the seller rejects with INVALID_REQUEST naming criteria.outcome_target.cost_per, since the goal stays plannable by volume. With a buyer budget (offer_filters.budget_range or the brief), the seller plans the volume it can deliver within it at or below (cap) or around (target) the cost; with volume, see volume; with neither, it MUST state the spend for the volume it can deliver at the cost in total_budget_guidance. Each proposal answers in commercial_terms.bidding.cost_per, which the buyer adopts on acceptance; it is an execution control, not an expected price, and billing stays on the selected pricing option. The answer MUST NOT carry purchase-level bidding. Under fixed or omitted budget_allocation every purchase's primary optimization goal, and under seller_optimized the primary budget_allocation.optimization_goals goal, MUST match goal and resolve to one result unit as BiddingPolicy.cost_per defines it: the same metric and result-defining qualifiers, or for an event goal every event_sources[] entry carrying the goal's event_type (and custom_event_name) with one resolved attribution_window. Seller-added qualifiers (such as view_duration_seconds or reach_unit) are permitted and visible in the proposal. For an event goal the seller fills event_sources from sources available on the buyer's account for that event, buyer-synced or seller-managed, exactly one unless it advertises conversion_tracking.multi_source_event_dedup, and states attribution_window, which SHOULD be one advertised in conversion_tracking.attribution_windows; with none available it rejects. A seller MUST NOT answer with a bidding policy outside its advertised features.bidding_policy profile for the proposal's scope and allocation mode; a declaring seller without one rejects. Rejections of a target that cannot be represented or bound (strength, currency, goal, capability) use INVALID_REQUEST naming criteria.outcome_target.cost_per; a valid target with no viable inventory is outcome 'rejected'.",
+      "properties": {
+        "amount": {
+          "description": "Average cost amount per goal result, denominated in currency. The answered commercial_terms.bidding.cost_per.amount MUST be greater than or equal to it: the requested amount when it is plannable, otherwise the lowest plannable amount. An amount is plannable when the seller can forecast goal volume at or below (cap) or around (target) it within the buyer's budget, spending at least offer_filters.budget_range.min when present. When the planned spend at the answered amount is below commercial_terms.total_budget, each forecast point MUST carry metrics.spend. A seller MAY return additional proposals at higher amounts under the same strength to show what volume a higher cost buys.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "currency": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "ISO 4217 currency of amount. BiddingPolicy.cost_per has no currency because it inherits the media-buy currency, and no media buy exists at request time, so the request states it. It becomes the answer's currency: every answering proposal's purchases[].pricing.currency (which bidding amounts use) and forecast.currency MUST equal it, as MUST commercial_terms.total_budget.currency and total_budget_guidance.currency when present; sellers MUST NOT convert currency. It MUST equal offer_filters.budget_range.currency when present. The seller plans within budget_range.max when present, else at or above budget_range.min, and total_budget MUST NOT exceed max or fall below min. A seller rejects a conflict with budget_range, pricing_currencies, the account currency, or the requested products' pricing currencies with INVALID_REQUEST naming criteria.outcome_target.cost_per.",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency Code",
+          "type": "string"
+        },
+        "strength": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "BiddingPolicy.cost_per strength: `cap` optimizes for an average at or below the amount and accepts underdelivery when necessary; `target` optimizes around the amount while balancing volume and spend. Neither is a per-result or per-auction guarantee. The answer MUST keep this strength: a cap of 3 the seller can only meet at 4.50 returns {amount: 4.50, strength: 'cap'}, never 'target'. A seller that will not plan at any amount under this strength rejects instead.",
+          "enum": [
+            "cap",
+            "target"
+          ],
+          "enumDescriptions": {
+            "cap": "Optimize for an average at or below the amount, accepting underdelivery when necessary.",
+            "target": "Optimize around the amount while balancing volume and spend."
+          },
+          "title": "Outcome Target Cost Strength",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "currency",
+        "strength"
+      ],
+      "title": "Outcome Target Cost Per",
+      "type": "object"
+    },
+    "goal": {
+      "description": "The outcome to plan against: a seller-tracked delivery metric or an advertiser conversion event.",
+      "discriminator": {
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Plan against a seller-tracked delivery metric. The response forecast carries this metric as a key in points' metrics.",
+          "properties": {
+            "kind": {
+              "const": "metric",
+              "type": "string"
+            },
+            "metric": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Delivery metric to plan for, in the same vocabulary forecast points report.",
+              "enum": [
+                "audience_size",
+                "reach",
+                "frequency",
+                "impressions",
+                "clicks",
+                "spend",
+                "views",
+                "completed_views",
+                "grps",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "measured_impressions",
+                "downloads",
+                "plays",
+                "coverage_rate"
+              ],
+              "enumDescriptions": {
+                "audience_size": "Estimated addressable audience size",
+                "clicks": "Estimated clicks",
+                "completed_views": "Estimated video/audio completions. Threshold depends on view_duration_seconds if set on the optimization goal.",
+                "coverage_rate": "Share of the declared forecast scope represented by this point. Used primarily for signal coverage and availability breakdowns. Range 0.0 to 1.0.",
+                "downloads": "Estimated downloads. Primary currency for podcast advertising per IAB Podcast Measurement guidelines.",
+                "engagements": "Estimated engagements (social reactions, comments, shares, story opens, overlay taps, etc.)",
+                "follows": "Estimated new followers, page likes, or free channel/feed subscribes",
+                "frequency": "Estimated average frequency per individual",
+                "grps": "Estimated Gross Rating Points (for CPP). When present, the demographic_system and demographic fields on DeliveryForecast should specify the target demographic.",
+                "impressions": "Estimated ad-server or first-party delivery count. When measured_impressions is also present, impressions represents the seller's own delivery count while measured_impressions represents the third-party currency count \u2014 both may appear on the same forecast point as complementary layers.",
+                "measured_impressions": "Impressions as counted by the third-party measurement provider specified in measurement_source on DeliveryForecast. Complementary to impressions \u2014 both may appear on the same forecast point. impressions is the ad-server delivery count; measured_impressions is the third-party currency count. Present when measurement_source is set. Use with method 'guaranteed' for contractually committed delivery, or with method 'modeled' for third-party-measured estimates without a guarantee.",
+                "plays": "Number of times the ad creative is displayed or played on DOOH or broadcast inventory. Raw play count before any impression multiplier is applied. Use alongside impressions or measured_impressions when buyers need both the play count and the multiplied audience figure.",
+                "profile_visits": "Estimated visits to the brand's in-platform page or profile",
+                "reach": "Estimated unique reach. The reach_unit field on DeliveryForecast specifies the measurement unit (individuals, households, devices, etc.).",
+                "saves": "Estimated saves, bookmarks, playlist adds, or pins",
+                "spend": "Estimated spend in the forecast currency",
+                "views": "Estimated views at threshold (for CPV)"
+              },
+              "title": "Forecastable Metric",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "metric"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Plan against an advertiser conversion event. The response forecast carries this event type as a key in points' metrics.",
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "custom"
+              }
+            },
+            "required": [
+              "event_type"
+            ]
+          },
+          "properties": {
+            "custom_event_name": {
+              "description": "Required when event_type is 'custom'. Platform-specific name for the custom event.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "event_type": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Conversion event to plan for, in the same vocabulary forecast points report.",
+              "enum": [
+                "page_view",
+                "view_content",
+                "select_content",
+                "select_item",
+                "search",
+                "share",
+                "add_to_cart",
+                "remove_from_cart",
+                "viewed_cart",
+                "add_to_wishlist",
+                "initiate_checkout",
+                "add_payment_info",
+                "purchase",
+                "refund",
+                "lead",
+                "qualify_lead",
+                "close_convert_lead",
+                "disqualify_lead",
+                "complete_registration",
+                "subscribe",
+                "follow",
+                "content_view",
+                "watch_milestone",
+                "start_trial",
+                "app_install",
+                "app_launch",
+                "contact",
+                "schedule",
+                "donate",
+                "submit_application",
+                "custom"
+              ],
+              "enumDescriptions": {
+                "add_payment_info": "User added payment information",
+                "add_to_cart": "User added an item to cart",
+                "add_to_wishlist": "User added an item to a wishlist",
+                "app_install": "User installed an application",
+                "app_launch": "User launched an application",
+                "close_convert_lead": "Lead converted to a customer or closed deal",
+                "complete_registration": "User completed account registration",
+                "contact": "User initiated contact (call, message, etc.)",
+                "content_view": "User meaningfully consumed a content unit, such as a watch, listen, stream, episode play, or read",
+                "custom": "Custom event type (specify in custom_event_name)",
+                "disqualify_lead": "Lead disqualified or marked as not viable",
+                "donate": "User made a donation",
+                "follow": "User made a free, durable opt-in to an account, channel, feed, list, podcast, or similar owned property",
+                "initiate_checkout": "User started checkout process",
+                "lead": "User expressed interest (form submission, signup, etc.)",
+                "page_view": "User viewed a page",
+                "purchase": "User completed a purchase",
+                "qualify_lead": "Lead qualified by sales or scoring criteria",
+                "refund": "A purchase was fully or partially refunded (adjusts ROAS)",
+                "remove_from_cart": "User removed an item from cart",
+                "schedule": "User scheduled an appointment or event",
+                "search": "User performed a search",
+                "select_content": "User selected or clicked on content (article, video, etc.)",
+                "select_item": "User selected a specific product or item from a list",
+                "share": "User shared content via social or messaging",
+                "start_trial": "User started a free trial",
+                "submit_application": "User submitted an application (loan, job, etc.)",
+                "subscribe": "User started a paid subscription or paid membership",
+                "view_content": "User viewed specific content (product, article, etc.)",
+                "viewed_cart": "User viewed their shopping cart",
+                "watch_milestone": "User reached a content progress threshold, such as 25%, 50%, 75%, 100%, or a seconds-viewed milestone"
+              },
+              "title": "Event Type",
+              "type": "string"
+            },
+            "kind": {
+              "const": "event",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "event_type"
+          ],
+          "then": {
+            "required": [
+              "custom_event_name"
+            ]
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "volume": {
+      "description": "Desired total volume of the goal's metric or event across the planned flight. Alone, the seller solves for budget and answers with total_budget_guidance and a forecast. With cost_per, the seller plans toward the volume at the cost: under a cap it SHOULD keep the buyer's amount and forecast the lower volume it can deliver, unless no volume can be planned at that amount; under a target the ask is plannable when the seller can forecast the volume around it.",
+      "exclusiveMinimum": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "goal"
+  ],
+  "title": "Outcome Target",
+  "type": "object"
+}

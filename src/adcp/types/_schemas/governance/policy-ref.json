@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "A reference to a policy in the policy registry. Used in brand compliance configurations to declare which registry policies apply.",
+  "properties": {
+    "config": {
+      "additionalProperties": true,
+      "description": "Brand-specific parameter overrides for configurable policies. The accepted shape depends on the policy's config_schema.",
+      "type": "object"
+    },
+    "policy_id": {
+      "description": "The unique identifier of the policy in the registry (e.g., \"uk_hfss\", \"us_coppa\").",
+      "type": "string",
+      "x-entity": "governance_registry_policy"
+    },
+    "version": {
+      "description": "Pin a specific policy version (semver). If omitted, the current version is used.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "policy_id"
+  ],
+  "title": "Policy Reference",
+  "type": "object"
+}

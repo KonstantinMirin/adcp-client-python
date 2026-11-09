@@ -1,0 +1,944 @@
+"""§2's declared backlog and §8's UNDERDETERMINED equality, graded in SECONDS.
+
+**Why these two instruments are HERE and not in the census test that used to hold them**
+(``adcp-client-python-10l.109``).  ``architecture.md``'s decision of 2026-10-29 -- "a check
+whose precondition is the thing it checks is not a check" -- is about the import
+obligation, and these two had the same disease in a milder form, twice over:
+
+* they were read off the COMMITTED artifact's own declarations, where §9's instruction
+  ("ratchet the *ours* split down") is about what the WALK mints.  The two do not agree:
+  the committed tree declares 130 sites in 59 documents and a fresh run mints 117 in 50.
+* they sat behind ``graded_reports()``, which builds 2,347 pair reports and takes the best
+  part of an hour -- and which **cannot complete today at all**: ``pair_of`` calls
+  ``schema_at``, and ``adcp-client-python-10l.108``'s two refs of
+  ``media-buy/buy-products-request.json`` raise ``KeyError: '0'`` on a synthetic ``allOf``
+  pointer.  So the one check that reads both ratchets could not run, which is how
+  ``DECLARED_WIDENINGS`` came to hold **11 sites against a live 117** and
+  ``UNDERDETERMINED_UNIONS`` **the empty list against a live 89** with nothing red.
+
+Neither instrument needs a pair, a draw or a dump.  The declared half is the run's own
+``Emitted.approximations``; the UNDERDETERMINED equality needs the declarations and the
+documents of record (``bundle.record``), which is §9's own reading of what a document
+states.  Both are a warm second here.
+"""
+
+from __future__ import annotations
+
+import importlib
+import pkgutil
+from pathlib import Path
+from typing import Any
+
+import fresh
+from compiled import compiled
+from nodeset import claimed, ratchet
+
+from adcp.types._base import SchemaBound, SchemaRef
+from codegen import bundle, catalogue, emit, harness
+
+REPO = Path(__file__).resolve().parents[1]
+#: **The bundle a run reads, taken from the ONE declaration of it**
+#: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while
+#: every class it grades was emitted from the PATCHED bundle, so its two halves ranged over
+#: two different document sets.  Measured against ``fresh.PUBLISHED``: the published
+#: directory is portable over 1,054 documents and the run's over 1,059, the five only the
+#: patched one holds are documents ``patches/8525`` ADDS, and of the 1,054 they share 211
+#: differ -- 200 of those beyond ``$schema``/``title``/``description``.  So the published
+#: path is ``adcp-client-python-fr4r``'s lookup error waiting at whichever clause names a
+#: document first, and a quietly different answer at each of the others.
+BUNDLE = fresh.BUNDLE
+
+
+def _minted() -> dict[tuple[str, str, str], Any]:
+    """Every approximation a FRESH whole-population run declares, by site."""
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    return {
+        harness.site_of(one): one
+        for sites in out.approximations.values()
+        for one in sites
+    }
+
+
+def _carried() -> dict[tuple[str, str, str], Any]:
+    """Every approximation the COMMITTED tree carries, by site.
+
+    Read off the artifact the way §9 requires -- "``render.py`` writes
+    ``__adcp_approximations__`` onto the class ... and ``verify/`` reads it as a consumer
+    reads any other class attribute" -- and through the same two holders ``graded()`` draws
+    from: the CLASS for a class and the MODULE for an alias.  **No ``schema_at``**, which is
+    what keeps this readable while ``adcp-client-python-10l.108`` is open.
+    """
+    import adcp.types._schemas as pkg
+
+    out: dict[tuple[str, str, str], Any] = {}
+    for info in sorted(pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."), key=lambda i: i.name):
+        module = importlib.import_module(info.name)
+        taken: set[int] = set()
+        for value in vars(module).values():
+            if (
+                isinstance(value, type)
+                and issubclass(value, SchemaBound)
+                and "__adcp_schema__" in value.__dict__
+                and value.__module__ == info.name
+                and id(value) not in taken
+            ):
+                taken.add(id(value))
+                for one in harness.declarations_of(value):
+                    out[harness.site_of(one)] = one
+        ref = vars(module).get("__adcp_schema__")
+        if isinstance(ref, SchemaRef) and callable(vars(module).get("strict_validate")):
+            for one in harness.declarations_of(module):
+                out[harness.site_of(one)] = one
+    return out
+
+
+#: **§2's declared widenings, NAMED and not counted**, which is what §9 asks for the
+#: moment a cell widens: "Do not pin the approximation count.  It rises whenever the
+#: emitted set grows ... Pin the four disagreement counts, which do not, and ratchet the
+#: *ours* split down."  So this is the *ours* backlog as a SET: a site leaving reddens with
+#: the site named, and a site arriving reddens with the site named, where two integers
+#: would have said only that a number moved.
+#:
+#: Both figures §10 prints are read OFF this set rather than stated beside it, because
+#: "``K`` and ``D`` are different counts over different denominators and the report never
+#: adds them": ``len`` is the facts and the distinct documents are the documents.
+#:
+#: **RE-MEASURED AT ``adcp-client-python-10l.109``: 11 SITES IN 9 DOCUMENTS -> 117 IN 50,
+#: AND THE ELEVEN WERE NOT A FLOOR -- THEY WERE A READING OF A TREE SIX ROWS AGO.**  The
+#: set was pinned when the backlog was eleven and every row since has emitted more of the
+#: bundle without re-reading it, so the ratchet was a number below the truth -- which is
+#: the one state ``nodeset.ratchet``'s own docstring says a floor must never be in, because
+#: a floor below the truth gets exempted later instead of acted on.  Nothing was caught by
+#: it in either direction for six rows.  **It was invisible because the check that reads it
+#: could not run**: ``tests/test_emit.py`` did not collect
+#: (``adcp-client-python-10l.105``), and before that the figure it would have moved
+#: against was the one ``./check`` prints -- 117 facts in 50 documents -- which nothing
+#: compared to this set.
+#:
+#: **RE-PINNED AT ``adcp-client-python-3be.23``: 117 IN 50 -> 120 IN 53, and this time the
+#: check DID run and said so.**  The three that arrived are
+#: ``media-buy/proposal-refinement.json#/oneOf/1/anyOf``,
+#: ``media-buy/refine-proposals-request.json#/properties/refinements/items/oneOf/1/anyOf``
+#: and ``media-buy/request-proposals-request.json#/anyOf``, each an ``anyOf`` at the JOIN
+#: rung the dispatch cannot separate, and nothing is pinned-and-no-longer-declared.  So
+#: this is the move ``docs/plan/unimplemented.md``'s A-13 calls a RELOCATION rather than a
+#: loosening: the gap was three sites of ONE shape already here eighteen times, read off a
+#: run three rows after the set was written, and the figure ``./check`` prints -- 120 facts
+#: in 53 documents -- is the same reading from the other end.
+#:
+#: **AND THE POPULATION MOVED WITH IT, which is the same decision ``10l.105`` makes about
+#: the import obligation**: "the obligation ranges over the tree a fresh run EMITS, not the
+#: one committed".  This set is now compared against the APPROXIMATIONS OF A FRESH
+#: WHOLE-POPULATION RUN and not against the COMMITTED artifact's own declarations
+#: (:func:`_carried`) -- and the two do not agree: the committed tree declares **130 sites
+#: in 59 documents**, 58 of which no fresh run makes and 45 of which a fresh run makes and
+#: it does not.  That gap is ``adcp-client-python-uqf``'s ("the committed tree is not what
+#: a fresh run emits") and it is held BY DIRECTION below
+#: (:func:`test_the_harness_result_is_counted_over_the_whole_population`) rather than as a
+#: second 130-entry literal, because its obligation is that it reaches zero.
+#:
+#: **RE-PINNED AT ``sdk/ident``: 178 IN 70 -> 128 IN 63, BY §8 SENTENCE 2 AND THE
+#: DECLARATION IT MADE AFFORDABLE.**  "A fact is
+#: declared ONCE, at the node the document STATES it, and never once per pointer the record
+#: inlines it to ... An approximation's identity is ``(stating document, stating pointer,
+#: keyword)``, and every inlined occurrence resolves to it."  Nothing stopped widening and
+#: no cell narrowed: ``emit.repointed`` carried each declaration to every pointer a
+#: reference inlines its node to -- a local reference moved it to the referring pointer, a
+#: remote one copied the target's to the referrer, a third pass folded it off an ``allOf``
+#: conjunct -- and the record resolves references by COPYING, so one conditional reached 58
+#: pointers and one cell 80.  The walk minted 37 and that machinery reported 178.
+#:
+#: **AND 89 OF THE 126 ARE A DECLARATION THAT COULD NOT BE AFFORDED BEFORE.**  §5's
+#: ``if`` row compiles an unreadable condition to nothing, §8 sentence 3b's complement
+#: does not reach one that states no ``required``, and §2's answer for a model wider
+#: than its document is a declaration -- which ``lower.rules._conditional`` now writes.
+#: Declaring it under the old rule minted **4,635 sites in 97 documents from 112
+#: distinct conditional facts**, 3,641 of them one logo-slot ``if``; that ratio was the
+#: measurement of the per-pointer defect and not of this drop.  It closes the six RULE
+#: cells ``tests/test_cells.py`` excluded by a derived predicate, and that predicate is
+#: deleted in the same commit.
+#:
+#: **RE-PINNED AT ``sdk/cond``: 128 IN 63 -> 92 IN 58, AND THE SENTENCE ABOVE IS WHAT
+#: MOVED.**  "§8 sentence 3b's complement does not reach one that states no ``required``"
+#: was read off the lowering and not off the derivation, and the derivation says the
+#: opposite: 3b makes presence THREE-STATE, and *immaterial* is precisely draft-07's own
+#: reading of a ``properties`` entry for a key nothing requires -- *absent, or present
+#: with its value in this set*.  ``lower.rules._clauses`` read that state only in the
+#: NEGATIVE direction (``_complement``, where the De Morgan step produced it) and
+#: declined to mint it in the positive one, so 35 conditions of this bundle declared a
+#: fact the vocabulary could already carry.
+#:
+#: **36 LEFT AND NOTHING ARRIVED**, measured over the same 1,054 portable documents, in
+#: two shapes and both of them one clause about one key:
+#:
+#: * **35 conditions state ``properties`` and no ``required``** -- 25 of them one
+#:   ``scenario`` key under ``compliance/comply-test-controller-request.json``, the rest
+#:   at ``core/delivery-metric-aggregate.json``, ``core/reporting-delivery-config-state.json``,
+#:   ``creative/preview-creative-request.json``,
+#:   ``compliance/comply-test-controller-response.json`` and
+#:   ``aao/agent-publishers.json`` -- and each lowers to one IMMATERIAL clause carrying
+#:   the ``const`` or ``enum`` the entry pins.
+#: * **one states a ``not`` over a ``const`` at a property declaration** --
+#:   ``media-buy/get-products-response.json#/allOf/2``, *``status`` present and not
+#:   ``"rejected"``* -- which is the key, presence REQUIRED and that value FORBIDDEN:
+#:   3b's complement read one level down, at a clause instead of at a whole condition
+#:   (``lower.rules._excluded``).
+#:
+#: Nothing stopped being declared that was not lowered in its place, and no cell moved:
+#: ``./check``'s other figures are unchanged (``emitted 1054 / refused 0``, ``primary 0,
+#: chained 0``) and the 2,757 pairs gained, lost and changed no verdict.
+#:
+#: **THE 141 THAT LEFT ARE NOT A SET THIS FILE SHOULD HAVE HELD**, which is why this is a
+#: re-pin and not a loosening: every one of them was a second entry for a fact already here,
+#: at a pointer a REFERRING document spells for a node another document states.  §3a settled
+#: the same question for a vocabulary -- *the entry, not the declaration site* -- and the
+#: reader is what resolves an occurrence to the entry (``harness.inseparable_sites``, over
+#: the origin map ``bundle.recorded`` exports).
+#:
+#: **SEVEN SHAPES, and the sentence that keeps each -- per SHAPE, because that is the level
+#: at which a declaration is a decision.**  A site is a document's instance of one of
+#: these seven and carries no argument of its own:
+#:
+#: * ``oneOf`` at the JOIN rung, UNDERDETERMINED -- **15 sites in 13 documents**: §4's
+#:   dispatch cannot separate the branches, which is the one kind §8 gives an instrument of
+#:   its own (``underdetermined_census``, below).
+#: * ``anyOf`` at the JOIN rung, UNDERDETERMINED -- **10 sites in 10 documents**, the same
+#:   shape under the other combinator.  ``harness.inseparable_unions`` draws no
+#:   root/nested distinction and must not, so both positions are here.
+#: * ``patternProperties`` at the CONTAINER rung -- **7 sites in 6 documents**, every one
+#:   a ``patternProperties`` beside a non-``false`` ``additionalProperties``, whose
+#:   faithful answer is a rule family for "keys matching this pattern take this type".
+#:   That is a different thing from §2's three value rules and no row has written it;
+#:   ``adcp-client-python-10l.12`` is the row that owns the keyword.
+#: * ``else`` at the KEYWORD rung -- **4 sites in 4 documents**: a conditional nested
+#:   inside another conditional's ``else`` arm compiles to nothing on the model, and
+#:   ``docs/plan/final-state.md`` reading 2 makes every exception to reading 1 a DECLARED
+#:   widening rather than a named ceiling.
+#: * ``maxProperties`` at the KEYWORD rung -- **2 sites**, ``/properties/ext`` in
+#:   ``core/account-change.json`` and its webhook twin: the class takes ``ignore`` and
+#:   counts over a smaller key set than the document counts over.  Declared nowhere
+#:   until ``sdk/ident``, because ``Rules.dropped`` had four producers and one
+#:   consumer and ``lower_composition`` read the screen and the distinct set and
+#:   never the dropped set.
+#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of them that
+#:   is a plain keyword rather than a structural answer:
+#:   ``compliance/comply-test-controller-response.json`` at
+#:   ``#/oneOf/6/properties/recorded_calls/items/properties/payload``.
+#: * ``if`` at the KEYWORD rung -- **53 sites in 26 documents**, the condition §5's ``if``
+#:   row cannot reduce to a clause list.  **FIVE CAUSES, and each is named because §8
+#:   requires a declaration that remains to say why the complement does not cover it.**
+#:   Every one of them fails the same way for the same reason: a conjunct of the
+#:   document's condition that the clause list cannot carry has to be DROPPED, a ``when``
+#:   short of a conjunct holds MORE often than the condition it came from, and a rule
+#:   firing where the document's conditional does not refuses a payload the document
+#:   admits -- the one direction §2 forbids outright.  So the whole condition declines:
+#:
+#: **RE-PINNED TWICE: 128 IN 63 -> 126 IN 62 AT ``sdk/collapse``, THEN -> 90 IN 57 AS 36 CONDITIONS BECAME RULES, AND IT IS §3a's OWN PREDICTED
+#: DENOMINATOR AND NOT PROGRESS.**  §3a: "An approximation is counted today at the
+#: declaration SITE, because each position derives its own type and a dropped fact is
+#: dropped at that position.  **Under a catalogue the denominator becomes the ENTRY** ...
+#: whatever they become must be re-derived and reported as a changed denominator rather
+#: than as progress."  Reading 4's object layer now collects the structures the bundle
+#: titles nowhere, so a position that RESTATES one declares no class and drops no fact.
+#:
+#: **The two that left are one fact each, already declared at the entry's home**, and that
+#: is why this is the §8-sentence-2 reading at a second scope rather than a loosening:
+#: ``content-standards/update-content-standards-request.json``'s
+#: ``#/properties/calibration_exemplars`` is the same structure
+#: ``content-standards/create-content-standards-request.json`` states, so the two
+#: inseparable ``oneOf``\\ s beneath it are the ones pinned two lines above at the
+#: ``create-`` document -- which are live and unmoved.  **Nothing arrived**: ``declared and
+#: not pinned`` is empty, so no widening is new and none became silent (the silent
+#: direction is :data:`UNDERDETERMINED_UNIONS`, unchanged at 88, with
+#: ``harness.underdetermined_census`` resolving a site beneath a collapsed position to the
+#: entry's home exactly as it already resolves an inlined occurrence to its stating site).
+#:
+#: **SEVEN CAUSES, NOT 126**, which is the reading ``codegen/dump_exemptions.py``'s own
+#: instrument records for the same shape: one row at 89 conditions, one derivation at 25
+#: unions, one cell at 7 containers, one conditional shape at 4 nodes, one discarded drop
+#: set at 2, one keyword at 1.  The pointer count and
+#: the cause count are different numbers over different denominators and the report never
+#: adds them.
+#:
+#:   * **22 test a ``contains``** -- *the array at this key has an element equal to v* --
+#:     19 of them a bare ``contains`` and 3 beside a ``type`` (``core/signal-definition.json``,
+#:     ``governance/sync-plans-request.json`` twice).  One key, and the complement does
+#:     not reach it because the predicate is EXISTENTIAL OVER A COLLECTION and not a
+#:     membership of the key's own value in a set: ``Match`` compares ``values[key]`` to a
+#:     value set, and no complement of a value set says "some element of this array".
+#:     A third clause state would not help; what this needs is a clause whose predicate is
+#:     a quantifier, which §8 does not derive and no row has written.
+#:   * **18 test a NESTED OBJECT** -- 11 a bare ``required`` inside the entry
+#:     (``core/canonical-product.json``, ``core/product.json`` five times,
+#:     ``protocol/get-adcp-capabilities-response.json`` four), 7 a ``properties`` with a
+#:     ``const`` inside it (``media-buy/get-reporting-status-response.json``,
+#:     ``protocol/get-adcp-capabilities-response.json`` five, ``core/signal-listing.json``).
+#:     One key again, and again not a value set: the predicate is about the keys and
+#:     values of the object the key HOLDS, which is a clause list one level down.  The
+#:     vocabulary has no nesting -- ``Match`` reads a key of the instance and compares a
+#:     scalar -- and a complement over the outer key's whole value would be a different
+#:     statement.
+#:   * **10 state an ``anyOf``** -- ``core/package.json``, ``core/product.json``,
+#:     ``formats/canonical/native_in_feed.json``, ``governance/check-governance-request.json``
+#:     twice, ``media-buy/build-creative-request.json``,
+#:     ``media-buy/get-media-buy-delivery-response.json``,
+#:     ``media-buy/get-media-buys-response.json``, ``media-buy/get-products-request.json``,
+#:     ``signals/get-signals-request.json``.  **This is the residue §8 sentence 1 names by
+#:     hand and the vocabulary is RIGHT not to express**: *``signal_targeting_options``
+#:     required OR ``signal_targeting_rules`` required* is a disjunction ACROSS KEYS, a
+#:     rule's ``when`` is a conjunction, and the per-key complement states *both absent*
+#:     -- strictly stronger than the document.  "The test is whether the disjunction is
+#:     inside one key's predicate or across several", and here it is across.
+#:   * **2 test a NUMERIC BOUND** -- ``core/reporting-obligation.json#/allOf/0`` and
+#:     ``core/reporting-reliability-statistics.json#/allOf/0``, each ``{"minimum": 1}`` at
+#:     the entry.  One key, and the complement is of a FINITE SET of named values; a bound
+#:     names no values to complement.  (``intersect.declaring`` reports no declaring
+#:     keyword at RULE for these, which is a second reading worth its own row -- the
+#:     reduction does not rely on it: a declaration it cannot read declines either way.)
+#:   * **1 states ``properties`` and no ``required`` and is still unreadable** --
+#:     ``core/demographic-targeting-resolution.json#/allOf/0``, whose single entry holds a
+#:     nested ``properties``/``required``.  It is the immaterial state's own residue: the
+#:     presence is expressible now and the VALUE predicate is the nested-object one above.
+#:
+#:   The ``else`` shape above is the sixth conditional cause and is NOT a condition the
+#:   complement could reach: all four of its conditions lower, and what declares is the
+#:   CONSEQUENT, a conditional nested in the ``else`` arm (``adcp-client-python-3bb``).
+#:
+#: **SEVEN CAUSES AT THE SHAPE LEVEL AND ELEVEN AT THE CAUSE LEVEL, NOT 92**, which is the
+#: reading ``codegen/dump_exemptions.py``'s own instrument records for the same shape: five
+#: conditional causes over 53 conditions, one derivation at 25 unions, one cell at 7
+#: containers, one conditional shape at 4 nodes, one discarded drop set at 2, one keyword
+#: at 1.  The pointer count and the cause count are different numbers over different
+#: denominators and the report never adds them.
+DECLARED_WIDENINGS = {
+    # if at KEYWORD: 347 sites in 124 documents
+    ('aao/agent-publishers.json', '#/definitions/PublisherEntry/allOf/0', 'if'),
+    ('account/sync-accounts-request.json', '#/properties/accounts/items/properties/notification_configs/items/allOf/1', 'if'),
+    ('account/sync-accounts-response.json', '#/oneOf/0/allOf/0', 'if'),
+    ('adagents.json', '#/oneOf/1/allOf/1', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/1', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/10', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/11', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/12', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/13', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/14', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/15', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/16', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/17', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/18', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/19', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/2', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/20', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/21', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/22', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/23', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/24', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/25', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/26', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/27', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/28', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/29', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/3', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/30', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/4', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/5', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/6', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/7', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/8', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/9', 'if'),
+    ('core/agent-notification-config.json', '#', 'if'),
+    ('core/agent-reporting-destination-state.json', '#/allOf/1', 'if'),
+    ('core/agent-reporting-destination-state.json', '#/allOf/2', 'if'),
+    ('core/attestation-capabilities.json', '#/allOf/0', 'if'),
+    ('core/audience-characteristic.json', '#/allOf/0', 'if'),
+    ('core/audience-evidence.json', '#/allOf/0', 'if'),
+    ('core/audience-evidence.json', '#/allOf/1', 'if'),
+    ('core/audience-evidence.json', '#/allOf/2', 'if'),
+    ('core/bidding-policy-capability.json', '#/definitions/policy_profile/allOf/0', 'if'),
+    ('core/bidding-policy-capability.json', '#/definitions/policy_profile/allOf/1', 'if'),
+    ('core/canonical-audience-evidence.json', '#/allOf/0', 'if'),
+    ('core/canonical-audience-evidence.json', '#/allOf/1', 'if'),
+    ('core/canonical-audience-evidence.json', '#/allOf/2', 'if'),
+    ('core/canonical-optimization-goal.json', '#/oneOf/0/allOf/0', 'if'),
+    ('core/canonical-product.json', '#/allOf/0', 'if'),
+    ('core/canonical-product.json', '#/allOf/1', 'if'),
+    ('core/canonical-product.json', '#/allOf/2', 'if'),
+    ('core/canonical-proposal.json', '#/allOf/3', 'if'),
+    ('core/canvas-constraint.json', '#/properties/region/allOf/0', 'if'),
+    ('core/catalog-item-availability-error.json', '#/allOf/1', 'if'),
+    ('core/catalog-item-availability-state.json', '#/allOf/1', 'if'),
+    ('core/catalog-item-availability-state.json', '#/allOf/2', 'if'),
+    ('core/catalog-item-availability-update-result.json', '#/allOf/1', 'if'),
+    ('core/catalog-item-availability-update-result.json', '#/allOf/3', 'if'),
+    ('core/catalog-item-availability-update-result.json', '#/allOf/4', 'if'),
+    ('core/catalog-item-availability-update-result.json', '#/allOf/5', 'if'),
+    ('core/catalog-item-availability-update.json', '#/allOf/0', 'if'),
+    ('core/catalog-item-availability-update.json', '#/allOf/1', 'if'),
+    ('core/creative-assignment.json', '#/allOf/1', 'if'),
+    ('core/creative-manifest.json', '#/allOf/1', 'if'),
+    ('core/creative-operation-format-declaration.json', '#/allOf/2', 'if'),
+    ('core/creative-operation-format-declaration.json', '#/allOf/5', 'if'),
+    ('core/creative-representation.json', '#/allOf/2', 'if'),
+    ('core/daast-tracker-constraints.json', '#/allOf/0', 'if'),
+    ('core/daast-tracker-constraints.json', '#/allOf/1', 'if'),
+    ('core/delivery-metrics.json', '#/properties/viewability/allOf/0', 'if'),
+    ('core/delivery-metrics.json', '#/properties/viewability/allOf/1', 'if'),
+    ('core/demographic-reporting-capability.json', '#/properties/age/allOf/0', 'if'),
+    ('core/demographic-reporting-capability.json', '#/properties/age/allOf/1', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/0', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/1', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/2', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/3', 'if'),
+    ('core/demographic-targeting-intent.json', '#/properties/age/allOf/1/allOf/0', 'if'),
+    ('core/demographic-targeting-resolution.json', '#/allOf/0', 'if'),
+    ('core/demographic-targeting-resolution.json', '#/allOf/1', 'if'),
+    ('core/demographic-targeting-resolution.json', '#/allOf/2', 'if'),
+    ('core/downstream-connection-requirement.json', '#/allOf/0', 'if'),
+    ('core/event.json', '#/allOf/0', 'if'),
+    ('core/forecast-dimension-geo.json', '#/allOf/0', 'if'),
+    ('core/forecast-dimension-geo.json', '#/allOf/1', 'if'),
+    ('core/forecast-dimension-geo.json', '#/allOf/2', 'if'),
+    ('core/forecast-dimension-geo.json', '#/allOf/3', 'if'),
+    ('core/forecast-dimension-signal.json', '#/allOf/0', 'if'),
+    ('core/forecast-dimension-signal.json', '#/allOf/1', 'if'),
+    ('core/format.json', '#/allOf/0', 'if'),
+    ('core/frequency-cap-interval-constraints.json', '#', 'if'),
+    ('core/geo-delivery-metrics.json', '#/allOf/1/allOf/2', 'if'),
+    ('core/geo-delivery-metrics.json', '#/allOf/1/allOf/3', 'if'),
+    ('core/geo-place-area.json', '#/allOf/0', 'if'),
+    ('core/get-geo-place-resolution-response.json', '#/allOf/0', 'if'),
+    ('core/indicator-bearing.json', '#/allOf/0', 'if'),
+    ('core/indicator-bearing.json', '#/allOf/1', 'if'),
+    ('core/indicator-bearing.json', '#/allOf/2', 'if'),
+    ('core/indicator-bearing.json', '#/allOf/3', 'if'),
+    ('core/indicator-bearing.json', '#/allOf/4', 'if'),
+    ('core/indicator-bearing.json', '#/allOf/5', 'if'),
+    ('core/indicator-bearing.json', '#/allOf/6', 'if'),
+    ('core/indicator-bearing.json', '#/allOf/7', 'if'),
+    ('core/macro-declaration.json', '#/allOf/10', 'if'),
+    ('core/macro-declaration.json', '#/allOf/11', 'if'),
+    ('core/macro-declaration.json', '#/allOf/12', 'if'),
+    ('core/macro-declaration.json', '#/allOf/13', 'if'),
+    ('core/macro-declaration.json', '#/allOf/14', 'if'),
+    ('core/macro-declaration.json', '#/allOf/3', 'if'),
+    ('core/macro-declaration.json', '#/allOf/4', 'if'),
+    ('core/macro-declaration.json', '#/allOf/5', 'if'),
+    ('core/macro-declaration.json', '#/allOf/6', 'if'),
+    ('core/macro-declaration.json', '#/allOf/7', 'if'),
+    ('core/macro-declaration.json', '#/allOf/8', 'if'),
+    ('core/macro-declaration.json', '#/allOf/9', 'if'),
+    ('core/macro-encoding.json', '#/allOf/0', 'if'),
+    ('core/macro-encoding.json', '#/allOf/1', 'if'),
+    ('core/macro-encoding.json', '#/allOf/2', 'if'),
+    ('core/macro-resolution-capability.json', '#/allOf/2', 'if'),
+    ('core/macro-resolution-capability.json', '#/allOf/4', 'if'),
+    ('core/macro-resolution-capability.json', '#/allOf/5', 'if'),
+    ('core/macro-resolution-capability.json', '#/allOf/7', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/10', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/11', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/12', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/4', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/5', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/6', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/7', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/8', 'if'),
+    ('core/macro-resolution-result.json', '#/allOf/9', 'if'),
+    ('core/macro-translation-target.json', '#/allOf/2', 'if'),
+    ('core/macro-translation-target.json', '#/allOf/4', 'if'),
+    ('core/macro-translation-target.json', '#/allOf/5', 'if'),
+    ('core/macro-translation-target.json', '#/allOf/6', 'if'),
+    ('core/mcp-webhook-payload.json', '#/allOf/0', 'if'),
+    ('core/media-buy.json', '#/allOf/0', 'if'),
+    ('core/notification-config.json', '#/allOf/0', 'if'),
+    ('core/optimization-goal.json', '#/oneOf/0/allOf/0', 'if'),
+    ('core/package.json', '#/allOf/1', 'if'),
+    ('core/package.json', '#/allOf/2', 'if'),
+    ('core/product-filters.json', '#/properties/required_geo_targeting/items/allOf/1', 'if'),
+    ('core/product-filters.json', '#/properties/required_geo_targeting/items/allOf/2', 'if'),
+    ('core/product-format-declaration.json', '#/allOf/0', 'if'),
+    ('core/product-format-declaration.json', '#/allOf/2', 'if'),
+    ('core/product-format-declaration.json', '#/allOf/5', 'if'),
+    ('core/product.json', '#/allOf/0', 'if'),
+    ('core/product.json', '#/allOf/1', 'if'),
+    ('core/product.json', '#/allOf/10', 'if'),
+    ('core/product.json', '#/allOf/2', 'if'),
+    ('core/product.json', '#/allOf/3', 'if'),
+    ('core/product.json', '#/allOf/4', 'if'),
+    ('core/product.json', '#/allOf/5', 'if'),
+    ('core/product.json', '#/allOf/6', 'if'),
+    ('core/product.json', '#/allOf/7', 'if'),
+    ('core/product.json', '#/allOf/8', 'if'),
+    ('core/product.json', '#/allOf/9', 'if'),
+    ('core/proposal.json', '#/allOf/0', 'if'),
+    ('core/proposal.json', '#/allOf/1', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/3', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/4', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/5', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/6', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/7', 'if'),
+    ('core/reporting-delivery-config-state.json', '#/allOf/0', 'if'),
+    ('core/reporting-delivery-config-state.json', '#/allOf/1', 'if'),
+    ('core/reporting-delivery-config.json', '#/allOf/0', 'if'),
+    ('core/reporting-delivery-config.json', '#/allOf/1', 'if'),
+    ('core/reporting-delivery-offering.json', '#/allOf/0', 'if'),
+    ('core/reporting-delivery-offering.json', '#/allOf/1', 'if'),
+    ('core/reporting-materialization.json', '#/allOf/2', 'if'),
+    ('core/reporting-materialization.json', '#/allOf/3', 'if'),
+    ('core/reporting-materialization.json', '#/allOf/4', 'if'),
+    ('core/reporting-materialization.json', '#/allOf/5', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/0', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/1', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/2', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/3', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/4', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/5', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/6', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/7', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/8', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/9', 'if'),
+    ('core/reporting-reliability-statistics.json', '#/allOf/0', 'if'),
+    ('core/reporting-report-definition.json', '#/allOf/0', 'if'),
+    ('core/reporting-revision.json', '#/allOf/0', 'if'),
+    ('core/reporting-schedule-offering.json', '#/allOf/0', 'if'),
+    ('core/reporting-schedule.json', '#/allOf/0', 'if'),
+    ('core/reporting-status-changed-webhook.json', '#/allOf/0', 'if'),
+    ('core/reporting-status-issue.json', '#/allOf/1', 'if'),
+    ('core/signal-coverage-forecast.json', '#/allOf/0', 'if'),
+    ('core/signal-definition-enrichment.json', '#/allOf/0', 'if'),
+    ('core/signal-definition.json', '#/allOf/0', 'if'),
+    ('core/signal-definition.json', '#/allOf/4', 'if'),
+    ('core/signal-definition.json', '#/allOf/5', 'if'),
+    ('core/signal-listing.json', '#/allOf/0', 'if'),
+    ('core/signal-listing.json', '#/allOf/1', 'if'),
+    ('core/targeting-overlay-requirements.json', '#/definitions/daypartRequirement/anyOf/1/allOf/0', 'if'),
+    ('core/targeting-overlay-support.json', '#/definitions/daypartSupport/anyOf/1/allOf/0', 'if'),
+    ('core/tasks-get-response.json', '#/allOf/2', 'if'),
+    ('core/transformer-param.json', '#/allOf/2', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/0', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/1', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/10', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/2', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/4', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/5', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/6', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/7', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/8', 'if'),
+    ('core/vast-tracker-constraints.json', '#/allOf/9', 'if'),
+    ('core/warning.json', '#/allOf/0', 'if'),
+    ('core/warning.json', '#/allOf/1', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/1', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/10', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/11', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/2', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/3', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/4', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/5', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/6', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/7', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/8', 'if'),
+    ('core/wholesale-feed-webhook.json', '#/allOf/9', 'if'),
+    ('creative/creative-status-changed-webhook.json', '#/properties/transition/allOf/0', 'if'),
+    ('creative/creative-status-changed-webhook.json', '#/properties/transition/allOf/1', 'if'),
+    ('creative/creative-status-changed-webhook.json', '#/properties/transition/allOf/2', 'if'),
+    ('creative/creative-status-changed-webhook.json', '#/properties/transition/allOf/3', 'if'),
+    ('creative/list-creatives-request.json', '#/allOf/2', 'if'),
+    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/2', 'if'),
+    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3', 'if'),
+    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/4', 'if'),
+    ('creative/preview-creative-request.json', '#/allOf/1', 'if'),
+    ('creative/sync-creatives-request.json', '#/allOf/3', 'if'),
+    ('creative/validate-input-result.json', '#/properties/target/allOf/0', 'if'),
+    ('formats/canonical/_base.json', '#/properties/slots/items/allOf/4', 'if'),
+    ('formats/canonical/image.json', '#/allOf/2', 'if'),
+    ('formats/canonical/native_in_feed.json', '#/allOf/1', 'if'),
+    ('formats/canonical/native_in_feed.json', '#/allOf/2', 'if'),
+    ('formats/canonical/sponsored_placement.json', '#/allOf/1', 'if'),
+    ('formats/canonical/video_hosted.json', '#/allOf/1', 'if'),
+    ('formats/canonical/video_vast.json', '#/allOf/1', 'if'),
+    ('formats/canonical/video_vast.json', '#/allOf/2', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/10', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/11', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/13', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/14', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/16', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/6', 'if'),
+    ('governance/check-governance-response.json', '#/allOf/1', 'if'),
+    ('governance/report-plan-adjustment-request.json', '#/allOf/4', 'if'),
+    ('governance/report-plan-adjustment-request.json', '#/allOf/5', 'if'),
+    ('governance/report-plan-adjustment-request.json', '#/allOf/6', 'if'),
+    ('governance/report-plan-adjustment-request.json', '#/allOf/7', 'if'),
+    ('governance/sync-plans-request.json', '#/properties/plans/items/allOf/0', 'if'),
+    ('governance/sync-plans-request.json', '#/properties/plans/items/allOf/1', 'if'),
+    ('media-buy/accept-proposal-request.json', '#/properties/opportunity/allOf/1', 'if'),
+    ('media-buy/build-creative-request.json', '#/allOf/7', 'if'),
+    ('media-buy/build-creative-request.json', '#/allOf/8', 'if'),
+    ('media-buy/build-creative-request.json', '#/allOf/9', 'if'),
+    ('media-buy/build-creative-response.json', '#/oneOf/2', 'if'),
+    ('media-buy/buy-products-request.json', '#/properties/opportunity/allOf/1', 'if'),
+    ('media-buy/create-media-buy-request.json', '#/allOf/2', 'if'),
+    ('media-buy/create-media-buy-request.json', '#/properties/opportunity/allOf/1', 'if'),
+    ('media-buy/create-media-buy-response.json', '#/oneOf/0/allOf/0', 'if'),
+    ('media-buy/get-media-buy-delivery-request.json', '#/properties/reporting_dimensions/properties/geo/allOf/1', 'if'),
+    ('media-buy/get-media-buy-delivery-request.json', '#/properties/reporting_dimensions/properties/geo/allOf/2', 'if'),
+    ('media-buy/get-media-buy-delivery-response.json', '#/allOf/3', 'if'),
+    ('media-buy/get-media-buy-delivery-response.json', '#/properties/media_buy_deliveries/items/allOf/0', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/allOf/0', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/allOf/3', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/packages/items/allOf/3', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/packages/items/allOf/4', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/packages/items/properties/creative_approvals/items/allOf/2', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/packages/items/properties/creative_approvals/items/allOf/3', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/packages/items/properties/creative_approvals/items/allOf/4', 'if'),
+    ('media-buy/get-products-request.json', '#/allOf/1', 'if'),
+    ('media-buy/get-products-response.json', '#', 'if'),
+    ('media-buy/get-products-response.json', '#/allOf/3', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/allOf/2', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/allOf/3', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/allOf/4', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/allOf/5', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/allOf/6', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/oneOf/0/oneOf/1', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/properties/scope/allOf/0', 'if'),
+    ('media-buy/list-products-request.json', '#/allOf/1', 'if'),
+    ('media-buy/media-buy-delivery-webhook-result.json', '#/properties/media_buy_deliveries/items/allOf/0', 'if'),
+    ('media-buy/package-request.json', '#/allOf/1', 'if'),
+    ('media-buy/package-request.json', '#/allOf/2', 'if'),
+    ('media-buy/package-update.json', '#/allOf/0', 'if'),
+    ('media-buy/refine-proposals-response.json', '#/properties/results/items/allOf/0', 'if'),
+    ('media-buy/request-proposals-response.json', '#/anyOf/1/allOf/0', 'if'),
+    ('media-buy/request-proposals-response.json', '#/properties/purchase_continuation/oneOf/1/allOf/0', 'if'),
+    ('media-buy/sync-catalogs-response.json', '#/oneOf/1/allOf/0', 'if'),
+    ('media-buy/sync-catalogs-response.json', '#/oneOf/1/properties/errors/items/allOf/1', 'if'),
+    ('media-buy/update-media-buy-request.json', '#/allOf/1', 'if'),
+    ('media-buy/update-media-buy-request.json', '#/allOf/2', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/10', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/11', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/12', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/13', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/14', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/15', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/16', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/17', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/2', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/3', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/4', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/5', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/6', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/7', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/8', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/9', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/adcp/properties/capability_changes/allOf/0', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/adcp/properties/principal/allOf/0', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/creative/allOf/0', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/creative/allOf/1', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/creative/allOf/2', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/allOf/0', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/allOf/1', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/features/allOf/1', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/features/allOf/2', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/features/allOf/3', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/features/allOf/4', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/proposal_refinement/allOf/0', 'if'),
+    ('protocol/get-principal-response.json', '#', 'if'),
+    ('protocol/get-task-status-response.json', '#/allOf/2', 'if'),
+    ('protocol/sync-agent-notification-configs-request.json', '#/properties/notification_configs/items/allOf/1', 'if'),
+    ('protocol/sync-principal-request.json', '#/properties/configuration/properties/notification_configs/items/allOf/1', 'if'),
+    ('protocol/sync-principal-response.json', '#', 'if'),
+    ('signals/get-signals-request.json', '#', 'if'),
+    ('signals/get-signals-request.json', '#/allOf/1', 'if'),
+    ('signals/get-signals-response.json', '#', 'if'),
+    ('sponsored-intelligence/si-sponsored-context-receipt.json', '#/allOf/0', 'if'),
+    ('sponsored-intelligence/si-sponsored-context-receipt.json', '#/allOf/1', 'if'),
+    ('sponsored-intelligence/si-sponsored-context-receipt.json', '#/allOf/2', 'if'),
+    ('sponsored-intelligence/si-sponsored-context-receipt.json', '#/allOf/3', 'if'),
+    ('sponsored-intelligence/si-ui-element.json', '#/allOf/0', 'if'),
+    ('sponsored-intelligence/si-ui-element.json', '#/allOf/1', 'if'),
+    ('sponsored-intelligence/si-ui-element.json', '#/allOf/2', 'if'),
+    ('sponsored-intelligence/si-ui-element.json', '#/allOf/3', 'if'),
+    ('sponsored-intelligence/si-ui-element.json', '#/allOf/4', 'if'),
+    ('sponsored-intelligence/si-ui-element.json', '#/allOf/5', 'if'),
+    ('sponsored-intelligence/si-ui-element.json', '#/allOf/6', 'if'),
+    ('sponsored-intelligence/si-ui-element.json', '#/allOf/7', 'if'),
+
+    # oneOf at JOIN: 13 sites in 12 documents
+    ('adagents.json', '#/oneOf', 'oneOf'),
+    ('brand.json', '#/oneOf', 'oneOf'),
+    ('content-standards/calibrate-content-response.json', '#/oneOf', 'oneOf'),
+    ('content-standards/create-content-standards-request.json', '#/properties/calibration_exemplars/properties/fail/items/oneOf', 'oneOf'),
+    ('content-standards/create-content-standards-request.json', '#/properties/calibration_exemplars/properties/pass/items/oneOf', 'oneOf'),
+    ('content-standards/create-content-standards-response.json', '#/oneOf', 'oneOf'),
+    ('content-standards/get-content-standards-response.json', '#/oneOf', 'oneOf'),
+    ('content-standards/get-media-buy-artifacts-response.json', '#/oneOf', 'oneOf'),
+    ('content-standards/list-content-standards-response.json', '#/oneOf', 'oneOf'),
+    ('content-standards/validate-content-delivery-response.json', '#/oneOf', 'oneOf'),
+    ('core/evaluator-spec.json', '#/oneOf', 'oneOf'),
+    ('media-buy/build-creative-response.json', '#/oneOf', 'oneOf'),
+    ('registries/v1-canonical-mapping.json', '#/properties/mappings/items/properties/v1_pattern/oneOf', 'oneOf'),
+
+    # anyOf at JOIN: 10 sites in 10 documents
+    ('adagents.json', '#/oneOf/1/allOf/0/anyOf', 'anyOf'),
+    ('compliance/task-completion-data.json', '#/anyOf', 'anyOf'),
+    ('core/async-response-data.json', '#/anyOf', 'anyOf'),
+    ('core/requirements/asset-requirements.json', '#/anyOf', 'anyOf'),
+    ('media-buy/buy-products-request.json', '#/anyOf', 'anyOf'),
+    ('media-buy/create-media-buy-request.json', '#/anyOf', 'anyOf'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/available_actions/items/anyOf', 'anyOf'),
+    ('media-buy/proposal-refinement.json', '#/oneOf/1/anyOf', 'anyOf'),
+    ('media-buy/request-proposals-request.json', '#/anyOf', 'anyOf'),
+    ('trusted-match/provider-registration.json', '#/anyOf', 'anyOf'),
+
+    # patternProperties at CONTAINER: 7 sites in 6 documents
+    ('core/creative-asset.json', '#/properties/assets', 'patternProperties'),
+    ('core/creative-assets.json', '#', 'patternProperties'),
+    ('core/creative-manifest.json', '#/properties/assets', 'patternProperties'),
+    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/assets', 'patternProperties'),
+    ('creative/list-creatives-response.json', '#/properties/format_summary', 'patternProperties'),
+    ('creative/sync-creatives-response.json', '#/oneOf/0/properties/creatives/items/properties/assignment_errors', 'patternProperties'),
+    ('media-buy/get-products-response.json', '#/properties/extensions', 'patternProperties'),
+
+    # additionalProperties at CONTAINER: 3 sites in 3 documents
+    ('core/canonical-media-buy-features.json', '#', 'additionalProperties'),
+    ('core/media-buy-features.json', '#', 'additionalProperties'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/signals/properties/features', 'additionalProperties'),
+
+    # maxProperties at KEYWORD: 2 sites in 2 documents
+    ('core/account-change-recorded-webhook.json', '#/properties/ext', 'maxProperties'),
+    ('core/account-change.json', '#/properties/ext', 'maxProperties'),
+
+    # maxLength at KEYWORD: 1 sites in 1 documents
+    ('compliance/comply-test-controller-response.json', '#/oneOf/6/properties/recorded_calls/items/properties/payload', 'maxLength'),
+}
+
+#: **§8's UNDERDETERMINED equality, as the set the derivation cannot separate.**  "The set
+#: of unions declaring one equals the set the derivation cannot separate, in both
+#: directions, so a union that becomes separable loses its declaration and a union that
+#: stops being separable gains one."
+#:
+#: It was ``[]``, and the three readings its comment gave for that zero were each a decided
+#: sentence -- ``harness.inseparable_unions`` carries all three with its measurement:
+#:
+#: * a presence-only combinator is not a union (architecture §4's ``presence_only``
+#:   reading): 185 pointers before this clause, 16 of them roots;
+#: * a union at a RULE position lowers no type (semantics §3): 3 pointers;
+#: * a union whose branches are not all shapes lowers to an alias over their types, so
+#:   there are no branch classes for a declaration order to choose between.
+#:
+#: **ALL THREE STILL HOLD AND THE ZERO WAS STILL FALSE: 89 pointers,
+#: ``adcp-client-python-10l.109``.**  The three clauses say which pointers are NOT in this
+#: list; they never said the remainder was empty, and the remainder grew with every row
+#: that emitted more of the bundle.  The comment's own defence of the zero -- "at zero the
+#: list is the one form that cannot be mistaken for an allowlist" -- was true of a zero
+#: that was a fact and is the reason this is a LIST of 89 and not the number 89: a pointer
+#: arriving or leaving is a fact about a document and a count cannot say which.
+#:
+#: **BOTH SIDES ARE SETS OF §8's IDENTITY NOW, AND THE LIVE FIGURE FELL 1,081 -> 88
+#: (``sdk/ident``).**  §8 sentence 2 declares a fact once, at the node the document states
+#: it, so the DECLARED side is a set of ``(stating document, stating pointer)``.  The
+#: derived side was not: ``harness.inseparable_unions`` reads a RECORD, and a record spells
+#: one stating pointer once per path through the reference graph that reaches it -- so one
+#: inseparable union owed as many declarations as it had referrers, and this list was a
+#: reading of the reference graph rather than of the declarations.  With the derivation read
+#: through ``harness.inseparable_sites`` -- which resolves an occurrence to the site it
+#: states, over the origin map ``bundle.recorded`` exports -- the two sides are the same
+#: kind of thing and the remainder is 88.
+#:
+#: **At ``c2d2f650`` this list was pinned at 89 against a live 1,081**, which is the same
+#: disease its own history records twice over: a list below the truth gets exempted later
+#: instead of acted on.  88 is a SHRINK of the pin and the first figure it has been equal
+#: to since it was written.
+#:
+#: **Every one is a union §4's dispatch cannot separate and ``lower.union`` declares
+#: nothing at**, and **none of them is a widening any row chose**: the walk declares where
+#: it LOWERS a union, and these are nodes it reaches as an alias, a rule source or not at
+#: all.  The row that teaches §4's dispatch a fourth separator empties most of this list in
+#: one change; the row that teaches the walk to declare at a union it does not lower empties
+#: the rest.
+#:
+#: Compared against a FRESH run's declarations and a FRESH run's documents of record, for
+#: :data:`DECLARED_WIDENINGS`' reason.
+#:
+#: Held as ``document#pointer`` and not as ``harness``'s own sentence: the sentence is
+#: constant text and the site is the fact.
+UNDERDETERMINED_UNIONS: list[str] = [
+    'core/canonical-forecast-point.json#/properties/viewability/anyOf',
+    'core/forecast-point.json#/properties/viewability/anyOf',
+    'core/placement-definition.json#/properties/format_options/items/anyOf',
+    'core/product.json#/anyOf',
+    'core/transformer.json#/anyOf',
+]
+
+
+def test_the_declared_backlog_is_the_set_this_compiler_mints() -> None:
+    """:data:`DECLARED_WIDENINGS`, against a fresh whole-population run.
+
+    The two figures §10 prints are read OFF the set rather than stated beside it, because
+    "``K`` and ``D`` are different counts over different denominators and the report never
+    adds them".  A site arriving or leaving reddens with the site named.
+    """
+    minted = claimed("sites a fresh run declares", set(_minted()))
+    assert minted == DECLARED_WIDENINGS, {
+        "declared and not pinned": sorted(minted - DECLARED_WIDENINGS),
+        "pinned and no longer declared": sorted(DECLARED_WIDENINGS - minted),
+        "live": len(minted),
+    }
+    assert len({document for document, _, _ in minted}) == len(
+        {document for document, _, _ in DECLARED_WIDENINGS}
+    )
+
+
+def test_the_underdetermined_equality_holds_in_both_directions() -> None:
+    """§8's third equality: the unions declaring one are the unions §4 cannot separate.
+
+    "The set of unions declaring one equals the set the derivation cannot separate, in both
+    directions, so a union that becomes separable loses its declaration and a union that
+    stops being separable gains one."
+
+    **BOTH DIRECTIONS REPORTED TOGETHER**, which is ``architecture.md``'s decision of
+    2026-10-29 applied to a pair of assertions: written as two bare asserts, the first to
+    fail hides the second -- and the STALE direction is red today, so the SILENT ratchet
+    would never be read and could rot exactly the way the empty list it replaces did.
+
+    **THE STALE DIRECTION IS RED, AT 7, AND DELIBERATELY NOT PINNED
+    (``adcp-client-python-10l.110``; re-measured at ``sdk/ident``).**  It was **16 at
+    ``c2d2f650``** and the cause §8 sentence 2 removed is the one
+    ``adcp-client-python-10l.110`` named: a declaration carried to a pointer OTHER than the
+    one the document states the combinator at -- ``adagents.json#/oneOf/1/anyOf`` declared
+    and separable while ``adagents.json#/oneOf/1/allOf/0/anyOf`` was inseparable and
+    declared by nothing, one union under two spellings.  With the declaration at the
+    stating pointer and the derivation read as identities, that pair is one site and 9 of
+    the 16 go with it.
+
+    **6 OF THE 7 THAT REMAIN ARE ONE CAUSE, AND IT IS §8 SENTENCE 3a UNBUILT HERE.**  Each
+    is a union the walk lowers and declares whose branches the STORED record spells as
+    references into its own section -- measured: 1 of 2 branches at each of the four
+    ``calibration_exemplars`` sites and at ``available_actions/items``, 6 of 7 at
+    ``media-buy/proposal-refinement.json#/oneOf/1/anyOf`` -- and
+    ``inseparable_unions``' shape test reads a bare ``$ref`` branch as neither an object
+    nor a node with ``properties``, so the pair is never put to ``separates`` and the union
+    is absent from the derived side.  §8 sentence 3a is exactly the sentence that answers
+    it: *a reader asking what the document states reads through the storage*.
+    ``inseparable_unions`` is such a reader and does not yet read through it, and
+    ``bundle.expanded`` is the reading it needs.
+
+    **The seventh is ``core/async-response-data.json#/anyOf`` and it is a different
+    disagreement**: 42 branches, none a bare reference, so the derivation reaches it and
+    answers SEPARABLE where ``lower.union.overlapping`` answered OVERLAPPING.  Two readings
+    of one node disagreeing is this equality's own point; which of them is wrong is
+    unmeasured and is not this row's.
+
+    An equality is an OBLIGATION and not a ratchet, so while that held this stayed red and
+    named the 7 rather than pinning them.
+
+    **THE STALE DIRECTION IS AT ZERO AND THE EQUALITY HOLDS**
+    (``adcp-client-python-tsg``).  It was 16, then 7, then 1, and the figures are four
+    deliveries of one obligation rather than a pin, which is why the sentences above are
+    kept beside this one.  §3a's catalogue pass took it from 7 to 1 -- the four
+    ``calibration_exemplars`` sites, ``available_actions/items`` and
+    ``core/async-response-data.json#/anyOf`` left with it -- and the LAST entry was
+    ``media-buy/proposal-refinement.json#/oneOf/1/anyOf``.
+
+    **AND THE DERIVATION WAS THE SIDE THAT WAS WRONG, not the declaration.**  Measured
+    rather than argued: 6 of that union's 7 branches expand through the store to
+    ``{"required": [one name]}`` and the seventh pins ``change_kind`` to ``cancellation``,
+    so the derivation's shape test rejected 6 of 7 and skipped the union whole -- on the
+    premise, stated in its own docstring, that a union whose branches are not all shapes
+    lowers to an alias with "no branch classes to order".  §4 lowers this one to
+    ``ProposalRefinementRevise`` plus SEVEN branch subclasses in the document's own order,
+    dispatching on no key; the payload ``{"proposal_id": "p-1", "action": "revise",
+    "constraints": {"impressions": {"min": 1000}}, "ask": "cheaper please"}`` is admitted
+    by branches 0 AND 3 and becomes ``ProposalRefinementReviseConstraints``, and the same
+    payload without ``constraints`` becomes ``ProposalRefinementReviseAsk``.  Declaration
+    order is what decides, so the declaration is earned.
+    ``harness._branch_is_a_shape`` carries the correction and admits exactly this one
+    union: the stale direction goes 1 to 0 and the silent direction is unchanged at the
+    same 5 sites.
+
+    ``silent`` arrives as ``harness``'s own SENTENCE and :data:`UNDERDETERMINED_UNIONS`
+    holds the SITE, so the site is taken off the front: the suffix is constant text and
+    the site is the fact.
+    """
+    known = set(bundle.portable(BUNDLE))
+    out = compiled(BUNDLE, sorted(known))
+    # ``bundle.recorded`` and not ``bundle.record``: §8 sentence 2 makes both sides of this
+    # equality sets of ``(stating document, stating pointer)``, and resolving an inlined
+    # occurrence to the site it states needs the origin map the inliner exports beside the
+    # record (``harness.inseparable_sites``).  The pair travels together because an
+    # ``id``-keyed map is sound only while its record is alive.
+    records = {
+        document: got
+        for document in sorted(out.emitted)
+        if isinstance(got := bundle.recorded(BUNDLE, document, known), tuple)
+    }
+    claimed("documents of record a fresh run emits", set(records))
+    # **§3a's CATALOGUE as the SECOND resolution** (``harness.underdetermined_census``): a
+    # position whose type is a catalogue entry declares nothing in this module, so a union
+    # beneath it is the ENTRY's site and is counted at the entry's home.  Read off the one
+    # collection the run reads, so this instrument and the walk cannot disagree about which
+    # positions those are.
+    collapsed = {
+        document: frozenset(row)
+        for document, row in catalogue.collect_shapes(
+            catalogue.Admitted(BUNDLE), "L2", emit.standing_order(BUNDLE)
+        )
+        .restating()
+        .items()
+    }
+    stale, silent = harness.underdetermined_census(
+        [one for sites in out.approximations.values() for one in sites], records, collapsed
+    )
+    at = [one.split(": ", 1)[0] for one in silent]
+    disagreements: list[Any] = []
+    if at != UNDERDETERMINED_UNIONS:
+        disagreements.append(
+            {
+                "the derivation cannot separate these and nothing declares one": sorted(
+                    set(at) - set(UNDERDETERMINED_UNIONS)
+                ),
+                "pinned and no longer silent": sorted(set(UNDERDETERMINED_UNIONS) - set(at)),
+                "live": len(at),
+            }
+        )
+    if stale:
+        disagreements.append({"declared UNDERDETERMINED and separable": stale})
+    assert not disagreements, disagreements
+
+
+def test_the_committed_trees_declarations_are_the_runs() -> None:
+    """**THE GAP BETWEEN THE ARTIFACT AND THE RUN, held BY DIRECTION.**
+
+    ``nodeset.ratchet``'s own shape for a quantity whose obligation is that it reaches
+    zero, and ``adcp-client-python-uqf`` is the row: "the committed tree is not what a
+    fresh run emits".  Measured at ``adcp-client-python-10l.109``: the artifact declares 58
+    sites no fresh run mints and misses 45 a fresh run does, and both ceilings may only
+    come DOWN.  Named as two numbers rather than as a 103-entry literal because neither
+    set is a decision -- each entry is a file that was not rewritten.
+
+    **This is the figure that makes the two populations' disagreement actionable**, and
+    nothing held it before: the artifact's own declarations were what the backlog was
+    read against, so the gap was not a quantity anywhere.
+
+    **BOTH CEILINGS ARE 0 AT ``sdk/cond``, which is the first time either has been**, and
+    they are lowered rather than left at 58 and 45 for the reason ``nodeset.ratchet``'s own
+    docstring gives about a floor above the truth: it gets exempted later instead of acted
+    on.  The row that lowered them is the row that re-emitted the tree in the commit that
+    changed what the walk emits -- which is what the ``because`` clauses already said was
+    the only thing that could.  A lane that moves the walk and writes no tree now reddens
+    here by name, which is the whole point of holding this BY DIRECTION.
+    """
+    minted, carried = set(_minted()), set(_carried())
+    claimed("sites a fresh run declares", minted)
+    claimed("sites the committed tree carries", carried)
+    ratchet(
+        "declarations the committed tree carries and a fresh run does not",
+        len(carried - minted),
+        at_most=0,
+        because="regenerating the tree (adcp-client-python-uqf) can only remove these; a "
+        "rise means a row changed the walk and wrote no tree",
+    )
+    ratchet(
+        "declarations a fresh run mints and the committed tree does not carry",
+        len(minted - carried),
+        at_most=0,
+        because="the same row removes these; a rise means the walk moved further ahead of "
+        "the artifact every pair in tests/test_emit.py is graded from",
+    )

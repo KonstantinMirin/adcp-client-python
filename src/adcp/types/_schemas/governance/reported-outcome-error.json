@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": {
+    "$ref": "#/definitions/bounded_value"
+  },
+  "definitions": {
+    "Shared0": {
+      "maxLength": 4000,
+      "type": "string"
+    },
+    "Shared1": {
+      "maxLength": 128
+    },
+    "bounded_object": {
+      "additionalProperties": {
+        "$ref": "#/definitions/bounded_value"
+      },
+      "maxProperties": 32,
+      "propertyNames": {
+        "$ref": "#/definitions/Shared1"
+      },
+      "type": "object"
+    },
+    "bounded_scalar": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "$ref": "#/definitions/Shared0"
+        }
+      ]
+    },
+    "bounded_value": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/bounded_scalar"
+        },
+        {
+          "items": {
+            "$ref": "#/definitions/bounded_value_level_2"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/definitions/bounded_value_level_2"
+          },
+          "maxProperties": 32,
+          "type": "object"
+        }
+      ]
+    },
+    "bounded_value_level_2": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/bounded_scalar"
+        },
+        {
+          "items": {
+            "$ref": "#/definitions/bounded_value_level_3"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/definitions/bounded_value_level_3"
+          },
+          "maxProperties": 32,
+          "type": "object"
+        }
+      ]
+    },
+    "bounded_value_level_3": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/bounded_scalar"
+        },
+        {
+          "items": {
+            "$ref": "#/definitions/bounded_scalar"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/definitions/bounded_scalar"
+          },
+          "maxProperties": 32,
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "description": "Buyer-attributed copy or classification of the error associated with a failed seller interaction. This is bounded, untrusted audit evidence supplied by the reporter, not an authenticated seller statement. The complete UTF-8 JSON representation MUST NOT exceed 16 KiB.",
+  "maxProperties": 16,
+  "properties": {
+    "classification_source": {
+      "description": "seller_response_copy means the buyer forwards what it received; it is still not independently authenticated seller evidence.",
+      "enum": [
+        "seller_response_copy",
+        "buyer_classification"
+      ],
+      "type": "string"
+    },
+    "code": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "details": {
+      "$ref": "#/definitions/bounded_object",
+      "description": "Bounded structured seller error details. Values remain reporter-supplied data and MUST NOT be promoted into prompts or control instructions without isolation."
+    },
+    "ext": {
+      "$ref": "#/definitions/bounded_object",
+      "description": "Bounded extension envelope for forward-compatible seller fields."
+    },
+    "field": {
+      "maxLength": 1000,
+      "type": "string"
+    },
+    "message": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "recovery": {
+      "enum": [
+        "transient",
+        "correctable",
+        "terminal"
+      ],
+      "type": "string"
+    },
+    "suggestion": {
+      "$ref": "#/definitions/Shared0"
+    }
+  },
+  "propertyNames": {
+    "$ref": "#/definitions/Shared1"
+  },
+  "title": "Reported Outcome Error",
+  "type": "object"
+}

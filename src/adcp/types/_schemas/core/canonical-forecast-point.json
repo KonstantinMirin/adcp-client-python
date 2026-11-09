@@ -1,0 +1,1137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Shared1"
+        },
+        {
+          "properties": {
+            "high": {
+              "$ref": "#/definitions/Shared3"
+            },
+            "low": {
+              "$ref": "#/definitions/Shared3"
+            },
+            "mid": {
+              "$ref": "#/definitions/Shared3"
+            }
+          }
+        }
+      ],
+      "description": "A forecast range whose low, midpoint, and high values are rates in the inclusive interval from 0 to 1.",
+      "title": "Forecast Rate Range"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "anyOf": [
+        {
+          "required": [
+            "mid"
+          ]
+        },
+        {
+          "required": [
+            "low",
+            "high"
+          ]
+        }
+      ],
+      "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
+      "properties": {
+        "high": {
+          "description": "Optimistic (high-end) forecast value",
+          "minimum": 0,
+          "type": "number"
+        },
+        "low": {
+          "description": "Conservative (low-end) forecast value",
+          "minimum": 0,
+          "type": "number"
+        },
+        "mid": {
+          "description": "Expected (most likely) forecast value",
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "title": "Forecast Range",
+      "type": "object"
+    },
+    "Shared10": {
+      "required": [
+        "source"
+      ]
+    },
+    "Shared11": {
+      "required": [
+        "id"
+      ]
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+      "properties": {
+        "brand_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+          "examples": [
+            "tide",
+            "cheerios",
+            "air_jordan",
+            "nike",
+            "pampers"
+          ],
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Brand ID",
+          "type": "string",
+          "x-entity": "advertiser_brand"
+        },
+        "countries": {
+          "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Country Code",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Brand Key",
+      "type": "object"
+    },
+    "Shared3": {
+      "maximum": 1
+    },
+    "Shared4": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code.",
+      "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
+      "type": "string"
+    },
+    "Shared5": {
+      "anyOf": [
+        {
+          "required": [
+            "system"
+          ]
+        },
+        {
+          "$ref": "#/definitions/Shared6"
+        }
+      ]
+    },
+    "Shared6": {
+      "required": [
+        "country"
+      ]
+    },
+    "Shared7": {
+      "required": [
+        "data_provider_domain"
+      ]
+    },
+    "Shared8": {
+      "required": [
+        "signal_source_url"
+      ]
+    },
+    "Shared9": {
+      "required": [
+        "agent_url"
+      ]
+    }
+  },
+  "description": "Compact forecast row with numeric ranges and identity-only measurement-vendor references.",
+  "properties": {
+    "availability_status": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Bookability of the inventory a forecast row describes, as of the forecast's generated_at. A snapshot, never a hold: valid_until bounds freshness, and proposal finalization or purchase remains the commitment boundary.",
+      "enum": [
+        "available",
+        "unavailable"
+      ],
+      "enumDescriptions": {
+        "available": "The inventory described by this row can be booked as of generated_at. This is a snapshot, not a reservation \u2014 another buyer can take the window before this buyer commits.",
+        "unavailable": "The inventory described by this row cannot be booked. Sellers MUST apply all product booking eligibility constraints \u2014 including minimum and maximum bookable duration, day-of-week restrictions, and other scheduling rules \u2014 before reporting status; a window that fails any such constraint is 'unavailable' even when no competing hold exists. Rows may carry empty metrics. Sellers MUST NOT disclose who holds a conflicting booking."
+      },
+      "title": "Availability Status",
+      "type": "string"
+    },
+    "budget": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "dimensions": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Dimension constraints represented by a ForecastPoint. Use this when one product, proposal, or signal coverage forecast needs to expose availability or forecasted delivery by country, region, placement, device, audience, signal value, time window, or intersections such as placement x country without creating separate products solely for each slice. Each item declares one dimension family via `kind`; when multiple items are present, the point represents their intersection. Sellers MUST NOT emit more than one item for each `kind` in a point. Consumers MUST NOT treat repeated kinds as OR semantics; repeated peer values such as two countries are a seller conformance issue. Dimension values are descriptors of the forecast row and are independent of pricing_options.",
+      "items": {
+        "oneOf": [
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "geo_level": {
+                      "const": "country"
+                    }
+                  },
+                  "required": [
+                    "geo_level"
+                  ]
+                },
+                "then": {
+                  "not": {
+                    "$ref": "#/definitions/Shared5"
+                  },
+                  "properties": {
+                    "geo_code": {
+                      "$ref": "#/definitions/Shared4"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "geo_level": {
+                      "const": "region"
+                    }
+                  },
+                  "required": [
+                    "geo_level"
+                  ]
+                },
+                "then": {
+                  "not": {
+                    "$ref": "#/definitions/Shared5"
+                  },
+                  "properties": {
+                    "geo_code": {
+                      "description": "ISO 3166-2 subdivision code.",
+                      "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "geo_level": {
+                      "const": "metro"
+                    }
+                  },
+                  "required": [
+                    "geo_level"
+                  ]
+                },
+                "then": {
+                  "not": {
+                    "$ref": "#/definitions/Shared6"
+                  },
+                  "properties": {
+                    "system": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Metro area classification systems for geographic targeting",
+                      "enum": [
+                        "nielsen_dma",
+                        "uk_itl1",
+                        "uk_itl2",
+                        "eurostat_nuts2",
+                        "custom"
+                      ],
+                      "title": "Metro Area System",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "system"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "geo_level": {
+                      "const": "postal_area"
+                    }
+                  },
+                  "required": [
+                    "geo_level"
+                  ]
+                },
+                "then": {
+                  "anyOf": [
+                    {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "country": {
+                              "const": "US"
+                            },
+                            "system": {
+                              "enum": [
+                                "zip",
+                                "zip_plus_four"
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "const": "GB"
+                            },
+                            "system": {
+                              "enum": [
+                                "outward",
+                                "full"
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "const": "CA"
+                            },
+                            "system": {
+                              "enum": [
+                                "fsa",
+                                "full"
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "enum": [
+                                "DE",
+                                "CH",
+                                "AT"
+                              ]
+                            },
+                            "system": {
+                              "const": "plz"
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "const": "FR"
+                            },
+                            "system": {
+                              "const": "code_postal"
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "const": "AU"
+                            },
+                            "system": {
+                              "const": "postcode"
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "const": "BR"
+                            },
+                            "system": {
+                              "const": "cep"
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "const": "IN"
+                            },
+                            "system": {
+                              "const": "pin"
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "const": "ZA"
+                            },
+                            "system": {
+                              "const": "postal_code"
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "country": {
+                              "not": {
+                                "enum": [
+                                  "US",
+                                  "GB",
+                                  "CA",
+                                  "DE",
+                                  "CH",
+                                  "AT",
+                                  "FR",
+                                  "AU",
+                                  "BR",
+                                  "IN",
+                                  "ZA"
+                                ]
+                              }
+                            },
+                            "system": {
+                              "enum": [
+                                "postal_code",
+                                "custom"
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
+                      "properties": {
+                        "country": {
+                          "$ref": "#/definitions/Shared4"
+                        },
+                        "system": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Country-local postal code system.",
+                          "enum": [
+                            "postal_code",
+                            "zip",
+                            "zip_plus_four",
+                            "outward",
+                            "full",
+                            "fsa",
+                            "plz",
+                            "code_postal",
+                            "postcode",
+                            "cep",
+                            "pin",
+                            "custom",
+                            "us_zip",
+                            "us_zip_plus_four",
+                            "gb_outward",
+                            "gb_full",
+                            "ca_fsa",
+                            "ca_full",
+                            "de_plz",
+                            "fr_code_postal",
+                            "au_postcode",
+                            "ch_plz",
+                            "at_plz"
+                          ],
+                          "title": "Postal Code System",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "country",
+                        "system"
+                      ],
+                      "title": "Postal Country System",
+                      "type": "object"
+                    },
+                    {
+                      "not": {
+                        "$ref": "#/definitions/Shared6"
+                      },
+                      "properties": {
+                        "system": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "deprecated": true,
+                          "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
+                          "enum": [
+                            "us_zip",
+                            "us_zip_plus_four",
+                            "gb_outward",
+                            "gb_full",
+                            "ca_fsa",
+                            "ca_full",
+                            "de_plz",
+                            "fr_code_postal",
+                            "au_postcode",
+                            "ch_plz",
+                            "at_plz"
+                          ],
+                          "title": "Country-Fused Postal Code System",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "system"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ],
+            "description": "A geographic dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+            "properties": {
+              "country": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "ISO 3166-1 alpha-2 country code. Required for native postal_area rows and omitted for legacy postal rows, metro rows, country rows, and region rows.",
+                "pattern": "^[A-Z]{2}$",
+                "title": "Country Code",
+                "type": "string"
+              },
+              "geo_code": {
+                "description": "Geographic code within the level and system. Country: ISO 3166-1 alpha-2 ('US'). Region: ISO 3166-2 with country prefix ('US-CA'). Metro/postal: system-specific code ('501', '10001').",
+                "type": "string"
+              },
+              "geo_level": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Geographic level for this forecast point.",
+                "enum": [
+                  "country",
+                  "region",
+                  "metro",
+                  "postal_area"
+                ],
+                "title": "Geographic Targeting Level",
+                "type": "string"
+              },
+              "geo_name": {
+                "description": "Human-readable geographic name (e.g., 'United States', 'California', 'New York DMA').",
+                "type": "string"
+              },
+              "kind": {
+                "const": "geo",
+                "description": "Dimension family discriminator.",
+                "type": "string"
+              },
+              "system": {
+                "description": "Classification system for metro or postal_area levels. Required when geo_level is 'metro' or 'postal_area'. Metro rows use metro-system enum values such as 'nielsen_dma'; native postal rows use country-local postal-system enum values such as 'zip' with country 'US'; deprecated legacy postal rows may use legacy-postal-system enum values such as 'us_zip'. Omit for country and region rows.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "geo_level",
+              "geo_code"
+            ],
+            "title": "Geo Forecast Dimension",
+            "type": "object"
+          },
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "A placement dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+            "properties": {
+              "kind": {
+                "const": "placement",
+                "description": "Dimension family discriminator.",
+                "type": "string"
+              },
+              "placement_name": {
+                "description": "Human-readable placement name, useful when the buyer has not resolved the placement catalog.",
+                "type": "string"
+              },
+              "placement_ref": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
+                "description": "Structured placement reference for this forecast row. References an entry from the product's placements array.",
+                "properties": {
+                  "placement_id": {
+                    "description": "Placement ID from the publisher's adagents.json placement catalog, or an inline seller-defined placement ID interpreted within the enclosing seller and product context.",
+                    "type": "string",
+                    "x-entity": "placement"
+                  },
+                  "publisher_domain": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.",
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "title": "Domain Name",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "placement_id"
+                ],
+                "title": "Placement Reference",
+                "type": "object"
+              }
+            },
+            "required": [
+              "kind",
+              "placement_ref"
+            ],
+            "title": "Placement Forecast Dimension",
+            "type": "object"
+          },
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "A device form-factor dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+            "properties": {
+              "device_type": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Device form factor for this forecast row.",
+                "enum": [
+                  "desktop",
+                  "mobile",
+                  "tablet",
+                  "ctv",
+                  "dooh",
+                  "unknown"
+                ],
+                "title": "Device Type",
+                "type": "string"
+              },
+              "kind": {
+                "const": "device_type",
+                "description": "Dimension family discriminator.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "device_type"
+            ],
+            "title": "Device Type Forecast Dimension",
+            "type": "object"
+          },
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "An operating-system or platform dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+            "properties": {
+              "device_platform": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Operating system or platform for this forecast row.",
+                "enum": [
+                  "ios",
+                  "android",
+                  "windows",
+                  "macos",
+                  "linux",
+                  "chromeos",
+                  "tvos",
+                  "tizen",
+                  "webos",
+                  "fire_os",
+                  "roku_os",
+                  "unknown"
+                ],
+                "title": "Device Platform",
+                "type": "string"
+              },
+              "kind": {
+                "const": "device_platform",
+                "description": "Dimension family discriminator.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "device_platform"
+            ],
+            "title": "Device Platform Forecast Dimension",
+            "type": "object"
+          },
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "An audience segment dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+            "properties": {
+              "audience_id": {
+                "description": "Audience segment identifier for this forecast row.",
+                "type": "string",
+                "x-entity": "audience"
+              },
+              "audience_name": {
+                "description": "Human-readable audience segment name.",
+                "type": "string"
+              },
+              "audience_source": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Origin of the audience segment.",
+                "enum": [
+                  "synced",
+                  "platform",
+                  "third_party",
+                  "lookalike",
+                  "retargeting",
+                  "unknown"
+                ],
+                "title": "Audience Source",
+                "type": "string"
+              },
+              "kind": {
+                "const": "audience",
+                "description": "Dimension family discriminator.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "audience_id",
+              "audience_source"
+            ],
+            "title": "Audience Forecast Dimension",
+            "type": "object"
+          },
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "presence": {
+                      "const": "absent"
+                    }
+                  },
+                  "required": [
+                    "presence"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "signal_value": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "signal_value"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "presence": {
+                      "const": "present"
+                    }
+                  },
+                  "required": [
+                    "presence"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "signal_value": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean"
+                      ]
+                    }
+                  }
+                }
+              }
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "signal_ref"
+                ]
+              },
+              {
+                "required": [
+                  "signal_id"
+                ]
+              }
+            ],
+            "description": "A signal value or signal-presence dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+            "properties": {
+              "kind": {
+                "const": "signal",
+                "description": "Dimension family discriminator.",
+                "type": "string"
+              },
+              "presence": {
+                "description": "Whether the signal is present for this point. Use 'absent' for the explicit not-present bucket.",
+                "enum": [
+                  "present",
+                  "absent"
+                ],
+                "type": "string"
+              },
+              "signal_id": {
+                "description": "Signal identifier shorthand for this forecast row. Use only when the enclosing context already identifies the signal unambiguously, such as a coverage_forecast nested directly under one get_signals signal item. Otherwise use signal_ref.",
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string",
+                "x-entity": "signal"
+              },
+              "signal_name": {
+                "description": "Human-readable signal name, useful when the buyer has not resolved the signal definition.",
+                "type": "string"
+              },
+              "signal_ref": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Canonical signal reference for this forecast row. Required when the row needs to disambiguate product-local, data-provider, or signal-source identity. Product-relative forecasts SHOULD use signal_ref.",
+                "discriminator": {
+                  "propertyName": "scope"
+                },
+                "oneOf": [
+                  {
+                    "additionalProperties": true,
+                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
+                    "not": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Shared7"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared8"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared9"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared10"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared11"
+                        }
+                      ]
+                    },
+                    "properties": {
+                      "scope": {
+                        "const": "product",
+                        "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
+                        "type": "string"
+                      },
+                      "signal_id": {
+                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
+                        "pattern": "^[a-zA-Z0-9_-]+$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "scope",
+                      "signal_id"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": true,
+                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
+                    "not": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Shared9"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared8"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared10"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared11"
+                        }
+                      ]
+                    },
+                    "properties": {
+                      "data_provider_domain": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
+                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                        "title": "Domain Name",
+                        "type": "string"
+                      },
+                      "scope": {
+                        "const": "data_provider",
+                        "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
+                        "type": "string"
+                      },
+                      "signal_id": {
+                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
+                        "pattern": "^[a-zA-Z0-9_-]+$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "scope",
+                      "data_provider_domain",
+                      "signal_id"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": true,
+                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
+                    "not": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Shared7"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared9"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared10"
+                        },
+                        {
+                          "$ref": "#/definitions/Shared11"
+                        }
+                      ]
+                    },
+                    "properties": {
+                      "scope": {
+                        "const": "signal_source",
+                        "description": "Discriminator indicating the signal resolves through the issuing signal source.",
+                        "type": "string"
+                      },
+                      "signal_id": {
+                        "description": "Signal identifier within the issuing signal source's signal set.",
+                        "pattern": "^[a-zA-Z0-9_-]+$",
+                        "type": "string"
+                      },
+                      "signal_source_url": {
+                        "description": "URL of the signal source that issues this source-native signal.",
+                        "format": "uri",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "scope",
+                      "signal_source_url",
+                      "signal_id"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "title": "Signal Ref",
+                "x-entity": "signal"
+              },
+              "signal_value": {
+                "description": "Signal value bucket represented by this point. Use null with presence 'absent' to represent inventory where the signal is not present. Omit when the row describes any present value rather than one specific value.",
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "signal_value_name": {
+                "description": "Human-readable label for the signal value bucket.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "presence"
+            ],
+            "title": "Signal Forecast Dimension",
+            "type": "object"
+          },
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "A calendar-window dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules. Windows are half-open intervals [start_time, end_time): the row covers instants at or after start_time and strictly before end_time, so adjacent windows share a boundary without overlapping. end_time MUST be after start_time; JSON Schema draft-07 cannot compare sibling values, so conformance tooling enforces the ordering. Within one forecast, sellers MUST emit non-overlapping windows and SHOULD coalesce adjacent windows whose availability_status and metrics do not materially differ. When the request scoped the forecast with offer_filters.availability_horizon, a complete forecast partitions the requested horizon; a seller that cannot cover the full horizon signals the gap through the response's incomplete[] mechanism rather than silently omitting windows.",
+            "properties": {
+              "end_time": {
+                "description": "Exclusive window end (RFC 3339 date-time with timezone offset). MUST be after start_time.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "kind": {
+                "const": "time",
+                "description": "Dimension family discriminator.",
+                "type": "string"
+              },
+              "start_time": {
+                "description": "Inclusive window start (RFC 3339 date-time with timezone offset).",
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "start_time",
+              "end_time"
+            ],
+            "title": "Time Forecast Dimension",
+            "type": "object"
+          }
+        ]
+      },
+      "minItems": 1,
+      "title": "Forecast Point Dimensions",
+      "type": "array",
+      "uniqueItems": true,
+      "x-adcp-validation": {
+        "description": "`dimensions[]` is an array for readable intersection syntax, but `kind` is a logical set key. JSON Schema draft-07 cannot express unique-by-property for this array shape, so conformance tooling should reject repeated `kind` values.",
+        "unique_item_properties": [
+          "kind"
+        ]
+      }
+    },
+    "label": {
+      "maxLength": 128,
+      "type": "string"
+    },
+    "metrics": {
+      "additionalProperties": {
+        "$ref": "#/definitions/Shared1"
+      },
+      "properties": {
+        "coverage_rate": {
+          "$ref": "#/definitions/Shared0"
+        }
+      },
+      "type": "object"
+    },
+    "product_id": {
+      "type": "string",
+      "x-entity": "product"
+    },
+    "vendor_metric_values": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "description": "Compact forecasted vendor metric with a BrandKey vendor pointer and no embedded brand assets.",
+        "properties": {
+          "breakdown": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "measurable_impressions": {
+            "$ref": "#/definitions/Shared1"
+          },
+          "metric_id": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Identifier for a vendor-defined metric within the vendor's vocabulary. Stable lookup key; the vendor publishes the canonical list (with category, methodology, and standard alignment) in `brand.json` `agents[type='measurement']`. Lowercase with underscores so a future enum promotion into `available-metric.json` is a literal string lift. Identifier is namespaced by the vendor \u2014 the same `metric_id` may mean different things in different vendors' vocabularies.",
+            "examples": [
+              "attention_units",
+              "gco2e_per_impression",
+              "demographic_reach",
+              "co_view_index",
+              "incremental_lift_percent"
+            ],
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Vendor Metric ID",
+            "type": "string",
+            "x-entity": "vendor_metric"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/definitions/Shared1"
+          },
+          "vendor": {
+            "$ref": "#/definitions/Shared2"
+          }
+        },
+        "required": [
+          "vendor",
+          "metric_id",
+          "value"
+        ],
+        "title": "Canonical Forecast Vendor Metric Value",
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "viewability": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "measurable_impressions"
+                ]
+              },
+              {
+                "required": [
+                  "viewable_impressions"
+                ]
+              },
+              {
+                "required": [
+                  "viewable_rate"
+                ]
+              },
+              {
+                "required": [
+                  "viewed_seconds"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "standard"
+          ]
+        }
+      ],
+      "properties": {
+        "measurable_impressions": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "standard": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Viewability measurement standard applied to determine whether an impression qualifies as viewable. These are materially different thresholds and should not be compared across standards.",
+          "enum": [
+            "mrc",
+            "groupm"
+          ],
+          "enumDescriptions": {
+            "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
+            "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
+          },
+          "title": "Viewability Standard",
+          "type": "string"
+        },
+        "vendor": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "viewable_impressions": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "viewable_rate": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "viewed_seconds": {
+          "$ref": "#/definitions/Shared1"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "metrics"
+  ],
+  "title": "Canonical Forecast Point",
+  "type": "object"
+}

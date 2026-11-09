@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "A duration unit supported for a frequency-cap window or suppression period.",
+  "enum": [
+    "seconds",
+    "minutes",
+    "hours",
+    "days",
+    "campaign"
+  ],
+  "title": "Frequency Cap Duration Unit",
+  "type": "string"
+}

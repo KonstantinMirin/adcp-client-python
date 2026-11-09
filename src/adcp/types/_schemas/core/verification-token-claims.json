@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared1": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared2": {
+      "type": "string"
+    },
+    "VerificationTokenGradingProfile": {
+      "enum": [
+        "legacy",
+        "spec"
+      ],
+      "type": "string"
+    },
+    "VerificationTokenMode": {
+      "enum": [
+        "spec",
+        "live"
+      ],
+      "type": "string"
+    }
+  },
+  "description": "Claims carried by an AgenticAdvertising.org EdDSA verification token. The registry API remains authoritative for real-time badge status. Tokens issued before grading-profile selection may omit grading_profile and are interpreted as Legacy.",
+  "properties": {
+    "adcp_version": {
+      "pattern": "^[1-9][0-9]*\\.[0-9]+$",
+      "type": "string"
+    },
+    "agent_url": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "aud": {
+      "const": "aao-verification",
+      "type": "string"
+    },
+    "exp": {
+      "$ref": "#/definitions/Shared1"
+    },
+    "first_failing_spec_at": {
+      "description": "Start of the current Strict Spec failure episode. Omitted when no Strict Spec failure clock is active. The registry remains authoritative for real-time status.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "grading_profile": {
+      "$ref": "#/definitions/VerificationTokenGradingProfile",
+      "description": "Grading policy that produced the badge. Absence on a historical token means Legacy; verification_modes remains an independent evidence axis."
+    },
+    "iat": {
+      "$ref": "#/definitions/Shared1"
+    },
+    "iss": {
+      "const": "https://aao.org",
+      "type": "string"
+    },
+    "jti": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "protocol_version": {
+      "$ref": "#/definitions/Shared2"
+    },
+    "role": {
+      "enum": [
+        "media-buy",
+        "creative",
+        "signals",
+        "governance",
+        "brand",
+        "sponsored-intelligence"
+      ],
+      "type": "string"
+    },
+    "sub": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "verification_modes": {
+      "items": {
+        "$ref": "#/definitions/VerificationTokenMode"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "verified_specialisms": {
+      "items": {
+        "$ref": "#/definitions/Shared2"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "iss",
+    "sub",
+    "aud",
+    "jti",
+    "iat",
+    "exp",
+    "agent_url",
+    "role",
+    "verified_specialisms",
+    "verification_modes"
+  ],
+  "title": "AgenticAdvertising.org Verification Token Claims",
+  "type": "object"
+}

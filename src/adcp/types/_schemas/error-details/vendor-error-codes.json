@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Registry of vendor-prefixed error codes (X_{VENDOR}_{CODE}). Sellers register their vendor prefix and codes here to prevent collisions. Standard error codes are in error-code.json. To register a new vendor prefix, submit a PR adding your entry to the vendors object.",
+  "properties": {
+    "vendors": {
+      "additionalProperties": {
+        "properties": {
+          "codes": {
+            "additionalProperties": {
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "recovery": {
+                  "enum": [
+                    "transient",
+                    "correctable",
+                    "terminal"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "description",
+                "recovery"
+              ],
+              "type": "object"
+            },
+            "description": "Map of code suffix to description and recovery classification",
+            "type": "object"
+          },
+          "name": {
+            "description": "Full vendor name",
+            "type": "string"
+          },
+          "url": {
+            "description": "Vendor website or documentation URL",
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "codes"
+        ],
+        "type": "object"
+      },
+      "description": "Map of vendor prefix to vendor metadata and codes",
+      "type": "object"
+    }
+  },
+  "title": "Vendor Error Code Registry",
+  "type": "object"
+}

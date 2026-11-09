@@ -1,0 +1,1 @@
+[{"age": {"intervals": [{"age": {"include_unknown": true, "min": 106, "max": 147}}], "reporting_modes": ["enumerated_intervals", "exact_predicates"], "supports_unbounded_min": true, "min_reportable_age": 77, "max_reportable_age": 138, "supports_unbounded_max": false}, "demographic_systems": ["barb"], "may_suppress_small_cells": true}]

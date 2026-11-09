@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "User-level bases that may resolve age for demographic targeting execution. Population estimates are deliberately absent because aggregate composition cannot establish an individual impression's age.",
+  "enum": [
+    "verified",
+    "declared",
+    "inferred"
+  ],
+  "enumDescriptions": {
+    "declared": "The user supplied an age, date of birth, or threshold affirmation without independent verification.",
+    "inferred": "The user's age was predicted from behavior, attributes, or another model.",
+    "verified": "The user's applicable age claim was established through an age-assurance or identity-verification method."
+  },
+  "title": "Age Determination Basis",
+  "type": "string"
+}

@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    },
+    "Shared1": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared2": {
+      "format": "date",
+      "type": "string"
+    }
+  },
+  "description": "Contractual terms for a rights grant. Shared between acquire_rights and update_rights responses.",
+  "properties": {
+    "amount": {
+      "$ref": "#/definitions/Shared1"
+    },
+    "currency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 4217 alphabetic currency code. Extracted unchanged from the 83 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+      "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
+      "type": "string"
+    },
+    "end_date": {
+      "$ref": "#/definitions/Shared2"
+    },
+    "exclusivity": {
+      "additionalProperties": true,
+      "description": "Exclusivity terms if applicable",
+      "properties": {
+        "countries": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Country Code",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "scope": {
+          "$ref": "#/definitions/Shared0"
+        }
+      },
+      "type": "object"
+    },
+    "impression_cap": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "overage_cpm": {
+      "$ref": "#/definitions/Shared1"
+    },
+    "period": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Billing period for brand rights pricing",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "annual",
+        "one_time"
+      ],
+      "title": "Rights Billing Period",
+      "type": "string"
+    },
+    "pricing_option_id": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "start_date": {
+      "$ref": "#/definitions/Shared2"
+    },
+    "uses": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Types of rights usage that can be licensed through the brand protocol. Aligned with DDEX UseType direction for interoperability with music and media rights systems.",
+        "enum": [
+          "likeness",
+          "voice",
+          "name",
+          "endorsement",
+          "motion_capture",
+          "signature",
+          "catchphrase",
+          "sync",
+          "background_music",
+          "editorial",
+          "commercial",
+          "ai_generated_image"
+        ],
+        "enumDescriptions": {
+          "ai_generated_image": "License to produce AI-generated still imagery derived from the rights holder's IP (brand assets, character designs, talent likeness). Distinct from likeness/voice by output modality \u2014 a get_rights query filtered on ai_generated_image returns rights whose pricing options cover image generation, regardless of the underlying IP category.",
+          "background_music": "Use of music as background audio in advertising",
+          "catchphrase": "Use of a person's well-known phrases or sayings",
+          "commercial": "Use in commercial advertising and promotional contexts",
+          "editorial": "Use in editorial or informational contexts",
+          "endorsement": "Implied or explicit endorsement of a product or service by a person",
+          "likeness": "Visual representation of a person's appearance, including AI-generated imagery",
+          "motion_capture": "Use of a person's movement patterns for animation or video",
+          "name": "Use of a person's name in advertising or promotional materials",
+          "signature": "Use of a person's signature or autograph",
+          "sync": "Synchronization of music with visual media (ads, video)",
+          "voice": "Audio reproduction of a person's voice, including AI-generated speech"
+        },
+        "title": "Right Use",
+        "type": "string",
+        "x-status": "experimental"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "pricing_option_id",
+    "amount",
+    "currency",
+    "uses"
+  ],
+  "title": "Rights Terms",
+  "type": "object",
+  "x-status": "experimental"
+}

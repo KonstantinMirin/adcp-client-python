@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Per-account rejection details for a governance-agent binding. Sellers choose either the disclosed or opaque arm; callers must not infer undisclosed criteria.",
+  "discriminator": {
+    "propertyName": "disclosure"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_governance_agents": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "description": "Seller-wide advisory acceptance matchers for buyer-bound governance agents. The union is permissive: a candidate satisfying any matcher is accepted by this declaration. The sync_governance response remains authoritative per account.",
+          "properties": {
+            "any_of": {
+              "items": {
+                "discriminator": {
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "agent_url": {
+                        "description": "Exact canonical agent endpoint without userinfo, query, or fragment. Redirect targets, DNS aliases, and URLs asserted by the candidate do not satisfy this matcher.",
+                        "format": "uri",
+                        "maxLength": 2048,
+                        "pattern": "^https://[^/?#@]+(?:/[^?#]*)?$",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "const": "agent_url",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "agent_url"
+                    ]
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "adcp_version": {
+                        "description": "Registry protocol version in canonical MAJOR.MINOR form.",
+                        "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "const": "verification",
+                        "type": "string"
+                      },
+                      "max_age_seconds": {
+                        "description": "Maximum age of the registry evidence at binding time. Zero requires a fresh result. Evidence is pinned to the accepted binding; later registry drift does not silently revoke an existing binding.",
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "registry": {
+                        "description": "Seller-configured trusted verification registry without userinfo, query, or fragment. The candidate cannot supply or override this URL; fetches use the registry-resolution security contract.",
+                        "format": "uri",
+                        "maxLength": 2048,
+                        "pattern": "^https://[^/?#@]+(?:/[^?#]*)?$",
+                        "type": "string"
+                      },
+                      "role": {
+                        "description": "Role asserted by the trusted registry's verified record, never by candidate self-description.",
+                        "pattern": "^[a-z][a-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "verification_modes": {
+                        "items": {
+                          "enum": [
+                            "spec",
+                            "live"
+                          ],
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "registry",
+                      "role",
+                      "adcp_version",
+                      "verification_modes",
+                      "max_age_seconds"
+                    ]
+                  }
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "any_of"
+          ],
+          "title": "Accepted Governance Agents",
+          "type": "object"
+        },
+        "attempted_agent_origin": {
+          "description": "Parsed HTTPS origin only. The seller MUST strip userinfo, path, query, and fragment and MUST NOT echo the raw candidate URL.",
+          "format": "uri",
+          "maxLength": 2048,
+          "pattern": "^https://[^/?#@]+$",
+          "type": "string"
+        },
+        "disclosure": {
+          "const": "disclosed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "disclosure",
+        "attempted_agent_origin",
+        "accepted_governance_agents"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "disclosure": {
+          "const": "opaque",
+          "type": "string"
+        },
+        "rejection_ref": {
+          "description": "Optional seller-local correlation reference. It does not identify or reveal an acceptance rule.",
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "disclosure"
+      ]
+    }
+  ],
+  "title": "Governance Agent Not Accepted Details",
+  "type": "object"
+}

@@ -1,0 +1,261 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "maximum": 8192,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared1": {
+      "maximum": 8192,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "box_decoration": {
+      "additionalProperties": false,
+      "properties": {
+        "bounds": {
+          "$ref": "#/definitions/rectangle"
+        },
+        "fill_color": {
+          "$ref": "#/definitions/color"
+        },
+        "kind": {
+          "const": "box"
+        },
+        "layer": {
+          "$ref": "#/definitions/layer"
+        }
+      },
+      "required": [
+        "kind",
+        "layer",
+        "bounds",
+        "fill_color"
+      ],
+      "type": "object"
+    },
+    "color": {
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "type": "string"
+    },
+    "image_decoration": {
+      "additionalProperties": false,
+      "properties": {
+        "bounds": {
+          "$ref": "#/definitions/rectangle"
+        },
+        "fit": {
+          "enum": [
+            "contain",
+            "cover",
+            "stretch"
+          ],
+          "type": "string"
+        },
+        "image_ref": {
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "description": "SHA-256 digest of the exact image bytes. Consumers MUST fail closed on mismatch.",
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "uri": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Untrusted image asset. Fetch with public-address-only SSRF protection, no redirects, DNS pinning, and body/time limits; do not attach ambient credentials.",
+              "format": "uri",
+              "pattern": "^https://",
+              "title": "HTTPS URL",
+              "type": "string"
+            }
+          },
+          "required": [
+            "uri",
+            "digest"
+          ],
+          "type": "object"
+        },
+        "kind": {
+          "const": "image"
+        },
+        "layer": {
+          "$ref": "#/definitions/layer"
+        }
+      },
+      "required": [
+        "kind",
+        "layer",
+        "bounds",
+        "image_ref",
+        "fit"
+      ],
+      "type": "object"
+    },
+    "layer": {
+      "enum": [
+        "behind_creative",
+        "in_front_of_creative"
+      ],
+      "type": "string"
+    },
+    "rectangle": {
+      "additionalProperties": false,
+      "properties": {
+        "height": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "width": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "x": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "y": {
+          "$ref": "#/definitions/Shared1"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "text_decoration": {
+      "additionalProperties": false,
+      "properties": {
+        "bounds": {
+          "$ref": "#/definitions/rectangle"
+        },
+        "font_size": {
+          "maximum": 256,
+          "minimum": 6,
+          "type": "integer"
+        },
+        "kind": {
+          "const": "text"
+        },
+        "layer": {
+          "$ref": "#/definitions/layer"
+        },
+        "text": {
+          "maxLength": 4096,
+          "type": "string"
+        },
+        "text_color": {
+          "$ref": "#/definitions/color"
+        }
+      },
+      "required": [
+        "kind",
+        "layer",
+        "bounds",
+        "text",
+        "text_color",
+        "font_size"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "Declarative, non-executable placement frame. Consumers create the canvas, paint behind_creative decorations in array order, fit and clip the selected creative render into creative_slot, then paint in_front_of_creative decorations in array order. Text is plain text and image assets are immutable, digest-pinned resources; scripts, HTML, CSS, event handlers, and arbitrary style properties are forbidden.",
+  "properties": {
+    "canvas": {
+      "additionalProperties": false,
+      "properties": {
+        "background_color": {
+          "default": "#ffffff",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "type": "string"
+        },
+        "height": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "width": {
+          "$ref": "#/definitions/Shared0"
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "creative_slot": {
+      "additionalProperties": false,
+      "description": "Rectangle into which the selected creative render is fitted and clipped without changing its manifest or renderer.",
+      "properties": {
+        "clip": {
+          "const": true,
+          "description": "Slot overflow is always clipped so composition is deterministic.",
+          "type": "boolean"
+        },
+        "fit": {
+          "description": "How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.",
+          "enum": [
+            "contain",
+            "cover",
+            "stretch"
+          ],
+          "type": "string"
+        },
+        "height": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "width": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "x": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "y": {
+          "$ref": "#/definitions/Shared1"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height",
+        "fit",
+        "clip"
+      ],
+      "type": "object"
+    },
+    "decorations": {
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/box_decoration"
+          },
+          {
+            "$ref": "#/definitions/text_decoration"
+          },
+          {
+            "$ref": "#/definitions/image_decoration"
+          }
+        ]
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "canvas",
+    "creative_slot"
+  ],
+  "title": "Placement Presentation Document",
+  "type": "object",
+  "x-adcp-validation": {
+    "verifier_constraints": {
+      "bounds": "creative_slot_and_decoration_rectangles_fit_within_canvas"
+    }
+  }
+}
