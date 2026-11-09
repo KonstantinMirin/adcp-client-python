@@ -169,32 +169,58 @@ def test_a_value_the_construction_keeps_is_one_the_node_s_own_statements_admit()
     assert not refused, refused[:5]
 
 
-def test_the_document_admits_the_value_built_for_its_own_root() -> None:
-    """The END-TO-END reading, over the whole document and not one node of it.
+def _roots() -> list[str]:
+    """Every portable document whose record the construction ranges over, in one order.
+
+    At PARAMETRIZE time, which is what makes the obligation below one assertion per
+    document rather than one assertion over a total.  The set is
+    ``tests/constructed.py``'s own and not a second reading of the bundle; a document the
+    record refuses is absent from it and
+    :func:`test_the_construction_ranges_over_every_portable_document` is what names that
+    difference.
+    """
+    return sorted(constructed.records())
+
+
+@pytest.mark.parametrize("document", _roots())
+def test_the_document_admits_the_value_built_for_its_own_root(document: str) -> None:
+    """**THE END-TO-END READING, STATED AS THE OBLIGATION AND NEVER AS A FRACTION.**
 
     :meth:`codegen.verify.witness.Construction.document_admits` walks one instance against
     the whole record, which is the only reading that answers for a ``not``, an ``if`` and a
-    union at once -- the three the per-node screen strikes for §9's linearity reason.  A
-    FLOOR and not an equality: the number rises as the construction reaches further, and
-    ``tests/nodeset.py``'s ``ratchet`` is the shape for a figure that is an obligation.
+    union at once -- the three the per-node screen strikes for §9's linearity reason.  Every
+    document root has a value, and the document that states it admits it.
+
+    **WHAT STOOD HERE WAS A RATCHET AND THE RATCHET IS DELETED.**  It asserted that at
+    least 835 of the roots were admitted and that the figure could only rise.
+    ``docs/plan/final-state.md`` forbids exactly that shape: *"A READING HOLDS OR IT DOES
+    NOT.  Never M of N.  A fraction is a statement about the instrument, not about the
+    artifact."*  A floor is an allowlist whose members are anonymous -- it names no
+    document, so no document is ever owed a repair, and the 224 roots the figure excused
+    were invisible to every reader of a green suite.
+
+    **ONE ITEM PER DOCUMENT, AND NO COUNT ANYWHERE IN THIS GATE'S TEXT.**  A count is what
+    goes stale and then gets believed; a parametrised item cannot, because the thing it
+    names is the document.  A root the document refuses reports the KEYWORDS it was refused
+    on and a root with no value reports the REASON it has none, so each red is already the
+    beginning of its own repair.
+
+    **AND THIS GATE IS RED TODAY, WHICH IS ITS PURPOSE RATHER THAN ITS DEFECT.**  Measured
+    over the 1,059 roots: 834 admit, 32 are REFUSED by their own document (16 of them at a
+    ``oneOf``) and 193 have NO VALUE, dominated by a ``pattern`` on a required key.
+    ``adcp-client-python-hzio.10`` owns the pattern reader and
+    ``adcp-client-python-hzio.11`` the refused roots; ``adcp-client-python-hzio.9`` owns
+    this gate and its instruction is to leave it red.  No ``xfail``, no skip and no
+    narrowing: a residue that is visible per document under its own name is the only honest
+    form it can take.
     """
     built = constructed.whole()
-    roots = claimed("records", constructed.records())
-    admitted = [
-        document
-        for document in sorted(roots)
-        if built.value(document, "").held
-        and not built.document_admits(document, built.value(document, "").value)
-    ]
-    ratchet(
-        "roots whose whole document admits their constructed value",
-        len(admitted),
-        at_least=835,
-        because=(
-            "a reading that reaches further moves this UP; it falls only if the "
-            "construction stops reaching a node shape it reaches today, which is a "
-            "regression and not a re-point"
-        ),
+    answer = built.value(document, "")
+    assert answer.held, f"{document}: the construction reached no value for the root: {answer.reason}"
+    refused = built.document_admits(document, answer.value)
+    assert not refused, (
+        f"{document}: the document refuses the value built for its own root on "
+        f"{', '.join(refused)}"
     )
 
 
