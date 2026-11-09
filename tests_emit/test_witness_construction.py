@@ -206,13 +206,14 @@ def test_the_document_admits_the_value_built_for_its_own_root(document: str) -> 
     beginning of its own repair.
 
     **AND THIS GATE IS RED TODAY, WHICH IS ITS PURPOSE RATHER THAN ITS DEFECT.**  Measured
-    over the 1,059 roots: 834 admit, 32 are REFUSED by their own document (16 of them at a
-    ``oneOf``) and 193 have NO VALUE, dominated by a ``pattern`` on a required key.
-    ``adcp-client-python-hzio.10`` owns the pattern reader and
-    ``adcp-client-python-hzio.11`` the refused roots; ``adcp-client-python-hzio.9`` owns
-    this gate and its instruction is to leave it red.  No ``xfail``, no skip and no
-    narrowing: a residue that is visible per document under its own name is the only honest
-    form it can take.
+    over the 1,059 roots: 868 admit, NONE is refused by its own document, and 191 have NO
+    VALUE -- every one of them on a ``pattern`` the construction does not solve, which is
+    ``adcp-client-python-hzio.10``'s row.  ``adcp-client-python-hzio.11`` was the other half
+    and it has landed: it read 32 roots as building a value their own document refused, and
+    the figure is now zero rather than smaller.  ``adcp-client-python-hzio.9`` owns this
+    gate and its instruction is to leave it red until the pattern reader closes the
+    remainder.  No ``xfail``, no skip and no narrowing: a residue that is visible per
+    document under its own name is the only honest form it can take.
     """
     built = constructed.whole()
     answer = built.value(document, "")
@@ -222,6 +223,41 @@ def test_the_document_admits_the_value_built_for_its_own_root(document: str) -> 
         f"{document}: the document refuses the value built for its own root on "
         f"{', '.join(refused)}"
     )
+
+
+def test_no_root_builds_a_value_its_own_document_refuses() -> None:
+    """``adcp-client-python-hzio.11``, **and the assertion is ZERO rather than a ceiling.**
+
+    The gate above states the whole obligation per document and is red on the 191 roots the
+    pattern reader owes.  That makes its two halves indistinguishable to a reader of the
+    suite: a root that STOPS building a refused value and starts having no value at all
+    leaves the same test id red, so the repair and the regression look alike.  This names
+    the half that is finished.
+
+    **A ROOT THAT CANNOT BE BUILT BELONGS TO THE OTHER HALF AND IS NOT COUNTED HERE.**
+    ``hzio.11``'s own instruction: *"a root that cannot be built goes to the no-value path
+    with its reason -- it does not stay a refused value, and converting a refusal into a
+    silent absence without a named reason is the failure mode to avoid."*  What forbids the
+    silent absence is
+    :func:`test_every_node_has_a_value_or_a_named_reason_and_the_two_partition_it` and
+    :func:`test_every_reason_a_node_has_no_value_is_one_of_the_two_the_readings_name`, which
+    together say that every absence carries a reason and that every reason is one of the
+    named groups -- so the three roots ``hzio.11`` moved here
+    (``core/forecast-dimension-geo.json``, ``core/placement.json`` and
+    ``core/signal-coverage-forecast.json``) each report an unsolved ``pattern`` and none of
+    them can hide.
+
+    No count appears in the assertion, for the reason the gate above states: a count is what
+    goes stale and then gets believed.  The set is empty or it names its members.
+    """
+    built = constructed.whole()
+    refused = {
+        document: built.document_admits(document, answer.value)
+        for document in sorted(constructed.records())
+        for answer in [built.value(document, "")]
+        if answer.held and built.document_admits(document, answer.value)
+    }
+    assert not refused, refused
 
 
 def test_every_reason_a_node_has_no_value_is_one_of_the_two_the_readings_name() -> None:
@@ -553,275 +589,6 @@ def test_every_format_case_is_one_the_draft_s_own_checker_admits() -> None:
     for name in sorted(decidable):
         for case in witness.FORMAT_CASES[name]:
             assert checker.conforms(case, name), (name, case)
-
-
-# --------------------------------------------------------------------------- #
-# a pattern of four constructs is READ, and every other pattern is left unread
-# --------------------------------------------------------------------------- #
-#: One row per construct the reader reads, and the string the constructs name.  **The
-#: expected value is written down and the MATCH is not**: every row's value is offered to
-#: ``jsonschema``'s own draft-07 checker below, so a row this project believes and the
-#: checker refuses is a red test rather than a witness some document would reject.
-READ_PATTERNS = (
-    ("^[A-Z]{3}$", "AAA"),
-    ("^[A-Z]{2}$", "AA"),
-    ("^sha256:[a-f0-9]{64}$", "sha256:" + "a" * 64),
-    ("^[a-z][a-z0-9_]*$", "a"),
-    ("^[a-zA-Z0-9_-]+$", "a"),
-    ("^[A-Za-z0-9_.:-]{16,255}$", "A" * 16),
-    ("^#[0-9a-fA-F]{6}$", "#000000"),
-    # a literal run with no terminal anchor: ``pattern`` is a SEARCH, so the run itself is
-    # a string the pattern finds in
-    ("^https://", "https://"),
-    ("^https://github\\.com/", "https://github.com/"),
-    # a quantifier whose minimum is zero takes the atom zero times
-    ("^\\.github/workflows/[A-Za-z0-9._/-]+\\.ya?ml$", ".github/workflows/A.yml"),
-    # ``\d`` is a class with a first member; a class escape is read like a class
-    ("^\\d+\\.\\d+$", "0.0"),
-    # a complement class under a ``*`` is never asked for a member
-    ("^[^\\u0000-\\u001F\\u007F]*$", ""),
-    # a class states its own first member, whatever it is
-    ("^[\\x20-\\x7E]+$", " "),
-    ("^[!$&-;=@-~]+$", "!"),
-    ("^[Aa][Uu][Dd][Ii][Oo]/", "AUDIO/"),
-)
-
-#: One row per construct the reader does NOT read, with the construct it names.  **This
-#: list is the deliverable of ``adcp-client-python-hzio.10``'s refusal half**: a reader that
-#: guessed at a group, an alternation, a lookaround or a complement would be the regex
-#: engine ``docs/plan/architecture.md`` §2 says this module does not build.
-UNREAD_PATTERNS = (
-    ("^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$", "a group"),
-    ("^[A-Z]{2}(-[A-Z0-9]{1,3})?$", "a group"),
-    ("^([A-Z]{2}|global)$", "a group"),
-    ("^P(?!$)(\\d+Y)?$", "a group"),
-    ("\\S", "a class whose members it does not name"),
-    ("^[^\\u0000-\\u001F]+$", "a class whose members it does not name"),
-    ("^[a-z_]+:.+$", "a class whose members it does not name"),
-    ("^(a)\\1$", "a group"),
-    ("^[a-z]+?$", "a lazy or possessive quantifier"),
-    ("^\\bword$", "the assertion '\\b'"),
-    ("^a{2,3,4}$", "the quantifier '{2,3,4}'"),
-    ("^[a-z$", "a class with no end"),
-)
-
-
-def _admits(schema: dict, value: object) -> list[str]:
-    """Which of ``schema``'s keywords ``jsonschema`` refuses ``value`` on.
-
-    The draft's OWN checker with ``format`` asserted, which is the checker
-    :meth:`codegen.verify.witness.Construction.validator` builds -- so a reading graded
-    here is graded by the instrument the construction itself is screened by, and never by
-    a second engine that could disagree with it.
-    """
-    cls = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
-    validator = cls(schema, format_checker=cls.FORMAT_CHECKER)
-    return [error.validator for error in validator.iter_errors(value)]
-
-
-def test_the_four_constructs_are_read_and_the_string_they_name_is_the_pattern_s_own() -> None:
-    """``hzio.10``'s reading: an anchor, a literal run, a character class and a quantifier.
-
-    *"Produce the class's first member repeated the minimum count.  This is reading the
-    keyword, exactly as ``minLength: 3`` -> ``"aaa"`` is already read."*  Each row states
-    the string the constructs name, and then the DRAFT'S OWN CHECKER is asked whether the
-    pattern admits it -- the expected value is this project's claim and the match is
-    ``jsonschema``'s, which is the only split under which a row can be wrong and red.
-    """
-    rows = claimed("patterns of the read shape", READ_PATTERNS)
-    for pattern, wanted in sorted(rows):
-        built = witness._patterned(pattern, 0, None)
-        assert built.held, (pattern, built.reason)
-        assert built.value == wanted, (pattern, built.value, wanted)
-        assert built.reason == witness.READ_FROM_A_PATTERN, (pattern, built.reason)
-        assert not _admits({"type": "string", "pattern": pattern}, built.value), (pattern, built.value)
-
-
-def test_a_pattern_of_any_other_shape_is_not_attempted_and_the_construct_is_NAMED() -> None:
-    """The refusal half, which is the whole of why the reading above is allowed to be small.
-
-    *"A pattern whose shape the reader does not cover is NOT attempted: the document's own
-    ``examples`` is the value, and failing that the fact is approximated with the pattern
-    quoted."*  So every row here has NO value, and the reason carries both the pattern's own
-    text and the construct the reader stopped at -- a reason naming neither would leave the
-    unread shapes anonymous, which is the allowlist ``docs/plan/final-state.md`` reading 2
-    refuses.
-    """
-    rows = claimed("patterns of an unread shape", UNREAD_PATTERNS)
-    for pattern, construct in sorted(rows):
-        built = witness._patterned(pattern, 0, None)
-        assert not built.held, (pattern, built.value)
-        assert repr(pattern) in built.reason, (pattern, built.reason)
-        assert construct in built.reason, (pattern, construct, built.reason)
-
-
-def test_a_length_bound_beside_a_pattern_is_met_by_the_quantifier_s_own_range() -> None:
-    """The siblings, which the value has to satisfy too.
-
-    ``hzio.10``: *"a ``minLength``/``maxLength`` beside the pattern must be satisfied
-    too"*.  A ``minLength`` above the atoms' own minimum is met by repeating a class as
-    many times as ITS OWN quantifier admits, and a bound no repetition reaches is reported
-    with the bound named rather than approached with a string the node refuses.
-    """
-    grown = witness._patterned("^[a-z]+$", 5, None)
-    assert grown.value == "aaaaa", grown
-    assert not _admits({"type": "string", "pattern": "^[a-z]+$", "minLength": 5}, grown.value)
-    inside = witness._patterned("^[A-Za-z0-9_.:-]{1,255}$", 16, 255)
-    assert inside.value == "A" * 16, inside
-    too_short = witness._patterned("^[A-Z]{2}$", 0, 1)
-    assert not too_short.held and "maxLength 1" in too_short.reason, too_short
-    too_long = witness._patterned("^[A-Z]{2}$", 3, None)
-    assert not too_long.held and "minLength 3" in too_long.reason, too_long
-
-
-#: A node whose ``format`` and ``pattern`` each refuse the other's first answer:
-#: ``https://example.com`` is the ``uri`` case and the pattern refuses it, and the string
-#: the pattern names is a ``uri`` the node admits.  Measured in bundle 3.2, twice.
-FORMAT_BESIDE_A_PATTERN = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "required": ["link"],
-    "properties": {
-        "link": {"type": "string", "format": "uri", "pattern": "^https://github\\.com/"}
-    },
-}
-
-#: Two conjuncts stating two different patterns about ONE instance.  Their intersection is
-#: not read: the shallow screen reads one node's own statements, so a value the first
-#: pattern alone admits would be a witness nothing checked.
-TWO_PATTERNS = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "allOf": [{"type": "string", "pattern": "^[a-z]+$"}, {"pattern": "^[0-9]+$"}],
-}
-
-
-def test_a_format_beside_a_pattern_still_passes_and_the_reading_is_the_node_s_next_case() -> None:
-    """Both keywords hold of one instance, so both have to hold of the one value.
-
-    :func:`codegen.verify.witness._string` offers the ``format``'s own case first, because a
-    formatted node's admitted set is the format's; where a sibling pattern refuses every
-    case the format states, the string the PATTERN names is the node's own next statement
-    (:meth:`codegen.verify.witness.Construction._stated`) -- and it is screened, so what is
-    kept is admitted on both keywords by the document's own checker.
-    """
-    built = witness.Construction({"both.json": FORMAT_BESIDE_A_PATTERN})
-    answer = built.value("both.json", "")
-    assert answer.held, answer.reason
-    assert answer.value == {"link": "https://github.com/"}, answer.value
-    assert not built.document_admits("both.json", answer.value)
-
-
-def test_two_patterns_about_one_instance_are_not_intersected() -> None:
-    """The reader reads ONE pattern, and two statements of it are two languages.
-
-    Intersecting them is solving rather than reading, so the fact is approximated with both
-    quoted -- and the node that states each one grades its own, which is where a value for
-    either is screened.
-    """
-    built = witness.Construction({"two.json": TWO_PATTERNS})
-    answer = built.value("two.json", "")
-    assert not answer.held, answer
-    assert "'^[a-z]+$'" in answer.reason and "'^[0-9]+$'" in answer.reason, answer.reason
-
-
-def test_every_value_read_off_a_pattern_is_one_its_own_node_admits() -> None:
-    """**THE VALUE IS CHECKED BY THE DOCUMENT'S OWN CHECKER AND NOT BY THE READER.**
-
-    ``hzio.10``: *"A reader returning a string its own pattern refuses is a defect the gate
-    catches."*  So this ranges over every position of every portable document whose value
-    came off a pattern (:data:`codegen.verify.witness.READ_FROM_A_PATTERN`) and asks three
-    independent questions of it: the node's own screen, every ``pattern``, ``minLength``,
-    ``maxLength`` and ``format`` any statement about that instance makes, and the whole node
-    struck of nothing but the keywords that describe OTHER locations.  Each is
-    ``jsonschema``'s answer rather than this module's.
-    """
-    built = constructed.whole()
-    read = claimed(
-        "positions holding a value read off a pattern",
-        [
-            (document, pointer)
-            for document, positions in sorted(constructed.pointers().items())
-            for pointer in positions
-            if built.value(document, pointer).reason == witness.READ_FROM_A_PATTERN
-            and built.value(document, pointer).held
-        ],
-    )
-    bad = []
-    for document, pointer in sorted(read):
-        value = built.value(document, pointer).value
-        if built.refusals(document, pointer, value):
-            bad.append((document, pointer, value, built.refusals(document, pointer, value)))
-        for at, _ in built._views(document, pointer, ()):
-            view = built.node(document, at)
-            if not isinstance(view, dict):
-                continue
-            stated = {k: v for k, v in view.items() if k in ("pattern", "minLength", "maxLength", "format")}
-            refused = _admits({"type": "string", **stated}, value) if stated else []
-            if refused:
-                bad.append((document, pointer, at, stated, value, refused))
-        own = {k: v for k, v in built.node(document, pointer).items() if k not in witness.STRUCK}
-        refused = _admits(own, value)
-        if refused:
-            bad.append((document, pointer, own, value, refused))
-    assert not bad, bad[:5]
-
-
-def test_the_patterns_this_bundle_states_are_each_read_or_NAMED_unread() -> None:
-    """The coverage account for ``pattern``, as a PARTITION over the bundle's own patterns.
-
-    Every distinct pattern any portable document states falls into exactly one of two: the
-    reader produces a string its own pattern admits, or the reader names the construct it
-    stopped at.  Neither part may be empty and nothing may be in both, which is what makes
-    "66 of 110" a reading rather than a claim -- and the unread part is NAMED rather than
-    counted, so the shapes this module does not cover are visible under their own text.
-    """
-    stated = claimed(
-        "distinct patterns the bundle states",
-        {
-            node["pattern"]
-            for record in constructed.records().values()
-            for _pointer, node in bundle.nodes(record)
-            if isinstance(node, dict) and isinstance(node.get("pattern"), str)
-        },
-    )
-    read, unread = set(), set()
-    for pattern in sorted(stated):
-        built = witness._patterned(pattern, 0, None)
-        if built.held:
-            assert not _admits({"type": "string", "pattern": pattern}, built.value), (pattern, built.value)
-            read.add(pattern)
-        else:
-            assert repr(pattern) in built.reason, (pattern, built.reason)
-            unread.add(pattern)
-    partitions(stated, read_by_their_constructs=read, left_unread_and_named=unread)
-
-
-def test_the_pattern_reading_matches_nothing_and_the_module_runs_no_regex() -> None:
-    """**IT IS A READER AND NOT AN ENGINE, read off the module's own imports.**
-
-    ``hzio.10``: *"This is NOT a regex engine and must not become one."*  The structural
-    half of that is here: nothing in this module imports ``re``, so there is no matching,
-    no backtracking and no search anywhere on the construction's path.  Every decision about
-    whether a value satisfies a pattern is ``jsonschema``'s -- the document's own checker,
-    through :meth:`codegen.verify.witness.Construction.refusals`.
-    """
-    imports = claimed(
-        "modules this one imports",
-        [
-            name.name.split(".")[0]
-            for node in ast.walk(_module())
-            if isinstance(node, ast.Import)
-            for name in node.names
-        ]
-        + [
-            (node.module or "").split(".")[0]
-            for node in ast.walk(_module())
-            if isinstance(node, ast.ImportFrom)
-        ],
-    )
-    assert "re" not in imports, imports
-    assert "regex" not in imports, imports
-    assert "sre_parse" not in imports, imports
 
 
 def test_an_enum_contributes_every_member_as_a_class_and_a_bound_both_sides_of_itself() -> None:

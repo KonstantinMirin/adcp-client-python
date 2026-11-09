@@ -86,6 +86,8 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import jsonschema
+import referencing.exceptions
+from jsonschema import _utils as _jsonschema_utils
 
 from codegen import bundle, keywords
 
@@ -187,6 +189,259 @@ _CONTAINERS = frozenset({"object", "array"})
 #: A sentinel for "this pointer has not been dereferenced", because ``None`` is a node a
 #: record can legitimately hold at a position a pointer names.
 _MISSING = object()
+
+
+# --------------------------------------------------------------------------- #
+# the document's validator: one per document, no message nobody reads, and the
+# resolution amortised  (``adcp-client-python-hzio.3``, evidence ``adcp-client-python-2i99``)
+# --------------------------------------------------------------------------- #
+#: What stands where an error message would, on every reading below.
+#:
+#: **Nothing in this module reads one.**  :meth:`Construction.refusals` reads
+#: ``error.validator`` and ``error.absolute_path``; :meth:`Construction.document_admits`
+#: reads ``error.validator`` alone.  ``adcp-client-python-2i99`` measured what the library
+#: nevertheless builds for them -- 17.0 GB of 192.6 GB allocated in one run, of which
+#: 12.103 GB is one line: a ``oneOf`` error whose message recursively ``repr``\\ s whole
+#: merged subschema dicts of ~16 KB each, 725,375 times, at ~43x ``_PyUnicodeWriter``
+#: realloc amplification.  **The check that wants a keyword asks for a keyword.**
+#:
+#: A CONSTANT and not an empty string, because an error that reaches a human by some path
+#: this module does not have should say why it carries nothing rather than carry nothing.
+#:
+#: **AND IT IS SHORT BECAUSE A LONG ONE IS THE SAME DEFECT SMALLER.**  Measured over this
+#: bundle's construction: the library's own messages on THIS path total 656,026 bytes over
+#: 15,778 errors -- 41 bytes each, because a shallow screen's errors are over small values --
+#: so a 110-byte explanation here cost 1,203,124 bytes and made the figure WORSE.  The
+#: sentence belongs in this comment, where it is written once; what the error carries is the
+#: pointer back to it.
+NO_MESSAGE = "unrendered (witness.NO_MESSAGE)"
+
+_equal = _jsonschema_utils.equal
+_ensure_list = _jsonschema_utils.ensure_list
+
+
+def _quiet_type(validator: Any, types: Any, instance: Any, schema: Any) -> Any:
+    if not any(validator.is_type(instance, word) for word in _ensure_list(types)):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_enum(validator: Any, enums: Any, instance: Any, schema: Any) -> Any:
+    if all(not _equal(each, instance) for each in enums):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_const(validator: Any, const: Any, instance: Any, schema: Any) -> Any:
+    if not _equal(instance, const):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_not(validator: Any, not_schema: Any, instance: Any, schema: Any) -> Any:
+    if validator.evolve(schema=not_schema).is_valid(instance):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_contains(validator: Any, contains: Any, instance: Any, schema: Any) -> Any:
+    if not validator.is_type(instance, "array"):
+        return
+    if not any(
+        validator.evolve(schema=contains).is_valid(element) for element in instance
+    ):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+def _quiet_any_of(validator: Any, anyOf: Any, instance: Any, schema: Any) -> Any:
+    all_errors: list[Any] = []
+    for index, subschema in enumerate(anyOf):
+        errs = list(validator.descend(instance, subschema, schema_path=index))
+        if not errs:
+            break
+        all_errors.extend(errs)
+    else:
+        yield jsonschema.ValidationError(NO_MESSAGE, context=all_errors)
+
+
+def _quiet_one_of(validator: Any, oneOf: Any, instance: Any, schema: Any) -> Any:
+    subschemas = enumerate(oneOf)
+    all_errors: list[Any] = []
+    for index, subschema in subschemas:
+        errs = list(validator.descend(instance, subschema, schema_path=index))
+        if not errs:
+            break
+        all_errors.extend(errs)
+    else:
+        yield jsonschema.ValidationError(NO_MESSAGE, context=all_errors)
+    # The library's own second clause, and the PROBES stay: a ``oneOf`` an instance
+    # satisfies through two branches is refused, and nothing but the probe decides that.
+    # What goes is the SENTENCE it was refused with.
+    if any(validator.evolve(schema=each).is_valid(instance) for _, each in subschemas):
+        yield jsonschema.ValidationError(NO_MESSAGE)
+
+
+#: The keyword readings this module substitutes for the library's, **by the one property
+#: that puts them here: their message renders the INSTANCE or a SUBSCHEMA**, so its cost is
+#: the size of the value rather than a constant, and no caller in this module reads it.
+#:
+#: ``tests/test_witness_construction.py`` asserts two things about this table and neither
+#: is a restatement of it: that each entry agrees with the library's own reading on the set
+#: of ``(keyword, location)`` pairs over every value this construction builds, and that no
+#: keyword whose library message renders a whole value is MISSING from it -- read off
+#: ``inspect.getsource`` of the draft's own ``VALIDATORS``, so a library that grows one
+#: reddens here instead of quietly costing what this removes.
+QUIET: Mapping[str, Any] = {
+    "type": _quiet_type,
+    "enum": _quiet_enum,
+    "const": _quiet_const,
+    "not": _quiet_not,
+    "contains": _quiet_contains,
+    "anyOf": _quiet_any_of,
+    "oneOf": _quiet_one_of,
+}
+
+#: The keywords whose library message renders a BOUND or a KEY NAME and is therefore
+#: constant-cost, so they stay the library's.  Named rather than inferred, because the gate
+#: above partitions the draft's own keyword set and a keyword in neither half is a keyword
+#: nobody decided about.
+CONSTANT_COST = frozenset(
+    {
+        "maxItems",
+        "minItems",
+        "maxLength",
+        "minLength",
+        "maxProperties",
+        "minProperties",
+        "maximum",
+        "minimum",
+        "exclusiveMaximum",
+        "exclusiveMinimum",
+        "multipleOf",
+        "pattern",
+        "required",
+        "dependencies",
+        "additionalProperties",
+        "uniqueItems",
+    }
+)
+
+
+def _reading(cls: Any, counters: "Counters") -> Any:
+    """``cls`` with the three re-derivations ``adcp-client-python-2i99`` measured removed.
+
+    **ONE CLASS PER (DRAFT, CONSTRUCTION), built where the document is read**, so the memos
+    below live exactly as long as the :class:`Construction` that owns them and are dropped
+    with it.  Nothing here is a process global and nothing is patched at import time, which
+    is the lifetime rule ``codegen/harness.py``'s own sharings are held to.
+
+    **(1) THE ``$ref`` RESOLUTION IS AMORTISED.**  The library's own ``$ref`` reading calls
+    ``Resolver.lookup`` on every visit, and ``lookup`` does ``urldefrag(urljoin(...))`` and
+    then walks the pointer SEGMENT BY SEGMENT, building a ``Resource`` per segment, with no
+    memo anywhere: ``adcp-client-python-2i99`` counted 1,156,366 lookups in one run of the
+    population, every one of them re-deriving an answer about a bundle that is fixed at load
+    time.  The memo's key is ``(registry, base_uri, dynamic scope, ref)``, which is the whole
+    of what ``lookup`` reads -- so it is keyed on everything the answer depends on, which is
+    the defect ``Fixtures._pin``'s key had and this one does not.  ``Resolved`` is immutable
+    and the library's own, so a hit hands back the same object a miss would have built.
+    :attr:`Counters.lookups` and :attr:`Counters.lookup_hits` are the hit rate.
+
+    **(2) NO ``Resource`` IS BUILT TO ASK A NODE WITH NO ``$id`` WHETHER IT HAS ONE.**  The
+    library's ``descend`` builds ``specification.create_resource(schema)`` for every node of
+    every visit purely to call ``Resolver.in_subresource``, which returns ``self`` UNCHANGED
+    when the resource has no id -- 31,029,263 of 31,032,069 Resources in the measured
+    grading pass, 99.99%.  draft-07's id reading is ``$id`` where the node states one and ``None``
+    otherwise, so a node whose keys hold neither ``$id`` nor ``id`` cannot change the
+    resolver: this hands ``descend`` the resolver it would have arrived at and the Resource
+    is never built.  **The predicate is the library's own and not a guess about it** --
+    ``tests/test_witness_construction.py`` asserts that for every node of every record the
+    shortcut and ``in_subresource`` agree.
+
+    **(3) NO MESSAGE IS BUILT ON A PATH THIS MODULE'S CALLERS DISCARD** (:data:`QUIET`).
+    """
+    lookups: dict[tuple[Any, ...], Any] = {}
+    #: Pinned, which is the same argument :meth:`Construction.node` makes: a key over an
+    #: identity is sound only while the object it names is held, and the registry a
+    #: ``Resolved`` carries must outlive the key that names it.
+    pinned: list[Any] = []
+
+    def _ref(validator: Any, ref: str, instance: Any, schema: Any) -> Any:
+        resolver = validator._resolver
+        if resolver is None:  # the legacy resolver path, which this module never takes
+            yield from validator._validate_reference(ref=ref, instance=instance)
+            return
+        key = (id(resolver._registry), resolver._base_uri, resolver._previous, ref)
+        counters.lookups += 1
+        held = lookups.get(key)
+        if held is None:
+            try:
+                held = resolver.lookup(ref)
+            except referencing.exceptions.Unresolvable as err:
+                # The library's own wrapping, repeated here because a caller catching
+                # ``jsonschema``'s error by name must keep catching it: a reference the
+                # record could not resolve is a finding about the BUNDLE and it has to
+                # arrive wearing the name every other reader of this library expects.
+                raise jsonschema.exceptions._WrappedReferencingError(err) from err
+            lookups[key] = held
+            pinned.append(resolver._registry)
+        else:
+            counters.lookup_hits += 1
+        yield from validator.descend(instance, held.contents, resolver=held.resolver)
+
+    def skipped() -> None:
+        counters.resource_skipped += 1
+
+    return without_an_idless_resource(
+        jsonschema.validators.extend(cls, validators={**QUIET, "$ref": _ref}), skipped
+    )
+
+
+def without_an_idless_resource(cls: Any, counted: Any = None) -> Any:
+    """``cls`` with the ``Resource`` a node stating no ``$id`` does not need not built.
+
+    ``jsonschema``'s ``descend`` builds ``specification.create_resource(schema)`` for every
+    node of every visit and hands it to ``Resolver.in_subresource``, which returns ``self``
+    UNCHANGED when the resource has no id.  Measured over the suite's grading pass of this
+    tree: **31,029,263 of 31,032,069 Resources carry no ``$id`` at all -- 99.99%** -- and
+    each one exists to answer "this node has no ``$id``" once per visit
+    (``adcp-client-python-2i99``: *"create_resource + Resource.id + _legacy_dollar_id +
+    in_subresource = ~400 samples = 2.27% = 3.3 s + 414 MB, spent re-answering 'this node
+    has no $id' once per (node, instance) visit"*).
+
+    **The predicate is draft-07's own id reading and not a guess about it.**
+    ``_legacy_dollar_id`` answers ``None`` for a node that states no ``$id``, and
+    ``in_subresource`` returns the resolver unchanged for a ``None`` id -- so a node whose
+    keys hold neither ``$id`` nor ``id`` cannot move the resolver, and handing ``descend``
+    the resolver it would have arrived at is the same answer without the object.
+    ``tests/test_witness_construction.py`` asserts the agreement against the library over
+    every node of every record, so a draft whose id reading is not draft-07's reddens.
+
+    ``counted`` is called once per skip, or is ``None`` for a caller with no counter of its
+    own.  A CALLABLE and not a counter object, because the two callers keep their counts in
+    two places -- :class:`Counters` here and
+    :data:`codegen.harness.VALIDATOR_COUNTERS` there -- and this function has no business
+    knowing which.
+    """
+    library_descend = cls.descend
+
+    def descend(
+        self: Any,
+        instance: Any,
+        schema: Any,
+        path: Any = None,
+        schema_path: Any = None,
+        resolver: Any = None,
+    ) -> Any:
+        if (
+            resolver is None
+            and self._ref_resolver is None
+            and type(schema) is dict
+            and "$id" not in schema
+            and "id" not in schema
+        ):
+            if counted is not None:
+                counted()
+            resolver = self._resolver
+        return library_descend(self, instance, schema, path, schema_path, resolver)
+
+    cls.descend = descend
+    return cls
 
 
 class Source(enum.StrEnum):
@@ -309,6 +564,19 @@ class Counters:
     #: Why a mutation was discarded, by keyword.
     discards: collections.Counter[str] = dataclasses.field(default_factory=collections.Counter)
 
+    #: **ONE VALIDATOR PER DOCUMENT** (§9, ``adcp-client-python-hzio.3``): how many ROOT
+    #: validators this construction built.  ``validators == len(records)`` is the claim
+    #: stated as an equality rather than as prose, and a per-call construction would put it
+    #: at the number of calls instead.
+    validators: int = 0
+    #: ``(registry, base_uri, scope, ref) -> Resolved`` (:func:`_reading`).
+    #: ``lookup_hits / lookups`` is the hit rate the row owes a figure for.
+    lookups: int = 0
+    lookup_hits: int = 0
+    #: Visits that did NOT build a ``Resource`` to ask a node with no ``$id`` whether it has
+    #: one.  The library builds one per node per visit and discards 99.99% of them.
+    resource_skipped: int = 0
+
 
 # --------------------------------------------------------------------------- #
 # reading one node's own statements
@@ -347,6 +615,28 @@ def _words(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
     for other in lists[1:]:
         admitted &= set(other)
     return tuple(w for w in lists[0] if w in admitted)
+
+
+def _enumerated(views: Sequence[Mapping[str, Any]]) -> list[Any] | None:
+    """The members every co-describing ``enum`` admits, in the first one's order.
+
+    ``None`` where no statement lists any, which is not the same answer as the empty list:
+    the first means the keyword is unstated and the value comes from elsewhere, the second
+    means the statements together admit nothing.  An INTERSECTION for the reason
+    :func:`_words` gives for ``type`` -- two statements about one instance both hold, so a
+    member only one of them lists is not admitted -- and the ORDER is the first statement's,
+    because the document's own order is the only order that is the document's.
+    """
+    admitted: list[Any] | None = None
+    for view in views:
+        stated = view.get("enum")
+        if not isinstance(stated, list):
+            continue
+        if admitted is None:
+            admitted = list(stated)
+        else:
+            admitted = [member for member in admitted if member in stated]
+    return admitted
 
 
 def _implied(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
@@ -769,6 +1059,12 @@ class Construction:
     def __init__(self, records: Mapping[str, Mapping[str, Any]]) -> None:
         self._records = dict(records)
         self._validators: dict[str, Any] = {}
+        #: The validator CLASS this construction reads with, per draft the bundle declares
+        #: (:func:`_reading`).  One class per draft and not per document, because what the
+        #: class carries is the resolution memo and the quiet readings -- both of which are
+        #: this construction's and not one document's -- while what a DOCUMENT gets is one
+        #: INSTANCE of it, which is the registry and the resolver §9 names.
+        self._reading: dict[Any, Any] = {}
         self._memo: dict[Key, Built] = {}
         self._floors: dict[tuple[str, str], Built] = {}
         self._nodes: dict[tuple[str, str], Any] = {}
@@ -790,13 +1086,26 @@ class Construction:
         registry: the global one carries every checker any draft defines, so it would
         assert ``uuid`` against a draft-07 document, which draft-07 does not define as a
         format -- the SDK inventing a constraint.
+
+        **AND THE READING IS :func:`_reading`'s AND NOT THE LIBRARY'S**
+        (``adcp-client-python-hzio.3``, evidence ``adcp-client-python-2i99``).  The root
+        construction is where ``jsonschema`` builds the ``Resource``, the ``Registry`` and
+        the ``Resolver``, so it is the one place that has to happen once per document; the
+        three repairs that make the per-NODE half linear -- the resolution memo, the
+        Resource that is not built, and the message that is not rendered -- travel on the
+        validator CLASS, which is why they are installed there and not here.
         """
         held = self._validators.get(document)
         if held is None:
             record = self._records[document]
             cls = jsonschema.validators.validator_for(record, jsonschema.Draft7Validator)
-            held = cls(record, format_checker=cls.FORMAT_CHECKER)
+            reading = self._reading.get(cls)
+            if reading is None:
+                reading = _reading(cls, self.counters)
+                self._reading[cls] = reading
+            held = reading(record, format_checker=reading.FORMAT_CHECKER)
             self._validators[document] = held
+            self.counters.validators += 1
         return held
 
     def node(self, document: str, pointer: str) -> Any:
@@ -823,7 +1132,13 @@ class Construction:
         return held
 
     # -- the walk ---------------------------------------------------------- #
-    def value(self, document: str, pointer: str = "", stack: tuple[str, ...] = ()) -> Built:
+    def value(
+        self,
+        document: str,
+        pointer: str = "",
+        stack: tuple[str, ...] = (),
+        besides: tuple[str, ...] = (),
+    ) -> Built:
         """**THE ONE ENTRY POINT, and it is memoised** (§9).
 
         *"Memoisation here is the design and not an optimisation.  One answer per node per
@@ -831,6 +1146,17 @@ class Construction:
         unnecessary and the cycle closed."*  A second uncached entry point would shadow
         this one and is the defect that reading names, so :meth:`_construct` is private and
         nothing else calls it.
+
+        **``besides`` IS THE REST OF THE CONJUNCTION ABOUT THIS ONE INSTANCE**, and it is
+        not a second key.  One instance location can be described from several schema
+        positions at once -- the node's own ``properties`` entry and a ``oneOf`` branch's
+        entry for the same key -- and the value for that location is built from ALL of
+        them (:meth:`_views`).  Every caller that passes ``besides`` puts the same pointers
+        on the ``stack``, so :data:`Key` already distinguishes the answer that depended on
+        them from the answer that did not, and the key stays the three things §9's identity
+        rule names.  **A caller that passed one and not the other would be asking the memo
+        to serve an answer built from a conjunction it was not keyed on**, which is the
+        defect ``Fixtures._pin`` was measured to have.
         """
         key: Key = (document, pointer, stack)
         self.counters.asked += 1
@@ -842,7 +1168,7 @@ class Construction:
         # findable.  The stack is what carries that -- a pointer already on it is a back
         # edge -- so no placeholder value is parked here and no second structure holds
         # "in progress".
-        built = self._construct(document, pointer, stack)
+        built = self._construct(document, pointer, stack, besides)
         self._memo[key] = built
         self.counters.computed += 1
         if built.source is Source.STATED:
@@ -942,13 +1268,33 @@ class Construction:
             return _number([node], whole=word == "integer")
         return Built(WORD_FLOOR.get(word), Source.CONSTRUCTED)
 
-    def _construct(self, document: str, pointer: str, stack: tuple[str, ...]) -> Built:
+    def _construct(
+        self, document: str, pointer: str, stack: tuple[str, ...], besides: tuple[str, ...] = ()
+    ) -> Built:
         """One node's value, bottom-up over its children's.
 
         The cascade is the keyword reading and nothing else: a ``$ref`` is the value
         already built for the pointer it names, a ``const`` is its value, an ``enum`` its
         first member, and a ``type`` the scalar or container the word names, over the
         statements every co-describing conjunct makes about this one instance.
+
+        **AND A VALUE IS OFFERED TO THE KEYWORDS THAT DECIDE BETWEEN THE NODE'S OWN
+        ALTERNATIVES BEFORE IT IS KEPT** (:meth:`_decides`).  ``oneOf`` admits an instance
+        satisfying EXACTLY ONE branch, so a value satisfying two is refused exactly as one
+        satisfying none is -- which means picking a branch is only half the reading, and
+        making the value fail every OTHER branch is the other half.  The same holds from the
+        other side for a sibling ``not``: a value read off the positive keywords alone has
+        not consulted the statement that forbids it.  So the branch retry below is driven by
+        those three keywords rather than by the shallow screen, which strikes them
+        (:data:`STRUCK`).
+
+        **THE DECIDERS ORDER THE ALTERNATIVES; THEY NEVER TAKE A VALUE AWAY.**  Where no
+        alternative the node states satisfies them, the value the node's own screen admits is
+        still the value -- the node is one position in a composition and the whole-document
+        reading (:meth:`document_admits`) is where a composition is graded.  A decider that
+        could delete a value would turn a conjunction this reading cannot yet satisfy into an
+        unexplained absence, and ``docs/plan/final-state.md`` reading 2 is that an absence
+        with no named reason is an allowlist.
         """
         node = self.node(document, pointer)
         if node is True:
@@ -967,23 +1313,64 @@ class Construction:
                 return Built(None, Source.APPROXIMATED, f"{ref!r} is not a pointer of the record")
             if target in stack:
                 return Built(None, Source.BACK_EDGE, f"{target} is in progress", target)
-            return self.value(document, target, (*stack, target))
+            # ``besides`` TRAVELS THROUGH THE REFERENCE, and leaving it behind here was
+            # measured: draft-07's rule is that a ``$ref`` ignores the keywords BESIDE IT AT
+            # ITS OWN NODE, not that it ignores what another position states about the same
+            # instance.  ``core/macro-translation-target.json`` declares
+            # ``dialect_semantic`` as a ``$ref`` to a string and a consequent declares the
+            # same key as a ``$ref`` to the 75-member macro ``enum``; dropping the second at
+            # this line built the string's floor and the document refused it on ``enum``.
+            return self.value(document, target, (*stack, target), besides)
 
-        first: Built | None = None
-        views = self._views(document, pointer, stack)
-        for pick in _branches(node):
-            chosen = views if pick == 0 else self._views(document, pointer, stack, pick)
-            built = self._settled(document, chosen)
+        views = self._views(document, pointer, stack, None, besides)
+        built, settled = self._settled(document, views)
+        if built.source is Source.BACK_EDGE:
+            return built
+        screened = built.held and not self.refusals(document, pointer, built.value)
+        if screened and not self._decides(document, settled, built.value):
+            return built
+        first, chosen, elected = built, settled, built if screened else None
+        empty = None if built.held else built
+        # The default branch of the union the picks range over IS the round above, so the
+        # retry starts at the second: a pick is a different reading of the SAME node and
+        # not a second node, which is what makes this a sum over one union's branches.
+        for pick in self._picks(document, settled)[1:]:
+            built, settled = self._settled(
+                document, self._views(document, pointer, stack, pick, besides), pick
+            )
             if built.source is Source.BACK_EDGE:
                 return built
-            if built.held and not self.refusals(document, pointer, built.value):
+            if not built.held:
+                empty = empty or built
+                continue
+            if self.refusals(document, pointer, built.value):
+                continue
+            if not self._decides(document, settled, built.value):
                 return built
-            first = first or built
-        return self._stated(document, pointer, views, first or Built(None, Source.CONSTRUCTED))
+            if elected is None:
+                elected, chosen = built, settled
+        answer = self._stated(document, pointer, chosen, elected or first)
+        if answer is not (elected or first):
+            return answer
+        if elected is not None and empty is not None and empty.reason:
+            # **EVERY BRANCH THIS READING CAN BUILD IS ONE THE NODE'S OWN UNION REFUSES, AND
+            # A BRANCH IT CANNOT BUILD IS THE ONE THE UNION WOULD HAVE ADMITTED.**  So the
+            # fact to report is that branch's missing value and not the kept one's refusal:
+            # ``core/signal-coverage-forecast.json`` conjoins ``dimensions.contains`` (``kind:
+            # signal``) into its element, which leaves the ``oneOf``'s signal branch as the
+            # only one that admits the result -- and that branch requires a ``signal_id``
+            # matching ``^[a-zA-Z0-9_-]+$``, which this module does not solve.  Reporting the
+            # ``oneOf`` would name the symptom at the wrong node; reporting the pattern names
+            # the obstruction, and it is the obstruction ``adcp-client-python-hzio.10`` owns.
+            return empty
+        return answer
 
     def _settled(
-        self, document: str, views: Sequence[tuple[str, tuple[str, ...]]]
-    ) -> Built:
+        self,
+        document: str,
+        views: Sequence[tuple[str, tuple[str, ...]]],
+        pick: tuple[str, int] | None = None,
+    ) -> tuple[Built, tuple[tuple[str, tuple[str, ...]], ...]]:
         """The value, with every conditional the value's own content DECIDES folded in.
 
         ``docs/plan/rebuild-plan.md`` §8: *"a consequent is a scope of its own and not a
@@ -999,22 +1386,38 @@ class Construction:
         nothing in is the last.  A value that changes its own condition's verdict is
         therefore re-asked exactly as many times as the document gives it arms to be asked
         about, and the figure is the document's rather than a budget's.
+
+        **AND A CONSEQUENT IS REACHED EXACTLY AS A CONJUNCT IS** (:meth:`_reach`), which a
+        measurement forced.  ``{"if": ..., "then": {"$ref": "#/definitions/Shared1"}}`` is
+        the commonest spelling of a consequent in this bundle, and folding the position in
+        WITHOUT the transparent walk reads a node whose only keyword is ``$ref`` -- so the
+        ``required`` the consequent actually states is invisible and the value is built as
+        though the condition had not matched.  Measured over the 1,059 document roots:
+        ``core/placement.json``, ``core/transformer-param.json``,
+        ``governance/check-governance-response.json`` and ``signals/get-signals-request.json``
+        each built a root value their own document refuses for exactly this reason, on the
+        ``required`` or the ``anyOf`` the unreached consequent states.
+
+        It also returns the views it ENDED with, because the consequent a value selects is
+        part of what the node states about that value: the keywords that decide between the
+        node's alternatives (:meth:`_decides`) and its other stated cases (:meth:`_stated`)
+        are both read over the settled set and not over the set before the fold.
         """
         taken: set[str] = set()
-        built = self._from(document, views)
+        settled = tuple(views)
+        built = self._from(document, settled)
         while True:
             arms = tuple(
-                arm
-                for arm in self._arms(document, views, built)
-                if arm[0] not in taken
+                arm for arm in self._arms(document, settled, built) if arm[0] not in taken
             )
             if not arms:
-                return built
+                return built, settled
             taken.update(at for at, _ in arms)
-            views = (*views, *arms)
-            built = self._from(document, views)
+            fresh = tuple(v for v in self._reach(document, arms, pick) if v not in settled)
+            settled = (*settled, *fresh)
+            built = self._from(document, settled)
             if built.source is Source.BACK_EDGE:
-                return built
+                return built, settled
 
     def _arms(
         self,
@@ -1080,6 +1483,20 @@ class Construction:
         exactly as a constructed value is -- an ``examples`` member the node REFUSES is an
         upstream defect to be filed and never a witness -- and where none is admitted the
         fact is approximated with the construction's own reason carried forward.
+
+        **AND THE SCREEN HERE READS THE DECIDERS TOO** (:meth:`_decides`), which is what
+        makes this the answer for a ``not`` whose own statement is an ``enum``:
+        ``core/assets/vast-tracker-asset.json`` states its event's 36-member ``enum`` at one
+        conjunct and ``{"not": {"enum": [...9 of them]}}`` at the next, so the first member
+        is a value the document refuses and the tenth is the one it admits.  Choosing a
+        LATER member of the node's own ``enum`` is a reading of the node and the exclusion
+        is read off the sibling's own statement -- there is no search here and no solver.
+
+        **A value the node's own screen admits is never DELETED by a decider.**  Where no
+        stated case satisfies them, the value comes back unchanged and the composition is
+        graded where a composition is graded (:meth:`document_admits`).  The approximation
+        below is reached on the same condition it always was: the node's OWN keywords refuse
+        the construction.
         """
         for where, _ in views:
             stated = self.node(document, where)
@@ -1087,11 +1504,15 @@ class Construction:
                 continue
             named = stated.get("format")
             for case in FORMAT_CASES.get(named, ()) if isinstance(named, str) else ():
-                if not self.refusals(document, pointer, case):
+                if not self.refusals(document, pointer, case) and not self._decides(
+                    document, views, case
+                ):
                     return Built(case, Source.CONSTRUCTED)
             members = stated.get("enum")
             for member in members if isinstance(members, list) else ():
-                if not self.refusals(document, pointer, member):
+                if not self.refusals(document, pointer, member) and not self._decides(
+                    document, views, member
+                ):
                     return Built(member, Source.CONSTRUCTED)
         nodes = [
             node
@@ -1110,17 +1531,26 @@ class Construction:
             if not isinstance(members, list):
                 continue
             for member in members:
-                if not self.refusals(document, pointer, member):
+                if not self.refusals(document, pointer, member) and not self._decides(
+                    document, views, member
+                ):
                     return Built(member, Source.STATED, "the node's own examples")
         if built.held:
             named = ", ".join(k for k, _ in self.refusals(document, pointer, built.value))
+            if not named:
+                return built
             return Built(None, Source.APPROXIMATED, f"the node refuses its construction on {named}")
         return built if built.source is Source.APPROXIMATED else Built(
             None, Source.APPROXIMATED, built.reason or "no keyword states a value"
         )
 
     def _views(
-        self, document: str, pointer: str, stack: tuple[str, ...], pick: int = 0
+        self,
+        document: str,
+        pointer: str,
+        stack: tuple[str, ...],
+        pick: tuple[str, int] | None = None,
+        besides: tuple[str, ...] = (),
     ) -> tuple[tuple[str, tuple[str, ...]], ...]:
         """Every statement about THIS instance, as ``(pointer, stack)`` and never as text.
 
@@ -1139,13 +1569,39 @@ class Construction:
         than describe it.  A consequent is read by :meth:`_arms`, and only where the value
         matches its condition -- *"a consequent is a scope of its own and not a conjunct"*.
 
-        ``pick`` applies at THIS node and not below it, which is what makes a branch retry a
-        SUM over the node's own branches rather than a product over every union in its
-        subtree: a branch that does not work out is one more attempt at one node, and a
-        nested union is a node of its own whose branches are its own retry.
+        ``pick`` NAMES ONE UNION AND ONE OF ITS BRANCHES, ``(pointer of the keyword,
+        index)``, and every other union in the view set takes its document's own first
+        branch.  **One union varied, which is what makes a branch retry a SUM and not a
+        product** -- and the union it names is the one any co-describing conjunct states and
+        not only the one the node states itself, which is a correction a measurement forced:
+        ``core/media-buy-frequency-cap.json`` states its ``anyOf`` at ``/allOf/0`` and its
+        ``not`` at ``/allOf/1``, so a retry that could only vary a union spelled at the node
+        itself had exactly one reading of that node available and it is the one the document
+        refuses.
+
+        ``besides`` SEEDS the walk with the rest of the conjunction about this instance, for
+        the case the walk cannot find from the pointer alone: a key described both by the
+        node's own ``properties`` and by a branch's entry for the same key is one location
+        with two statements, and only its parent knows both positions.
+        """
+        return self._reach(document, [(pointer, stack), *((at, stack) for at in besides)], pick)
+
+    def _reach(
+        self,
+        document: str,
+        seeds: Sequence[tuple[str, tuple[str, ...]]],
+        pick: tuple[str, int] | None = None,
+    ) -> tuple[tuple[str, tuple[str, ...]], ...]:
+        """The transparent walk itself, from any set of positions describing one instance.
+
+        **ONE walk, shared by :meth:`_views` and by :meth:`_settled`'s fold of a
+        consequent**, because a consequent states what it states through a ``$ref`` and an
+        ``allOf`` exactly as a conjunct does.  Two spellings of this walk is two readings of
+        draft-07's composition grammar, and the one that was missing read a ``{"$ref": ...}``
+        consequent as a node stating nothing.
         """
         out: list[tuple[str, tuple[str, ...]]] = []
-        pending = [(pointer, stack)]
+        pending = list(seeds)
         while pending:
             at, path = pending.pop(0)
             if (at, path) in out:
@@ -1160,29 +1616,105 @@ class Construction:
                     pending.append((target, (*path, target)))
                 continue
             out.append((at, path))
-            taken = pick if (at, path) == (pointer, stack) else 0
             for keyword, suffix, _, _ in bundle.subschemas(node):
-                conjunct = keyword == "allOf"
-                branch = keyword in ("anyOf", "oneOf") and suffix == f"/{keyword}/{taken}"
-                if conjunct or branch:
+                if keyword == "allOf":
                     pending.append((f"{at}{suffix}", (*path, f"{at}{suffix}")))
+                elif keyword in ("anyOf", "oneOf"):
+                    union = f"{at}/{keyword}"
+                    index = pick[1] if pick is not None and pick[0] == union else 0
+                    if suffix == f"/{keyword}/{index}":
+                        pending.append((f"{at}{suffix}", (*path, f"{at}{suffix}")))
+        return tuple(out)
+
+    def _picks(
+        self, document: str, views: Sequence[tuple[str, tuple[str, ...]]]
+    ) -> tuple[tuple[str, int], ...]:
+        """Which union to vary and in what order -- the document's own branch order.
+
+        ONE union, the first the view set states, with ``oneOf`` before ``anyOf`` at one
+        position because an exclusive alternation is the stronger statement.  The retry is a
+        SUM over that keyword's branches: ``oneOf`` admits an instance through EXACTLY one
+        branch, so a value merged from the first branch and the node's own statements can be
+        one a LATER branch also admits -- which the ``oneOf`` refuses, for a reason that is
+        the construction's and not the subject's.
+
+        The second union in a view set is NOT varied, and that is the product this refuses to
+        pay: ``docs/plan/architecture.md`` §9 calls a cross-product over the unions in a
+        subtree a defect of the approach rather than a cost to control.
+        """
+        for at, _ in views:
+            node = self.node(document, at)
+            if not isinstance(node, Mapping):
+                continue
+            for keyword in ("oneOf", "anyOf"):
+                members = node.get(keyword)
+                if isinstance(members, list) and len(members) > 1:
+                    return tuple((f"{at}/{keyword}", i) for i in range(len(members)))
+        return ()
+
+    def _decides(
+        self, document: str, views: Sequence[tuple[str, tuple[str, ...]]], value: Any
+    ) -> tuple[str, ...]:
+        """The keywords that decide BETWEEN this node's alternatives, and refuse this value.
+
+        ``oneOf``, ``anyOf`` and ``not``: the three the shallow screen strikes
+        (:data:`STRUCK`) and the three no child can answer for, because each is a statement
+        about how the node's OWN alternatives relate to one another.  A ``oneOf`` branch
+        cannot know it must exclude its siblings, and a ``not``'s subject is the instance at
+        the node that states it -- so a value read off the positive keywords alone has
+        consulted neither.
+
+        **THIS IS NOT THE SHALLOW SCREEN AND IT IS NOT THE WHOLE DOCUMENT.**  It ranges over
+        exactly the three keywords, at exactly the positions this node's own view set states
+        them, which is what keeps §9's linearity: the 215,019 schema positions of this
+        bundle state a ``oneOf`` at 2,243 of them, an ``anyOf`` at 4,996 and a ``not`` at
+        3,984, so the cost is one validation at one node in twenty and never a walk per node.
+        ``if`` is absent on purpose: :meth:`_arms` folds the arm the value selects into the
+        view set, so a conditional is READ rather than screened.
+        """
+        out: list[str] = []
+        for at, _ in views:
+            node = self.node(document, at)
+            if not isinstance(node, Mapping):
+                continue
+            stated = {k: node[k] for k in ("oneOf", "anyOf", "not") if k in node}
+            if not stated:
+                continue
+            out.extend(
+                error.validator
+                for error in self.validator(document).evolve(schema=stated).iter_errors(value)
+                if isinstance(error.validator, str)
+            )
         return tuple(out)
 
     def _from(
         self, document: str, views: Sequence[tuple[str, tuple[str, ...]]]
     ) -> Built:
-        """The value the merged statements name, by the ``type`` word they agree on."""
+        """The value the merged statements name, by the ``type`` word they agree on.
+
+        **AN ``enum`` SEVERAL STATEMENTS STATE IS AN INTERSECTION AND NOT THE FIRST OF
+        THEM**, the same reading :func:`_words` already makes of ``type``: two statements
+        about one instance both hold, so a member only one of them lists is not admitted.
+        Taking the first statement's first member was measured: ``creative/creative-status-
+        changed-webhook.json`` lists six states for ``transition.to`` and narrows them to
+        ``["pending_review", "rejected"]`` in the consequent its own ``from`` selects, and
+        the construction read ``"processing"`` off the wider list -- a value the document
+        refuses on ``enum``, at a node whose conjunction it had already reached.  A ``const``
+        is the same statement with one member, so it is screened against every stated
+        ``enum`` rather than returned ahead of them.
+        """
         nodes = [self.node(document, at) for at, _ in views]
         nodes = [n for n in nodes if isinstance(n, Mapping)]
         if not nodes:
             return Built(None, Source.CONSTRUCTED)
+        admitted = _enumerated(nodes)
         for node in nodes:
             if "const" in node:
+                if admitted is not None and node["const"] not in admitted:
+                    continue
                 return Built(node["const"], Source.CONSTRUCTED)
-        for node in nodes:
-            members = node.get("enum")
-            if isinstance(members, list) and members:
-                return Built(members[0], Source.CONSTRUCTED)
+        if admitted:
+            return Built(admitted[0], Source.CONSTRUCTED)
         words = _words(nodes) or _implied(nodes)
         if not words:
             return Built(None, Source.CONSTRUCTED)
@@ -1206,9 +1738,24 @@ class Construction:
         """An object over the REQUIRED subset, and no key the document does not demand.
 
         A key several statements describe gets ONE value built from all of them, which is
-        what puts the other describing pointers on the stack: *"grouping by the pointer
-        instead hands the same location two independent pins, and two pins on one location
-        do not narrow the node -- they empty it."*  ``minProperties`` then demands keys the
+        what hands the other describing pointers to :meth:`value` as ``besides`` AND puts
+        them on the stack: *"grouping by the pointer instead hands the same location two
+        independent pins, and two pins on one location do not narrow the node -- they empty
+        it."*
+
+        **THE REST OF THE CONJUNCTION USED TO TRAVEL ON THE STACK ALONE, WHICH IS A KEY AND
+        NOT A READING, AND THAT WAS THIS ROW'S LARGEST CAUSE.**  The stack distinguished the
+        answer; nothing read the positions it carried, so the value for a key described
+        twice was built from the FIRST position and the second was discarded.  The second is
+        where the discriminator lives: measured over the 1,059 document roots, a ``status``
+        declared by the envelope's ``enum`` and by a ``oneOf`` branch's ``const`` took the
+        enum's first member and so satisfied NO branch of the ``oneOf``, which is nine of
+        the sixteen roots ``adcp-client-python-hzio.11`` names -- and the same omission is
+        the ``const`` at ``core/warning.json``, the ``enum`` at
+        ``core/macro-translation-target.json`` and the ``minProperties`` at
+        ``core/package-delivery-metric-value.json``.
+
+        ``minProperties`` then demands keys the
         ``properties`` table may not name, and where ``propertyNames`` or
         ``patternProperties`` is what admits them the construction stops: a key matching a
         pattern is a regex to solve and there is no solver here.
@@ -1234,7 +1781,8 @@ class Construction:
                 placed[name] = None
                 continue
             at, path = where[0]
-            inner = self.value(document, at, (*path, *(p for p, _ in where[1:])))
+            besides = tuple(p for p, _ in where[1:])
+            inner = self.value(document, at, (*path, *besides), besides)
             if inner.source is Source.BACK_EDGE:
                 self.counters.floored += 1
                 inner = self.floor(document, inner.target)
@@ -1362,6 +1910,17 @@ class Construction:
         beside a count above one is where that stops: distinct members need distinct
         values, and where the element states an ``enum`` its members are the distinct ones
         and otherwise the construction says so.
+
+        **THE ELEMENT IS DESCRIBED BY EVERY VIEW THAT DECLARES IT, and a ``contains`` beside
+        an ``items`` describes it too** -- so both travel as ``besides`` and the member is
+        built from the conjunction.  ``core/signal-coverage-forecast.json`` is the measured
+        shape: one conjunct declares ``dimensions.items`` and the next states
+        ``dimensions.contains``, and a member built from ``items`` alone leaves the
+        ``contains`` with nothing to find -- so the document refused the array on
+        ``contains`` and the construction had reported nothing.  Where that conjunction
+        admits no value the array has none either, with the conjunction's own reason
+        carried: an array whose ``contains`` no member can satisfy admits no instance, and
+        saying so is the answer rather than an array the document refuses.
         """
         least = _bound(nodes, "minItems")
         count = int(least) if isinstance(least, (int, float)) else 0
@@ -1398,11 +1957,13 @@ class Construction:
             if not wanted:
                 return Built([None] * count, Source.CONSTRUCTED)
             at, path = wanted[0]
+            besides = tuple(p for p, _ in wanted[1:])
         else:
             at, path = element[0]
+            besides = tuple(p for p, _ in (*element[1:], *wanted))
         if count == 0:
             return Built([], Source.CONSTRUCTED)
-        inner = self.value(document, at, path)
+        inner = self.value(document, at, (*path, *besides), besides)
         if inner.source is Source.BACK_EDGE:
             if count == 0:
                 return Built([], Source.CONSTRUCTED)
@@ -1631,29 +2192,6 @@ def _local(ref: str) -> str | None:
     if ref.startswith("#/"):
         return ref[1:]
     return None
-
-
-def _branches(node: Mapping[str, Any]) -> tuple[int, ...]:
-    """Which branch of this node's union to try, in order -- the document's own order.
-
-    ``(0,)`` where the node states no union, which is the common case and costs one
-    attempt.  Otherwise every branch index of the FIRST union keyword the node states, so
-    the retry is a SUM over that keyword's branches: a ``oneOf`` admits an instance through
-    exactly one branch, and merging the first branch with the node's own statements can
-    produce a value a LATER branch also admits -- which the ``oneOf`` then refuses, for a
-    reason that is the construction's and not the subject's.
-
-    The second union keyword at one node is NOT varied, and that is the product this
-    refuses to pay: two unions at one node are two nodes of their own in every document
-    this bundle holds, and a cross-product over them would be the explosion
-    ``docs/plan/architecture.md`` §9 calls a defect of the approach rather than a cost to
-    control.
-    """
-    for keyword in ("oneOf", "anyOf"):
-        members = node.get(keyword)
-        if isinstance(members, list) and len(members) > 1:
-            return tuple(range(len(members)))
-    return (0,)
 
 
 def _required(nodes: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
