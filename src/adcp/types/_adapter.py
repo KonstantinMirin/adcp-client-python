@@ -52,6 +52,7 @@ from adcp.types.core import CreativeAsset as LegacyCreativeAsset
 from adcp.types.core import CreativeFilters as CreativeFilters
 from adcp.types.core import CreativeFilters as LegacyCreativeFilters
 from adcp.types.core import CreativeManifest as CreativeManifest
+from adcp.types.core import CurrencyCode as PricingCurrency
 from adcp.types.core import ErrorRecovery as Recovery
 from adcp.types.core import ErrorSource as Source
 from adcp.types.core import Format as Format
@@ -205,6 +206,7 @@ __all__ = [
     "PixelTrackerEvent",
     "PixelTrackerMethod",
     "Placement",
+    "PricingCurrency",
     "PrincipalConfiguration",
     "Product",
     "ProductFilters",
@@ -256,7 +258,6 @@ __adcp_refused__ = {
     "LegacyPreviewCreativeResponse": "NO-DOCUMENT-NO-SUBJECT",
     "LegacyProductFormatDeclaration": "NO-DOCUMENT-NO-SUBJECT",
     "MediaBuyPackage": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PricingCurrency": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalAppliedResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalCurrentResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalReadFailedResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
