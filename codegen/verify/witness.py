@@ -36,21 +36,35 @@ the target's minimal value (:meth:`Construction.floor`) where the document requi
 The memo that makes the walk linear is the memo that closes the cycle, so a depth limit
 would be a guess standing in for the detection and none is introduced here.
 
-**A ``pattern`` OF FOUR CONSTRUCTS IS READ AND EVERY OTHER PATTERN IS LEFT UNREAD.**  An
-anchor, a literal run, a character class and a quantifier are keywords the way ``minLength``
-is a keyword, and the reading is the same reading: the class's FIRST member repeated the
-quantifier's MINIMUM count, exactly as ``minLength: 3`` gives ``"aaa"`` (:func:`_atoms`,
-:func:`_patterned`).  ``^[A-Z]{3}$`` gives ``"AAA"`` and ``^sha256:[a-f0-9]{64}$`` gives
-``"sha256:"`` and sixty-four ``"a"``\\ s.  **THIS IS NOT A REGEX ENGINE AND MUST NOT BECOME
-ONE**: there is no backtracking, no lookaround, no group, no group reference, no alternation
-and no class subtraction here, and a pattern stating any of them is NOT ATTEMPTED -- the
-document's own ``examples`` is the value and failing that the fact is approximated with the
-pattern QUOTED (:func:`_atoms` names the construct it stopped at).  Measured over bundle
-3.2: 66 of 110 distinct patterns and 5,306 of 7,638 pattern-bearing positions are of the
-read shape; the 44 that are not are a group, an alternation, a lookaround or a complement
-class, and a reader that guessed at
-``^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9]...`` is the thing this module refuses to
-be.
+**A ``pattern`` OF FIVE CONSTRUCTS IS READ AND EVERY OTHER PATTERN IS LEFT UNREAD.**  An
+anchor, a literal run, a character class, a quantifier and a GROUP are keywords the way
+``minLength`` is a keyword, and the reading is the same reading: the class's FIRST member
+repeated the quantifier's MINIMUM count, exactly as ``minLength: 3`` gives ``"aaa"``
+(:func:`_atoms`, :func:`_patterned`).  ``^[A-Z]{3}$`` gives ``"AAA"`` and
+``^sha256:[a-f0-9]{64}$`` gives ``"sha256:"`` and sixty-four ``"a"``\\ s.
+
+**A GROUP IS THE QUANTIFIER'S MINIMUM TOO** (:func:`_group`).  A group followed by ``?`` or
+``*`` is taken ZERO times and contributes NOTHING; a group followed by ``+``, or by no
+quantifier at all, is taken ONCE and its contents read by these same rules, recursively.
+That is the same reading ``*`` on a character class already gets, applied to a construct
+that holds a sequence instead of a member, so
+``^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$`` gives ``"a"`` and the
+``+`` spelling of its tail gives ``"a.a"``.  An ALTERNATION inside a group is read by taking
+its FIRST ARM, and every other arm is read too (:func:`_group` carries why that is a reading
+and not a choice between arms).
+
+**THIS IS NOT A REGEX ENGINE AND MUST NOT BECOME ONE**: there is no backtracking, no
+lookaround, no backreference, no alternation outside a group and no class subtraction here,
+and a pattern stating any of them is NOT ATTEMPTED -- the document's own ``examples`` is the
+value and failing that the fact is approximated with the pattern QUOTED (:func:`_atoms`
+names the construct it stopped at).  **THE LOOKAROUNDS ARE DECLINED BY NAME** rather than
+left to fall out of a group's parse (:func:`_opens`): telling ``(?:...)`` from ``(?=...)``
+is a two-character test, and a reader that answered it by guessing is where the engine
+starts.  Measured over bundle 3.2: 99 of 110 distinct patterns and 7,075 of 7,638
+pattern-bearing positions are of the read shape; the 11 that are not are FOUR lookarounds,
+six classes whose members this reader does not name, and one anchor inside a group's arm --
+and a reader that solved ``^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?...`` by deciding what its two
+lookaheads demand is the thing this module refuses to be.
 
 **WHERE CONSTRUCTION CANNOT REACH, THE DOCUMENT'S OWN ``examples`` IS THE VALUE**, and
 failing that the fact is approximated with the reason named (:attr:`Source.APPROXIMATED`,
@@ -783,7 +797,7 @@ def _implied(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
 
 
 # --------------------------------------------------------------------------- #
-# the four constructs a pattern is READ by
+# the five constructs a pattern is READ by
 # --------------------------------------------------------------------------- #
 #: What a class ESCAPE admits, first member first -- a table of CONSTANTS and not a
 #: generator, which is the same reason :data:`FORMAT_CASES` is permitted here.  An escape
@@ -815,13 +829,20 @@ READ_FROM_A_PATTERN = "the pattern's own constructs"
 _ASSERTIONS = frozenset("AbBGzZ")
 
 #: The characters that open a construct this reader does not read, with the construct NAMED
-#: -- a group, an alternation, a lookaround (which opens as a group) and a backreference.
-#: ``docs/plan/architecture.md`` §2's rule, as a table: the reader stops, the document's own
-#: ``examples`` is asked, and the pattern is quoted in the reason.
+#: -- an unbalanced group, a TOP-LEVEL alternation, an interior anchor and a quantifier with
+#: nothing in front of it.  ``docs/plan/architecture.md`` §2's rule, as a table: the reader
+#: stops, the document's own ``examples`` is asked, and the pattern is quoted in the reason.
+#:
+#: ``(`` is NOT here -- :func:`_group` reads it -- and ``)`` and ``|`` are here only in the
+#: positions that reach this table at all, which is OUTSIDE a group (:func:`_sequence` is
+#: what breaks on them inside one).  **A TOP-LEVEL ALTERNATION IS NOT THE SAME CONSTRUCT AS
+#: AN ALTERNATION INSIDE A GROUP**, and that is why one is read and the other is not: in
+#: ``^a|b$`` the anchors bind to the two ARMS and not to the alternation, so the ``^`` and
+#: ``$`` :func:`_atoms` strips are not statements about the whole pattern and the sequence
+#: between them is not the whole of what the reading has to produce.
 _UNREAD = {
-    "(": "a group",
-    ")": "a group",
-    "|": "an alternation",
+    ")": "a group that never opened",
+    "|": "an alternation outside a group",
     "^": "an anchor inside the pattern",
     "$": "an anchor inside the pattern",
     "*": "a quantifier with no atom",
@@ -834,10 +855,11 @@ _UNREAD = {
 class _Unread(Exception):
     """The pattern states a construct this reader does not read, and ``str`` NAMES it.
 
-    An exception and not a sentinel because the four readings nest -- a class inside an
-    atom inside the sequence -- and a shape the reader stops at has to stop all of them at
-    once.  Every raise names the CONSTRUCT rather than the position, because what the
-    reason has to carry is why this pattern was left unread.
+    An exception and not a sentinel because the five readings nest -- a class inside an
+    atom inside a group inside the sequence, and a group inside a group -- and a shape the
+    reader stops at has to stop all of them at once.  Every raise names the CONSTRUCT
+    rather than the position, because what the reason has to carry is why this pattern was
+    left unread.
     """
 
 
@@ -972,24 +994,106 @@ def _count(text: str, at: int) -> tuple[int, int | None, int]:
     return least, most, at
 
 
-def _atoms(pattern: str) -> tuple[_Atom, ...]:
-    """The pattern as a sequence of :class:`_Atom`, or :class:`_Unread` naming the construct.
+def _opens(text: str, at: int) -> int:
+    """A group's ``(`` -- the index its first arm STARTS at, or :class:`_Unread`.
 
-    **THE ANCHORS ARE READ AS ANCHORS AND NOT AS ATOMS.**  A leading ``^`` and a trailing
-    ``$`` say where the match sits, which is what lets the sequence between them be the
-    whole of what the reading has to produce; ``$`` in any other position, and ``^`` outside
-    a class, is an assertion this reader stops at.  An UNANCHORED pattern is read too and
-    needs no special case: draft-07's ``pattern`` is a SEARCH rather than a full match, so
-    the string the atoms name is found in itself -- which is why ``^https://`` gives
-    ``"https://"`` and ``\\S`` gives nothing.
+    **THE LOOKAROUNDS ARE DECLINED HERE, EACH BY ITS OWN NAME.**  A lookaround opens as a
+    group, so telling ``(?:...)`` from ``(?=...)`` is the whole of what separates a
+    construct this reader reads from one it must not touch -- and it is a test on TWO
+    characters, which is why it is written out rather than left to fall out of the parse.
+    ``(?=`` and ``(?!`` are a lookahead, ``(?<=`` and ``(?<!`` a lookbehind, and each is
+    reported by the spelling the document used so the reason names the construct the reader
+    stopped at.  A lookaround states what the text AROUND a position must be; reading it
+    would mean deciding which strings satisfy an assertion about a neighbourhood, and that
+    decision is the engine.
+
+    **AND EVERY OTHER ``(?`` OPTION IS DECLINED TOO**, named by its own two characters: a
+    named group, an inline flag, a comment, an atomic group and a conditional each carry
+    semantics of their own, and a reader that treated them as a plain group would be
+    guessing at them.  The two openers that ARE read are the bare ``(`` and ``(?:``, which
+    differ only in whether the engine would capture -- and nothing here captures.
     """
-    text = pattern[1:] if pattern.startswith("^") else pattern
-    if text.endswith("$") and not text.endswith("\\$"):
-        text = text[:-1]
+    if not text.startswith("(?", at):
+        return at + 1
+    third = text[at + 2 : at + 3]
+    if third in ("=", "!"):
+        raise _Unread(f"the lookahead '(?{third}'")
+    if third == "<":
+        fourth = text[at + 3 : at + 4]
+        if fourth in ("=", "!"):
+            raise _Unread(f"the lookbehind '(?<{fourth}'")
+        raise _Unread("a named group")
+    if third == ":":
+        return at + 3
+    if not third:
+        raise _Unread("a group with no end")
+    raise _Unread(f"the group option '(?{third}'")
+
+
+def _group(text: str, at: int) -> tuple[tuple[_Atom, ...], int]:
+    """A group from its ``(`` -- ``(the atoms it contributes, the index after it)``.
+
+    **A GROUP IS READ BY ITS QUANTIFIER'S MINIMUM, exactly as a character class is.**
+    ``(...)?`` and ``(...)*`` are taken ZERO times and contribute NO atoms at all;
+    ``(...)+``, and a group with no quantifier, are taken ONCE; ``(...){n,m}`` is taken *n*
+    times.  Nothing here is a choice: ``?`` says the group may be absent and the reading
+    takes the absence the way ``minLength: 0`` takes the empty string and the way ``[a-z]*``
+    already takes no character.  The contents are read by :func:`_sequence`, which reaches
+    this function again for a group inside a group, so the recursion is the construct's own
+    nesting and not a search.
+
+    **THE GROUP'S OWN ``most`` IS DROPPED, and that is a stated limit rather than an
+    oversight.**  :func:`_patterned` grows a reading to meet a ``minLength`` by repeating an
+    atom its own quantifier admits more of; a group's atoms are INLINED here, so they can
+    still grow individually, but the group cannot be repeated a second time to reach a
+    bound.  A ``minLength`` no reading reaches is reported by :func:`_patterned` rather than
+    approached, so the limit costs an approximation and never a wrong string.
+
+    **AN ALTERNATION INSIDE A GROUP IS READ BY TAKING ITS FIRST ARM, AND EVERY ARM IS READ.**
+    The first arm is the DOCUMENT'S OWN FIRST, taken exactly as :func:`_members` takes a
+    class's first member and as an ``enum``'s first member is taken: the arms are compared
+    with nothing, no arm is tried and rejected, and no property of the produced string
+    decides which arm is used.  That is what makes it a reading -- what would make it
+    solving is choosing the arm that gets some other keyword satisfied, which is a search
+    over the arms and is not done.  The other arms are nonetheless parsed in full, for
+    :func:`_members`' reason: an arm this reader cannot parse is a construct it has not
+    understood, and a pattern it has not understood is one it leaves unread.  ``(?:0|[1-9]
+    [0-9]*)`` therefore gives ``"0"`` -- but only because ``[1-9][0-9]*`` parsed as well.
+    """
+    arms: list[tuple[_Atom, ...]] = []
+    at = _opens(text, at)
+    while True:
+        atoms, at = _sequence(text, at, nested=True)
+        arms.append(atoms)
+        if at >= len(text):
+            raise _Unread("a group with no end")
+        closed = text[at] == ")"
+        at += 1
+        if closed:
+            break
+    least, _, at = _count(text, at)
+    return arms[0] * least, at
+
+
+def _sequence(text: str, at: int, *, nested: bool) -> tuple[tuple[_Atom, ...], int]:
+    """The atoms from ``at`` onward -- ``(them, the index it stopped at)``.
+
+    One pass left to right, each atom with its own quantifier, and a group inlined as the
+    atoms it contributes (:func:`_group`).  ``nested`` says whether this sequence is one
+    group ARM: an arm ends at the ``)`` that closes its group or at the ``|`` that starts
+    the next arm, and at the top level those two characters have no group to belong to and
+    are a construct the reader stops at (:data:`_UNREAD` carries why the top-level
+    alternation in particular is a different construct from the one :func:`_group` reads).
+    """
     out: list[_Atom] = []
-    at = 0
     while at < len(text):
         found = text[at]
+        if nested and found in (")", "|"):
+            break
+        if found == "(":
+            inlined, at = _group(text, at)
+            out.extend(inlined)
+            continue
         if found == "[":
             member, at = _members(text, at)
         elif found == "\\":
@@ -1003,13 +1107,37 @@ def _atoms(pattern: str) -> tuple[_Atom, ...]:
             member, at = found, at + 1
         least, most, at = _count(text, at)
         out.append(_Atom(member, least, most))
-    if not out:
+    return tuple(out), at
+
+
+def _atoms(pattern: str) -> tuple[_Atom, ...]:
+    """The pattern as a sequence of :class:`_Atom`, or :class:`_Unread` naming the construct.
+
+    **THE ANCHORS ARE READ AS ANCHORS AND NOT AS ATOMS.**  A leading ``^`` and a trailing
+    ``$`` say where the match sits, which is what lets the sequence between them be the
+    whole of what the reading has to produce; ``$`` in any other position, and ``^`` outside
+    a class, is an assertion this reader stops at.  An UNANCHORED pattern is read too and
+    needs no special case: draft-07's ``pattern`` is a SEARCH rather than a full match, so
+    the string the atoms name is found in itself -- which is why ``^https://`` gives
+    ``"https://"`` and ``\\S`` gives nothing.
+
+    **AN EMPTY TUPLE IS A READING AND NOT A FAILURE, once a group can be taken zero times.**
+    ``^(?:ab)?$`` states a construct and takes none of it, so the string it names is the
+    empty one -- which the pattern admits.  What states NO construct is a pattern with
+    nothing between its anchors, and that is the one this refuses: the emptiness is read off
+    the TEXT rather than off the atom count, so the two cases stay distinguishable.
+    """
+    text = pattern[1:] if pattern.startswith("^") else pattern
+    if text.endswith("$") and not text.endswith("\\$"):
+        text = text[:-1]
+    if not text:
         raise _Unread("a pattern that states no atom")
-    return tuple(out)
+    atoms, _ = _sequence(text, 0, nested=False)
+    return atoms
 
 
 def _patterned(pattern: str, low: int, high: int | None) -> Built:
-    """The string the pattern's own four constructs name, inside the node's length bound.
+    """The string the pattern's own five constructs name, inside the node's length bound.
 
     Each class's first member repeated the quantifier's MINIMUM count, which is the whole
     reading -- and then the length bound, which is a statement about the same instance and
@@ -1074,7 +1202,7 @@ def _string(views: Sequence[Mapping[str, Any]]) -> Built:
     """The string the node's own string keywords state it admits.
 
     ``format`` first, because a formatted node's admitted set is the format's and a
-    padded string is not in it; then the ``pattern``, read by its own four constructs
+    padded string is not in it; then the ``pattern``, read by its own five constructs
     (:func:`_patterned`); then the length bound, exactly as many characters as it demands.
     A pattern of an unread shape is where the construction STOPS, and the caller falls to
     the document's own ``examples``.
@@ -2135,7 +2263,7 @@ class Construction:
         the construction can reach.  Then the key a ``patternProperties`` entry or a
         ``propertyNames`` schema admits, which are the two places a document states what a
         name may be: **a ``patternProperties`` key is its pattern READ** (:func:`_patterned`,
-        the same four constructs a string value is read by) and a ``propertyNames`` key is
+        the same five constructs a string value is read by) and a ``propertyNames`` key is
         the value already built for that schema's own node -- so neither is a choice made
         here.  Failing all three the key is a free choice and the construction makes one;
         ``docs/plan/rebuild-plan.md`` §8 says exactly that of a mapping value.

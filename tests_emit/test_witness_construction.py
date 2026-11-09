@@ -38,7 +38,7 @@ import pytest
 from fresh import BUNDLE
 from nodeset import claimed, partitions, ratchet
 
-from codegen import bundle
+from codegen import bundle, harness
 from codegen.verify import witness
 
 MODULE = pathlib.Path(witness.__file__)
@@ -206,14 +206,17 @@ def test_the_document_admits_the_value_built_for_its_own_root(document: str) -> 
     beginning of its own repair.
 
     **AND THIS GATE IS RED TODAY, WHICH IS ITS PURPOSE RATHER THAN ITS DEFECT.**  Measured
-    over the 1,059 roots: 868 admit, NONE is refused by its own document, and 191 have NO
-    VALUE -- every one of them on a ``pattern`` the construction does not solve, which is
-    ``adcp-client-python-hzio.10``'s row.  ``adcp-client-python-hzio.11`` was the other half
-    and it has landed: it read 32 roots as building a value their own document refused, and
-    the figure is now zero rather than smaller.  ``adcp-client-python-hzio.9`` owns this
-    gate and its instruction is to leave it red until the pattern reader closes the
-    remainder.  No ``xfail``, no skip and no narrowing: a residue that is visible per
-    document under its own name is the only honest form it can take.
+    over the 1,059 roots: 1,050 admit, ONE builds a value its own document refuses
+    (``core/macro-declaration.json``, ``adcp-client-python-hzio.13``), and EIGHT have NO
+    VALUE -- every one of them a required ISO 8601 duration whose ``pattern`` states a
+    LOOKAHEAD, which the reader declines by name rather than guesses at
+    (:func:`test_a_lookaround_is_declined_by_name_and_never_read`).
+    ``adcp-client-python-hzio.11`` closed the 32 roots that built a refused value and
+    ``adcp-client-python-hzio.10`` and its group-reading successor closed 185 of the 193
+    that had none.  ``adcp-client-python-hzio.9`` owns this gate and its instruction is to
+    leave it red until both remainders are repaired.  No ``xfail``, no skip and no
+    narrowing: a residue that is visible per document under its own name is the only honest
+    form it can take.
     """
     built = constructed.whole()
     answer = built.value(document, "")
@@ -228,8 +231,8 @@ def test_the_document_admits_the_value_built_for_its_own_root(document: str) -> 
 def test_no_root_builds_a_value_its_own_document_refuses() -> None:
     """``adcp-client-python-hzio.11``, **and the assertion is ZERO rather than a ceiling.**
 
-    The gate above states the whole obligation per document and is red on the 191 roots the
-    pattern reader owes.  That makes its two halves indistinguishable to a reader of the
+    The gate above states the whole obligation per document and is red on every root the
+    pattern reader still owes.  That makes its two halves indistinguishable to a reader of the
     suite: a root that STOPS building a refused value and starts having no value at all
     leaves the same test id red, so the repair and the regression look alike.  This names
     the half that is finished.
@@ -564,6 +567,194 @@ def test_the_construction_reads_the_record_and_never_rebuilds_it() -> None:
         assert built.node(document, pointer) is bundle.node_at(
             constructed.records()[document], pointer
         ), (document, pointer)
+
+
+# --------------------------------------------------------------------------- #
+# the pattern is READ by five constructs, and the sixth is declined by name
+# --------------------------------------------------------------------------- #
+def _bundle_patterns() -> dict[str, int]:
+    """Every distinct ``pattern`` the bundle's records state, with how many nodes state it.
+
+    The positions are the weight a declined construct carries, which is the figure
+    ``codegen/verify/witness.py``'s own docstring quotes -- so it is derived here from the
+    same records the construction walks rather than copied from a row's description of
+    them.
+    """
+    out: dict[str, int] = {}
+    for record in constructed.records().values():
+        for _pointer, node in bundle.nodes(record):
+            if isinstance(node, dict) and isinstance(node.get("pattern"), str):
+                out[node["pattern"]] = out.get(node["pattern"], 0) + 1
+    return out
+
+
+def test_every_pattern_the_reader_reads_yields_a_string_that_pattern_admits() -> None:
+    """The reading is offered to the PATTERN ITSELF, through the project's own screen.
+
+    ``adcp-client-python-hzio.10``'s rule and the one this check exists for: *"the value is
+    checked against the pattern before it is used, by the document's own checker rather
+    than by the reader's belief about what it produced"*.  A reader returning a string its
+    own pattern refuses is a defect, and the only instrument that can say so is a checker
+    the reader does not share -- ``codegen.harness.conforms``, which is also what attaches
+    the draft's ``format`` checker, never a bare validator.
+
+    **Over the bundle's own distinct patterns and not over examples written here**, because
+    the set this claims to range over is the set the compiler meets.  The patterns the
+    reader DECLINES are the other half and are named by
+    :func:`test_a_pattern_the_reader_declines_names_the_construct_it_stopped_at`.
+    """
+    read = claimed(
+        "distinct patterns the reader reads",
+        [text for text in _bundle_patterns() if witness._patterned(text, 0, None).held],
+        inside=_bundle_patterns(),
+    )
+    refused = [
+        (text, witness._patterned(text, 0, None).value)
+        for text in sorted(read)
+        if harness.conforms(
+            {"type": "string", "pattern": text}, witness._patterned(text, 0, None).value
+        )
+        is not True
+    ]
+    assert not refused, refused
+
+
+def test_a_group_is_taken_its_quantifiers_minimum_number_of_times() -> None:
+    """The construct this reading ADDS, and the minimum is the whole of it.
+
+    A group followed by ``?`` or ``*`` is taken ZERO times and contributes nothing; a group
+    followed by ``+``, or by no quantifier, is taken ONCE; ``{n,m}`` is taken *n* times.
+    That is the same reading ``*`` on a character class already gets, which is why the
+    cases below are stated beside the class spellings that already produce the same string
+    -- a reading that treated a group differently from a class under one quantifier would
+    show up here as a disagreement between the two columns.
+
+    **AND EACH EXPECTATION IS CHECKED BY THE PATTERN TOO**, not only compared with a string
+    written here: a case whose expected value its own pattern refuses would be this test
+    asserting the reader's defect rather than the reading, which is the failure mode
+    ``hzio.10``'s rule names.
+    """
+    cases = {
+        # a group taken zero times, against the class spelling of the same minimum
+        "^a(bc)?$": "a",
+        "^a(bc)*$": "a",
+        "^a[bc]*$": "a",
+        # a group taken once, its contents read by the same rules
+        "^a(bc)+$": "abc",
+        "^a(bc)$": "abc",
+        "^a(?:bc){2}$": "abcbc",
+        # nested, which is the recursion: the inner group's own quantifier decides
+        "^a(b(cd)?)+$": "ab",
+        "^a(b(cd)+)?$": "a",
+        # the bundle's own two domain patterns, the `*` and the `+` spelling
+        "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$": "a",
+        "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$": "a.a",
+        # an alternation inside a group: the FIRST arm, and every arm still parsed
+        "^-?(?:0|[1-9][0-9]*)$": "0",
+        "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$": "0.0",
+    }
+    for text, expected in sorted(cases.items()):
+        built = witness._patterned(text, 0, None)
+        assert built.held, (text, built.reason)
+        assert built.value == expected, (text, built.value, expected)
+        assert harness.conforms({"type": "string", "pattern": text}, expected) is True, text
+
+
+def test_a_lookaround_is_declined_by_name_and_never_read() -> None:
+    """The line this reading stops at, and the stop is a NAMED refusal rather than a parse.
+
+    A lookaround opens as a group, so telling ``(?:...)`` from ``(?=...)`` is the whole of
+    what separates the construct the reader reads from the one it must not touch.  Reading
+    a lookaround would mean deciding which strings satisfy an assertion about a
+    neighbourhood, and that decision is the regex engine
+    ``docs/plan/architecture.md`` §2 forbids -- so each of the four spellings is declined
+    and the reason NAMES it, which is what lets a rootless document report why.
+
+    Both halves are here: the four spellings, which the bundle does not all state, and the
+    bundle's own lookaround-bearing patterns, which are the ones a document actually pays
+    for.
+    """
+    for text, named in {
+        "^a(?=b)c$": "the lookahead '(?='",
+        "^a(?!b)c$": "the lookahead '(?!'",
+        "^a(?<=b)c$": "the lookbehind '(?<='",
+        "^a(?<!b)c$": "the lookbehind '(?<!'",
+    }.items():
+        built = witness._patterned(text, 0, None)
+        assert not built.held, (text, built.value)
+        assert named in built.reason, (text, built.reason)
+
+    stated = claimed(
+        "distinct patterns of the bundle that state a lookaround",
+        [
+            text
+            for text in _bundle_patterns()
+            if any(spelling in text for spelling in ("(?=", "(?!", "(?<=", "(?<!"))
+        ],
+        inside=_bundle_patterns(),
+    )
+    for text in sorted(stated):
+        built = witness._patterned(text, 0, None)
+        assert not built.held, (text, built.value)
+        assert "lookahead" in built.reason or "lookbehind" in built.reason, (
+            text,
+            built.reason,
+        )
+
+
+def test_a_pattern_the_reader_declines_names_the_construct_it_stopped_at() -> None:
+    """**THE DECLINED LIST IS A DELIVERABLE AND NOT A FAILURE**, so it is read here.
+
+    ``hzio.10``'s rule for everything the five constructs do not cover: *"a pattern whose
+    shape this reader does not cover is NOT attempted -- the document's own ``examples`` is
+    the value, and failing that the fact is approximated with the pattern quoted"*.  What
+    makes that honest rather than a silent gap is that the reason names the CONSTRUCT: a
+    declined pattern reporting only that it was declined tells no reader which reading is
+    missing, which is the shape a residue hides in.
+
+    So every declined pattern quotes its own text and names a construct, and no reader of
+    this suite has to go looking for the list.
+    """
+    declined = claimed(
+        "distinct patterns the reader declines",
+        [text for text in _bundle_patterns() if not witness._patterned(text, 0, None).held],
+        inside=_bundle_patterns(),
+    )
+    nameless = []
+    for text in sorted(declined):
+        reason = witness._patterned(text, 0, None).reason
+        stopped = reason.split("is not solved", 1)[-1].lstrip(": ").strip()
+        if repr(text) not in reason or not stopped:
+            nameless.append((text, reason))
+    assert not nameless, nameless
+
+
+def test_the_pattern_reader_imports_no_regular_expression_machinery() -> None:
+    """It READS a pattern to produce a string; it never asks whether a string matches.
+
+    ``docs/plan/architecture.md`` §2: *"This project builds no solver for a keyword it
+    cannot read."*  The reading added for a group is where that line is easiest to cross --
+    a group with an alternation invites trying an arm and checking the result -- so the
+    rule is read on the module's IMPORTS, where a matcher would have to appear.  Every
+    accept-or-refuse verdict about a produced string belongs to the document's own checker
+    (:meth:`codegen.verify.witness.Construction.refusals`), and a module that cannot match
+    cannot take that verdict back.
+    """
+    imports = claimed(
+        "modules this one imports",
+        [
+            name.name.split(".")[0]
+            for node in ast.walk(_module())
+            if isinstance(node, ast.Import)
+            for name in node.names
+        ]
+        + [
+            node.module.split(".")[0]
+            for node in ast.walk(_module())
+            if isinstance(node, ast.ImportFrom) and node.module
+        ],
+    )
+    assert not imports & {"re", "regex", "sre_compile", "sre_parse"}, sorted(imports)
 
 
 # --------------------------------------------------------------------------- #
