@@ -2396,6 +2396,114 @@ def validator_for(schema: dict) -> Any:
     return jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
 
 
+#: **THE ONE VALIDATOR PER DOCUMENT, while a grading pass holds it open.**
+#:
+#: ``docs/plan/architecture.md`` §9: *"The document's reference registry and its resolver
+#: are properties of the document, not of a visit, so they are built where the document is
+#: read and outlive every node in it.  A validator constructed per call rebuilds the
+#: registry, re-resolves every reference and discards what it learned."*
+#:
+#: ``adcp-client-python-2i99`` measured the per-call shape: ``jsonschema >= 4.18`` builds
+#: ``Resource`` + ``Registry`` + ``Resolver`` in ``__attrs_post_init__`` and only when
+#: ``_resolver is None`` -- a ROOT construction -- so :func:`_validating` returning a fresh
+#: root on every call rebuilt all three per CALL and nothing a root build derived survived
+#: to the next one.
+#:
+#: **MEASURED ON THIS TREE, both readings in ONE process so that neither pays
+#: ``adcp-client-python-hzio.12``'s cold-store collection, over the suite's own grading pass
+#: of all 2,584 pairs** (the second of two runs each, which is the pair to read):
+#:
+#: ======================================  ===========  ==========
+#: over 2,584 pairs                             before       after
+#: ======================================  ===========  ==========
+#: ROOT validator constructions                162,727      35,670
+#: bytes of error message built            369,389,071 221,365,797
+#: ``Resource`` objects built               31,032,069  29,208,944
+#: of those, carrying no ``$id``            31,029,263  29,206,140
+#: seconds                                      364.08      360.46
+#: ======================================  ===========  ==========
+#:
+#: **The counts move and the clock does not, and that is the finding rather than a
+#: disappointment.**  78% of the root constructions and 40% of the message bytes go, for
+#: 1% of the wall clock, because what this grading pass spends its time on is
+#: ``hypothesis_jsonschema`` building a strategy -- 74.9% of a pair by
+#: ``tests/test_emit.py``'s own measurement.  That is ``adcp-client-python-hzio.5``'s
+#: subject and not this row's.  The verdict histogram is identical on both sides.
+#:
+#: ``None`` means no pass is open and :func:`_validating` answers exactly as it did before
+#: this row: a fresh root, which is what a caller outside a grading pass gets and what every
+#: test of one check in isolation gets.  **The lifetime is therefore explicit and is a
+#: CALLER's**, which is the rule ``canonicalisation_shared_within_one_call`` is held to and
+#: the reason that one is not the process-global dict section 6 deleted.
+_VALIDATORS: "dict[tuple[int, int], Any] | None" = None
+
+#: The schemas :data:`_VALIDATORS` is keyed on, held so that the key stays sound.
+#:
+#: **An identity key is sound only while the object it names is PINNED** -- the same
+#: argument ``codegen.verify.witness.Construction.node`` makes: an unpinned temporary's
+#: address is reused, so the key changes under the caller silently.  So the schema travels
+#: with its validator and both are dropped together.
+_PINNED: "list[Any] | None" = None
+
+#: What a pass learned, for the gate that reads it rather than for a reader of prose
+#: (``docs/plan/architecture.md`` §9: *"every memo and every claimed funnel carries a
+#: counter the gate reads"*).
+VALIDATOR_COUNTERS: Counter[str] = Counter()
+
+
+@contextmanager
+def validator_instances_shared_within_one_grade() -> Iterator[dict]:
+    """Hold ONE validator instance per schema for the duration of one grade.
+
+    :data:`_VALIDATORS` carries what this is for and the measurement that forces it.  Three
+    properties make the lifetime honest rather than convenient:
+
+    * **it is DROPPED on exit, including on an exception**, so nothing survives the frame
+      that opened it and no second grade inherits a validator built over another grade's
+      schema objects;
+    * **its size is the number of distinct schema objects ONE GRADE validates against**,
+      and that figure is MEASURED rather than supposed.  Over the suite's own grading pass
+      of all 2,584 pairs: **4,199 validators built and 127,051 asks answered from one
+      already held**, with the largest memo any ONE pair held at its exit reading **62
+      entries** -- and 488 in a run where one more pair reached its budget, because the
+      maximum moves with how far the slowest pair gets rather than with the population.
+      ``adcp-client-python-2i99``'s "~5 distinct schemas per pair" is the count of
+      DOCUMENTS a pair validates against; the entries above it are the nodes a check
+      evolves onto and hands back here as schemas of their own.  That is the figure a reader
+      needs and the one section 6's complaint ("grows by roughly 340 entries per pair") was
+      about the absence of;
+    * **it is re-entrant**, so a nested opening joins the memo the outer frame holds rather
+      than starting a second one -- two memos inside one grade would make the sharing a
+      function of which frame asked.
+
+    **WHY THE LIFETIME IS THE GRADE AND NOT THE WHOLE PASS, which §9's words would allow
+    and the machine will not.**  §9 says one validator per DOCUMENT, and the entry has to be
+    keyed on the schema's IDENTITY -- a digest over the text is the O(subtree)-per-node cost
+    §9's identity rule forbids -- so an entry PINS its schema for as long as it lives.  A
+    pass-wide lifetime therefore pins every pair's resolved node at once, and one of this
+    bundle's is 2,701,506 bytes; the suite's measured ceiling is already memory
+    (``pyproject.toml``).  So the sharing is opened by :func:`check_pair`, which removes the
+    repetition that is inside one pair -- about 102 root constructions per pair, measured --
+    and a caller that wants the document-wide lifetime opens this itself and inherits it
+    through the re-entrance above.  **``codegen.verify.witness.Construction`` is where §9's
+    sentence holds literally**: it builds one validator per document and
+    :attr:`codegen.verify.witness.Counters.validators` counts them -- 1,051 for 1,051
+    records, read back by ``tests/test_witness_construction.py``.
+    """
+    global _VALIDATORS, _PINNED
+    if _VALIDATORS is not None:
+        yield _VALIDATORS
+        return
+    _VALIDATORS, _PINNED = {}, []
+    try:
+        yield _VALIDATORS
+    finally:
+        VALIDATOR_COUNTERS["held_at_exit"] = max(
+            VALIDATOR_COUNTERS["held_at_exit"], len(_VALIDATORS)
+        )
+        _VALIDATORS, _PINNED = None, None
+
+
 def _validating(cls: Any, schema: dict) -> Any:
     """A validator instance that ASSERTS ``format``, with the draft's own checker.
 
@@ -2419,15 +2527,110 @@ def _validating(cls: Any, schema: dict) -> Any:
     (``rfc3339-validator``, ``rfc3987``).  The emitter gates its type selection
     on the same set, so the two halves cannot disagree about which formats are
     asserted.
+
+    **AND THE INSTANCE IS SHARED WHERE A GRADING PASS HOLDS ONE OPEN**
+    (:func:`validator_instances_shared_within_one_grade`, which carries §9's rule and
+    the measurement).  A root construction is where the registry and the resolver are built,
+    so it is the one thing that must happen once per document rather than once per call.
     """
-    return cls(schema, format_checker=cls.FORMAT_CHECKER)
+    held = _VALIDATORS
+    if held is None:
+        VALIDATOR_COUNTERS["unshared"] += 1
+        return cls(schema, format_checker=cls.FORMAT_CHECKER)
+    key = (id(schema), id(cls))
+    found = held.get(key)
+    if found is None:
+        VALIDATOR_COUNTERS["built"] += 1
+        found = cls(schema, format_checker=cls.FORMAT_CHECKER)
+        held[key] = found
+        if _PINNED is not None:
+            _PINNED.append(schema)
+    else:
+        VALIDATOR_COUNTERS["reused"] += 1
+    return found
+
+
+def _reading(cls: Any) -> Any:
+    """``cls`` with the readings whose MESSAGE the two callers below throw away.
+
+    ``docs/plan/architecture.md`` §9 asks the second check to read a refusal *"at its
+    location and against its cause"*, and :func:`conforms` and :func:`violated_keywords`
+    are the two halves of that: the first returns a ``bool`` and the second reads
+    ``err.validator``.  **Neither has ever read a message.**  The library nevertheless
+    renders one, and for a ``oneOf`` that means recursively ``repr``-ing whole merged
+    subschema dicts -- 369,389,071 bytes over the suite's grading pass of this tree, every
+    byte discarded, of which this reading removes 148,023,274 (``adcp-client-python-2i99``: 17.0 GB of 192.6 GB allocated in a larger
+    run, at ~43x ``_PyUnicodeWriter`` realloc amplification).
+
+    ``codegen.verify.witness.QUIET`` is the table and it is read from there rather than
+    restated: the construction and these two callers discard a message for the SAME reason,
+    and two tables would be two decisions about one fact.  The control flow is the library's
+    -- a ``oneOf`` still probes every branch, because that is the keyword's semantics and
+    not its sentence -- so what changes is the text and nothing else, which
+    ``tests/test_harness_halves.py`` asserts by agreeing with the library's own class on the
+    set of ``(keyword, path)`` pairs.
+
+    **AND THE ``Resource`` A NODE WITH NO ``$id`` DOES NOT NEED IS NOT BUILT EITHER**
+    (``codegen.verify.witness.without_an_idless_resource``, which carries the predicate, the
+    99.99% and the gate that asserts the agreement with the library).  It is the second of
+    ``adcp-client-python-2i99``'s layers and it is applied here for the same reason the
+    table above is read from there rather than restated: one decision, one place.
+    """
+    from codegen.verify import witness
+
+    def skipped() -> None:
+        VALIDATOR_COUNTERS["resource_skipped"] += 1
+
+    return witness.without_an_idless_resource(
+        jsonschema.validators.extend(cls, validators=dict(witness.QUIET)), skipped
+    )
+
+
+#: :func:`_reading`'s class per DRAFT, and the one place in this row that is not scoped to
+#: a grade.
+#:
+#: **WHY IT IS NOT SCOPED, AND THE ALTERNATIVE WAS MEASURED AND IS A REGRESSION.**  The
+#: first cut of this row built the class inside
+#: :func:`validator_instances_shared_within_one_grade`'s memo and rebuilt it per call for
+#: every caller outside one.  ``jsonschema.validators.extend`` is **0.295 ms** against
+#: **0.0026 ms** for building a plain validator instance -- 113x -- and 48,287 of this
+#: suite's ``conforms`` asks are made outside any grade (``corpus_defect``,
+#: ``stated_instances``, the fixture derivation and the suite's own readers), so that cut
+#: added about 14 s of pure waste to the very path it exists to make cheaper.
+#:
+#: **AND IT IS NOT SECTION 6's PROCESS GLOBAL.**  What that rule forbids is "an unbounded
+#: process-global dict ... grows by roughly 340 entries per pair".  This one is keyed on a
+#: VALIDATOR CLASS, so its size is the number of drafts the input declares -- ONE over this
+#: bundle, whose every portable document states draft-07
+#: (``tests/test_accepts_corpus.py::test_every_portable_document_states_one_dialect``) --
+#: and its entries are classes rather than documents.  It holds no schema, no instance and
+#: nothing derived from either, so there is nothing in it that a later run could read as
+#: data about a bundle.
+_QUIET_CLASSES: dict[Any, Any] = {}
+
+
+def quiet(cls: Any) -> Any:
+    """:func:`_reading`'s class for ``cls``, built ONCE PER DRAFT.
+
+    :data:`_QUIET_CLASSES` carries why the lifetime is the process and not the grade, and
+    the 113x that forces it.
+    """
+    found = _QUIET_CLASSES.get(cls)
+    if found is None:
+        found = _reading(cls)
+        _QUIET_CLASSES[cls] = found
+    return found
 
 
 def conforms(schema: dict, instance: Any, *, validator_cls=None) -> bool | None:
-    """True / False, or None when the document is not usable as a validator."""
+    """True / False, or None when the document is not usable as a validator.
+
+    **The reading is :func:`quiet`'s, because this function returns a ``bool``** -- see
+    :func:`_reading` for the 376 MB of message text that answer used to be wrapped in.
+    """
     cls = validator_cls or validator_for(schema)
     try:
-        _validating(cls, schema).validate(instance)
+        _validating(quiet(cls), schema).validate(instance)
         return True
     except jsonschema.ValidationError:
         return False
@@ -2445,10 +2648,13 @@ def violated_keywords(schema: dict, instance: Any, *, validator_cls=None) -> lis
     ``uniqueItems``), and a step drops sibling keywords it would otherwise
     contradict.  Asking the validator which keyword bit makes the attribution
     exact instead of assumed.
+
+    **The reading is :func:`quiet`'s, because this function reads ``err.validator``** and
+    the sentence beside it is never looked at (:func:`_reading`).
     """
     cls = validator_cls or validator_for(schema)
     out: list[str] = []
-    for err in _validating(cls, schema).iter_errors(instance):
+    for err in _validating(quiet(cls), schema).iter_errors(instance):
         for e in [err, *err.context] if err.context else [err]:
             if isinstance(e.validator, str):
                 out.append(e.validator)
@@ -8160,6 +8366,37 @@ def underdetermined_census(
 
 
 def check_pair(
+    pair: Pair,
+    *,
+    accepts_examples: int = 1,
+    custom_formats: Mapping[str, Any] = (),
+    corpus: Any = None,
+    widening_corpus: Any = None,
+    fixtures: "Fixtures | None" = None,
+) -> PairReport:
+    """ONE CLASS AGAINST ONE SCHEMA, with the grade's own validator sharing open.
+
+    :func:`validator_instances_shared_within_one_grade` is this frame's whole addition and
+    it carries §9's rule and the measurement: a validator built per CALL rebuilds the
+    registry and the resolver and discards what it learned, at a measured 162,727 root
+    constructions over this suite's grading pass of 2,584 pairs.  The sharing is opened HERE
+    because this is the frame that knows a grade has begun and ends, and it is re-entrant,
+    so a caller holding a wider one keeps it.
+
+    :func:`_check_pair` is the grade itself.
+    """
+    with validator_instances_shared_within_one_grade():
+        return _check_pair(
+            pair,
+            accepts_examples=accepts_examples,
+            custom_formats=custom_formats,
+            corpus=corpus,
+            widening_corpus=widening_corpus,
+            fixtures=fixtures,
+        )
+
+
+def _check_pair(
     pair: Pair,
     *,
     accepts_examples: int = 1,

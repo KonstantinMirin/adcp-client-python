@@ -36,12 +36,32 @@ import constructed
 import jsonschema
 import pytest
 from fresh import BUNDLE
+from referencing.jsonschema import DRAFT7
 from nodeset import claimed, partitions, ratchet
 
 from codegen import bundle
 from codegen.verify import witness
 
 MODULE = pathlib.Path(witness.__file__)
+
+
+#: **EVERY ITEM OF THIS MODULE GOES TO ONE WORKER, and the reason is MEASURED.**
+#:
+#: ``tests/constructed.whole()`` is one warmed :class:`codegen.verify.witness.Construction`
+#: over all 1,059 records -- 272,262 memo entries, 215,019 pinned nodes, 1,051 validators,
+#: about 660 MB resident -- and it is held PER PROCESS, so a module whose items spread
+#: across the workers builds it once per worker.  That is fine for a handful of items and it
+#: is not fine for 1,059: the obligation
+#: :func:`test_the_document_admits_the_value_built_for_its_own_root` is one item per
+#: document, so without this mark every worker takes some of them and every worker pays the
+#: 660 MB.  **I measured that the hard way -- the suite was OOM-killed at 83% inside a 20 GB
+#: cgroup at ``-n 4``, with ``oom_kill`` in ``/proc/vmstat`` going 73 -> 75.**
+#:
+#: ``--dist=loadgroup`` in ``pyproject.toml`` is what reads this, and
+#: ``tests/test_emit.py``'s ``GRADED_REPORTS_GROUP`` is the same rule for the same reason one
+#: derivation over.  The name is shared with ``tests/test_witness_mutations.py`` because the
+#: two modules read ONE construction: two groups would be two of them.
+pytestmark = pytest.mark.xdist_group("constructed")
 
 #: A record whose ``$ref`` cycle is reached through an OPTIONAL property, so the
 #: construction closes it by omitting the reference.
@@ -637,6 +657,174 @@ def test_every_class_the_construction_offers_is_one_the_node_admits() -> None:
             if built.refusals(document, pointer, case.value)
         )
     assert not bad, bad[:5]
+
+
+# --------------------------------------------------------------------------- #
+# adcp-client-python-hzio.3: one validator per document, and the three re-derivations
+# adcp-client-python-2i99 measured, each read off a counter
+# --------------------------------------------------------------------------- #
+def test_one_validator_is_built_per_document_and_never_per_visit() -> None:
+    """``hzio.3``'s first DONE WHEN clause, as an EQUALITY and not as a prose claim.
+
+    ``docs/plan/architecture.md`` §9: *"The document's reference registry and its resolver
+    are properties of the document, not of a visit, so they are built where the document is
+    read and outlive every node in it."*  ``adcp-client-python-2i99`` measured the other
+    shape at 1,000,276 root constructions in one run -- 945 per document -- because a
+    validator built per CALL rebuilds ``Resource`` + ``Registry`` + ``Resolver`` and
+    discards everything it learned about a reference.
+
+    Three equalities and no figure, so none of them can go stale:
+
+    * ``validators == len(the validators held)`` -- a document's validator is built ONCE,
+      because a second build would be counted twice and held once;
+    * the documents holding one are drawn from the records and never from anywhere else;
+    * ``screened >> validators`` -- the thing a per-call build would have multiplied.
+
+    **AND THE DOCUMENTS HOLDING NONE ARE NAMED BY THEIR CAUSE, not excused by a count.**  A
+    document whose every node is approximated never offers a value to a screen, so it never
+    needs a validator at all -- and this bundle has eight, each one a single-node document
+    whose only keyword is a ``pattern`` the construction does not solve
+    (``adcp-client-python-hzio.10``).  The partition is derived from the construction's own
+    answers, so a document that stops being screened for any OTHER reason reddens here.
+    """
+    built = constructed.whole()
+    records = claimed("records", constructed.records())
+    assert built.counters.validators == len(built._validators), (
+        built.counters.validators,
+        len(built._validators),
+    )
+    held = claimed("documents holding a validator", built._validators, inside=records)
+    # And the walk asked for one far more often than it built one, which is what makes the
+    # equality above a saving rather than an accident of a walk that validates nothing.
+    assert built.counters.screened > 100 * built.counters.validators, (
+        built.counters.screened,
+        built.counters.validators,
+    )
+    nothing_offered = {
+        document
+        for document in records - held
+        if not any(
+            built.value(document, pointer).held
+            for pointer in constructed.pointers()[document]
+        )
+    }
+    partitions(records, screened=held, nothing_was_ever_offered_to=nothing_offered)
+
+
+def test_the_reference_resolution_is_memoised_and_the_memo_is_live() -> None:
+    """``hzio.3``'s second DONE WHEN clause: *"a ``(registry, ref) -> Resolved`` memo whose
+    hit rate is reported"*.
+
+    ``adcp-client-python-2i99`` counted 1,156,366 ``$ref`` lookups in one run, each doing
+    ``urldefrag(urljoin(...))`` and then walking the pointer SEGMENT BY SEGMENT with a
+    ``Resource`` built per segment, *"and there is no memo from ``(registry, ref) ->
+    Resolved`` anywhere"*.  :func:`codegen.verify.witness._reading` is that memo.
+
+    Read as two facts and not as a number: the memo is ASKED (so it is on the path at all)
+    and it HITS (so it is keyed on something that repeats).  A dead memo passes neither.
+    """
+    counters = constructed.whole().counters
+    assert counters.lookups > 0, "the resolution memo is on no path the walk takes"
+    assert counters.lookup_hits > 0, "the resolution memo answers nothing it is asked"
+    assert counters.lookup_hits < counters.lookups, (
+        counters.lookup_hits,
+        counters.lookups,
+    )
+
+
+def test_no_resource_is_built_to_ask_a_node_with_no_id_whether_it_has_one() -> None:
+    """``hzio.3``'s third DONE WHEN clause, and the PREDICATE is the library's own.
+
+    ``adcp-client-python-2i99``'s second layer: ``jsonschema``'s ``descend`` builds
+    ``specification.create_resource(schema)`` for every node of every visit purely so that
+    ``Resolver.in_subresource`` can ask it for an id, and *"when that is ``None``,
+    ``Resolver.in_subresource`` returns ``self`` unchanged and the Resource is garbage"*.
+
+    :func:`codegen.verify.witness._reading`'s shortcut is *"a node whose keys hold neither
+    ``$id`` nor ``id`` cannot change the resolver"*, and this asserts that against the
+    library rather than against a reading of its documentation: over every node of every
+    record, ``in_subresource`` of that node's own resource is the resolver it was given.
+    A draft whose id reading is not draft-07's reddens here.
+    """
+    built = constructed.whole()
+    assert built.counters.resource_skipped > 0, "the shortcut is on no path the walk takes"
+    disagreed = []
+    shortcut = []
+    for document, positions in sorted(constructed.pointers().items()):
+        resolver = built.validator(document)._resolver
+        for pointer in positions:
+            node = built.node(document, pointer)
+            if type(node) is not dict or "$id" in node or "id" in node:
+                continue
+            shortcut.append((document, pointer))
+            if resolver.in_subresource(DRAFT7.create_resource(node)) is not resolver:
+                disagreed.append((document, pointer))
+    claimed("nodes the shortcut applies to", shortcut)
+    assert not disagreed, disagreed[:5]
+
+
+def test_the_quiet_readings_agree_with_the_library_on_the_keyword_and_the_location() -> None:
+    """``hzio.3``'s fourth DONE WHEN clause, and what makes it SAFE rather than merely fast.
+
+    *"no error message constructed on a path whose caller discards it"*
+    (:data:`codegen.verify.witness.QUIET`).  What this module reads off an error is
+    ``error.validator`` and ``error.absolute_path``; what it replaces is the SENTENCE.  So
+    the obligation is an agreement on the pair it reads, over every value this construction
+    actually builds -- which is a far larger corpus than any example written here, and it is
+    the corpus the figures are quoted over.
+    """
+    built = constructed.whole()
+    library = witness.Construction(constructed.records())
+    library._reading[jsonschema.Draft7Validator] = jsonschema.Draft7Validator
+    disagreed: list[tuple[str, str]] = []
+    offered: list[tuple[str, str]] = []
+    for document, positions in sorted(constructed.pointers().items()):
+        for pointer in positions:
+            answer = built.value(document, pointer)
+            if not answer.held:
+                continue
+            offered.append((document, pointer))
+            if built.refusals(document, pointer, answer.value) != library.refusals(
+                document, pointer, answer.value
+            ):
+                disagreed.append((document, pointer))
+    claimed("values offered to both readings", offered)
+    assert not disagreed, disagreed[:5]
+
+
+def test_every_keyword_whose_message_renders_a_whole_value_is_one_of_the_two_halves() -> None:
+    """The quiet table is COMPLETE against the library, derived and never hand-checked.
+
+    ``docs/plan/architecture.md`` §3's reason for generation over diffing applies to a table
+    read off a third party: *"a set checked in one direction is complete with respect to
+    itself, and what it omits passes"*.  So the draft's own ``VALIDATORS`` is partitioned --
+    every keyword is either in :data:`codegen.verify.witness.QUIET` (its message renders the
+    instance or a subschema, so its cost is the size of the value) or in
+    :data:`codegen.verify.witness.CONSTANT_COST` (its message renders a bound or a key name)
+    -- and a keyword in NEITHER is a keyword nobody decided about.
+
+    **And the two halves are checked against the library's SOURCE and not against this
+    file's opinion**: a keyword whose message interpolates a value and which sits in the
+    constant-cost half reddens, which is what happens when a library release makes one of
+    them expensive.
+    """
+    import inspect
+
+    keywords_of = claimed("draft-07 keyword readings", jsonschema.Draft7Validator.VALIDATORS)
+    renders = {
+        keyword
+        for keyword, reading in jsonschema.Draft7Validator.VALIDATORS.items()
+        if "!r}" in inspect.getsource(reading) or "repr(" in inspect.getsource(reading)
+    }
+    #: An EQUALITY and not two subset tests, which is the direction §3 argues for: a
+    #: keyword the library starts rendering a value for and nobody decided about would pass
+    #: a subset test in one direction and is caught by this.
+    partitions(
+        renders,
+        quieted=set(witness.QUIET),
+        left_to_the_library_because_the_message_is_constant=witness.CONSTANT_COST,
+    )
+    assert renders <= set(keywords_of), sorted(renders - set(keywords_of))
 
 
 def _hashable(value: object) -> object:

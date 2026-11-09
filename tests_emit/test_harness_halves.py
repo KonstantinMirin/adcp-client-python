@@ -32,6 +32,7 @@ import json
 import time
 from typing import Any
 
+import jsonschema
 import pytest
 from pydantic import BaseModel, ConfigDict
 
@@ -1085,3 +1086,206 @@ _PINNED_APART: dict[str, Any] = {
     **_CROSS_FIELD,
     "properties": {"country": {"const": "AA"}, "system": {"const": "cep"}},
 }
+
+
+# --------------------------------------------------------------------------- #
+# adcp-client-python-hzio.3: the validator INSTANCE, and the message nobody reads
+# --------------------------------------------------------------------------- #
+#: Documents whose readings are the ones ``codegen.verify.witness.QUIET`` replaces, with a
+#: value each that the document REFUSES -- so the comparison below is over errors and not
+#: over an empty set.  One per quieted keyword, because what is being judged is that each
+#: substitution answers exactly what the library's own reading answers.
+QUIETED: tuple[tuple[dict, Any], ...] = (
+    ({"type": "string"}, 7),
+    ({"type": ["string", "integer"]}, []),
+    ({"enum": ["a", "b"]}, "c"),
+    ({"const": "a"}, "b"),
+    ({"not": {"type": "string"}}, "a"),
+    ({"type": "array", "contains": {"type": "integer"}}, ["a"]),
+    ({"anyOf": [{"type": "string"}, {"type": "integer"}]}, []),
+    ({"oneOf": [{"type": "string"}, {"type": "integer"}]}, []),
+    #: A value TWO branches of a ``oneOf`` admit, which is the shape whose message is the
+    #: single largest allocation site in the library's half of a run
+    #: (``adcp-client-python-2i99``: 12.103 GB) -- it ``repr``\ s every branch the instance
+    #: satisfies.  The verdict must still be a refusal, because that is the keyword's
+    #: semantics and not its sentence.
+    ({"oneOf": [{"type": "string"}, {"minLength": 0}]}, "a"),
+    #: Nested, so the comparison reaches an error carried in ``context`` rather than only a
+    #: top-level one.
+    (
+        {
+            "type": "object",
+            "properties": {"a": {"oneOf": [{"type": "string"}, {"type": "integer"}]}},
+        },
+        {"a": []},
+    ),
+)
+
+
+@pytest.mark.parametrize("schema,value", QUIETED, ids=lambda x: str(x)[:48])
+def test_the_quiet_reading_answers_what_the_librarys_own_reading_answers(
+    schema: dict, value: Any
+) -> None:
+    """``hzio.3``'s message clause, and what makes it SAFE rather than merely cheap.
+
+    ``harness._reading`` replaces the readings whose MESSAGE renders the instance or a
+    subschema, because :func:`codegen.harness.conforms` returns a ``bool`` and
+    :func:`codegen.harness.violated_keywords` reads ``err.validator`` -- measured at
+    369,389,071 bytes of message built over the suite's grading pass of this tree, every
+    byte discarded.  **What must not change is the verdict**, so the two classes are asked
+    the same question and compared on the pair the callers read: the keyword and the path.
+    """
+    library = jsonschema.Draft7Validator(schema, format_checker=None)
+    quiet = harness.quiet(jsonschema.Draft7Validator)(schema, format_checker=None)
+
+    def read(validator: Any) -> list[tuple[Any, tuple]]:
+        return sorted(
+            (err.validator, tuple(err.absolute_path))
+            for err in validator.iter_errors(value)
+        )
+
+    assert read(quiet) == read(library), (read(quiet), read(library))
+    assert read(library), "the fixture states no refusal, so the comparison is vacuous"
+    assert harness.conforms(schema, value) is False
+
+    #: **AND THE ``context`` TOO, because that is the half the pair above does not reach.**
+    #: :func:`codegen.harness.violated_keywords` reads ``err.validator`` and then every
+    #: ``e.validator`` of ``err.context``, which is where an ``anyOf``'s and a ``oneOf``'s
+    #: branch refusals live -- so a quiet reading that dropped the context would answer a
+    #: shorter list and the attribution of a refusal would move.  Compared against the
+    #: library's own answer and not against a list written here.
+    def keywords(validator: Any) -> list[str]:
+        out = []
+        for err in validator.iter_errors(value):
+            for e in [err, *err.context] if err.context else [err]:
+                if isinstance(e.validator, str):
+                    out.append(e.validator)
+        return sorted(set(out))
+
+    assert keywords(quiet) == keywords(library), (keywords(quiet), keywords(library))
+    assert harness.violated_keywords(schema, value) == keywords(library), schema
+
+
+def test_no_message_is_rendered_on_the_path_whose_caller_discards_it() -> None:
+    """The saving itself, measured rather than asserted in prose.
+
+    The subject is the ``oneOf`` shape ``adcp-client-python-2i99`` names: an instance TWO
+    branches admit, whose library message is ``", ".join(repr(schema) for schema in
+    more_valid)`` over whole merged subschema dicts.  The branches here are padded so that
+    the library's own sentence is large and the quiet one is a constant, and the comparison
+    is of the TOTAL message text each class builds for one call.
+    """
+    filler = {"description": "x" * 4000}
+    schema = {"oneOf": [{"type": "string", **filler}, {"minLength": 0, **filler}]}
+    built: list[int] = []
+    original = jsonschema.exceptions.ValidationError.__init__
+
+    def counting(self: Any, message: str, *a: Any, **k: Any) -> None:
+        built.append(len(message) if isinstance(message, str) else 0)
+        original(self, message, *a, **k)
+
+    jsonschema.exceptions.ValidationError.__init__ = counting  # type: ignore[method-assign]
+    try:
+        built.clear()
+        list(jsonschema.Draft7Validator(schema).iter_errors("a"))
+        library = sum(built)
+        built.clear()
+        list(harness.quiet(jsonschema.Draft7Validator)(schema).iter_errors("a"))
+        quiet = sum(built)
+    finally:
+        jsonschema.exceptions.ValidationError.__init__ = original  # type: ignore[method-assign]
+    assert library > 8000, library
+    assert quiet < 200, quiet
+
+
+def test_the_validator_instance_is_shared_within_one_grade_and_dropped_on_the_way_out() -> None:
+    """``hzio.3``'s first DONE WHEN clause on the HARNESS path, read off the counters.
+
+    ``docs/plan/architecture.md`` §9: the registry and the resolver are the DOCUMENT's and
+    not a visit's.  ``jsonschema >= 4.18`` builds both on a ROOT construction alone, so a
+    validator built per call rebuilt them per call -- measured at 162,727 root constructions
+    over the suite's grading pass of 2,584 pairs.
+
+    Three obligations: the second ask of one schema REUSES, the lifetime is the block (so a
+    caller outside one is answered exactly as before this row), and the memo is dropped on
+    the way out including on a raise.
+    """
+    schema = {"type": "object", "properties": {"a": {"type": "string"}}}
+    harness.VALIDATOR_COUNTERS.clear()
+    with harness.validator_instances_shared_within_one_grade() as memo:
+        assert harness.conforms(schema, {"a": "x"}) is True
+        assert harness.conforms(schema, {"a": 1}) is False
+        assert harness.conforms(schema, {"a": "y"}) is True
+        assert memo, "nothing was held for the grade"
+        assert harness.VALIDATOR_COUNTERS["reused"] >= 2, dict(harness.VALIDATOR_COUNTERS)
+    assert harness._VALIDATORS is None
+    assert harness._PINNED is None
+    # Outside a block the answer is what it always was: a fresh root, counted as unshared.
+    harness.VALIDATOR_COUNTERS.clear()
+    assert harness.conforms(schema, {"a": "x"}) is True
+    assert harness.VALIDATOR_COUNTERS["unshared"] >= 1, dict(harness.VALIDATOR_COUNTERS)
+    assert harness.VALIDATOR_COUNTERS["reused"] == 0, dict(harness.VALIDATOR_COUNTERS)
+
+    class Boom(Exception):
+        pass
+
+    with pytest.raises(Boom):
+        with harness.validator_instances_shared_within_one_grade():
+            harness.conforms(schema, {"a": "x"})
+            raise Boom
+    assert harness._VALIDATORS is None, "the memo outlived the grade that opened it"
+
+
+def test_the_sharing_is_reentrant_so_one_grade_holds_one_memo() -> None:
+    """A nested opening joins the outer memo rather than starting a second one.
+
+    Two memos inside one grade would make the sharing a function of which frame asked, and
+    the inner frame would re-build every validator the outer one already holds -- which is
+    the defect, one level down.
+    """
+    with harness.validator_instances_shared_within_one_grade() as outer:
+        with harness.validator_instances_shared_within_one_grade() as inner:
+            assert inner is outer
+        # And the inner exit did not drop the outer memo.
+        assert harness._VALIDATORS is outer
+    assert harness._VALIDATORS is None
+
+
+def test_the_grade_opens_the_validator_sharing_for_every_pair_it_checks() -> None:
+    """``check_pair`` is the frame that knows a grade has begun, so it is where it opens.
+
+    Read off the SHARING and not off a count: a pair graded with no sharing open would
+    report every ask as ``unshared``, which is exactly the shape the row repairs.
+    """
+    schema = {"type": "object", "required": ["a"], "properties": {"a": {"type": "string"}}}
+
+    class One(BaseModel):
+        a: str
+
+    harness.VALIDATOR_COUNTERS.clear()
+    harness.check_pair(
+        harness.Pair(name="shared", schema=schema, model=One, accept=One.model_validate)
+    )
+    assert harness.VALIDATOR_COUNTERS["reused"] > 0, dict(harness.VALIDATOR_COUNTERS)
+    assert harness._VALIDATORS is None, "check_pair left its memo open"
+
+
+def test_the_quiet_class_is_built_once_per_draft_and_not_once_per_call() -> None:
+    """The defect the first cut of ``hzio.3`` introduced, read back as a gate.
+
+    ``jsonschema.validators.extend`` is 0.295 ms against 0.0026 ms for a plain validator
+    instance -- 113x -- so a ``quiet`` that rebuilt the class per call would add about 14 s
+    to the 48,287 ``conforms`` asks this suite makes outside any grade.  Asserted as
+    IDENTITY and not as a timing, because identity is what the saving is.
+    """
+    first = harness.quiet(jsonschema.Draft7Validator)
+    assert harness.quiet(jsonschema.Draft7Validator) is first
+    with harness.validator_instances_shared_within_one_grade():
+        assert harness.quiet(jsonschema.Draft7Validator) is first
+    assert harness.quiet(jsonschema.Draft7Validator) is first
+    # And the cache is bounded by the DRAFT, so it holds no document and cannot grow with
+    # the population -- which is the property section 6's rule is actually about.
+    assert len(harness._QUIET_CLASSES) <= 4, sorted(
+        getattr(c, "__name__", repr(c)) for c in harness._QUIET_CLASSES
+    )
+    assert all(isinstance(key, type) for key in harness._QUIET_CLASSES)
