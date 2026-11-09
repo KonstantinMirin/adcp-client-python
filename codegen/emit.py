@@ -114,6 +114,7 @@ from typing import Any
 from adcp.types._base import Approximation
 from codegen import bundle, catalogue, compiler, harness, intersect, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
+from codegen import mirror as compat_mirror
 from codegen.compiler import (
     Module,
     Target,
@@ -2953,6 +2954,19 @@ def emit(
     # because ``_schemas`` is private (P8) and this is the one path a consumer reaches a
     # type at.
     out.beside.update(domain_modules(out.surface, out.published))
+    # **v9.6's MODULE LAYOUT, as a compatibility mirror of the private tree**
+    # (:mod:`codegen.mirror`).  Beside the tree for the same reason the domain surface is:
+    # the mirror is a public package and ``_schemas`` is private (P8).  It is a function of
+    # the run only in the sense that it resolves against whatever tree is there -- one
+    # prefix substitution evaluated at import time, so it names no document and carries no
+    # list -- which is why it is written on every run like the envelope bases and not
+    # unioned over one like the alias module.
+    #
+    # **IT IS NOT A SECOND PUBLIC PATH.**  Reading 6 counts ``adcp.types.<domain>.<Name>``
+    # paths over the population the gate derives from :attr:`Emitted.surface`, and the
+    # mirror adds none of those and declares nothing: a mirror module IS the private
+    # module, bound under a second name.
+    out.beside.update(compat_mirror.beside())
     # **The envelope bases, over the BUNDLE and not over the run** -- which is the one
     # way this artifact differs from the alias module beside it.  ``constraints.py``
     # holds the shapes a run resolved, so it is a function of the run's document set;

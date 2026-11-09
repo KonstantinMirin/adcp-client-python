@@ -96,6 +96,7 @@ from adcp.types._base import (
 from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
 from codegen import bundle, catalogue, compiler, emit, harness, intersect, ir, keywords, render
 from codegen import constraints as constraints_module
+from codegen import mirror as compat_mirror
 from codegen import refusal as refusal_module
 from codegen.harness import (
     AcceptsResult,
@@ -6971,9 +6972,14 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
         for module, exported in out.surface.items()
         if exported
     }
-    assert sorted(out.beside) == sorted(domains | {"constraints.py", "envelopes.py"}), (
-        sorted(out.beside)
-    )
+    # The compatibility mirror of v9.6's module layout (``codegen/mirror``) is the fourth
+    # kind, and it is the one that is a function of NEITHER the run nor the bundle: its
+    # mapping is one prefix substitution evaluated at import time, so it names no document
+    # and carries no list.  Read off the mirror's own record of what it writes rather than
+    # spelled again here, for the reason the domain half is read off the export record.
+    assert sorted(out.beside) == sorted(
+        domains | {"constraints.py", "envelopes.py"} | set(compat_mirror.beside())
+    ), sorted(out.beside)
     for rel in sorted(out.beside):
         assert (tmp_path / rel).read_text() == (COMMITTED.parent / rel).read_text(), rel
 
@@ -7280,10 +7286,12 @@ def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> 
     # count of what the run writes beside the tree and a second such artifact arrived
     # (``codegen/lower/envelope.py``) without changing anything this test is about.
     monkeypatch.undo()
-    assert sorted(compiled(BUNDLE, population()).beside) == [
-        "constraints.py",
-        "envelopes.py",
-    ]
+    control = compiled(BUNDLE, population())
+    assert sorted(control.beside) == sorted(
+        {f"{emit.module_domain(module)}.py" for module, held in control.surface.items() if held}
+        | {"constraints.py", "envelopes.py"}
+        | set(compat_mirror.beside())
+    ), sorted(control.beside)
 
 
 def _is_type_variable(node: ast.Assign) -> bool:
