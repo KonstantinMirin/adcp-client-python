@@ -98,6 +98,18 @@ def test_the_classification_column_and_the_live_bytes_say_the_same_thing() -> No
     }
 
 
+def _module_of(path: Path) -> str:
+    """The module a path under the type surface IS, derived from the path and not listed.
+
+    :func:`adapter_surface.owner` now asks the IMPORT SYSTEM whether something already
+    answers for the module -- which is what caught two files the writer had put under
+    `domains/`, where a finder answers for the whole subtree and both files were dead -- so
+    the reading needs the module's own name beside its path.
+    """
+    rest = path.resolve().relative_to(SURFACE.resolve()).with_suffix("")
+    return ".".join(["adcp", "types", *(p for p in rest.parts if p != "__init__")])
+
+
 def test_every_restored_path_is_refused_by_the_ownership_reading() -> None:
     """Whatever the classification turns out to hold, the writer will not write it.
 
@@ -105,7 +117,7 @@ def test_every_restored_path_is_refused_by_the_ownership_reading() -> None:
     graded by this line without it changing.
     """
     restored = claimed("paths holding upstream's own file", um.restored_paths())
-    held = {p: writer.owner(p, restored) for p in restored}
+    held = {p: writer.owner(_module_of(p), p, restored) for p in restored}
     assert all(held.values()), {
         "a restored path the writer reads as its own": sorted(
             str(p.relative_to(ROOT)) for p, why in held.items() if not why
@@ -121,11 +133,34 @@ def test_our_own_emitted_domain_module_is_refused_and_says_why() -> None:
     is the one that answers -- and it is the clause the removed ``target.exists()`` skip was
     silently standing in for.
     """
-    why = writer.owner(SURFACE / "core.py", um.restored_paths())
+    why = writer.owner("adcp.types.core", SURFACE / "core.py", um.restored_paths())
     assert why and "a module of ours" in why, why
-    assert writer.owner(SURFACE / "_adapter.py", um.restored_paths()) is None, (
+    assert writer.owner("adcp.types", SURFACE / "_adapter.py", um.restored_paths()) is None, (
         "the writer no longer owns its own flat module, so a run would refuse to rewrite it"
     )
+
+
+def test_a_module_a_mapping_loader_answers_for_is_never_this_writer_s_file() -> None:
+    """``adcp.types.domains.core`` is answered out of ``_schemas/core``, so it is not a file.
+
+    The clause this grades was ``target.parent.is_dir()``, and it was measured wrong:
+    ``domains/`` IS a real directory, so a run wrote ``domains/core.py`` and
+    ``domains/creative.py`` -- and
+    ``from adcp.types.domains.core import DomainBreakdown`` still raised, out of
+    ``adcp.types._schemas.core``, because the finder in front of ``PathFinder`` had already
+    answered.  Two files written and no import satisfied.  The reading is the module's own
+    dotted path against the spec's origin, so a mapping is detected wherever the directory
+    happens to exist.
+    """
+    why = writer.owner(
+        "adcp.types.domains.core", SURFACE / "domains" / "core.py", um.restored_paths()
+    )
+    assert why and "a loader already answers" in why, why
+    assert "_schemas" in why, why
+    #: And the same reading leaves an ordinary module of the layer alone, which is the half
+    #: that keeps the clause from refusing everything: ``legacy.py`` IS what answers for
+    #: ``adcp.types.legacy``, so the writer owns it and rewrites it.
+    assert writer.owner("adcp.types.legacy", SURFACE / "legacy.py", frozenset()) is None
 
 
 # --------------------------------------------------------------------------- #
