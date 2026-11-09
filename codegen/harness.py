@@ -432,13 +432,6 @@ _OWN_INSTANCE = frozenset(
     {Position.PROP, Position.ELEM, Position.MAPV, Position.KEY, Position.DEF}
 )
 
-#: How deep the transparent walk follows a reference before it stops looking.  The bundle's
-#: reference graph is a DAG with diamonds rather than a tree (``bundle._Where``), so the
-#: guard that terminates the walk is the visited SET below and this is only a bound on an
-#: unreasonable answer.
-_FIXTURE_DEPTH = 12
-
-
 #: "There is no fixture for this position", told apart from a fixture that IS JSON
 #: ``null`` -- which a document can admit, so ``None`` cannot carry both answers.
 #: :class:`_Draws` records the same defect one key space over, where ``[None]`` meant both
@@ -942,6 +935,27 @@ def referring_positions(
     it while any branch survives, and because it is the case the rule is stated about: a
     root with 42 referenced branches is 42 fixtures, and ``core/async-response-data.json``
     is that root.
+
+    **THE WALK TERMINATES ON THE POINTER AND CARRIES NO DEPTH BOUND**
+    (``docs/plan/architecture.md`` §9, ``adcp-client-python-hzio.6``).  It has exactly two
+    kinds of hop and each terminates for its own reason: a ``$ref`` hop is closed by
+    ``seen``, which is the set of ``(document, pointer)`` pairs already in progress -- the
+    reference graph is a DAG with diamonds and a cycle reaching a pointer already on it is
+    a back edge -- and a plain subschema descent walks the raw document's own tree, which
+    is finite.  So neither needs a number.
+
+    **A bound stood here (``_FIXTURE_DEPTH = 12``) and its comment called ``seen`` the
+    terminator and itself "only a bound on an unreasonable answer".  That was refuted by
+    measurement**: raised to 10,000 over the whole bundle, the answer MOVED at 73 of the
+    4,567 raw nodes that have a fixture position at all, and
+    ``core/creative-representation.json#`` went from 79 positions to 144 -- so the bound
+    was the terminator, 65 fixture positions at one node were silently dropped, and every
+    dropped position is a subtree the accepts draw paid in full.  ``seen`` did not reach
+    them because it is consulted on the reference hop alone; what the 12 was cutting was
+    the PLAIN descent, which needs no cutting.
+    ``tests/test_no_cap_is_on_the_grading_path.py`` is the gate: it asserts that this walk
+    returns a position whose relative pointer is deeper than any bound that stood here,
+    read off the ANSWER rather than from a second copy of the walk.
     """
     out: list[Referring] = []
 
@@ -950,8 +964,8 @@ def referring_positions(
         inside = at.lstrip("#")
         return raw if not inside else bundle.node_at(raw, inside)
 
-    def walk(node: Any, rel: str, own: bool, home: str, seen: frozenset, depth: int) -> None:
-        if not isinstance(node, Mapping) or depth > _FIXTURE_DEPTH:
+    def walk(node: Any, rel: str, own: bool, home: str, seen: frozenset) -> None:
+        if not isinstance(node, Mapping):
             return
         ref = node.get("$ref")
         if isinstance(ref, str):
@@ -969,7 +983,7 @@ def referring_positions(
                 inner = node_at(target, at)
             except Exception:  # noqa: BLE001 -- a pointer the document does not hold
                 return
-            walk(inner, rel, own, target, seen | {(target, at)}, depth + 1)
+            walk(inner, rel, own, target, seen | {(target, at)})
             return
         for keyword, suffix, sub, position in bundle.subschemas(node):
             walk(
@@ -978,14 +992,13 @@ def referring_positions(
                 position in _OWN_INSTANCE or keyword == "anyOf",
                 home,
                 seen,
-                depth + 1,
             )
 
     try:
         start = node_at(document, pointer)
     except Exception:  # noqa: BLE001 -- a pointer the raw document does not hold
         return ()
-    walk(start, "", False, document, frozenset({(document, pointer)}), 0)
+    walk(start, "", False, document, frozenset({(document, pointer)}))
     return tuple(out)
 
 
@@ -3046,15 +3059,26 @@ _ALIEN_KEY = "__adcp_harness_not_a_property__"
 _ALIEN_VALUES: tuple[Any, ...] = (None, "__adcp_harness__", -1, [], {}, True)
 
 
-#: How many ``allOf`` levels :func:`own_facts` folds before it stops.  A composed class
-#: is one class over its whole conjunct list at any depth
-#: (``lower.composition.lower_composition``'s worklist), so the fold has to reach the same depth;
-#: the bound is here because a fold with no base case is a crash and section 9 says a
-#: crash is not an outcome.
-_OWN_DEPTH = 8
+#: **THE FOUR READINGS BELOW CARRY NO DEPTH BOUND** (``docs/plan/architecture.md`` §9,
+#: ``adcp-client-python-hzio.6``).  :func:`own_facts`, :func:`conditionals`,
+#: :func:`property_declarations` and :func:`stated_patterns` each descend a RECORD node,
+#: and ``codegen.bundle.record`` stores every distinct subtree once and writes a local
+#: ``$ref`` string at every other occurrence -- which none of these four follows.  So each
+#: walks a finite tree of plain mappings and lists and terminates on running out of it; a
+#: reference cycle cannot be reached, because a reference is a string here.
+#:
+#: **A bound stood here (``_OWN_DEPTH = 8``) and said the fold "has to reach the same depth"
+#: as the composition.  Measurement says it did not reach it**: raised to 10,000 over the
+#: 215,019 record nodes of this bundle, the four answers MOVED at 1,358 of them, and
+#: ``account/list-accounts-response.json``'s root went from 9 stated patterns to 24 -- so
+#: the bound was the terminator, and a composed class whose conjunct list nests deeper than
+#: eight had its facts, its conditionals, its declared keys and its patterns silently
+#: truncated.  Each of the four is the INPUT half of a witness derivation, so a truncated
+#: reading is a witness never built and a check that did not run.
+#: ``tests/test_no_cap_is_on_the_grading_path.py`` is the gate.
 
 
-def own_facts(schema: Any, depth: int = 0) -> dict[str, Any]:
+def own_facts(schema: Any) -> dict[str, Any]:
     """Every keyword the node at this pointer states ABOUT ITSELF, conjuncts folded in.
 
     **The input half of :func:`refused_witnesses`, and it is not :func:`_composed`.**
@@ -3109,14 +3133,14 @@ def own_facts(schema: Any, depth: int = 0) -> dict[str, Any]:
     the node's OWN triple stays in this mapping because the node does state it about
     itself, and nothing reads it from here.
     """
-    if not isinstance(schema, dict) or depth > _OWN_DEPTH:
+    if not isinstance(schema, dict):
         return {}
     out = {k: v for k, v in schema.items() if k != "allOf"}
     conjuncts = schema.get("allOf")
     if not isinstance(conjuncts, list):
         return out
     for conjunct in conjuncts:
-        folded = own_facts(conjunct, depth + 1)
+        folded = own_facts(conjunct)
         for keyword, value in folded.items():
             if keyword in CONDITIONAL:
                 continue
@@ -3137,7 +3161,7 @@ def own_facts(schema: Any, depth: int = 0) -> dict[str, Any]:
 CONDITIONAL: frozenset[str] = frozenset(keywords.conditional())
 
 
-def conditionals(schema: Any, depth: int = 0) -> tuple[dict[str, Any], ...]:
+def conditionals(schema: Any) -> tuple[dict[str, Any], ...]:
     """Every ``if``/``then``/``else`` TRIPLE this node states, conjuncts included, UNMERGED.
 
     **The composed reading :func:`own_facts` declines to make**, and the reason it is a
@@ -3149,16 +3173,18 @@ def conditionals(schema: Any, depth: int = 0) -> tuple[dict[str, Any], ...]:
     keeps one has dropped a fact the document states.  A reading that keeps one's ``if``
     beside the other's ``then`` has invented a fact the document does not state.
 
-    In document order, the node's own first and then each conjunct's, depth-first, bounded
-    by :data:`_OWN_DEPTH` for the reason that constant already carries: a composed class is
-    one class over its whole conjunct list at any depth, so the collection has to reach the
-    same depth, and a walk with no base case is a crash rather than an outcome.
+    In document order, the node's own first and then each conjunct's, depth-first, and over
+    the WHOLE conjunct list however deep it nests: a composed class is one class over its
+    whole conjunct list at any depth, so the collection reaches the same depth and no
+    number decides where it stops.  It terminates because a record's ``allOf`` nesting is a
+    finite tree of plain mappings (the comment above :func:`own_facts` carries the
+    measurement of what the bound that stood here was cutting).
 
     A triple with no ``if`` is not one: draft-07 gives ``then`` and ``else`` no effect
     without it, so a node stating only ``then`` states no conditional and contributes
     nothing here.
     """
-    if not isinstance(schema, dict) or depth > _OWN_DEPTH:
+    if not isinstance(schema, dict):
         return ()
     out: list[dict[str, Any]] = []
     #: The keys in the table's own order, which is why :func:`keywords.conditional`
@@ -3169,11 +3195,11 @@ def conditionals(schema: Any, depth: int = 0) -> tuple[dict[str, Any], ...]:
     conjuncts = schema.get("allOf")
     if isinstance(conjuncts, list):
         for conjunct in conjuncts:
-            out.extend(conditionals(conjunct, depth + 1))
+            out.extend(conditionals(conjunct))
     return tuple(out)
 
 
-def declared_keys(schema: Any, depth: int = 0) -> tuple[str, ...]:
+def declared_keys(schema: Any) -> tuple[str, ...]:
     """Every property key this node DECLARES about its own instance, in document order.
 
     **The KEY SET and not the declarations, which is why this is a union where
@@ -3192,15 +3218,15 @@ def declared_keys(schema: Any, depth: int = 0) -> tuple[str, ...]:
     screened out at best and attributed to the wrong node at worst -- and the branch is a
     pair of its own, graded at its own pointer.
 
-    Bounded by :data:`_OWN_DEPTH` for that constant's reason: a composed class is one
-    class over its whole conjunct list at any depth, so the fold reaches the same depth,
-    and a walk with no base case is a crash rather than an outcome.
+    Unbounded, for the reason the comment above :func:`own_facts` carries: a composed class
+    is one class over its whole conjunct list at any depth, so the fold reaches the same
+    depth and no number decides where it stops.
     """
-    return tuple(property_declarations(schema, depth))
+    return tuple(property_declarations(schema))
 
 
 def property_declarations(
-    schema: Any, depth: int = 0, *, branches: bool = False
+    schema: Any, *, branches: bool = False
 ) -> dict[str, tuple[Any, ...]]:
     """``key -> every subschema this node states about the value at that key``.
 
@@ -3239,7 +3265,7 @@ def property_declarations(
     one.  Conjoining the branches instead would demand a value satisfy all of them at
     once, which no instance of a disjoint union does.
     """
-    if not isinstance(schema, dict) or depth > _OWN_DEPTH:
+    if not isinstance(schema, dict):
         return {}
     out: dict[str, tuple[Any, ...]] = {}
     declared = schema.get("properties")
@@ -3250,7 +3276,7 @@ def property_declarations(
     conjuncts = schema.get("allOf")
     if isinstance(conjuncts, list):
         for conjunct in conjuncts:
-            for key, subs in property_declarations(conjunct, depth + 1, branches=branches).items():
+            for key, subs in property_declarations(conjunct, branches=branches).items():
                 out[key] = (*out.get(key, ()), *subs)
     if not branches:
         return out
@@ -3258,7 +3284,7 @@ def property_declarations(
         arms = schema.get(combinator)
         if not isinstance(arms, list):
             continue
-        per_arm = [property_declarations(arm, depth + 1, branches=True) for arm in arms]
+        per_arm = [property_declarations(arm, branches=True) for arm in arms]
         for key in dict.fromkeys(k for one in per_arm for k in one):
             stated = [one[key] for one in per_arm if key in one]
             disjunction = {
@@ -3716,7 +3742,7 @@ def _at_leaf(value: Any, path: Sequence[Any], new: Any) -> Any:
     return copy
 
 
-def stated_patterns(node: Any, depth: int = 0) -> tuple[str, ...]:
+def stated_patterns(node: Any) -> tuple[str, ...]:
     """Every ``pattern`` this node states anywhere under it, deduplicated, document order.
 
     **The input half of :func:`admitted_witnesses`' third derivation, and it is a WALK
@@ -3725,25 +3751,32 @@ def stated_patterns(node: Any, depth: int = 0) -> tuple[str, ...]:
     pattern is offered at a leaf the pattern already matches and screened by the whole
     document, so a pattern read from the wrong depth yields nothing rather than a claim.
 
-    Bounded for :data:`_OWN_DEPTH`'s reason -- a graded node reaches 683,849 bytes and a
-    walk with no base case is a crash rather than an outcome.
+    **ANYWHERE UNDER IT means anywhere, and the bound that used to stop at eight levels was
+    the terminator rather than a guard** (the comment above :func:`own_facts` carries the
+    measurement: ``account/list-accounts-response.json``'s root read 9 patterns bounded and
+    reads 24 unbounded).  "Every pattern this node states anywhere under it" is not a claim
+    a bounded walk can make, and
+    ``tests/test_no_cap_is_on_the_grading_path.py::test_every_pattern_a_record_states_is_one_stated_patterns_reaches``
+    asserts it against ``codegen.bundle.nodes``' own descent.
+
+    It terminates on the record, which is a finite tree of plain mappings and lists: a
+    repeated subtree is a local ``$ref`` STRING there and this walk follows no reference,
+    so a reference cycle is unreachable and the size of the node is the whole of the cost.
     """
     out: list[str] = []
 
-    def walk(inner: Any, at: int) -> None:
-        if at > _OWN_DEPTH:
-            return
+    def walk(inner: Any) -> None:
         if isinstance(inner, dict):
             pattern = inner.get("pattern")
             if isinstance(pattern, str) and pattern not in out:
                 out.append(pattern)
             for value in inner.values():
-                walk(value, at + 1)
+                walk(value)
         elif isinstance(inner, list):
             for value in inner:
-                walk(value, at + 1)
+                walk(value)
 
-    walk(node, depth)
+    walk(node)
     return tuple(out)
 
 
