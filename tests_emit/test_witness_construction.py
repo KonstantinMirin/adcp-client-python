@@ -271,12 +271,37 @@ def test_every_reason_a_node_has_no_value_is_one_of_the_two_the_readings_name() 
     enumerate."*  A reason naming anything else is either a defect in this module or a case
     the readings do not cover, and both are findings -- so the reasons are grouped and the
     groups are named here rather than counted.
+
+    **THE SET THIS CLAIMS IS THE NODES AND NO LONGER THE REASONS, because the reasons are
+    now EMPTY and ``tests_emit/nodeset.py`` is right to refuse an empty claim**
+    (``adcp-client-python-zsq9``).  The last reason the walk recorded was
+    :meth:`codegen.verify.witness.Construction._distinct`'s -- *"uniqueItems demands 2
+    members and the element states 1"* at the two ``approval_scopes`` nodes, which was this
+    module's own shortfall and not an exit the readings name: it asked for distinct VALUES
+    of one node where a ``uniqueItems`` array of objects needs distinct MEMBERS, and the
+    document admits two scoped approvals that differ in any field.  ``_distinct`` varies the
+    element over its own subtree now, so ``counters.reasons`` holds nothing over bundle 3.2
+    and the vocabulary classifies an empty set.
+
+    Which is why the denominator moves rather than the vocabulary growing.  A third group
+    naming our own shortfall would have recorded the shortfall as a category -- the thing
+    the row forbids -- and claiming the reasons would make this green over nothing the
+    moment the last one went.  The nodes stay: every one of them is answered, and the
+    assertion is that no answer carries a reason outside the named groups.
     """
     built = constructed.whole()
-    reasons = claimed("distinct reasons", built.counters.reasons)
+    answered = claimed(
+        "nodes the walk answered",
+        [
+            (document, pointer)
+            for document, positions in constructed.pointers().items()
+            for pointer in positions
+        ],
+    )
+    assert answered  # claimed() asserts it; named here so the denominator is visible
     unnamed = [
         reason
-        for reason in reasons
+        for reason in built.counters.reasons
         if "is not solved" not in reason
         and "unsolved pattern" not in reason
         and "states no case" not in reason
@@ -284,6 +309,91 @@ def test_every_reason_a_node_has_no_value_is_one_of_the_two_the_readings_name() 
         and "refuses its construction on pattern" not in reason
     ]
     assert not unnamed, unnamed
+
+
+def test_a_unique_items_array_gets_as_many_distinct_members_as_its_own_count_demands() -> None:
+    """``adcp-client-python-zsq9``: **the construction VARIES the element, and the members
+    are the element's own.**
+
+    ``uniqueItems`` beside a count above one is the one place an array's members cannot all
+    be the element's single admitted value, and
+    :meth:`codegen.verify.witness.Construction._distinct` is the reading.  Three claims over
+    every node of the bundle that states the pair, because the defect this gate records
+    failed each of them differently:
+
+    * the array HAS a value -- the two object-element nodes had none at all, the
+      construction having declined where the document admits;
+    * the members are PAIRWISE DISTINCT and there are as many as the node's own
+      ``minItems`` -- which is what ``uniqueItems`` and the count together state;
+    * **every member is one the ELEMENT'S WHOLE NODE admits**, which is where a varied
+      member has to be screened deeper than §9's shallow screen.  Measured at the two
+      ``approval_scopes`` nodes: six distinct values the element's subtree reaches, THREE of
+      them values the element refuses -- the narrowing ``enum`` its own ``allOf`` states, the
+      ``rejection_reason`` its first consequent requires, and the ``not`` its second states --
+      so a reading that trusted the shallow screen would have placed three members of six
+      that the document refuses.
+
+    The set is named and not counted, and it is the nodes rather than the documents: a
+    bundle that stops stating the pair reddens :func:`claimed` instead of passing over
+    nothing.
+    """
+    built = constructed.whole()
+    nodes = claimed(
+        "arrays stating uniqueItems beside a count above one",
+        [
+            (document, pointer)
+            for document, record in constructed.records().items()
+            for pointer, node in bundle.nodes(record)
+            if isinstance(node, dict) and node.get("uniqueItems") is True
+            for least in [node.get("minItems")]
+            if isinstance(least, int) and not isinstance(least, bool) and least > 1
+        ],
+    )
+    wrong: dict[str, object] = {}
+    for document, pointer in sorted(nodes):
+        node = built.node(document, pointer)
+        least = node["minItems"]
+        answer = built.value(document, pointer)
+        name = f"{document}#{pointer}"
+        if not answer.held:
+            wrong[name] = f"no value: {answer.reason}"
+            continue
+        members = answer.value
+        if len(members) < least:
+            wrong[name] = f"minItems {least} and {len(members)} members"
+            continue
+        repeated = [
+            member
+            for index, member in enumerate(members)
+            if member in members[:index]
+        ]
+        if repeated:
+            wrong[name] = f"uniqueItems and a repeated member: {repeated}"
+            continue
+        if not isinstance(node.get("items"), dict):
+            #: Not a pass: an element this node states somewhere other than its own
+            #: ``items`` -- through a conjunct, or as a tuple-form list -- is one this
+            #: screen has no single node for, and saying so is the finding.
+            wrong[name] = "the element is not this node's own items and is not screened here"
+            continue
+        whole = built.validator(document).evolve(schema=node["items"])
+        refused = {
+            index: named
+            for index, member in enumerate(members)
+            for named in [
+                sorted(
+                    {
+                        error.validator
+                        for error in whole.iter_errors(member)
+                        if isinstance(error.validator, str)
+                    }
+                )
+            ]
+            if named
+        }
+        if refused:
+            wrong[name] = f"the element refuses its own members: {refused}"
+    assert not wrong, wrong
 
 
 # --------------------------------------------------------------------------- #

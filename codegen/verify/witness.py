@@ -3014,8 +3014,9 @@ class Construction:
         One element value, reused -- the element is one node and its value is built once,
         which is the array's half of "no subtree is constructed twice".  ``uniqueItems``
         beside a count above one is where that stops: distinct members need distinct
-        values, and where the element states an ``enum`` its members are the distinct ones
-        and otherwise the construction says so.
+        values, and the element's OWN SUBTREE is where they come from -- one value with one
+        field varied per member (:meth:`_distinct`), which is the reading an element that
+        states an ``enum`` and an element that states an object both answer to.
 
         **THE ELEMENT IS DESCRIBED BY EVERY VIEW THAT DECLARES IT, and a ``contains`` beside
         an ``items`` describes it too** -- so both travel as ``besides`` and the member is
@@ -3131,8 +3132,8 @@ class Construction:
         ``None`` where this reading has nothing to add, and the caller then takes the
         one-member reading unchanged.  Two cases: a member the element and its ``contains``
         admit no value for, and a set whose members come out EQUAL under a ``uniqueItems``
-        that forbids it -- there the node's own ``enum`` is the distinct set
-        (:meth:`_distinct`) and this reading has no better answer than the one already there.
+        that forbids it -- there :meth:`_distinct` varies the element over its own subtree
+        and this reading has no better answer than the one already there.
         The short list is padded with its FIRST member, because ``minItems`` above the number
         of existential statements is a count and says nothing about what fills it.
         """
@@ -3164,22 +3165,72 @@ class Construction:
     def _distinct(
         self, document: str, at: str, path: tuple[str, ...], count: int
     ) -> Built:
-        """``count`` distinct members, where the element's own keywords name that many."""
+        """``count`` distinct members, VARIED over the element's OWN SUBTREE.
+
+        ``uniqueItems`` beside a count above one asks for distinct MEMBERS, and distinct
+        members of an OBJECT element are not distinct values of one node: they are one value
+        with one FIELD varied, which is :meth:`subtree`'s own reading -- *"the node's admitted
+        value with exactly ONE location replaced by one class of the node at that
+        location"*.  So the source here is the subtree witness set and not
+        :meth:`classes`, and the difference is the whole of this method: ``classes`` reads
+        the element's own keywords, which for an object element distinguish ONE class -- the
+        admitted value -- so the construction had one member where the document admits two.
+        Measured at both nodes this bundle states (``creative/list-creatives-response.json``
+        and ``media-buy/get-media-buys-response.json``, each at
+        ``approval_scopes`` over the ``Scoped creative approval`` element): one class, SIX
+        distinct subtree values, and the document admits two scoped approvals that differ in
+        any field, so the schema was satisfiable and the construction had declined it.
+
+        **AND IT TERMINATES ON THE ELEMENT'S OWN STRUCTURE AND NEVER ON A COUNT OF
+        ATTEMPTS.**  :meth:`subtree` walks the nodes the element REACHES, once each, keyed
+        and memoised like every other answer and closing a cycle on the pointer -- so what
+        bounds the variation is how many nodes the element has and how many classes each of
+        them distinguishes.  A member limit, a retry count or a depth parameter here would be
+        a number this module chose standing in for a fact the element states, which is the
+        one thing ``docs/plan/architecture.md`` §9 forbids by name.
+
+        **EVERY CANDIDATE IS OFFERED TO THE ELEMENT WHOLE, which is where this screen is
+        DEEPER than :meth:`refusals` and the only place that is true.**  A member stands
+        alone at its own instance location, so what has to admit it is the element's whole
+        node -- not the element's own keywords.  §9's shallow screen is sound for a value
+        READ OFF a node, because each child's value was screened at the child; it is not
+        sound for a value LIFTED past a conjunction the screen strikes, and the measurement
+        says so: of the six distinct values at each of those two nodes, THREE are values the
+        element refuses -- ``approval_status: "partially_approved"`` on the narrowing
+        ``enum`` the element's own ``allOf`` states, ``"rejected"`` on the ``required``
+        ``rejection_reason`` its first consequent demands, and a ``rejection_reason`` beside
+        ``"pending_review"`` on the ``not`` its second states.  Taken shallowly, three of
+        six members would have been values the document refuses.  The cost is one validation
+        of one small value per candidate at the nodes that state ``uniqueItems`` beside a
+        count -- six in this bundle -- and not a second screen at every node, which is the
+        quadratic reading §9 strikes.
+
+        An element that states an ``enum`` needs no special case and has none: its members
+        are value classes of its own node, so :meth:`classes` contributes them and they are
+        the first thing the subtree walk holds.  Measured over the four nodes whose element
+        is the three-member ``losses`` ``enum`` against ``minItems: 2``, the members and
+        their order are the document's own either way.
+
+        Fewer than ``count`` distinct admitted members is still the honest answer and still
+        says so, with the number the element reached.
+        """
         node = self.node(document, at)
-        members = node.get("enum") if isinstance(node, Mapping) else None
-        if isinstance(members, list) and len(members) >= count:
-            return Built(list(members[:count]), Source.CONSTRUCTED)
-        classes = self.classes(document, at, path)
+        whole = (
+            self.validator(document).evolve(schema=node) if isinstance(node, Mapping) else None
+        )
         values: list[Any] = []
-        for case in classes:
-            if case.value not in values:
-                values.append(case.value)
-        if len(values) >= count:
-            return Built(values[:count], Source.CONSTRUCTED)
+        for case in self.subtree(document, at, path):
+            if case.value in values:
+                continue
+            if whole is not None and not whole.is_valid(case.value):
+                continue
+            values.append(case.value)
+            if len(values) == count:
+                return Built(values, Source.CONSTRUCTED)
         return Built(
             None,
             Source.APPROXIMATED,
-            f"uniqueItems demands {count} members and the element states {len(values)}",
+            f"uniqueItems demands {count} members and the element admits {len(values)}",
         )
 
     # -- the screen -------------------------------------------------------- #
