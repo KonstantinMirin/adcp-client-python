@@ -224,6 +224,29 @@ def __getattr__(name: str) -> object:
         return getattr(_flat_module(), name)
     except AttributeError:
         pass
+
+    # **AND A SUBMODULE OF OURS IS THE IMPORT SYSTEM'S OWN THIRD STEP, which a lazy facade
+    # is the one kind of package that has to perform for itself.**  ``from M import N``
+    # imports ``M``, takes ``N`` as an attribute, and FAILING THAT imports the submodule
+    # ``M.N``.  On an ordinary package the third step is reached because the first two
+    # raise; here :func:`__getattr__` answers in their place, so an unqualified
+    # ``adcp.types.aliases`` raised although ``import adcp.types.aliases`` resolves -- the
+    # module is on disk and nothing but this function stood between them.  Measured: it is
+    # what fails ``test_canonical_creatives_rc3.py`` one line ABOVE the three assertions
+    # that grade the ``Format`` binding, so the fix those assertions exist for was landing
+    # ungraded.
+    #
+    # ``_NOT_ROUTED`` is excluded and keeps its own reason: those three decline so the
+    # import system goes on to import them, and answering here would re-enter this function
+    # through the fromlist ``hasattr`` and recurse until the stack ends.
+    if not name.startswith("_") and name not in _NOT_ROUTED:
+        import importlib
+
+        try:
+            return importlib.import_module(f"{__name__}.{name}")
+        except ImportError:
+            pass
+
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}; the generated surface is "
         f"adcp.types.<domain> and the upstream spellings are this namespace's -- see "
