@@ -52,6 +52,31 @@ the PROPERTY's admissible set and false of the OBJECT's, which is the set a payl
 validated against.  Where the conjunction requires the property, the default makes an
 object missing it admissible, and the document refuses that object.  :data:`KINDS`'
 ``const-restated`` is that case counted separately rather than relaxed away.
+
+**AND THE SAME QUESTION ASKED OF OUR OWN TREE** -- :func:`ours`, behind ``--ours``.  The
+867 are a measurement of UPSTREAM'S text and say nothing about what this compiler writes,
+so a reader cannot get the ruling out of the table alone: every kind would have to be
+attributed by hand, and four such attributions were wrong before measurement corrected
+them.  :func:`ours` closes that by asking our tree the identical question, and it is
+*cheaper* and *sharper* than the upstream reading rather than a mirror of it:
+
+**THE POINTER IS STATED AND NOT INFERRED.**  Every class this compiler writes carries
+``__adcp_schema__ = SchemaRef(document=..., pointer=...)``, so the whole candidate-matching
+apparatus above -- :func:`candidates_for`, the ordinal, the unanimity rule,
+``verdict-depends-on-position`` -- is not needed and not used.  There is one position per
+class and the class names it.
+
+**AND THE PREDICATE IS :func:`required_at` ONLY, WHICH IS WHAT MAKES IT
+MECHANISM-INDEPENDENT.**  This was measured the hard way.  A reading that also asked about
+:func:`some_arm_requires` has to decide *how* a disjunction's requiredness is carried, and
+this compiler carries it four different ways -- a per-arm class whose own field is
+required, a ``RequiredGroups`` rule, a ``PresenceGroups`` rule of ``Presence`` clauses, and
+``BranchDispatchMixin`` dispatch to branch models.  A reader that enumerates mechanisms
+under-counts by whichever one it has not met yet: three successive attempts here reported
+223, then 77, then 47 "lax" pairs of ours, and every correction moved the same way, because
+each had met one more mechanism.  Every one of those was the reader and not the tree.
+:func:`required_at` is the CONJUNCTION alone, which no mechanism can be hiding in, so the
+answer does not depend on having enumerated them.
 """
 
 from __future__ import annotations
@@ -60,7 +85,9 @@ import argparse
 import ast
 import collections
 import hashlib
+import importlib
 import json
+import pkgutil
 import subprocess
 import sys
 import tarfile
@@ -959,6 +986,200 @@ def _digest(rows: list[Row]) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()[:20]
 
 
+# ------------------------------------------------------------------- and the same of OURS
+
+#: The package this compiler writes into, where a class states its own position.  Not a
+#: path: the reading is over IMPORTED classes, because the question is what a class
+#: *admits* and only pydantic can answer that -- and ``model_fields`` resolves inheritance
+#: for free, which is the half of the upstream reading that needed its own AST fold.
+OURS = "adcp.types._schemas"
+
+#: The file-local names in :data:`RESTORED` whose before-validator may insert a key.  A
+#: restored file is upstream's bytes byte for byte, so a default INVENTED IN HAND-WRITTEN
+#: CODE cannot be read off ``model_fields`` at all -- the field stays required and a
+#: ``model_validator(mode="before")`` fills it in before pydantic ever checks.  This is the
+#: one shape the declarative reading is blind to, so it is read separately, by AST, over
+#: upstream's own restored text.
+RESTORED = ROOT / "src" / "adcp" / "types"
+
+
+class Ours(NamedTuple):
+    """One ``(class of ours, field)`` where our own class is lax about the conjunction."""
+
+    kind: str
+    ours: str
+    field: str
+    document: str
+    pointer: str
+    default: str
+    document_states: str
+
+
+def our_classes(package: str = OURS) -> list[tuple[str, Any]]:
+    """``("<module>.<Class>", the class)`` for every class of ours that states a pointer.
+
+    Imported and not parsed.  ``__adcp_schema__`` is this compiler's own statement of the
+    join, exactly as the generated header is upstream's, and it is stronger: it names a
+    POINTER and not only a document, so nothing has to be matched by property set.
+    """
+    root = importlib.import_module(package)
+    out: list[tuple[str, Any]] = []
+    for found in pkgutil.walk_packages(root.__path__, root.__name__ + "."):
+        try:
+            module = importlib.import_module(found.name)
+        except Exception:  # noqa: BLE001 -- a module that will not import is not a reading
+            continue
+        for value in vars(module).values():
+            if not isinstance(value, type) or getattr(value, "__module__", "") != found.name:
+                continue
+            if getattr(value, "model_fields", None) is None:
+                continue
+            if getattr(value, "__adcp_schema__", None) is None:
+                continue
+            out.append((f"{found.name}.{value.__name__}", value))
+    return sorted(out, key=lambda pair: pair[0])
+
+
+def ours(
+    records: dict[str, dict], package: str = OURS
+) -> tuple[list[Ours], collections.Counter[str], list[Ours]]:
+    """``(our lax pairs, the counts, the disjunction bases)`` -- the 867's question of US.
+
+    One reading, three outcomes per ``(class, field)`` where the conjunction at the class's
+    own stated pointer requires the field:
+
+    ``required-no-default``
+        the field is declared and pydantic calls it required.  Our class refuses the object
+        the document refuses, which is the whole claim, and no mechanism is involved.
+    ``field-not-declared-here``
+        the conjunction requires it and this class carries no such slot.  The instrument's
+        ``field-absent`` discipline applies unchanged: a class with no field has no default,
+        so there is nothing for the document to disagree with.
+    a default
+        the one case that needs deciding, and :func:`_disjunction_base` decides it.
+    """
+    lax: list[Ours] = []
+    bases: list[Ours] = []
+    counts: collections.Counter[str] = collections.Counter()
+    for key, cls in our_classes(package):
+        ref = cls.__adcp_schema__
+        document = document_for(ref.document, records)
+        if not document:
+            counts["document-absent"] += 1
+            continue
+        record = records[document]
+        pointer = "" if ref.pointer == "#" else ref.pointer.lstrip("#")
+        try:
+            required = required_at(record, pointer)
+        except _RAISES:
+            counts["pointer-unreadable"] += 1
+            continue
+        counts["classes-read"] += 1
+        by_wire = {(f.alias or n): f for n, f in cls.model_fields.items()}
+        for wire in sorted(required):
+            counts["conjunction-required-fields"] += 1
+            field = by_wire.get(wire)
+            if field is None:
+                counts["field-not-declared-here"] += 1
+                continue
+            if field.is_required():
+                counts["required-no-default"] += 1
+                continue
+            keyword, value = stated_value(properties_at(record, pointer).get(wire, []))
+            row = Ours(
+                "",
+                key,
+                wire,
+                document,
+                ref.pointer,
+                json.dumps(field.default, sort_keys=True, default=str),
+                f"{keyword}={value}" if keyword else "nothing",
+            )
+            if _disjunction_base(record, pointer, wire, cls):
+                counts["disjunction-base"] += 1
+                bases.append(row._replace(kind="disjunction-base"))
+                continue
+            counts["LAX"] += 1
+            lax.append(row._replace(kind="invented-by-us"))
+    return lax, counts, bases
+
+
+def _disjunction_base(record: dict, pointer: str, wire: str, cls: Any) -> bool:
+    """Is this default the BASE's own slot, with the requirement carried by the branches?
+
+    Two conditions, and the second is behavioural because the first cannot be trusted alone.
+
+    1. The field is required at this position only through :func:`required_at`'s every-arm
+       clause -- the conjunction's own ``required`` lists never name it.  So the position
+       states a disjunction, every arm of which requires the field, and the class at the
+       position is the shared base of that disjunction.
+    2. **AND THE CLASS REFUSES THE OMISSION.**  Measured, not assumed: the base's own
+       ``model_fields`` says ``= None`` and the refusal comes from somewhere else entirely
+       -- ``BranchDispatchMixin`` dispatch, a ``RequiredGroups`` rule or a ``PresenceGroups``
+       rule -- so a reading that stopped at (1) would be asserting the mechanism exists
+       rather than that it works.  ``model_validate({})`` is the cheapest object that omits
+       the field; a class that ACCEPTS it has no requirement left anywhere and is lax
+       whatever its shape suggests.  The error's own ``loc`` names only the FIRST field it
+       reached, so the loc is deliberately not read: three of eleven name the field and the
+       other eight name a sibling, and requiring the name would report eight tree defects
+       that are an artifact of pydantic's error order.
+    """
+    own = frozenset(n for node in conjoined(record, pointer) for n in _required(node))
+    if wire in own:
+        return False
+    if not any(
+        wire in frozenset.intersection(*(_required(a) for a in arms))
+        for arms in arms_at(record, pointer)
+    ):
+        return False
+    try:
+        cls.model_validate({})
+    except Exception:  # noqa: BLE001 -- any refusal is a refusal; the shape is not the claim
+        return True
+    return False
+
+
+def restored_injections(where: Path = RESTORED) -> list[tuple[str, str, str]]:
+    """``(file, "<Class>.<validator>", key)`` for every key a restored before-validator INSERTS.
+
+    **THE ONE SHAPE ``model_fields`` CANNOT SEE.**  ``canonical_creative.CreateMediaBuy-
+    Response1`` declares no default for ``status`` -- it inherits our emitted arm, where the
+    field is required -- and a ``model_validator(mode="before")`` three lines down writes
+    ``{**data, "status": "completed"}`` when the caller omitted it.  The field is required
+    and the requirement is unreachable, so the declarative reading above calls the class
+    correct and the class admits exactly the object the document refuses.
+
+    Read by AST over the text, because the question is what the code WRITES and not what it
+    computes.  Insertion is not weakening on its own -- ``CreativeManifest._normalize_-
+    standalone_assets`` inserts ``assets`` and its class still refuses an ``assets``-less
+    object -- so the caller decides, and :func:`ours` is not the reading that does it.
+    """
+    out: list[tuple[str, str, str]] = []
+    for path in sorted(where.glob("*.py")):
+        try:
+            tree = ast.parse(path.read_text())
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for member in node.body:
+                if not isinstance(member, ast.FunctionDef):
+                    continue
+                if not any("before" in ast.unparse(d) for d in member.decorator_list):
+                    continue
+                keys = {
+                    k.value
+                    for found in ast.walk(member)
+                    if isinstance(found, ast.Dict)
+                    for k in found.keys
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str)
+                }
+                for key in sorted(keys):
+                    out.append((path.name, f"{node.name}.{member.name}", key))
+    return out
+
+
 def records_of(where: Path) -> dict[str, dict]:
     """Every document of record, keyed by the name a generated header would name it."""
     out: dict[str, dict] = {}
@@ -971,6 +1192,25 @@ def records_of(where: Path) -> dict[str, dict]:
     return out
 
 
+def _report_ours(records: dict[str, dict]) -> int:
+    """``--ours``: the 867's question asked of this compiler's output, printed."""
+    lax, counts, bases = ours(records)
+    print(f"{counts['classes-read']} classes of ours state a pointer; {len(records)} records")
+    for name, n in sorted(counts.items()):
+        print(f"  {n:6d}  {name}")
+    print(f"INVENTED BY US: {len(lax)} (class, field) pairs")
+    for row in lax:
+        print("  " + "\t".join(row))
+    print(f"disjunction bases, requirement carried by the branches: {len(bases)}")
+    for row in bases:
+        print("  " + "\t".join(row))
+    injections = restored_injections()
+    print(f"keys a restored before-validator INSERTS: {len(injections)}")
+    for where, who, key in injections:
+        print(f"  {where}\t{who}\t{key}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -980,7 +1220,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--records", type=Path, default=RECORDS)
     parser.add_argument("--table", type=Path, default=None)
     parser.add_argument("--unread", type=Path, default=None)
+    parser.add_argument(
+        "--ours",
+        action="store_true",
+        help="ask OUR tree the identical question instead of upstream's (survey.ours)",
+    )
     args = parser.parse_args(argv)
+
+    if args.ours:
+        return _report_ours(records_of(args.records))
 
     src = sources(args.revision, args.repo)
     decls = declarations(src)
