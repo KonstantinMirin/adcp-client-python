@@ -26,7 +26,7 @@ from adcp.canonical_formats import (
 )
 from adcp.decisioning.account_projection import strip_credentials_from_wire_result
 from adcp.server.responses import list_creatives_response
-from adcp.types.canonical_creative import PRIMARY_CANONICAL_MODELS
+from adcp.types.canonical_creative import Format, PRIMARY_CANONICAL_MODELS
 from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
 from adcp.utils import get_format_assets
 
@@ -114,13 +114,13 @@ def test_primary_model_schema_recursively_excludes_legacy_identity(model: type[A
 
 def test_primary_dump_cannot_emit_legacy_identity_from_private_state_or_extras() -> None:
     with pytest.raises(ValidationError, match="legacy creative identity"):
-        adcp.Format(
+        Format(
             format_kind="image",
             params={"width": 300, "height": 250},
             format_id={"agent_url": "https://seller.example/mcp", "id": "mrec"},
         )
 
-    declaration = adcp.Format.model_construct(
+    declaration = Format.model_construct(
         format_kind=adcp.types.CanonicalFormatKind.image,
         format_option_id="mrec",
         params={"width": 300, "height": 250},
@@ -132,9 +132,9 @@ def test_primary_dump_cannot_emit_legacy_identity_from_private_state_or_extras()
     assert "agent_url" not in declaration.model_dump(mode="json")["extension_tuple"]
 
     class Container(BaseModel):
-        declaration: adcp.Format
+        declaration: Format
 
-    assert _legacy_value_paths(TypeAdapter(adcp.Format).dump_python(declaration)) == []
+    assert _legacy_value_paths(TypeAdapter(Format).dump_python(declaration)) == []
     assert _legacy_value_paths(Container(declaration=declaration).model_dump()) == []
 
 
@@ -178,7 +178,7 @@ def test_preserved_legacy_tuple_is_copied_on_ingress_and_egress() -> None:
         agent_url="https://seller.example/mcp",
         id="display_300x250_image",
     )
-    declaration = adcp.Format(
+    declaration = Format(
         format_kind="image",
         params={"width": 300, "height": 250},
         v1_format_ref=[original],
@@ -197,7 +197,7 @@ def test_preserved_legacy_tuple_is_copied_on_ingress_and_egress() -> None:
 
 
 def test_asset_helpers_read_canonical_slots_without_legacy_format_models() -> None:
-    declaration = adcp.Format(
+    declaration = Format(
         format_kind="image",
         params={"slots": [{"asset_group_id": "hero", "asset_type": "image"}]},
     )
@@ -425,7 +425,7 @@ def test_process_boundary_requires_durable_resolver() -> None:
     )
     assert projected.declaration is not None
 
-    persisted = adcp.Format.model_validate(json.loads(projected.declaration.model_dump_json()))
+    persisted = Format.model_validate(json.loads(projected.declaration.model_dump_json()))
     with pytest.raises(CanonicalFormatLegacyResolutionError):
         resolve_legacy_format_refs(persisted)
     assert [
@@ -584,7 +584,7 @@ def test_list_creatives_builder_retains_explicit_legacy_route_only_as_sidecar() 
         "width": 1200,
         "height": 628,
     }
-    declaration = adcp.Format.model_validate(
+    declaration = Format.model_validate(
         {
             "format_option_id": "publisher_hero_option",
             "publisher_domain": "publisher.example",

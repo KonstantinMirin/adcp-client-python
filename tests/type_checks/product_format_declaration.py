@@ -12,7 +12,8 @@ from adcp.canonical_formats import (
     project_declaration_to_v1,
     project_v1_format_to_declaration,
 )
-from adcp.types import Format, ProductFormatDeclaration
+from adcp.types import ProductFormatDeclaration
+from adcp.types.canonical_creative import Format
 
 
 class ProductCatalog(BaseModel):

@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-import adcp
 from adcp.canonical_formats import (
     CanonicalFormatLegacyResolutionError,
     project_canonical_response_to_legacy,
 )
+from adcp.types.canonical_creative import Format
 
 
-def _publisher_declaration(publisher_domain: str, legacy_owner: str, legacy_id: str) -> adcp.Format:
-    return adcp.Format(
+def _publisher_declaration(publisher_domain: str, legacy_owner: str, legacy_id: str) -> Format:
+    return Format(
         format_option_id="shared-option",
         publisher_domain=publisher_domain,
         format_kind="image",
@@ -73,7 +73,7 @@ def test_conflicting_routes_for_same_publisher_and_option_fail_closed() -> None:
 
 
 def test_product_scope_does_not_fall_back_to_another_product() -> None:
-    declaration = adcp.Format(
+    declaration = Format(
         format_option_id="shared-option",
         format_kind="image",
         params={"width": 300, "height": 250},

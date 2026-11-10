@@ -58,11 +58,22 @@ def test_reference_renderer_provenance_requires_github_origin(
 
 
 def test_beta3_secure_urls_accept_valid_https_origins() -> None:
+    # `authority` is required by core/preview-provider.json. Upstream's generator dropped declared
+    #   and allOf-composed `required`, so their fixtures omit it.
+    # authority="publisher_designated" -- `const` in the document: 'publisher_designated'.
     provider = PublisherDesignatedPreviewProvider(
+        authority="publisher_designated",
         agent_url="https://creative.example/preview",
         routes=[{"format_option_id": "display", "capability_id": "preview"}],
     )
+    # `media_type`, `schema_version` are required by core/presentation-ref.json. Upstream's
+    #   generator dropped declared and allOf-composed `required`, so their fixtures omit them.
+    # media_type="application/vnd.adcp.placement-presentation+json" -- `const` in the document:
+    #   'application/vnd.adcp.placement-presentation+json'.
+    # schema_version="1.0" -- `const` in the document: '1.0'.
     presentation = PlacementPresentationReference(
+        media_type="application/vnd.adcp.placement-presentation+json",
+        schema_version="1.0",
         uri="https://publisher.example/presentation.json",
         digest=_DIGEST,
     )

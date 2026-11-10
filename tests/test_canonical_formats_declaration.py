@@ -15,12 +15,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from adcp.types import (
-    CanonicalFormatImage,
-    CanonicalFormatKind,
-    CanonicalFormatVastVideo,
-    Format,
-)
+from adcp.types import CanonicalFormatImage, CanonicalFormatKind, CanonicalFormatVastVideo
+from adcp.types.canonical_creative import Format
 from adcp.types.legacy import LegacyFormatId as FormatId
 
 

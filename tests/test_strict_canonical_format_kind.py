@@ -7,12 +7,8 @@ from typing import Annotated
 import pytest
 from pydantic import AfterValidator, BaseModel, TypeAdapter, ValidationError, field_validator
 
-from adcp.types import (
-    CanonicalFormatKind,
-    CanonicalFormatKindStr,
-    Format,
-    require_canonical_format_kind,
-)
+from adcp.types import CanonicalFormatKind, CanonicalFormatKindStr, require_canonical_format_kind
+from adcp.types.canonical_creative import Format
 
 
 class _StrictKinds(BaseModel):

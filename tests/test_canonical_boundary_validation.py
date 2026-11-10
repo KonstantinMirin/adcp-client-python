@@ -18,9 +18,9 @@ from pydantic import (
 )
 from pydantic_core import core_schema
 
-from adcp.types import Format
 from adcp.types import canonical_creative as boundary
 from adcp.types.base import AdCPBaseModel
+from adcp.types.canonical_creative import Format
 
 
 def _format(extension: AdCPBaseModel) -> Format:

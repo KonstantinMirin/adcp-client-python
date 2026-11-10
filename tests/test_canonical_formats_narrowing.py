@@ -15,7 +15,8 @@ import pytest
 
 from adcp.canonical_formats import check_narrows, narrowing_advisory
 from adcp.canonical_formats.advisory import SDK_ID
-from adcp.types import CanonicalFormatKind, Format
+from adcp.types import CanonicalFormatKind
+from adcp.types.canonical_creative import Format
 
 # Unmodified protocol v3.2.7 static/test-vectors/v1-canonical-mapping.json.
 _NARROWING_VECTORS = json.loads(
