@@ -573,7 +573,7 @@ class Location(NamedTuple):
     kind: str
 
 
-def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
+def locations(node: Any) -> tuple[Location, ...]:
     """The OUTERMOST frontier under ``node``: every instance location one level in.
 
     **§8's fixture rule, keyed on where a reference LANDS IN THE NODE BEING GRADED
@@ -620,6 +620,26 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
     and this walk carries a second copy of the ANSWER -- the keyword names below.  Each of
     those three says so at its own definition; none of them is read here, and the drift
     that makes possible is a defect and not a convention.
+
+    **THIS WALK CARRIES NO DEPTH BOUND, AND IT HAS EXACTLY ONE KIND OF HOP**
+    (``docs/plan/architecture.md`` §9, ``docs/plan/final-state.md`` reading 1: *"NO CHECK
+    CARRIES A BUDGET, A DEPTH LIMIT OR AN EXAMPLE COUNT"*).  Every ``walk`` call descends
+    into a sub-mapping of the node it was handed -- a ``_CONJOINS`` conjunct, a ``oneOf``
+    or ``anyOf`` branch, or a ``_CONDITIONAL`` consequent.  No ``$ref`` is followed: a
+    reference is a STRING here, because ``codegen.bundle.record`` inlines a remote one and
+    :func:`bundle.subschemas` yields mappings, so the walk cannot leave the argument.  The
+    argument is a record node or a conjunction built out of record nodes, which is a finite
+    tree, so the descent terminates on running out of it and needs no number -- the same
+    termination that replaced ``_OWN_DEPTH`` on the four record readings above.
+
+    **A bound stood here (``depth: int = 32``, spent as a ``left`` counter) and it never
+    fired.**  Measured over the whole graded population -- all 2,586 pairs of
+    ``test_emit.graded_reports``, instrumented at this walk's own guard -- the frontier
+    walk is entered 1,236 times and reaches **depth 5**, so ``left <= 0`` cut **0 nodes**
+    and 27 of the 32 levels were never asked for.  It goes anyway, for
+    ``witness._STORE_HOPS``' reason and not for ``_FIXTURE_DEPTH``'s: §9's rule does not
+    turn on whether a cap is reached today, and the next bundle rather than this reading
+    would decide when 32 began to cut.
     """
     #: location token -> (pointers, nodes).  A dict keyed on the token and not a list, so
     #: the several conjuncts deciding one key arrive as ONE item.
@@ -634,8 +654,8 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
             pointers.append(pointer)
         nodes.append(sub)
 
-    def walk(current: Any, rel: str, at: str, scope: str, left: int) -> None:
-        if not isinstance(current, Mapping) or left <= 0:
+    def walk(current: Any, rel: str, at: str, scope: str) -> None:
+        if not isinstance(current, Mapping):
             return
         #: **A UNION BRANCH IS A FRONTIER ITEM AND THE WALK KEEPS GOING**, which is the
         #: correction a 48 s measurement forced.  A union taken as a location of its OWN
@@ -680,7 +700,7 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
             for index, sub in enumerate(held):
                 if isinstance(sub, Mapping) and sub:
                     suffix = f"/{keyword}/{index}"
-                    walk(sub, rel + suffix, at, rel + suffix, left - 1)
+                    walk(sub, rel + suffix, at, rel + suffix)
         patterns = current.get("patternProperties")
         patterns = patterns if isinstance(patterns, Mapping) else {}
         properties = current.get("properties")
@@ -714,7 +734,7 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
             take((f"{at}/+", scope), f"{rel}/additionalProperties", extra, owns=True)
         for word, suffix, sub, _position in bundle.subschemas(current):
             if word in _CONJOINS:
-                walk(sub, rel + suffix, at, scope, left - 1)
+                walk(sub, rel + suffix, at, scope)
             elif word in _CONDITIONAL:
                 #: **THE SCOPE IS THE CONSEQUENT'S WHOLE RELATIVE POINTER and never the
                 #: keyword suffix alone.**  Measured: with ``scope + suffix`` every one of
@@ -723,9 +743,9 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
                 #: key and the 8,158,816-byte demand was rebuilt -- 193.85 s to report
                 #: that no value satisfies thirty scenarios at once.  The pointer is what
                 #: makes one consequent one scope.
-                walk(sub, rel + suffix, at, rel + suffix, left - 1)
+                walk(sub, rel + suffix, at, rel + suffix)
 
-    walk(node, "", "", "", depth)
+    walk(node, "", "", "")
     #: Which locations a CONSEQUENT or a union BRANCH decides, so the unconditional
     #: statement about one is narrowed in place instead of pinned: the two pins would both
     #: have to hold wherever the condition matches or that branch is the one that does.
@@ -1169,8 +1189,29 @@ class Fixtures:
         direction is to lose the saving, never to place a value the document does not
         admit.
 
-        ``depth`` bounds how many times the reduction re-enters itself; it is a guard on an
-        unreasonable answer and not the terminator, which is the content memo.
+        **``depth`` BOUNDS HOW MANY TIMES THE REDUCTION RE-ENTERS ITSELF, AND ITS OWN
+        SENTENCE HERE WAS WRONG TWICE.**  It read "it is a guard on an unreasonable answer
+        and not the terminator, which is the content memo", and measurement refutes both
+        halves (``merge(bounds)``, instrumented at :meth:`_pin`'s guard over all 2,586
+        pairs of ``test_emit.graded_reports``): the guard FIRES at **273 of 1,696**
+        ``_pin`` calls, re-entering to the full 8, so it is cutting rather than guarding --
+        and the content memo is not what terminates this, because a frontier one level
+        deeper has different content.  **What terminates it is the descent**: each
+        re-entry's conjunction is built from one frontier item's statements, whose own
+        frontier lies strictly inside them, so the re-entry walks a finite tree.
+
+        **IT IS A NUMBER AND IT STAYS, WHICH IS A SCOPE AND NOT A DEFENCE**
+        (``docs/plan/final-state.md`` reading 1 condemns it in the same sentence as the
+        five bounds already deleted).  It is in ``BUDGET = 30``'s family and not in
+        ``_ARM_DEPTH``'s: when it expires the pin is :data:`NONE` and the position stands
+        exactly as the document states it, so no location, no fact and no witness is lost
+        -- what is lost is the SAVING, and the draw then pays the unreduced node in full.
+        So removing it is a question about the draw's cost, which
+        ``adcp-client-python-2i99`` (the validator rebuilt per call, the resolution never
+        amortised) and ``-5pb`` (``hypothesis_jsonschema`` enumerating the power set of a
+        composition's branches) own, and
+        ``tests_emit/test_no_cap_is_on_the_grading_path.py``'s clause 5 names it with this
+        measurement rather than catching it.
         """
         placements = []
         for item in locations(schema):
@@ -3454,17 +3495,22 @@ def _far_side(facts: Mapping[str, Any], instance: Any) -> Iterator[tuple[Any, st
                 yield alien, "type", f"replaces the instance with {alien!r}"
 
 
-#: How deep a conditional's ARM is descended by :func:`_violating`.
+#: **A BOUND STOOD HERE (``_ARM_DEPTH = 4``) AND IT IS GONE, with the ``depth`` parameter
+#: it drove** (``docs/plan/architecture.md`` §9, ``docs/plan/final-state.md`` reading 1).
+#: :func:`_violating` descends an arm's ``properties`` for the keys the INSTANCE already
+#: carries, so each hop takes a strict sub-mapping of a finite record node AND a strict
+#: sub-value of a finite accepted instance -- two independent terminators, and the second
+#: is total: the recursion cannot be deeper than the instance it is perturbing.
 #:
-#: **A BOUND AND NOT A REACH, and the reason is the instrument §8 deleted.**  That one
-#: mutated one keyword at every one of 27,791 sites and spent the suite's whole wall clock
-#: proving a property of ``jsonschema``; this descends an arm's ``properties`` for the keys
-#: the instance already carries, which is finite and small, and the bound is what keeps a
-#: document that nests conditionals from turning the reduction back into that sweep.
-#: ``adcp-client-python-wvod``'s three sites are reached at depth 1 -- the arm states
-#: ``properties.authentication.required`` -- so the bound is above the measured shape and
-#: not tuned to it.
-_ARM_DEPTH = 4
+#: **ITS OWN COMMENT CLAIMED THE BOUND WAS ABOVE THE MEASURED SHAPE AND MEASUREMENT SAYS
+#: IT WAS EXACTLY AT IT.**  The comment read "``adcp-client-python-wvod``'s three sites are
+#: reached at depth 1 ... so the bound is above the measured shape and not tuned to it".
+#: Instrumented over the whole graded population -- all 2,586 pairs of
+#: ``test_emit.graded_reports`` -- this function is entered 1,715 times and **reaches
+#: depth 4**, which is the bound: ``depth > 4`` cut **0 arms**, with a margin of exactly
+#: one level. So the number never fired and one more nesting hop anywhere in the bundle
+#: would have truncated a witness derivation silently -- which is ``_OWN_DEPTH``'s failure
+#: mode one hop away rather than a bound anyone had measured room under.
 
 
 def _arm_of(
@@ -3540,7 +3586,7 @@ def unreached_conditionals(
     return tuple(out)
 
 
-def _violating(arm: Any, instance: Any, depth: int = 0) -> Iterator[tuple[Any, str, str]]:
+def _violating(arm: Any, instance: Any) -> Iterator[tuple[Any, str, str]]:
     """Values that break ``arm`` while keeping ``instance``'s shape, as far as an arm goes.
 
     **The half of the conditional a refuses-check needs.**  A node stating
@@ -3571,8 +3617,16 @@ def _violating(arm: Any, instance: Any, depth: int = 0) -> Iterator[tuple[Any, s
     Both are reported as unreached rather than as green: a witness this cannot build
     contributes no verdict, so the pair reads ``pass`` only on the witnesses that WERE
     offered and the row above says which.
+
+    **AND IT CARRIES NO DEPTH BOUND**: the comment above the deleted ``_ARM_DEPTH``
+    carries the measurement and the termination, which is the descent itself.  The
+    recursion below is taken only for a key the instance ALREADY CARRIES, so each hop
+    hands on ``instance[key]`` -- a strict sub-value of a finite JSON instance -- beside a
+    strict sub-mapping of a finite record node.  Either one is a terminator; the instance
+    is the total one, because an arm nested deeper than the instance it is perturbing has
+    no key to descend through.
     """
-    if not isinstance(arm, dict) or depth > _ARM_DEPTH:
+    if not isinstance(arm, dict):
         return
     facts = own_facts(arm)
     yield from _far_side(facts, instance)
@@ -3582,7 +3636,7 @@ def _violating(arm: Any, instance: Any, depth: int = 0) -> Iterator[tuple[Any, s
     for key, declaration in declared.items():
         if key not in instance:
             continue
-        for candidate, keyword, how in _violating(declaration, instance[key], depth + 1):
+        for candidate, keyword, how in _violating(declaration, instance[key]):
             yield {**instance, key: candidate}, keyword, f"at {key!r}, {how}"
 
 
@@ -6491,6 +6545,27 @@ def _branch_target(member: Any, root: Any) -> Any:
     return member if target is None else target
 
 
+def _member_pointer(member: Any) -> str | None:
+    """The LOCAL pointer a bare ``$ref`` member spells, or ``None`` for anything else.
+
+    **The hop :func:`_branch_target` takes, NAMED -- which is what lets the two readings
+    above it terminate on the pointer instead of on a number**
+    (``docs/plan/architecture.md`` §9).  :func:`_normalize` and :func:`_composed` each
+    recurse through this hop, so each can be handed a chain of local pointers that comes
+    back to one it has already followed; the pointer already followed is the back edge,
+    exactly as it is in :func:`referring_positions`' ``seen`` and in
+    ``codegen.verify.witness.Construction.through``.
+
+    The gate is :func:`_branch_target`'s own -- the member is BARE -- because that is the
+    only shape either reading hops through, so this answers for exactly the members the
+    hop is taken for and ``None`` for every member left as written.
+    """
+    if not isinstance(member, dict) or set(member) != {"$ref"}:
+        return None
+    ref = member["$ref"]
+    return ref if isinstance(ref, str) and ref.startswith("#") else None
+
+
 def _conjoined_type(node: dict, kw: str, branches: list[dict]) -> tuple[dict, list[dict]]:
     """A ``type`` word BESIDE a union is conjoined into every branch, which is what
     draft-07 says it is.
@@ -6637,7 +6712,7 @@ def _type_list(live: list[dict]) -> tuple[list[str], dict] | None:
 def _normalize(
     node: Any,
     root: Any,
-    depth: int = 0,
+    followed: frozenset[str] = frozenset(),
     *,
     declared_null: bool = False,
     null_is_absence: bool = True,
@@ -6765,11 +6840,50 @@ def _normalize(
       target's would disagree with it at 58 sites.  The upgrade path, if a document
       ever states a constraint
       beside a local ``$ref``, is to keep only the keys outside ``FOLDED_FACTS``.
+
+    **AND IT TERMINATES ON THE POINTER, NOT ON A NUMBER** (``docs/plan/architecture.md``
+    §9, ``docs/plan/final-state.md`` reading 1: *"NO CHECK CARRIES A BUDGET, A DEPTH LIMIT
+    OR AN EXAMPLE COUNT"*).  ``depth > 16`` stood on the first line of this body with
+    ``# a self-referential $defs chain`` beside it, and that comment was right about the
+    hazard and wrong about the instrument: this reading has exactly two recursions, and
+    only one of them can revisit anything.
+
+    * A **plain descent** -- the single-``null``-branch fold, into a branch of the node in
+      hand.  A strict sub-mapping of a finite record node, which terminates on running out
+      of it.
+    * A **local pointer hop** -- the node's own ``$ref``, and a branch that is a bare
+      ``$ref`` (:func:`_branch_target`).  Every such hop moves to a pointer of ONE finite
+      document, so a chain of them settles or comes back to a pointer already followed --
+      and the pointer already followed IS the cycle.  ``followed`` names that back edge
+      (:func:`_member_pointer`), so a self-referential ``$defs`` chain stops exactly where
+      it closes instead of at the sixteenth hop.
+
+    **``followed`` IS NOT THE BOUND UNDER ANOTHER NAME, and the direction is why.**  It
+    holds pointers rather than a count, so no setting of it says "stop after N"; and a
+    pointer in it DECLINES a hop, which leaves the member exactly as the document writes
+    it -- the fail-safe this function already takes for a pointer with a sibling or a
+    pointer naming nothing.  A declined hop makes the composed node state LESS, and a
+    fact absent at the composed pointer is reported ``unproved`` by
+    :func:`check_widening`, which is RED.  A cap can make a check pass vacuously; this
+    cannot make one pass at all.
+
+    **AND THE SIXTEEN NEVER FIRED.**  Instrumented over the whole graded population -- all
+    2,586 pairs of ``test_emit.graded_reports`` -- this function is entered 2,178 times and
+    **every one of them at depth 0**: on this bundle neither recursion is ever taken, so
+    ``depth > 16`` cut 0 nodes and the chain the comment feared has no site here at all.
+    It goes for ``witness._STORE_HOPS``' reason: §9's rule does not turn on whether a cap
+    is reached today, and the removal is strictly more complete -- a seventeen-hop chain
+    now settles where it used to be truncated silently.
     """
-    if depth > 16 or not isinstance(node, dict):  # a self-referential $defs chain
-        return node if isinstance(node, dict) else {}
+    if not isinstance(node, dict):
+        return {}
     if "$ref" in node:
-        target = _target(node["$ref"], root)
+        # **A POINTER ALREADY FOLLOWED IS A HOP DECLINED**, which is the back edge this
+        # reading terminates on now that no number does.  Declining leaves ``outer``
+        # exactly as an unresolvable pointer does, which is the fail-safe direction
+        # :func:`_target` already documents.
+        at = node["$ref"]
+        target = None if isinstance(at, str) and at in followed else _target(at, root)
         # ``declared_null`` deliberately does NOT travel through here.  It would be an
         # arm with no site: measured over the graded population, 5 positions have a
         # document declaring ``null`` and **all 5 spell it as an ``anyOf``, 0 as a
@@ -6779,7 +6893,9 @@ def _normalize(
         # the document's own ``null`` is not carried past the reference, and the fact
         # is ABSENT at the composed pointer rather than invented there.
         outer = {k: v for k, v in node.items() if k != "$ref"}
-        return {**_normalize(target, root, depth + 1), **outer} if target is not None else outer
+        if target is None:
+            return outer
+        return {**_normalize(target, root, followed | {at}), **outer}
     for kw in _UNION_KEYWORDS:
         stated = node.get(kw)
         if not (isinstance(stated, list) and stated and all(isinstance(b, dict) for b in stated)):
@@ -6801,7 +6917,18 @@ def _normalize(
         # downstream -- :func:`_conjoined_type` and the two fold arms, which ask each
         # branch for its ``type`` word -- sees what the branch states rather than the
         # pointer it states it through.
-        branches = [_branch_target(b, root) for b in stated]
+        #
+        # **AND A BRANCH POINTING AT A POINTER ALREADY FOLLOWED IS NOT HOPPED THROUGH**,
+        # because that hop is the one that closes a cycle: the branch stays as the
+        # document writes it, states no ``type`` word, and the fold declines -- the same
+        # answer a branch with a sibling already gets.  ``hops`` is kept beside
+        # ``branches`` so the fold below can record the pointer of the branch it actually
+        # descends into, and not of the ones it does not.
+        hops = [_member_pointer(b) for b in stated]
+        branches = [
+            b if at is not None and at in followed else _branch_target(b, root)
+            for b, at in zip(stated, hops, strict=True)
+        ]
         node, branches = _conjoined_type(node, kw, branches)
         # ``_conjoined_type`` rebuilds the node when a sibling ``type`` conjoins and
         # leaves it alone otherwise, so the resolved branches are put back here: a
@@ -6810,6 +6937,13 @@ def _normalize(
         node = {**node, kw: branches}
         live = [b for b in branches if b.get("type") != "null"]
         nulls = [b for b in branches if b.get("type") == "null"]
+        #: The pointer the FIRST live branch was reached through, or ``None`` where it is
+        #: written inline.  Only the branch the fold below descends into is recorded, so a
+        #: pointer one branch spells cannot decline a hop another branch takes.
+        live_at = next(
+            (at for b, at in zip(branches, hops, strict=True) if b.get("type") != "null"),
+            None,
+        )
         outer = {k: v for k, v in node.items() if k != kw}
         # The null branch is a TYPE FACT unless the position can really be absent:
         # the document declares it, or it sits at a key the parent DEMANDS and so
@@ -6817,7 +6951,8 @@ def _normalize(
         # than unwrapped.
         keep_null = declared_null or not null_is_absence
         if len(nulls) == 1 and len(live) == 1:
-            one = {**_normalize(live[0], root, depth + 1), **outer}
+            inner = followed | {live_at} if live_at is not None else followed
+            one = {**_normalize(live[0], root, inner), **outer}
             if not keep_null:
                 return one
             kind = one.get("type")
@@ -6865,12 +7000,19 @@ def _normalize(
     return node
 
 
-#: How deep an ``allOf`` chain ``_composed`` folds before it stops folding.  Same
-#: constant and same shape as ``_normalize``'s, deliberately: two instruments that
-#: cut a traversal at different places disagree about node identity for no reason
-#: anyone can read off either of them (``docs/plan/rebuild-plan.md`` §9).
-_COMPOSE_DEPTH = 16
-
+#: **A BOUND STOOD HERE (``_COMPOSE_DEPTH = 16``) AND IT IS GONE, with the ``depth``
+#: parameter it drove** (``docs/plan/architecture.md`` §9, ``docs/plan/final-state.md``
+#: reading 1).  Its comment said it was "the same constant and same shape as
+#: ``_normalize``'s, deliberately: two instruments that cut a traversal at different places
+#: disagree about node identity for no reason anyone can read off either of them" -- and
+#: that argument is for the two cutting ALIKE, which is satisfied by neither cutting.  Both
+#: now stop on the pointer (:func:`_member_pointer`), so the two readings agree because
+#: they terminate on the same fact rather than on the same number.
+#:
+#: **AND IT NEVER FIRED.**  Instrumented over the whole graded population -- all 2,586
+#: pairs of ``test_emit.graded_reports`` -- :func:`_composed` is entered 10,292 times and
+#: reaches **depth 2**, so ``depth > 16`` folded nothing short and 14 of the 16 levels were
+#: never asked for.
 #: The answer :func:`_tighter` gives for a keyword whose two values it cannot order.
 #: A sentinel rather than ``None``, because ``None`` is a legal JSON value and a
 #: keyword can hold it -- ``default: null`` is in the bundle.
@@ -7057,7 +7199,7 @@ def _tighter(keyword: str, node: Any, conjunct: Any) -> Any:
     return _UNDECIDED
 
 
-def _composed(doc: Any, root: Any, depth: int = 0) -> Any:
+def _composed(doc: Any, root: Any, followed: frozenset[str] = frozenset()) -> Any:
     """The document's node with every ``allOf`` conjunct's facts folded in.
 
     **``allOf`` conjoins, so a conjunct's unconditional facts ARE the
@@ -7143,22 +7285,43 @@ def _composed(doc: Any, root: Any, depth: int = 0) -> Any:
     DOCUMENT.
 
     A conjunct the hop declines -- a pointer with a sibling, a target that is itself a
-    reference, a pointer naming nothing -- is left as written, states no fact in
-    ``FOLDED_FACTS``, and folds to nothing.  That is the FAIL-SAFE direction and the
-    pre-existing behaviour: the composed node states LESS than the document does, so a
-    declaration at a fact only that conjunct states is reported ``unproved`` rather than
-    proved against a node this reading guessed at.
+    reference, a pointer naming nothing, **a pointer already followed** -- is left as
+    written, states no fact in ``FOLDED_FACTS``, and folds to nothing.  That is the
+    FAIL-SAFE direction and the pre-existing behaviour: the composed node states LESS than
+    the document does, so a declaration at a fact only that conjunct states is reported
+    ``unproved`` rather than proved against a node this reading guessed at.
+
+    **AND "A POINTER ALREADY FOLLOWED" IS THE FOURTH ENTRY IN THAT LIST AND THE REASON
+    THIS FOLD CARRIES NO DEPTH BOUND** (the comment above the deleted ``_COMPOSE_DEPTH``
+    carries the measurement).  Every recursion below is one of two things: a hop through a
+    local pointer never followed on this chain -- and one finite document holds finitely
+    many -- or a descent into a conjunct written INLINE, which is a strict sub-mapping of a
+    finite record node.  Both are well-founded, so the fold settles on the document rather
+    than on a number, and a seventeen-deep conjunct chain is folded instead of truncated.
+    ``followed`` is a set of pointers and not a count, and it is read exactly as
+    :func:`_normalize` reads it -- the argument that it is not the bound under another
+    name is written there.
     """
     conjuncts = doc.get("allOf") if isinstance(doc, dict) else None
-    if not isinstance(conjuncts, list) or depth > _COMPOSE_DEPTH:
+    if not isinstance(conjuncts, list):
         return doc
     # The conjuncts as the DOCUMENT writes them, with a bare local pointer read as the
     # node it NAMES (:func:`_branch_target`).  Here rather than inside the loop because
     # ``kept`` below reads the list again, and resolving in two places is the second copy
     # §3 forbids -- one of them would then see a pointer where the other sees a union.
-    conjuncts = [_branch_target(c, root) for c in conjuncts]
+    #
+    # ``hops`` is that resolution's own answer to "which pointer did this conjunct come
+    # through", kept beside the list so the recursion can record the hop it takes and no
+    # other: a conjunct naming a pointer this chain has ALREADY followed is the back edge,
+    # and declining the hop there leaves it as written -- the fail-safe the docstring's
+    # list names, arrived at by a fourth door.
+    hops = [_member_pointer(c) for c in conjuncts]
+    conjuncts = [
+        c if at is not None and at in followed else _branch_target(c, root)
+        for c, at in zip(conjuncts, hops, strict=True)
+    ]
     out = {k: v for k, v in doc.items() if k != "allOf"}
-    for conjunct in conjuncts:
+    for conjunct, at in zip(conjuncts, hops, strict=True):
         if not isinstance(conjunct, dict):
             continue
         # The conjunct as the DOCUMENT writes it.  It was read through the delegated
@@ -7170,7 +7333,7 @@ def _composed(doc: Any, root: Any, depth: int = 0) -> Any:
         # document does not write and no ``type`` at all.  ``bundle.record``
         # copies the base's ``{"type": "boolean"}``, so the conjunct arrives in the
         # document's own spelling and both undoings are deleted (§9).
-        c = _composed(conjunct, root, depth + 1)
+        c = _composed(conjunct, root, followed | {at} if at is not None else followed)
         # **The view that states the composed node's VALUE SET states its description**
         # (:func:`_described_by_the_conjunct`), read BEFORE the vocabulary axis
         # collapses: the collapse drops one of the two statements and this asks which
