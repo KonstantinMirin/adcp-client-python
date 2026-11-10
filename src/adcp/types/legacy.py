@@ -35,24 +35,32 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
+from adcp.types.core import CreativeAsset as LegacyCreativeAsset
+from adcp.types.core import Format as LegacyFormat
 from adcp.types.core import FormatReferenceStructuredObject as FormatReferenceStructuredObject
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatId
 from adcp.types.core import Product as LegacyProduct
 from adcp.types.creative import GetCreativeDeliveryResponse as LegacyGetCreativeDeliveryResponse
 from adcp.types.creative import ListCreativesRequest as LegacyListCreativesRequest
 from adcp.types.creative import ListCreativesResponse as LegacyListCreativesResponse
+from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeBatchResponse
 from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeResponse2
 from adcp.types.creative import PreviewCreativeRequest as LegacyPreviewCreativeRequest
+from adcp.types.creative import PreviewCreativeResponse as LegacyPreviewCreativeResponse
 from adcp.types.creative import PreviewCreativeSingleResponse as LegacyPreviewCreativeResponse1
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeResponse3
 from adcp.types.creative import SyncCreativesRequest as LegacySyncCreativesRequest
+from adcp.types.creative import SyncCreativesResponse as LegacySyncCreativesResponse
 from adcp.types.media_buy import BuildCreativeError as LegacyBuildCreativeResponse5
 from adcp.types.media_buy import BuildCreativeEstimate as LegacyBuildCreativeResponse4
 from adcp.types.media_buy import BuildCreativeMultiSuccess as LegacyBuildCreativeResponse2
 from adcp.types.media_buy import BuildCreativeRequest as LegacyBuildCreativeRequest
+from adcp.types.media_buy import BuildCreativeResponse as LegacyBuildCreativeResponse
 from adcp.types.media_buy import BuildCreativeSuccess as LegacyBuildCreativeResponse1
 from adcp.types.media_buy import BuildCreativeVariantSuccess as LegacyBuildCreativeResponse3
 from adcp.types.media_buy import CreateMediaBuyRequest as LegacyCreateMediaBuyRequest
+from adcp.types.media_buy import CreateMediaBuyResponse as LegacyCreateMediaBuyResponse
+from adcp.types.media_buy import CreateMediaBuySuccess as LegacyCreateMediaBuyResponse1
 from adcp.types.media_buy import GetMediaBuyDeliveryResponse as LegacyGetMediaBuyDeliveryResponse
 from adcp.types.media_buy import GetMediaBuysResponse as LegacyGetMediaBuysResponse
 from adcp.types.media_buy import GetProductsRequest as LegacyGetProductsRequest
@@ -60,16 +68,22 @@ from adcp.types.media_buy import GetProductsResponse as LegacyGetProductsRespons
 from adcp.types.media_buy import ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest
 from adcp.types.media_buy import ListCreativeFormatsResponse as LegacyListCreativeFormatsResponse
 from adcp.types.media_buy import UpdateMediaBuyRequest as LegacyUpdateMediaBuyRequest
+from adcp.types.media_buy import UpdateMediaBuyResponse as LegacyUpdateMediaBuyResponse
 
 __all__ = [
     "FormatReferenceStructuredObject",
     "LegacyBuildCreativeRequest",
+    "LegacyBuildCreativeResponse",
     "LegacyBuildCreativeResponse1",
     "LegacyBuildCreativeResponse2",
     "LegacyBuildCreativeResponse3",
     "LegacyBuildCreativeResponse4",
     "LegacyBuildCreativeResponse5",
     "LegacyCreateMediaBuyRequest",
+    "LegacyCreateMediaBuyResponse",
+    "LegacyCreateMediaBuyResponse1",
+    "LegacyCreativeAsset",
+    "LegacyFormat",
     "LegacyFormatId",
     "LegacyGetCreativeDeliveryResponse",
     "LegacyGetMediaBuyDeliveryResponse",
@@ -80,13 +94,17 @@ __all__ = [
     "LegacyListCreativeFormatsResponse",
     "LegacyListCreativesRequest",
     "LegacyListCreativesResponse",
+    "LegacyPreviewCreativeBatchResponse",
     "LegacyPreviewCreativeRequest",
+    "LegacyPreviewCreativeResponse",
     "LegacyPreviewCreativeResponse1",
     "LegacyPreviewCreativeResponse2",
     "LegacyPreviewCreativeResponse3",
     "LegacyProduct",
     "LegacySyncCreativesRequest",
+    "LegacySyncCreativesResponse",
     "LegacyUpdateMediaBuyRequest",
+    "LegacyUpdateMediaBuyResponse",
 ]
 
 
@@ -96,19 +114,49 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "LegacyBuildCreativeResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacyCreateMediaBuyResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacyPreviewCreativeResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacySyncCreativesResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "LegacyUpdateMediaBuyResponse": "NO-DOCUMENT-NO-SUBJECT",
+    "coerce_legacy_asset": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.coerce_legacy_asset, which is NO-DOCUMENT-NO-SUBJECT",
+    "coerce_legacy_assets": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.coerce_legacy_assets, which is NO-DOCUMENT-NO-SUBJECT",
+    "infer_asset_type": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.infer_asset_type, which is NO-DOCUMENT-NO-SUBJECT",
 }
+
+#: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where
+#: upstream's module is not one.  Measured off their own source and never listed: of every
+#: module in their hand-written type layer, exactly two bind nothing but plain re-exports of
+#: their generated tree and declare no class or function of their own -- `_generated`
+#: (2,981 bindings, 2,969 of them straight out of `adcp.types.domains`) and `error_details`
+#: (98 and 96).  A module whose whole content is "every generated name" owes every generated
+#: name, and a census over module-SCOPE imports cannot measure that: `adcp/server/mcp_tools`
+#: reaches into it with `getattr`, so the demand showed 30 names and the suite then stopped
+#: on `_generated.ValidateInputRequest` with every one of the 30 present.
+__adcp_delegates_to__ = None
 
 
 def __getattr__(name: str) -> object:
     why = __adcp_refused__.get(name)
-    if why is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    raise AttributeError(
-        f"{__name__}.{name} is upstream's and has no subject in the pinned bundle: {why}. "
-        f"See docs/migration-from-upstream.md"
-    )
+    if why is not None:
+        raise AttributeError(
+            f"{__name__}.{name} is upstream's and has no subject in the pinned bundle: "
+            f"{why}. See docs/migration-from-upstream.md"
+        )
+    # **DELEGATION IS A NAME AND NOT A SECOND ANSWER.**  The namespace reached here is OUR
+    # own flat surface, whose names one lane already decided; this adds no decision of its
+    # own, declares nothing, and is lazy -- so a module of 3,477 names costs nothing at
+    # import.  The refusal table is read FIRST, because a verdict about this name at this
+    # module outranks the namespace's answer to the same word.
+    if __adcp_delegates_to__ is not None:
+        import importlib
+
+        held = importlib.import_module(__adcp_delegates_to__)
+        try:
+            return getattr(held, name)
+        except AttributeError:
+            pass
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    if __adcp_delegates_to__ is None:
+        return sorted(__all__)
+    import importlib
+
+    return sorted(set(__all__) | set(dir(importlib.import_module(__adcp_delegates_to__))))

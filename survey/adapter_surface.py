@@ -145,6 +145,7 @@ import argparse
 import ast
 import collections
 import importlib
+import importlib.util
 import json
 import re
 import sys
@@ -155,6 +156,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import structural_signature as ss  # noqa: E402
+import upstream_aliases as ua  # noqa: E402
 import upstream_machinery as um  # noqa: E402
 
 OUR_GEN = "adcp.types._schemas"
@@ -364,23 +366,94 @@ def module_scope_imports(tree: ast.Module) -> list[ast.ImportFrom]:
     return out
 
 
-def census(src: Path) -> dict:
-    """Every module-scope `(module, name)` import from `adcp.types*`, with its resolution.
+def upstream_files(prefix: str, rev: str | None = None) -> frozenset[Path]:
+    """The paths under `prefix` where UPSTREAM'S OWN file is sitting right now, byte for byte.
 
-    `src/adcp/types/` is EXCLUDED: the type layer importing itself is not the machinery's
-    demand on it, and the question is what upstream's kept code asks of our surface.
+    `survey/upstream_machinery.restored_paths` takes this reading over the rows of the
+    machinery classification -- the `types/` modules -- and this takes the same reading over
+    an arbitrary prefix of the tree, which is what `tests/` needs: the rev is the
+    classification's own (one pin for the whole project) and the verdict is blob identity,
+    so nothing is listed and a file that stops being upstream's stops being counted.
+    """
+    rev = rev or um.rows()[0]
+    listing = um.git("ls-tree", "-r", rev, "--", prefix)
+    theirs: dict[str, str] = {}
+    for line in listing.splitlines():
+        meta, _, path = line.partition("\t")
+        parts = meta.split()
+        if len(parts) == 3 and parts[1] == "blob":
+            theirs[path] = parts[2]
+    root = HERE.parent
+    out = set()
+    for path, name in theirs.items():
+        here = root / path
+        if here.is_file() and um.blob(here.read_bytes()) == name:
+            out.add(here.resolve())
+    return frozenset(out)
+
+
+def corpus(src: Path, suite: Path | None = None) -> list[Path]:
+    """**UPSTREAM'S OWN CODE, SELECTED BY PROVENANCE AND NEVER BY PATH**
+    (`adcp-client-python-6qlc`).
+
+    The question this instrument answers is what upstream's KEPT code asks of our surface,
+    and the corpus was drawn by path: `src/adcp/` with `src/adcp/types/` cut out.  Two
+    measurements say that boundary is in the wrong place, and both are widenings:
+
+    * **`src/adcp/types/` holds upstream's restored files.**  6qlc's reading.  The reasoning
+      for cutting the subtree is sound for OUR emitted surface -- the type layer importing
+      itself says nothing about a consumer's demand -- and false the moment one of upstream's
+      own modules is restored into it, because that file is a CONSUMER of the adapter
+      surface and the instrument was structurally unable to see what it asks for.  So the
+      test is provenance: a file under `types/` is in the corpus iff its bytes are
+      upstream's (`survey/upstream_machinery.restored_paths`), which self-adjusts as the
+      restore lane lands modules and keeps every emitted module of ours out.
+    * **`tests/` is upstream's whole suite, and it was not read at all.**  Measured on this
+      tree: all 827 of `tests/**/*.py` are byte-identical to upstream's at the commit the
+      machinery classification pins, 246 of them import `adcp.types*` at module scope, and
+      192 `(module, name)` pairs are asked ONLY from there -- so the largest single block of
+      demand on this adapter was invisible to the instrument that exists to measure it.  And
+      that suite is the GRADE: a pair the census cannot see is a collection error the gate
+      reports and the table does not mention.
+
+    Neither clause reads a module name or a directory name, which is the whole point: the
+    corpus is "upstream's own code, as upstream's own objects name it", so a tree where
+    `tests/` becomes ours shrinks this set with nothing edited here.
     """
     pkg = src / "adcp"
-    excluded = pkg / "types"
-    pairs: list[tuple[str, str, str]] = []
+    inside_types = pkg / "types"
+    restored = um.restored_paths()
+    out: list[Path] = []
     for path in sorted(pkg.rglob("*.py")):
-        if excluded in path.parents:
-            continue
+        if inside_types not in path.parents or path.resolve() in restored:
+            out.append(path)
+    if suite is not None and suite.is_dir():
+        theirs = upstream_files(f"{suite.name}/")
+        out += [p for p in sorted(suite.rglob("*.py")) if p.resolve() in theirs]
+    return out
+
+
+def census(src: Path, suite: Path | None = None) -> dict:
+    """Every module-scope `(module, name)` import from `adcp.types*`, with its resolution.
+
+    The corpus is :func:`corpus` -- upstream's own code, selected by provenance.  A pair is
+    keyed by the file that asks for it so the report can say WHICH of upstream's files a
+    missing name takes, and resolved live so the demand is exactly the set that does not
+    already work.
+    """
+    pairs: list[tuple[str, str, str]] = []
+    for path in corpus(src, suite):
+        #: A relative import is resolved against the asking file's OWN package, so the
+        #: anchor is the import root the file sits under -- `src/` for the package and the
+        #: repository root for the suite, whose `tests.foo` is a top-level module.  One
+        #: derivation per file rather than one for the whole corpus, because the corpus now
+        #: spans two roots.
+        anchor = src if src in path.parents else HERE.parent
         try:
             tree = ast.parse(path.read_text())
         except SyntaxError:
             continue
-        here = path.relative_to(src).with_suffix("").parts
+        here = path.relative_to(anchor).with_suffix("").parts
         for node in module_scope_imports(tree):
             mod = node.module or ""
             if node.level:
@@ -390,7 +463,7 @@ def census(src: Path) -> dict:
                 continue
             for alias in node.names:
                 if alias.name != "*":
-                    pairs.append((str(path.relative_to(src)), mod, alias.name))
+                    pairs.append((str(path.relative_to(anchor)), mod, alias.name))
 
     buckets: dict[str, list] = {
         "resolving": [],
@@ -448,8 +521,18 @@ def demand(c: dict) -> dict[tuple[str, str], list[str]]:
     second instrument re-deciding them would be two answers to one question.  A flat name
     that resolves through `_adapter` is re-demanded by the same rule read one layer up.
     """
+    #: **AND THE `other` BUCKET IS DEMAND TOO.**  A pair whose module raises something that
+    #: is not `ModuleNotFoundError(mod)` was dropped from the demand entirely, and the three
+    #: readings of why it raised are all demand: `adcp.types.versioned_bases.v31` fails
+    #: because its PARENT package is absent, so the error names `versioned_bases` and not
+    #: the module asked for; `adcp.types.domains.bundled.protocol...` fails because the
+    #: mirror's prefix substitution finds no `_schemas.bundled`.  Measured: 8 pairs upstream's
+    #: own suite asks for had no row of the table at all, for no reason except which
+    #: exception the import raised.  The pair is what the file asks for, however the import
+    #: failed.
     out: dict[tuple[str, str], list[str]] = collections.defaultdict(list)
-    for file, mod, name in c["missing_module"] + c["missing_name"]:
+    for row in c["missing_module"] + c["missing_name"] + c["other"]:
+        file, mod, name = row[0], row[1], row[2]
         out[(mod, name)].append(file)
     adapters = set()
     for _, mod, _ in c["resolving"]:
@@ -592,7 +675,13 @@ def names_nothing(sh: tuple) -> bool:
 
 
 class Join:
-    def __init__(self, ours: dict, theirs: dict, bundle_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        ours: dict,
+        theirs: dict,
+        bundle_dir: Path | None = None,
+        aliases: ua.Oracle | None = None,
+    ) -> None:
         assert theirs.get("version") not in (None, "", "unknown"), (
             "the upstream dump records no version, and every row below is a claim about one"
         )
@@ -604,6 +693,13 @@ class Join:
         ), ours.get("relaxations")
         self.ours, self.theirs = ours, theirs
         self.version = theirs["version"]
+        #: **UPSTREAM'S OWN SOURCE, FOR THE NAMES THEIR RUNTIME CANNOT ANSWER FOR**
+        #: (`survey/upstream_aliases.py`).  Optional, because the keys below are complete
+        #: without it and a run that has no git object to read still produces every row it
+        #: produced before; where it IS supplied, a name upstream BINDS rather than declares
+        #: stops being `NO-DOCUMENT-NO-SUBJECT` and becomes the document and the word their
+        #: own statement names.
+        self.aliases = aliases
         self._values: dict[str, frozenset[str]] = {}
         self._roots: dict[str, str] = {}
         self._shapes: dict[str, tuple] = {}
@@ -793,6 +889,37 @@ class Join:
                 self._values[key] = frozenset()
         return self._values[key] or None
 
+    #: **A UNION OF ARMS IS A NAME FOR A UNION AND NEVER FOR AN ENUMERATION**, and the
+    #: distinction is the KIND of the thing upstream published rather than the values it
+    #: admits (`adcp-client-python-69mi`).  Measured, and it cost 105 of upstream's files
+    #: and ~1,797 test functions: the writer bound `GetProductsField` to
+    #: `FieldsItem | ProductResponseFieldsItem`, whose 53 admissible values are EXACTLY
+    #: upstream's 53 -- derived both ways, with our two arms overlapping on
+    #: `media_buy_support` and `overlay_support` -- and upstream's own
+    #: `decisioning/_get_products_helpers.py:66` writes
+    #: `frozenset(f.value for f in GetProductsField)`, which raises
+    #: `TypeError: 'types.UnionType' object is not iterable` at MODULE SCOPE in a module
+    #: `adcp/decisioning/__init__.py` imports.  So the whole `decisioning` package died at
+    #: import over a name whose value set was right.
+    #:
+    #: **AND THE REPAIR IS NOT A DIFFERENT ARM.**  It was proposed that their
+    #: `GetProductsField` is our 17-member `FieldsItem`, read off their comment's "38 + 17
+    #: members"; their own next clause refutes it -- "the public ``GetProductsField`` alias
+    #: resolves to a third, 53-member enum that the request never holds" -- and so does
+    #: their runtime, where the name is `domains.media_buy.get_products_request.Field1`
+    #: with 53 members.  Binding it to the 17 would take
+    #: `_GET_PRODUCTS_FIELD_VALUES` from 53 values to 17 and move 36 of `Product`'s fields
+    #: into that helper's `_PASSTHROUGH`, so a buyer asking for two fields would be sent
+    #: thirty-eight more: a wire-behaviour change dressed as a name.
+    #:
+    #: **AND NO DECLARATION OF OURS IS THAT ENUMERATION, which is a fact about the
+    #: DOCUMENT.**  `media-buy/get-products-request.json`'s `fields.items` is an `anyOf` of
+    #: two enumerations, so the bundle states two and our tree lowers two; upstream's
+    #: generator flattened the `anyOf` into one and deduplicated the two shared values.  A
+    #: 53-member enumeration of ours would be a type with no node behind it, which reading
+    #: 10 refuses outright.  So the row is REFUSED with the value-set agreement recorded as
+    #: the finding, and what would serve the name is a lowering of that `anyOf` -- owed by
+    #: whoever owns emission and not by an alias layer.
     def union(self, their_schema: str) -> list[str] | None:
         """The enumerations of ours whose value sets UNION to theirs EXACTLY, or nothing.
 
@@ -824,7 +951,201 @@ class Join:
                     return list(combo)
         return None
 
-    def resolve(self, mod: str, name: str) -> dict:
+    # -- the twelfth key: upstream's own statement, where their runtime carried no answer
+    def stated(self, mod: str, name: str) -> dict | None:
+        """**WHAT UPSTREAM'S OWN SOURCE SAYS THIS NAME IS, resolved to a subject of ours.**
+
+        The eleven keys above all start from upstream's RUNTIME dump, where a class says its
+        own declaring module and word.  A name upstream BINDS rather than DECLARES says
+        neither: `adcp.types.legacy.LegacyCreateMediaBuyResponse` is a union `TypeAlias`, so
+        the dump recorded it with no module at all and the table's verdict was
+        `NO-DOCUMENT-NO-SUBJECT` -- while their `legacy.py:85` states the document in one
+        line.  So this key's proposal is READ off upstream's statement
+        (`survey/upstream_aliases.Oracle.trace`) and its chain is reported beside the row as
+        the evidence, which is what makes it a reading and not a guess.
+
+        **AND IT RESOLVES NOTHING ITSELF.**  Every arm below ends in one of the eleven keys
+        above, re-entered at the name UPSTREAM'S OWN STATEMENT names -- so a binding this
+        key reports was still decided by a document and a node, and the hazard the pointer
+        keys exist to refuse (a word matched across the tree) is refused here too.  Three
+        arms, because upstream's statement terminates in three different kinds of thing:
+
+        * a **declaration** of theirs.  `self.resolve` is re-entered at their declaring
+          module and their word -- the strong case, 86 rows, and `how` carries both halves
+          (`upstream-source -> document+word`) so the report says which key actually bound it.
+        * a **document ROOT union**: their generator's own `<Root> = <Root>1 | ... | <Root>N`
+          inside a document's module.  Bound to OUR root declaration of that document, gated
+          three ways -- the stem must be the word :meth:`root_of` derives for that document,
+          every arm must bind through :meth:`ordinal` (which is itself gated on the family
+          being one root plus its arms with every shared `const` agreeing), and the arm count
+          must equal our branch count.  A union whose stem is NOT the document's root is an
+          inner node and is refused here with that reason: `Refine1 | Refine2 | Refine3` is
+          `media_buy/get-products-request.json`'s `refine` property and not its root.
+        * a **plain union** they composed by hand, every arm of which resolves to exactly one
+          subject of ours.  `PublisherPropertiesAll | PublisherPropertiesById |
+          PublisherPropertiesByTag` is three declarations joined, and the alias is their
+          three names under one -- which is what `union+value-set` already does for an
+          enumeration, with the same rule that a partial cover refuses the whole row.
+
+        **AND A DISCRIMINATED UNION IS REFUSED, WITH THE DISCRIMINATOR AS THE REASON.**
+        Their `aliases.py:361` is `_Annotated[ImageAsset | ... | DaastTrackerAsset,
+        Discriminator("asset_type")]`, and the bare union under that metadata admits a
+        different set of documents from the discriminated one -- so porting the arms and
+        dropping the `Discriminator` would publish their name over a type they did not
+        write.  Reported (`stated_refused`) and left unbound, which is reading 10's rule
+        said about an expression instead of about a name.
+        """
+        if self.aliases is None:
+            return None
+        terminal, chain = self.aliases.trace(mod, name)
+        if not chain:
+            return None
+        evidence = {
+            #: `` ;; `` and not `` | ``: a statement's own text is often a UNION, so a
+            #: pipe separator made the chain unsplittable -- measured, the gate reading it
+            #: back split `BuildCreativeResponse1 | BuildCreativeResponse2` into two links.
+            "stated_by": " ;; ".join(str(s) for s in chain),
+            "stated_terminal": f"{terminal.kind} {terminal.module}.{terminal.name}",
+        }
+
+        def refuse(why: str) -> dict:
+            return {**evidence, "stated_refused": why}
+
+        if terminal.kind in ("declared-class", "declared-function"):
+            if (terminal.module, terminal.name) == (mod, name):
+                return None  # upstream declares the asked name itself: nothing is aliased
+            inner = self.resolve(terminal.module, terminal.name)
+            if inner.get("verdict") != "BOUND":
+                return refuse(
+                    f"upstream declares it at {terminal.module}.{terminal.name}, which is "
+                    f"{inner.get('verdict')}"
+                )
+            unpinned = self.unpinned(terminal, inner)
+            if unpinned:
+                return refuse(
+                    f"their {terminal.name} pins {unpinned} and the subject it reaches "
+                    f"({inner['target']}) pins nothing there: a name over a type that "
+                    f"accepts what the document refuses is worse than an unbound name"
+                )
+            return {
+                **inner,
+                "module": mod,
+                "name": name,
+                "how": f"upstream-source -> {inner['how']}",
+                **evidence,
+            }
+
+        if terminal.kind != "expression":
+            return refuse(f"upstream's own tree says {terminal.kind}")
+        if terminal.discriminator:
+            return refuse(
+                f"upstream's expression pins discriminator {terminal.discriminator!r}: the "
+                "bare union under it admits a different set"
+            )
+        if terminal.annotated:
+            return refuse("upstream's expression carries Annotated metadata to port")
+        if not terminal.arms or any(arm.startswith("?") for arm in terminal.arms):
+            return refuse(
+                f"upstream's expression names no arms to resolve: {terminal.expression[:80]}"
+            )
+
+        document, stem = terminal.document, terminal.family_stem
+        if stem and document:
+            if stem != self.root_of(document):
+                return refuse(
+                    f"{stem!r} is not the word our tree gives {document}'s root "
+                    f"({self.root_of(document)!r}): an inner union, not the document's own"
+                )
+            arms = [self.ordinal(document, stem, i) for i in range(1, len(terminal.arms) + 1)]
+            bad = [why for target, why in arms if not target]
+            if bad:
+                return refuse(f"their root family does not join ours arm for arm: {bad[0]}")
+            root = self.root_declaration(document)
+            if root is None:
+                return refuse(f"no root declaration of ours carries {document}'s root pointer")
+            row = {"module": mod, "name": name, "document": document, "word": stem}
+            return {
+                **self._bound(row, "upstream-source+document-root", [root],
+                              f"their {stem} is the union of all {len(terminal.arms)} arms of "
+                              f"{document}, which is our root"),
+                **evidence,
+            }
+
+        targets: list[str] = []
+        for arm in terminal.arms:
+            at, _ = self.aliases.trace(terminal.module, arm)
+            if at.kind != "declared-class":
+                return refuse(f"arm {arm!r} of their union is {at.kind} and not a declaration")
+            inner = self.resolve(at.module, at.name)
+            if inner.get("verdict") != "BOUND" or len(inner["target"]) != 1:
+                return refuse(f"arm {arm!r} of their union is {inner.get('verdict')}")
+            targets.append(inner["target"][0])
+        row = {"module": mod, "name": name}
+        return {
+            **self._bound(row, "upstream-source+union", targets,
+                          f"their {len(targets)} arms, each resolved to one subject of ours"),
+            **evidence,
+        }
+
+    def unpinned(self, terminal: ua.Terminal, inner: dict) -> dict[str, object]:
+        """**WHAT UPSTREAM'S DECLARATION PINS THAT THE SUBJECT IT REACHES DOES NOT.**
+
+        The middle term of a composition is where this key can do real harm, and the
+        structural lane measured the case: upstream's
+        `media_buy/create_media_buy_response.json` arm `CreateMediaBuyResponse1` pins
+        `status` to `'completed'`, and the subject `document+ordinal` reaches for it --
+        our `CreateMediaBuySuccess` -- has no `status` element at all.  25 of their 26
+        elements agree.  Publishing their `CreateMediaBuySuccessResponse` over that subject
+        would mint a NAME over a type that accepts payloads the document refuses, which is
+        worse than leaving the name unbound.
+
+        So this key refuses where upstream pins a property and the subject pins NOTHING
+        there, and names the property.  Asymmetric on purpose, and the asymmetry is the
+        whole reading: a DISAGREEMENT about a pinned value is what :meth:`ordinal`'s second
+        gate already catches, and this is the other half -- a pin present on one side only,
+        where that gate is silent because the intersection is empty.  Those are wire facts
+        owed by whoever owns branch lowering and they are not words to alias around.
+
+        Read off the two dumps' canonical schemas (:func:`consts`) and never off a spelling.
+        """
+        key = f"{terminal.module}.{terminal.name}"
+        their = self.theirs["declarations"].get(key)
+        if their is None or not their.get("schema"):
+            return {}
+        pinned = consts(their["schema"])
+        if not pinned:
+            return {}
+        ours: dict[str, object] = {}
+        for target in inner.get("target") or ():
+            held = self.ours["declarations"].get(target)
+            if held and held.get("schema"):
+                ours.update(consts(held["schema"]))
+        return {k: v for k, v in pinned.items() if k not in ours}
+
+    def _bound(self, row: dict, how: str, targets: list[str], note: str) -> dict:
+        """The BOUND row :meth:`resolve`'s own `bind` writes, for a key outside its body."""
+        row.update(
+            verdict="BOUND",
+            how=how,
+            target=targets,
+            note=note,
+            identity="union" if len(targets) > 1 else "stated",
+            public=[self.public(t) for t in targets],
+        )
+        return row
+
+    def resolve(self, mod: str, name: str, _stated: bool = True) -> dict:
+        row = self._by_dump(mod, name)
+        if row.get("verdict") == "BOUND" or not _stated or self.aliases is None:
+            return row
+        better = self.stated(mod, name)
+        if better is None:
+            return row
+        if better.get("verdict") == "BOUND":
+            return better
+        return {**row, **better}
+
+    def _by_dump(self, mod: str, name: str) -> dict:
         row: dict = {"module": mod, "name": name}
         keys = self.at.get((mod, name)) or []
         if not keys:
@@ -967,11 +1288,19 @@ class Join:
             if len(hit) > 1:
                 row["prefix_refused"] = f"{len(hit)} declarations of ours carry a prefixed form"
 
-        # 7: they flattened a union we keep split
+        # 7: they flattened a union we keep split -- AND A UNION OF ARMS IS NOT AN
+        # ENUMERATION, which is what this key was measured to get wrong
+        # (`adcp-client-python-69mi`).  The value-set reading was right and is kept as the
+        # finding; what it licensed was not.  See :meth:`flattened`.
         if their["method"] == "enum":
             members = self.union(their["schema"])
             if members:
-                return bind("union+value-set", members, "value sets union to theirs exactly")
+                row["flattened_enum"] = (
+                    f"their one enumeration's values are exactly the union of "
+                    f"{len(members)} of ours ({', '.join(members)}), and a union of arms is "
+                    f"not an enumeration: `for f in <name>` and `<name>.MEMBER` are the "
+                    f"contract their own code uses and `A | B` has neither"
+                )
 
         # 8: their word, declared EXACTLY ONCE in our whole tree.  Their generator INLINES a
         # `$ref`'s target into the referring module and ours keeps the referenced document's
@@ -1124,19 +1453,51 @@ REFUSAL = '''
 #: caller asked for.
 __adcp_refused__ = {refused}
 
+#: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where
+#: upstream's module is not one.  Measured off their own source and never listed: of every
+#: module in their hand-written type layer, exactly two bind nothing but plain re-exports of
+#: their generated tree and declare no class or function of their own -- `_generated`
+#: (2,981 bindings, 2,969 of them straight out of `adcp.types.domains`) and `error_details`
+#: (98 and 96).  A module whose whole content is "every generated name" owes every generated
+#: name, and a census over module-SCOPE imports cannot measure that: `adcp/server/mcp_tools`
+#: reaches into it with `getattr`, so the demand showed 30 names and the suite then stopped
+#: on `_generated.ValidateInputRequest` with every one of the 30 present.
+__adcp_delegates_to__ = {delegate}
+
 
 def __getattr__(name: str) -> object:
     why = __adcp_refused__.get(name)
-    if why is None:
-        raise AttributeError(f"module {{__name__!r}} has no attribute {{name!r}}")
-    raise AttributeError(
-        f"{{__name__}}.{{name}} is upstream's and has no subject in the pinned bundle: {{why}}. "
-        f"See docs/migration-from-upstream.md"
-    )
+    if why is not None:
+        raise AttributeError(
+            f"{{__name__}}.{{name}} is upstream's and has no subject in the pinned bundle: "
+            f"{{why}}. See docs/migration-from-upstream.md"
+        )
+    # **DELEGATION IS A NAME AND NOT A SECOND ANSWER.**  The namespace reached here is OUR
+    # own flat surface, whose names one lane already decided; this adds no decision of its
+    # own, declares nothing, and is lazy -- so a module of 3,477 names costs nothing at
+    # import.  The refusal table is read FIRST, because a verdict about this name at this
+    # module outranks the namespace's answer to the same word.
+    if __adcp_delegates_to__ is not None:
+        import importlib
+
+        held = importlib.import_module(__adcp_delegates_to__)
+        try:
+            return getattr(held, name)
+        except AttributeError:
+            pass
+    raise AttributeError(f"module {{__name__!r}} has no attribute {{name!r}}")
+
+
+def __dir__() -> list[str]:
+    if __adcp_delegates_to__ is None:
+        return sorted(__all__)
+    import importlib
+
+    return sorted(set(__all__) | set(dir(importlib.import_module(__adcp_delegates_to__))))
 '''
 
 
-def owner(target: Path, restored: frozenset[Path]) -> str | None:
+def owner(module: str, target: Path, restored: frozenset[Path]) -> str | None:
     """Who holds this path, where it is NOT this writer's to write: the reason, or `None`.
 
     **THE WRITER OWNS A PATH THAT IS ABSENT OR THAT CARRIES ITS OWN MARKER, AND NOTHING
@@ -1165,15 +1526,46 @@ def owner(target: Path, restored: frozenset[Path]) -> str | None:
     one word, and a name-keyed exclusion would protect ours as though it were theirs.
 
     And a third clause, which is this writer's own reach rather than someone's ownership:
-    **a module no DIRECTORY of the layer can hold is not a file this writer can write.**
-    The demand names 16 pairs under `adcp.types.domains`, a package served by a FINDER
-    (`adcp/types/domains/__init__.py` binds `<mirror>.<rest>` to the built module
-    `adcp.types._schemas.<rest>`) and holding no submodule files at all; writing
-    `domains/core/format.py` would put a file where a loader answers.  Those rows are
-    reported with this reason and left to the lanes that own the names.
+    **A MODULE A LOADER ALREADY ANSWERS FOR IS NOT A FILE THIS WRITER CAN WRITE, and the
+    import system is asked rather than the filesystem.**  `adcp.types.domains` is a package
+    served by a FINDER that goes in front of `PathFinder` (`adcp/types/domains/__init__.py`
+    binds `<mirror>.<rest>` to the built module `adcp.types._schemas.<rest>`), so EVERY
+    module of that subtree is answered by the loader and not by a file -- including the ones
+    whose directory exists.
+
+    This clause read `target.parent.is_dir()` and that was measured wrong: `domains/` is a
+    real directory, so the writer created `domains/core.py` and `domains/creative.py`, and
+    both are files no import reaches.  `from adcp.types.domains.core import DomainBreakdown`
+    raised `ImportError ... from 'adcp.types._schemas.core'` with that file sitting on disk,
+    because the finder had already answered -- two modules written, two names served, zero
+    imports satisfied, and nothing saying so.  `importlib.util.find_spec` is the reading that
+    cannot be wrong about it: where a spec comes back whose origin is not this path, something
+    else is already serving the name.
     """
     if target.resolve() in restored:
         return "upstream's own file, restored"
+    #: **THE FLAT NAMESPACE IS THE ONE ROW WHOSE TARGET IS NOT ITS MODULE'S OWN FILE**, by
+    #: this writer's own design: `adcp.types`'s `__init__` IS the package and is hand-written
+    #: on purpose, so the flat names go to `_adapter.py` and that `__init__` imports them.
+    #: A loader answering for `adcp.types` is therefore OUR `__init__` consuming this
+    #: writer's output and not something else serving the name, which is the only case where
+    #: the clause below would read a collaboration as a collision.
+    try:
+        spec = None if module == "adcp.types" else importlib.util.find_spec(module)
+    except BaseException:  # noqa: BLE001 -- an unimportable parent is not a claim on the path
+        spec = None
+    if spec is not None and spec.origin not in (None, "built-in", "frozen"):
+        #: **THE READING IS THE MODULE'S OWN PATH AGAINST THE ORIGIN'S, AND NEVER THE TARGET
+        #: FILE'S.**  A loader that MAPS a module serves it from somewhere its own dotted
+        #: name does not name -- `adcp.types.domains.core` is answered out of
+        #: `types/_schemas/core/__init__.py` -- and that mismatch is the whole signal.  The
+        #: target file is not the comparison, because this function is also asked about a
+        #: tree that is not the live package (the gate writes into `tmp_path`), where the
+        #: live origin is never the target and the clause would then refuse every path.
+        leaf = "/".join(module[len("adcp.types") :].lstrip(".").split("."))
+        origin = str(Path(spec.origin).as_posix())
+        if not origin.endswith((f"/{leaf}.py", f"/{leaf}/__init__.py")):
+            return f"a loader already answers for {module}, at {spec.origin}"
     if not target.parent.is_dir():
         return f"no directory at {target.parent.name}/ -- the module is served by a loader"
     if not target.exists():
@@ -1183,8 +1575,46 @@ def owner(target: Path, restored: frozenset[Path]) -> str | None:
     return "a module of ours, which this writer did not write"
 
 
+#: Where a NAMESPACE module of upstream's is served from.  One entry, because our flat
+#: surface is one namespace; the KEYS are measured (:func:`namespaces`) and never listed.
+OUR_NAMESPACE = "adcp.types"
+
+
+def namespaces(oracle: ua.Oracle | None) -> frozenset[str]:
+    """Which modules of upstream's are PURE RE-EXPORT NAMESPACES of their generated tree.
+
+    Read off their own source, as a property rather than as a list: every module-scope
+    binding is a plain `import` out of `adcp.types.domains`, and the module declares no
+    class and no function of its own.  Measured on 9.6.1: `adcp.types._generated` (2,981
+    bindings, 2,969 from the generated tree) and `adcp.types.error_details` (98 and 96), and
+    nothing else clears 0.75.  The threshold is `>= 0.9` with at least twenty bindings, and
+    the declaration screen is what keeps a topic module with a few re-exports out.
+    """
+    if oracle is None:
+        return frozenset()
+    per: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
+    for (module, _name), statement in oracle.bindings.items():
+        if module.startswith(ua.THEIR_GEN):
+            continue
+        kind = statement.kind
+        if kind in ("import", "import-as"):
+            kind += "-gen" if statement.ref_module.startswith(ua.THEIR_GEN) else "-other"
+        per[module][kind] += 1
+    out = set()
+    for module, kinds in per.items():
+        total = sum(kinds.values())
+        from_gen = kinds["import-gen"] + kinds["import-as-gen"]
+        if total >= 20 and from_gen / total >= 0.9 and not (kinds["class"] or kinds["function"]):
+            out.add(module)
+    return frozenset(out)
+
+
 def write_modules(
-    rows: list[dict], out: Path, version: str, restored: frozenset[Path] | None = None
+    rows: list[dict],
+    out: Path,
+    version: str,
+    restored: frozenset[Path] | None = None,
+    delegating: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, tuple[int, int]], dict[str, str]]:
     """One module per upstream module the demand names, with its names and its refusals.
 
@@ -1220,7 +1650,7 @@ def write_modules(
         target = (
             out / "_adapter.py" if not rest else out.joinpath(*rest.split(".")).with_suffix(".py")
         )
-        held = owner(target, restored)
+        held = owner(module, target, restored)
         if held is not None:
             refused_paths[module] = f"{target.name}: {held}"
             continue
@@ -1230,7 +1660,16 @@ def write_modules(
         refused: dict[str, str] = {}
         for row in sorted(group, key=lambda r: r["name"]):
             if row["verdict"] != "BOUND":
-                refused[row["name"]] = row["verdict"]
+                # **THE REASON IS THE RICHEST ONE THE ROW HOLDS, not the verdict alone.**
+                # A verdict names the CLASS of refusal; the sentences below name THIS name's
+                # own obstruction, and the obstruction is what a caller reading an
+                # `AttributeError` needs.  Measured on the name that cost the most:
+                # `GetProductsField` read `DOCUMENT-NO-WORD-NO-IDENTITY`, which says nothing
+                # about the `anyOf` of two enumerations behind it.
+                detail = row.get("flattened_enum") or row.get("stated_refused") or ""
+                refused[row["name"]] = (
+                    f"{row['verdict']}: {detail}" if detail else row["verdict"]
+                )
                 continue
             paths = [
                 tuple(p) if p else tuple(k.rsplit(".", 1))
@@ -1239,10 +1678,24 @@ def write_modules(
             if len(paths) == 1:
                 mod, word = paths[0]
                 statements.append(f"from {mod} import {word} as {row['name']}")
+            elif row.get("method") == "enum":
+                # **AND NEVER FOR AN ENUMERATION**, the second half of the clause below and
+                # the one `adcp-client-python-69mi` is about.  Refused HERE as well as at the
+                # key, because this is the line that wrote the type: a union of arms has
+                # neither `for f in <name>` nor `<name>.MEMBER`, so standing it in for an
+                # enumeration changes the KIND of the name and costs an importing module its
+                # whole package.  Defence in depth and not a duplicate reading -- the key
+                # decides a binding, this decides whether a STATEMENT may be written.
+                refused[row["name"]] = (
+                    "UNION-OF-ARMS-IS-NOT-AN-ENUMERATION: upstream published one "
+                    f"enumeration and the subject is {len(paths)} of ours"
+                )
+                continue
             else:
                 # **A UNION ALIAS IS STILL A NAME.**  The arms are imported under private
                 # words and joined, so nothing is declared and every arm is the object the
-                # walk emitted -- `get_args` over the alias returns them by identity.
+                # walk emitted -- `get_args` over the alias returns them by identity.  Only
+                # where upstream published a UNION: see the `enum` arm above.
                 for i, (mod, word) in enumerate(paths):
                     statements.append(f"from {mod} import {word} as _arm{i}_{row['name']}")
                 arms = " | ".join(f"_arm{i}_{row['name']}" for i in range(len(paths)))
@@ -1256,6 +1709,23 @@ def write_modules(
                 if word not in names:
                     statements.append(f"from adcp.types.envelopes import {word} as {word}")
                     names.append(word)
+        # **A MODULE WITH NO NAME TO SERVE IS NOT CREATED, and one that already exists is
+        # still rewritten.**  Both halves measured.  A refusal-only module buys exactly one
+        # thing -- the import that fails says WHY -- and `from <module> import X` fails
+        # either way, so it moves no blocked file: of the 19 of upstream's files this run
+        # unblocked, none was unblocked by one.  What it costs is a module of the surface
+        # that exports nothing, which `tests_emit/test_the_surface_exports_something.py`
+        # calls a defect in its first sentence and reddens on twice; creating four of them
+        # turned 6 of its failures into 14.  So the predicate is "no bound name AND no file
+        # there yet": nothing new is minted, and `registry`, `guards` and
+        # `canonical_creative` -- already on the tree, already red there -- keep being
+        # rewritten, because a path this writer owns going stale is `smzq` all over again.
+        if not names and not target.exists():
+            refused_paths[module] = (
+                f"{target.name}: every one of its {len(refused)} rows is refused, and a "
+                "module of the surface that exports nothing is a defect of its own"
+            )
+            continue
         example = ""
         if names:
             first = sorted(names)[0]
@@ -1279,6 +1749,7 @@ def write_modules(
         body += REFUSAL.format(
             module=module,
             refused="{\n" + "".join(f'    "{k}": "{v}",\n' for k, v in sorted(refused.items())) + "}",
+            delegate=f'"{OUR_NAMESPACE}"' if module in delegating else "None",
         )
         target.write_text(body)
         written[module] = (len(names), len(refused))
@@ -1307,13 +1778,21 @@ def main() -> None:
     #: pointers the emitter wrote into `__adcp_schema__`.  Named rather than assumed: the
     #: unpatched bundle is a different document set and would state different references.
     parser.add_argument("--bundle", type=Path, default=HERE.parent / "schemas/cache/3.2")
+    #: **UPSTREAM'S SUITE IS PART OF THE CORPUS** (:func:`corpus`), and it is named rather
+    #: than assumed: on this branch `tests/` is upstream's own suite byte for byte and
+    #: `tests_emit/` is ours, so the directory that holds the DEMAND is upstream's.
+    parser.add_argument("--suite", type=Path, default=HERE.parent / "tests")
+    #: The oracle for a name upstream BINDS rather than declares, read off their own source
+    #: at the commit the machinery classification pins.  `--no-upstream-source` runs the
+    #: eleven dump-keys alone, which is how the key's own yield is measured.
+    parser.add_argument("--no-upstream-source", action="store_true")
     args = parser.parse_args()
 
     if args.dump_ours:
         dump_ours(args.dump_ours)
         return
     if args.census or args.census_json:
-        c = census(args.src)
+        c = census(args.src, args.suite)
         print_census(c)
         if args.census_json:
             args.census_json.write_text(json.dumps(c, indent=0))
@@ -1324,11 +1803,18 @@ def main() -> None:
 
     from codegen import patch
 
-    c = census(args.src)
+    c = census(args.src, args.suite)
+    oracle = None if args.no_upstream_source else ua.Oracle.at()
+    if oracle is not None:
+        print(
+            f"upstream's own source at {oracle.rev}: "
+            f"{len(oracle.bindings)} module-scope bindings"
+        )
     join = Join(
         json.loads(args.ours.read_text()),
         json.loads(args.upstream.read_text()),
         patch.for_build(args.bundle),
+        oracle,
     )
     owed = demand(c)
     rows = []
@@ -1376,10 +1862,24 @@ def main() -> None:
         print(f"      {i:24} {n:5}")
     private = [r for r in rows if r["verdict"] == "BOUND" and None in (r.get("public") or [1])]
     print(f"  bound to a class our surface DECLARES but does not EXPORT: {len(private)}")
+    stated = [r for r in rows if r.get("stated_by")]
+    print(f"  upstream's own source was read for: {len(stated)} names  "
+          f"({sum(1 for r in stated if r['verdict'] == 'BOUND')} bound, "
+          f"{sum(1 for r in stated if r.get('stated_refused'))} refused with a reason)")
+    for why, n in collections.Counter(
+        (r.get("stated_refused") or "").split(":")[0] for r in stated if r.get("stated_refused")
+    ).most_common(8):
+        print(f"      {n:5}  {why[:92]}")
 
     if args.table:
-        cols = ("module", "name", "verdict", "how", "identity", "document", "word",
-                "their_declaring", "target", "public", "pairs", "note")
+        #: `method` is upstream's own KIND for the name -- `model`, `enum`, `adapter`,
+        #: `none` -- read off their dump and recorded because `adcp-client-python-69mi` is a
+        #: defect of KIND and not of name: a union of arms over the right values is still
+        #: the wrong thing where upstream published an enumeration, and a table with no
+        #: `method` column cannot be asked whether that happened.
+        cols = ("module", "name", "verdict", "how", "identity", "method", "document", "word",
+                "their_declaring", "target", "public", "pairs", "note",
+                "flattened_enum", "stated_by", "stated_terminal", "stated_refused")
         with args.table.open("w") as fh:
             fh.write(f"# survey/adapter_surface.py over upstream adcp {join.version}\n")
             fh.write("\t".join(cols) + "\n")
@@ -1389,7 +1889,11 @@ def main() -> None:
     if args.report:
         args.report.write_text(json.dumps({"version": join.version, "rows": rows}, indent=1))
     if args.write:
-        written, refused_paths = write_modules(rows, args.write, join.version)
+        delegating = namespaces(oracle)
+        print(f"  modules upstream publishes as a NAMESPACE, measured: {sorted(delegating)}")
+        written, refused_paths = write_modules(
+            rows, args.write, join.version, delegating=delegating
+        )
         for module, n in sorted(written.items()):
             print(f"  wrote {module:34} {n[0]:5} names, {n[1]:4} refused")
         for module, why in sorted(refused_paths.items()):

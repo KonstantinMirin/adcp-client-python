@@ -88,8 +88,11 @@ from adcp.types.core import PricingOption as PricingOption
 from adcp.types.core import PropertyID as PropertyId
 from adcp.types.core import PropertyTag as PropertyTag
 from adcp.types.core import PublisherPropertySelectorAll as PublisherPropertiesAll
+from adcp.types.core import PublisherPropertySelectorAll as _arm0_PublisherProperties
 from adcp.types.core import PublisherPropertySelectorById as PublisherPropertiesById
+from adcp.types.core import PublisherPropertySelectorById as _arm1_PublisherProperties
 from adcp.types.core import PublisherPropertySelectorByTag as PublisherPropertiesByTag
+from adcp.types.core import PublisherPropertySelectorByTag as _arm2_PublisherProperties
 from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByBuyerRefRequest
 from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByCreativeRequest
 from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryByMediaBuyRequest
@@ -104,6 +107,10 @@ from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesR
 from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesSubmittedResponse
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
+from adcp.types.media_buy import CreateMediaBuyError as CreateMediaBuyErrorResponse
+from adcp.types.media_buy import GetProductsRequest as GetProductsBriefRequest
+from adcp.types.media_buy import GetProductsRequest as GetProductsRefineRequest
+from adcp.types.media_buy import GetProductsRequest as GetProductsWholesaleRequest
 from adcp.types.media_buy import LogEventError as LogEventErrorResponse
 from adcp.types.media_buy import LogEventSuccess as LogEventResponse1
 from adcp.types.media_buy import LogEventSuccess as LogEventSuccessResponse
@@ -123,6 +130,8 @@ from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsSuccessRespo
 from adcp.types.media_buy import SyncEventSourcesError as SyncEventSourcesErrorResponse
 from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesResponse1
 from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesSuccessResponse
+from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyPackagesRequest
+from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyPropertiesRequest
 from adcp.types.signals import ActivateSignalError as ActivateSignalErrorResponse
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalResponse1
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalSuccessResponse
@@ -130,6 +139,8 @@ from adcp.types.signals import GetSignalsRequest as GetSignalsDiscoveryRequest
 from adcp.types.signals import GetSignalsRequest as GetSignalsLookupRequest
 from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendActionResponseRequest
 from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendTextMessageRequest
+
+PublisherProperties = _arm0_PublisherProperties | _arm1_PublisherProperties | _arm2_PublisherProperties
 
 __all__ = [
     "AccountReferenceById",
@@ -152,6 +163,7 @@ __all__ = [
     "CreateContentStandardsErrorResponse",
     "CreateContentStandardsResponse1",
     "CreateContentStandardsSuccessResponse",
+    "CreateMediaBuyErrorResponse",
     "Deployment",
     "Destination",
     "GetAccountFinancialsErrorResponse",
@@ -172,6 +184,9 @@ __all__ = [
     "GetMediaBuyArtifactsErrorResponse",
     "GetMediaBuyArtifactsResponse1",
     "GetMediaBuyArtifactsSuccessResponse",
+    "GetProductsBriefRequest",
+    "GetProductsRefineRequest",
+    "GetProductsWholesaleRequest",
     "GetRightsErrorResponse",
     "GetRightsResponse1",
     "GetRightsSuccessResponse",
@@ -195,6 +210,7 @@ __all__ = [
     "ProvidePerformanceFeedbackErrorResponse",
     "ProvidePerformanceFeedbackResponse1",
     "ProvidePerformanceFeedbackSuccessResponse",
+    "PublisherProperties",
     "PublisherPropertiesAll",
     "PublisherPropertiesById",
     "PublisherPropertiesByTag",
@@ -223,6 +239,8 @@ __all__ = [
     "UpdateContentStandardsErrorResponse",
     "UpdateContentStandardsResponse1",
     "UpdateContentStandardsSuccessResponse",
+    "UpdateMediaBuyPackagesRequest",
+    "UpdateMediaBuyPropertiesRequest",
     "UrlPreviewRender",
     "ValidateContentDeliveryErrorResponse",
     "ValidateContentDeliveryResponse1",
@@ -236,34 +254,62 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "AuthorizedAgent": "NO-DOCUMENT-NO-SUBJECT",
-    "AuthorizedAgentsByInlineProperties": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsByPropertyId": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsByPropertyTag": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "GetProductsBriefRequest": "NO-DOCUMENT-NO-SUBJECT",
-    "GetProductsRefineRequest": "NO-DOCUMENT-NO-SUBJECT",
-    "GetProductsWholesaleRequest": "NO-DOCUMENT-NO-SUBJECT",
-    "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PublisherProperties": "NO-DOCUMENT-NO-SUBJECT",
-    "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "SyncCatalogResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "SyncCreativeResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "UpdateMediaBuyPackagesRequest": "NO-DOCUMENT-NO-SUBJECT",
-    "UpdateMediaBuyPropertiesRequest": "NO-DOCUMENT-NO-SUBJECT",
-    "UrlDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "UrlVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgent": "NO-DOCUMENT-NO-SUBJECT: arm 'AuthorizedAgentsByPropertyId' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByInlineProperties": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents3, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPropertyId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPropertyTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents4, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents6, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: their CreateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
+    "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.get_creative_delivery_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.DaastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.VastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_audiences_request.Audience, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "SyncCatalogResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_catalogs_response.Catalog, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "SyncCreativeResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.sync_creatives_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UrlDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.DaastAsset1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UrlVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.VastAsset1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
 }
+
+#: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where
+#: upstream's module is not one.  Measured off their own source and never listed: of every
+#: module in their hand-written type layer, exactly two bind nothing but plain re-exports of
+#: their generated tree and declare no class or function of their own -- `_generated`
+#: (2,981 bindings, 2,969 of them straight out of `adcp.types.domains`) and `error_details`
+#: (98 and 96).  A module whose whole content is "every generated name" owes every generated
+#: name, and a census over module-SCOPE imports cannot measure that: `adcp/server/mcp_tools`
+#: reaches into it with `getattr`, so the demand showed 30 names and the suite then stopped
+#: on `_generated.ValidateInputRequest` with every one of the 30 present.
+__adcp_delegates_to__ = None
 
 
 def __getattr__(name: str) -> object:
     why = __adcp_refused__.get(name)
-    if why is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    raise AttributeError(
-        f"{__name__}.{name} is upstream's and has no subject in the pinned bundle: {why}. "
-        f"See docs/migration-from-upstream.md"
-    )
+    if why is not None:
+        raise AttributeError(
+            f"{__name__}.{name} is upstream's and has no subject in the pinned bundle: "
+            f"{why}. See docs/migration-from-upstream.md"
+        )
+    # **DELEGATION IS A NAME AND NOT A SECOND ANSWER.**  The namespace reached here is OUR
+    # own flat surface, whose names one lane already decided; this adds no decision of its
+    # own, declares nothing, and is lazy -- so a module of 3,477 names costs nothing at
+    # import.  The refusal table is read FIRST, because a verdict about this name at this
+    # module outranks the namespace's answer to the same word.
+    if __adcp_delegates_to__ is not None:
+        import importlib
+
+        held = importlib.import_module(__adcp_delegates_to__)
+        try:
+            return getattr(held, name)
+        except AttributeError:
+            pass
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    if __adcp_delegates_to__ is None:
+        return sorted(__all__)
+    import importlib
+
+    return sorted(set(__all__) | set(dir(importlib.import_module(__adcp_delegates_to__))))

@@ -42,14 +42,61 @@ __all__ = [
 __adcp_refused__ = {
     "is_adcp_error": "NO-DOCUMENT-NO-SUBJECT",
     "is_adcp_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_build_creative_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_build_creative_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_build_creative_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_create_media_buy_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_create_media_buy_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_create_media_buy_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_catalogs_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_catalogs_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_catalogs_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_creatives_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_creatives_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_sync_creatives_success": "NO-DOCUMENT-NO-SUBJECT",
+    "is_update_media_buy_error": "NO-DOCUMENT-NO-SUBJECT",
+    "is_update_media_buy_submitted": "NO-DOCUMENT-NO-SUBJECT",
+    "is_update_media_buy_success": "NO-DOCUMENT-NO-SUBJECT",
 }
+
+#: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where
+#: upstream's module is not one.  Measured off their own source and never listed: of every
+#: module in their hand-written type layer, exactly two bind nothing but plain re-exports of
+#: their generated tree and declare no class or function of their own -- `_generated`
+#: (2,981 bindings, 2,969 of them straight out of `adcp.types.domains`) and `error_details`
+#: (98 and 96).  A module whose whole content is "every generated name" owes every generated
+#: name, and a census over module-SCOPE imports cannot measure that: `adcp/server/mcp_tools`
+#: reaches into it with `getattr`, so the demand showed 30 names and the suite then stopped
+#: on `_generated.ValidateInputRequest` with every one of the 30 present.
+__adcp_delegates_to__ = None
 
 
 def __getattr__(name: str) -> object:
     why = __adcp_refused__.get(name)
-    if why is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    raise AttributeError(
-        f"{__name__}.{name} is upstream's and has no subject in the pinned bundle: {why}. "
-        f"See docs/migration-from-upstream.md"
-    )
+    if why is not None:
+        raise AttributeError(
+            f"{__name__}.{name} is upstream's and has no subject in the pinned bundle: "
+            f"{why}. See docs/migration-from-upstream.md"
+        )
+    # **DELEGATION IS A NAME AND NOT A SECOND ANSWER.**  The namespace reached here is OUR
+    # own flat surface, whose names one lane already decided; this adds no decision of its
+    # own, declares nothing, and is lazy -- so a module of 3,477 names costs nothing at
+    # import.  The refusal table is read FIRST, because a verdict about this name at this
+    # module outranks the namespace's answer to the same word.
+    if __adcp_delegates_to__ is not None:
+        import importlib
+
+        held = importlib.import_module(__adcp_delegates_to__)
+        try:
+            return getattr(held, name)
+        except AttributeError:
+            pass
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    if __adcp_delegates_to__ is None:
+        return sorted(__all__)
+    import importlib
+
+    return sorted(set(__all__) | set(dir(importlib.import_module(__adcp_delegates_to__))))
