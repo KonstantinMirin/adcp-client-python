@@ -170,8 +170,8 @@ from typing import Any
 
 from codegen import bundle, compiler, intersect, ir, keywords
 from codegen.keywords import Position
-from codegen.lower import approximate, composition, names, objects
-from codegen.refusal import Kind, Refusal
+from codegen.lower import approximate, composition, enum, names, objects
+from codegen.refusal import BuildFailure, Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import parse as schema
 
@@ -2502,6 +2502,184 @@ def composes_its_siblings(node: nodes.Union) -> bool:
     return bool(frozenset(node.declares) & carried_by_a_class(node))
 
 
+#: What an arm may state and still be one the VALUE-SET reading of a bare combinator
+#: reaches: its own members, and the ``type`` word those members already satisfy.
+#:
+#: **``type`` IS IN THE SET, and leaving it out is how a census comes to exclude its own
+#: subject** (``adcp-client-python-69mi``, the row's own third instance of that failure).
+#: A purity predicate spelled ``{enum, description, title, $schema}`` returned ZERO sites
+#: over this bundle -- including the site it was written to measure, whose two arms state
+#: ``{enum, type}`` -- and a predicate that cannot match its subject reports ABSENCE,
+#: which reads as a finished answer.  So the set is read against the arms it claims and
+#: the measurement is quoted beside it.
+#:
+#: An arm stating anything FURTHER is not reached, and the reason is one sentence: the
+#: flattening below is sound because an arm's accepted set is exactly the members it
+#: names, and every other keyword a schema position admits makes that false or makes it
+#: unreadable here.  A ``pattern``, a ``minLength`` or a ``format`` NARROWS the members to
+#: those satisfying it -- which may still be all of them, but "may" is not a derivation
+#: and the arm's own ``enum`` row is where that intersection is decided (:attr:`
+#: nodes.Enumeration.facts`).  A ``not`` or an ``allOf`` is a second schema this reading
+#: does not open.  A ``const`` is draft-07's one-member value set (``bundle.named_values``
+#: reads it as one) and WOULD be sound, and it is left out because the bundle states no
+#: such arm: a rule reaching a shape no document writes is a rule nothing grades.  An
+#: ANNOTATION is not admitted either -- it constrains nothing, so admitting it would keep
+#: the flattening sound and would DROP the annotation, and §3 drops no keyword silently.
+_PURE_VALUE_SET = frozenset({"enum", "type"})
+
+
+def value_set(raw: Any, mod: compiler.Module) -> tuple[str | None, tuple[Any, ...]] | None:
+    """One arm's ``(type word, members)`` where the arm is a PURE value set, else ``None``.
+
+    "Pure" is the whole of :func:`one_value_set`'s soundness and is defined here: the arm
+    admits an instance exactly when that instance is one of the members it names.  Read
+    off the DECLARATION rather than off the parsed node, because that is what the question
+    is about -- :data:`_PURE_VALUE_SET` is a statement about which keys the document wrote
+    at the arm, and §2's intersection rule reads a declaration for the same reason.
+
+    **A BARE ``$ref`` ARM IS READ THROUGH, and the row refutes the ruling that said it
+    must not be** (``adcp-client-python-69mi``, 2026-11-10).  The ruling measured
+    ``bundled/media-buy/get-products-request.json`` and reported "anyOf of TWO INLINE
+    enums, no $ref" -- true of the BUNDLED copy, which no run compiles.  The portable
+    document the walk actually reads states arm 0 as
+    ``{"$ref": ".../media-buy/product-fields.json#/items"}``, so a predicate admitting
+    inline arms alone matches NOTHING in the population that matters and the rule would
+    have been written already dead.  Measured both ways below.
+
+    :func:`codegen.intersect.dereferenced` is the reading and :meth:`
+    compiler.Module.resolve_node` is the one reader of a target's SCHEMA rather than its
+    symbol.  Its contract is exactly what this needs and says so: "for the PREDICATE and
+    never for the field ... whether one declaration narrows another is a fact about the
+    two TARGETS".  An arm's accepted set is a fact about its target too, and nothing of
+    the target reaches a FIELD here -- what is declared is this node's own type over the
+    merged member list, which is neither arm's.  So P2 is untouched: there is no class to
+    copy, an enumeration is :attr:`compiler.TargetKind.ANNOTATION`, and the subject
+    declared is one the target does not have (53 members against the target's 38).
+
+    **A ``$ref`` beside a sibling does not dereference**, which is
+    :func:`intersect.dereferenced`'s own gate: draft-07 ignores a ``$ref``'s siblings and
+    the pipeline refuses that co-occurrence by name rather than reading it two ways.  Nor
+    does a ``$ref`` chain: a target that is itself a reference states ``$ref``, which is
+    not in :data:`_PURE_VALUE_SET`, so the read-through terminates after one hop by the
+    purity test and not by a depth counter.  And where :attr:`
+    compiler.Module.referenced` has no entry -- a document lowered outside a run, a
+    target the run refused -- the answer is ``None`` and the arms lower as arms, which is
+    the refusing default :attr:`compiler.Module.targets` and §3a's catalogue tables
+    already have: §9 forbids a reading of the run, and a walk with no table minted
+    nothing to invent.
+    """
+    if not isinstance(raw, Mapping):
+        return None
+    stated = intersect.dereferenced(dict(raw), mod.resolve_node)
+    if not isinstance(stated, Mapping) or not set(stated) <= _PURE_VALUE_SET:
+        return None
+    # ``bundle.named_values`` is the SCREEN and not the reading: it is draft-07's own
+    # "scalars only, and a list with one non-scalar member contributes NOTHING rather
+    # than its scalar part", which is exactly the gate a member list has to pass to be a
+    # value set at all.  The ORDER is then taken from the list, because the union below
+    # is emitted in document order and a ``frozenset`` has none.
+    if bundle.named_values(stated) is None:
+        return None
+    word = stated.get("type")
+    if word is not None and not isinstance(word, str):
+        return None
+    return word, tuple(stated["enum"])
+
+
+def one_value_set(node: nodes.Union, mod: compiler.Module) -> dict[str, Any] | None:
+    """The ONE enumeration declaration a union of pure value sets IS, or ``None``.
+
+    **A BARE ``oneOf``/``anyOf`` DECLARES WHAT ITS BRANCHES AGREE ON**, which is
+    ``docs/plan/rebuild-plan.md``'s own sentence and the general rule this is an instance
+    of: "Draft-07 admits an instance only through a branch, so a union every branch of
+    which declares an object has declared an object as surely as ``type: object`` does --
+    the same entailment the keyword reading already makes for ``contains`` implying an
+    array."  Read for a VALUE SET instead of a container it says: a union every arm of
+    which admits exactly the members it names admits exactly the members ANY of them
+    names, so the node's accepted set is the UNION of the arms' member lists -- and an
+    ``enum`` of that union is the same accepted set written once.  Nothing is widened and
+    nothing is narrowed; the two declarations are equivalent, so this owes no
+    approximation and no rung.
+
+    **IT IS A RULE AND NOT A SITE.**  The gate reads the node's own declaration and its
+    arms' declarations and nothing else -- no document path, no pointer, no member value
+    -- which is what makes it survive a bundle bump: a document that starts or stops
+    stating such a union is answered by the same sentence.  Measured over
+    ``schemas/cache/3.2`` the population is **ONE**: the ``anyOf`` at
+    ``media-buy/get-products-request.json#/properties/fields/items``, whose arms are a
+    bare ``$ref`` to ``media-buy/product-fields.json#/items`` (38 members) and an inline
+    ``enum`` (17), overlapping on ``media_buy_support`` and ``overlay_support`` and
+    unioning to **53**.  So the rule fires once today and nobody should budget it as a
+    family.
+
+    **WHY IT IS ONE ENUMERATION AND NOT ``A | B``, which is the half that costs tests.**
+    Upstream's own generator flattens this node (``domains.media_buy.
+    get_products_request.Field1``, 53 members) and upstream's own kept machinery ITERATES
+    the name our adapter binds to it: ``adcp/decisioning/_get_products_helpers.py``
+    computes ``frozenset(f.value for f in GetProductsField)`` at module scope.  ``A | B``
+    is a ``types.UnionType`` -- not iterable, and carrying no ``.MEMBER`` -- so the
+    arms-union answer takes ``adcp.decisioning`` down at import, and with it 105 files and
+    1,797 test functions.  That is not what makes the flattening correct; the paragraph
+    above is.  It is what makes the correct answer worth reaching for.
+
+    **The gate on the UNION's OWN node is three clauses and each one is the soundness
+    argument, not a taste:**
+
+    * ``len(branches) >= 2`` -- :func:`_arms`'s "a union of one is the branch itself, not
+      a union" is still the right answer for a single arm, and a merge of one declaration
+      would silently become the second spelling of it that refusal exists to refuse.
+    * ``declares == (combinator,)`` and ``applied is None`` -- a sibling beside the
+      combinator is a CONJUNCTION with every arm (§8), and an enclosing ``type`` word is
+      one too (``_base.applied_schema``), so under either the arm's accepted set is
+      narrower than its member list and the premise above fails.  :func:`
+      composes_its_siblings` answers the same question for the siblings a class carries;
+      this is stricter because a merged ``enum`` has nowhere to put any of them.
+    * no ``annotations``, no ``extensions``, no ``faults`` -- an annotation or an ``x-``
+      key at the union's own node would be DROPPED by a merge that keeps only ``enum`` and
+      ``type``, and §3 drops no keyword silently; a node carrying a shape fault is refused
+      by the kind's handler and is not a node to merge.  Population of each over this
+      bundle: 0 at the one site.
+
+    The merged declaration then goes through the PARSER, which is ``schema/nodes.py``'s
+    own rule for exactly this move: §2's intersection rule "hands the merged declaration
+    back to :func:`codegen.schema.parse.parse`", because the result has to be read as ONE
+    node rather than composed out of several decided ones.  So the one reader of a raw
+    mapping reads this one too, at the union's own pointer and position, and the
+    enumeration row answers it with no knowledge that a combinator was ever there.
+    """
+    if len(node.branches) < 2:
+        return None
+    if tuple(node.declares) != (node.combinator,) or node.applied is not None:
+        return None
+    if node.annotations or node.extensions or node.faults:
+        return None
+    words: set[str] = set()
+    silent = False
+    # Keyed on ``(class, value)`` rather than on the value, because draft-07's ``enum``
+    # compares as JSON and Python does not: ``True == 1`` and ``False == 0``, so a dedup
+    # on equality alone would collapse two members a document states as distinct.
+    members: dict[tuple[type, Any], Any] = {}
+    for raw in node.branch_raw:
+        arm = value_set(raw, mod)
+        if arm is None:
+            return None
+        word, stated = arm
+        words.add(word) if word is not None else None
+        silent = silent or word is None
+        for member in stated:
+            members.setdefault((type(member), member), member)
+    if len(words) > 1 or (words and silent):
+        # Two different words is no word at all, and a word on SOME arms only cannot be
+        # restated on the merge: it would assert about the silent arm's members a type
+        # their own arm never asserted.  Either way the arms are not one value set this
+        # reading can spell, so they stay arms.
+        return None
+    declaration: dict[str, Any] = {"enum": list(members.values())}
+    if words:
+        declaration["type"] = next(iter(words))
+    return declaration
+
+
 def lower(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     """§4's union row, at the node's own POSITION: a base plus one class per branch at a
     document ROOT, and one ``A | B`` type below it.
@@ -2510,6 +2688,16 @@ def lower(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     ANSWER and not which row answers.  ``node.position`` is the field that says which --
     the UNION knows its own position, which is also the fact §6 makes it TELL its enum
     branches rather than have them read a pointer.
+
+    **A UNION OF PURE VALUE SETS IS AN ENUMERATION, and that arm is asked FIRST**
+    (:func:`one_value_set`).  It is asked before the position dispatch because it is
+    asked of the node's DECLARATION, exactly as :func:`composes_its_siblings` is: a node
+    whose arms each admit only the members they name admits only the union of them at
+    ANY pointer, so a root union of value sets and a nested one are one answer and not
+    two.  The ROOT wrapper is then the one every enumeration root already gets
+    (``emit.lower``'s ``ir.AliasDecl`` beside ``__adcp_schema__`` and ``strict_validate``),
+    because what reaches it is an enumeration and nothing records that a combinator
+    produced it.
 
     **A union carrying a SIBLING takes the base-plus-subclasses answer wherever it sits**
     (§8, widened 2026-10-27; :func:`composes_its_siblings`).  The position decides whether
@@ -2526,6 +2714,53 @@ def lower(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     BRANCH.  The sibling screen is :attr:`nodes.Base.declares` at the node's own
     position, which is the parser's classification read by the table.
     """
+    merged = one_value_set(node, mod)
+    if merged is not None:
+        parsed = schema.parse(
+            merged, pointer=node.pointer, position=node.position, source=mod.source
+        )
+        if not isinstance(parsed, nodes.Enumeration):
+            # :func:`one_value_set` builds a declaration whose only keys are ``enum`` and
+            # ``type``, and ``schema.parse``'s arm order selects the enumeration arm on
+            # ``"enum" in raw``.  The two can only disagree if one of them changes -- a
+            # defect in this compiler and not an outcome of any document (§2) -- so it
+            # raises the one exception no layer catches rather than refusing a document,
+            # exactly as ``lower_composition``'s conjunct screen does.
+            raise BuildFailure(
+                f"{node.pointer}: a merged value set whose keys are "
+                f"{sorted(merged)} parsed as {type(parsed).__name__}, so "
+                "union.one_value_set and schema.parse's arm order disagree about what "
+                "an enum node is"
+            )
+        decided = enum.lower(parsed, mod)
+        if isinstance(decided, Refusal):
+            return decided
+        # **THE MERGE DECIDES THIS NODE'S TYPE AND DOES NOT UNMAKE ITS BRANCHES**, which is
+        # §1's own export set read strictly: "every document ROOT, every union BRANCH and
+        # every D2 type ALIAS", plus reading 6's inner nodes.  A branch is a node the
+        # document STATES, at a pointer of its own, and it carries its own
+        # ``__adcp_schema__`` and therefore its own graded pair -- none of which the
+        # flattening above touches.  What the flattening replaces is the ``A | B`` this
+        # node's TYPE used to be, and nothing else, so the walk decides the branches here
+        # exactly as :func:`nested` does and the result is DISCARDED: the type is the
+        # merged enumeration's.
+        #
+        # **MEASURED, AND IT IS WHAT DECIDES THE DESIGN RATHER THAN DECORATING IT.**
+        # Upstream published BOTH words for this one site -- ``Fields`` (17, the inline
+        # branch) and ``Field1`` (53, the flattened items node) -- and their kept machinery
+        # imports both at MODULE SCOPE: ``adcp/decisioning/_get_products_helpers.py`` line
+        # 40 is ``from adcp.types.domains.media_buy.get_products_request import Fields as
+        # _RequestOnlyField`` beside line 66's iteration of ``GetProductsField``.  So a
+        # flattening that stopped declaring the branch would trade one ``ImportError`` for
+        # another and the 105 files it is meant to collect would stay hidden
+        # (``adcp-client-python-69mi``, measured 2026-11-10 against the 9.6.1 wheel; the
+        # row expected the branch class to GO and upstream's own import refutes that).
+        # ``codegen/structure.py``'s join is structural, so each word lands on the
+        # declaration whose value list it names and neither is spelled here.
+        branches = _arms(node, mod, the_union_is_named=True)
+        if isinstance(branches, Refusal):
+            return branches
+        return decided
     if node.position is Position.ROOT or composes_its_siblings(node):
         base = lower_union(node, mod)
         if isinstance(base, Refusal):
@@ -2736,7 +2971,9 @@ def _undetermined(node: nodes.Union, mod: compiler.Module) -> None:
     )
 
 
-def _arms(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
+def _arms(
+    node: nodes.Union, mod: compiler.Module, *, the_union_is_named: bool = False
+) -> ir.Decided | Refusal:
     """The ``A | B`` itself, with no sibling screen: the two callers differ in that alone.
 
     :func:`nested` screens the node's siblings and :func:`_alias` does not, because a
@@ -2744,6 +2981,22 @@ def _arms(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     is chosen -- and the root's ``type`` has gone INTO every branch rather than having
     nowhere to go, which is what that screen is about.  One reading of the arms for both,
     so the two positions cannot come to disagree about one branch list.
+
+    **``the_union_is_named`` IS §4's FOURTH RUNG BECOMING REACHABLE, and the UNION is what
+    knows it** (§6: a child never reconstructs its parent).  :attr:`names.Branch.index`
+    carries the whole of the difference between the two positions a branch is named at --
+    "a NESTED union is a TYPE, and a branch that lowers to an annotation needs no name at
+    all ... the branch falls back to the union's own derived name" -- and that fallback has
+    one precondition the field's docstring leaves implicit: the union's own derived name
+    must be FREE.  :func:`one_value_set` declares AT the union's own pointer, so the name is
+    taken, and a branch falling back to it is the second node in the document deriving one
+    class name -- which §4's collision rule refuses by name rather than picking
+    (measured: ``media-buy/get-products-request.json`` refused on ``title`` at
+    ``/properties/fields/items/anyOf/1``, "two nodes in this document derive the class name
+    'GetProductsRequestFieldsItem'").  So the caller that took the name says so, and the
+    rung §4 provides for exactly this -- the branch's index among its union's branches --
+    is the one that applies.  It is a FIELD the union hands down and never a reading of the
+    pointer, which is :attr:`names.Branch.index`'s own rule.
     """
     kw, pointer = node.combinator, node.pointer
     if len(node.branches) < 2:  # a union of one is not a union
@@ -2771,9 +3024,18 @@ def _arms(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
         # the index here would put ``Branch<i>`` into an ancestor segment of every class
         # the branch declares BELOW it, which §4's nested rule is the whole argument
         # against.
+        #
+        # **UNLESS THE UNION ITSELF TOOK THAT NAME**, which is ``the_union_is_named`` and
+        # the docstring above carries the whole of the reason: the fallback needs the
+        # union's own derived name to be free, and :func:`one_value_set` declares at the
+        # union's own pointer.  The index is then the rung §4 provides for a branch with no
+        # other identity, and the ancestor-segment objection does not arise at the one
+        # shape that reaches this: every branch of a merged value set is an enumeration or
+        # a bare ``$ref``, so no branch declares anything BELOW it for a segment to reach.
         mod.hops[at] = replace(
             _naming_facts(branch, branch.get("properties")),
             parent=pointer,
+            **({"index": i} if the_union_is_named else {}),
         )
         # A NESTED union's branch is NOT ``objectish``: §4 makes a branch of a ROOT union
         # a class whatever it states, and a nested union's branch is a member TYPE, so a
