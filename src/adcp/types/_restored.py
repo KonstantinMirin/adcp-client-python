@@ -34,6 +34,22 @@ package's own docstring gives: nothing may import the generated tree while
 ``adcp/types/__init__.py``'s body runs.  Measured and not assumed -- none of the six
 imports ``adcp.types`` at all, so consulting this module costs no generated import even
 when it answers.
+
+**TWO PREDICATES, AND THEY ARE NOT THE SAME ONE.**  :data:`MODULES` is PROVENANCE -- are
+these upstream's bytes, answered by byte identity against upstream's commit -- and what
+this surface OFFERS is SUBJECT: does the word already name a document's own class
+somewhere a consumer reaches.  The two agreed for nine modules and separated on the tenth:
+``canonical_creative`` is restored and 30 of its 42 names are OUR document classes
+subclassed, so deriving the offer from ``restored`` alone put a second spelling of thirty
+subjects onto one namespace.  :func:`_surface` answers the subject question by asking the
+layers that own subjects -- a word ``compat`` or ``_adapter`` binds is not offered here.
+
+**AND IT IS THE WORD AND NOT THE VALUE.**  Screening on the value instead (``no
+__adcp_schema__``) was tried and measured: it drops ``MediaBuyPackage``, which is upstream's
+canonical word for ``get-media-buys-response.json``'s ``Package`` and which no earlier
+layer binds -- so the screen withheld the only path to it and the kept-machinery gate lost
+a resolving pair.  A document-backed name is a second spelling only where the first one
+exists.
 """
 
 from __future__ import annotations
@@ -104,15 +120,20 @@ def offered(module: types.ModuleType) -> dict[str, object]:
     """
     advertised = getattr(module, "__all__", None)
     if advertised is not None:
-        return {name: getattr(module, name) for name in advertised if hasattr(module, name)}
-    out: dict[str, object] = {}
-    for name, value in vars(module).items():
-        if name.startswith("_") or isinstance(value, types.ModuleType):
-            continue
-        home = getattr(value, "__module__", None)
-        if home is None or home == module.__name__:
-            out[name] = value
-    return out
+        held = {name: getattr(module, name) for name in advertised if hasattr(module, name)}
+    else:
+        held = {}
+        for name, value in vars(module).items():
+            if name.startswith("_") or isinstance(value, types.ModuleType):
+                continue
+            home = getattr(value, "__module__", None)
+            if home is None or home == module.__name__:
+                held[name] = value
+    # A name no ``import`` statement could spell is not a name this surface can offer.
+    # Measured: the ``base`` restore put ``AdCPRootModel[Any]`` into ``__all__``, which
+    # ``adcp.types.__dir__`` then advertised -- a parametrized generic is a key in that
+    # module's namespace and is not an identifier.
+    return {name: value for name, value in held.items() if name.isidentifier()}
 
 
 def _surface() -> dict[str, object]:
@@ -122,11 +143,29 @@ def _surface() -> dict[str, object]:
     the sense that a collision has to resolve somehow: measured over the six, there is
     none, and ``tests_emit/test_the_restored_flat_surface.py`` asserts that rather than
     leaving the order to carry the weight.
+
+    **AND A WORD AN EARLIER LAYER DECIDES IS NOT OFFERED HERE, which is this module's own
+    precedence said in its ``__all__`` and not only in its lookup.**  This surface is
+    consulted LAST, so such a word was never going to resolve here -- but advertising it
+    made ``__all__`` a promise the module does not keep, and ``adcp.types.__dir__`` unions
+    all four lists.  ``canonical_creative.Format`` is the measured case and it is the trap
+    this epic fell into twice: upstream's hand-written canonical ``Format`` carries no
+    ``__adcp_schema__``, so :func:`has_a_document` passes the VALUE, while the WORD
+    ``Format`` is ``core/format.json``'s and the alias table binds it to the document's
+    class.  Two subjects, one word, and the one that wins is the document's.
+
+    No import is added by this: ``adcp.types.__getattr__`` consults ``compat`` and
+    ``_adapter`` BEFORE this module, so both are in ``sys.modules`` whenever this function
+    runs and ``import_module`` on a loaded module is a dict lookup.
     """
     found: dict[str, object] = {}
     for module in MODULES:
         for name, value in offered(importlib.import_module(f"{__package__}.{module}")).items():
             found.setdefault(name, value)
+    for module in ("compat", "_adapter"):
+        held = importlib.import_module(f"{__package__}.{module}")
+        for name in (*getattr(held, "__all__", ()), *getattr(held, "__adcp_flat_only__", {})):
+            found.pop(name, None)
     return found
 
 
