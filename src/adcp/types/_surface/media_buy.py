@@ -385,7 +385,8 @@ from .._schemas.media_buy.get_products_async_response_submitted import GetProduc
 from .._schemas.media_buy.get_products_async_response_working import GetProductsWorking as GetProductsWorking
 from .._schemas.media_buy.get_products_rejected import GetProductsRejected as GetProductsRejected
 from .._schemas.media_buy.get_products_request import BuyingMode as GetProductsRequestBuyingMode
-from .._schemas.media_buy.get_products_request import FieldsItem as FieldsItem
+from .._schemas.media_buy.get_products_request import FieldsItem as GetProductsRequestFieldsItem
+from .._schemas.media_buy.get_products_request import FieldsItemBranch1 as FieldsItemBranch1
 from .._schemas.media_buy.get_products_request import GetProductsRequest as GetProductsRequest
 from .._schemas.media_buy.get_products_request import ObjScopeAsk as ObjScopeAsk
 from .._schemas.media_buy.get_products_request import ObjScopeProductIdActionAsk as ObjScopeProductIdActionAsk
@@ -902,7 +903,7 @@ __all__ = [
     'FailedLookup',
     'FailedReportingConsumerStatus',
     'FailedReportingReceipt',
-    'FieldsItem',
+    'FieldsItemBranch1',
     'FlightChangeConstraints',
     'FormatOptionRefs',
     'GetMediaBuyDeliveryRequest',
@@ -948,6 +949,7 @@ __all__ = [
     'GetProductsRejected',
     'GetProductsRequest',
     'GetProductsRequestBuyingMode',
+    'GetProductsRequestFieldsItem',
     'GetProductsRequestRefineItemProductAction',
     'GetProductsRequestRefineItemProposalAction',
     'GetProductsRequestTimeBudget',
