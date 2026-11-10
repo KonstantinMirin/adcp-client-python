@@ -200,6 +200,19 @@ THEIR_GEN = "adcp.types.domains"
 #: to no document, so there is no such module for it and it lives here instead, public".
 #: Named here because key 12's target is a symbol of that module and of no other.
 OUR_CONSTRAINTS = "adcp.types.constraints"
+#: **THE CROSS-DOMAIN FLAT SURFACE, which is a public home the per-domain scan cannot see.**
+#: :func:`dump_ours` reads public paths off ``pkgutil.iter_modules(adcp.types)``, which returns
+#: the 23 domain aggregators and skips every ``_``-prefixed child -- so ``codegen/emit.py``'s
+#: own consolidation contributed no ``public`` pair, although every word in its ``__all__`` is
+#: reachable at ``adcp.types.<word>`` through the facade's ``__getattr__``.
+#:
+#: Measured, on the run that needed it: the positional-name ruling (``581b5924f``) withheld
+#: ``GetContentStandardsResponseBranch0`` from ``adcp.types.content_standards``, and that was
+#: the only public home recorded for ``content_standards/get-content-standards-response.json``'s
+#: first branch -- so this writer went on importing a word its own surface no longer carries
+#: and the import raised, taking 14 of ``tests_emit`` with it on one cause.  The DECLARATION
+#: was never withheld: it is published flat, under the word ``GetContentStandardsResponse1``.
+OUR_FLAT = "adcp.types._surface._flat"
 #: ``codegen.bundle.PROJECTIONS`` by ``survey/dropin/_dropin.py``'s own reading: a projection
 #: re-cuts a document's nodes for one transport and is not a document to emit, so their
 #: generator's path for one names a document we DO compile, at its canonical path.
@@ -355,6 +368,27 @@ def dump_ours(out_path: Path) -> None:
                 if key in declarations:
                     declarations[key]["public"].append([mod_name, attr])
 
+    # **AND THE FLAT WORD IS A PUBLIC PATH TOO, recorded at the spelling a consumer writes**
+    # (:data:`OUR_FLAT`).  The module itself is private and its words are not: the facade
+    # resolves every one of them at `adcp.types.<word>`, so the pair recorded is
+    # `("adcp.types", word)` and never the `_surface` path.  Ranked LAST by `Join.public`, so
+    # a declaration a domain publishes keeps its domain spelling and this reaches only the
+    # declarations no domain carries.
+    try:
+        flat = importlib.import_module(OUR_FLAT)
+    except BaseException as exc:  # noqa: BLE001 -- the payload is the report
+        unreadable[OUR_FLAT] = f"{type(exc).__name__}: {exc}"
+    else:
+        for attr in getattr(flat, "__all__", ()):
+            obj = getattr(flat, attr, None)
+            key = (
+                f"{getattr(obj, '__module__', '')}.{getattr(obj, '__qualname__', '')}"
+                if isinstance(obj, type)
+                else by_id.get(id(obj), "")
+            )
+            if key in declarations:
+                declarations[key]["public"].append(["adcp.types", attr])
+
     out_path.write_text(
         json.dumps(
             {
@@ -406,28 +440,42 @@ def module_scope_imports(tree: ast.Module) -> list[ast.ImportFrom]:
 
 
 def upstream_files(prefix: str, rev: str | None = None) -> frozenset[Path]:
-    """The paths under `prefix` where UPSTREAM'S OWN file is sitting right now, byte for byte.
+    """The paths under `prefix` that are UPSTREAM'S FILES -- their path, at their commit.
 
-    `survey/upstream_machinery.restored_paths` takes this reading over the rows of the
-    machinery classification -- the `types/` modules -- and this takes the same reading over
-    an arbitrary prefix of the tree, which is what `tests/` needs: the rev is the
-    classification's own (one pin for the whole project) and the verdict is blob identity,
-    so nothing is listed and a file that stops being upstream's stops being counted.
+    `survey/upstream_machinery.restored_paths` answers a DIFFERENT question over the
+    `types/` modules and answers it by blob identity, because a path in there may hold OUR
+    emitted module under a name upstream also used; that clause is untouched and still
+    governs `src/adcp/types/` in :func:`corpus`.
+
+    **THE VERDICT HERE IS THE PATH AND NOT THE BYTES, and the measurement is why**
+    (`adcp-client-python-2f52`'s first commit).  Blob identity was the reading, and this
+    project repairs upstream's own tests -- 53 files of `tests/` now differ from upstream's
+    at the pin, every one of them by a commit of ours.  Each one dropped out of the corpus,
+    so the demand it makes on this adapter went invisible, so the next run TRUNCATED the
+    name it needs: `adcp.types.legacy.LegacyPreviewCreativeBatchResponse` is asked for at
+    module scope by `tests/test_preview_html.py` and by nothing else in the corpus, the
+    writer dropped it, and two of upstream's test modules then failed to COLLECT -- which is
+    the exact failure this clause's own docstring says the `tests/` widening exists to
+    prevent ("a pair the census cannot see is a collection error the gate reports and the
+    table does not mention").
+
+    An edit of OURS to upstream's test does not make the IMPORT ours: the file is still
+    upstream's test asking upstream's question of this surface, and a repair to its fixtures
+    neither adds nor removes a `from adcp.types import X`.  So the population is the paths
+    upstream has at the pin, and a file upstream does not have -- a test of ours, under
+    `tests_emit/` or added here -- is still outside it.
     """
     rev = rev or um.rows()[0]
     listing = um.git("ls-tree", "-r", rev, "--", prefix)
-    theirs: dict[str, str] = {}
+    root = HERE.parent
+    out = set()
     for line in listing.splitlines():
         meta, _, path = line.partition("\t")
         parts = meta.split()
         if len(parts) == 3 and parts[1] == "blob":
-            theirs[path] = parts[2]
-    root = HERE.parent
-    out = set()
-    for path, name in theirs.items():
-        here = root / path
-        if here.is_file() and um.blob(here.read_bytes()) == name:
-            out.add(here.resolve())
+            here = root / path
+            if here.is_file():
+                out.add(here.resolve())
     return frozenset(out)
 
 
@@ -448,16 +496,19 @@ def corpus(src: Path, suite: Path | None = None) -> list[Path]:
       upstream's (`survey/upstream_machinery.restored_paths`), which self-adjusts as the
       restore lane lands modules and keeps every emitted module of ours out.
     * **`tests/` is upstream's whole suite, and it was not read at all.**  Measured on this
-      tree: all 827 of `tests/**/*.py` are byte-identical to upstream's at the commit the
-      machinery classification pins, 246 of them import `adcp.types*` at module scope, and
-      192 `(module, name)` pairs are asked ONLY from there -- so the largest single block of
+      tree: 246 of `tests/**/*.py` import `adcp.types*` at module scope and 192
+      `(module, name)` pairs are asked ONLY from there -- so the largest single block of
       demand on this adapter was invisible to the instrument that exists to measure it.  And
       that suite is the GRADE: a pair the census cannot see is a collection error the gate
       reports and the table does not mention.
 
     Neither clause reads a module name or a directory name, which is the whole point: the
-    corpus is "upstream's own code, as upstream's own objects name it", so a tree where
-    `tests/` becomes ours shrinks this set with nothing edited here.
+    corpus is "upstream's own code, as upstream's own objects name it".  The two clauses ask
+    provenance in the two different ways their two questions need, and
+    :func:`upstream_files`' own docstring is the measurement that separated them: under
+    `types/` a path may hold OUR emitted module, so the test is the BYTES; under `tests/`
+    every path is upstream's test file, and this project's own repairs to 53 of them were
+    silently deleting the demand those files make.
     """
     pkg = src / "adcp"
     inside_types = pkg / "types"
@@ -986,10 +1037,23 @@ class Join:
         return self._scalars.get(doc, {})
 
     def public(self, key: str) -> list[str] | None:
+        """The public path to prefer for a declaration, or ``None`` where only a private one is.
+
+        **A DOMAIN SPELLING BEATS THE FLAT ONE, which is the ordering and not the length.**
+        ``adcp.types`` is the shortest module name on the surface, so the plain
+        ``(len, name, word)`` sort made the flat word win for every declaration a domain also
+        publishes -- which is the one answer this project has never given: the supported path
+        for a declaration the bundle states is its DOMAIN's, and ``adcp.types.<word>`` is
+        reading 10's compatibility spelling.  So the flat pair (:data:`OUR_FLAT`, recorded at
+        ``adcp.types``) sorts last and reaches only the declarations no domain carries --
+        ``content_standards/get-content-standards-response.json``'s first branch is the
+        measured one, withheld from its domain by the positional-name ruling and still
+        published flat.
+        """
         paths = self.ours["declarations"][key]["public"]
         if not paths:
             return None
-        return sorted(paths, key=lambda p: (len(p[0]), p[0], p[1]))[0]
+        return sorted(paths, key=lambda p: (p[0] == "adcp.types", len(p[0]), p[0], p[1]))[0]
 
     # -- the ordinal key, family by family and never row by row
     def ordinal(self, doc: str, stem: str, n: int) -> tuple[str | None, str]:

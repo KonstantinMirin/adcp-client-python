@@ -35,6 +35,8 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
+from adcp.types import GetContentStandardsResponse1 as GetContentStandardsResponse1
+from adcp.types import GetContentStandardsResponse1 as GetContentStandardsSuccessResponse
 from adcp.types.account import GetAccountFinancialsError as GetAccountFinancialsErrorResponse
 from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsResponse1
 from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsSuccessResponse
@@ -65,8 +67,6 @@ from adcp.types.content_standards import CalibrateContentResponseVerdict as Cali
 from adcp.types.content_standards import CreateContentStandardsResponseErrors as CreateContentStandardsErrorResponse
 from adcp.types.content_standards import CreateContentStandardsResponseStandardsId as CreateContentStandardsResponse1
 from adcp.types.content_standards import CreateContentStandardsResponseStandardsId as CreateContentStandardsSuccessResponse
-from adcp.types.content_standards import GetContentStandardsResponseBranch0 as GetContentStandardsResponse1
-from adcp.types.content_standards import GetContentStandardsResponseBranch0 as GetContentStandardsSuccessResponse
 from adcp.types.content_standards import GetContentStandardsResponseErrors as GetContentStandardsErrorResponse
 from adcp.types.content_standards import GetMediaBuyArtifactsResponseArtifactsMediaBuyId as GetMediaBuyArtifactsResponse1
 from adcp.types.content_standards import GetMediaBuyArtifactsResponseArtifactsMediaBuyId as GetMediaBuyArtifactsSuccessResponse
