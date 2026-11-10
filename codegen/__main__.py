@@ -177,9 +177,17 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
     #: absent** -- which is graded rather than silent: such a pair gets no witness, says so
     #: in ``PairReport.witness_absent``, and falls through to the store exactly as a pair
     #: whose pointer the record does not hold does.
+    #: **THE RECORDS THE PAIRING NAMES, AND NOT THE WHOLE BUNDLE'S.**  ``known`` stays the
+    #: full portable set because that is what resolves a cross-document reference, but a
+    #: record is BUILT only for a document some pair of this run names -- which is the
+    #: whole bundle on a whole-bundle run and one document on a one-document run.  Measured
+    #: before this line said ``sorted(known)``: a single-document run cost 1 m 20 s of
+    #: which the emit was 10.9 s, because it built 1,059 records and walked them for a
+    #: pairing of one.  ``Construction.__init__`` copies the mapping eagerly, so the
+    #: shrinking has to happen here rather than behind a lazy mapping.
     known = set(bundle.portable(bundle_dir))
     records = {}
-    for document in sorted(known):
+    for document in sorted({p.ref.document for p in found}):
         record = bundle.record(bundle_dir, document, known)
         if isinstance(record, dict):
             records[document] = record
