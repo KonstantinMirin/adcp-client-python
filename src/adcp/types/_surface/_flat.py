@@ -16,10 +16,919 @@ upstream appears here with nothing edited.  A word more than one domain publishe
 DECLINED rather than resolved to a winner and is named in ``__adcp_ambiguous__``:
 a flat namespace has one slot for the word, the domains have two classes, and
 picking one would hand a consumer a class whose document they did not name.
+
+**AND READING 10's ALIAS WORDS ARE HERE BESIDE THEM**: upstream's own published
+spelling of a class of ours, which the private module already states as an
+``X = <symbol>`` and which no domain aggregator carries -- the class has its one
+domain path under its own word, and a second would be the path reading 6 forbids.
+This is the ONE namespace a flat import resolves at, so it is the one place such a
+spelling belongs.  A word the surface above already publishes, or that upstream's
+generator derived from a property key two documents share, is DECLINED and named
+in ``__adcp_alias_declined__``.
 """
 
 from __future__ import annotations
 
+from .._schemas.a2ui.bound_value import A2UiBoundValue as A2UiBoundValue
+from .._schemas.a2ui.bound_value import A2UiBoundValue1 as A2UiBoundValue1
+from .._schemas.a2ui.bound_value import A2UiBoundValue2 as A2UiBoundValue2
+from .._schemas.a2ui.bound_value import A2UiBoundValue3 as A2UiBoundValue3
+from .._schemas.a2ui.bound_value import A2UiBoundValue4 as A2UiBoundValue4
+from .._schemas.a2ui.bound_value import A2UiBoundValue5 as A2UiBoundValue5
+from .._schemas.a2ui.component import A2UiComponent as A2UiComponent
+from .._schemas.a2ui.si_catalog import Component as Component
+from .._schemas.a2ui.si_catalog import SiComponentCatalog as SiComponentCatalog
+from .._schemas.a2ui.surface import A2UiSurface as A2UiSurface
+from .._schemas.a2ui.user_action import A2UiUserAction as A2UiUserAction
+from .._schemas.aao.agent_publishers import (
+    AaoDirectoryAgentPublishersInverseLookupResponse as AaoDirectoryAgentPublishersInverseLookupResponse,
+)
+from .._schemas.account.get_account_financials_response import (
+    GetAccountFinancialsResponse1 as GetAccountFinancialsResponse1,
+)
+from .._schemas.account.get_account_financials_response import (
+    GetAccountFinancialsResponse2 as GetAccountFinancialsResponse2,
+)
+from .._schemas.account.sync_accounts_request import Accounts as Accounts
+from .._schemas.account.sync_accounts_request import Accounts1 as Accounts1
+from .._schemas.account.sync_accounts_response import SyncAccountsResponse1 as SyncAccountsResponse1
+from .._schemas.account.sync_accounts_response import SyncAccountsResponse2 as SyncAccountsResponse2
+from .._schemas.account.sync_governance_response import SyncGovernanceResponse1 as SyncGovernanceResponse1
+from .._schemas.account.sync_governance_response import SyncGovernanceResponse2 as SyncGovernanceResponse2
+from .._schemas.adagents import AdcpAgentsAuthorization as AdcpAgentsAuthorization
+from .._schemas.adagents import AdcpAgentsAuthorization1 as AdcpAgentsAuthorization1
+from .._schemas.adagents import RevokedPublisherDomain as RevokedPublisherDomain
+from .._schemas.adagents import RevokedPublisherDomain1 as RevokedPublisherDomain1
+from .._schemas.adagents import RevokedPublisherDomain2 as RevokedPublisherDomain2
+from .._schemas.adagents import RevokedPublisherDomain3 as RevokedPublisherDomain3
+from .._schemas.adagents import RevokedPublisherDomain4 as RevokedPublisherDomain4
+from .._schemas.adagents import RevokedPublisherDomain5 as RevokedPublisherDomain5
+from .._schemas.adagents import RevokedPublisherDomain6 as RevokedPublisherDomain6
+from .._schemas.brand.acquire_rights_response import AcquireRightsResponse1 as AcquireRightsResponse1
+from .._schemas.brand.acquire_rights_response import AcquireRightsResponse2 as AcquireRightsResponse2
+from .._schemas.brand.acquire_rights_response import AcquireRightsResponse3 as AcquireRightsResponse3
+from .._schemas.brand.acquire_rights_response import AcquireRightsResponse4 as AcquireRightsResponse4
+from .._schemas.brand.creative_approval_response import CreativeApprovalResponse1 as CreativeApprovalResponse1
+from .._schemas.brand.creative_approval_response import CreativeApprovalResponse2 as CreativeApprovalResponse2
+from .._schemas.brand.creative_approval_response import CreativeApprovalResponse3 as CreativeApprovalResponse3
+from .._schemas.brand.creative_approval_response import CreativeApprovalResponse4 as CreativeApprovalResponse4
+from .._schemas.brand.get_brand_identity_response import Asset as Asset
+from .._schemas.brand.get_brand_identity_response import FontRole2 as FontRole2
+from .._schemas.brand.get_brand_identity_response import GetBrandIdentityResponse1 as GetBrandIdentityResponse1
+from .._schemas.brand.get_brand_identity_response import GetBrandIdentityResponse2 as GetBrandIdentityResponse2
+from .._schemas.brand.get_brand_identity_response import House as House
+from .._schemas.brand.get_rights_response import Excluded as Excluded
+from .._schemas.brand.get_rights_response import GetRightsResponse1 as GetRightsResponse1
+from .._schemas.brand.get_rights_response import GetRightsResponse2 as GetRightsResponse2
+from .._schemas.brand.get_rights_response import PreviewAsset as PreviewAsset
+from .._schemas.brand.search_brands_response import Logo as Logo
+from .._schemas.brand.update_rights_response import UpdateRightsResponse1 as UpdateRightsResponse1
+from .._schemas.brand.update_rights_response import UpdateRightsResponse2 as UpdateRightsResponse2
+from .._schemas.brand.verify_brand_claim_response import VerifyBrandClaimErrorResponse as VerifyBrandClaimErrorResponse
+from .._schemas.brand.verify_brand_claim_response import (
+    VerifyBrandClaimSignedSuccessPayload as VerifyBrandClaimSignedSuccessPayload,
+)
+from .._schemas.brand.verify_brand_claim_response import (
+    VerifyBrandClaimSuccessResponse as VerifyBrandClaimSuccessResponse,
+)
+from .._schemas.brand.verify_brand_claims_response import ResultEntry1 as ResultEntry1
+from .._schemas.brand.verify_brand_claims_response import ResultEntry2 as ResultEntry2
+from .._schemas.brand.verify_brand_claims_response import (
+    VerifyBrandClaimsErrorResponse as VerifyBrandClaimsErrorResponse,
+)
+from .._schemas.brand.verify_brand_claims_response import (
+    VerifyBrandClaimsSignedSuccessPayload as VerifyBrandClaimsSignedSuccessPayload,
+)
+from .._schemas.collection.base_collection_source import BaseCollectionSource1 as BaseCollectionSource1
+from .._schemas.collection.base_collection_source import BaseCollectionSource2 as BaseCollectionSource2
+from .._schemas.collection.base_collection_source import BaseCollectionSource3 as BaseCollectionSource3
+from .._schemas.collection.get_collection_list_request import Pagination as Pagination
+from .._schemas.compliance.comply_test_controller_response import (
+    ComplyTestControllerResponse1 as ComplyTestControllerResponse1,
+)
+from .._schemas.compliance.comply_test_controller_response import (
+    ComplyTestControllerResponse2 as ComplyTestControllerResponse2,
+)
+from .._schemas.compliance.comply_test_controller_response import (
+    ComplyTestControllerResponse4 as ComplyTestControllerResponse4,
+)
+from .._schemas.compliance.comply_test_controller_response import (
+    ComplyTestControllerResponse5 as ComplyTestControllerResponse5,
+)
+from .._schemas.compliance.comply_test_controller_response import (
+    ComplyTestControllerResponse6 as ComplyTestControllerResponse6,
+)
+from .._schemas.compliance.comply_test_controller_response import (
+    ComplyTestControllerResponse7 as ComplyTestControllerResponse7,
+)
+from .._schemas.compliance.comply_test_controller_response import (
+    ComplyTestControllerResponse8 as ComplyTestControllerResponse8,
+)
+from .._schemas.compliance.comply_test_controller_response import IdentifierMatchProof as IdentifierMatchProof
+from .._schemas.content_standards.artifact import AssetAccess1 as AssetAccess1
+from .._schemas.content_standards.artifact import AssetAccess2 as AssetAccess2
+from .._schemas.content_standards.artifact import AssetAccess3 as AssetAccess3
+from .._schemas.content_standards.artifact import Assets1 as Assets1
+from .._schemas.content_standards.artifact import Assets2 as Assets2
+from .._schemas.content_standards.artifact import Assets3 as Assets3
+from .._schemas.content_standards.artifact import Assets4 as Assets4
+from .._schemas.content_standards.artifact import TranscriptFormat as TranscriptFormat
+from .._schemas.content_standards.artifact import TranscriptSource as TranscriptSource
+from .._schemas.content_standards.artifact import TranscriptSource1 as TranscriptSource1
+from .._schemas.content_standards.calibrate_content_response import (
+    CalibrateContentResponse1 as CalibrateContentResponse1,
+)
+from .._schemas.content_standards.calibrate_content_response import (
+    CalibrateContentResponse2 as CalibrateContentResponse2,
+)
+from .._schemas.content_standards.create_content_standards_response import (
+    CreateContentStandardsResponse1 as CreateContentStandardsResponse1,
+)
+from .._schemas.content_standards.create_content_standards_response import (
+    CreateContentStandardsResponse2 as CreateContentStandardsResponse2,
+)
+from .._schemas.content_standards.get_content_standards_response import (
+    GetContentStandardsResponse1 as GetContentStandardsResponse1,
+)
+from .._schemas.content_standards.get_content_standards_response import (
+    GetContentStandardsResponse2 as GetContentStandardsResponse2,
+)
+from .._schemas.content_standards.get_media_buy_artifacts_response import BrandContext as BrandContext
+from .._schemas.content_standards.get_media_buy_artifacts_response import (
+    GetMediaBuyArtifactsResponse1 as GetMediaBuyArtifactsResponse1,
+)
+from .._schemas.content_standards.get_media_buy_artifacts_response import (
+    GetMediaBuyArtifactsResponse2 as GetMediaBuyArtifactsResponse2,
+)
+from .._schemas.content_standards.list_content_standards_response import (
+    ListContentStandardsResponse1 as ListContentStandardsResponse1,
+)
+from .._schemas.content_standards.list_content_standards_response import (
+    ListContentStandardsResponse2 as ListContentStandardsResponse2,
+)
+from .._schemas.content_standards.update_content_standards_response import (
+    UpdateContentStandardsResponse1 as UpdateContentStandardsResponse1,
+)
+from .._schemas.content_standards.update_content_standards_response import (
+    UpdateContentStandardsResponse2 as UpdateContentStandardsResponse2,
+)
+from .._schemas.content_standards.validate_content_delivery_request import Record as Record
+from .._schemas.content_standards.validate_content_delivery_response import (
+    ValidateContentDeliveryResponse1 as ValidateContentDeliveryResponse1,
+)
+from .._schemas.content_standards.validate_content_delivery_response import (
+    ValidateContentDeliveryResponse2 as ValidateContentDeliveryResponse2,
+)
+from .._schemas.core.acceptance_policy_profile_ids import AcceptancePolicyProfileIds as AcceptancePolicyProfileIds
+from .._schemas.core.account import Setup as Setup
+from .._schemas.core.account_identity_change import AccountIdentityChange1 as AccountIdentityChange1
+from .._schemas.core.account_identity_change import AccountIdentityChange2 as AccountIdentityChange2
+from .._schemas.core.account_identity_change_preview import (
+    AccountIdentityChangePreview1 as AccountIdentityChangePreview1,
+)
+from .._schemas.core.account_identity_change_preview import (
+    AccountIdentityChangePreview2 as AccountIdentityChangePreview2,
+)
+from .._schemas.core.account_identity_change_preview import (
+    AccountIdentityChangePreview3 as AccountIdentityChangePreview3,
+)
+from .._schemas.core.account_identity_change_preview import Effect as Effect
+from .._schemas.core.account_identity_change_preview import Effect1 as Effect1
+from .._schemas.core.account_ref import AccountReference1 as AccountReference1
+from .._schemas.core.account_ref import AccountReference2 as AccountReference2
+from .._schemas.core.activation_key import ActivationKey1 as ActivationKey1
+from .._schemas.core.activation_key import ActivationKey2 as ActivationKey2
+from .._schemas.core.agent_reporting_destination import AgentReportingDestination1 as AgentReportingDestination1
+from .._schemas.core.agent_reporting_destination import AgentReportingDestination2 as AgentReportingDestination2
+from .._schemas.core.agent_reporting_destination import AgentReportingDestination3 as AgentReportingDestination3
+from .._schemas.core.agent_webhook_challenge import DeliveryAuth as DeliveryAuth
+from .._schemas.core.applicable_package_id import ApplicablePackageId as ApplicablePackageId
+from .._schemas.core.asset_group_vocabulary import AdcpAssetGroupVocabularyRegistry as AdcpAssetGroupVocabularyRegistry
+from .._schemas.core.assets.css_asset import CssAsset as CssAsset
+from .._schemas.core.assets.daast_asset import DaastAsset as DaastAsset
+from .._schemas.core.assets.daast_asset import DaastAsset3 as DaastAsset3
+from .._schemas.core.assets.daast_asset import DaastAsset4 as DaastAsset4
+from .._schemas.core.assets.daast_asset import Location13 as Location13
+from .._schemas.core.assets.daast_tracker_asset import DaastTrackerAsset as DaastTrackerAsset
+from .._schemas.core.assets.display_tag_asset import DisplayTagAsset4 as DisplayTagAsset4
+from .._schemas.core.assets.display_tag_asset import DisplayTagAsset5 as DisplayTagAsset5
+from .._schemas.core.assets.display_tag_asset import DisplayTagAsset6 as DisplayTagAsset6
+from .._schemas.core.assets.html_asset import HtmlAsset as HtmlAsset
+from .._schemas.core.assets.javascript_asset import JavascriptAsset as JavascriptAsset
+from .._schemas.core.assets.url_asset import UrlAsset as UrlAsset
+from .._schemas.core.assets.vast_asset import VastAsset as VastAsset
+from .._schemas.core.assets.vast_asset import VastAsset3 as VastAsset3
+from .._schemas.core.assets.vast_asset import VastAsset4 as VastAsset4
+from .._schemas.core.assets.vast_tracker_asset import VastTrackerAsset as VastTrackerAsset
+from .._schemas.core.async_response_data import AdcpAsyncResponseData as AdcpAsyncResponseData
+from .._schemas.core.attestation_capabilities import AcceptedIssuer as AcceptedIssuer
+from .._schemas.core.attestation_capabilities import Resolver as Resolver
+from .._schemas.core.attestation_capabilities import SupportedDeliveryMethod as SupportedDeliveryMethod
+from .._schemas.core.attestation_issuer import AttestationIssuer1 as AttestationIssuer1
+from .._schemas.core.attestation_issuer import AttestationIssuer2 as AttestationIssuer2
+from .._schemas.core.attestation_issuer import AttestationIssuer3 as AttestationIssuer3
+from .._schemas.core.attestation_reference import Locator as Locator
+from .._schemas.core.attestation_reference import Locator1 as Locator1
+from .._schemas.core.attestation_subject import AttestationSubject1 as AttestationSubject1
+from .._schemas.core.attestation_subject import AttestationSubject2 as AttestationSubject2
+from .._schemas.core.attestation_subject import AttestationSubject3 as AttestationSubject3
+from .._schemas.core.audience_activation_method import AudienceActivationMethod1 as AudienceActivationMethod1
+from .._schemas.core.audience_activation_method import AudienceActivationMethod2 as AudienceActivationMethod2
+from .._schemas.core.audience_activation_method import AudienceActivationMethod3 as AudienceActivationMethod3
+from .._schemas.core.audience_activation_method import AudienceActivationMethod4 as AudienceActivationMethod4
+from .._schemas.core.audience_activation_method import AudienceActivationMethod5 as AudienceActivationMethod5
+from .._schemas.core.audience_activation_method import AudienceActivationMethod6 as AudienceActivationMethod6
+from .._schemas.core.audience_activation_method import BuyerAgent as BuyerAgent
+from .._schemas.core.audience_activation_method import ConsumerIdentity as ConsumerIdentity
+from .._schemas.core.audience_activation_method import Direction as Direction
+from .._schemas.core.audience_evidence import AttestationRef as AttestationRef
+from .._schemas.core.audience_member import Uid as Uid
+from .._schemas.core.audience_selector import AudienceSelector1 as AudienceSelector1
+from .._schemas.core.audience_selector import AudienceSelector2 as AudienceSelector2
+from .._schemas.core.audience_selector import AudienceSelector3 as AudienceSelector3
+from .._schemas.core.audience_selector import AudienceSelector4 as AudienceSelector4
+from .._schemas.core.audience_source import AudienceSource1 as AudienceSource1
+from .._schemas.core.audience_source import AudienceSource2 as AudienceSource2
+from .._schemas.core.bidding_policy import Strength1 as Strength1
+from .._schemas.core.budget_allocation import BudgetAllocation1 as BudgetAllocation1
+from .._schemas.core.budget_allocation import BudgetAllocation2 as BudgetAllocation2
+from .._schemas.core.business_entity import Contact as Contact
+from .._schemas.core.canonical_account_ref import CanonicalAccountReference1 as CanonicalAccountReference1
+from .._schemas.core.canonical_account_ref import CanonicalAccountReference2 as CanonicalAccountReference2
+from .._schemas.core.canonical_budget_allocation import CanonicalBudgetAllocation1 as CanonicalBudgetAllocation1
+from .._schemas.core.canonical_budget_allocation import CanonicalBudgetAllocation2 as CanonicalBudgetAllocation2
+from .._schemas.core.canonical_media_buy_action import Action3 as Action3
+from .._schemas.core.canonical_media_buy_action import Action4 as Action4
+from .._schemas.core.canonical_media_buy_action import CanonicalMediaBuyAction1 as CanonicalMediaBuyAction1
+from .._schemas.core.canonical_media_buy_action import CanonicalMediaBuyAction2 as CanonicalMediaBuyAction2
+from .._schemas.core.canonical_optimization_goal import CanonicalOptimizationGoal1 as CanonicalOptimizationGoal1
+from .._schemas.core.canonical_optimization_goal import CanonicalOptimizationGoal2 as CanonicalOptimizationGoal2
+from .._schemas.core.canonical_optimization_goal import CanonicalOptimizationGoal3 as CanonicalOptimizationGoal3
+from .._schemas.core.canonical_optimization_goal import Target10 as Target10
+from .._schemas.core.canonical_placement import CanonicalProductPlacement1 as CanonicalProductPlacement1
+from .._schemas.core.canonical_placement import CanonicalProductPlacement2 as CanonicalProductPlacement2
+from .._schemas.core.canonical_reporting_commitment import (
+    CanonicalReportingCommitment1 as CanonicalReportingCommitment1,
+)
+from .._schemas.core.canonical_reporting_commitment import (
+    CanonicalReportingCommitment2 as CanonicalReportingCommitment2,
+)
+from .._schemas.core.collection import RelatedCollection as RelatedCollection
+from .._schemas.core.collection_selection import CollectionSelection1 as CollectionSelection1
+from .._schemas.core.collection_selection import CollectionSelection2 as CollectionSelection2
+from .._schemas.core.committed_metric import CommittedMetric1 as CommittedMetric1
+from .._schemas.core.committed_metric import CommittedMetric2 as CommittedMetric2
+from .._schemas.core.creative_brief import RequiredDisclosure as RequiredDisclosure
+from .._schemas.core.creative_item import CreativeItem1 as CreativeItem1
+from .._schemas.core.creative_item import CreativeItem2 as CreativeItem2
+from .._schemas.core.creative_localization import TargetVariant as TargetVariant
+from .._schemas.core.creative_localization_readback import LocaleFallback as LocaleFallback
+from .._schemas.core.creative_localization_readback import Variants1 as Variants1
+from .._schemas.core.creative_localization_readback import Variants2 as Variants2
+from .._schemas.core.creative_revision_id import CreativeRevisionId as CreativeRevisionId
+from .._schemas.core.daast_tracker_constraints import DaastTrackerConstraints as DaastTrackerConstraints
+from .._schemas.core.data_provider_signal_selector import DataProviderSignalSelector1 as DataProviderSignalSelector1
+from .._schemas.core.data_provider_signal_selector import DataProviderSignalSelector2 as DataProviderSignalSelector2
+from .._schemas.core.data_provider_signal_selector import DataProviderSignalSelector3 as DataProviderSignalSelector3
+from .._schemas.core.deadline_policy import MaterialStage as MaterialStage
+from .._schemas.core.delivery_metric_aggregate import DeliveryMetricAggregate2 as DeliveryMetricAggregate2
+from .._schemas.core.delivery_metrics import Panel as Panel
+from .._schemas.core.delivery_metrics import Posting as Posting
+from .._schemas.core.delivery_metrics import ReachWindow as ReachWindow
+from .._schemas.core.delivery_metrics import TimeBasedView as TimeBasedView
+from .._schemas.core.demographic_reporting_capability import ReportingMode as ReportingMode
+from .._schemas.core.demographic_targeting_capability import ExecutionMode as ExecutionMode
+from .._schemas.core.demographic_targeting_resolution import Execution as Execution
+from .._schemas.core.demographic_targeting_resolution import Execution1 as Execution1
+from .._schemas.core.demographic_targeting_resolution import Execution2 as Execution2
+from .._schemas.core.deployment import Deployment1 as Deployment1
+from .._schemas.core.deployment import Deployment2 as Deployment2
+from .._schemas.core.destination import Destination1 as Destination1
+from .._schemas.core.destination import Destination2 as Destination2
+from .._schemas.core.destination_item import Location as Location
+from .._schemas.core.error import Issue as Issue
+from .._schemas.core.evaluator_spec import EvaluatorSpec1 as EvaluatorSpec1
+from .._schemas.core.evaluator_spec import EvaluatorSpec2 as EvaluatorSpec2
+from .._schemas.core.evaluator_spec import EvaluatorSpec3 as EvaluatorSpec3
+from .._schemas.core.event_custom_data import Content as Content
+from .._schemas.core.experimental_feature_id import ExperimentalFeatureId as ExperimentalFeatureId
+from .._schemas.core.format import Assets as Assets
+from .._schemas.core.format import Assets9 as Assets9
+from .._schemas.core.format import Assets10 as Assets10
+from .._schemas.core.format import Assets11 as Assets11
+from .._schemas.core.format import Assets12 as Assets12
+from .._schemas.core.format import Assets13 as Assets13
+from .._schemas.core.format import Assets14 as Assets14
+from .._schemas.core.format import Assets15 as Assets15
+from .._schemas.core.format import Assets16 as Assets16
+from .._schemas.core.format import Assets17 as Assets17
+from .._schemas.core.format import Assets18 as Assets18
+from .._schemas.core.format import Assets19 as Assets19
+from .._schemas.core.format import Assets20 as Assets20
+from .._schemas.core.format import Assets21 as Assets21
+from .._schemas.core.format import Assets22 as Assets22
+from .._schemas.core.format import Assets23 as Assets23
+from .._schemas.core.format import Assets24 as Assets24
+from .._schemas.core.format import Assets25 as Assets25
+from .._schemas.core.format import Assets26 as Assets26
+from .._schemas.core.format import Assets27 as Assets27
+from .._schemas.core.format import Assets28 as Assets28
+from .._schemas.core.format import Assets29 as Assets29
+from .._schemas.core.format import Assets31 as Assets31
+from .._schemas.core.format import Assets32 as Assets32
+from .._schemas.core.format import Assets33 as Assets33
+from .._schemas.core.format import Assets34 as Assets34
+from .._schemas.core.format import Assets35 as Assets35
+from .._schemas.core.format import Assets36 as Assets36
+from .._schemas.core.format import Assets37 as Assets37
+from .._schemas.core.format import Assets38 as Assets38
+from .._schemas.core.format import Assets39 as Assets39
+from .._schemas.core.format import Assets40 as Assets40
+from .._schemas.core.format import Assets41 as Assets41
+from .._schemas.core.format import Assets42 as Assets42
+from .._schemas.core.format import Assets43 as Assets43
+from .._schemas.core.format import Assets44 as Assets44
+from .._schemas.core.format import Assets45 as Assets45
+from .._schemas.core.format import Assets46 as Assets46
+from .._schemas.core.format import Assets47 as Assets47
+from .._schemas.core.format import Assets48 as Assets48
+from .._schemas.core.format import Assets49 as Assets49
+from .._schemas.core.format import Assets50 as Assets50
+from .._schemas.core.format import Assets51 as Assets51
+from .._schemas.core.format import Assets94 as Assets94
+from .._schemas.core.format import DisclosureCapability as DisclosureCapability
+from .._schemas.core.format import Renders as Renders
+from .._schemas.core.format import Renders1 as Renders1
+from .._schemas.core.format import UnknownFormatAsset as UnknownFormatAsset
+from .._schemas.core.format import UnknownGroupAsset as UnknownGroupAsset
+from .._schemas.core.format_option_ref import FormatOptionReference1 as FormatOptionReference1
+from .._schemas.core.format_shape_vocabulary import (
+    AdcpFormatShapeVocabularyRegistry as AdcpFormatShapeVocabularyRegistry,
+)
+from .._schemas.core.geo_region_support import Countries3 as Countries3
+from .._schemas.core.https_url import HttpsUrl as HttpsUrl
+from .._schemas.core.iana_timezone import IanaTimezoneIdentifier as IanaTimezoneIdentifier
+from .._schemas.core.inventory_list_application import InventoryListApplication1 as InventoryListApplication1
+from .._schemas.core.inventory_list_application import InventoryListApplication2 as InventoryListApplication2
+from .._schemas.core.macro_bearing_url import MacroBearingUrl as MacroBearingUrl
+from .._schemas.core.mcp_webhook_payload import McpWebhookPayload as McpWebhookPayload
+from .._schemas.core.media_buy import Cancellation as Cancellation
+from .._schemas.core.media_buy_available_action_id import MediaBuyAvailableActionId as MediaBuyAvailableActionId
+from .._schemas.core.media_buy_change_term_id import MediaBuyChangeTermId as MediaBuyChangeTermId
+from .._schemas.core.missing_metric import MissingMetric1 as MissingMetric1
+from .._schemas.core.missing_metric import MissingMetric2 as MissingMetric2
+from .._schemas.core.optimization_goal import OptimizationGoal8 as OptimizationGoal8
+from .._schemas.core.optimization_goal import OptimizationGoal9 as OptimizationGoal9
+from .._schemas.core.optimization_goal import OptimizationGoal10 as OptimizationGoal10
+from .._schemas.core.optimization_goal import Target16 as Target16
+from .._schemas.core.optimization_goal import Target17 as Target17
+from .._schemas.core.performance_feedback_metric import PerformanceFeedbackMetric1 as PerformanceFeedbackMetric1
+from .._schemas.core.performance_feedback_metric import PerformanceFeedbackMetric2 as PerformanceFeedbackMetric2
+from .._schemas.core.placement_definition import FormatOptions as FormatOptions
+from .._schemas.core.placement_identity import PlacementIdentity1 as PlacementIdentity1
+from .._schemas.core.placement_identity import PlacementIdentity2 as PlacementIdentity2
+from .._schemas.core.placement_selection import PlacementSelection1 as PlacementSelection1
+from .._schemas.core.placement_selection import PlacementSelection2 as PlacementSelection2
+from .._schemas.core.postal_area import PostalArea2 as PostalArea2
+from .._schemas.core.postal_area import PostalArea112 as PostalArea112
+from .._schemas.core.postal_area import PostalArea113 as PostalArea113
+from .._schemas.core.postal_area import PostalArea114 as PostalArea114
+from .._schemas.core.postal_area import PostalArea115 as PostalArea115
+from .._schemas.core.postal_area import PostalArea116 as PostalArea116
+from .._schemas.core.postal_area import PostalArea117 as PostalArea117
+from .._schemas.core.postal_area import PostalArea118 as PostalArea118
+from .._schemas.core.postal_area import PostalArea119 as PostalArea119
+from .._schemas.core.postal_area import PostalArea120 as PostalArea120
+from .._schemas.core.postal_area_support import (
+    PostalAreaSupportAdditionalPropertyEnum as PostalAreaSupportAdditionalPropertyEnum,
+)
+from .._schemas.core.postal_country_system import PostalCountrySystem1 as PostalCountrySystem1
+from .._schemas.core.postal_country_system import PostalCountrySystem2 as PostalCountrySystem2
+from .._schemas.core.postal_country_system import PostalCountrySystem3 as PostalCountrySystem3
+from .._schemas.core.principal_declarations_state import Exclusion as Exclusion
+from .._schemas.core.principal_state import RetiredDestination as RetiredDestination
+from .._schemas.core.product import Specification as Specification
+from .._schemas.core.product import SupportedTarget5 as SupportedTarget5
+from .._schemas.core.product_audience_evidence_requirements import (
+    AcceptedAttestationIssuers1 as AcceptedAttestationIssuers1,
+)
+from .._schemas.core.product_audience_evidence_requirements import (
+    AcceptedAttestationIssuers2 as AcceptedAttestationIssuers2,
+)
+from .._schemas.core.product_change_map import ProductChangeMap1 as ProductChangeMap1
+from .._schemas.core.product_execution_requirement import ProductExecutionRequirement1 as ProductExecutionRequirement1
+from .._schemas.core.product_execution_requirement import ProductExecutionRequirement2 as ProductExecutionRequirement2
+from .._schemas.core.product_execution_requirement import ProductExecutionRequirement3 as ProductExecutionRequirement3
+from .._schemas.core.product_filters import AudienceActivationMethods1 as AudienceActivationMethods1
+from .._schemas.core.product_filters import AudienceActivationMethods2 as AudienceActivationMethods2
+from .._schemas.core.product_filters import AudienceActivationMethods3 as AudienceActivationMethods3
+from .._schemas.core.product_filters import AudienceActivationMethods4 as AudienceActivationMethods4
+from .._schemas.core.product_filters import AudienceActivationMethods5 as AudienceActivationMethods5
+from .._schemas.core.product_filters import Keyword as Keyword
+from .._schemas.core.product_filters import TrustedMatch as TrustedMatch
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration1 as ProductFormatDeclaration1
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration2 as ProductFormatDeclaration2
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration3 as ProductFormatDeclaration3
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration4 as ProductFormatDeclaration4
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration5 as ProductFormatDeclaration5
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration6 as ProductFormatDeclaration6
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration7 as ProductFormatDeclaration7
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration8 as ProductFormatDeclaration8
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration9 as ProductFormatDeclaration9
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration10 as ProductFormatDeclaration10
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration11 as ProductFormatDeclaration11
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration12 as ProductFormatDeclaration12
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration13 as ProductFormatDeclaration13
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration14 as ProductFormatDeclaration14
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration15 as ProductFormatDeclaration15
+from .._schemas.core.product_format_declaration import ProductFormatDeclaration16 as ProductFormatDeclaration16
+from .._schemas.core.product_offer_filters import RequiredPerformanceStandard as RequiredPerformanceStandard
+from .._schemas.core.product_signal_targeting_option import AllowedTargetingMode as AllowedTargetingMode
+from .._schemas.core.property_id import PropertyId as PropertyId
+from .._schemas.core.provenance import Watermark as Watermark
+from .._schemas.core.publisher_property_selector import PublisherPropertySelector1 as PublisherPropertySelector1
+from .._schemas.core.publisher_property_selector import PublisherPropertySelector2 as PublisherPropertySelector2
+from .._schemas.core.publisher_property_selector import PublisherPropertySelector3 as PublisherPropertySelector3
+from .._schemas.core.registry_event import Payload1 as Payload1
+from .._schemas.core.registry_event import Payload2 as Payload2
+from .._schemas.core.registry_event import Payload5 as Payload5
+from .._schemas.core.registry_event import Payload6 as Payload6
+from .._schemas.core.registry_event import Payload8 as Payload8
+from .._schemas.core.registry_event import Payload9 as Payload9
+from .._schemas.core.registry_event import Storyboard as Storyboard
+from .._schemas.core.registry_event import Tracks as Tracks
+from .._schemas.core.reporting_adjustment import AccountingPeriod as AccountingPeriod
+from .._schemas.core.reporting_consumer_status import Period as Period
+from .._schemas.core.reporting_control_total import ReportingControlTotal1 as ReportingControlTotal1
+from .._schemas.core.reporting_control_total import ReportingControlTotal2 as ReportingControlTotal2
+from .._schemas.core.reporting_coverage import Limitation as Limitation
+from .._schemas.core.reporting_dataset_share_destination import (
+    ReportingDatasetShareDestination1 as ReportingDatasetShareDestination1,
+)
+from .._schemas.core.reporting_dataset_share_destination import (
+    ReportingDatasetShareDestination2 as ReportingDatasetShareDestination2,
+)
+from .._schemas.core.reporting_delivery_method import ReportingDeliveryMethod1 as ReportingDeliveryMethod1
+from .._schemas.core.reporting_delivery_method import ReportingDeliveryMethod2 as ReportingDeliveryMethod2
+from .._schemas.core.reporting_delivery_method import ReportingDeliveryMethod3 as ReportingDeliveryMethod3
+from .._schemas.core.reporting_delivery_offering import DestinationMode as DestinationMode
+from .._schemas.core.reporting_delivery_offering_id import ReportingDeliveryOfferingId as ReportingDeliveryOfferingId
+from .._schemas.core.reporting_report_definition import FinalityPolicies as FinalityPolicies
+from .._schemas.core.reporting_report_definition import FinalityPolicies1 as FinalityPolicies1
+from .._schemas.core.reporting_report_definition import FinalityPolicies2 as FinalityPolicies2
+from .._schemas.core.reporting_verification import PhysicalChecksums as PhysicalChecksums
+from .._schemas.core.reporting_verification import PhysicalChecksums1 as PhysicalChecksums1
+from .._schemas.core.reporting_write_destination import ReportingWriteDestination1 as ReportingWriteDestination1
+from .._schemas.core.reporting_write_destination import ReportingWriteDestination2 as ReportingWriteDestination2
+from .._schemas.core.requirements.catalog_field_binding import CatalogFieldBinding1 as CatalogFieldBinding1
+from .._schemas.core.requirements.css_asset_requirements import CssAssetRequirements as CssAssetRequirements
+from .._schemas.core.requirements.daast_asset_requirements import DaastAssetRequirements as DaastAssetRequirements
+from .._schemas.core.requirements.html_asset_requirements import HtmlAssetRequirements as HtmlAssetRequirements
+from .._schemas.core.requirements.image_asset_requirements import Bleed as Bleed
+from .._schemas.core.requirements.image_asset_requirements import Bleed1 as Bleed1
+from .._schemas.core.requirements.javascript_asset_requirements import (
+    JavascriptAssetRequirements as JavascriptAssetRequirements,
+)
+from .._schemas.core.requirements.url_asset_requirements import UrlAssetRequirements as UrlAssetRequirements
+from .._schemas.core.requirements.vast_asset_requirements import VastAssetRequirements as VastAssetRequirements
+from .._schemas.core.response_payload_jws_envelope import ResponsePayloadJwsEnvelope as ResponsePayloadJwsEnvelope
+from .._schemas.core.signal_coverage_forecast import Point as Point
+from .._schemas.core.signal_definition import Channel as Channel
+from .._schemas.core.signal_definition import DataSource as DataSource
+from .._schemas.core.signal_definition import IdType as IdType
+from .._schemas.core.signal_definition import MatchKey as MatchKey
+from .._schemas.core.signal_definition import SeedSource as SeedSource
+from .._schemas.core.signal_definition import Value as Value
+from .._schemas.core.signal_definition import ValueMapping as ValueMapping
+from .._schemas.core.signal_id import SignalId as SignalId
+from .._schemas.core.signal_id import SignalId8 as SignalId8
+from .._schemas.core.signal_id import SignalId9 as SignalId9
+from .._schemas.core.signal_pricing import VendorPricing1 as VendorPricing1
+from .._schemas.core.signal_pricing import VendorPricing2 as VendorPricing2
+from .._schemas.core.signal_pricing import VendorPricing3 as VendorPricing3
+from .._schemas.core.signal_pricing import VendorPricing4 as VendorPricing4
+from .._schemas.core.signal_pricing import VendorPricing5 as VendorPricing5
+from .._schemas.core.signal_ref import SignalRef1 as SignalRef1
+from .._schemas.core.signal_ref import SignalRef2 as SignalRef2
+from .._schemas.core.signal_ref import SignalRef3 as SignalRef3
+from .._schemas.core.signal_targeting import SignalTargeting1 as SignalTargeting1
+from .._schemas.core.signal_targeting import SignalTargeting2 as SignalTargeting2
+from .._schemas.core.signal_targeting import SignalTargeting3 as SignalTargeting3
+from .._schemas.core.signal_targeting_expression import SignalTargetingExpression1 as SignalTargetingExpression1
+from .._schemas.core.signal_targeting_expression import SignalTargetingExpression2 as SignalTargetingExpression2
+from .._schemas.core.signal_targeting_expression import SignalTargetingExpression3 as SignalTargetingExpression3
+from .._schemas.core.sla_window import SlaWindow as SlaWindow
+from .._schemas.core.targeting import Geometry as Geometry
+from .._schemas.core.targeting import StoreCatchment as StoreCatchment
+from .._schemas.core.targeting_modification import TargetingModification1 as TargetingModification1
+from .._schemas.core.targeting_modification import TargetingModification2 as TargetingModification2
+from .._schemas.core.targeting_overlay_requirements import BrowserRequirement1 as BrowserRequirement1
+from .._schemas.core.targeting_overlay_requirements import DaypartRequirement1 as DaypartRequirement1
+from .._schemas.core.targeting_overlay_requirements import KeywordRequirement1 as KeywordRequirement1
+from .._schemas.core.targeting_overlay_requirements import MetroRequirement1 as MetroRequirement1
+from .._schemas.core.targeting_overlay_support import BrowserSupport1 as BrowserSupport1
+from .._schemas.core.targeting_overlay_support import CountrySupport1 as CountrySupport1
+from .._schemas.core.targeting_overlay_support import DaypartSupport1 as DaypartSupport1
+from .._schemas.core.targeting_overlay_support import KeywordSupport1 as KeywordSupport1
+from .._schemas.core.targeting_overlay_support import MetroSupport1 as MetroSupport1
+from .._schemas.core.tasks_get_response import HistoryItem as HistoryItem
+from .._schemas.core.tasks_list_response import DomainBreakdown as DomainBreakdown
+from .._schemas.core.tasks_list_response import Task as Task
+from .._schemas.core.tracker_execution_selector import TrackerExecutionSelector1 as TrackerExecutionSelector1
+from .._schemas.core.transformer_param import Option as Option
+from .._schemas.core.truncation_sentinel import FieldTruncation as FieldTruncation
+from .._schemas.core.vast_media_file_requirements import VastMediafileRequirements as VastMediafileRequirements
+from .._schemas.core.vast_tracker_constraints import VastTrackerConstraints as VastTrackerConstraints
+from .._schemas.core.vendor_metric_id import VendorMetricId as VendorMetricId
+from .._schemas.core.verification_token_claims import (
+    AgenticadvertisingOrgVerificationTokenClaims as AgenticadvertisingOrgVerificationTokenClaims,
+)
+from .._schemas.core.verification_token_claims import VerificationTokenMode as VerificationTokenMode
+from .._schemas.core.version_envelope import AdcpVersionEnvelope as AdcpVersionEnvelope
+from .._schemas.core.wholesale_feed_event import AppliesTo1 as AppliesTo1
+from .._schemas.core.wholesale_feed_event import AppliesTo2 as AppliesTo2
+from .._schemas.core.wholesale_feed_event import Payload as Payload
+from .._schemas.core.wholesale_feed_event import Payload17 as Payload17
+from .._schemas.core.wholesale_feed_event import Payload18 as Payload18
+from .._schemas.core.wholesale_feed_event import Payload20 as Payload20
+from .._schemas.core.wholesale_feed_event import Payload21 as Payload21
+from .._schemas.core.wholesale_feed_event import Payload22 as Payload22
+from .._schemas.core.wholesale_feed_event import Payload23 as Payload23
+from .._schemas.core.wholesale_feed_event import Payload24 as Payload24
+from .._schemas.creative.asset_types.index import AdcpAssetTypeRegistry as AdcpAssetTypeRegistry
+from .._schemas.creative.get_creative_features_response import (
+    GetCreativeFeaturesResponse1 as GetCreativeFeaturesResponse1,
+)
+from .._schemas.creative.get_creative_features_response import (
+    GetCreativeFeaturesResponse2 as GetCreativeFeaturesResponse2,
+)
+from .._schemas.creative.get_creative_features_response import (
+    GetCreativeFeaturesResponse3 as GetCreativeFeaturesResponse3,
+)
+from .._schemas.creative.list_creative_formats_response import CreativeAgent as CreativeAgent
+from .._schemas.creative.list_creatives_response import AssignedPackage as AssignedPackage
+from .._schemas.creative.list_creatives_response import Creatives as Creatives
+from .._schemas.creative.list_creatives_response import Creatives1 as Creatives1
+from .._schemas.creative.preview_creative_request import Request as Request
+from .._schemas.creative.preview_creative_response import Preview3 as Preview3
+from .._schemas.creative.preview_creative_response import PreviewCreativeResponse1 as PreviewCreativeResponse1
+from .._schemas.creative.preview_creative_response import PreviewCreativeResponse2 as PreviewCreativeResponse2
+from .._schemas.creative.preview_creative_response import PreviewCreativeResponse3 as PreviewCreativeResponse3
+from .._schemas.creative.preview_creative_response import PreviewCreativeResponse4 as PreviewCreativeResponse4
+from .._schemas.creative.preview_render import Dimensions as Dimensions
+from .._schemas.creative.preview_render import PreviewRender1 as PreviewRender1
+from .._schemas.creative.preview_render import PreviewRender2 as PreviewRender2
+from .._schemas.creative.preview_render import PreviewRender3 as PreviewRender3
+from .._schemas.creative.sync_creatives_request import Assignment as Assignment
+from .._schemas.creative.sync_creatives_request import AssignmentOperations1 as AssignmentOperations1
+from .._schemas.creative.sync_creatives_request import AssignmentOperations2 as AssignmentOperations2
+from .._schemas.creative.sync_creatives_request import AssignmentOperations3 as AssignmentOperations3
+from .._schemas.creative.sync_creatives_response import SyncCreativesResponse1 as SyncCreativesResponse1
+from .._schemas.creative.sync_creatives_response import SyncCreativesResponse2 as SyncCreativesResponse2
+from .._schemas.creative.sync_creatives_response import SyncCreativesResponse3 as SyncCreativesResponse3
+from .._schemas.creative.validate_input_request import Targets1 as Targets1
+from .._schemas.creative.validate_input_request import Targets2 as Targets2
+from .._schemas.creative.validate_input_request import Targets3 as Targets3
+from .._schemas.creative.validate_input_request import Targets4 as Targets4
+from .._schemas.creative.video_brief import Segment as Segment
+from .._schemas.enums.adcp_protocol import AdcpProtocol as AdcpProtocol
+from .._schemas.enums.c2pa_watermark_action import C2PaWatermarkAction as C2PaWatermarkAction
+from .._schemas.enums.content_id_type import ContentIdType as ContentIdType
+from .._schemas.enums.ctv_ad_experience import CtvAdExperience as CtvAdExperience
+from .._schemas.enums.daast_tracking_event import DaastTrackingEvent as DaastTrackingEvent
+from .._schemas.enums.daast_version import DaastVersion as DaastVersion
+from .._schemas.enums.dooh_motion_type import DoohMotionType as DoohMotionType
+from .._schemas.enums.format_id_parameter import FormatIdParameter as FormatIdParameter
+from .._schemas.enums.gop_type import GopType as GopType
+from .._schemas.enums.http_method import HttpMethod as HttpMethod
+from .._schemas.enums.javascript_module_type import JavascriptModuleType as JavascriptModuleType
+from .._schemas.enums.match_id_type import MatchIdType as MatchIdType
+from .._schemas.enums.response_type import TmpResponseType as TmpResponseType
+from .._schemas.enums.si_session_status import SiSessionStatus as SiSessionStatus
+from .._schemas.enums.signal_catalog_type import SignalCatalogType as SignalCatalogType
+from .._schemas.enums.specialism import AdcpSpecialism as AdcpSpecialism
+from .._schemas.enums.uid_type import UidType as UidType
+from .._schemas.enums.url_asset_type import UrlAssetType as UrlAssetType
+from .._schemas.enums.vast_media_delivery_method import VastMediaDeliveryMethod as VastMediaDeliveryMethod
+from .._schemas.enums.vast_tracking_event import VastTrackingEvent as VastTrackingEvent
+from .._schemas.enums.vast_version import VastVersion as VastVersion
+from .._schemas.enums.wcag_level import WcagLevel as WcagLevel
+from .._schemas.error_details.execution_requirement_unmet import UnmetRequirement as UnmetRequirement
+from .._schemas.error_details.governance_agent_not_accepted import (
+    GovernanceAgentNotAcceptedDetails1 as GovernanceAgentNotAcceptedDetails1,
+)
+from .._schemas.error_details.governance_agent_not_accepted import (
+    GovernanceAgentNotAcceptedDetails2 as GovernanceAgentNotAcceptedDetails2,
+)
+from .._schemas.error_details.vast_version_mismatch import VastVersionMismatchDetails as VastVersionMismatchDetails
+from .._schemas.error_details.vast_version_mismatch import VastVersionMismatchDetails3 as VastVersionMismatchDetails3
+from .._schemas.error_details.vendor_error_codes import Codes as Codes
+from .._schemas.error_details.vendor_error_codes import Vendors as Vendors
+from .._schemas.extensions.extension_meta import AdcpExtensionFileSchema as AdcpExtensionFileSchema
+from .._schemas.extensions.index import AdcpExtensionRegistry as AdcpExtensionRegistry
+from .._schemas.formats.canonical._base import Slot as Slot
+from .._schemas.formats.canonical.agent_placement import (
+    CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement as CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement,
+)
+from .._schemas.formats.canonical.audio_daast import CanonicalFormatDaastAudio as CanonicalFormatDaastAudio
+from .._schemas.formats.canonical.audio_hosted import AudioChannel as AudioChannel
+from .._schemas.formats.canonical.audio_vast import CanonicalFormatVastAudio as CanonicalFormatVastAudio
+from .._schemas.formats.canonical.coordinated_placements import Components as Components
+from .._schemas.formats.canonical.coordinated_placements import Components1 as Components1
+from .._schemas.formats.canonical.coordinated_placements import Components2 as Components2
+from .._schemas.formats.canonical.coordinated_placements import Components3 as Components3
+from .._schemas.formats.canonical.coordinated_placements import Components4 as Components4
+from .._schemas.formats.canonical.coordinated_placements import Components5 as Components5
+from .._schemas.formats.canonical.coordinated_placements import Components6 as Components6
+from .._schemas.formats.canonical.coordinated_placements import Components7 as Components7
+from .._schemas.formats.canonical.coordinated_placements import Components8 as Components8
+from .._schemas.formats.canonical.coordinated_placements import Components9 as Components9
+from .._schemas.formats.canonical.coordinated_placements import Components10 as Components10
+from .._schemas.formats.canonical.coordinated_placements import Components11 as Components11
+from .._schemas.formats.canonical.coordinated_placements import Components12 as Components12
+from .._schemas.formats.canonical.coordinated_placements import Components13 as Components13
+from .._schemas.formats.canonical.coordinated_placements import SharedSlot as SharedSlot
+from .._schemas.formats.canonical.display_tag import SupportedDeliveryType as SupportedDeliveryType
+from .._schemas.formats.canonical.display_tag import SupportedTagType as SupportedTagType
+from .._schemas.formats.canonical.html5 import CanonicalFormatHtml5Banner as CanonicalFormatHtml5Banner
+from .._schemas.formats.canonical.image_carousel import AllowedCardMediaAssetType as AllowedCardMediaAssetType
+from .._schemas.formats.canonical.seller_rendered_stateful_display import Breakpoint as Breakpoint
+from .._schemas.formats.canonical.seller_rendered_stateful_display import State as State
+from .._schemas.formats.canonical.seller_rendered_stateful_display import TransitionMode9 as TransitionMode9
+from .._schemas.formats.canonical.sponsored_placement import SupportedIdType as SupportedIdType
+from .._schemas.formats.canonical.video_vast import CanonicalFormatVastVideo as CanonicalFormatVastVideo
+from .._schemas.governance.accepted_governance_agents import AnyOf1 as AnyOf1
+from .._schemas.governance.accepted_governance_agents import AnyOf2 as AnyOf2
+from .._schemas.governance.attribute_definition import RegulatoryBasi as RegulatoryBasi
+from .._schemas.governance.check_governance_response import Condition as Condition
+from .._schemas.governance.check_governance_response import RuntimeAttestationEvaluation as RuntimeAttestationEvaluation
+from .._schemas.governance.get_plan_audit_logs_response import ChannelAllocation as ChannelAllocation
+from .._schemas.governance.get_plan_audit_logs_response import Entry as Entry
+from .._schemas.governance.get_plan_audit_logs_response import Escalation as Escalation
+from .._schemas.governance.get_plan_audit_logs_response import GovernedAction as GovernedAction
+from .._schemas.governance.get_plan_audit_logs_response import RuntimeAttestation as RuntimeAttestation
+from .._schemas.governance.policy_category_definition import Facet as Facet
+from .._schemas.governance.policy_category_definition import RegulatoryFramework as RegulatoryFramework
+from .._schemas.governance.sync_plans_request import Allocations as Allocations
+from .._schemas.governance.sync_plans_request import Budget2 as Budget2
+from .._schemas.governance.sync_plans_request import Delegation as Delegation
+from .._schemas.governance.sync_plans_request import MixTargets as MixTargets
+from .._schemas.governance.sync_plans_response import ResolvedPolicy as ResolvedPolicy
+from .._schemas.governance.sync_plans_response import Status51 as Status51
+from .._schemas.media_buy.acceptance_context import Subject as Subject
+from .._schemas.media_buy.acceptance_policy_profile import PolicyRef as PolicyRef
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement1 as AcceptancePolicyRequirement1,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement2 as AcceptancePolicyRequirement2,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement3 as AcceptancePolicyRequirement3,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement4 as AcceptancePolicyRequirement4,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement5 as AcceptancePolicyRequirement5,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement6 as AcceptancePolicyRequirement6,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement7 as AcceptancePolicyRequirement7,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement8 as AcceptancePolicyRequirement8,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement9 as AcceptancePolicyRequirement9,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement10 as AcceptancePolicyRequirement10,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement11 as AcceptancePolicyRequirement11,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement12 as AcceptancePolicyRequirement12,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement13 as AcceptancePolicyRequirement13,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement14 as AcceptancePolicyRequirement14,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement15 as AcceptancePolicyRequirement15,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement16 as AcceptancePolicyRequirement16,
+)
+from .._schemas.media_buy.acceptance_policy_requirement import (
+    AcceptancePolicyRequirement17 as AcceptancePolicyRequirement17,
+)
+from .._schemas.media_buy.acceptance_policy_rule import AppliesToEnum as AppliesToEnum
+from .._schemas.media_buy.build_creative_response import BuildCreativeResponse1 as BuildCreativeResponse1
+from .._schemas.media_buy.build_creative_response import BuildCreativeResponse2 as BuildCreativeResponse2
+from .._schemas.media_buy.build_creative_response import BuildCreativeResponse3 as BuildCreativeResponse3
+from .._schemas.media_buy.build_creative_response import BuildCreativeResponse4 as BuildCreativeResponse4
+from .._schemas.media_buy.build_creative_response import BuildCreativeResponse5 as BuildCreativeResponse5
+from .._schemas.media_buy.build_creative_response import BuildCreativeResponse6 as BuildCreativeResponse6
+from .._schemas.media_buy.build_creative_response import PerLeaf as PerLeaf
+from .._schemas.media_buy.build_creative_response import Preview2 as Preview2
+from .._schemas.media_buy.build_creative_response import Preview4 as Preview4
+from .._schemas.media_buy.build_creative_response import Variant as Variant
+from .._schemas.media_buy.change_term import AllowedStatus as AllowedStatus
+from .._schemas.media_buy.change_term_constraints import (
+    MediaBuyChangeTermConstraints1 as MediaBuyChangeTermConstraints1,
+)
+from .._schemas.media_buy.change_term_constraints import (
+    MediaBuyChangeTermConstraints2 as MediaBuyChangeTermConstraints2,
+)
+from .._schemas.media_buy.change_term_constraints import (
+    MediaBuyChangeTermConstraints3 as MediaBuyChangeTermConstraints3,
+)
+from .._schemas.media_buy.change_term_constraints import (
+    MediaBuyChangeTermConstraints4 as MediaBuyChangeTermConstraints4,
+)
+from .._schemas.media_buy.commercial_terms import ReportingCommitment as ReportingCommitment
+from .._schemas.media_buy.control_media_buy_response import ControlMediaBuyResponse1 as ControlMediaBuyResponse1
+from .._schemas.media_buy.control_media_buy_response import ControlMediaBuyResponse2 as ControlMediaBuyResponse2
+from .._schemas.media_buy.control_media_buy_response import ControlMediaBuyResponse3 as ControlMediaBuyResponse3
+from .._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse1 as CreateMediaBuyResponse1
+from .._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse2 as CreateMediaBuyResponse2
+from .._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse3 as CreateMediaBuyResponse3
+from .._schemas.media_buy.decline_proposals_response import DeclineProposalsResponse1 as DeclineProposalsResponse1
+from .._schemas.media_buy.get_media_buy_delivery_response import ByPackageItem as ByPackageItem
+from .._schemas.media_buy.get_media_buy_delivery_response import ByPackageItem1 as ByPackageItem1
+from .._schemas.media_buy.get_media_buy_delivery_response import Totals as Totals
+from .._schemas.media_buy.get_media_buy_delivery_response import Window as Window
+from .._schemas.media_buy.get_media_buys_response import CreativeApproval as CreativeApproval
+from .._schemas.media_buy.get_products_request import Action9 as Action9
+from .._schemas.media_buy.get_products_request import Fields as Fields
+from .._schemas.media_buy.get_products_request import Refine1 as Refine1
+from .._schemas.media_buy.get_products_request import Refine2 as Refine2
+from .._schemas.media_buy.get_products_request import Refine3 as Refine3
+from .._schemas.media_buy.get_products_response import ExcludedBy as ExcludedBy
+from .._schemas.media_buy.get_products_response import RefinementApplied1 as RefinementApplied1
+from .._schemas.media_buy.get_products_response import RefinementApplied2 as RefinementApplied2
+from .._schemas.media_buy.get_products_response import RefinementApplied3 as RefinementApplied3
+from .._schemas.media_buy.get_reporting_status_response import DeliveryConfigGeneration as DeliveryConfigGeneration
+from .._schemas.media_buy.log_event_response import LogEventResponse1 as LogEventResponse1
+from .._schemas.media_buy.log_event_response import LogEventResponse2 as LogEventResponse2
+from .._schemas.media_buy.log_event_response import PartialFailure as PartialFailure
+from .._schemas.media_buy.media_buy_commitment_response import (
+    MediaBuyCommitmentResponse1 as MediaBuyCommitmentResponse1,
+)
+from .._schemas.media_buy.media_buy_commitment_response import (
+    MediaBuyCommitmentResponse2 as MediaBuyCommitmentResponse2,
+)
+from .._schemas.media_buy.media_buy_commitment_response import (
+    MediaBuyCommitmentResponse3 as MediaBuyCommitmentResponse3,
+)
+from .._schemas.media_buy.media_buy_commitment_response import PurchaseBinding as PurchaseBinding
+from .._schemas.media_buy.media_buy_delivery_webhook_result import ReportingPeriod as ReportingPeriod
+from .._schemas.media_buy.outcome_target import Goal as Goal
+from .._schemas.media_buy.outcome_target import Goal1 as Goal1
+from .._schemas.media_buy.package_request import CommittedMetrics2 as CommittedMetrics2
+from .._schemas.media_buy.product_fields import ProductResponseField as ProductResponseField
+from .._schemas.media_buy.provide_performance_feedback_response import (
+    ProvidePerformanceFeedbackResponse1 as ProvidePerformanceFeedbackResponse1,
+)
+from .._schemas.media_buy.provide_performance_feedback_response import (
+    ProvidePerformanceFeedbackResponse2 as ProvidePerformanceFeedbackResponse2,
+)
+from .._schemas.media_buy.request_proposals_response import Loss as Loss
+from .._schemas.media_buy.sync_audiences_request import Audience as Audience
+from .._schemas.media_buy.sync_audiences_response import MatchBreakdown as MatchBreakdown
+from .._schemas.media_buy.sync_audiences_response import SyncAudiencesResponse1 as SyncAudiencesResponse1
+from .._schemas.media_buy.sync_audiences_response import SyncAudiencesResponse2 as SyncAudiencesResponse2
+from .._schemas.media_buy.sync_audiences_response import SyncAudiencesResponse3 as SyncAudiencesResponse3
+from .._schemas.media_buy.sync_catalogs_response import ItemIssue as ItemIssue
+from .._schemas.media_buy.sync_catalogs_response import SyncCatalogsResponse1 as SyncCatalogsResponse1
+from .._schemas.media_buy.sync_catalogs_response import SyncCatalogsResponse2 as SyncCatalogsResponse2
+from .._schemas.media_buy.sync_catalogs_response import SyncCatalogsResponse3 as SyncCatalogsResponse3
+from .._schemas.media_buy.sync_event_sources_response import SyncEventSourcesResponse1 as SyncEventSourcesResponse1
+from .._schemas.media_buy.sync_event_sources_response import SyncEventSourcesResponse2 as SyncEventSourcesResponse2
+from .._schemas.media_buy.sync_reporting_receipts_response import Results20 as Results20
+from .._schemas.media_buy.sync_reporting_receipts_response import Results21 as Results21
+from .._schemas.media_buy.sync_reporting_receipts_response import Results22 as Results22
+from .._schemas.media_buy.sync_reporting_receipts_response import Results23 as Results23
+from .._schemas.media_buy.sync_reporting_status_response import Results26 as Results26
+from .._schemas.media_buy.sync_reporting_status_response import Results27 as Results27
+from .._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse1 as UpdateMediaBuyResponse1
+from .._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse2 as UpdateMediaBuyResponse2
+from .._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse3 as UpdateMediaBuyResponse3
+from .._schemas.pricing_options.cpa_option import CpaPricingOption as CpaPricingOption
+from .._schemas.pricing_options.cpc_option import CpcPricingOption as CpcPricingOption
+from .._schemas.pricing_options.cpcv_option import CpcvPricingOption as CpcvPricingOption
+from .._schemas.pricing_options.cpm_option import CpmPricingOption as CpmPricingOption
+from .._schemas.pricing_options.cpp_option import CppPricingOption as CppPricingOption
+from .._schemas.pricing_options.cpv_option import CpvPricingOption as CpvPricingOption
+from .._schemas.pricing_options.cpv_option import ViewThreshold1 as ViewThreshold1
+from .._schemas.pricing_options.price_breakdown import Adjustment as Adjustment
+from .._schemas.pricing_options.vcpm_option import VcpmPricingOption as VcpmPricingOption
+from .._schemas.property.base_property_source import BasePropertySource1 as BasePropertySource1
+from .._schemas.property.base_property_source import BasePropertySource2 as BasePropertySource2
+from .._schemas.property.base_property_source import BasePropertySource3 as BasePropertySource3
+from .._schemas.protocol.get_adcp_capabilities_request import GetAdcpCapabilitiesRequest as GetAdcpCapabilitiesRequest
+from .._schemas.protocol.get_adcp_capabilities_response import Accreditation as Accreditation
+from .._schemas.protocol.get_adcp_capabilities_response import ChangeFeed as ChangeFeed
+from .._schemas.protocol.get_adcp_capabilities_response import Features as Features
+from .._schemas.protocol.get_adcp_capabilities_response import (
+    GetAdcpCapabilitiesResponse as GetAdcpCapabilitiesResponse,
+)
+from .._schemas.protocol.get_adcp_capabilities_response import Idempotency as Idempotency
+from .._schemas.protocol.get_adcp_capabilities_response import IdentityUpdates as IdentityUpdates
+from .._schemas.protocol.get_adcp_capabilities_response import LifecycleTool as LifecycleTool
+from .._schemas.protocol.get_adcp_capabilities_response import Notifications as Notifications
+from .._schemas.protocol.get_adcp_capabilities_response import Notifications2 as Notifications2
+from .._schemas.protocol.get_adcp_capabilities_response import Operation as Operation
+from .._schemas.protocol.get_adcp_capabilities_response import PropagationSurface as PropagationSurface
+from .._schemas.protocol.get_adcp_capabilities_response import (
+    ReportingDestinationOffering as ReportingDestinationOffering,
+)
+from .._schemas.protocol.get_adcp_capabilities_response import SupportedChange as SupportedChange
+from .._schemas.protocol.get_adcp_capabilities_response import SupportedDimension as SupportedDimension
+from .._schemas.protocol.get_adcp_capabilities_response import SupportedFormat as SupportedFormat
+from .._schemas.protocol.get_adcp_capabilities_response import SupportedIdentifierType as SupportedIdentifierType
+from .._schemas.protocol.get_adcp_capabilities_response import SupportedProtocol as SupportedProtocol
+from .._schemas.protocol.get_adcp_capabilities_response import SupportedScope as SupportedScope
+from .._schemas.protocol.get_adcp_capabilities_response import SupportedSection as SupportedSection
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks1 as Tasks1
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks2 as Tasks2
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks3 as Tasks3
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks4 as Tasks4
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks5 as Tasks5
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks6 as Tasks6
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks7 as Tasks7
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks8 as Tasks8
+from .._schemas.protocol.get_adcp_capabilities_response import Tasks9 as Tasks9
+from .._schemas.protocol.get_adcp_capabilities_response import Transport1 as Transport1
+from .._schemas.protocol.get_adcp_capabilities_response import Type6 as Type6
+from .._schemas.protocol.get_principal_response import PrincipalCurrentResult as PrincipalCurrentResult
+from .._schemas.protocol.get_principal_response import PrincipalReadFailedResult as PrincipalReadFailedResult
+from .._schemas.protocol.get_principal_response import PrincipalRecognizedResult as PrincipalRecognizedResult
+from .._schemas.protocol.get_principal_response import PrincipalUnconfiguredResult as PrincipalUnconfiguredResult
+from .._schemas.protocol.get_principal_response import Result2 as Result2
+from .._schemas.protocol.get_principal_response import Result3 as Result3
+from .._schemas.protocol.get_principal_response import Result5 as Result5
+from .._schemas.protocol.sync_principal_response import Action33 as Action33
+from .._schemas.protocol.sync_principal_response import PrincipalAppliedResult as PrincipalAppliedResult
+from .._schemas.protocol.sync_principal_response import PrincipalSyncFailedResult as PrincipalSyncFailedResult
+from .._schemas.protocol.sync_principal_response import PrincipalValidatedResult as PrincipalValidatedResult
+from .._schemas.protocol.sync_principal_response import Result13 as Result13
+from .._schemas.protocol.sync_principal_response import Result15 as Result15
+from .._schemas.registries.v1_canonical_mapping import ParameterMapping as ParameterMapping
+from .._schemas.registries.v1_canonical_mapping import V1Pattern as V1Pattern
+from .._schemas.registries.v1_canonical_mapping import V1Pattern1 as V1Pattern1
+from .._schemas.signals.activate_signal_response import ActivateSignalResponse1 as ActivateSignalResponse1
+from .._schemas.signals.activate_signal_response import ActivateSignalResponse2 as ActivateSignalResponse2
+from .._schemas.sponsored_intelligence.si_capabilities import SiCapabilities as SiCapabilities
+from .._schemas.sponsored_intelligence.si_capabilities import StandardEnum as StandardEnum
+from .._schemas.sponsored_intelligence.si_context_use import SiContextUse as SiContextUse
+from .._schemas.sponsored_intelligence.si_get_offering_request import SiGetOfferingRequest as SiGetOfferingRequest
+from .._schemas.sponsored_intelligence.si_get_offering_response import MatchingProduct as MatchingProduct
+from .._schemas.sponsored_intelligence.si_get_offering_response import SiGetOfferingResponse as SiGetOfferingResponse
+from .._schemas.sponsored_intelligence.si_identity import ConsentScopeEnum as ConsentScopeEnum
+from .._schemas.sponsored_intelligence.si_identity import SiIdentity as SiIdentity
+from .._schemas.sponsored_intelligence.si_initiate_session_request import (
+    SiInitiateSessionRequest as SiInitiateSessionRequest,
+)
+from .._schemas.sponsored_intelligence.si_initiate_session_response import (
+    SiInitiateSessionResponse as SiInitiateSessionResponse,
+)
+from .._schemas.sponsored_intelligence.si_send_message_request import SiSendMessageRequest as SiSendMessageRequest
+from .._schemas.sponsored_intelligence.si_send_message_response import SiSendMessageResponse as SiSendMessageResponse
+from .._schemas.sponsored_intelligence.si_sponsored_context import SiSponsoredContext as SiSponsoredContext
+from .._schemas.sponsored_intelligence.si_sponsored_context_receipt import (
+    SiSponsoredContextReceipt as SiSponsoredContextReceipt,
+)
+from .._schemas.sponsored_intelligence.si_sponsored_context_receipt import Status46 as Status46
+from .._schemas.sponsored_intelligence.si_terminate_session_request import (
+    SiTerminateSessionRequest as SiTerminateSessionRequest,
+)
+from .._schemas.sponsored_intelligence.si_terminate_session_response import (
+    SiTerminateSessionResponse as SiTerminateSessionResponse,
+)
+from .._schemas.sponsored_intelligence.si_ui_element import SiUiElement as SiUiElement
+from .._schemas.trusted_match.context_match_request import ArtifactRef as ArtifactRef
+from .._schemas.trusted_match.context_match_response import SignalsByProvider as SignalsByProvider
+from .._schemas.trusted_match.context_match_response import TargetingKv as TargetingKv
+from .._schemas.trusted_match.error import TmpError as TmpError
+from .._schemas.trusted_match.identity_match_request import Identity as Identity
+from .._schemas.trusted_match.identity_match_request import SealedCredential as SealedCredential
+from .._schemas.trusted_match.identity_match_response import IdentityMatchResponse as IdentityMatchResponse
+from .._schemas.trusted_match.identity_match_response import TmpxProviders as TmpxProviders
+from .._schemas.trusted_match.provider_registration import TmpProviderRegistration as TmpProviderRegistration
+from .._schemas.trusted_match.provider_registration import TmpProviderRegistration1 as TmpProviderRegistration1
+from .._schemas.trusted_match.provider_registration import TmpProviderRegistration2 as TmpProviderRegistration2
+from .._schemas.trusted_match.publisher_targeting_kv_config import (
+    PublisherTargetingKvMapping as PublisherTargetingKvMapping,
+)
+from .._schemas.trusted_match.publisher_tmpx_config import PublisherTmpxMacroMapping as PublisherTmpxMacroMapping
+from .._schemas.trusted_match.tmpx_chunk import TmpxChunk as TmpxChunk
 from .a2ui import A2UIBoundValue as A2UIBoundValue
 from .a2ui import A2UIBoundValueLiteralBoolean as A2UIBoundValueLiteralBoolean
 from .a2ui import A2UIBoundValueLiteralNumber as A2UIBoundValueLiteralNumber
@@ -3899,10 +4808,20 @@ __all__ = [
     'A2UISurface',
     'A2UIUserAction',
     'A2UIUserActionAction',
+    'A2UiBoundValue',
+    'A2UiBoundValue1',
+    'A2UiBoundValue2',
+    'A2UiBoundValue3',
+    'A2UiBoundValue4',
+    'A2UiBoundValue5',
+    'A2UiComponent',
+    'A2UiSurface',
+    'A2UiUserAction',
     'AAODirectoryAgentPublishersInverseLookupResponse',
     'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntry',
     'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryDiscoveryMethod',
     'AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryStatus',
+    'AaoDirectoryAgentPublishersInverseLookupResponse',
     'AcceptProposalInputRequired',
     'AcceptProposalRequest',
     'AcceptProposalRequestIoAcceptance',
@@ -3916,9 +4835,27 @@ __all__ = [
     'AcceptancePolicyProfile',
     'AcceptancePolicyProfileCoverage',
     'AcceptancePolicyProfileIDs',
+    'AcceptancePolicyProfileIds',
     'AcceptancePolicyProfilePolicyRefsItem',
     'AcceptancePolicyProfileScope',
     'AcceptancePolicyRequirement',
+    'AcceptancePolicyRequirement1',
+    'AcceptancePolicyRequirement2',
+    'AcceptancePolicyRequirement3',
+    'AcceptancePolicyRequirement4',
+    'AcceptancePolicyRequirement5',
+    'AcceptancePolicyRequirement6',
+    'AcceptancePolicyRequirement7',
+    'AcceptancePolicyRequirement8',
+    'AcceptancePolicyRequirement9',
+    'AcceptancePolicyRequirement10',
+    'AcceptancePolicyRequirement11',
+    'AcceptancePolicyRequirement12',
+    'AcceptancePolicyRequirement13',
+    'AcceptancePolicyRequirement14',
+    'AcceptancePolicyRequirement15',
+    'AcceptancePolicyRequirement16',
+    'AcceptancePolicyRequirement17',
     'AcceptancePolicyRequirementAccountSetup',
     'AcceptancePolicyRequirementAdvertiserEligibility',
     'AcceptancePolicyRequirementAdvertiserVerification',
@@ -3939,9 +4876,12 @@ __all__ = [
     'AcceptancePolicyRule',
     'AcceptancePolicyRuleAppliesToItem',
     'AcceptancePolicyRuleDisposition',
+    'AcceptedAttestationIssuers1',
+    'AcceptedAttestationIssuers2',
     'AcceptedAttestationIssuersItemAgent',
     'AcceptedAttestationIssuersItemBrand',
     'AcceptedGovernanceAgents',
+    'AcceptedIssuer',
     'AccessibilityViolationDetails',
     'AccessibilityViolationDetailsViolationsItem',
     'Account',
@@ -3963,9 +4903,14 @@ __all__ = [
     'AccountCurrencyMode',
     'AccountGovernanceAgentsItem',
     'AccountIdentityChange',
+    'AccountIdentityChange1',
+    'AccountIdentityChange2',
     'AccountIdentityChangeBlocked',
     'AccountIdentityChangePending',
     'AccountIdentityChangePreview',
+    'AccountIdentityChangePreview1',
+    'AccountIdentityChangePreview2',
+    'AccountIdentityChangePreview3',
     'AccountIdentityChangePreviewImpact',
     'AccountIdentityChangePreviewImpactArea',
     'AccountIdentityChangePreviewImpactEffect',
@@ -3982,6 +4927,8 @@ __all__ = [
     'AccountNotificationsSupportedEventTypesItem',
     'AccountNotificationsUnsupported',
     'AccountReference',
+    'AccountReference1',
+    'AccountReference2',
     'AccountReferenceAccountId',
     'AccountReferenceBrandOperator',
     'AccountReportingBucket',
@@ -3997,6 +4944,10 @@ __all__ = [
     'AccountTimezoneCapabilityAccountSelection',
     'AccountTimezoneCapabilityMode',
     'AccountWithAuthorization',
+    'AccountingPeriod',
+    'Accounts',
+    'Accounts1',
+    'Accreditation',
     'AcquireRightsAcquired',
     'AcquireRightsAcquiredDisclosure',
     'AcquireRightsAcquiredRightsConstraint',
@@ -4006,6 +4957,14 @@ __all__ = [
     'AcquireRightsRequest',
     'AcquireRightsRequestCampaign',
     'AcquireRightsResponse',
+    'AcquireRightsResponse1',
+    'AcquireRightsResponse2',
+    'AcquireRightsResponse3',
+    'AcquireRightsResponse4',
+    'Action3',
+    'Action4',
+    'Action9',
+    'Action33',
     'ActionNotAllowedDetails',
     'ActionNotAllowedReason',
     'ActionSource',
@@ -4013,8 +4972,12 @@ __all__ = [
     'ActivateSignalRequest',
     'ActivateSignalRequestAction',
     'ActivateSignalResponse',
+    'ActivateSignalResponse1',
+    'ActivateSignalResponse2',
     'ActivateSignalSuccess',
     'ActivationKey',
+    'ActivationKey1',
+    'ActivationKey2',
     'ActivationKeyKeyValue',
     'ActivationKeySegmentId',
     'AdCPAgentsAuthorization',
@@ -4066,8 +5029,20 @@ __all__ = [
     'AdCPSpecialism',
     'AdCPVersionEnvelope',
     'AdInventoryConfiguration',
+    'AdcpAgentsAuthorization',
+    'AdcpAgentsAuthorization1',
+    'AdcpAssetGroupVocabularyRegistry',
+    'AdcpAssetTypeRegistry',
+    'AdcpAsyncResponseData',
+    'AdcpExtensionFileSchema',
+    'AdcpExtensionRegistry',
+    'AdcpFormatShapeVocabularyRegistry',
     'AdcpMajorVersion',
+    'AdcpProtocol',
+    'AdcpSpecialism',
     'AdcpVersion',
+    'AdcpVersionEnvelope',
+    'Adjustment',
     'AdvertiserIndustry',
     'AgeDeterminationBasis',
     'AgeVerificationMethod',
@@ -4082,6 +5057,9 @@ __all__ = [
     'AgentPermissionDeniedDetailsReason',
     'AgentPlacementFormatDeclaration',
     'AgentReportingDestination',
+    'AgentReportingDestination1',
+    'AgentReportingDestination2',
+    'AgentReportingDestination3',
     'AgentReportingDestinationState',
     'AgentReportingDestinationStateSetup',
     'AgentReportingDestinationStateSetupAction',
@@ -4093,17 +5071,28 @@ __all__ = [
     'AgenticAdvertisingOrgVerificationTokenClaims',
     'AgenticAdvertisingOrgVerificationTokenClaimsRole',
     'AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenMode',
+    'AgenticadvertisingOrgVerificationTokenClaims',
     'Agents',
+    'Allocations',
     'AllowedCardAssetTypesItem',
+    'AllowedCardMediaAssetType',
+    'AllowedStatus',
+    'AllowedTargetingMode',
+    'AnyOf1',
+    'AnyOf2',
     'AnyOfItemAgentUrl',
     'AnyOfItemVerification',
     'AppItem',
     'AppItemPlatform',
     'ApplicablePackageID',
+    'ApplicablePackageId',
     'AppliedPrincipalConfiguration',
     'AppliedPrincipalConfigurationAction',
     'AppliesTo',
+    'AppliesTo1',
+    'AppliesTo2',
     'AppliesToAccount',
+    'AppliesToEnum',
     'AppliesToPublic',
     'Artifact',
     'ArtifactAssetAccessServiceAccountProvider',
@@ -4113,11 +5102,16 @@ __all__ = [
     'ArtifactAssetsItemVideoTranscriptSource',
     'ArtifactIdentifiers',
     'ArtifactMetadata',
+    'ArtifactRef',
     'ArtifactWebhookPayload',
     'ArtifactWebhookPayloadArtifactsItem',
     'ArtifactWebhookPayloadPagination',
     'AssessmentStatus',
+    'Asset',
     'AssetAccess',
+    'AssetAccess1',
+    'AssetAccess2',
+    'AssetAccess3',
     'AssetAccessBearerToken',
     'AssetAccessServiceAccount',
     'AssetAccessSignedUrl',
@@ -4158,6 +5152,54 @@ __all__ = [
     'AssetVariantVideo',
     'AssetVariantWebhook',
     'AssetVariantZip',
+    'Assets',
+    'Assets1',
+    'Assets2',
+    'Assets3',
+    'Assets4',
+    'Assets9',
+    'Assets10',
+    'Assets11',
+    'Assets12',
+    'Assets13',
+    'Assets14',
+    'Assets15',
+    'Assets16',
+    'Assets17',
+    'Assets18',
+    'Assets19',
+    'Assets20',
+    'Assets21',
+    'Assets22',
+    'Assets23',
+    'Assets24',
+    'Assets25',
+    'Assets26',
+    'Assets27',
+    'Assets28',
+    'Assets29',
+    'Assets31',
+    'Assets32',
+    'Assets33',
+    'Assets34',
+    'Assets35',
+    'Assets36',
+    'Assets37',
+    'Assets38',
+    'Assets39',
+    'Assets40',
+    'Assets41',
+    'Assets42',
+    'Assets43',
+    'Assets44',
+    'Assets45',
+    'Assets46',
+    'Assets47',
+    'Assets48',
+    'Assets49',
+    'Assets50',
+    'Assets51',
+    'Assets94',
     'AssetsItemAudio',
     'AssetsItemAudioTranscriptFormat',
     'AssetsItemImage',
@@ -4165,6 +5207,11 @@ __all__ = [
     'AssetsItemText',
     'AssetsItemVideo',
     'AssignOrUpdate',
+    'AssignedPackage',
+    'Assignment',
+    'AssignmentOperations1',
+    'AssignmentOperations2',
+    'AssignmentOperations3',
     'AttestationAgentIssuer',
     'AttestationAgentSubject',
     'AttestationBrandIssuer',
@@ -4181,14 +5228,21 @@ __all__ = [
     'AttestationEvaluationActionBinding',
     'AttestationEvaluationOutcome',
     'AttestationIssuer',
+    'AttestationIssuer1',
+    'AttestationIssuer2',
+    'AttestationIssuer3',
     'AttestationIssuerCredentialIdLocator',
     'AttestationOriginIssuer',
+    'AttestationRef',
     'AttestationReference',
     'AttestationReferenceEmbeddedCredential',
     'AttestationReferenceValidityHint',
     'AttestationReferenceVerifyAgent',
     'AttestationResourceSubject',
     'AttestationSubject',
+    'AttestationSubject1',
+    'AttestationSubject2',
+    'AttestationSubject3',
     'AttributeDefinition',
     'AttributeDefinitionRegulatoryBasisItem',
     'AttributionMethodology',
@@ -4196,8 +5250,20 @@ __all__ = [
     'AttributionWindow',
     'AttributionWindowPostClick',
     'AttributionWindowPostView',
+    'Audience',
     'AudienceActivationMethod',
+    'AudienceActivationMethod1',
+    'AudienceActivationMethod2',
+    'AudienceActivationMethod3',
+    'AudienceActivationMethod4',
+    'AudienceActivationMethod5',
+    'AudienceActivationMethod6',
     'AudienceActivationMethodFileTransfer',
+    'AudienceActivationMethods1',
+    'AudienceActivationMethods2',
+    'AudienceActivationMethods3',
+    'AudienceActivationMethods4',
+    'AudienceActivationMethods5',
     'AudienceActivationMethodsItemCleanRoom',
     'AudienceActivationMethodsItemDatasetQuery',
     'AudienceActivationMethodsItemFileTransfer',
@@ -4231,16 +5297,23 @@ __all__ = [
     'AudienceMemberUidsItem',
     'AudienceResolutionMethod',
     'AudienceSelector',
+    'AudienceSelector1',
+    'AudienceSelector2',
+    'AudienceSelector3',
+    'AudienceSelector4',
     'AudienceSelectorDescription',
     'AudienceSelectorSignalBinary',
     'AudienceSelectorSignalCategorical',
     'AudienceSelectorSignalNumeric',
+    'AudienceSource1',
+    'AudienceSource2',
     'AudienceStatus',
     'AudienceSubjectType',
     'AudienceTooSmallDetails',
     'AudioAsset',
     'AudioAssetRequirements',
     'AudioAssetRequirementsFormatsItem',
+    'AudioChannel',
     'AudioChannelLayout',
     'AudioDistributionType',
     'AuthenticationScheme',
@@ -4257,7 +5330,13 @@ __all__ = [
     'AxeExcludeSegment',
     'AxeIncludeSegment',
     'BaseCollectionSource',
+    'BaseCollectionSource1',
+    'BaseCollectionSource2',
+    'BaseCollectionSource3',
     'BasePropertySource',
+    'BasePropertySource1',
+    'BasePropertySource2',
+    'BasePropertySource3',
     'BiddingPolicy',
     'BiddingPolicyCapability',
     'BiddingPolicyCapabilityMaxBidWithCostPer',
@@ -4273,6 +5352,8 @@ __all__ = [
     'BillingNotSupportedDetailsScope',
     'BillingParty',
     'BinaryVerdict',
+    'Bleed',
+    'Bleed1',
     'BleedBottomLeftRightTop',
     'BleedUniform',
     'BlockedImpacts',
@@ -4284,6 +5365,7 @@ __all__ = [
     'BrandAgent',
     'BrandAgentType',
     'BrandCanonicalDocument',
+    'BrandContext',
     'BrandDiscovery',
     'BrandDiscoveryAsset',
     'BrandDiscoveryAssetLibrary',
@@ -4398,16 +5480,22 @@ __all__ = [
     'BrandResponseAuthorizationResultTrust',
     'BrandResponseAuthorizationResultTrusted',
     'BrandResponseAuthorizationResultUntrusted',
+    'Breakpoint',
     'BriefAsset',
     'Browser',
     'BrowserExclude',
     'BrowserFamily',
     'BrowserRequirement',
+    'BrowserRequirement1',
     'BrowserRequirementFamilies',
     'BrowserSupport',
+    'BrowserSupport1',
     'BrowserSupportFamilies',
     'Budget',
+    'Budget2',
     'BudgetAllocation',
+    'BudgetAllocation1',
+    'BudgetAllocation2',
     'BudgetAllocationFixed',
     'BudgetAllocationSellerOptimized',
     'BudgetChangeConstraints',
@@ -4436,6 +5524,12 @@ __all__ = [
     'BuildCreativeRequestVariantAxis',
     'BuildCreativeRequestVariantAxisDimension',
     'BuildCreativeResponse',
+    'BuildCreativeResponse1',
+    'BuildCreativeResponse2',
+    'BuildCreativeResponse3',
+    'BuildCreativeResponse4',
+    'BuildCreativeResponse5',
+    'BuildCreativeResponse6',
     'BuildCreativeResponseSubmitted',
     'BuildCreativeSubmitted',
     'BuildCreativeSuccess',
@@ -4466,7 +5560,11 @@ __all__ = [
     'BuyProductsResponse',
     'BuyProductsSubmitted',
     'BuyProductsWorking',
+    'BuyerAgent',
+    'ByPackageItem',
+    'ByPackageItem1',
     'C2PAWatermarkAction',
+    'C2PaWatermarkAction',
     'CPAPricingOption',
     'CPCPricingOption',
     'CPCVPricingOption',
@@ -4480,18 +5578,25 @@ __all__ = [
     'CTVAdExperience',
     'CalibrateContentRequest',
     'CalibrateContentResponse',
+    'CalibrateContentResponse1',
+    'CalibrateContentResponse2',
     'CalibrateContentResponseVerdict',
     'CalibrateContentResponseVerdictFeaturesItem',
     'CanceledBy',
+    'Cancellation',
     'CancellationPolicy',
     'CancellationPolicyCancellationFee',
     'CancellationPolicyCancellationFeeType',
     'CanonicalAccountReference',
+    'CanonicalAccountReference1',
+    'CanonicalAccountReference2',
     'CanonicalAccountReferenceAccountId',
     'CanonicalAccountReferenceBrandOperator',
     'CanonicalAudienceEvidence',
     'CanonicalAudienceEvidenceSelection',
     'CanonicalBudgetAllocation',
+    'CanonicalBudgetAllocation1',
+    'CanonicalBudgetAllocation2',
     'CanonicalBudgetAllocationFixed',
     'CanonicalBudgetAllocationSellerOptimized',
     'CanonicalDeliveryForecast',
@@ -4501,6 +5606,7 @@ __all__ = [
     'CanonicalForecastVendorMetricValue',
     'CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement',
     'CanonicalFormatAgentPlacementAISurfaceSponsoredPlacementOutputModality',
+    'CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement',
     'CanonicalFormatBase',
     'CanonicalFormatBaseCompositionModel',
     'CanonicalFormatBaseReferenceMutability',
@@ -4512,6 +5618,7 @@ __all__ = [
     'CanonicalFormatCoordinatedPlacementsSharedSlotsItem',
     'CanonicalFormatCoordinatedPlacementsSharedSlotsItemAssetType',
     'CanonicalFormatDAASTAudio',
+    'CanonicalFormatDaastAudio',
     'CanonicalFormatDisplayTag',
     'CanonicalFormatDisplayTagSizesItem',
     'CanonicalFormatDisplayTagSupportedDeliveryTypesItem',
@@ -4530,6 +5637,7 @@ __all__ = [
     'CanonicalFormatHostedVideoCaptions',
     'CanonicalFormatHostedVideoOrientation',
     'CanonicalFormatHostedVideoVideoCodecsItem',
+    'CanonicalFormatHtml5Banner',
     'CanonicalFormatImage',
     'CanonicalFormatImageBuyerAssetAcceptance',
     'CanonicalFormatImageCarousel',
@@ -4575,10 +5683,14 @@ __all__ = [
     'CanonicalFormatVASTVideo',
     'CanonicalFormatVASTVideoCreativeType',
     'CanonicalFormatVASTVideoVpaidVersion',
+    'CanonicalFormatVastAudio',
+    'CanonicalFormatVastVideo',
     'CanonicalMeasurementTerms',
     'CanonicalMeasurementTermsBillingMeasurement',
     'CanonicalMeasurementTermsMakegoodPolicy',
     'CanonicalMediaBuyAction',
+    'CanonicalMediaBuyAction1',
+    'CanonicalMediaBuyAction2',
     'CanonicalMediaBuyActionControlMediaBuy',
     'CanonicalMediaBuyActionControlMediaBuyAction',
     'CanonicalMediaBuyActionFields',
@@ -4591,6 +5703,9 @@ __all__ = [
     'CanonicalMediaBuyFeatures',
     'CanonicalMetricQualifier',
     'CanonicalOptimizationGoal',
+    'CanonicalOptimizationGoal1',
+    'CanonicalOptimizationGoal2',
+    'CanonicalOptimizationGoal3',
     'CanonicalOptimizationGoalEvent',
     'CanonicalOptimizationGoalEventEventSourcesItem',
     'CanonicalOptimizationGoalEventTarget',
@@ -4605,6 +5720,8 @@ __all__ = [
     'CanonicalProductAction',
     'CanonicalProductCatalogMatch',
     'CanonicalProductPlacement',
+    'CanonicalProductPlacement1',
+    'CanonicalProductPlacement2',
     'CanonicalProductPlacementCanonicalDoohPlacementAttributes',
     'CanonicalProductPlacementCanonicalDoohScreenResolution',
     'CanonicalProductPlacementPublisherRef',
@@ -4618,6 +5735,8 @@ __all__ = [
     'CanonicalReportingCapabilities',
     'CanonicalReportingCapabilitiesVendorMetricsItem',
     'CanonicalReportingCommitment',
+    'CanonicalReportingCommitment1',
+    'CanonicalReportingCommitment2',
     'CanonicalReportingCommitmentStandard',
     'CanonicalReportingCommitmentVendor',
     'CanvasConstraint',
@@ -4636,6 +5755,7 @@ __all__ = [
     'CatalogAsset',
     'CatalogExecutionRequirement',
     'CatalogFieldBinding',
+    'CatalogFieldBinding1',
     'CatalogFieldBindingAssetPool',
     'CatalogFieldBindingAssetPoolBinding',
     'CatalogFieldBindingCatalogGroup',
@@ -4662,7 +5782,10 @@ __all__ = [
     'CatalogType',
     'Catchment',
     'Category',
+    'ChangeFeed',
     'ChangedFields',
+    'Channel',
+    'ChannelAllocation',
     'CheckGovernanceRequest',
     'CheckGovernanceRequestDeliveryMetrics',
     'CheckGovernanceRequestDeliveryMetricsAudienceDistribution',
@@ -4682,6 +5805,7 @@ __all__ = [
     'CleanRoom',
     'CloudStorageProtocol',
     'CoBrandingRequirement',
+    'Codes',
     'Collection',
     'CollectionCadence',
     'CollectionDeliveryMetrics',
@@ -4701,6 +5825,8 @@ __all__ = [
     'CollectionRelatedCollectionsItem',
     'CollectionRelationship',
     'CollectionSelection',
+    'CollectionSelection1',
+    'CollectionSelection2',
     'CollectionSelector',
     'CollectionStatus',
     'Color',
@@ -4720,9 +5846,12 @@ __all__ = [
     'CommittedMediaBuyWarningsItem',
     'CommittedMediaBuyWarningsItemCode',
     'CommittedMetric',
+    'CommittedMetric1',
+    'CommittedMetric2',
     'CommittedMetricStandard',
     'CommittedMetricVendor',
     'CommittedMetricVendorQualifier',
+    'CommittedMetrics2',
     'CommittedMetricsItemVendor',
     'CommittedProposalExecution',
     'CompactTaskInputRequired',
@@ -4742,7 +5871,29 @@ __all__ = [
     'ComplyTestControllerRequestParamsPurgeKind',
     'ComplyTestControllerRequestParamsViewability',
     'ComplyTestControllerResponse',
+    'ComplyTestControllerResponse1',
+    'ComplyTestControllerResponse2',
+    'ComplyTestControllerResponse4',
+    'ComplyTestControllerResponse5',
+    'ComplyTestControllerResponse6',
+    'ComplyTestControllerResponse7',
+    'ComplyTestControllerResponse8',
+    'Component',
     'ComponentValue',
+    'Components',
+    'Components1',
+    'Components2',
+    'Components3',
+    'Components4',
+    'Components5',
+    'Components6',
+    'Components7',
+    'Components8',
+    'Components9',
+    'Components10',
+    'Components11',
+    'Components12',
+    'Components13',
     'ComponentsItemFormatKindParams',
     'ComponentsItemFormatKindParamsAgentPlacement',
     'ComponentsItemFormatKindParamsAudioDaast',
@@ -4758,9 +5909,15 @@ __all__ = [
     'ComponentsItemFormatKindParamsVideoHosted',
     'ComponentsItemFormatKindParamsVideoVast',
     'ComponentsItemFormatOptionRef',
+    'Condition',
     'ConflictDetails',
     'ConsentBasis',
+    'ConsentScopeEnum',
+    'ConsumerIdentity',
+    'Contact',
+    'Content',
     'ContentIDType',
+    'ContentIdType',
     'ContentRating',
     'ContentRatingSystem',
     'ContentStandards',
@@ -4787,6 +5944,9 @@ __all__ = [
     'ControlMediaBuyInputRequired',
     'ControlMediaBuyRequest',
     'ControlMediaBuyResponse',
+    'ControlMediaBuyResponse1',
+    'ControlMediaBuyResponse2',
+    'ControlMediaBuyResponse3',
     'ControlMediaBuyResponseCompleted',
     'ControlMediaBuyResponseFailed',
     'ControlMediaBuyResponseSubmitted',
@@ -4797,17 +5957,27 @@ __all__ = [
     'ControllerErrorError',
     'CoordinatedPlacementsFormatDeclaration',
     'Countries',
+    'Countries3',
     'CountryCode',
     'CountryFusedPostalCodeSystem',
     'CountrySupport',
+    'CountrySupport1',
     'CountrySupportMaxValuesPerPackage',
+    'CpaPricingOption',
+    'CpcPricingOption',
+    'CpcvPricingOption',
     'CpmPricing',
+    'CpmPricingOption',
+    'CppPricingOption',
+    'CpvPricingOption',
     'CreateCollectionListRequest',
     'CreateCollectionListResponse',
     'CreateContentStandardsRequest',
     'CreateContentStandardsRequestCalibrationExemplars',
     'CreateContentStandardsRequestScope',
     'CreateContentStandardsResponse',
+    'CreateContentStandardsResponse1',
+    'CreateContentStandardsResponse2',
     'CreateContentStandardsResponseErrors',
     'CreateContentStandardsResponseStandardsId',
     'CreateMediaBuyAsyncInputRequired',
@@ -4825,6 +5995,9 @@ __all__ = [
     'CreateMediaBuyRequestIoAcceptance',
     'CreateMediaBuyRequestOpportunity',
     'CreateMediaBuyResponse',
+    'CreateMediaBuyResponse1',
+    'CreateMediaBuyResponse2',
+    'CreateMediaBuyResponse3',
     'CreateMediaBuyResponseSubmitted',
     'CreateMediaBuySubmitted',
     'CreateMediaBuySuccess',
@@ -4834,10 +6007,16 @@ __all__ = [
     'CreatePropertyListResponse',
     'CreativeAction',
     'CreativeActivationMethod',
+    'CreativeAgent',
     'CreativeAgentCapability',
+    'CreativeApproval',
     'CreativeApprovalError',
     'CreativeApprovalRequest',
     'CreativeApprovalResponse',
+    'CreativeApprovalResponse1',
+    'CreativeApprovalResponse2',
+    'CreativeApprovalResponse3',
+    'CreativeApprovalResponse4',
     'CreativeApprovalStatus',
     'CreativeApprovalsItemIndicatorTypesEvaluatedItem',
     'CreativeApproved',
@@ -4869,6 +6048,8 @@ __all__ = [
     'CreativeFilters',
     'CreativeIdentifierType',
     'CreativeItem',
+    'CreativeItem1',
+    'CreativeItem2',
     'CreativeItemMedia',
     'CreativeItemText',
     'CreativeLocalePolicy',
@@ -4896,6 +6077,7 @@ __all__ = [
     'CreativeRepresentationUnresolvedDetails',
     'CreativeRevisionContentMismatchDetails',
     'CreativeRevisionID',
+    'CreativeRevisionId',
     'CreativeSelectionStrategy',
     'CreativeSortField',
     'CreativeStatus',
@@ -4907,6 +6089,11 @@ __all__ = [
     'CreativeVariant',
     'CreativeVariantGenerationContext',
     'CreativeVariantGenerationContextArtifact',
+    'Creatives',
+    'Creatives1',
+    'CssAsset',
+    'CssAssetRequirements',
+    'CtvAdExperience',
     'CurrencyCode',
     'CurrentPrincipalConfiguration',
     'CustomFormatDeclaration',
@@ -4926,13 +6113,25 @@ __all__ = [
     'DAASTTrackingEvent',
     'DAASTVersion',
     'DOOHMotionType',
+    'DaastAsset',
+    'DaastAsset3',
+    'DaastAsset4',
+    'DaastAssetRequirements',
     'DaastOffset',
+    'DaastTrackerAsset',
+    'DaastTrackerConstraints',
+    'DaastTrackingEvent',
+    'DaastVersion',
     'DaastVersions',
     'DailyBudgetCap',
     'DataProviderSignalSelector',
+    'DataProviderSignalSelector1',
+    'DataProviderSignalSelector2',
+    'DataProviderSignalSelector3',
     'DataProviderSignalSelectorAll',
     'DataProviderSignalSelectorById',
     'DataProviderSignalSelectorByTag',
+    'DataSource',
     'Dataset',
     'DatasetQuery',
     'DatasetQueryConsumerIdentitiesItem',
@@ -4942,8 +6141,10 @@ __all__ = [
     'DatetimeRange',
     'DayOfWeek',
     'DaypartRequirement',
+    'DaypartRequirement1',
     'DaypartRequirementTimezoneModes',
     'DaypartSupport',
+    'DaypartSupport1',
     'DaypartSupportTimezoneModes',
     'DaypartTarget',
     'DaypartTargets',
@@ -4954,6 +6155,7 @@ __all__ = [
     'DeclineProposalsInputRequired',
     'DeclineProposalsRequest',
     'DeclineProposalsResponse',
+    'DeclineProposalsResponse1',
     'DeclineProposalsResponseResults',
     'DeclineProposalsResponseResultsItem',
     'DeclineProposalsResponseResultsItemOutcome',
@@ -4961,15 +6163,19 @@ __all__ = [
     'DeclineProposalsResponseSubmitted',
     'DeclineProposalsSubmitted',
     'DeclineProposalsWorking',
+    'Delegation',
     'DelegationAuthority',
     'DelegationType',
     'DeleteCollectionListRequest',
     'DeleteCollectionListResponse',
     'DeletePropertyListRequest',
     'DeletePropertyListResponse',
+    'DeliveryAuth',
     'DeliveryBreakdownControls',
+    'DeliveryConfigGeneration',
     'DeliveryForecast',
     'DeliveryMetricAggregate',
+    'DeliveryMetricAggregate2',
     'DeliveryMetricAggregateStandard',
     'DeliveryMetricAggregateVendor',
     'DeliveryMetrics',
@@ -5014,14 +6220,19 @@ __all__ = [
     'DemographicTargetingIntentAge',
     'DemographicTargetingResolution',
     'Deployment',
+    'Deployment1',
+    'Deployment2',
     'DeploymentAgent',
     'DeploymentPlatform',
     'DerivativeType',
     'Destination',
+    'Destination1',
+    'Destination2',
     'DestinationAgent',
     'DestinationItem',
     'DestinationItemDestinationType',
     'DestinationItemLocation',
+    'DestinationMode',
     'DestinationPlatform',
     'DevicePlatform',
     'DevicePlatformExclude',
@@ -5034,16 +6245,24 @@ __all__ = [
     'DigestAttestation',
     'DigitalSourceType',
     'DimensionUnit',
+    'Dimensions',
     'DirectIdentifiersSource',
+    'Direction',
+    'DisclosureCapability',
     'DisclosurePersistence',
     'DisclosurePosition',
     'DisplayTagAsset',
+    'DisplayTagAsset4',
+    'DisplayTagAsset5',
+    'DisplayTagAsset6',
     'DisplayTagFormatDeclaration',
     'DistanceUnit',
     'DistributionIDsSource',
     'DistributionIDsSourceIdentifiersItem',
     'DistributionIdentifierType',
+    'DomainBreakdown',
     'DomainName',
+    'DoohMotionType',
     'DownstreamConnectionExecutionRequirement',
     'DownstreamConnectionExecutionRequirementConnection',
     'DownstreamConnectionRequirement',
@@ -5056,9 +6275,12 @@ __all__ = [
     'EducationItemDegreeType',
     'EducationItemLevel',
     'EducationItemModality',
+    'Effect',
+    'Effect1',
     'EffectiveTimingConstraints',
     'EmbeddedProvenanceMethod',
     'EndTime',
+    'Entry',
     'Error',
     'ErrorBuyerReason',
     'ErrorCode',
@@ -5067,8 +6289,12 @@ __all__ = [
     'ErrorRecovery',
     'ErrorScope',
     'ErrorSource',
+    'Escalation',
     'EscalationSeverity',
     'EvaluatorSpec',
+    'EvaluatorSpec1',
+    'EvaluatorSpec2',
+    'EvaluatorSpec3',
     'EvaluatorSpecAgentUrl',
     'EvaluatorSpecEvalBudget',
     'EvaluatorSpecEvaluatorId',
@@ -5084,14 +6310,22 @@ __all__ = [
     'EventSurface',
     'EventSurfaceCategory',
     'EventType',
+    'Excluded',
+    'ExcludedBy',
+    'Exclusion',
     'Exclusivity',
+    'Execution',
+    'Execution1',
+    'Execution2',
     'ExecutionContinuousBounds',
     'ExecutionEnumeratedIntervals',
+    'ExecutionMode',
     'ExecutionRequirementUnmetDetails',
     'ExecutionRequirementUnmetDetailsUnmetRequirementsItem',
     'ExecutionRequirementUnmetDetailsUnmetRequirementsItemReason',
     'ExecutionSignals',
     'ExperimentalFeatureID',
+    'ExperimentalFeatureId',
     'ExplicitPackagesWithFixedAllocation',
     'ExplicitPackagesWithFixedAllocationBudgetAllocation',
     'ExplicitPackagesWithFixedAllocationPackagesItem',
@@ -5099,6 +6333,7 @@ __all__ = [
     'ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation',
     'ExtensionObject',
     'ExtensionsSupportedItem',
+    'Facet',
     'FailedLookup',
     'FailedPrincipalRead',
     'FailedPrincipalSync',
@@ -5108,12 +6343,18 @@ __all__ = [
     'FeatureCheckStatus',
     'FeatureRequirement',
     'FeatureRequirementIfNotCovered',
+    'Features',
     'FeedFormat',
     'FeedbackSource',
+    'FieldTruncation',
+    'Fields',
     'FieldsItemBranch1',
     'FileTransferDestination',
     'FileTransferDirectionsItem',
     'FileTransferFormat',
+    'FinalityPolicies',
+    'FinalityPolicies1',
+    'FinalityPolicies2',
     'FinalityPoliciesItemContractualCutoff',
     'FinalityPoliciesItemSourceFinal',
     'FinalityPoliciesItemStabilized',
@@ -5125,6 +6366,7 @@ __all__ = [
     'FlightItem',
     'FlightItemDestination',
     'FlightItemOrigin',
+    'FontRole2',
     'ForcedDirectiveSuccess',
     'ForcedDirectiveSuccessForced',
     'ForecastMethod',
@@ -5147,8 +6389,11 @@ __all__ = [
     'FormatFormatCard',
     'FormatFormatCardDetailed',
     'FormatIDParameter',
+    'FormatIdParameter',
     'FormatOptionReference',
+    'FormatOptionReference1',
     'FormatOptionRefs',
+    'FormatOptions',
     'FormatOptionsItemFormatOptionId',
     'FormatReferenceStructuredObject',
     'FormatRendersItem',
@@ -5212,9 +6457,12 @@ __all__ = [
     'GeographicRegionRequirement',
     'GeographicRegionSupport',
     'GeographicTargetingLevel',
+    'Geometry',
     'GetAccountFinancialsError',
     'GetAccountFinancialsRequest',
     'GetAccountFinancialsResponse',
+    'GetAccountFinancialsResponse1',
+    'GetAccountFinancialsResponse2',
     'GetAccountFinancialsSuccess',
     'GetAccountFinancialsSuccessBalance',
     'GetAccountFinancialsSuccessBalanceLastTopUp',
@@ -5312,10 +6560,14 @@ __all__ = [
     'GetAdCPCapabilitiesResponseWebhookSigningProfile',
     'GetAdCPCapabilitiesResponseWholesaleFeedVersioning',
     'GetAdCPCapabilitiesResponseWholesaleFeedWebhooks',
+    'GetAdcpCapabilitiesRequest',
+    'GetAdcpCapabilitiesResponse',
     'GetBrandIdentityError',
     'GetBrandIdentityRequest',
     'GetBrandIdentityRequestFieldsItem',
     'GetBrandIdentityResponse',
+    'GetBrandIdentityResponse1',
+    'GetBrandIdentityResponse2',
     'GetBrandIdentityResponseFontRole',
     'GetBrandIdentityResponseFontRoleFamily',
     'GetBrandIdentitySuccess',
@@ -5333,6 +6585,8 @@ __all__ = [
     'GetCollectionListResponseCollectionsItem',
     'GetContentStandardsRequest',
     'GetContentStandardsResponse',
+    'GetContentStandardsResponse1',
+    'GetContentStandardsResponse2',
     'GetContentStandardsResponseBranch0',
     'GetContentStandardsResponseErrors',
     'GetCreativeDeliveryRequest',
@@ -5346,6 +6600,9 @@ __all__ = [
     'GetCreativeFeaturesError',
     'GetCreativeFeaturesRequest',
     'GetCreativeFeaturesResponse',
+    'GetCreativeFeaturesResponse1',
+    'GetCreativeFeaturesResponse2',
+    'GetCreativeFeaturesResponse3',
     'GetCreativeFeaturesResponseSubmitted',
     'GetCreativeFeaturesResponseSuccess',
     'GetCreativeFeaturesSubmitted',
@@ -5355,6 +6612,8 @@ __all__ = [
     'GetMediaBuyArtifactsRequest',
     'GetMediaBuyArtifactsRequestTimeRange',
     'GetMediaBuyArtifactsResponse',
+    'GetMediaBuyArtifactsResponse1',
+    'GetMediaBuyArtifactsResponse2',
     'GetMediaBuyArtifactsResponseArtifactsMediaBuyId',
     'GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItem',
     'GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemBrandContext',
@@ -5462,6 +6721,8 @@ __all__ = [
     'GetRightsError',
     'GetRightsRequest',
     'GetRightsResponse',
+    'GetRightsResponse1',
+    'GetRightsResponse2',
     'GetRightsSuccess',
     'GetRightsSuccessExcludedItem',
     'GetRightsSuccessRightsItem',
@@ -5481,15 +6742,21 @@ __all__ = [
     'GetSignalsWorking',
     'GetTaskStatusRequest',
     'GetTaskStatusResponse',
+    'Goal',
+    'Goal1',
     'GoalEvent',
     'GoalMetric',
+    'GopType',
     'GovernanceAgentNotAcceptedDetails',
+    'GovernanceAgentNotAcceptedDetails1',
+    'GovernanceAgentNotAcceptedDetails2',
     'GovernanceAgentNotAcceptedDetailsDisclosed',
     'GovernanceAgentNotAcceptedDetailsOpaque',
     'GovernanceDecision',
     'GovernanceDomain',
     'GovernanceMode',
     'GovernancePhase',
+    'GovernedAction',
     'GovernedActionsItemDeliveryReconciliationStatus',
     'GroupAudioAsset',
     'GroupBriefAsset',
@@ -5521,28 +6788,41 @@ __all__ = [
     'HTTPMethod',
     'HexColor',
     'HistoryEntryType',
+    'HistoryItem',
     'HostedAudioFormatDeclaration',
     'HostedVideoFormatDeclaration',
     'HotelItem',
     'HotelItemAddress',
     'HoursValue',
+    'House',
     'HousePortfolio',
     'HouseRedirect',
     'HouseRedirectRedirectReason',
+    'HtmlAsset',
+    'HtmlAssetRequirements',
+    'HttpMethod',
+    'HttpsUrl',
     'IANATimezoneIdentifier',
+    'IanaTimezoneIdentifier',
+    'IdType',
+    'Idempotency',
     'IdempotencyKey',
     'IdempotencySupported',
     'IdempotencyUnsupported',
     'Identifier',
+    'IdentifierMatchProof',
+    'Identity',
     'IdentityMatchRequest',
     'IdentityMatchRequestConsent',
     'IdentityMatchRequestIdentitiesItem',
     'IdentityMatchRequestIdentitiesItemAttestation',
     'IdentityMatchRequestIdentitiesItemAttestationVerificationLevel',
     'IdentityMatchRequestSealedCredentialsItem',
+    'IdentityMatchResponse',
     'IdentityMatchResponseProviderRouter',
     'IdentityMatchResponseRouterPublisher',
     'IdentityMatchResponseRouterPublisherTmpxProvidersValue',
+    'IdentityUpdates',
     'Ids',
     'ImageAsset',
     'ImageAssetRequirements',
@@ -5602,25 +6882,37 @@ __all__ = [
     'InstallmentStatus',
     'IntegerReportingControlTotal',
     'InventoryListApplication',
+    'InventoryListApplication1',
+    'InventoryListApplication2',
+    'Issue',
+    'ItemIssue',
     'JavaScriptAsset',
     'JavaScriptAssetRequirements',
     'JavaScriptAssetRequirementsModuleType',
     'JavaScriptModuleType',
+    'JavascriptAsset',
+    'JavascriptAssetRequirements',
+    'JavascriptModuleType',
     'JobItem',
     'JobItemEmploymentType',
     'JobItemExperienceLevel',
     'JobItemSalary',
     'JobItemSalaryPeriod',
+    'Keyword',
     'KeywordDeliveryMetrics',
     'KeywordRequirement',
+    'KeywordRequirement1',
     'KeywordRequirementSupportedMatchTypes',
     'KeywordSupport',
+    'KeywordSupport1',
     'KeywordSupportSupportedMatchTypes',
     'KeywordTarget',
     'LandingPageRequirement',
     'Language',
     'LanguageTag',
+    'LifecycleTool',
     'LiftDimension',
+    'Limitation',
     'LimitedSeries',
     'ListAccountChangesRequest',
     'ListAccountChangesRequestStartingPosition',
@@ -5636,6 +6928,8 @@ __all__ = [
     'ListCollectionListsResponse',
     'ListContentStandardsRequest',
     'ListContentStandardsResponse',
+    'ListContentStandardsResponse1',
+    'ListContentStandardsResponse2',
     'ListContentStandardsResponseErrors',
     'ListContentStandardsResponseStandards',
     'ListCreativeFormatsRequest',
@@ -5678,21 +6972,31 @@ __all__ = [
     'ListTransformersRequestCreativeAgent',
     'ListTransformersRequestCreativeAgentExpandPaginationItem',
     'ListTransformersResponseCreativeAgent',
+    'LocaleFallback',
     'LocalizedCreativeAsset',
     'LocalizedName',
     'LocalizedScalar',
     'LocalizedStringList',
     'LocalizedStringListEntry',
+    'Location',
+    'Location13',
+    'Locator',
+    'Locator1',
     'LogEventError',
     'LogEventRequest',
     'LogEventResponse',
+    'LogEventResponse1',
+    'LogEventResponse2',
     'LogEventSuccess',
     'LogEventSuccessPartialFailuresItem',
+    'Logo',
     'LogoId',
     'LogoSlot',
     'LookbackWindow',
+    'Loss',
     'MCPWebhookPayload',
     'MacroBearingURL',
+    'MacroBearingUrl',
     'MacroDeclaration',
     'MacroDeclarationLocation',
     'MacroDeclarationLocationField',
@@ -5716,9 +7020,15 @@ __all__ = [
     'MarkdownAsset',
     'MarkdownAssetRequirements',
     'MarkdownFlavor',
+    'MatchBreakdown',
     'MatchIDType',
+    'MatchIdType',
+    'MatchKey',
     'MatchType',
+    'MatchingProduct',
     'MaterialDeadline',
+    'MaterialStage',
+    'McpWebhookPayload',
     'MeasurementReadiness',
     'MeasurementTerms',
     'MeasurementTermsBillingMeasurement',
@@ -5728,15 +7038,24 @@ __all__ = [
     'MediaBuyActionMode',
     'MediaBuyAvailableAction',
     'MediaBuyAvailableActionID',
+    'MediaBuyAvailableActionId',
     'MediaBuyAvailableActionTask',
     'MediaBuyBidding',
     'MediaBuyCancellation',
     'MediaBuyChangeTerm',
     'MediaBuyChangeTermAllowedStatusesItem',
     'MediaBuyChangeTermConstraints',
+    'MediaBuyChangeTermConstraints1',
+    'MediaBuyChangeTermConstraints2',
+    'MediaBuyChangeTermConstraints3',
+    'MediaBuyChangeTermConstraints4',
     'MediaBuyChangeTermConstraintsMoney',
     'MediaBuyChangeTermID',
+    'MediaBuyChangeTermId',
     'MediaBuyCommitmentResponse',
+    'MediaBuyCommitmentResponse1',
+    'MediaBuyCommitmentResponse2',
+    'MediaBuyCommitmentResponse3',
     'MediaBuyCommitmentResponseCompleted',
     'MediaBuyCommitmentResponseFailed',
     'MediaBuyCommitmentResponseSubmitted',
@@ -5764,12 +7083,17 @@ __all__ = [
     'MetricType',
     'MetroAreaSystem',
     'MetroRequirement',
+    'MetroRequirement1',
     'MetroRequirementSystems',
     'MetroSupport',
+    'MetroSupport1',
     'MetroSupportSystems',
     'MinSpendTarget',
     'MissingMetric',
+    'MissingMetric1',
+    'MissingMetric2',
     'MissingMetricVendor',
+    'MixTargets',
     'MoovAtomPosition',
     'NativeInFeedFormatDeclaration',
     'NegativeKeyword',
@@ -5780,6 +7104,8 @@ __all__ = [
     'NotificationConfigEventTypesItem',
     'NotificationConfigProductPayloadView',
     'NotificationType',
+    'Notifications',
+    'Notifications2',
     'ObjAllValues',
     'ObjErrorsContextExt',
     'ObjScopeAsk',
@@ -5797,6 +7123,7 @@ __all__ = [
     'OfferingAvailabilityStatus',
     'OfferingGeoTargets',
     'OfferingGeoTargetsMetrosItem',
+    'Operation',
     'OperationalFailure',
     'OperatorIdentity',
     'OperatorUnit',
@@ -5806,6 +7133,9 @@ __all__ = [
     'OpportunityContextPhase',
     'OpportunityContextStatus',
     'OptimizationGoal',
+    'OptimizationGoal8',
+    'OptimizationGoal9',
+    'OptimizationGoal10',
     'OptimizationGoalEvent',
     'OptimizationGoalEventAttributionWindow',
     'OptimizationGoalEventEventSourcesItem',
@@ -5821,6 +7151,7 @@ __all__ = [
     'OptimizationGoalVendorMetricTargetCostPer',
     'OptimizationGoalVendorMetricTargetThresholdRate',
     'OptimizationGoals',
+    'Option',
     'OutcomeMeasurement',
     'OutcomeMeasurementWindow',
     'OutcomeTarget',
@@ -5871,14 +7202,33 @@ __all__ = [
     'PackageTargetingResolution',
     'PackageUpdate',
     'PackagesItemIndicatorsItemType',
+    'Pagination',
     'PaginationRequest',
     'PaginationResponse',
     'PairedRedirect',
     'PairedRedirectMacroDeclarationsItem',
     'PairedRedirectMacroDeclarationsItemLocation',
     'PairedRedirectMacroDeclarationsItemLocationField',
+    'Panel',
+    'ParameterMapping',
+    'PartialFailure',
     'PassItemUrl',
+    'Payload',
+    'Payload1',
+    'Payload2',
+    'Payload5',
+    'Payload6',
+    'Payload8',
+    'Payload9',
+    'Payload17',
+    'Payload18',
+    'Payload20',
+    'Payload21',
+    'Payload22',
+    'Payload23',
+    'Payload24',
     'PaymentTerms',
+    'PerLeaf',
     'PerUnitPricing',
     'PercentOfMediaPricing',
     'PerformanceBaseline',
@@ -5887,13 +7237,18 @@ __all__ = [
     'PerformanceFeedbackAssertionEvidence',
     'PerformanceFeedbackAssertionEvidenceConfidenceInterval',
     'PerformanceFeedbackMetric',
+    'PerformanceFeedbackMetric1',
+    'PerformanceFeedbackMetric2',
     'PerformanceFeedbackMetricStandard',
     'PerformanceFeedbackMetricVendor',
     'PerformanceFeedbackStatus',
     'PerformanceStandard',
     'PerformanceStandardMetric',
     'PerformanceStandards',
+    'Period',
     'PeriodsView',
+    'PhysicalChecksums',
+    'PhysicalChecksums1',
     'PixelTrackerAsset',
     'PixelTrackerAssetMethod',
     'PixelTrackingEvent',
@@ -5906,6 +7261,8 @@ __all__ = [
     'PlacementEvidence',
     'PlacementForecastDimension',
     'PlacementIdentity',
+    'PlacementIdentity1',
+    'PlacementIdentity2',
     'PlacementKind',
     'PlacementMode',
     'PlacementPresentationDocument',
@@ -5925,12 +7282,15 @@ __all__ = [
     'PlacementPropertyDeliveryMetrics',
     'PlacementReference',
     'PlacementSelection',
+    'PlacementSelection1',
+    'PlacementSelection2',
     'PlannedDelivery',
     'PlannedDeliveryBidding',
     'PlannedDeliveryGeo',
     'PlatformDistribution',
     'PlatformExtensionReference',
     'PlatformSegment',
+    'Point',
     'PolicyCategory',
     'PolicyCategoryDefinition',
     'PolicyCategoryDefinitionFacetsItem',
@@ -5941,11 +7301,22 @@ __all__ = [
     'PolicyEntryExemplars',
     'PolicyEntryIssuer',
     'PolicyEntrySource',
+    'PolicyRef',
     'PolicyReference',
     'PolicyViolationDetails',
     'PolicyViolationDetailsOrigin',
     'PositivePostalAreaSupport',
     'PostalArea',
+    'PostalArea2',
+    'PostalArea112',
+    'PostalArea113',
+    'PostalArea114',
+    'PostalArea115',
+    'PostalArea116',
+    'PostalArea117',
+    'PostalArea118',
+    'PostalArea119',
+    'PostalArea120',
     'PostalAreaAUPostcode',
     'PostalAreaBRCep',
     'PostalAreaBranch9',
@@ -5957,12 +7328,16 @@ __all__ = [
     'PostalAreaINPin',
     'PostalAreaPlz',
     'PostalAreaSupport',
+    'PostalAreaSupportAdditionalPropertyEnum',
     'PostalAreaSupportValueItem',
     'PostalAreaUS',
     'PostalAreaWithFusedSystem',
     'PostalAreaZAPostalCode',
     'PostalCodeSystem',
     'PostalCountrySystem',
+    'PostalCountrySystem1',
+    'PostalCountrySystem2',
+    'PostalCountrySystem3',
     'PostalCountrySystemAUPostcode',
     'PostalCountrySystemBRCep',
     'PostalCountrySystemBranch9',
@@ -5978,6 +7353,11 @@ __all__ = [
     'PostalCountrySystemUS',
     'PostalCountrySystemUSSystem',
     'PostalCountrySystemZAPostalCode',
+    'Posting',
+    'Preview2',
+    'Preview3',
+    'Preview4',
+    'PreviewAsset',
     'PreviewBatchResultError',
     'PreviewBatchResultSuccess',
     'PreviewCreativeBatchResponse',
@@ -5989,6 +7369,10 @@ __all__ = [
     'PreviewCreativeRequestRequestType',
     'PreviewCreativeRequestRequestsItem',
     'PreviewCreativeResponse',
+    'PreviewCreativeResponse1',
+    'PreviewCreativeResponse2',
+    'PreviewCreativeResponse3',
+    'PreviewCreativeResponse4',
     'PreviewCreativeSingleResponse',
     'PreviewCreativeSingleResponsePreviewsItem',
     'PreviewCreativeSingleResponsePreviewsItemInput',
@@ -5997,6 +7381,9 @@ __all__ = [
     'PreviewCreativeVariantResponsePreviewsItem',
     'PreviewOutputFormat',
     'PreviewRender',
+    'PreviewRender1',
+    'PreviewRender2',
+    'PreviewRender3',
     'PreviewRenderBoth',
     'PreviewRenderBothEmbedding',
     'PreviewRenderHtml',
@@ -6025,14 +7412,21 @@ __all__ = [
     'PricingOptionTime',
     'PricingOptionVcpm',
     'PricingStructure',
+    'PrincipalAppliedResult',
     'PrincipalChangedWebhook',
     'PrincipalChangedWebhookReason',
+    'PrincipalCurrentResult',
     'PrincipalDeclarationsState',
     'PrincipalDeclarationsStateExclusionsItem',
     'PrincipalDeclarationsStateExclusionsItemAxis',
     'PrincipalKind',
+    'PrincipalReadFailedResult',
+    'PrincipalRecognizedResult',
     'PrincipalState',
     'PrincipalStateRetiredDestinationsItem',
+    'PrincipalSyncFailedResult',
+    'PrincipalUnconfiguredResult',
+    'PrincipalValidatedResult',
     'Product',
     'ProductAllocation',
     'ProductAllowedAction',
@@ -6046,6 +7440,7 @@ __all__ = [
     'ProductCardReferenceAssetRole',
     'ProductCatalogMatch',
     'ProductChangeMap',
+    'ProductChangeMap1',
     'ProductChangeMapValue',
     'ProductConversionTracking',
     'ProductConversionTrackingSupportedTargetsItem',
@@ -6056,6 +7451,9 @@ __all__ = [
     'ProductDiscoveryCriteriaOutcomeTarget',
     'ProductDiscoveryTargetingResolution',
     'ProductExecutionRequirement',
+    'ProductExecutionRequirement1',
+    'ProductExecutionRequirement2',
+    'ProductExecutionRequirement3',
     'ProductFilters',
     'ProductFiltersGeoProximityItem',
     'ProductFiltersKeywordsItem',
@@ -6067,6 +7465,22 @@ __all__ = [
     'ProductFiltersTrustedMatch',
     'ProductFiltersTrustedMatchProvidersItem',
     'ProductFormatDeclaration',
+    'ProductFormatDeclaration1',
+    'ProductFormatDeclaration2',
+    'ProductFormatDeclaration3',
+    'ProductFormatDeclaration4',
+    'ProductFormatDeclaration5',
+    'ProductFormatDeclaration6',
+    'ProductFormatDeclaration7',
+    'ProductFormatDeclaration8',
+    'ProductFormatDeclaration9',
+    'ProductFormatDeclaration10',
+    'ProductFormatDeclaration11',
+    'ProductFormatDeclaration12',
+    'ProductFormatDeclaration13',
+    'ProductFormatDeclaration14',
+    'ProductFormatDeclaration15',
+    'ProductFormatDeclaration16',
     'ProductFormatDeclarationSellerPreference',
     'ProductId',
     'ProductIdentity',
@@ -6087,6 +7501,7 @@ __all__ = [
     'ProductPurchase',
     'ProductPurchaseInput',
     'ProductRefinementRequests',
+    'ProductResponseField',
     'ProductResponseFields',
     'ProductResponseFieldsItem',
     'ProductSignalTargetingOption',
@@ -6097,6 +7512,7 @@ __all__ = [
     'ProductTrustedMatch',
     'ProductTrustedMatchProvidersItem',
     'ProductionQuality',
+    'PropagationSurface',
     'Property',
     'PropertyDeliveryMetrics',
     'PropertyError',
@@ -6109,6 +7525,7 @@ __all__ = [
     'PropertyFeatureResultCoverageStatus',
     'PropertyFeatureValue',
     'PropertyID',
+    'PropertyId',
     'PropertyIdentifierTypes',
     'PropertyList',
     'PropertyListApplication',
@@ -6166,6 +7583,8 @@ __all__ = [
     'ProvidePerformanceFeedbackError',
     'ProvidePerformanceFeedbackRequest',
     'ProvidePerformanceFeedbackResponse',
+    'ProvidePerformanceFeedbackResponse1',
+    'ProvidePerformanceFeedbackResponse2',
     'ProvidePerformanceFeedbackSuccess',
     'ProvidePerformanceFeedbackSuccessApplicationStatus',
     'ProvisionBinding',
@@ -6186,12 +7605,18 @@ __all__ = [
     'PublisherIdentifierTypes',
     'PublisherPropertyIDsSource',
     'PublisherPropertySelector',
+    'PublisherPropertySelector1',
+    'PublisherPropertySelector2',
+    'PublisherPropertySelector3',
     'PublisherPropertySelectorAll',
     'PublisherPropertySelectorById',
     'PublisherPropertySelectorByTag',
     'PublisherTMPXMacroMapping',
     'PublisherTagsSource',
     'PublisherTargetingKVMapping',
+    'PublisherTargetingKvMapping',
+    'PublisherTmpxMacroMapping',
+    'PurchaseBinding',
     'PurchaseContinuationLegacyCreate',
     'PurchaseContinuationListedPurchaseAccount',
     'PurchaseType',
@@ -6203,12 +7628,14 @@ __all__ = [
     'RawAttestation',
     'ReachAggregation',
     'ReachUnit',
+    'ReachWindow',
     'RealEstateItem',
     'RealEstateItemArea',
     'RealEstateItemAreaUnit',
     'RealEstateItemListingType',
     'RealEstateItemPropertyType',
     'RecognizedPrincipalWithoutStandingConfiguration',
+    'Record',
     'RecordedReportingAdjustmentReceipt',
     'RecordedReportingConsumerStatus',
     'RecordedReportingReceipt',
@@ -6216,6 +7643,9 @@ __all__ = [
     'ReferenceAssetRole',
     'ReferenceRenderer',
     'ReferenceRendererProvenance',
+    'Refine1',
+    'Refine2',
+    'Refine3',
     'RefineProposalsAsyncSubmitted',
     'RefineProposalsInputRequired',
     'RefineProposalsRequest',
@@ -6229,6 +7659,9 @@ __all__ = [
     'RefineProposalsResponseSubmitted',
     'RefineProposalsSubmitted',
     'RefineProposalsWorking',
+    'RefinementApplied1',
+    'RefinementApplied2',
+    'RefinementApplied3',
     'RefinementAppliedItemProduct',
     'RefinementAppliedItemProposal',
     'RefinementAppliedItemRequest',
@@ -6292,9 +7725,14 @@ __all__ = [
     'RegistryEventStoryboardStatus',
     'RegistryFeedResponse',
     'RegistryFeedResponseFreshness',
+    'RegulatoryBasi',
+    'RegulatoryFramework',
+    'RelatedCollection',
     'RemoveTargetingSetValues',
     'RemoveTargetingSetValuesPath',
     'RemoveTargetingSetValuesSelector',
+    'Renders',
+    'Renders1',
     'RendersItemDimensions',
     'RendersItemParametersFromFormatId',
     'RepeatableGroupAsset',
@@ -6336,17 +7774,22 @@ __all__ = [
     'ReportingCapabilities',
     'ReportingCapabilitiesDateRangeSupport',
     'ReportingCapabilitiesVendorMetricsItem',
+    'ReportingCommitment',
     'ReportingConsumerStatus',
     'ReportingConsumerStatusConsumerStatus',
     'ReportingConsumerStatusFailureCode',
     'ReportingConsumerStatusMismatchCode',
     'ReportingConsumerStatusPeriod',
     'ReportingControlTotal',
+    'ReportingControlTotal1',
+    'ReportingControlTotal2',
     'ReportingCoverage',
     'ReportingCoverageLimitationsItem',
     'ReportingCoverageLimitationsItemReason',
     'ReportingCoverageStatus',
     'ReportingDatasetShareDestination',
+    'ReportingDatasetShareDestination1',
+    'ReportingDatasetShareDestination2',
     'ReportingDatasetShareDestinationExisting',
     'ReportingDeliveryCapabilities',
     'ReportingDeliveryCapabilitiesOperationsContact',
@@ -6359,10 +7802,14 @@ __all__ = [
     'ReportingDeliveryConfigurationStateSetup',
     'ReportingDeliveryConfigurationStateSetupAction',
     'ReportingDeliveryMethod',
+    'ReportingDeliveryMethod1',
+    'ReportingDeliveryMethod2',
+    'ReportingDeliveryMethod3',
     'ReportingDeliveryMethodFileTransfer',
     'ReportingDeliveryMethodReportingOrchestration',
     'ReportingDeliveryOffering',
     'ReportingDeliveryOfferingID',
+    'ReportingDeliveryOfferingId',
     'ReportingDeliveryOfferingMethod',
     'ReportingDeliveryOfferingMethodDestinationModesItem',
     'ReportingDeliveryOfferingMethodProducerIdentity',
@@ -6371,6 +7818,7 @@ __all__ = [
     'ReportingDeliveryOfferingReportingProfile',
     'ReportingDeliveryReadyWebhook',
     'ReportingDeliveryReadyWebhookReadiness',
+    'ReportingDestinationOffering',
     'ReportingDestinationSetupState',
     'ReportingFileCompression',
     'ReportingFileEntry',
@@ -6384,11 +7832,13 @@ __all__ = [
     'ReportingMaterialization',
     'ReportingMaterializationStatus',
     'ReportingMediaBuyId',
+    'ReportingMode',
     'ReportingNativeVersionReference',
     'ReportingObligation',
     'ReportingObligationProductionStatus',
     'ReportingObligationReconciliationStatus',
     'ReportingPackageId',
+    'ReportingPeriod',
     'ReportingPrimaryKey',
     'ReportingReaderCompatibilityItem',
     'ReportingReceipt',
@@ -6434,12 +7884,15 @@ __all__ = [
     'ReportingWebhook',
     'ReportingWebhookReportingFrequency',
     'ReportingWriteDestination',
+    'ReportingWriteDestination1',
+    'ReportingWriteDestination2',
     'ReportingWriteDestinationExisting',
     'RepresentationDestination',
     'RepresentationRejection',
     'RepresentationRejectionCode',
     'RepresentationSelection',
     'RepresentationSelectionStrategy',
+    'Request',
     'RequestProposalsAsyncSubmitted',
     'RequestProposalsInputRequired',
     'RequestProposalsRequest',
@@ -6462,23 +7915,49 @@ __all__ = [
     'RequestProposalsSubmitted',
     'RequestProposalsWorking',
     'RequestSigningErrorCode',
+    'RequiredDisclosure',
+    'RequiredPerformanceStandard',
     'RequoteRequiredDetails',
     'ResolvedAssets',
+    'ResolvedPolicy',
+    'Resolver',
     'ResponsePayloadJWSEnvelope',
     'ResponsePayloadJWSEnvelopeResponsePayload',
     'ResponsePayloadJWSEnvelopeResponsePayloadTask',
+    'ResponsePayloadJwsEnvelope',
     'ResponsiveCreativeFormatDeclaration',
     'RestrictedAttribute',
+    'Result2',
+    'Result3',
+    'Result5',
+    'Result13',
+    'Result15',
     'ResultEntry',
+    'ResultEntry1',
+    'ResultEntry2',
+    'Results20',
+    'Results21',
+    'Results22',
+    'Results23',
+    'Results26',
+    'Results27',
     'ResultsItemDeclined',
     'ResultsItemFinalized',
     'ResultsItemPartial',
     'ResultsItemPartialProposalsItem',
     'ResultsItemRevised',
+    'RetiredDestination',
     'RevenueSharePricingOption',
     'RevisionView',
     'RevisionViewPagination',
     'RevocationNotification',
+    'RevokedPublisherDomain',
+    'RevokedPublisherDomain1',
+    'RevokedPublisherDomain2',
+    'RevokedPublisherDomain3',
+    'RevokedPublisherDomain4',
+    'RevokedPublisherDomain5',
+    'RevokedPublisherDomain6',
     'RightType',
     'RightUse',
     'RightsAttestationEvaluation',
@@ -6496,6 +7975,8 @@ __all__ = [
     'RightsPricingOption',
     'RightsTerms',
     'RightsTermsExclusivity',
+    'RuntimeAttestation',
+    'RuntimeAttestationEvaluation',
     'SHA256PhysicalChecksum',
     'SHA512PhysicalChecksum',
     'SICapabilities',
@@ -6557,6 +8038,7 @@ __all__ = [
     'SLAWindow',
     'ScanType',
     'ScopedCreativeApproval',
+    'SealedCredential',
     'SearchBrandsError',
     'SearchBrandsRequest',
     'SearchBrandsResponse',
@@ -6565,7 +8047,9 @@ __all__ = [
     'SearchBrandsResponseSearchBrandResultRelationshipTrust',
     'SearchBrandsResponseSearchBrandResultRights',
     'SearchBrandsSuccess',
+    'SeedSource',
     'SeedSuccess',
+    'Segment',
     'SelectedCollections',
     'SelectedCollectionsCollectionsItem',
     'SelectedPlacements',
@@ -6574,7 +8058,26 @@ __all__ = [
     'SellerPolicyDeclineReason',
     'SellerRenderedStatefulDisplayFormatDeclaration',
     'SettingsUpdateMode',
+    'Setup',
+    'SharedSlot',
+    'SiCapabilities',
+    'SiComponentCatalog',
+    'SiContextUse',
+    'SiGetOfferingRequest',
+    'SiGetOfferingResponse',
+    'SiIdentity',
+    'SiInitiateSessionRequest',
+    'SiInitiateSessionResponse',
+    'SiSendMessageRequest',
+    'SiSendMessageResponse',
+    'SiSessionStatus',
+    'SiSponsoredContext',
+    'SiSponsoredContextReceipt',
+    'SiTerminateSessionRequest',
+    'SiTerminateSessionResponse',
+    'SiUiElement',
     'SignalAvailabilityType',
+    'SignalCatalogType',
     'SignalConditionsItemBinary',
     'SignalConditionsItemCategorical',
     'SignalConditionsItemNumeric',
@@ -6616,6 +8119,9 @@ __all__ = [
     'SignalID',
     'SignalIDAgent',
     'SignalIDCatalog',
+    'SignalId',
+    'SignalId8',
+    'SignalId9',
     'SignalListing',
     'SignalListingRange',
     'SignalModelingDisclosure',
@@ -6623,6 +8129,9 @@ __all__ = [
     'SignalModelingDisclosureJurisdictionsItemAudience',
     'SignalPricingOption',
     'SignalRef',
+    'SignalRef1',
+    'SignalRef2',
+    'SignalRef3',
     'SignalRefDataProvider',
     'SignalRefProduct',
     'SignalRefSignalSource',
@@ -6632,9 +8141,15 @@ __all__ = [
     'SignalSource',
     'SignalTagsValue',
     'SignalTargeting',
+    'SignalTargeting1',
+    'SignalTargeting2',
+    'SignalTargeting3',
     'SignalTargetingBinary',
     'SignalTargetingCategorical',
     'SignalTargetingExpression',
+    'SignalTargetingExpression1',
+    'SignalTargetingExpression2',
+    'SignalTargetingExpression3',
     'SignalTargetingExpressionBinary',
     'SignalTargetingExpressionCategorical',
     'SignalTargetingExpressionNumeric',
@@ -6645,7 +8160,10 @@ __all__ = [
     'SignalTargetingRules',
     'SignalTargetingRulesResolutionModel',
     'SignalValueType',
+    'SignalsByProvider',
     'SimulationSuccess',
+    'SlaWindow',
+    'Slot',
     'SnapshotUnavailableReason',
     'SocialPlacementSurface',
     'SortDirection',
@@ -6653,29 +8171,52 @@ __all__ = [
     'SourceLocalizationReadback',
     'Special',
     'SpecialCategory',
+    'Specification',
     'SponsoredPlacementFormatDeclaration',
     'SponsoredPlacementType',
     'SpotReportingCapability',
     'StaleResponseDetails',
     'StaleResponseDetailsOriginalError',
     'StaleResponseDetailsUpstream',
+    'StandardEnum',
     'StandardScope',
     'StartTime',
     'StartTiming',
+    'State',
     'StateTransitionSuccess',
+    'Status46',
+    'Status51',
+    'StoreCatchment',
     'StoreCatchments',
     'StoreItem',
+    'Storyboard',
+    'Strength1',
     'StringArray',
+    'Subject',
     'SuccessfulLookup',
     'SummaryView',
     'Supported',
+    'SupportedChange',
+    'SupportedDeliveryMethod',
+    'SupportedDeliveryType',
+    'SupportedDimension',
+    'SupportedFormat',
     'SupportedHashedIdentifiersItem',
+    'SupportedIdType',
+    'SupportedIdentifierType',
+    'SupportedProtocol',
+    'SupportedScope',
+    'SupportedSection',
+    'SupportedTagType',
+    'SupportedTarget5',
     'SupportedVersionsCompatibilityDetails',
     'SyncAccountsError',
     'SyncAccountsRequest',
     'SyncAccountsRequestAccountsItem',
     'SyncAccountsRequestAccountsItemNotificationConfigsItem',
     'SyncAccountsResponse',
+    'SyncAccountsResponse1',
+    'SyncAccountsResponse2',
     'SyncAccountsSuccess',
     'SyncAccountsSuccessAccountsItem',
     'SyncAccountsSuccessAccountsItemAction',
@@ -6688,6 +8229,9 @@ __all__ = [
     'SyncAudiencesRequestAudiencesItem',
     'SyncAudiencesRequestAudiencesItemAudienceType',
     'SyncAudiencesResponse',
+    'SyncAudiencesResponse1',
+    'SyncAudiencesResponse2',
+    'SyncAudiencesResponse3',
     'SyncAudiencesSubmitted',
     'SyncAudiencesSuccess',
     'SyncAudiencesSuccessAudiencesItem',
@@ -6705,6 +8249,9 @@ __all__ = [
     'SyncCatalogsInputRequiredReason',
     'SyncCatalogsRequest',
     'SyncCatalogsResponse',
+    'SyncCatalogsResponse1',
+    'SyncCatalogsResponse2',
+    'SyncCatalogsResponse3',
     'SyncCatalogsResponseSubmitted',
     'SyncCatalogsSubmitted',
     'SyncCatalogsSuccess',
@@ -6721,6 +8268,9 @@ __all__ = [
     'SyncCreativesRequestAssignmentsItem',
     'SyncCreativesRequestCreativesItem',
     'SyncCreativesResponse',
+    'SyncCreativesResponse1',
+    'SyncCreativesResponse2',
+    'SyncCreativesResponse3',
     'SyncCreativesResponseSubmitted',
     'SyncCreativesSubmitted',
     'SyncCreativesSuccess',
@@ -6730,6 +8280,8 @@ __all__ = [
     'SyncEventSourcesRequest',
     'SyncEventSourcesRequestEventSourcesItem',
     'SyncEventSourcesResponse',
+    'SyncEventSourcesResponse1',
+    'SyncEventSourcesResponse2',
     'SyncEventSourcesSuccess',
     'SyncEventSourcesSuccessEventSourcesItem',
     'SyncEventSourcesSuccessEventSourcesItemSetup',
@@ -6740,6 +8292,8 @@ __all__ = [
     'SyncGovernanceRequestAccountsItemGovernanceAgentsItem',
     'SyncGovernanceRequestAccountsItemGovernanceAgentsItemAuthentication',
     'SyncGovernanceResponse',
+    'SyncGovernanceResponse1',
+    'SyncGovernanceResponse2',
     'SyncGovernanceSuccess',
     'SyncGovernanceSuccessAccountsItem',
     'SyncGovernanceSuccessAccountsItemStatus',
@@ -6786,11 +8340,18 @@ __all__ = [
     'Tags',
     'Talent',
     'TalentRole',
+    'Target10',
+    'Target16',
+    'Target17',
     'TargetLocalizationReadback',
     'TargetMaximizeValue',
     'TargetPerAdSpend',
+    'TargetVariant',
+    'TargetingKv',
     'TargetingKvMappingValue',
     'TargetingModification',
+    'TargetingModification1',
+    'TargetingModification2',
     'TargetingOverlay',
     'TargetingOverlayAgeRestriction',
     'TargetingOverlayDevicePlatform',
@@ -6816,8 +8377,22 @@ __all__ = [
     'TargetingOverlaySupportPlacementSelection',
     'TargetingUnknownAgeEligibilityConstraint',
     'TargetingVerifiedAgeBasisConstraint',
+    'Targets1',
+    'Targets2',
+    'Targets3',
+    'Targets4',
+    'Task',
     'TaskStatus',
     'TaskType',
+    'Tasks1',
+    'Tasks2',
+    'Tasks3',
+    'Tasks4',
+    'Tasks5',
+    'Tasks6',
+    'Tasks7',
+    'Tasks8',
+    'Tasks9',
     'TasksGetRequest',
     'TasksGetResponse',
     'TasksGetResponseError',
@@ -6850,16 +8425,30 @@ __all__ = [
     'TimeBasedPricingOption',
     'TimeBasedPricingOptionParameters',
     'TimeBasedPricingOptionParametersTimeUnit',
+    'TimeBasedView',
     'TimeForecastDimension',
+    'TmpError',
+    'TmpProviderRegistration',
+    'TmpProviderRegistration1',
+    'TmpProviderRegistration2',
+    'TmpResponseType',
+    'TmpxChunk',
     'TmpxMacroMappingValue',
+    'TmpxProviders',
     'Tone',
+    'Totals',
     'TrackerExecutionActor',
     'TrackerExecutionContract',
     'TrackerExecutionSelector',
+    'TrackerExecutionSelector1',
     'TrackerExecutionSelectorDaastTracker',
     'TrackerExecutionSelectorPixelTrackerImg',
     'TrackerExecutionSelectorVastTracker',
     'TrackerFiringPath',
+    'Tracks',
+    'TranscriptFormat',
+    'TranscriptSource',
+    'TranscriptSource1',
     'Transformer',
     'TransformerMultiplicity',
     'TransformerMultiplicityVariantDimensionsItem',
@@ -6869,6 +8458,7 @@ __all__ = [
     'TransformerParamValueSource',
     'TransformerVoiceSynthesisRefItem',
     'TransformerVoiceSynthesisRefItemBrandAgent',
+    'TransitionMode9',
     'TransitionsItemInViewTimer',
     'TransitionsItemMediaEvent',
     'TransitionsItemScrollProgressScrollScrollLinked',
@@ -6876,10 +8466,13 @@ __all__ = [
     'TransitionsItemTimer',
     'TransitionsItemTimerTransitionMode',
     'TransitionsItemUserAction',
+    'Transport1',
     'TransportMode',
     'TravelTimeUnit',
     'TruncationSentinel',
     'TruncationSentinelTruncation',
+    'TrustedMatch',
+    'Type6',
     'UIDType',
     'URLAsset',
     'URLAssetMacroDeclarationsItem',
@@ -6888,6 +8481,8 @@ __all__ = [
     'URLAssetRequirementsProtocolsItem',
     'URLAssetRequirementsRole',
     'URLAssetType',
+    'Uid',
+    'UidType',
     'Unassign',
     'UnavailableLookup',
     'UnavailableLookupAdcpError',
@@ -6900,6 +8495,9 @@ __all__ = [
     'UnchangedReportingReceiptReceipt',
     'UnconfiguredPrincipal',
     'UniversalMacro',
+    'UnknownFormatAsset',
+    'UnknownGroupAsset',
+    'UnmetRequirement',
     'UnsupportedRefinementDimensionDetails',
     'UpdateCollectionListRequest',
     'UpdateCollectionListResponse',
@@ -6907,6 +8505,8 @@ __all__ = [
     'UpdateContentStandardsRequest',
     'UpdateContentStandardsRequestScope',
     'UpdateContentStandardsResponse',
+    'UpdateContentStandardsResponse1',
+    'UpdateContentStandardsResponse2',
     'UpdateContentStandardsSuccess',
     'UpdateFrequency',
     'UpdateMediaBuyAsyncInputRequired',
@@ -6917,6 +8517,9 @@ __all__ = [
     'UpdateMediaBuyInputRequiredReason',
     'UpdateMediaBuyRequest',
     'UpdateMediaBuyResponse',
+    'UpdateMediaBuyResponse1',
+    'UpdateMediaBuyResponse2',
+    'UpdateMediaBuyResponse3',
     'UpdateMediaBuyResponseSubmitted',
     'UpdateMediaBuySubmitted',
     'UpdateMediaBuySuccess',
@@ -6927,6 +8530,8 @@ __all__ = [
     'UpdateRightsError',
     'UpdateRightsRequest',
     'UpdateRightsResponse',
+    'UpdateRightsResponse1',
+    'UpdateRightsResponse2',
     'UpdateRightsSuccess',
     'UpdateRightsSuccessRightsConstraint',
     'UpstreamTrafficSuccess',
@@ -6935,7 +8540,12 @@ __all__ = [
     'UpstreamTrafficSuccessRecordedCallsItemIdentifierMatchProofsItem',
     'UpstreamTrafficSuccessRecordedCallsItemMethod',
     'UpstreamTrafficSuccessRecordedCallsItemPurpose',
+    'UrlAsset',
+    'UrlAssetRequirements',
+    'UrlAssetType',
     'UserMatch',
+    'V1Pattern',
+    'V1Pattern1',
     'V1PatternFormatIdGlob',
     'V1PatternStructural',
     'V1V2CanonicalFormatMappingRegistry',
@@ -6967,6 +8577,8 @@ __all__ = [
     'ValidateContentDeliveryRequest',
     'ValidateContentDeliveryRequestRecordsItem',
     'ValidateContentDeliveryResponse',
+    'ValidateContentDeliveryResponse1',
+    'ValidateContentDeliveryResponse2',
     'ValidateContentDeliveryResponseErrors',
     'ValidateContentDeliveryResponseResultsSummary',
     'ValidateContentDeliveryResponseResultsSummaryResultsItem',
@@ -6992,8 +8604,26 @@ __all__ = [
     'ValidationResultFeaturesItem',
     'ValidationResultFeaturesItemRequirement',
     'ValidationResultStatus',
+    'Value',
+    'ValueMapping',
+    'Variant',
+    'Variants1',
+    'Variants2',
+    'VastAsset',
+    'VastAsset3',
+    'VastAsset4',
+    'VastAssetRequirements',
+    'VastMediaDeliveryMethod',
+    'VastMediafileRequirements',
     'VastOffset',
+    'VastTrackerAsset',
+    'VastTrackerConstraints',
+    'VastTrackingEvent',
+    'VastVersion',
+    'VastVersionMismatchDetails',
+    'VastVersionMismatchDetails3',
     'VastVersions',
+    'VcpmPricingOption',
     'VehicleItem',
     'VehicleItemBodyStyle',
     'VehicleItemCondition',
@@ -7005,11 +8635,17 @@ __all__ = [
     'VendorErrorCodeRegistryVendorsValue',
     'VendorErrorCodeRegistryVendorsValueCodesValue',
     'VendorMetricID',
+    'VendorMetricId',
     'VendorMetricOptimization',
     'VendorMetricOptimizationSupportedMetric',
     'VendorMetricOptimizationSupportedMetricSupportedTargetsItem',
     'VendorMetricValue',
     'VendorPricing',
+    'VendorPricing1',
+    'VendorPricing2',
+    'VendorPricing3',
+    'VendorPricing4',
+    'VendorPricing5',
     'VendorPricingOption',
     'VendorPricingOptionCpm',
     'VendorPricingOptionCustom',
@@ -7017,16 +8653,22 @@ __all__ = [
     'VendorPricingOptionPerUnit',
     'VendorPricingOptionPercentOfMedia',
     'VendorRelationship',
+    'Vendors',
     'VerificationStatus',
+    'VerificationTokenMode',
     'VerifyBrandClaimError',
+    'VerifyBrandClaimErrorResponse',
     'VerifyBrandClaimRequest',
     'VerifyBrandClaimResponse',
     'VerifyBrandClaimResponseSignedResponse',
     'VerifyBrandClaimResponseSignedResponsePayload',
     'VerifyBrandClaimResponseSignedSuccessPayload',
     'VerifyBrandClaimResponseSignedSuccessPayloadClaimType',
+    'VerifyBrandClaimSignedSuccessPayload',
     'VerifyBrandClaimSuccess',
+    'VerifyBrandClaimSuccessResponse',
     'VerifyBrandClaimsError',
+    'VerifyBrandClaimsErrorResponse',
     'VerifyBrandClaimsRequestBulk',
     'VerifyBrandClaimsResponseBulk',
     'VerifyBrandClaimsResponseBulkSignedResponse',
@@ -7034,6 +8676,7 @@ __all__ = [
     'VerifyBrandClaimsResponseBulkSignedSuccessPayload',
     'VerifyBrandClaimsResultError',
     'VerifyBrandClaimsResultSuccess',
+    'VerifyBrandClaimsSignedSuccessPayload',
     'VerifyBrandClaimsSuccess',
     'VerifyParentClaim',
     'VerifyParentClaimClaim',
@@ -7059,6 +8702,7 @@ __all__ = [
     'VideoBrief',
     'VideoBriefSegmentsItem',
     'VideoPlacementType',
+    'ViewThreshold1',
     'ViewThresholdBasis',
     'ViewThresholdDurationSeconds',
     'ViewabilityStandard',
@@ -7070,7 +8714,9 @@ __all__ = [
     'WarningAffectedResource',
     'WarningAffectedResourceResourceType',
     'WarningCode',
+    'Watermark',
     'WatermarkMediaType',
+    'WcagLevel',
     'WebhookActivityRecord',
     'WebhookActivityRecordStatus',
     'WebhookAsset',
@@ -7106,6 +8752,7 @@ __all__ = [
     'WholesaleFeedEventWholesaleFeedBulkChangeFeedPayloadAffectedEntityType',
     'WholesaleFeedEventWholesaleFeedBulkChangeFeedPayloadRecommendation',
     'WholesaleFeedWebhook',
+    'Window',
     'XEntityTypes',
     'ZipAsset',
 ]
@@ -7116,4 +8763,76 @@ __all__ = [
 #: only one that can say which of the two a caller meant.
 __adcp_ambiguous__: dict[str, tuple[str, ...]] = {
     'AudienceSource': ('core', 'enums'),
+}
+
+
+#: Upstream's published words this module declines, and the
+#: ``<module>.<symbol>`` subjects each one has.  A word that IS in ``__all__``
+#: is declined because the generated surface already publishes it and resolves
+#: it to the class the schemas name; a word that is NOT resolves nowhere here,
+#: because upstream derived it from a property key more than one document uses
+#: and the subjects below are distinct classes.  Each is reachable under its
+#: own ``adcp.types.<domain>`` word, which is the name minted from the parent
+#: class and the key together.
+__adcp_alias_declined__: dict[str, tuple[str, ...]] = {
+    'AcceptedVerifier': ('core.attestation_capabilities.AcceptedVerifiersItem', 'core.creative_policy.AcceptedVerifiersItem'),
+    'Account': ('account.sync_governance_request.AccountsItem', 'account.sync_governance_response.AccountsItem', 'compliance.comply_test_controller_request.ComplyTestControllerRequestAccount', 'protocol.get_adcp_capabilities_response.GetAdCPCapabilitiesResponseAccount', 'sponsored_intelligence.si_sponsored_context.PayingPrincipalAccount'),
+    'Action': ('core.canonical_media_buy_action.CanonicalMediaBuyActionControlMediaBuyAction', 'media_buy.get_products_request.RefineItemProductAction', 'protocol.sync_principal_response.AppliedPrincipalConfigurationAction'),
+    'Artifact': ('core.creative_variant.GenerationContextArtifact',),
+    'AttributionWindow': ('protocol.get_adcp_capabilities_response.AttributionWindowsItem',),
+    'AudienceEvidence': ('protocol.get_adcp_capabilities_response.MediaBuyAudienceEvidence',),
+    'AudioCodec': ('core.requirements.video_asset_requirements.AudioCodecsItem', 'formats.canonical.audio_hosted.AudioCodecsItem', 'formats.canonical.video_hosted.AudioCodecsItem'),
+    'BrandId': ('core.brand_id.BrandID',),
+    'Catalog': ('media_buy.sync_catalogs_response.CatalogsItem',),
+    'Category': ('governance.sync_plans_response.CategoriesItem',),
+    'ContentStandards': ('protocol.get_adcp_capabilities_response.MediaBuyContentStandards',),
+    'Countries': ('core.geo_region_support.ObjAllValues',),
+    'Creative': ('creative.get_creative_delivery_response.CreativesItem', 'creative.list_creatives_response.CreativesItem', 'creative.sync_creatives_request.CreativesItem', 'creative.sync_creatives_response.CreativesItem', 'media_buy.build_creative_response.CreativesItem'),
+    'Demographics': ('core.targeting_overlay_requirements.TargetingOverlayRequirementsDemographicsAge', 'core.targeting_overlay_support.TargetingOverlaySupportDemographicsAge'),
+    'EventSource': ('core.canonical_optimization_goal.EventSourcesItem', 'core.optimization_goal.EventSourcesItem', 'media_buy.sync_event_sources_request.EventSourcesItem'),
+    'EventType': ('core.notification_config.EventTypesItem', 'core.registry_event.RegistryEventEventType', 'core.wholesale_feed_event.WholesaleFeedEventType'),
+    'Exclusivity': ('brand.rights_terms.RightsTermsExclusivity',),
+    'Feature': ('content_standards.calibrate_content_response.FeaturesItem', 'property.validation_result.FeaturesItem'),
+    'Field1': ('brand.get_brand_identity_request.BrandIdentityField', 'core.macro_declaration.LocationField', 'core.tasks_list_request.SortField', 'creative.list_creatives_request.FieldsItem', 'media_buy.get_products_request.FieldsItem', 'signals.get_signals_request.FieldsItem'),
+    'Finding': ('governance.check_governance_response.FindingsItem', 'governance.report_plan_outcome_response.FindingsItem'),
+    'Format': ('core.reporting_delivery_method.FileFormat', 'core.requirements.audio_asset_requirements.FormatsItem', 'core.requirements.image_asset_requirements.FormatsItem'),
+    'GeoProximity': ('core.targeting_overlay_requirements.TargetingOverlayRequirementsGeoProximity', 'core.targeting_overlay_support.TargetingOverlaySupportGeoProximity'),
+    'GovernanceAgent': ('account.sync_governance_request.GovernanceAgentsItem', 'core.account.ObjUrl'),
+    'Identifier': ('collection.base_collection_source.IdentifiersItem', 'core.collection_distribution.IdentifiersItem', 'core.delivery_metrics.IdentifiersItem', 'core.placement_definition.IdentifiersItem'),
+    'ImageFormat': ('formats.canonical.image.ImageFormatsItem', 'formats.canonical.native_in_feed.ImageFormatsItem'),
+    'Interval': ('core.demographic_reporting_capability.IntervalsItem', 'core.demographic_targeting_capability.IntervalsItem'),
+    'Jurisdiction': ('core.provenance.JurisdictionsItem', 'core.signal_modeling_disclosure.JurisdictionsItem', 'sponsored_intelligence.si_sponsored_context.JurisdictionsItem'),
+    'MediaBuy': ('media_buy.get_media_buys_response.MediaBuysItem', 'protocol.get_adcp_capabilities_response.GetAdCPCapabilitiesResponseMediaBuy'),
+    'MediaBuyDelivery': ('media_buy.get_media_buy_delivery_response.MediaBuyDeliveriesItem', 'media_buy.media_buy_delivery_webhook_result.MediaBuyDeliveriesItem'),
+    'Metric': ('compliance.comply_test_controller_request.MetricsItem', 'core.optimization_goal.OptimizationMetric', 'core.reporting_report_definition.MetricsItem', 'protocol.get_adcp_capabilities_response.MetricsItem'),
+    'Metro': ('core.offering.MetrosItem', 'core.product_filters.ObjSystemCode'),
+    'Mode': ('core.bidding_policy_capability.ModesItem', 'protocol.get_adcp_capabilities_response.TasksItemCreateMediaBuyModesItem'),
+    'NotificationType': ('media_buy.media_buy_delivery_webhook_result.MediaBuyDeliveryWebhookResultNotificationType',),
+    'Offering': ('sponsored_intelligence.si_get_offering_response.SIGetOfferingResponseOffering',),
+    'Pacing': ('governance.check_governance_request.DeliveryMetricsPacing',),
+    'Package': ('governance.report_plan_outcome_request.PackagesItem', 'media_buy.get_media_buys_response.PackagesItem'),
+    'PaymentTerms': ('core.insertion_order.TermsPaymentTerms',),
+    'PerformanceFeedback': ('protocol.get_adcp_capabilities_response.MediaBuyPerformanceFeedback',),
+    'PlacementSelection': ('core.targeting_overlay_support.TargetingOverlaySupportPlacementSelection',),
+    'Plan': ('governance.get_plan_audit_logs_response.PlansItem', 'governance.sync_plans_response.PlansItem'),
+    'Price': ('sponsored_intelligence.si_send_message_response.IntentPrice',),
+    'PropertyFeature': ('adagents.PropertyFeaturesItem',),
+    'PropertyType': ('core.real_estate_item.RealEstateItemPropertyType',),
+    'ProposalRefinement': ('protocol.get_adcp_capabilities_response.MediaBuyProposalRefinement',),
+    'Provenance': ('core.reference_renderer.ReferenceRendererProvenance',),
+    'Provider': ('core.product.ProvidersItem', 'core.product_filters.ProvidersItem', 'core.reporting_dataset_share_destination.ObjDomain'),
+    'Range': ('core.signal_listing.ObjMinMax', 'protocol.get_adcp_capabilities_response.PropertyFeaturesItemRange'),
+    'ReportingFrequency': ('core.reporting_webhook.ReportingWebhookReportingFrequency',),
+    'RequiredVendorMetric': ('core.product_filters.RequiredVendorMetricsItem', 'core.product_offer_filters.RequiredVendorMetricsItem'),
+    'Result': ('content_standards.validate_content_delivery_response.ResultsItem', 'creative.preview_creative_response.ResultsItem', 'protocol.get_principal_response.UnconfiguredPrincipal', 'protocol.sync_principal_response.ValidatedPrincipalDryRun'),
+    'Results': ('media_buy.sync_reporting_receipts_response.FailedReportingReceipt', 'media_buy.sync_reporting_status_response.RecordedReportingConsumerStatus'),
+    'Right': ('brand.get_rights_response.RightsItem', 'core.signal_definition.RightsItem'),
+    'Route': ('core.preview_provider.RoutesItem', 'protocol.get_adcp_capabilities_response.RoutesItem'),
+    'Size': ('formats.canonical.display_tag.SizesItem', 'formats.canonical.html5.SizesItem', 'formats.canonical.image.SizesItem'),
+    'Status': ('governance.sync_plans_response.PlansItemStatus', 'media_buy.get_products_response.RefinementAppliedItemRequestStatus', 'sponsored_intelligence.si_sponsored_context_receipt.HostReceiptStatus'),
+    'SupportedTarget': ('core.product.MetricOptimizationSupportedTargetsItem', 'core.vendor_metric_optimization_supported_metric.SupportedTargetsItem', 'protocol.get_adcp_capabilities_response.SupportedTargetsItem'),
+    'VariantDimension': ('core.transformer.VariantDimensionsItem', 'protocol.get_adcp_capabilities_response.VariantDimensionsItem'),
+    'VendorMetric': ('core.canonical_reporting_capabilities.VendorMetricsItem', 'core.reporting_capabilities.VendorMetricsItem'),
+    'VendorMetricOptimization': ('protocol.get_adcp_capabilities_response.MediaBuyVendorMetricOptimization',),
+    'Violation': ('creative.validate_input_result.ViolationsItem', 'error_details.accessibility_violation.ViolationsItem'),
 }

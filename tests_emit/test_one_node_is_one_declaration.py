@@ -565,6 +565,19 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
     uniquely.  It is the same kind of second name as a recasing, so it goes on the same
     equality for the same reason: three terms, nothing subtracted, and a word in any record
     the tree does not carry as a class fails here.
+
+    **AND THE FOURTH IS UPSTREAM'S OWN SENTENCE, WHICH THIS EQUALITY WAS RED FOR UNTIL THE
+    RECORD CARRIED IT** (``codegen.structure.bind_statements``, ``Emitted.stated``).  The
+    third key the lowering joins upstream's surface on is a STATEMENT upstream wrote --
+    ``Creatives1 = Creative``, ``PrincipalCurrentResult = Result2`` -- and the module binds
+    that word beside ours exactly as the other two do.  ``lower/names.assign`` has written
+    the record since the key landed and ``Emitted`` did not carry it, so this test could
+    read two of the three and **reported 34 bindings as unaccounted while the run had
+    recorded every one of them** -- ``protocol/get-principal-response.json``'s four
+    ``Principal*Result`` words among them, which is the same defect
+    ``emit._alias_words`` was written for, found from the other end.  The term is the
+    record, not an allowance: nothing is subtracted, and a word the record names and the
+    tree does not carry as a class still fails.
     """
     first = _a_class("First", "a.module", SchemaRef(document="a.json", pointer="#"))
     second = _a_class("Second", "a.module", SchemaRef(document="a.json", pointer="#/x"))
@@ -598,14 +611,15 @@ def test_a_declaration_is_a_class_object_and_never_a_name() -> None:
         # spelling, a bundle-relative path, which is why the dotted module name is turned
         # back into a document first.  A word the record names and the tree does not carry
         # as a class is left out of this term, so the equality below reports it.
-        # Both second-name records of the module are read in one pass, because the two are
-        # the same KIND of binding reached by two keys -- a title's recasing and a
-        # structural join -- and a reader that took one for the other would report a
-        # binding as unaccounted while the run had recorded it (``Emitted.restructured``).
-        for word in (
-            *out.recased.get(emit.module_path(document), {}),
-            *out.restructured.get(emit.module_path(document), {}),
-        ):
+        # All THREE second-name records of the module are read in one pass, because they
+        # are the same KIND of binding reached by three keys -- a title's recasing, a
+        # structural join and a statement of upstream's own -- and a reader that took one
+        # for the other would report a binding as unaccounted while the run had recorded
+        # it (``Emitted.restructured``, ``Emitted.stated``).  :meth:`Emitted.upstream_words`
+        # is that union, so this reads the one merge ``emit`` itself exports rather than
+        # restating it: a fourth key would reach here with nothing edited, and the two
+        # readers cannot come to disagree about what the tree states.
+        for word in out.upstream_words().get(emit.module_path(document), {}):
             bound = getattr(imported, word, None)
             if isinstance(bound, type) and id(bound) in objects:
                 recased.add((name, word))
