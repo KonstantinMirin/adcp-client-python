@@ -43,6 +43,33 @@ docstring was refuted on the way: ``_ARM_DEPTH``'s said *"the bound is above the
 shape and not tuned to it"* and the measured shape reaches the bound exactly, with a margin
 of one hop.
 
+**AND THE FIFTH WENT WITH ``adcp-client-python-auw6``: ``Fixtures.reduced``'s ``depth: int
+= 8``, the one clause 5 could only NAME.**  Its counter was handed on by ``_derived_pin``
+and cut by ``_pin`` one frame away, so the "guard read in the function that hands the
+counter on" rule could not reach it; clause 3 reaches it, and all four frames of the cycle
+are in :data:`UNBOUNDED` now.  Three measurements took it, each over all 2,586 pairs of the
+population and each recorded at ``harness.Fixtures.reduced``:
+
+* **it terminates on its own**, which had never been checked -- 0 of 2,586 descents failed
+  to terminate with the content memo OFF and the draw removed, against a tripwire at 1,000
+  re-entries, and the deepest reaches **21** re-entries on a node 43 pointer segments tall;
+* **what terminates it is the descent**, not the memo its own comment credited: every
+  re-entry's frontier lies strictly inside its caller's because ``locations`` follows no
+  ``$ref``, so the level is bounded by the node's HEIGHT (21 against a maximum of 44).  No
+  ``followed`` set is owed here -- the shape ``_normalize`` and ``_composed`` needed one for
+  is a pointer arriving back at a node already read, and this recursion follows none;
+* **it was cutting 16% of the population's descents** -- 412 of 2,586 nodes reach past level
+  8 -- and leaving **224 pins** at ``NONE``, each a subtree the draw then paid unreduced, to
+  save **94 derivations of 4,787, or 2.0%**.
+
+A fourth cap docstring was refuted on the way, and it is ``BUDGET = 30``'s: *"a pair whose
+instances are held replays in 0.0 to 0.4 s, and the pairs that exceed a budget of any size
+are the ones that DRAW ... **There is nothing between the two**"*.  Measured by sampling
+profile over the population -- p50 **0.014 s**, p90 **0.369 s**, p95 **1.324 s**, p99
+**7.213 s**, with **159** pairs between 1 s and 60 s and the slowest that FINISHES at 45.4 s
+-- the distribution is a continuum and the gap the number was chosen inside does not exist.
+``codegen/__main__.BUDGET`` carries that reading and what it actually cuts.
+
 **THE CLAUSES, and each is read off the ANSWER or off the SOURCE, never off a second copy
 of the walk.**  A test that re-implemented the descent to measure its depth would be the
 divergence ``docs/plan/architecture.md`` §11 forbids; so clause 1 reads the returned
@@ -84,6 +111,15 @@ UNBOUNDED = (
     "_violating",
     "_normalize",
     "_composed",
+    #: The fifth, and the one clause 5 could never catch: ``Fixtures.reduced``'s
+    #: ``depth: int = 8``, handed on by ``_derived_pin`` as ``depth - 1`` and cut by
+    #: ``_pin``'s ``depth <= 0`` ONE FRAME AWAY -- so the counter and its guard were in
+    #: different functions and clause 5 reads them in the same one.  All four frames of
+    #: the cycle are named, because the parameter can come back in any of them.
+    "reduced",
+    "_pin",
+    "_derived_pin",
+    "value",
 )
 
 #: The one document whose fixture walk reaches deepest, and the reading is its own: 196
@@ -381,6 +417,119 @@ def test_a_self_referential_pointer_chain_settles_on_the_pointer() -> None:
         sys.setrecursionlimit(limit)
 
 
+#: A frontier nest deeper than the ``depth: int = 8`` that stood on ``Fixtures.reduced``.
+#: **Constructed and not drawn from the bundle, for :data:`PAST_EVERY_BOUND`'s reason**: the
+#: bundle's own deepest reduction is 21 levels, so a document of it DOES exhibit the
+#: truncation -- but which one does is a property of the bundle, and the clause is a
+#: statement about the READING.  Twelve is past 8 and small enough that the twelve draws it
+#: costs are a test and not a grading pass.
+PAST_THE_PIN_BOUND = 12
+
+
+def _nested_frontier(levels: int) -> dict:
+    """A node whose frontier re-enters itself exactly ``levels`` times.
+
+    One ``properties`` entry per level, so ``locations`` returns exactly one item at each
+    and the re-entry count is a number the INPUT states.  The innermost statement is
+    drawable, so every level's pin has a value to find and a missing pin is the bound and
+    never an undrawable leaf.
+    """
+    node: dict = {"type": "string", "maxLength": 3}
+    for _ in range(levels):
+        node = {"type": "object", "properties": {"k": node}, "required": ["k"]}
+    return node
+
+
+def _fixtures_with_no_store() -> harness.Fixtures:
+    """``Fixtures`` reading nothing: the reduction under test consults no document.
+
+    The frontier is read off the NODE (``locations``), so the three readers are never
+    called -- and passing stubs rather than the suite's own makes that an assertion about
+    this clause's input instead of an inherited one.
+    """
+    return harness.Fixtures(
+        read=lambda document: {},
+        node=lambda document, pointer: {},
+        identity=lambda document, pointer: {},
+        documents=frozenset(),
+    )
+
+
+def test_the_fixture_reduction_derives_a_pin_past_the_bound_it_carried() -> None:
+    """**Read off the ANSWER**: twelve derivations for a twelve-level frontier is a set
+    ``Fixtures.reduced(depth=8)`` could not produce.
+
+    ``_pin``'s guard was ``depth <= 0`` over a counter seeded at 8, and it returned
+    :data:`NONE` BEFORE the memo was consulted -- so a frontier item past the eighth level
+    was never keyed at all.  The reading is therefore the memo's own contents, which is the
+    derivation set and not a hop count: ``Fixtures.pins`` holds one entry per frontier item
+    the reduction actually derived a value for.
+
+    **Proved red against the bound as it stood** rather than argued: re-entered with the
+    deleted guard restored, the same input yields **8** entries and no entry for the
+    innermost statement, against **12** and an entry here.  What the missing four cost is
+    what ``harness.Fixtures.reduced`` measures over the bundle -- 224 positions left
+    standing unreduced, each one a subtree the draw then pays in full.
+    """
+    fixtures = _fixtures_with_no_store()
+    reduced, placed = fixtures.reduced(_nested_frontier(PAST_THE_PIN_BOUND))
+    assert placed == 1, reduced
+    #: One derivation per level the INPUT states, which is the number a repetition is
+    #: allowed to stop at (clause 5's own rule) and the one a bound at 8 cannot reach.
+    #:
+    #: **A FLOOR AND NOT AN EQUALITY**, which is ``nodeset.ratchet``'s own rule and the
+    #: shape ``test_every_check_names_its_set`` holds this file to: the obligation is that
+    #: the derivation set REACHES the input's own depth, and an equality on it would also
+    #: fail if the reduction ever derived more -- which is not a defect and is not what
+    #: this clause is about.  Measured here: 12 with the bound gone, 8 with it restored.
+    assert len(fixtures.pins) >= PAST_THE_PIN_BOUND, sorted(fixtures.pins)
+    deepest = harness._content_key(({"type": "string", "maxLength": 3},), kind=b"const")
+    assert deepest in fixtures.pins, (
+        "the innermost statement of a 12-level frontier was never keyed, which is what a "
+        "guard returning NONE in front of the memo does"
+    )
+    assert fixtures.pins[deepest] == {"const": ""}, fixtures.pins[deepest]
+
+
+def test_the_fixture_reduction_closes_on_a_reference_it_does_not_follow() -> None:
+    """**The terminator, exercised**: the recursion ends on running out of a finite tree,
+    and a ``$ref`` back to the root does not re-enter it.
+
+    With the counter gone this is the only thing standing between the reduction and a hang,
+    so it is put to the shape that could close a cycle rather than assumed from the one the
+    bundle happens to hold.  ``locations`` descends into mapping VALUES and follows no
+    ``$ref`` -- a reference is a STRING in a record -- so ``{"$ref": "#"}`` is a frontier
+    item whose conjunction states nothing drawable, the pin answers :data:`NONE`, and the
+    position is left EXACTLY as the document writes it.  That is the fail-safe direction the
+    method already takes for an item no value survives for.
+
+    This is why no ``followed`` set is owed here and :func:`_normalize`'s and
+    :func:`_composed`'s is not a precedent: those two RESOLVE a pointer and can arrive back
+    at a node they have already read, so they have a back edge to close.  This recursion
+    never leaves the node it was handed, so there is none.
+
+    The recursion limit is lowered for the call so that a reduction which did NOT close
+    fails as a ``RecursionError`` in this test instead of taking the interpreter down --
+    ``test_the_fixture_walk_closes_a_reference_cycle_on_the_pointer``'s own device.
+    """
+    fixtures = _fixtures_with_no_store()
+    node = {
+        "type": "object",
+        "properties": {"self": {"$ref": "#"}, "leaf": {"type": "integer"}},
+    }
+    limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(400)
+    try:
+        reduced, placed = fixtures.reduced(node)
+    finally:
+        sys.setrecursionlimit(limit)
+    assert placed == 1, reduced
+    #: The drawable sibling IS pinned and the reference is not, which is the whole answer:
+    #: the walk reached both, derived the one it could and left the other standing.
+    assert reduced["properties"]["leaf"] == {"const": 0}, reduced
+    assert reduced["properties"]["self"] == {"$ref": "#"}, reduced
+
+
 # --------------------------------------------------------------------------- #
 # clause 5: the repetitions, which is the population that does not empty
 # --------------------------------------------------------------------------- #
@@ -419,18 +568,20 @@ def test_every_recursion_this_module_performs_counts_only_what_the_input_states(
     **THE SCOPE: the guard is read in the function that HANDS THE COUNTER ON**, because a
     counter and the comparison that cuts it are one decision and belong in one function --
     and that is where all four of ``merge(bounds)``' bounds sat, and where
-    ``_FIXTURE_DEPTH``'s and ``_OWN_DEPTH``' sat before them.  **One counter in this module
-    is cut elsewhere and it is named rather than caught: ``Fixtures.reduced``'s ``depth: int
-    = 8``**, handed on by ``_derived_pin`` as ``depth - 1`` and cut by ``_pin``'s ``depth <=
-    0`` one frame away.  It is measured and it FIRES -- 273 of 1,696 ``_pin`` calls over the
-    whole graded population, re-entering to the full 8 -- and it is not this lane's, for the
-    reason ``BUDGET = 30`` and ``check_accepts``' ``examples: int = 25`` are not: when it
-    expires ``_pin`` returns ``NONE`` and *"the position then stands as the document states
-    it"*, so no location, no fact and no witness is lost and the whole of what it bounds is
-    how much SAVING is computed before the draw is paid in full.  Every one of the four
-    bounds this clause does catch dropped an ANSWER instead -- a frontier item, a witness, a
-    folded fact -- which is the difference, and the cost that makes the fifth one's removal
-    a draw question is ``adcp-client-python-2i99``'s and ``-5pb``'s.
+    ``_FIXTURE_DEPTH``'s and ``_OWN_DEPTH``' sat before them.
+
+    **AND THAT SCOPE HAS A HOLE, WHICH IS A LIMIT OF THIS CLAUSE AND NOT A DECISION.**
+    ``Fixtures.reduced``'s ``depth: int = 8`` was handed on by ``_derived_pin`` as ``depth -
+    1`` and cut by ``_pin``'s ``depth <= 0`` ONE FRAME AWAY, so no function held both the
+    counter and its guard and this clause could only NAME it.  It is gone
+    (``adcp-client-python-auw6``, measured -- the module docstring carries the three
+    readings), and what catches its return is
+    :func:`test_no_reading_of_the_grading_path_declares_a_depth_parameter` with all four
+    frames of that cycle in :data:`UNBOUNDED`, beside
+    :func:`test_the_fixture_reduction_derives_a_pin_past_the_bound_it_carried` reading the
+    derivation set.  **A counter cut two frames from where it is handed on is still not
+    caught here**, and the honest statement of this clause's reach is that it catches a
+    one-function cap and that clause 3 plus an answer-side reading is what catches the rest.
     """
     tree = ast.parse(MODULE.read_text())
     #: ``(the qualified name, the node)`` per function, and the QUALIFICATION is the point:
