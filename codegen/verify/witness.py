@@ -128,7 +128,7 @@ from __future__ import annotations
 import collections
 import dataclasses
 import enum
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, NamedTuple
 
 import jsonschema
@@ -1673,6 +1673,11 @@ class Construction:
         self._memo: dict[Key, Built] = {}
         self._floors: dict[tuple[str, str], Built] = {}
         self._nodes: dict[tuple[str, str], Any] = {}
+        #: :meth:`subtree`'s memo, keyed like every other answer here.  Separate from
+        #: :attr:`_memo` because the two hold different types for one key -- a single
+        #: admitted value against the whole witness set of a subtree -- and §9's rule is
+        #: one answer per node per document, not one object per node per document.
+        self._subtrees: dict[Key, tuple[Class, ...]] = {}
         self.counters = Counters()
 
     # -- the document's own halves ----------------------------------------- #
@@ -3286,6 +3291,106 @@ class Construction:
         return tuple(out)
 
     # -- the mutations ------------------------------------------------------ #
+    def subtree(
+        self, document: str, pointer: str = "", stack: tuple[str, ...] = ()
+    ) -> tuple[Class, ...]:
+        """**THE FIRST CHECK'S WITNESS SET: one value per node of the subtree this node
+        reaches**, each lifted to a whole value at THIS node.
+
+        ``docs/plan/architecture.md`` §9: *"the valid witness is not one value per node: it
+        is one value per node of the subtree the node reaches, each node contributing its
+        own and no node contributing a combination."*  :meth:`classes` is the node's own
+        contribution and this is the recursion over it.
+
+        **WHY IT IS NOT :meth:`classes`, measured.**  ``classes`` reads the node's OWN
+        keywords, which yields 5,027 classes over the 2,586 graded pairs -- 1.9 each -- and
+        finds ONE pair narrower than its document, where walking the instance's leaves finds
+        hundreds.  Reading 1 says every class accepts every value its document admits, and a
+        string leaf three levels down whose own node states a length its parent never
+        mentions is such a value: no witness built at the parent reaches it.  That gap was
+        not a defect of the constructor, it was §9's own sentence, and the clause above is
+        the sentence changed.
+
+        **ONE SLOT AT A TIME, WHICH IS WHAT KEEPS THE BOUND ON COMBINATIONS.**  A lifted
+        witness is the node's admitted value with exactly ONE location replaced by one class
+        of the node at that location -- never two locations at once, never a product over
+        locations.  So the set is a SUM over the subtree's nodes of each node's own classes,
+        which is what §9's "linear in the document's nodes, each visited once" means once
+        reach and multiplicity are told apart: a subtree walk visits each node once where a
+        cross-product would visit each path.
+
+        **AND EVERY LIFTED VALUE IS OFFERED TO THE DOCUMENT**, exactly as ``classes``
+        screens its own: a class the inner node admits can still be one the ENCLOSING node
+        refuses -- a conjunct about the same key, a ``oneOf`` that stops being satisfied by
+        exactly one branch -- and a value the document refuses is a :class:`Mutation` and
+        has no business in this set.  The screen is why the failure direction here is
+        "finds fewer than it should" and never "reports a narrowing that is not one".
+
+        Memoised on ``(document, pointer, stack)`` like every other answer, and the memo is
+        seeded EMPTY before the recursion so a back edge contributes nothing rather than
+        hanging -- the pointer closes the cycle here for the same reason it closes it in
+        :meth:`value`, and no depth parameter is introduced.
+        """
+        key = (document, pointer, stack)
+        held = self._subtrees.get(key)
+        if held is not None:
+            return held
+        #: Seeded before the recursion, so a reference reaching a pointer already in
+        #: progress answers "no witnesses from here" instead of recurring for ever.
+        self._subtrees[key] = ()
+        base = self.value(document, pointer, stack)
+        out: list[Class] = list(self.classes(document, pointer, stack))
+        if base.held:
+            for slot, at, path in self._slots(document, pointer, stack, base.value):
+                for inner in self.subtree(document, at, path):
+                    lifted = _substituted(base.value, slot, inner.value)
+                    if lifted is _MISSING:
+                        continue
+                    if not self.refusals(document, pointer, lifted):
+                        out.append(Class(inner.keyword, f"at {slot}: {inner.label}", lifted))
+        self._subtrees[key] = tuple(out)
+        return self._subtrees[key]
+
+    def _slots(
+        self,
+        document: str,
+        pointer: str,
+        stack: tuple[str, ...],
+        value: Any,
+    ) -> Iterator[tuple[tuple[Any, ...], str, tuple[str, ...]]]:
+        """Each child position of this node that has a LOCATION in ``value``.
+
+        ``(slot, pointer, stack)``: the slot is the one-segment instance location, and the
+        pointer and stack are the child node's, read through :meth:`_views` so a conjunct's
+        ``properties`` is reached exactly as :meth:`_object` reaches it -- one descent, and
+        not a second reading of which keyword descends where.
+
+        **``properties`` and ``items`` ONLY, and the omission is named rather than
+        silent.**  A mapping value (``additionalProperties``, ``patternProperties``) and a
+        tuple-form ``items`` list also have locations, and a witness at one of them is a
+        witness this set does not yet carry.  They are left out because the key is a free
+        choice at those positions and this method would have to make it, which is a second
+        reading of :meth:`_spare`'s decision; the measured cost of the omission is reported
+        beside the coverage rather than assumed to be nil.
+        """
+        for at, path in self._views(document, pointer, stack):
+            node = self.node(document, at)
+            if not isinstance(node, Mapping):
+                continue
+            declared = node.get("properties")
+            if isinstance(declared, Mapping) and isinstance(value, Mapping):
+                #: **EVERY DECLARED KEY, not only the ones the admitted value placed.**  The
+                #: admitted value is minimal, so it carries the required keys and omits the
+                #: optional ones -- and a node under an optional property is a node the
+                #: subtree REACHES, which is the clause this method implements.
+                #: :func:`_substituted` places the key and the enclosing node's screen
+                #: decides whether the placement is one the document admits.
+                for name in declared:
+                    if isinstance(name, str):
+                        yield (name,), f"{at}/properties/{bundle.escape_key(name)}", path
+            if isinstance(node.get("items"), Mapping) and isinstance(value, list) and value:
+                yield (0,), f"{at}/items", path
+
     def mutations(
         self, document: str, pointer: str = "", stack: tuple[str, ...] = ()
     ) -> tuple[Mutation, ...]:
@@ -3609,6 +3714,39 @@ def _candidates(
     if isinstance(multiple, (int, float)) and multiple > 1 and isinstance(value, (int, float)):
         out.append(("multipleOf", "not a multiple", value + multiple / 2, ()))
     return tuple(out)
+
+
+def _substituted(value: Any, slot: tuple[Any, ...], new: Any) -> Any:
+    """``value`` with the single location ``slot`` replaced by ``new``, or :data:`_MISSING`.
+
+    One segment, which is :meth:`Construction.subtree`'s whole bound on multiplicity: a
+    substitution that could reach two locations at once would make the witness set a product
+    over locations where §9 states a sum over nodes.  The recursion composes depth by
+    lifting one segment per level, so a leaf three levels down is reached by three
+    one-segment substitutions and never by a path expression.
+
+    :data:`_MISSING` where the slot names nothing in this value -- a key the admitted value
+    did not place because the document makes it optional, an index an empty array has no
+    member at.  Such a position has no witness to lift and that is a fact about the value
+    rather than a failure.
+    """
+    if len(slot) != 1:
+        return _MISSING
+    where = slot[0]
+    if isinstance(where, str) and isinstance(value, Mapping):
+        #: **A KEY THE ADMITTED VALUE OMITS IS PLACED, NOT SKIPPED**, which is what takes the
+        #: witness set from 143 of the sampler's 293 to its full reach.  The admitted value
+        #: carries the REQUIRED keys (that is what makes it minimal), so every node under an
+        #: OPTIONAL property was unreachable: its document states what the value there must
+        #: satisfy, the class must accept it, and no witness built at the parent reached it.
+        #: Placing the key is still one segment and still a sum -- one witness per node, with
+        #: the enclosing node's screen deciding whether the placement is admissible.
+        return {**value, where: new}
+    if isinstance(where, bool):
+        return _MISSING
+    if isinstance(where, int) and isinstance(value, list) and len(value) > where:
+        return [*value[:where], new, *value[where + 1 :]]
+    return _MISSING
 
 
 def _unlike(value: Any) -> Any:
