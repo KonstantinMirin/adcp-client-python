@@ -72,6 +72,10 @@ def _make_capabilities(
         extensions_supported = [ExtensionsSupportedItem(root=e) for e in extensions]
 
     return GetAdcpCapabilitiesResponse(
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        status="completed",
         adcp=AdcpInfo(
             major_versions=[3],
             idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
@@ -778,6 +782,10 @@ class TestSupportsV3:
 
     def test_v3_supported(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            status="completed",
             adcp=AdcpInfo(
                 major_versions=[3],
                 idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
@@ -789,6 +797,10 @@ class TestSupportsV3:
 
     def test_v2_only(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            status="completed",
             adcp=AdcpInfo(
                 major_versions=[2],
                 idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
@@ -800,6 +812,10 @@ class TestSupportsV3:
 
     def test_both_v2_and_v3(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            status="completed",
             adcp=AdcpInfo(
                 major_versions=[2, 3],
                 idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),

@@ -93,6 +93,10 @@ def _make_caps(
     covers: CoversContentDigest = CoversContentDigest.either,
 ) -> GetAdcpCapabilitiesResponse:
     return GetAdcpCapabilitiesResponse(
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        status="completed",
         adcp=Adcp(
             major_versions=[3],
             idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
