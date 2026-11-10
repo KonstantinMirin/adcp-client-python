@@ -1911,7 +1911,9 @@ payload is valid. A base here is what those classes have in common and nothing m
 
 
 def envelopes_module(
-    declarations: Sequence[ir.ClassDecl], imports: Collection[tuple[str, str]]
+    declarations: Sequence[ir.ClassDecl],
+    imports: Collection[tuple[str, ...]],
+    prose: str = "",
 ) -> str:
     """The text of ``adcp/types/envelopes.py``, for the bases a bundle's families earn.
 
@@ -1925,17 +1927,31 @@ def envelopes_module(
     documents the family reaches, and they are ABSOLUTE: this module sits beside
     ``_schemas`` rather than inside it, so a relative import would not resolve.
 
+    **A TRIPLE IS A RE-EXPORT AND IS PROMISED, NOT ONLY IMPORTED**, which is the one
+    reading this function takes of its own argument.  ``lower/message.UPSTREAM`` re-exports
+    upstream's two task-message markers rather than declaring subclasses of them, so the
+    name here IS upstream's object; a triple is the form :func:`_import_block` already
+    writes, routing it through ``reexports`` is what exempts it from
+    :func:`_import_section`'s usage filter -- a re-export is named by a CONSUMER and not
+    by this module's body -- and its WORD joins ``__all__`` beside the declared names, so
+    the module promises every name it offers whether it declared it or not.
+
     **No declaration is a legitimate answer and writes an empty module**: a bundle that
     does not repeat an envelope states no family, and the artifact says so with an empty
     ``__all__`` rather than by not existing.
+
+    ``prose`` is the lowering's own text about names this module does not declare, placed
+    into the module docstring because a re-export has no docstring of its own to carry it
+    -- the seam §7 states, where the lowering owns the sentence and the renderer owns
+    where it goes.
     """
     rendered = [klass(decl) for decl in declarations]
-    named = set(imports)
+    named = {one for one in imports if len(one) == 2}
+    aliased = [one for one in imports if len(one) == 3]
     for one in rendered:
         named |= one.imports
-    exports = ", ".join(
-        f'"{name}"' for name in sorted((decl.name for decl in declarations), key=_export_key)
-    )
+    promised = [decl.name for decl in declarations] + [one[2] for one in aliased]
+    exports = ", ".join(f'"{name}"' for name in sorted(promised, key=_export_key))
     body = "\n".join(
         [
             *(["\n\n\n".join(one.text for one in rendered), "", ""] if rendered else [""]),
@@ -1943,7 +1959,34 @@ def envelopes_module(
             "",
         ]
     )
-    return "\n".join([BESIDE_HEADER, ENVELOPES_DOCSTRING, "", *_import_section(named, body), body])
+    return "\n".join(
+        [
+            BESIDE_HEADER,
+            _with_prose(ENVELOPES_DOCSTRING, prose),
+            "",
+            *_import_section(named, body, aliased),
+            body,
+        ]
+    )
+
+
+#: The three characters that open and close a docstring, named once so :func:`_with_prose`
+#: states the quote it reopens rather than spelling it twice in an f-string.
+QUOTES = '"""'
+
+
+def _with_prose(docstring: str, prose: str) -> str:
+    """``docstring`` with ``prose`` as its last paragraph, or unchanged when there is none.
+
+    :data:`ENVELOPES_DOCSTRING` is already the quoted TEXT of a docstring, so the paragraph
+    goes before its closing quotes rather than after them -- which is why this is a
+    function and not an f-string at the call site: getting that boundary wrong produces a
+    module whose docstring swallows its own imports, and the mistake is invisible in a
+    diff of the template.
+    """
+    if not prose:
+        return docstring
+    return "\n".join([docstring.removesuffix(QUOTES).rstrip("\n"), "", prose, QUOTES])
 
 
 # --------------------------------------------------------------------------- #

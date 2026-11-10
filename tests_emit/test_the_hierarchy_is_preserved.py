@@ -39,11 +39,12 @@ import pkgutil
 
 import fresh
 import pytest
+from nodeset import claimed
+from pydantic import BaseModel
 
 from adcp.types._base import PACKAGE, BranchDispatchMixin, SchemaBound
 from adcp.types.envelopes import AdcpRequest, AdcpResponse
 from codegen import bundle
-from nodeset import claimed
 
 #: **The bundle a run reads, from the ONE declaration of it** -- ``fresh.BUNDLE``, the
 #: PATCHED bundle, which is the bundle the committed classes were emitted from.  A
@@ -144,9 +145,19 @@ def test_the_two_message_bases_are_disjoint_and_neither_is_graded(
     The disjointness is the registry's own (``bundle.task_messages`` refuses a bundle
     that names one document in both slots), and it is what makes the MRO question never
     arise.  "Not graded" is asserted on all three counts the row claims: no
-    ``__adcp_schema__``, not a ``SchemaBound`` at all, and an empty ``model_config`` -- the
-    third being the measured one, because a base carrying §2's ``extra: ignore`` would
+    ``__adcp_schema__``, not a ``SchemaBound`` at all, and NO ``extra`` POLICY TO IMPOSE --
+    the third being the measured one, because a base carrying §2's ``extra: ignore`` would
     impose a policy on the six requests whose own documents state none.
+
+    **The third count is asserted as the property and not as one of its spellings.**  It
+    read ``base.model_config == {}``, which assumed the base is a pydantic model; since
+    `adcp-client-python-1zmw` these two are upstream's own markers, re-exported rather
+    than subclassed, and upstream's ``_AdcpMessage`` "declares no fields and is not a
+    ``BaseModel``".  A non-model has no ``model_config`` AT ALL, which satisfies the clause
+    more strongly than an empty one does -- there is no mapping for a policy to appear in
+    later -- and the old spelling raised ``AttributeError`` against that.  So the
+    assertion is written over both shapes, and the stronger case is named rather than
+    excused.
     """
     both = [
         document
@@ -157,7 +168,10 @@ def test_the_two_message_bases_are_disjoint_and_neither_is_graded(
     for base in (AdcpRequest, AdcpResponse):
         assert "__adcp_schema__" not in base.__dict__, base.__name__
         assert not issubclass(base, SchemaBound), base.__name__
-        assert base.model_config == {}, (base.__name__, base.model_config)
+        if issubclass(base, BaseModel):
+            assert base.model_config == {}, (base.__name__, base.model_config)
+        else:
+            assert not hasattr(base, "model_config"), base.__name__
         with pytest.raises(AttributeError):
             base.strict_validate  # noqa: B018  -- the attribute must not resolve at all
 

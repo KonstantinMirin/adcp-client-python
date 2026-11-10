@@ -16,6 +16,29 @@ the family do not agree about what they accept, so no single schema reference co
 right for all of them; the concrete class for a document keeps its own reference, its own
 ``strict_validate`` and its own constraints, and that class is what decides whether a
 payload is valid. A base here is what those classes have in common and nothing more.
+
+**The two task-message markers are UPSTREAM'S OWN, re-exported here.**  They are
+declared in ``adcp.types.base``, which is upstream's hand-written module restored
+at upstream's own path, and the name here IS that object -- not a subclass of it --
+so ``isinstance`` and identity both hold against either spelling.
+
+``AdcpRequest`` is the request half of a task.  Every document the bundle's
+``manifest.json`` names at a tool's ``request_schema`` takes it as a base, so
+``isinstance(x, AdcpRequest)`` answers 'is this a call' -- which no composed
+envelope answers, because a response composes the version envelope too.  It states
+no field, because every field a request shares is already stated by
+``core/version-envelope.json`` and restating it would be one fact in two classes.
+
+``AdcpResponse`` is the response half.  Every document the manifest names at a
+tool's ``response_schema`` takes it; every field a response shares is already
+stated by ``core/protocol-envelope.json`` and ``core/version-envelope.json``,
+which arrive as bases from the document's own ``allOf``.  The 39 documents the
+manifest names at ``async_response_schemas`` are a task RESULT rather than the
+answer to the call and do not take this base.
+
+Neither carries ``__adcp_schema__``, so nothing grades either and
+``strict_validate`` does not resolve on them; the concrete class for a document
+decides what that document accepts.
 """
 
 from __future__ import annotations
@@ -28,6 +51,8 @@ from adcp.types._base import OmittedNotNull
 from adcp.types._schemas.core.context import ContextObject
 from adcp.types._schemas.core.error import Error
 from adcp.types._schemas.core.ext import ExtensionObject
+from adcp.types.base import AdcpRequest as AdcpRequest
+from adcp.types.base import AdcpResponse as AdcpResponse
 
 
 class FailedResponse(BaseModel):
@@ -37,18 +62,6 @@ class FailedResponse(BaseModel):
     errors: list[Error]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
-
-
-class AdcpRequest(BaseModel):
-    """
-    The request half of a task, as one type to program against. Every document the bundle's manifest.json names at a tool's request_schema takes this base, so isinstance(x, AdcpRequest) answers 'is this a call' -- which no composed envelope answers, because a response composes the version envelope too. A NOMINAL supertype and not a conformance claim: it states no field, because every field a request shares is already stated by core/version-envelope.json and restating it would be one fact in two classes. It carries no __adcp_schema__, so nothing grades it and strict_validate does not resolve on it; the concrete class for a document decides what that document accepts.
-    """
-
-
-class AdcpResponse(BaseModel):
-    """
-    The response half of a task, as one type to program against. Every document the bundle's manifest.json names at a tool's response_schema takes this base. A NOMINAL supertype and not a conformance claim: it states no field, because every field a response shares is already stated by core/protocol-envelope.json and core/version-envelope.json, which arrive as bases from the document's own allOf. It carries no __adcp_schema__, so nothing grades it and strict_validate does not resolve on it. The 39 documents the manifest names at async_response_schemas are a task RESULT rather than the answer to the call and do not take this base.
-    """
 
 
 __all__ = ["AdcpRequest", "AdcpResponse", "FailedResponse"]

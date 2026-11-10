@@ -62,65 +62,114 @@ REQUEST = "AdcpRequest"
 RESPONSE = "AdcpResponse"
 MODULE = envelope.MODULE
 
-#: The bases' own base, and the reason is :data:`codegen.lower.envelope.MODEL`'s entire
-#: docstring: a base that must never be graded as a pair must not be a ``SchemaBound``,
-#: and an empty ``model_config`` is what stating no policy means.
-MODEL = envelope.MODEL
-MODEL_MODULE = envelope.MODEL_MODULE
+#: **UPSTREAM'S OWN TWO MARKERS, RE-EXPORTED AND NOT SUBCLASSED**
+#: (`adcp-client-python-1zmw`, extended; the subclass was measured first and the
+#: measurement is what overturned it).  ``adcp/types/base.py`` is upstream's hand-written
+#: file restored at upstream's own path byte for byte, and it declares these same two
+#: words.
+#:
+#: **A SECOND DECLARATION OF ONE WORD IS A SECOND TYPE, WHICH IS THE ONE THING THE ALIAS
+#: CLAUSE FORBIDS** -- "an alias is a name and never a second type".  A subclass here
+#: satisfies ``issubclass`` and still fails IDENTITY, so
+#: ``adcp.types.AdcpRequest is adcp.types.base.AdcpRequest`` was false and
+#: ``tests_emit/test_the_restored_flat_surface.py`` said so.  Re-exporting is the stronger
+#: property and the smaller artifact at once: one object per word, identity by
+#: construction, and a declaration DELETED rather than added.
+#:
+#: **AND IT COSTS NOTHING, measured rather than argued.**  What a declaration of ours
+#: added over upstream's was ``model_fields == {}``, ``model_config == {}``, no
+#: ``__adcp_schema__`` and not a ``SchemaBound`` -- that is, nothing but being a
+#: ``BaseModel``.  Nothing needs that: every one of the roots that takes one of these
+#: already carries ``AdCPBaseModel``, so the marker is never the only model base.
+#:
+#: **UPSTREAM'S OWN TREE IS THE PROOF THAT A PLAIN MIXIN WORKS HERE.**  Their
+#: ``_AdcpMessage`` docstring says it "declares no fields and is not a ``BaseModel``", and
+#: their generated ``media_buy/create_media_buy_response.py`` still writes
+#: ``class CreateMediaBuyResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope)``.
+#: A plain mixin beside a pydantic base is their shipped arrangement, not an experiment.
+#:
+#: That also retires this row's reading of ``envelope.MODEL``: there is no base of OURS
+#: left for a ``model_config`` to leak out of, so §2's "no generated class carries a
+#: policy that is not in its document" holds here by there being no class.
+#:
+#: The word equals the symbol, which is what makes the import a RE-EXPORT rather than a
+#: use: ``render._import_block`` writes ``X as X`` for a triple whose word is its symbol,
+#: which is also PEP 484's spelling of a deliberate re-export.
+UPSTREAM_MODULE = "adcp.types.base"
+UPSTREAM = (REQUEST, RESPONSE)
+
+#: The model base a root is given when it composes nothing, which is the default
+#: ``render.klass`` hands the generator as ``custom_base_class`` -- said here because
+#: naming any base at all replaces that default (:func:`adopt`, and
+#: ``ir.ClassDecl.bases``' own docstring).  It is ``AdCPBaseModel`` and NOT
+#: ``envelope.MODEL``: this is a document ROOT carrying ``__adcp_schema__``, so §2's
+#: pairing has to be able to reach it, and the pairing's predicate is
+#: ``issubclass(value, SchemaBound)``.  The opposite choice is the right one for an
+#: envelope BASE, which must never be a pair, and ``lower/envelope.MODEL``'s docstring is
+#: that reading -- the two rows differ because one names a document and the other names
+#: none.
+MODEL = "AdCPBaseModel"
 
 #: What a consumer reads first, so each says both halves -- what the type is for and what
 #: it is not.  Here rather than in ``render.py`` because it is a statement about the
 #: REGISTRY, and the renderer writes text about nothing.
-DESCRIPTIONS = {
-    REQUEST: (
-        "The request half of a task, as one type to program against. Every document the "
-        "bundle's manifest.json names at a tool's request_schema takes this base, so "
-        "isinstance(x, AdcpRequest) answers 'is this a call' -- which no composed "
-        "envelope answers, because a response composes the version envelope too. "
-        "A NOMINAL supertype and not a conformance claim: it states no field, because "
-        "every field a request shares is already stated by core/version-envelope.json "
-        "and restating it would be one fact in two classes. It carries no "
-        "__adcp_schema__, so nothing grades it and strict_validate does not resolve on "
-        "it; the concrete class for a document decides what that document accepts."
-    ),
-    RESPONSE: (
-        "The response half of a task, as one type to program against. Every document the "
-        "bundle's manifest.json names at a tool's response_schema takes this base. "
-        "A NOMINAL supertype and not a conformance claim: it states no field, because "
-        "every field a response shares is already stated by core/protocol-envelope.json "
-        "and core/version-envelope.json, which arrive as bases from the document's own "
-        "allOf. It carries no __adcp_schema__, so nothing grades it and strict_validate "
-        "does not resolve on it. The 39 documents the manifest names at "
-        "async_response_schemas are a task RESULT rather than the answer to the call and "
-        "do not take this base."
-    ),
-}
+#:
+#: MODULE PROSE and no longer a class docstring, because the thing it describes is no
+#: longer a class of ours (:data:`UPSTREAM`).  The facts are the registry's either way --
+#: which documents the manifest names at a tool's ``request_schema``, and that the 39 at
+#: ``async_response_schemas`` are a task RESULT rather than the answer to the call -- and
+#: a reader of ``envelopes.py`` needs them whether the name there is declared or imported.
+#: WRAPPED at the source, because this text becomes LINES of an emitted docstring and the
+#: artifact is linted like every other file in the tree -- a paragraph assembled from
+#: implicitly concatenated fragments arrives as one 300-column line.
+PROSE = "\n".join(
+    [
+        "**The two task-message markers are UPSTREAM'S OWN, re-exported here.**  They are",
+        "declared in ``adcp.types.base``, which is upstream's hand-written module restored",
+        "at upstream's own path, and the name here IS that object -- not a subclass of it --",
+        "so ``isinstance`` and identity both hold against either spelling.",
+        "",
+        "``AdcpRequest`` is the request half of a task.  Every document the bundle's",
+        "``manifest.json`` names at a tool's ``request_schema`` takes it as a base, so",
+        "``isinstance(x, AdcpRequest)`` answers 'is this a call' -- which no composed",
+        "envelope answers, because a response composes the version envelope too.  It states",
+        "no field, because every field a request shares is already stated by",
+        "``core/version-envelope.json`` and restating it would be one fact in two classes.",
+        "",
+        "``AdcpResponse`` is the response half.  Every document the manifest names at a",
+        "tool's ``response_schema`` takes it; every field a response shares is already",
+        "stated by ``core/protocol-envelope.json`` and ``core/version-envelope.json``,",
+        "which arrive as bases from the document's own ``allOf``.  The 39 documents the",
+        "manifest names at ``async_response_schemas`` are a task RESULT rather than the",
+        "answer to the call and do not take this base.",
+        "",
+        "Neither carries ``__adcp_schema__``, so nothing grades either and",
+        "``strict_validate`` does not resolve on them; the concrete class for a document",
+        "decides what that document accepts.",
+    ]
+)
 
 
-def bases() -> tuple[tuple[ir.ClassDecl, ...], frozenset[tuple[str, str]]]:
-    """The two declarations and the one import they name.
+def bases() -> tuple[frozenset[tuple[str, ...]], str]:
+    """The two RE-EXPORTS and the prose that explains them -- and no declaration at all.
 
     No argument, which is the row: an envelope's base needs its family's agreed shape
     handed in because its fields are derived from it, and these two state no field, so
     there is nothing about the bundle for this function to be told.  The SET the bases are
     given to is still the registry's and still a function of the bundle
     (``bundle.task_messages``); it is :func:`adopt` that reads it.
+
+    **IT RETURNS NO ``ClassDecl``**, which is :data:`UPSTREAM`'s whole point and is the
+    one way this row stopped resembling ``lower/envelope.py``'s.  A re-export is
+    ``(module, symbol, word)`` with the word equal to the symbol -- the form
+    ``render._import_block`` writes as ``X as X`` -- and ``render.envelopes_module`` puts
+    that word in ``__all__``, so the module still PROMISES both names while declaring
+    neither.  The declared-class count therefore falls by two and the emitted count
+    cannot move: a class that declared nothing was never a document's emission.
     """
     return (
-        tuple(
-            ir.ClassDecl(
-                name=name,
-                ref=None,
-                fields=(),
-                description=DESCRIPTIONS[name],
-                # A LOCAL symbol, which is what a base always is here: the renderer
-                # writes the name and the module writer supplies the import, exactly as
-                # it does for a base another document declares.
-                bases=(ir.TypeRef(MODEL, local=True),),
-            )
-            for name in (REQUEST, RESPONSE)
-        ),
-        frozenset({(MODEL_MODULE, MODEL)}),
+        frozenset((UPSTREAM_MODULE, name, name) for name in UPSTREAM),
+        PROSE,
     )
 
 
@@ -144,29 +193,63 @@ def adopt(
     sets are disjoint by ``bundle.task_messages``' own refusal, so no module adds both to
     one declaration.
 
+    **AND A ROOT WITH NOTHING TO COMPOSE IS GIVEN :data:`MODEL` EXPLICITLY, because
+    naming any base at all replaces the default one.**  ``ir.ClassDecl.bases`` says so in
+    its own docstring -- "Empty leaves ``custom_base_class``, which is ``AdCPBaseModel``
+    ... a non-empty tuple replaces it, and ``AdCPBaseModel`` arrives through the bases
+    because every base is itself an emitted class ... a caller that wants
+    ``AdCPBaseModel`` in the list says so".  Upstream's marker is the first base this
+    emitter ever appended that is NOT an emitted class, so this row is the first that has
+    to say so, and the two documents it reaches are the only two task messages that
+    compose no envelope: ``creative/validate-input-request.json`` and
+    ``brand/search-brands-request.json``.
+
+    Measured, and the reason this clause is not cosmetic: without it those two roots
+    carried upstream's plain marker as their ONLY base, so they were not pydantic models
+    at all -- no ``model_fields``, no ``model_validate``.  It was latent before the marker
+    became upstream's, because ours happened to subclass ``BaseModel``; what was NOT
+    latent even then is that both roots carry ``__adcp_schema__`` and were never
+    ``SchemaBound``, so ``strict_validate`` did not resolve on either and §2's pairing
+    never graded those two documents.  This clause closes both.
+
+    Their own ``model_config`` states ``extra='allow'``, so :data:`MODEL`'s policy cannot
+    reach them -- which is the measured hazard ``lower/envelope.MODEL`` is about, checked
+    here rather than assumed: a census of all emitted classes moves no ``extra`` value.
+
     A module with no named document is returned unchanged, so no module gains an import
     of a symbol it does not name.
     """
     wanted = {REQUEST: frozenset(requests), RESPONSE: frozenset(responses)}
     declarations: list[ir.Declaration] = []
     taken: set[str] = set()
+    supplied = False
     for declaration in module.declarations:
         if isinstance(declaration, ir.ClassDecl):
             at = _root_document(declaration.ref)
             for name, documents in wanted.items():
                 if at is not None and at in documents:
+                    composed = declaration.bases
+                    if not composed:
+                        composed = (ir.TypeRef(MODEL, local=True),)
+                        supplied = True
                     declaration = replace(
-                        declaration, bases=(*declaration.bases, ir.TypeRef(name, local=True))
+                        declaration, bases=(*composed, ir.TypeRef(name, local=True))
                     )
                     taken.add(name)
         declarations.append(declaration)
     if not taken:
         return module
-    return replace(
-        module,
-        declarations=tuple(declarations),
-        imports=module.imports | {(MODULE, name) for name in taken},
-    )
+    # **THE IMPORT FOR :data:`MODEL` IS REPORTED HERE** and only where a root actually
+    # took it.  The renderer adds no import for a base -- ``ir.TypeRef.local``'s own rule,
+    # "a cross-document import is the module writer's" -- and measured, the two modules
+    # this clause reaches differ: ``creative/validate_input_request`` already imports
+    # ``AdCPBaseModel`` for an inner class, and ``brand/search_brands_request`` has no
+    # other class that names it, so without this line that module raised
+    # ``NameError: name 'AdCPBaseModel' is not defined`` at import.
+    owed = {(MODULE, name) for name in taken}
+    if supplied:
+        owed.add((ir.BASE_MODULE, MODEL))
+    return replace(module, declarations=tuple(declarations), imports=module.imports | owed)
 
 
 def _root_document(ref: SchemaRef | None) -> str | None:
