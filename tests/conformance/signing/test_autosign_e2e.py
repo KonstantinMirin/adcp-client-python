@@ -23,6 +23,14 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
+    Adcp,
+    CoversContentDigest,
+    GetAdcpCapabilitiesResponse,
+    Idempotency,
+    RequestSigning,
+    SupportedProtocol,
+)
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -41,15 +49,6 @@ from adcp.signing import (
 )
 from adcp.signing.autosign import current_operation
 from adcp.types.core import AgentConfig, Protocol
-from adcp.types.domains.protocol.get_adcp_capabilities_response import (
-    Adcp,
-    CoversContentDigest,
-    GetAdcpCapabilitiesResponse,
-    Idempotency,
-    MajorVersion,
-    RequestSigning,
-    SupportedProtocol,
-)
 
 VECTORS_DIR = Path(__file__).parent.parent / "vectors" / "request-signing"
 KEYS = json.loads((VECTORS_DIR / "keys.json").read_text())["keys"]
@@ -95,7 +94,7 @@ def _make_caps(
 ) -> GetAdcpCapabilitiesResponse:
     return GetAdcpCapabilitiesResponse(
         adcp=Adcp(
-            major_versions=[MajorVersion(root=3)],
+            major_versions=[3],
             idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
         ),
         supported_protocols=[SupportedProtocol.media_buy],

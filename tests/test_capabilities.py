@@ -6,12 +6,6 @@ import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-from adcp import AccountReferenceById, ADCPClient, SyncEventSourcesRequest
-from adcp.capabilities import FeatureResolver, validate_capabilities
-from adcp.exceptions import ADCPError, ADCPFeatureUnsupportedError
-from adcp.server.base import ADCPHandler
-from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus
 from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
 from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Adcp as AdcpInfo,
@@ -21,7 +15,6 @@ from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     ExtensionsSupportedItem,
     GetAdcpCapabilitiesResponse,
     Idempotency,
-    MajorVersion,
     MediaBuy,
     Signals,
     SupportedProtocol,
@@ -30,6 +23,12 @@ from adcp.types.domains.protocol.get_adcp_capabilities_response import (
 from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Features as SignalsFeatures,
 )
+
+from adcp import AccountReferenceById, ADCPClient, SyncEventSourcesRequest
+from adcp.capabilities import FeatureResolver, validate_capabilities
+from adcp.exceptions import ADCPError, ADCPFeatureUnsupportedError
+from adcp.server.base import ADCPHandler
+from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus
 
 
 def _make_config() -> AgentConfig:
@@ -74,7 +73,7 @@ def _make_capabilities(
 
     return GetAdcpCapabilitiesResponse(
         adcp=AdcpInfo(
-            major_versions=[MajorVersion(root=3)],
+            major_versions=[3],
             idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
         ),
         supported_protocols=supported,
@@ -780,7 +779,7 @@ class TestSupportsV3:
     def test_v3_supported(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
             adcp=AdcpInfo(
-                major_versions=[MajorVersion(3)],
+                major_versions=[3],
                 idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
             ),
             supported_protocols=[SupportedProtocol("media_buy")],
@@ -791,7 +790,7 @@ class TestSupportsV3:
     def test_v2_only(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
             adcp=AdcpInfo(
-                major_versions=[MajorVersion(2)],
+                major_versions=[2],
                 idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
             ),
             supported_protocols=[SupportedProtocol("media_buy")],
@@ -802,7 +801,7 @@ class TestSupportsV3:
     def test_both_v2_and_v3(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
             adcp=AdcpInfo(
-                major_versions=[MajorVersion(2), MajorVersion(3)],
+                major_versions=[2, 3],
                 idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
             ),
             supported_protocols=[SupportedProtocol("media_buy")],
