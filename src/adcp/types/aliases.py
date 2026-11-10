@@ -52,6 +52,13 @@ from adcp.types.brand import GetBrandIdentitySuccess as GetBrandIdentitySuccessR
 from adcp.types.brand import GetRightsError as GetRightsErrorResponse
 from adcp.types.brand import GetRightsSuccess as GetRightsResponse1
 from adcp.types.brand import GetRightsSuccess as GetRightsSuccessResponse
+from adcp.types.canonical_creative import CreateMediaBuyResponse1 as CreateMediaBuySuccessResponse
+from adcp.types.canonical_creative import CreateMediaBuyResponse2 as CreateMediaBuyErrorResponse
+from adcp.types.canonical_creative import GetProductsRequest as GetProductsBriefRequest
+from adcp.types.canonical_creative import GetProductsRequest as GetProductsRefineRequest
+from adcp.types.canonical_creative import GetProductsRequest as GetProductsWholesaleRequest
+from adcp.types.canonical_creative import UpdateMediaBuyRequest as UpdateMediaBuyPackagesRequest
+from adcp.types.canonical_creative import UpdateMediaBuyRequest as UpdateMediaBuyPropertiesRequest
 from adcp.types.compliance import ListScenariosSuccess as ComplyTestControllerResponse1
 from adcp.types.content_standards import CalibrateContentResponseVerdict as CalibrateContentResponse1
 from adcp.types.content_standards import CalibrateContentResponseVerdict as CalibrateContentSuccessResponse
@@ -107,10 +114,6 @@ from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesR
 from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesSubmittedResponse
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
-from adcp.types.media_buy import CreateMediaBuyError as CreateMediaBuyErrorResponse
-from adcp.types.media_buy import GetProductsRequest as GetProductsBriefRequest
-from adcp.types.media_buy import GetProductsRequest as GetProductsRefineRequest
-from adcp.types.media_buy import GetProductsRequest as GetProductsWholesaleRequest
 from adcp.types.media_buy import LogEventError as LogEventErrorResponse
 from adcp.types.media_buy import LogEventSuccess as LogEventResponse1
 from adcp.types.media_buy import LogEventSuccess as LogEventSuccessResponse
@@ -130,8 +133,6 @@ from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsSuccessRespo
 from adcp.types.media_buy import SyncEventSourcesError as SyncEventSourcesErrorResponse
 from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesResponse1
 from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesSuccessResponse
-from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyPackagesRequest
-from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyPropertiesRequest
 from adcp.types.signals import ActivateSignalError as ActivateSignalErrorResponse
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalResponse1
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalSuccessResponse
@@ -164,6 +165,7 @@ __all__ = [
     "CreateContentStandardsResponse1",
     "CreateContentStandardsSuccessResponse",
     "CreateMediaBuyErrorResponse",
+    "CreateMediaBuySuccessResponse",
     "Deployment",
     "Destination",
     "GetAccountFinancialsErrorResponse",
@@ -261,7 +263,6 @@ __adcp_refused__ = {
     "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents4, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents6, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: their CreateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
     "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.get_creative_delivery_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.DaastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.VastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",

@@ -28,7 +28,7 @@ legacy	src/adcp/types/legacy.py	247	47	19	22	25	0	LIVE-RESTORE	adapter-module	19
 media_buy	src/adcp/types/media_buy.py	214	3	0	2	2	0	LIVE-TRANSITIVELY	ours	no direct source importer; 2 importers inside types/
 media_buy_status_helpers	src/adcp/types/media_buy_status_helpers.py	26	0	0	4	0	0	LIVE-TRANSITIVELY	restored	no direct source importer; 4 importers inside types/
 mypy_plugin	src/adcp/types/mypy_plugin.py	39	0	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
-projections	src/adcp/types/projections.py	242	4	1	2	1	0	LIVE-RESTORE	absent	1 source importers outside types/
+projections	src/adcp/types/projections.py	242	4	1	2	1	0	LIVE-RESTORE	restored	1 source importers outside types/
 protocol	src/adcp/types/protocol.py	172	3	0	2	2	0	LIVE-TRANSITIVELY	ours	no direct source importer; 2 importers inside types/
 registry	src/adcp/types/registry.py	2051	1	4	5	5	1	VENDOR-UPSTREAMS-BYTES	restored	its generator reads schemas/registry-openapi.yaml, which is not in the compiler's input
 response_dispatch	src/adcp/types/response_dispatch.py	135	0	0	5	2	0	LIVE-TRANSITIVELY	absent	no direct source importer; 5 importers inside types/
@@ -38,7 +38,7 @@ v30	src/adcp/types/v30.py	5	1	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers
 v31	src/adcp/types/v31.py	5	1	0	0	2	0	TEST-ONLY-DELETE	absent	0 source importers, 2 test importers: a curated topic module
 v32	src/adcp/types/v32.py	5	1	0	0	4	0	TEST-ONLY-DELETE	adapter-module	0 source importers, 4 test importers: a curated topic module
 validation	src/adcp/types/validation.py	48	0	0	1	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/
-variants	src/adcp/types/variants.py	52	0	0	2	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 2 importers inside types/
+variants	src/adcp/types/variants.py	52	0	0	2	0	0	LIVE-TRANSITIVELY	restored	no direct source importer; 2 importers inside types/
 versioned	src/adcp/types/versioned.py	611	0	0	10	3	0	LIVE-TRANSITIVELY	absent	no direct source importer; 10 importers inside types/
 versioned_bases.__init__	src/adcp/types/versioned_bases/__init__.py	5	0	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
 versioned_bases._runtime	src/adcp/types/versioned_bases/_runtime.py	73	1	0	3	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 3 importers inside types/

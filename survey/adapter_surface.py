@@ -19,7 +19,7 @@ declaring module in `__module__`, and that module's path IS a bundle document's 
 carries its own word in `__qualname__`, and both trees derive that word from the document.
 So upstream's own name says WHICH DOCUMENT and WHICH NODE, and neither half is a guess.
 
-ELEVEN KEYS, each reported as itself because "what the key was read off" is the first thing
+THIRTEEN KEYS, each reported as itself because "what the key was read off" is the first thing
 a disagreement about a row turns out to be about.  `survey/alias_surface.py`'s two are the
 first three; the rest are the owner's extension (`adcp-client-python-1hck`, amended), and
 each is tried in this order so a stronger key is never overridden by a weaker one:
@@ -58,6 +58,14 @@ each is tried in this order so a stronger key is never overridden by a weaker on
                             why the cover must be exact in both directions.  **A UNION ALIAS
                             IS STILL A NAME**: it declares no class and reading 6's count does
                             not move.
+    restored-module+word    their declaring module names no document and is OUR tree's file
+                            at UPSTREAM'S OWN BYTES (`upstream_machinery.restored_paths`), so
+                            the subject is upstream's own declaration and not a candidate to
+                            be found.  Keyed on the MODULE their own statement names, which
+                            is why the `canonical_creative` restore -- which makes `Creative`
+                            and `CreativeManifest` declared twice -- does not tie it the way
+                            it ties `word-unique`.  Only where no document is known, so
+                            `core/format.json`'s `Format` still beats their hand-written one.
     foreign                 their declaration is not in `adcp` at all.  `_str_enum.StrEnum`
                             dumps as `enum.StrEnum`, which their own module says it is, and
                             our generated enums subclass that very object -- so the re-export
@@ -88,7 +96,19 @@ each is tried in this order so a stronger key is never overridden by a weaker on
                             and enumerated values only; unique in the pool; silent where the
                             structure names nothing (:func:`names_nothing`).
 
-**AND NEITHER POINTER KEY READS A LETTER OF EITHER SIDE'S SPELLING, which is what keeps them
+    document+pointer-constraint THE DOCUMENT'S CONSTRAINED-SCALAR POSITIONS, where our tree
+                            declares NOTHING and the two keys above therefore have no
+                            candidate to gate.  The pool is §3a's L1 catalogue --
+                            ``codegen.catalogue.collect_scalars``, the compiler's own record
+                            of the symbol it lowered at each pointer -- and the selector is
+                            the document's own node against their canonical root schema,
+                            annotations dropped.  `AcceptancePolicyProfileId` is
+                            `core/acceptance-policy-profile-ids.json` at `/items`, which our
+                            walk lowers to `constraints.StrMinLen1`.  Unique in the DOCUMENT,
+                            which is the gate that does the work: a constraint set carries no
+                            name, so the type cannot discriminate and only the position can.
+
+**AND NO POINTER KEY READS A LETTER OF EITHER SIDE'S SPELLING, which is what keeps them
 from binding two unrelated subjects.**  `Accreditation`/`AccreditationsItem` and
 `Metric`/`MetricsItem` look like suffix artefacts and are not matched as any; the pool is
 bounded by ONE document -- their own declaring module's -- and by the references that
@@ -161,6 +181,11 @@ import upstream_machinery as um  # noqa: E402
 
 OUR_GEN = "adcp.types._schemas"
 THEIR_GEN = "adcp.types.domains"
+#: **WHERE A TYPE DERIVED FROM A CONSTRAINT LIVES, and it is not under a document.**
+#: ``adcp.types.constraints``' own first paragraph: "A type derived from a CONSTRAINT belongs
+#: to no document, so there is no such module for it and it lives here instead, public".
+#: Named here because key 12's target is a symbol of that module and of no other.
+OUR_CONSTRAINTS = "adcp.types.constraints"
 #: ``codegen.bundle.PROJECTIONS`` by ``survey/dropin/_dropin.py``'s own reading: a projection
 #: re-cuts a document's nodes for one transport and is not a document to emit, so their
 #: generator's path for one names a document we DO compile, at its canonical path.
@@ -662,6 +687,32 @@ def root_shape(canon: str) -> tuple:
         return ()
 
 
+def admits(node: dict) -> tuple[tuple[str, object], ...]:
+    """A scalar node as the keywords that decide what it ADMITS, sorted.
+
+    §3a's identity rule read over one node: ``codegen.catalogue.ANNOTATIONS`` -- `title`,
+    `description`, `examples`, `default`, `$comment`, `deprecated` -- are dropped "because
+    an annotation does not change what a node admits", and so is every ``x-`` extension,
+    which `core/acceptance-policy-profile-ids.json`'s ``x-entity`` is one of.  What is left
+    is the type word, the ``format`` and the bounds, which is exactly the key §3a's L1 layer
+    is collected on -- so a node of the DOCUMENT and a canonical root schema of UPSTREAM'S
+    reduce to the same tuple when the two describe one acceptance.
+
+    Flat on purpose: this is a SCALAR's reading, and a node with any nested keyword
+    (``properties``, ``items``, ``oneOf``) reduces to a tuple no constrained-scalar position
+    can equal, so key 12 is silent there rather than wrong.
+    """
+    from codegen import catalogue as _catalogue
+
+    return tuple(
+        sorted(
+            (k, json.dumps(v, sort_keys=True))
+            for k, v in node.items()
+            if k not in _catalogue.ANNOTATIONS and not k.startswith(("x-", "$"))
+        )
+    )
+
+
 def names_nothing(sh: tuple) -> bool:
     """A structure with no NAMES and no VALUES cannot tell two subjects apart.
 
@@ -704,6 +755,13 @@ class Join:
         self._roots: dict[str, str] = {}
         self._shapes: dict[str, tuple] = {}
         self._pools: dict[str, dict[str, str]] = {}
+        #: :meth:`restored_declarations`' answer, taken once; see that method for why it is
+        #: not read in this constructor.
+        self._restored: frozenset[tuple[str, str]] | None = None
+        #: :meth:`scalar_pool`'s collection, taken once over the whole bundle.
+        self._scalars: dict[str, dict[str, tuple[tuple[tuple[str, object], ...], str]]] | None = (
+            None
+        )
         self.bundle_dir = bundle_dir
         #: The bundle's own documents, dotted as a module path is, so a document named in
         #: these rows is turned back into the PATH the bundle holds it at without a second
@@ -766,6 +824,49 @@ class Join:
         while mod and mod not in self.their_modules:
             mod = mod.rsplit(".", 1)[0] if "." in mod else ""
         return mod
+
+    def restored_declarations(self) -> frozenset[tuple[str, str]]:
+        """``(module, word)`` for every declaration of ours sitting at UPSTREAM'S OWN BYTES.
+
+        The intersection of two readings neither of which this function makes: the PATHS
+        where upstream's own hand-written file is on disk byte for byte
+        (:func:`survey.upstream_machinery.restored_paths`, blob identity against the commit
+        the classification pins) and the declarations :func:`dump_ours` walked out of our
+        live tree.  A module is in iff its file is upstream's; a word is in iff that module
+        declares it.  Nothing is listed, so a module the restore lane lands tomorrow joins
+        this set on the next run and a module whose bytes drift leaves it in the same breath.
+
+        Keyed on the module and not on the word, which is the whole of why it is not
+        :meth:`by_word`'s uniqueness with the gate relaxed -- see key 8.
+
+        Cached on the instance beside the other indexes rather than computed in
+        ``__init__``: the reading takes a ``git ls-tree`` and a row of the classification
+        table, and a ``Join`` built to resolve one row owes neither.
+        """
+        if self._restored is not None:
+            return self._restored
+        prefix = "adcp.types."
+        here = HERE.parent / "src" / "adcp" / "types"
+        restored = {
+            prefix + p.relative_to(here).with_suffix("").as_posix().replace("/", ".")
+            for p in um.restored_paths()
+        }
+        self._restored = frozenset(
+            (row["module"], row["word"])
+            for row in self.ours["declarations"].values()
+            if row["module"] in restored
+        )
+        return self._restored
+
+    def is_restored(self, key: str) -> bool:
+        """Is that declaration of ours upstream's own, in a file carrying upstream's bytes?
+
+        The same reading as :meth:`restored_declarations`, asked of one candidate -- which is
+        what the word keys need, because their question is "may this candidate be PROPOSED by
+        a word" and not "which module did their statement name".
+        """
+        row = self.ours["declarations"].get(key)
+        return row is not None and (row["module"], row["word"]) in self.restored_declarations()
 
     def shape_of(self, key: str) -> tuple:
         if key not in self._shapes:
@@ -836,6 +937,39 @@ class Join:
                 pool[root] = pointer or "#"
         self._pools[doc] = pool
         return pool
+
+    def scalar_pool(self, doc: str) -> dict[str, tuple[tuple[tuple[str, object], ...], str]]:
+        """**EVERY CONSTRAINED-SCALAR POSITION THE DOCUMENT STATES, AND WHAT WE LOWERED IT TO.**
+
+        ``pointer -> (what the position admits, the symbol ``adcp.types.constraints``
+        declares for it)``, for the one document.  The source is §3a's L1 catalogue read
+        exactly as ``codegen/emit.py`` reads it -- ``catalogue.collect_scalars(bundle,
+        constraints.SPELLING's keywords, constraints.symbol)`` -- so the symbol at a pointer
+        is the compiler's own answer and not a derivation of this script's.
+
+        One collection for the whole bundle, cached, because the layer is a reading of the
+        BUNDLE and not of a document (that module's own sentence) and 568 documents state
+        one.  Empty when no bundle was given, which makes key 12 silent rather than wrong.
+        """
+        if self._scalars is None:
+            self._scalars = collections.defaultdict(dict)
+            if self.bundle_dir is not None:
+                from codegen import catalogue as _catalogue
+                from codegen import constraints as _constraints
+
+                layer = _catalogue.collect_scalars(
+                    self.bundle_dir,
+                    frozenset(kw for kw, _ in _constraints.SPELLING),
+                    _constraints.symbol,
+                )
+                for entry in layer.entries.values():
+                    for at in entry.positions:
+                        node = {"type": at.kind, **dict(at.constraints)}
+                        if at.format is not None:
+                            node["format"] = at.format
+                        dotted = at.document[: -len(".json")].replace("-", "_").replace("/", ".")
+                        self._scalars[dotted][at.pointer] = (admits(node), entry.name)
+        return self._scalars.get(doc, {})
 
     def public(self, key: str) -> list[str] | None:
         paths = self.ours["declarations"][key]["public"]
@@ -951,11 +1085,11 @@ class Join:
                     return list(combo)
         return None
 
-    # -- the twelfth key: upstream's own statement, where their runtime carried no answer
+    # -- the fourteenth key: upstream's own statement, where their runtime carried no answer
     def stated(self, mod: str, name: str) -> dict | None:
         """**WHAT UPSTREAM'S OWN SOURCE SAYS THIS NAME IS, resolved to a subject of ours.**
 
-        The eleven keys above all start from upstream's RUNTIME dump, where a class says its
+        The thirteen keys above all start from upstream's RUNTIME dump, where a class says its
         own declaring module and word.  A name upstream BINDS rather than DECLARES says
         neither: `adcp.types.legacy.LegacyCreateMediaBuyResponse` is a union `TypeAlias`, so
         the dump recorded it with no module at all and the table's verdict was
@@ -964,7 +1098,7 @@ class Join:
         (`survey/upstream_aliases.Oracle.trace`) and its chain is reported beside the row as
         the evidence, which is what makes it a reading and not a guess.
 
-        **AND IT RESOLVES NOTHING ITSELF.**  Every arm below ends in one of the eleven keys
+        **AND IT RESOLVES NOTHING ITSELF.**  Every arm below ends in one of the thirteen keys
         above, re-entered at the name UPSTREAM'S OWN STATEMENT names -- so a binding this
         key reports was still decided by a document and a node, and the hazard the pointer
         keys exist to refuse (a word matched across the tree) is refused here too.  Three
@@ -1302,7 +1436,43 @@ class Join:
                     f"contract their own code uses and `A | B` has neither"
                 )
 
-        # 8: their word, declared EXACTLY ONCE in our whole tree.  Their generator INLINES a
+        # 8: THEIR OWN DECLARING MODULE, SITTING IN OUR TREE AT THEIR OWN BYTES.  Upstream's
+        # name resolves to a declaration in a module of THEIRS that no document states -- a
+        # hand-written one -- and the restore lane has put that very file at that very path
+        # byte for byte (`survey/upstream_machinery.restored_paths`, which is blob identity
+        # against the commit the classification pins and not "a file is at the path").  So
+        # the subject is not a candidate to be found: it is upstream's own declaration, and
+        # `isinstance` against it holds for the same reason it holds for `foreign` above --
+        # the object is the one upstream's source created.
+        #
+        # **WHY THIS IS NOT `word-unique` WITH A WEAKER GATE, and the measurement that says
+        # so.**  `word-unique` keys on a word being declared ONCE in our whole tree, and the
+        # restore lane breaks that gate wherever one of upstream's hand-written classes
+        # subclasses ours under a word our generated tree also carries: measured on
+        # `dropin/lastthree`, the `canonical_creative` restore made `Creative`,
+        # `CreativeManifest` and `ProductFormatDeclaration` each declared TWICE, and all
+        # three rows -- bound by `word-unique` while that file was absent -- fell to
+        # `NO-DOCUMENT-NO-SUBJECT` on the next run, to be answered by a flat spelling off
+        # `adcp.types._restored` with nothing recording the subject.  This key keys on the
+        # MODULE, which upstream's own statement names (`_eager.py:965
+        # UpdateMediaBuySuccessResponse = _canonical_creative.UpdateMediaBuyResponse1`), so a
+        # second declaration of the word elsewhere in our tree is not a tie at all.
+        #
+        # **AND ONLY WHERE NO DOCUMENT IS KNOWN**, which is the clause that keeps
+        # `adcp.types.Format` the document's.  A word a document gives is decided by the
+        # document keys above and never here; `canonical_creative.Format` is upstream's
+        # hand-written canonical class and `core/format.json`'s `Format` is the subject, and
+        # the ordering is what says which.  The restored module is reached only where the
+        # bundle states no subject for the word at all -- which, for `canonical_creative`'s
+        # 36 classes, is exactly the 12 that are not one of ours subclassed.
+        if doc is None and word and (their_mod, word) in self.restored_declarations():
+            return bind(
+                "restored-module+word",
+                f"{their_mod}.{word}",
+                f"{their_mod} is upstream's own file in our tree byte for byte",
+            )
+
+        # 9: their word, declared EXACTLY ONCE in our whole tree.  Their generator INLINES a
         # `$ref`'s target into the referring module and ours keeps the referenced document's
         # class, so the node is in a different document and the document key cannot reach it
         # (`sync-accounts-response`'s `CreditLimit` is `core/account.json`'s).  One word with
@@ -1317,11 +1487,25 @@ class Join:
         # claim and `word+identity` above is the key that is allowed to make it.  Where their
         # name differs from their word they are asserting a refinement of one class, and
         # which refinement is a reading and not a uniqueness.
-        if word and name == word and doc is None and len(self.by_word.get(word.lower(), [])) == 1:
-            only = self.by_word[word.lower()][0]
-            return bind("word-unique", only, "the only declaration of that word in our tree")
+        # **AND THE POOL EXCLUDES OUR TREE'S COPIES OF UPSTREAM'S OWN FILES, which is the
+        # symmetric half of this script's standing rule about THEIR undocumented modules.**
+        # That rule refuses `adcp.types.registry` on their side because "a word firing on one
+        # of them would be exactly the 'identity equal under a word the bundle does not give'
+        # that reading 10 refuses"; the same module is now VENDORED into our tree, so the same
+        # word fires from our side and this key cannot tell the two cases apart.  Measured on
+        # `dropin/lastthree`: the vendoring made `AuthorizedAgent` the only declaration of
+        # that word in our tree, and this key bound upstream's `aliases.AuthorizedAgent` --
+        # the `adagents.json` union of six arms -- to the registry OpenAPI model of that name,
+        # identity `differs`, two unrelated subjects under one word.  A declaration of ours
+        # that is upstream's own bytes is reached at upstream's own MODULE PATH (key 8) and
+        # never by a word search.  `word+identity` above is left alone: its gate is exact
+        # signature equality, which upstream's hand-written subclass of one of our classes
+        # does not meet, and where it did meet it the object would be the right one.
+        pool = [k for k in self.by_word.get(word.lower(), []) if not self.is_restored(k)]
+        if word and name == word and doc is None and len(pool) == 1:
+            return bind("word-unique", pool[0], "the only declaration of that word in our tree")
 
-        # 9 / 10: THE POINTERS THE DOCUMENT STATES, which is where their generator's INLINED
+        # 10 / 11: THE POINTERS THE DOCUMENT STATES, which is where their generator's INLINED
         # node and our referenced document's class are one subject under two words.  Not one
         # letter of either side's spelling is read: the pool is
         # :meth:`pointer_pool` -- the declarations of ours the document states, inline or
@@ -1374,6 +1558,63 @@ class Join:
                     row["pointer_refused"] = (
                         f"{len(hit)} pointers of the document carry that structure"
                     )
+
+        # 12: THE DOCUMENT'S CONSTRAINED-SCALAR POSITIONS, which the two keys above cannot
+        # reach because at such a position OUR TREE DECLARES NOTHING.
+        #
+        # `core/acceptance-policy-profile-ids.json` is an array of `{type: string,
+        # minLength: 1}` and our walk lowers the root to `AcceptancePolicyProfileIDs` and the
+        # ELEMENT to `constraints.StrMinLen1` -- an `Annotated[str, Field(min_length=1)]`
+        # that belongs to no document, which is `adcp.types.constraints`' own first
+        # paragraph.  So the pointer pool above holds the root and nothing else, and
+        # `document+pointer-identity` has no candidate to gate: upstream's class is a
+        # declaration where ours is an annotation.  That is the structural lane's own
+        # refusal said precisely -- "the array-ELEMENT and root-model cases need a different
+        # KEY, not a looser one".
+        #
+        # **THE POOL IS §3a's L1 CATALOGUE, which is the COMPILER'S OWN RECORD of what it
+        # lowered at each pointer** (`codegen.catalogue.collect_scalars`, the same call
+        # `codegen/emit.py` makes to build `Module.constrained`).  So the candidate at a
+        # pointer is not inferred here; it is the symbol the run emitted there.
+        #
+        # **AND THE SELECTOR IS THE DOCUMENT'S OWN NODE against THEIR emission.**  The
+        # catalogue position states a type word and a constraint set; upstream's declaration
+        # dumps a canonical root schema; the two are compared as the acceptance-bearing
+        # keywords they are, with `codegen.catalogue.ANNOTATIONS` dropped for §3a's reason
+        # (an annotation does not change what a node admits).  Not one letter of either
+        # side's spelling is read, which is what keeps this off the two rules this epic has
+        # already refuted: `x-entity` names an entity KIND and is stated at 3,338 sites, so
+        # it cannot identify a node; and de-pluralising the document's name is a TEXT rule.
+        # The pointer is neither.
+        #
+        # **UNIQUE IN THE DOCUMENT, and that is the gate doing the work.**  A constraint set
+        # carries no name -- `StrMinLen1` stands for every `minLength: 1` string in the
+        # bundle -- so the TYPE cannot discriminate and only the position can.  One document
+        # stating two positions with one constraint set refuses the row and says so, rather
+        # than handing upstream's word whichever came first.
+        if doc and their.get("schema") and "pointer_refused" not in row:
+            scalars = self.scalar_pool(doc)
+            want = admits(json.loads(their["schema"]).get("root") or {})
+            hit = sorted({(p, n) for p, (states, n) in scalars.items() if states == want})
+            if len(hit) == 1:
+                pointer, symbol = hit[0]
+                key = f"{OUR_CONSTRAINTS}.{symbol}"
+                row.update(
+                    verdict="BOUND",
+                    how="document+pointer-constraint",
+                    target=[key],
+                    public=[[OUR_CONSTRAINTS, symbol]],
+                    identity="document",
+                    note=(
+                        f"the document states that constraint at {pointer or '#'} and "
+                        f"nowhere else in it, and our walk lowers it to {symbol}"
+                    ),
+                )
+                return row
+            if len(hit) > 1:
+                row["pointer_refused"] = (
+                    f"{len(hit)} positions of the document state that constraint"
+                )
 
         row["identity_anywhere"] = (self.by_sig.get(their["sig"]) or [])[:3]
         if their["method"] == "none":
@@ -1784,7 +2025,7 @@ def main() -> None:
     parser.add_argument("--suite", type=Path, default=HERE.parent / "tests")
     #: The oracle for a name upstream BINDS rather than declares, read off their own source
     #: at the commit the machinery classification pins.  `--no-upstream-source` runs the
-    #: eleven dump-keys alone, which is how the key's own yield is measured.
+    #: thirteen dump-keys alone, which is how the key's own yield is measured.
     parser.add_argument("--no-upstream-source", action="store_true")
     args = parser.parse_args()
 

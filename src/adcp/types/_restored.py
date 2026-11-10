@@ -60,7 +60,7 @@ import types
 #: The restored modules of ``adcp.types``, by MODULE.
 #:
 #: Upstream's own hand-written machinery, put back at upstream's own path byte for byte,
-#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Eleven today.
+#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Thirteen today.
 #: Written here because a shipped package cannot read a survey table, and held against
 #: that table by the gate named in this module's docstring -- so the authority is byte
 #: identity against upstream's commit and this tuple is the derivation's cached answer
@@ -92,7 +92,7 @@ import types
 #: ``registry`` is VENDORED rather than restored-and-reproducible: upstream generates it
 #: from an OpenAPI spec that is not a document of the bundle this compiler compiles, so its
 #: 155 classes are unreproducible here whatever the emitter does.  It reaches this tuple by
-#: the same byte-identity reading as the other ten, because provenance is the only question
+#: the same byte-identity reading as the other twelve, because provenance is the only question
 #: this tuple answers.
 #:
 #: **AND 150 OF ITS NAMES ARE OFFERED FLAT HERE WHERE UPSTREAM OFFERS THEM ONLY AT THE
@@ -103,6 +103,22 @@ import types
 #: 939-name reading omits ``MEDIA_BUY_LEGACY_STATUS_VALUES``, which 95 of upstream's own
 #: test files import flat and which this module exists for, so it is a filtered population
 #: and not upstream's whole flat surface.
+#:
+#: ``projections`` and ``variants`` joined on `adcp-client-python-knnw`, and they are the
+#: first pair where one restore is the OTHER's only blocker.  ``projections`` is the file
+#: ``project_geo_postal_areas`` lives in -- 242 lines, 4 classes and 7 functions, and the
+#: function is a hand-written PROJECTION between two shapes of one capability declaration
+#: (AdCP 3.1's country-keyed ``{"US": ["zip"]}`` and 3.0's fused ``{"us_zip": true}``), so
+#: no re-export could ever have served it: a table of eleven native/legacy pairs and the
+#: rule that a legacy ``False`` is absence rather than support are statements of upstream's,
+#: not of any document's.  It also carries ``BusinessEntityResponse`` and
+#: ``AccountResponse``, which enforce the bundle's own ``writeOnly: true`` on
+#: ``BusinessEntity.bank`` and on notification credentials by TYPE -- a projection the
+#: emitted tree does not make, because ``writeOnly`` constrains a direction of flow and not
+#: what a node admits.  ``variants`` is its blocker and nothing else: 52 lines, no ``adcp``
+#: import of any kind, and one ``SchemaVariant`` marker class whose ``__getitem__``
+#: collapses to its argument -- which is why the adapter layer records it ``NOT-A-TYPE``
+#: and why only upstream's own bytes can answer for it.
 MODULES = (
     "_geo_place_keys",
     "_legacy_assets",
@@ -114,7 +130,9 @@ MODULES = (
     "canonical_creative",
     "error_narrowing",
     "media_buy_status_helpers",
+    "projections",
     "registry",
+    "variants",
 )
 
 

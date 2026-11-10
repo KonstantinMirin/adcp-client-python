@@ -39,6 +39,7 @@ from adcp.types.core import ExperimentalFeatureID as ExperimentalFeature
 from adcp.types.core import PostalAreaSupport as GeoPostalAreas
 from adcp.types.core import PreviewRendererMetadataRenderingOrigin as CapabilitiesPreviewRenderingOrigin
 from adcp.types.enums import AdCPSpecialism as Specialism
+from adcp.types.enums import CountryFusedPostalCodeSystem as LegacyPostalCodeSystem
 from adcp.types.protocol import GetAdCPCapabilitiesResponseAccount as CapabilitiesAccount
 from adcp.types.protocol import GetAdCPCapabilitiesResponseAdcp as Adcp
 from adcp.types.protocol import GetAdCPCapabilitiesResponseBrand as Brand
@@ -127,6 +128,7 @@ __all__ = [
     "Identity",
     "KeyOrigins",
     "KeywordTargets",
+    "LegacyPostalCodeSystem",
     "LifecycleTool",
     "MatchingLatencyHours",
     "Measurement",
