@@ -1794,6 +1794,28 @@ _k_ keywords has _k_ invalid witnesses and one valid one, so a document with N b
 witness sets, not 2^N. Where a cost would be a power set, a cross-product of conjuncts, or "every
 combination of branches", no reading demanded it.
 
+**THE FIRST CHECK'S WITNESS SET IS RECURSIVE OVER THE SUBTREE, AND THAT IS STILL LINEAR.** The
+sentence above is a bound on COMBINATIONS — it refuses a power set, a cross-product of conjuncts,
+2^N. It is not a bound on REACH, and reading the two as one is what leaves the first check weaker
+than reading 1 states it. Reading 1 says *every* class accepts *every* value its document admits;
+a single value read off a node's own keywords demonstrates that only at the node. A string leaf
+three levels down, whose own document states a length its parent never mentions, is a value the
+document admits and the class must too — and no witness built at the parent reaches it.
+
+So the valid witness is not one value per node: it is one value per node of the subtree the node
+reaches, each node contributing its own and no node contributing a combination. The cost stays
+**linear in the document's nodes, each visited once**, which is the model stated above — a subtree
+walk visits each node once, where a cross-product would visit each path. The distinction is reach
+against multiplicity, and only multiplicity was ever the danger.
+
+**WHY THIS CLAUSE IS LOAD-BEARING RATHER THAN TIDY.** Until it holds, the first check at full
+strength is reachable only by DRAWING instances and inspecting their leaves — which is a search,
+which carries a budget, and which therefore cannot be deleted while the check is owed. The node-local
+reading is measurably weaker: constructing every value class a node's own keywords distinguish
+yields under two per pair and finds **one** class narrower than its document, where walking the
+subtree's leaves finds hundreds. That difference is not a defect of the constructor; it is this
+sentence, and the search survives inside it.
+
 **A MUTATION NAMES THE KEYWORD IT VIOLATES, WHICH IS WHAT MAKES THE SECOND CHECK MORE THAN A
 BOOLEAN.** A class that refuses the mutation for the wrong reason has not been shown to carry the
 keyword, so the refusal is read at its location and against its cause. This is also why the invalid
