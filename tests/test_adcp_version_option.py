@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from adcp import ADCPClient, ADCPMultiAgentClient, get_adcp_spec_version
+from adcp import ADCPClient, ADCPMultiAgentClient, AgentConfig, Protocol, get_adcp_spec_version
 from adcp._version import (
     ADCP_MAJOR_VERSION,
     COMPATIBLE_ADCP_VERSIONS,
@@ -28,7 +28,6 @@ from adcp._version import (
 )
 from adcp.exceptions import ConfigurationError
 from adcp.server.builder import ADCPServerBuilder, adcp_server
-from adcp.types import AgentConfig, Protocol
 
 _PACKAGED_ADCP_VERSION = normalize_to_release_precision(get_adcp_spec_version())
 

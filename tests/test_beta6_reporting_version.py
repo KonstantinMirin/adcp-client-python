@@ -6,14 +6,13 @@ from typing import Any
 
 import pytest
 
-from adcp import ADCPClient
+from adcp import ADCPClient, AgentConfig, Protocol
 from adcp._version import is_adcp_version_at_least
 from adcp.compat.reporting_version import (
     assert_reporting_request_supported,
     beta6_reporting_request_issue,
 )
 from adcp.exceptions import ADCPFeatureUnsupportedError
-from adcp.types import AgentConfig, Protocol
 
 
 @pytest.mark.parametrize(

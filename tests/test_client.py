@@ -4,8 +4,7 @@ from typing import Any
 
 import pytest
 
-from adcp import ADCPClient, ADCPMultiAgentClient
-from adcp.types import AgentConfig, Protocol
+from adcp import ADCPClient, ADCPMultiAgentClient, AgentConfig, Protocol
 from tests.conftest import validate_union
 
 

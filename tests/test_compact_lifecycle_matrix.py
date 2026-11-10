@@ -11,7 +11,7 @@ import pytest
 from mcp import ClientSession
 from mcp.shared.memory import create_client_server_memory_streams
 
-from adcp import ADCPClient
+from adcp import ADCPClient, AgentConfig, Protocol
 from adcp._idempotency import is_mutating
 from adcp._version import resolve_adcp_version
 from adcp.decisioning import (
@@ -30,7 +30,6 @@ from adcp.server.mcp_tools import _normalize_response_envelope
 from adcp.types import (
     AcceptProposalRequest,
     AcceptProposalResponse,
-    AgentConfig,
     BuyProductsRequest,
     BuyProductsResponse,
     ControlMediaBuyRequest,
@@ -39,7 +38,6 @@ from adcp.types import (
     DeclineProposalsResponse,
     ListProductsRequest,
     ListProductsResponse,
-    Protocol,
     RefineProposalsRequest,
     RefineProposalsResponse,
     RequestProposalsRequest,

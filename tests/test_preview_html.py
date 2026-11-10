@@ -6,16 +6,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from adcp import ADCPClient
-from adcp.types import (
-    AgentConfig,
-    Format,
-    GetProductsRequest,
-    GetProductsResponse,
-    ImageContent,
-    Product,
-    Protocol,
-)
+from adcp import ADCPClient, AgentConfig, Protocol
+from adcp.types import Format, GetProductsRequest, GetProductsResponse, ImageContent, Product
 from adcp.types._generated import (
     CreativeManifest,
 )

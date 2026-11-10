@@ -47,11 +47,10 @@ from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Value
 from starlette.applications import Starlette
 
-from adcp import ADCPClient
+from adcp import ADCPClient, AgentConfig, Protocol
 from adcp.server import ADCPHandler
 from adcp.server.a2a_server import create_a2a_server
 from adcp.server.responses import capabilities_response
-from adcp.types import AgentConfig, Protocol
 
 # Starlette/uvicorn A2A integration requires Python 3.11+.
 pytestmark = pytest.mark.skipif(

@@ -7,12 +7,8 @@ Tests against live reference agents to ensure the SDK works correctly:
 
 import pytest
 
-from adcp import ADCPClient
-from adcp.types import (
-    AgentConfig,
-    GetProductsRequest,
-    Protocol,
-)
+from adcp import ADCPClient, AgentConfig, Protocol
+from adcp.types import GetProductsRequest
 from adcp.types.legacy import LegacyListCreativeFormatsRequest as ListCreativeFormatsRequest
 from tests.conftest import validate_union
 

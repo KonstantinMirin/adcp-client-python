@@ -285,8 +285,8 @@ def test_request_location_precedence_and_legacy():
 async def test_client_opt_in_policy_runs_once_for_explicit_and_generic_calls(
     monkeypatch, method_name, generic
 ):
-    from adcp import ADCPClient
-    from adcp.types import AgentConfig, GetProductsRequest, ListProductsRequest, Protocol
+    from adcp import ADCPClient, AgentConfig, Protocol
+    from adcp.types import GetProductsRequest, ListProductsRequest
 
     policy = ProductPropertyPolicy()
     raw = TaskResult(status=TaskStatus.COMPLETED, success=True, data={"products": []})
@@ -420,8 +420,7 @@ async def test_property_identifier_alternatives_and_strict_vs_targetable(permiss
 @pytest.mark.asyncio
 @pytest.mark.parametrize("pins", ["3.2", {"seller": "3.2"}])
 async def test_multi_client_forwards_opt_in_policy(pins):
-    from adcp import ADCPMultiAgentClient
-    from adcp.types import AgentConfig, Protocol
+    from adcp import ADCPMultiAgentClient, AgentConfig, Protocol
 
     policy = ProductPropertyPolicy()
     async with ADCPMultiAgentClient(

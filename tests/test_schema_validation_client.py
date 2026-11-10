@@ -13,8 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from adcp import ADCPClient, ValidationHookConfig
-from adcp.types import AgentConfig, Protocol
+from adcp import ADCPClient, AgentConfig, Protocol, ValidationHookConfig
 
 
 def _agent_config() -> AgentConfig:

@@ -13,8 +13,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from adcp import ADCPClient
-from adcp.types import AgentConfig, Protocol, UpdateRightsRequest, UpdateRightsResponse
+from adcp import ADCPClient, AgentConfig, Protocol
+from adcp.types import UpdateRightsRequest, UpdateRightsResponse
 from tests.a2a_compat_shim import (
     Artifact,
     DataPart,

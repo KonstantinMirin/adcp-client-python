@@ -14,6 +14,7 @@ from adcp import (
     AccountRecord,
     AccountSetupRequiredError,
     ADCPClient,
+    AgentConfig,
     InMemoryAccountStorage,
 )
 from adcp.account_identity import account_key
@@ -34,7 +35,6 @@ from adcp.exceptions import classify_task_error
 from adcp.server import ToolContext
 from adcp.types import (
     AccountReference,
-    AgentConfig,
     CreateMediaBuyRequest,
     GetAdcpCapabilitiesResponse,
     GetProductsRequest,

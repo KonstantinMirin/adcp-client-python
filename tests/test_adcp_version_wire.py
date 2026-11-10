@@ -17,12 +17,11 @@ import asyncio
 
 import pytest
 
-from adcp import ADCPClient, get_adcp_spec_version
+from adcp import ADCPClient, AgentConfig, Protocol, get_adcp_spec_version
 from adcp._version import get_supported_adcp_versions, normalize_to_release_precision
 from adcp.exceptions import ConfigurationError
 from adcp.server.builder import ADCPServerBuilder, adcp_server
 from adcp.server.responses import capabilities_response
-from adcp.types import AgentConfig, Protocol
 
 _PACKAGED_ADCP_VERSION = normalize_to_release_precision(get_adcp_spec_version())
 

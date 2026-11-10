@@ -78,10 +78,10 @@ Request = fastapi.Request
 from fastapi.responses import JSONResponse  # noqa: E402
 from uvicorn import Config, Server  # noqa: E402
 
-from adcp import ADCPClient
+from adcp import ADCPClient, AgentConfig, Protocol
 from adcp.server.idempotency import MemoryBackend, WebhookDedupStore
 from adcp.signing import CachingJwksResolver
-from adcp.types import AgentConfig, GetProductsRequest, Protocol
+from adcp.types import GetProductsRequest
 from adcp.webhooks import (
     WebhookReceiver,
     WebhookReceiverConfig,
