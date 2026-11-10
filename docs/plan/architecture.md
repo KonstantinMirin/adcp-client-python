@@ -1838,25 +1838,19 @@ not run, recorded as though something had been learned.** That is the same evasi
 expected-failure marker, arriving as arithmetic instead of as a decorator. **The verifier carries no
 cap of any kind**, and that is a structural claim about the three checks above rather than a target.
 
-**AND THE REASON THE CAPS KEPT COMING BACK IS THAT THIS PARAGRAPH NAMED NO BOUNDARY FOR AN
-INSTANCE.** "Linear in the document's nodes" says what the cost must be and not which nodes, so
-every reader of it had to decide for itself how far an instance descends — and each one answered
-with a number. Five were tried and all five were measured false: `_FIXTURE_DEPTH = 12` moved the
-answer at 73 of 4,567 nodes, `_OWN_DEPTH = 8` at 1,358 of 215,019, `witness._STORE_HOPS = 8` never
-fired across 2,988 calls, `_ARM_DEPTH = 4` had a margin of exactly one hop, and
-`Fixtures.reduced`'s `depth = 8` fired at 273 of 1,696 calls. All are deleted.
+**WHICH NODES: A PAYLOAD IS COMPLETE AT THE SUBJECT AND MINIMAL AT EVERY ENCLOSURE.** An instance
+graded against a class states every member that class's own document states, in a valid and an
+invalid variant. At each enclosed document it states the minimal instance that document admits,
+and stops.
 
-The boundary is stated once, in `rebuild-plan.md` §8's fixture rule, and it is structural rather
-than numeric: **a payload is COMPLETE at the subject under test and MINIMAL at every enclosure.**
-The ground is attribution, not cost — a fully articulated enclosed class lets the test for one
-class fail for a reason about another, and a red carrying the wrong subject is worse than no red.
-Each enclosed document is graded by its own pair; grading it again from inside another pair's
-fixture is how one document's defect reddens another document's row.
+The ground is attribution. Each enclosed document is graded by its own pair, so a payload that
+articulates one from inside another pair's fixture lets a defect in one document redden another
+document's row — and a red carrying the wrong subject says less than no red.
 
-So the cost claim above is a consequence rather than an aspiration: an instance bounded by the
-subject's own members costs what the subject costs, and there is nothing for a clock, an example
-count or a depth bound to contain. A counter could never have expressed this, because it counts
-hops where the rule reads what the subject IS.
+The boundary is therefore structural, a function of the document, and no number expresses it: the
+subject's own members against everything below them. An instance so bounded costs what the subject
+costs, which is what makes the sentence above a property of the design rather than a target — there
+is nothing for a clock, an example count or a depth bound to contain.
 
 **THE VALID WITNESS IS CONSTRUCTED AND THE INVALID ONE IS A MUTATION OF IT.** The valid instance is
 read off the node's keywords (§2) and the invalid set is one violation per keyword the node states —

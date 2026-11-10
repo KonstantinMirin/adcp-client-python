@@ -2018,39 +2018,26 @@ but it must be said out loud because it moves where a defect is found. And **the
 from the referenced document, never hand-written**: a hand-written one is a thousand files to
 maintain and a silent exemption the first time a document changes under it.
 
-**AND A FIXTURE IS COMPLETE AT THE SUBJECT AND MINIMAL AT EVERY ENCLOSURE. THIS IS TEST
-ISOLATION AND NOT A COST SETTING** (the owner's decision of 2026-11-10, recorded as a decision).
-A payload graded against class `X` states every member `X`'s own document states, in a valid and
-an invalid variant, because that is what is under test. At each enclosed document it states the
-MINIMAL instance that document admits, and stops — enough to satisfy the enclosure and no more.
+**AND A FIXTURE IS COMPLETE AT THE SUBJECT AND MINIMAL AT EVERY ENCLOSURE.** A payload graded
+against a class states every member that class's own document states, in a valid and an invalid
+variant. At each enclosed document it states the minimal instance that document admits, and
+stops.
 
-The reason is not speed, it is attribution. **A fully articulated enclosed class means the test
-for `X` can fail for a reason about `Y`**, and a red with the wrong subject is worse than no red:
-it is the correlated-predicate defect this plan names elsewhere, arriving through the fixture.
-Testing `create_media_buy` needs one creative, one format, one product — each minimal. Whether a
-webhook configuration is coherent is `core/push-notification-config.json`'s pair to grade, and
-grading it twice from inside another pair's fixture is how one document's defect reddens another
-document's row.
+The ground is attribution. Each enclosed document is graded by its own pair, so articulating one
+from inside another pair's fixture lets a defect in one document redden another document's row,
+and a red carrying the wrong subject says less than no red. Grading `create_media_buy` takes one
+creative, one format and one product, each minimal; whether a webhook configuration is coherent is
+`core/push-notification-config.json`'s pair to answer.
 
-**SO THERE IS NO DEPTH NUMBER, AND THERE NEVER WAS A RIGHT ONE.** The boundary is structural —
-the subject's own members against everything below them — so it is a function of the document and
-needs no counter. Every number tried here was a guess at that boundary and each was measured
-false in turn: `_FIXTURE_DEPTH = 12` moved the answer at 73 of 4,567 nodes, `_OWN_DEPTH = 8` at
-1,358 of 215,019, `_ARM_DEPTH = 4`'s margin was exactly one hop, and `Fixtures.reduced`'s
-`depth = 8` fired at 273 of 1,696 calls. All five are deleted. A sixth would have been the same
-mistake: **a counter cannot express "stop at the boundary of the subject", because it counts hops
-rather than reading what the subject is.**
+The boundary is structural — the subject's own members against everything below them — so it is a
+function of the document and carries no number. An instance so bounded costs what the subject
+costs, which is why §9's cost sentence is a property of this rule rather than a separate target.
 
-And this is what makes the cost claim in §9 true rather than aspirational. A fixture bounded by
-the subject's own structure costs what that structure costs — so no wall clock, no example count
-and no depth bound has anything to contain. Those limits existed because the instance was built
-by descending until something stopped it; with the boundary stated, nothing needs stopping.
-
-**The store stays a CACHE and is not an artifact to commit.** It is regeneratable from the
-documents by construction, content-addressed on each document's raw bytes and its raw reference
-closure (`harness.corpus_key`), so a document that changes invalidates its own entry and a cold
-store rebuilds without review. That is the same reading `examples` gets — the document decides,
-and nothing is written down that the document does not.
+**The store is a CACHE and not an artifact to commit.** It is regeneratable from the documents,
+content-addressed on each document's raw bytes and its raw reference closure
+(`harness.corpus_key`), so a document that changes invalidates its own entry and a cold store
+rebuilds without review. Same reading `examples` gets: the document decides, and nothing is
+written down that the document does not.
 
 **AND THE BUNDLE ALREADY STATES ITS OWN INSTANCES: `examples` IS THE SOURCE, AND THE HARNESS USES
 IT.** `examples` is JSON Schema's keyword for *this is a valid instance of
