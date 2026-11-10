@@ -18,9 +18,10 @@ from pydantic import (
 )
 from pydantic_core import PydanticSerializationError, core_schema
 
-from adcp.types import Format, Product, ProductFormatDeclaration
+from adcp.types import Product, ProductFormatDeclaration
 from adcp.types import canonical_creative as boundary
 from adcp.types.base import AdCPBaseModel
+from adcp.types.canonical_creative import Format
 
 
 def _declaration() -> Format:

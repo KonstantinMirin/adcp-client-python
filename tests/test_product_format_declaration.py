@@ -19,13 +19,13 @@ from adcp.canonical_formats import (
 from adcp.types import (
     CanonicalFormatImage,
     CanonicalFormatKind,
-    Format,
     LegacyProductFormatDeclaration,
     Package,
     Product,
     ProductFormatDeclaration,
     validate_union,
 )
+from adcp.types.canonical_creative import Format
 from adcp.types.domains.core.product_format_declaration import (
     ProductFormatDeclaration as GeneratedProductFormatDeclaration,
 )

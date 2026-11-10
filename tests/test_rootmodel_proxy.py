@@ -15,10 +15,10 @@ from adcp.types import (
     DeliveryMeasurement,
     DeliveryType,
     FlatRatePricingOption,
-    Format,
     Product,
     ReportingCapabilities,
 )
+from adcp.types.canonical_creative import Format
 
 
 @pytest.fixture

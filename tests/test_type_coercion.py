@@ -16,6 +16,7 @@ from adcp.types import (
     ListCreativesRequest,
     PackageRequest,
 )
+from adcp.types.canonical_creative import Format
 from adcp.types.domains.core.context import ContextObject
 from adcp.types.domains.core.ext import ExtensionObject
 from adcp.types.domains.creative.list_creative_formats_request import (
@@ -612,13 +613,7 @@ class TestResponseTypeCoercion:
         """GetProductsResponse.products accepts Product subclass instances."""
         from pydantic import Field
 
-        from adcp.types import (
-            CpmPricingOption,
-            DeliveryType,
-            Format,
-            GetProductsResponse,
-            Product,
-        )
+        from adcp.types import CpmPricingOption, DeliveryType, GetProductsResponse, Product
         from adcp.types.domains.core.product import DeliveryMeasurement
 
         class ExtendedProduct(Product):

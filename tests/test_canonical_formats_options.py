@@ -14,7 +14,8 @@ from adcp.canonical_formats import (
     find_declaration_by_kind,
     validate_format_kind_in_options,
 )
-from adcp.types import CanonicalFormatKind, Format
+from adcp.types import CanonicalFormatKind
+from adcp.types.canonical_creative import Format
 
 
 def _decl(

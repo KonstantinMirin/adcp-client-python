@@ -252,25 +252,61 @@ class TestSponsoredIntelligenceHandler:
                 # `status` is required by core/protocol-envelope.json, which this
                 # document composes via allOf. Upstream's generator dropped
                 # allOf-composed required fields, so their fixtures omit it.
-                return SiGetOfferingResponse(status="completed")
+                # `available` is required by sponsored-intelligence/si-get-offering-response.json.
+                #   Upstream's generator dropped declared and allOf-composed `required`, so their
+                #   fixtures omit it.
+                # available=True -- the affirmative of the success arm this response is.
+                return SiGetOfferingResponse(available=True, status="completed")
 
             async def handle_si_initiate_session(self, request, context=None):
                 # `status` is required by core/protocol-envelope.json, which this
                 # document composes via allOf. Upstream's generator dropped
                 # allOf-composed required fields, so their fixtures omit it.
-                return SiInitiateSessionResponse(status="completed")
+                # `session_id`, `session_status` are required by
+                #   sponsored-intelligence/si-initiate-session-response.json. Upstream's generator
+                #   dropped declared and allOf-composed `required`, so their fixtures omit them.
+                # session_id="session_123" -- an opaque identifier with no `pattern` and no example,
+                #   spelled with the suffix this file's other identifiers use.
+                # session_status="active" -- first member of the document's enum ['active',
+                #   'pending_handoff', 'complete', 'terminated'].
+                return SiInitiateSessionResponse(
+                    session_id="session_123",
+                    session_status="active",
+                    status="completed",
+                )
 
             async def handle_si_send_message(self, request, context=None):
                 # `status` is required by core/protocol-envelope.json, which this
                 # document composes via allOf. Upstream's generator dropped
                 # allOf-composed required fields, so their fixtures omit it.
-                return SiSendMessageResponse(status="completed")
+                # `session_id`, `session_status` are required by
+                #   sponsored-intelligence/si-send-message-response.json. Upstream's generator
+                #   dropped declared and allOf-composed `required`, so their fixtures omit them.
+                # session_id="session_123" -- an opaque identifier with no `pattern` and no example,
+                #   spelled with the suffix this file's other identifiers use.
+                # session_status="active" -- the first member the document names for a successful
+                #   response: 'active, pending_handoff, or complete'.
+                return SiSendMessageResponse(
+                    session_id="session_123",
+                    session_status="active",
+                    status="completed",
+                )
 
             async def handle_si_terminate_session(self, request, context=None):
                 # `status` is required by core/protocol-envelope.json, which this
                 # document composes via allOf. Upstream's generator dropped
                 # allOf-composed required fields, so their fixtures omit it.
-                return SiTerminateSessionResponse(status="completed")
+                # `session_id`, `terminated` are required by
+                #   sponsored-intelligence/si-terminate-session-response.json. Upstream's generator
+                #   dropped declared and allOf-composed `required`, so their fixtures omit them.
+                # session_id="session_123" -- an opaque identifier with no `pattern` and no example,
+                #   spelled with the suffix this file's other identifiers use.
+                # terminated=True -- the affirmative of the success arm this response is.
+                return SiTerminateSessionResponse(
+                    session_id="session_123",
+                    terminated=True,
+                    status="completed",
+                )
 
         return ConcreteSIHandler()
 
@@ -336,7 +372,13 @@ class TestGovernanceHandler:
                 return SyncPlansResponse(status="completed", plans=[])
 
             async def handle_check_governance(self, request, context=None):
+                # `verdict` is required by governance/check-governance-response.json. Upstream's
+                #   generator dropped declared and allOf-composed `required`, so their fixtures omit
+                #   it.
+                # verdict="approved" -- the document says this field was renamed from `status`,
+                #   which this call still passes as 'approved'.
                 return CheckGovernanceResponse(
+                    verdict="approved",
                     check_id="chk_123",
                     status="approved",
                     plan_id="plan_123",
@@ -344,7 +386,13 @@ class TestGovernanceHandler:
                 )
 
             async def handle_report_plan_outcome(self, request, context=None):
+                # `outcome_state` is required by governance/report-plan-outcome-response.json.
+                #   Upstream's generator dropped declared and allOf-composed `required`, so their
+                #   fixtures omit it.
+                # outcome_state="accepted" -- the document says this field was renamed from
+                #   `status`, which this call still passes as 'accepted'.
                 return ReportPlanOutcomeResponse(
+                    outcome_state="accepted",
                     outcome_id="out_123",
                     status="accepted",
                 )

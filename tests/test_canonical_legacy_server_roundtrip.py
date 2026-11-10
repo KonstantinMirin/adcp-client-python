@@ -10,6 +10,7 @@ from pydantic import ValidationError
 import adcp
 from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller
+from adcp.types.canonical_creative import Format
 
 _LEGACY_FORMAT = {
     "agent_url": "https://seller.example/mcp",
@@ -21,7 +22,7 @@ _LEGACY_FORMAT = {
 
 def test_extended_format_tuple_is_rejected_by_normal_validation() -> None:
     with pytest.raises(ValidationError, match=r"route\.agent_url"):
-        adcp.Format(
+        Format(
             format_kind="image",
             params={},
             route={
@@ -33,7 +34,7 @@ def test_extended_format_tuple_is_rejected_by_normal_validation() -> None:
 
 
 def test_extended_format_tuple_cannot_leak_from_model_construct() -> None:
-    declaration = adcp.Format.model_construct(
+    declaration = Format.model_construct(
         format_kind=adcp.types.CanonicalFormatKind.image,
         params={},
         route={
@@ -55,7 +56,7 @@ def test_extended_format_tuple_cannot_leak_from_model_construct() -> None:
 
 
 def test_unrelated_agent_url_fields_are_preserved() -> None:
-    declaration = adcp.Format(
+    declaration = Format(
         format_kind="image",
         params={},
         verifier={"agent_url": "https://verifier.example/mcp", "feature_id": "safety"},

@@ -18,7 +18,8 @@ from adcp.canonical_formats import (
     project_product_to_v1,
 )
 from adcp.canonical_formats.advisory import SDK_ID
-from adcp.types import CanonicalFormatKind, Format
+from adcp.types import CanonicalFormatKind
+from adcp.types.canonical_creative import Format
 from adcp.types.legacy import LegacyFormatId as FormatId
 
 

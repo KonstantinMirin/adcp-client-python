@@ -6,7 +6,6 @@ from copy import deepcopy
 
 import pytest
 
-from adcp import Format
 from adcp.canonical_formats import (
     CanonicalFormatLegacyResolutionError,
     canonical_format_legacy_resolver_from_catalog_snapshots,
@@ -20,6 +19,7 @@ from adcp.canonical_formats.projection import (
     LegacyCreativeProjectionError,
     LegacyFormatConversionContext,
 )
+from adcp.types.canonical_creative import Format
 from adcp.types.legacy import LegacyFormatId
 
 LEGACY_REF = {

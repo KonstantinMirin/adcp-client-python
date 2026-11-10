@@ -218,7 +218,15 @@ def test_delivery_accepts_known_input_models(model, input_model, as_variant):
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
 def test_delivery_manifest_normalizes_standalone_assets(model):
     payload = delivery_payload()
-    image = ImageContent(url="https://example.com/image.png", width=300, height=250)
+    # `asset_type` is required by core/assets/image-asset.json. Upstream's generator dropped
+    #   declared and allOf-composed `required`, so their fixtures omit it.
+    # asset_type="image" -- `const` in the document: 'image'.
+    image = ImageContent(
+        asset_type="image",
+        url="https://example.com/image.png",
+        width=300,
+        height=250,
+    )
     payload["creatives"][0]["variants"][1]["manifest"]["assets"] = {"image_main": image}
     response = model.model_validate(payload)
     assets = response.model_dump(mode="json")["creatives"][0]["variants"][1]["manifest"]["assets"]

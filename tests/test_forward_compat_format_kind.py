@@ -40,12 +40,12 @@ from adcp.types import (
     CreativeManifest,
     CreativeVariant,
     DeliveryCreative,
-    Format,
     GetCreativeDeliveryResponse,
     SyncCreativesRequest,
     is_canonical_format_kind,
 )
 from adcp.types.aliases import DeliveryCreative as AliasDeliveryCreative
+from adcp.types.canonical_creative import Format
 from adcp.types.creative import Creative as PartialCreative
 from adcp.types.creative import CreativeAsset as PartialCreativeAsset
 from adcp.types.creative import CreativeManifest as PartialCreativeManifest

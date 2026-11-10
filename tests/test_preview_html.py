@@ -7,10 +7,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from adcp import ADCPClient, AgentConfig, Protocol
-from adcp.types import Format, GetProductsRequest, GetProductsResponse, ImageContent, Product
+from adcp.types import GetProductsRequest, GetProductsResponse, ImageContent, Product
 from adcp.types._generated import (
     CreativeManifest,
 )
+from adcp.types.canonical_creative import Format
 from adcp.types.core import TaskResult, TaskStatus
 from adcp.types.legacy import (
     LegacyFormat,
@@ -197,7 +198,11 @@ async def test_preview_creative():
     manifest = CreativeManifest(
         format_id=format_id,
         assets={
+            # `asset_type` is required by core/assets/image-asset.json. Upstream's generator dropped
+            #   declared and allOf-composed `required`, so their fixtures omit it.
+            # asset_type="image" -- `const` in the document: 'image'.
             "image": ImageContent(
+                asset_type="image",
                 url="https://example.com/img.jpg",
                 width=300,
                 height=250,
@@ -274,7 +279,11 @@ async def test_get_preview_data_for_manifest():
     manifest = CreativeManifest(
         format_id=format_id,
         assets={
+            # `asset_type` is required by core/assets/image-asset.json. Upstream's generator dropped
+            #   declared and allOf-composed `required`, so their fixtures omit it.
+            # asset_type="image" -- `const` in the document: 'image'.
             "image": ImageContent(
+                asset_type="image",
                 url="https://example.com/img.jpg",
                 width=300,
                 height=250,
@@ -338,7 +347,11 @@ async def test_preview_data_caching():
     manifest = CreativeManifest(
         format_id=format_id,
         assets={
+            # `asset_type` is required by core/assets/image-asset.json. Upstream's generator dropped
+            #   declared and allOf-composed `required`, so their fixtures omit it.
+            # asset_type="image" -- `const` in the document: 'image'.
             "image": ImageContent(
+                asset_type="image",
                 url="https://example.com/img.jpg",
                 width=300,
                 height=250,
