@@ -780,6 +780,24 @@ class Module:
     #: export is relocated onto the declaring position, because "a position that references
     #: a class does not name it".  :attr:`binds` is the record that reading is made on.
     exports: Mapping[str, str] = field(default_factory=dict)
+    #: **EVERY SYMBOL THIS MODULE DECLARES WHOSE NAME IS POSITIONAL** --
+    #: ``<Base>Branch<i>``, §4's last candidate -- which is the set the owner's ruling of
+    #: 2026-11-10 withholds from :attr:`exports` (``names.A_POSITIONAL_NAME_IS_PRIVATE``).
+    #:
+    #: **A RECORD OF WHAT WAS WITHHELD AND NOT OF WHAT WAS DROPPED.**  The class is still
+    #: declared, still a member of its union's ``_branch_models``, and still validates --
+    #: deleting it would drop a branch from the union and refuse payloads the document admits.  What
+    #: this names is the set of names no public ``__all__`` may carry.
+    #:
+    #: It is here because a ban recorded only by an absence cannot be graded: a gate that
+    #: ranged over the EXPORT set alone would pass on a run that minted no positional name
+    #: at all and on a run that minted one and published it under another spelling, and
+    #: could not tell the two apart.  ``names.the_positional_names`` is the one derivation,
+    #: read off the walk's hop table and this pass's own symbol table, and this is where
+    #: its answer leaves the pass.
+    #:
+    #: Keyed by SYMBOL for :attr:`exports`' reason: what the ruling is about is a NAME.
+    positional: frozenset[str] = frozenset()
     #: **READING 6's INNER WORD**: for a symbol :attr:`exports` records under the ``inner``
     #: kind, the name the DOMAIN SURFACE publishes it under -- which is not the symbol.
     #:

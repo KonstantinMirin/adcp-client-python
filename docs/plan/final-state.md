@@ -287,6 +287,18 @@ thing it mandates is measuring the wrong quantity, not finding a defect.
 branches and aliases alike — at exactly one such path, with the domain derived from the document's
 own path. No second way reaches the same class, and no name in one namespace means two classes.
 
+**WITH ONE SET CARVED OUT: A CLASS WHOSE ONLY AVAILABLE NAME IS POSITIONAL IS REACHED AT NO PATH
+AT ALL.** The owner's decision of 2026-11-10, recorded as a decision and not derived; reading 4
+below states it in full. Where §4's candidate list falls all the way to the index the symbol is
+`<Base>Branch<i>`, and such a name "reaching" an application is the defect this reading exists to
+prevent rather than an instance of the guarantee it makes — a consumer who imports it has to count
+the document's branches to learn what it is. So the class is declared, validated and dispatched to
+as a branch of its union, and it is at no public path; reading 4's placeholder rule and this
+sentence stood in contradiction for ten days while the surface published **six** such names.
+Measured on bundle 3.2: 6 classes of 3,092, over 6 modules of 4 domains, and the set is the
+compiler's own record (`emit.Emitted.positional`) rather than a list — a branch the bundle later
+titles rejoins this reading with nothing edited.
+
 **AND AN UNTITLED INNER NODE IS EXPORTED UNDER ITS PARENT'S NAME AND ITS KEY, ALWAYS — NEVER ONLY
 WHEN THE KEY COLLIDES.** A domain carries many a `method`, a `target`, an `items`, so the key alone
 cannot be the export for all of them. The tempting rule is to export the key alone where it happens
@@ -445,6 +457,21 @@ name taken from the structure where the bundle names nothing, and such a name is
 upstream title. Publishing an alias onto it makes a placeholder permanent and public, which is the
 one thing §4's placeholder rule forbids: a name minted for want of a subject must not become a name
 an application depends on.
+
+**AND FOR THE ONE PLACEHOLDER THAT IS PURELY POSITIONAL, `<Base>Branch<i>`, THE PROHIBITION IS NOT
+ON THE ALIAS BUT ON THE NAME ITSELF.** The owner's decision of 2026-11-10, recorded here as a
+decision and not derived from the sentences around it: **a positional name may exist privately and
+may never be public.** The class is declared under `_schemas/`, because deleting it would drop a
+branch from the union and refuse payloads the document admits; the name is withheld from §1's
+export set, so it is at no `adcp.types.<domain>.<Name>`, at no flat spelling and in no `__all__`,
+and there is therefore nothing for an alias to point at. This is the placeholder rule read strictly
+rather than an exception to it — a positional name is the one placeholder that says nothing
+whatever about its subject, so §4's own condemnation of it (`rebuild-plan.md`: "a caller writing
+`isinstance(req, AssetRequirementsBranch7)` has to count the document's branches to know that it
+means JavaScript") is decisive where a structure-derived word is merely provisional. Until the
+ruling landed, §4 prescribed the name and these two readings forbade it, and the surface published
+**six** of them. `codegen/lower/names.py`'s `A_POSITIONAL_NAME_IS_PRIVATE` is the implementation
+and `tests_emit/test_no_positional_name_is_public.py` is the gate.
 
 **UNLESS THE ALIAS IS UPSTREAM'S OWN PUBLISHED WORD, DECLARED DEPRECATED AND PENDING.** The
 sentence above guards against *creating* a permanent public commitment to a placeholder. Where

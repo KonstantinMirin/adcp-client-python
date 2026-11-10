@@ -392,7 +392,7 @@ def domain_exports(
     name is not, because what it needs is ``mod.hops`` -- which positions exist and what
     kind each one is -- and that is the WALK's decision.  An untitled ``enum`` branch
     becomes a ``Literal`` and declares no class; §5's widenings drop a position; §4's
-    bare-``$ref`` branch rung takes the TARGET's distinguishing remainder, so the target
+    bare-``$ref`` branch candidate takes the TARGET's distinguishing remainder, so the target
     had to be named first (§10's order).  A parse answering any of that would
     re-implement three rules, which is the second derivation §3 forbids.
 
@@ -420,7 +420,7 @@ def domain_exports(
     replacing the census would let a position return to a name an earlier round had freed:
     round two frees ``FailItemUrl``, round three would take it back, and the loop would
     alternate forever.  Accumulating is monotone -- the set of taken names only grows, and
-    the rungs and depths a position can spell are finite -- so the loop stops.  Measured on
+    the candidates and depths a position can spell are finite -- so the loop stops.  Measured on
     this bundle it stops after **three** rounds with every domain collision resolved, and
     the accumulation costs nothing: the names dropped on the way are each wanted by two
     positions that both moved off them, so no position is pushed off a name another document
@@ -1063,6 +1063,23 @@ class Emitted:
     #: :func:`domain_exports`, whose census is over the names a domain PUBLISHES and so
     #: must be over the words rather than over the symbols behind them.
     published: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: **MODULE** -> ``ir.Module.positional``: every symbol it declares whose NAME is
+    #: positional -- ``<Base>Branch<i>``, §4's last resort -- and which the owner's ruling
+    #: of 2026-11-10 therefore withholds from :attr:`surface`
+    #: (``lower_names.A_POSITIONAL_NAME_IS_PRIVATE``).  Keyed on the module for
+    #: :attr:`surface`'s reason and written beside it, so one record answers "which names
+    #: does this module put on the surface" and "which names may never be on it", and the
+    #: two cannot name overlapping sets.
+    #:
+    #: **IT IS THE SET A GATE RANGES OVER, and that is why the record exists at
+    #: all.**  The ban shows up in :attr:`surface` as an ABSENCE, and an absence cannot be
+    #: graded: a check over the export set alone passes identically on a run that minted no
+    #: positional name and on a run that minted one and published it, and cannot tell the
+    #: two apart.  ``tests_emit/test_no_positional_name_is_public.py`` asserts this set is
+    #: NON-EMPTY before it asserts anything about the surface, which is what keeps the gate
+    #: from going vacuous -- and it ranges over the record rather than over a list of the
+    #: six names bundle 3.2 happens to produce.
+    positional: dict[str, frozenset[str]] = field(default_factory=dict)
     #: **MODULE** -> ``ir.Module.binds``: §1's bindings in it, symbol -> the symbol it
     #: names.  Keyed on the module for :attr:`surface`'s reason and written beside it.
     #:
@@ -1621,7 +1638,7 @@ def decidable(
     #
     # Empty on pass one, which is what makes the recursion finite and is not a second
     # answer: pass one is this compiler with the rule switched off, so each position
-    # reports its own rung-0 spelling, which is the question the rule asks.
+    # reports its own first-candidate spelling, which is the question the rule asks.
     #
     # The ROOT half is checked against the cheap reading of it as well, because the two
     # must agree: :func:`domain_roots` parses the RAW document where the walk read the
@@ -2695,7 +2712,7 @@ def emit(
           row that is not a derivation at all -- §4's step 1, read at the pointer the
           entry is DECLARED at rather than at the pointer the word is written at.
 
-        ``assign`` takes all of them as an extra FIRST RUNG, so §4's collision rule still
+        ``assign`` takes all of them as an extra FIRST CANDIDATE, so §4's collision rule still
         decides and a derived name that collides falls to the chain the position would have
         been named by anyway.
 
@@ -2930,6 +2947,7 @@ def emit(
             # pass two range over one document set and agree about every name.
             out.surface[module_path(document)] = dict(bound.exports)
             out.published[module_path(document)] = dict(bound.published)
+            out.positional[module_path(document)] = frozenset(bound.positional)
             out.emitted[document] = module_name(document)
             continue
         out.files[f"{rel}.py"] = render.module(
@@ -2955,6 +2973,11 @@ def emit(
         # Reading 6's inner WORDS beside it, same pass and same reason
         # (:attr:`Emitted.published`).
         out.published[module_path(document)] = dict(bound.published)
+        # The names the owner's ruling WITHHELD from that export set, same pass and same
+        # reason (:attr:`Emitted.positional`, ``lower_names.A_POSITIONAL_NAME_IS_PRIVATE``).
+        # Recorded for every module, so absence means "this module declares no positional
+        # name" and a reader ranges over the record rather than over the emitted tree.
+        out.positional[module_path(document)] = frozenset(bound.positional)
         # §1's bindings beside it, same pass and same reason, with the DECLARING MODULE
         # resolved: the pass knows the symbol a binding names and not where it lives, and
         # a reader counting declarations needs both or it keys a second path on the module

@@ -237,15 +237,33 @@ def test_section_4s_branch_rules_name_the_branch_and_not_the_path_to_it() -> Non
     assert names.branch_identity(
         names.Branch(parent="/x", required=("trigger", "input")), parent
     ) == ("MediaBuy", "TransitionsItemInputTrigger")
-    # §4's FOURTH rung, ``<Base>Branch<i>`` (``adcp-client-python-10l.41``).  It is the
-    # LAST one and reached only here: the three rungs above each answered nothing, and a
-    # document that gives a branch no identity at all leaves nothing else to read.
-    assert names.branch_identity(names.Branch(parent="/x", index=3), parent) == (
+    # §4's LAST resort, ``<Base>Branch<i>`` (``adcp-client-python-10l.41``), which is a
+    # PRIVATE declaration name and never a name an application may import (the owner's
+    # ruling of 2026-11-10, :data:`names.A_POSITIONAL_NAME_IS_PRIVATE`).  It is reached
+    # only here: the rules above each answered nothing, and a document that gives a branch
+    # no identity at all leaves nothing else to read -- so the class still has to be
+    # DECLARED under some name, or the union loses a branch and the model refuses a payload
+    # the document admits.  What the ruling removes is the publication, not the name.
+    placeholder = names.Branch(parent="/x", index=3)
+    assert names.branch_identity(placeholder, parent) == (
         "MediaBuy",
         "TransitionsItemBranch3",
     )
-    # And the index never OUTRANKS an identity, which is the whole of why it is accepted:
-    # the same hop carrying a title takes the title, and carrying a pin takes the pin.
+    # And the name this rule derives is recognised as positional, which is the whole of
+    # how it comes to be withheld: ``the_positional_names`` asks whether a settled name is
+    # a spelling of this position's own positional chain, and
+    # ``tests_emit/test_no_positional_name_is_public.py`` is what grades the surface.
+    assert names.positional_chain(placeholder, parent) == ("MediaBuy", "TransitionsItemBranch3")
+    assert names.spelled_from(
+        names.positional_chain(placeholder, parent), "TransitionsItemBranch3"
+    )
+    assert names.spelled_from(
+        names.positional_chain(placeholder, parent), "MediaBuyTransitionsItemBranch3"
+    )
+    # And the index never OUTRANKS an identity, which is the whole of why it is kept at
+    # all: the same hop carrying a title takes the title, and carrying a pin takes the pin,
+    # and such a name is PUBLIC -- it says what it names, so the ruling has nothing to
+    # withhold.
     assert names.branch_identity(
         names.Branch(parent="/x", title="Timer Transition", index=3), parent
     ) == ("TimerTransition",)
@@ -256,6 +274,20 @@ def test_section_4s_branch_rules_name_the_branch_and_not_the_path_to_it() -> Non
     assert names.branch_identity(
         names.Branch(parent="/x", required=("trigger",), index=3), parent
     ) == ("MediaBuy", "TransitionsItemTrigger")
+    # ... and the ban reaches none of those three, which is the other direction of the
+    # ruling and the half that keeps it from being a ban on the WORD: the positional chain
+    # exists for each of them -- every one of these hops carries an index -- and the name
+    # each one SETTLED on is not a spelling of it, so nothing is withheld.
+    for identified in (
+        names.Branch(parent="/x", title="Timer Transition", index=3),
+        names.Branch(parent="/x", pins=("media_event",), index=3),
+        names.Branch(parent="/x", required=("trigger",), index=3),
+    ):
+        chain = names.positional_chain(identified, parent)
+        assert chain is not None
+        derived = names.branch_identity(identified, parent)
+        assert derived is not None
+        assert not names.spelled_from(chain, names.spelling(derived, len(derived)))
     # The ONE hop left with no name at all is a NESTED union's branch, whose index the
     # walk does not record because a member type needs no name of its own; ``segments``
     # gives it the union's own derived name and nothing refuses.
@@ -266,18 +298,30 @@ def test_inserting_a_branch_after_an_indexed_one_moves_no_existing_name() -> Non
     """The row's own acceptance criterion: every branch class name is a function of the
     branch node ALONE, so adding a sibling branch renames nothing already emitted.
 
-    :data:`names.INDEX_IS_THE_LAST_RUNG` is the sentence.  A positional name is normally
-    the defect -- the upstream v9 SDK numbers 1,092 of its 4,360 classes and renames a
-    sibling when a branch is inserted ahead of it -- and §4 accepts it only as the last
-    rung, where there is nothing else to read.  What makes it safe at that rung is that
-    an index is a fact of the branch's OWN position: it is never derived from what the
-    siblings state, so a branch APPENDED to the combinator adds a name and moves none.
+    :data:`names.INDEX_IS_THE_LAST_CANDIDATE` is the sentence.  A positional name is the
+    defect -- the upstream v9 SDK numbers 1,092 of its 4,360 classes and renames a
+    sibling when a branch is inserted ahead of it -- and §4 reaches for it only as the
+    last resort, where there is nothing else to read.  **AND THE NAME IT MINTS THERE IS
+    PRIVATE AND NEVER PUBLIC** (the owner's ruling of 2026-11-10,
+    :data:`names.A_POSITIONAL_NAME_IS_PRIVATE`): the class is declared, because deleting
+    it would drop a branch from the union and refuse payloads the document admits, and the name is
+    withheld from §1's export set, because a name minted for want of a subject must not
+    become a name an application depends on.
 
-    Insertion in the MIDDLE does move the names after it, and that is the honest limit of
-    the rung -- §4 says "stable under insertion only at the end" -- so this grades the
-    property the section claims and not a stronger one.  A document that wants a stable
-    name under reordering states a ``title``, which is rung 1 and is what the upstream
-    candidate asks for.
+    **SO WHAT THIS TEST CLAIMS IS NOT THAT THE NAME IS RIGHT, ONLY THAT IT IS STABLE.**
+    It used to assert ``AssetRequirementsBranch0`` as the expected OUTPUT of the name
+    rule, which is the claim the ruling denies; the derivation is still graded here
+    because the compiler still has to declare the class under a stable symbol, and the
+    second half -- that no such symbol may be published -- is asserted where the surface
+    is, in ``tests_emit/test_no_positional_name_is_public.py``.
+
+    What makes the symbol safe at all is that an index is a fact of the branch's OWN
+    position: it is never derived from what the siblings state, so a branch APPENDED to
+    the combinator adds a declaration and moves none.  Insertion in the MIDDLE does move
+    the names after it, and that is the honest limit -- §4 says "stable under insertion
+    only at the end" -- so this grades the property the section claims and not a stronger
+    one.  A document that wants a stable name under reordering states a ``title``, which
+    is the first rule and is what the upstream candidate asks for.
     """
     def hops(count: int) -> dict[str, names.Hop]:
         """A root union of ``count`` identity-less branches, as the walk records them."""
@@ -296,9 +340,22 @@ def test_inserting_a_branch_after_an_indexed_one_moves_no_existing_name() -> Non
         "/anyOf/1": "AssetRequirementsBranch1",
         "/anyOf/2": "AssetRequirementsBranch2",
     }, three
-    # The APPENDED branch adds a name and moves none: the row renames nothing but adds.
+    # The APPENDED branch adds a declaration and moves none: the row renames nothing.
     assert {p: n for p, n in four.items() if p in three} == three, four
     assert four["/anyOf/3"] == "AssetRequirementsBranch3", four
+    # **AND NONE OF THE FOUR IS A NAME THE SURFACE MAY CARRY**, which is the assertion
+    # that replaces "this is the expected output": every one of them is recognised as
+    # positional off the walk's own hop table, so §1's export set holds the ROOT and
+    # nothing else of this document.
+    assert names.the_positional_names(hops(4), four) == frozenset(
+        {
+            "AssetRequirementsBranch0",
+            "AssetRequirementsBranch1",
+            "AssetRequirementsBranch2",
+            "AssetRequirementsBranch3",
+        }
+    )
+    assert "AssetRequirements" not in names.the_positional_names(hops(4), four)
 
 
 # --------------------------------------------------------------------------- #
@@ -520,15 +577,15 @@ def test_the_long_name_is_the_exception_and_not_the_rule() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# §4's RUNG axis (``adcp-client-python-10l.78``)
+# §4's CANDIDATE axis (``adcp-client-python-10l.78``)
 # --------------------------------------------------------------------------- #
-def _ladders(hops: dict[str, names.Hop]) -> dict[str, tuple[tuple[str, ...], ...]]:
-    """Every pointer with §4's RUNGS for it, which is what ``spell_the_rungs`` takes."""
+def _candidate_names(hops: dict[str, names.Hop]) -> dict[str, tuple[tuple[str, ...], ...]]:
+    """Every pointer with §4's CANDIDATES for it, which is what ``spell_the_candidates`` takes."""
     out = {}
     for pointer in hops:
-        rungs = names.ladder(pointer, hops)
-        assert not isinstance(rungs, Refusal), rungs
-        out[pointer] = rungs
+        candidates = names.candidate_names(pointer, hops)
+        assert not isinstance(candidates, Refusal), candidates
+        out[pointer] = candidates
     return out
 
 
@@ -570,20 +627,20 @@ def test_a_boolean_pin_contributes_no_segment_because_true_names_nothing() -> No
     neither", applied per PIN instead of per branch.
 
     Both halves of the measured population are asserted, because the rule reaches two
-    shapes and a reading that dropped the whole rung would pass only one:
+    structures and a reading that dropped the whole candidate would pass only one:
 
     * a branch pinning something IDENTIFYING beside a ``true`` keeps the identifying pin
       and loses the boolean -- ``core/package-signal-targeting.json``'s
       ``PackageSignalTargetingBinaryTrue`` becomes ``PackageSignalTargetingBinary``;
-    * a branch whose pins are ALL boolean answers nothing at rung 2 and falls through --
+    * a branch whose pins are ALL boolean answers nothing at candidate 2 and falls through --
       ``governance/sync-plans-request.json``'s ``BudgetTrue`` becomes
       ``BudgetReallocationUnlimited``, the property whose PRESENCE identifies it.
 
     The second half is also how the rule SUBSUMES the collision case rather than sitting
     beside it (§4): ``trusted-match/provider-registration.json``'s two branches pin
     ``context_match: true`` and ``identity_match: true``, which the collision clause
-    reached by deriving one name for the pair and falling.  Rung 2 now answers nothing
-    for either, so ONE rule gets them there -- asserted below as the rung answering
+    reached by deriving one name for the pair and falling.  Candidate 2 now answers nothing
+    for either, so ONE rule gets them there -- asserted below as the candidate answering
     ``None``, which is what tells the two routes apart.
     """
     base = ("PackageSignalTargeting",)
@@ -601,7 +658,7 @@ def test_a_boolean_pin_contributes_no_segment_because_true_names_nothing() -> No
     # asserted: a test on the wrong type would swallow a numeric pin.
     assert names.identifying_pins((0, 1)) == (0, 1)
 
-    # All-boolean: rung 2 answers NOTHING, so the branch falls -- one rule, not two.
+    # All-boolean: candidate 2 answers NOTHING, so the branch falls -- one rule, not two.
     hops = {
         "": names.Root("TMP Provider Registration"),
         "/anyOf/0": names.Branch(
@@ -613,10 +670,10 @@ def test_a_boolean_pin_contributes_no_segment_because_true_names_nothing() -> No
     }
     registration = ("TMPProviderRegistration",)
     assert (
-        names.branch_rungs(hops["/anyOf/0"], registration)[0]
+        names.branch_candidates(hops["/anyOf/0"], registration)[0]
         == ("TMPProviderRegistrationContextMatch",)
-    ), "rung 2 must answer NOTHING, so the required set is the FIRST rung and not a fall"
-    spelled = names.spell_the_rungs(_ladders(hops))
+    ), "candidate 2 must answer NOTHING, so the required set is the FIRST candidate and not a fall"
+    spelled = names.spell_the_candidates(_candidate_names(hops))
     assert not isinstance(spelled, Refusal), spelled
     assert spelled == {
         "": "TMPProviderRegistration",
@@ -626,14 +683,14 @@ def test_a_boolean_pin_contributes_no_segment_because_true_names_nothing() -> No
 
 
 def test_a_rung_that_collides_has_not_identified_the_branch_so_both_fall() -> None:
-    """§4: "Where a rung derives one name for two branches it has not identified either,
-    so both fall to the next rung."
+    """§4: "Where a candidate derives one name for two branches it has not identified either,
+    so both fall to the next candidate."
 
     The clause STANDS after the boolean rule subsumed its measured population
-    (``trusted-match/provider-registration.json``, now reached by rung 2 answering
+    (``trusted-match/provider-registration.json``, now reached by candidate 2 answering
     nothing), so it is graded on two branches pinning the same IDENTIFYING value -- which
     is the general shape and the one the boolean rule does not reach.  Both halves are
-    asserted, because the second means nothing without the first: that the rung really
+    asserted, because the second means nothing without the first: that the candidate really
     does collide, and that the fall lands on the required set.
     """
     hops = {
@@ -648,8 +705,8 @@ def test_a_rung_that_collides_has_not_identified_the_branch_so_both_fall() -> No
     base = ("Doc",)
     assert names.branch_identity(hops["/anyOf/0"], base) == names.branch_identity(
         hops["/anyOf/1"], base
-    ), "rung 2 must collide for the fall to be what resolves this"
-    spelled = names.spell_the_rungs(_ladders(hops))
+    ), "candidate 2 must collide for the fall to be what resolves this"
+    spelled = names.spell_the_candidates(_candidate_names(hops))
     assert not isinstance(spelled, Refusal), spelled
     assert spelled == {
         "": "Doc",
@@ -689,7 +746,7 @@ def test_two_positions_deriving_one_definitions_key_both_spend_the_root_prefix()
 
 
 def test_a_branch_colliding_with_its_own_root_loses_the_name_and_the_root_keeps_it() -> None:
-    """§4: "the root keeps the name and the branch falls to the next rung".
+    """§4: "the root keeps the name and the branch falls to the next candidate".
 
     ``core/postal-area.json``'s own shape: the root is titled "Postal Area" and its
     ``/anyOf/0`` is titled "PostalArea", so both derive ``PostalArea`` and neither has an
@@ -697,8 +754,8 @@ def test_a_branch_colliding_with_its_own_root_loses_the_name_and_the_root_keeps_
     document and the 31 chained behind it for a naming choice this compiler makes.
 
     **The root is not special-cased and the assertion is written so that one would be
-    visible.**  What makes the root keep the name is that its LADDER has one rung, which
-    is D5 fixing a document's exported symbol -- so the ladder lengths are asserted beside
+    visible.**  What makes the root keep the name is that its CANDIDATE LIST has one candidate, which
+    is D5 fixing a document's exported symbol -- so the candidate list lengths are asserted beside
     the names.  A reading that tested the pointer ``""`` instead would pass the name
     assertions and state D5 a second time, and this is the assertion that tells them
     apart.
@@ -710,10 +767,10 @@ def test_a_branch_colliding_with_its_own_root_loses_the_name_and_the_root_keeps_
         ),
         "/anyOf/1": names.Branch(parent="", title="PostalAreaWithFusedSystem", index=1),
     }
-    ladders = _ladders(hops)
-    assert len(ladders[""]) == 1, "a root has ONE rung: D5 fixes the exported symbol"
-    assert len(ladders["/anyOf/0"]) > 1, "a titled branch has rungs to fall to"
-    spelled = names.spell_the_rungs(ladders)
+    candidate_lists = _candidate_names(hops)
+    assert len(candidate_lists[""]) == 1, "a root has ONE candidate: D5 fixes the exported symbol"
+    assert len(candidate_lists["/anyOf/0"]) > 1, "a titled branch has candidates to fall to"
+    spelled = names.spell_the_candidates(candidate_lists)
     assert not isinstance(spelled, Refusal), spelled
     assert spelled[""] == "PostalArea", "the ROOT keeps it"
     assert spelled["/anyOf/0"] == "PostalAreaCountrySystemValues", "the BRANCH fell"
@@ -741,29 +798,32 @@ def test_lengthening_is_tried_before_falling_so_an_identity_is_not_given_up_earl
         ),
         "/properties/b/properties/aX": names.Property(parent="/properties/b", key="aX"),
     }
-    ladders = _ladders(hops)
-    assert ladders["/properties/a/anyOf/0"][0] == ("Doc", "AX"), ladders
-    spelled = names.spell_the_rungs(ladders)
+    candidate_lists = _candidate_names(hops)
+    assert candidate_lists["/properties/a/anyOf/0"][0] == ("Doc", "AX"), candidate_lists
+    spelled = names.spell_the_candidates(candidate_lists)
     assert not isinstance(spelled, Refusal), spelled
     assert spelled["/properties/a/anyOf/0"] == "DocAX", spelled
     assert spelled["/properties/b/properties/aX"] == "BAX", spelled
     # The identity is the PIN's and was not given up: the required set would have spelled
-    # ``AQ`` and the index ``ABranch0``, and neither appears.
+    # ``AQ`` and the index ``ABranch0``, and neither appears.  Asked of the RECORD rather
+    # than of the string -- ``the_positional_names`` compares the settled name against this
+    # position's own positional chain, so the claim is "this branch did not fall to its
+    # index" and not "the characters B-r-a-n-c-h are absent".
     assert "Q" not in spelled["/properties/a/anyOf/0"]
-    assert "Branch" not in spelled["/properties/a/anyOf/0"]
+    assert not names.the_positional_names(hops, spelled)
 
 
 def test_a_bare_ref_branch_takes_its_targets_distinguishing_name_and_not_its_index() -> None:
-    """§4's FOURTH rung: "where the branch is a bare ``$ref``, the TARGET's own derived
+    """§4's FOURTH candidate: "where the branch is a bare ``$ref``, the TARGET's own derived
     name"; and "where the root's name and the target's share a run, the branch takes the
     root's name plus the target's distinguishing remainder".
 
-    ``core/requirements/asset-requirements.json``'s own shape, which is what the rung is
+    ``core/requirements/asset-requirements.json``'s own structure, which is what the candidate is
     written for: twelve branches, every one of them a bare ``$ref`` with no ``title``, no
-    ``const`` pin and no ``required`` set, so rungs 1 to 3 answer nothing and all twelve
+    ``const`` pin and no ``required`` set, so candidates 1 to 3 answer nothing and all twelve
     reached the index.  ``isinstance(req, AssetRequirementsBranch7)`` requires counting the
     document's branches to learn that it means JavaScript, which is the usability failure a
-    positional name IS -- and the fact the rung reads was sitting in the branch's second
+    positional name IS -- and the fact the candidate reads was sitting in the branch's second
     base the whole time.
 
     **The run is read at either END, because the bundle writes it both ways.**  The target
@@ -775,8 +835,8 @@ def test_a_bare_ref_branch_takes_its_targets_distinguishing_name_and_not_its_ind
     **Why the remainder and not the target's name spelled straight.**  The branch's second
     base IS the target, so the module imports that symbol, and :func:`names.spell`'s
     ``occupied`` says an imported name is a name taken.  A branch is a chain of ONE at this
-    rung and has no ancestor to lengthen by, so ``occupied`` would keep the shadowing name
-    rather than refuse it -- which is a shape the bundle already has at rung 1 and
+    candidate and has no ancestor to lengthen by, so ``occupied`` would keep the shadowing name
+    rather than refuse it -- which is a structure the bundle already has at candidate 1 and
     ``test_no_module_of_the_tree_declares_a_name_it_imports`` is red on
     (``core/vendor_pricing_option.py``, five branches titled exactly as their targets).
     """
@@ -786,7 +846,7 @@ def test_a_bare_ref_branch_takes_its_targets_distinguishing_name_and_not_its_ind
         "/anyOf/1": names.Branch(parent="", target="JavaScriptAssetRequirements", index=1),
         "/anyOf/2": names.Branch(parent="", target="DAASTAssetRequirements", index=2),
     }
-    spelled = names.spell_the_rungs(_ladders(hops))
+    spelled = names.spell_the_candidates(_candidate_names(hops))
     assert not isinstance(spelled, Refusal), spelled
     assert spelled == {
         "": "AssetRequirements",
@@ -802,8 +862,8 @@ def test_a_bare_ref_branch_takes_its_targets_distinguishing_name_and_not_its_ind
     }, spelled
 
     # The run read at the other END: a shared PREFIX, and the remainder is the tail.
-    prefixed = names.spell_the_rungs(
-        _ladders(
+    prefixed = names.spell_the_candidates(
+        _candidate_names(
             {
                 "": names.Root("Get Creative Features Response"),
                 "/oneOf/0": names.Branch(
@@ -817,33 +877,45 @@ def test_a_bare_ref_branch_takes_its_targets_distinguishing_name_and_not_its_ind
 
     # A target sharing NO run with the root spells its whole name onto the base's segment,
     # rather than standing alone and shadowing the import.
-    unrelated = names.spell_the_rungs(
-        _ladders({"": names.Root("Doc"), "/oneOf/0": names.Branch(parent="", target="Other", index=0)})
+    unrelated = names.spell_the_candidates(
+        _candidate_names({"": names.Root("Doc"), "/oneOf/0": names.Branch(parent="", target="Other", index=0)})
     )
     assert not isinstance(unrelated, Refusal), unrelated
     assert unrelated["/oneOf/0"] == "DocOther", unrelated
 
-    # A target whose name says NOTHING the root's does not leaves the rung answering
-    # nothing, and the branch keeps its index -- the same shape §4's root-collision clause
-    # has: a rung that identifies nothing is not a rung to fall to.
-    same = names.spell_the_rungs(
-        _ladders({"": names.Root("Doc"), "/oneOf/0": names.Branch(parent="", target="Doc", index=0)})
-    )
+    # A target whose name says NOTHING the root's does not leaves the rule answering
+    # nothing, and the branch falls to its index -- the same structure §4's root-collision
+    # clause has: a rule that identifies nothing is not one to fall to.  **That is a
+    # PRIVATE declaration name and the one outcome of this candidate list a consumer never sees**
+    # (the owner's ruling of 2026-11-10, :data:`names.A_POSITIONAL_NAME_IS_PRIVATE`): the
+    # class is still declared, and the name is withheld from §1's export set.
+    silent_target = {
+        "": names.Root("Doc"),
+        "/oneOf/0": names.Branch(parent="", target="Doc", index=0),
+    }
+    same = names.spell_the_candidates(_candidate_names(silent_target))
     assert not isinstance(same, Refusal), same
     assert same["/oneOf/0"] == "DocBranch0", same
+    assert names.the_positional_names(silent_target, same) == frozenset({"DocBranch0"})
+    # ... and the branch above, which the rule DID name, is public: the ban is on the
+    # name the last resort mints and not on every branch of a union.
+    assert not names.the_positional_names(
+        {"": names.Root("Doc"), "/oneOf/0": names.Branch(parent="", target="Other", index=0)},
+        unrelated,
+    )
 
 
 def test_the_ref_target_rung_outranks_the_index_and_nothing_else() -> None:
-    """The rung's PLACE in the ladder, which is what keeps the rename set bounded.
+    """The candidate's PLACE in the candidate list, which is what keeps the rename set bounded.
 
-    It sits below the three declared-identity rungs and above the index, so the only
+    It sits below the three declared-identity candidates and above the index, so the only
     branches it can move are the ones that were reaching the index -- which is why the
     measured rename census over bundle 3.2 is 13 classes in 2 documents and 3,449 classes
     before and after.  A sibling named by a ``title``, a pin or a required set does not
     move, which is what ``core/postal-country-system.json``'s four single-pin branches
     (``US``, ``GB``, ``CA``, ``Plz``) need.
 
-    Insertion stability is unchanged and is the reason the rung is admissible at all: both
+    Insertion stability is unchanged and is the reason the candidate is admissible at all: both
     inputs -- the target's symbol and the root's own name -- are facts about the ONE
     branch, which is §4's own criterion and what the branch rule reverted at ``64d0f897``
     failed.
@@ -866,19 +938,19 @@ def test_the_ref_target_rung_outranks_the_index_and_nothing_else() -> None:
         names.Branch(parent="", target="ImageAssetRequirements", index=0), parent
     ) == ("AssetRequirementsImage",)
     # A NESTED union's branch records no index and a local ``$ref``'s target is a POINTER
-    # and not a name, so neither reaches this rung and both answer nothing.
+    # and not a name, so neither reaches this candidate and both answer nothing.
     assert names.branch_identity(names.Branch(parent=""), parent) is None
 
-    # Appending a branch moves no existing name, because no rung reads a sibling.
+    # Appending a branch moves no existing name, because no candidate reads a sibling.
     def hops(targets: tuple[str, ...]) -> dict[str, names.Hop]:
         table: dict[str, names.Hop] = {"": names.Root("Asset Requirements")}
         for i, target in enumerate(targets):
             table[f"/anyOf/{i}"] = names.Branch(parent="", target=target, index=i)
         return table
 
-    two = names.spell_the_rungs(_ladders(hops(("ImageAssetRequirements", "VideoAssetRequirements"))))
-    three = names.spell_the_rungs(
-        _ladders(hops(("ImageAssetRequirements", "VideoAssetRequirements", "AudioAssetRequirements")))
+    two = names.spell_the_candidates(_candidate_names(hops(("ImageAssetRequirements", "VideoAssetRequirements"))))
+    three = names.spell_the_candidates(
+        _candidate_names(hops(("ImageAssetRequirements", "VideoAssetRequirements", "AudioAssetRequirements")))
     )
     assert not isinstance(two, Refusal) and not isinstance(three, Refusal)
     assert {p: n for p, n in three.items() if p in two} == two, three
@@ -886,7 +958,7 @@ def test_the_ref_target_rung_outranks_the_index_and_nothing_else() -> None:
 
 
 def test_a_member_type_colliding_with_its_union_falls_to_what_it_requires_one_level_down() -> None:
-    """§4's LAST branch rung (:data:`codegen.lower.names.REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT`).
+    """§4's LAST branch candidate (:data:`codegen.lower.names.REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT`).
 
     **Bundle 3.3's own shape, and its only hard verdict** (``adcp-client-python-82m.59``).
     ``core/targeting-overlay-requirements.json`` states
@@ -895,18 +967,18 @@ def test_a_member_type_colliding_with_its_union_falls_to_what_it_requires_one_le
     BRANCH both derive ``TargetingOverlayRequirementsDaypartRequirement``.  The branch is a
     MEMBER TYPE -- a nested union's branch, which needs no name of its own, so the walk
     records no index -- and with no title, no pin, no top-level ``required`` and no ``$ref``
-    its ladder was a chain of ONE.  Nothing to lengthen by and nothing to fall to is
+    its candidate list was a chain of ONE.  Nothing to lengthen by and nothing to fall to is
     ``names.spell``'s refusal, which the compiler reported as ``title`` VERDICT at that
     pointer with five more documents chained behind it.
 
     Bundle 3.2 states the same union with ``required: ["timezone_modes"]`` at the branch's
-    top level and never refused -- rung 3 named it ``DaypartRequirementTimezoneModes``.  3.3
+    top level and never refused -- candidate 3 named it ``DaypartRequirementTimezoneModes``.  3.3
     added ``time_granularity`` and moved the requiredness into a nested
-    ``anyOf: [{required: [timezone_modes]}, {required: [time_granularity]}]``, so the rung
+    ``anyOf: [{required: [timezone_modes]}, {required: [time_granularity]}]``, so the candidate
     went silent on a node whose requiredness the document states as plainly as 3.2's did.
 
     Both halves are asserted, because the second means nothing without the first: that the
-    two positions really do collide and that the ladder really is spent WITHOUT the rung,
+    two positions really do collide and that the candidate list really is spent WITHOUT the candidate,
     and that WITH it the branch falls and the entry keeps the name it derives.
     """
     hops: dict[str, names.Hop] = {
@@ -920,11 +992,11 @@ def test_a_member_type_colliding_with_its_union_falls_to_what_it_requires_one_le
     silent["/definitions/daypartRequirement/anyOf/1"] = names.Branch(
         parent="/definitions/daypartRequirement"
     )
-    assert names.ladder("/definitions/daypartRequirement/anyOf/1", silent) == (
+    assert names.candidate_names("/definitions/daypartRequirement/anyOf/1", silent) == (
         ("TargetingOverlayRequirements", "DaypartRequirement"),
-    ), "without the rung the member type has ONE chain, which is why this refused"
-    assert isinstance(names.spell_the_rungs(_ladders(silent)), Refusal), (
-        "the two positions must collide with the rung absent, or the fall below is not "
+    ), "without the candidate the member type has ONE chain, which is why this refused"
+    assert isinstance(names.spell_the_candidates(_candidate_names(silent)), Refusal), (
+        "the two positions must collide with the candidate absent, or the fall below is not "
         "what resolves them"
     )
 
@@ -932,11 +1004,11 @@ def test_a_member_type_colliding_with_its_union_falls_to_what_it_requires_one_le
         parent="/definitions/daypartRequirement",
         requires_one_of=("timezone_modes", "time_granularity"),
     )
-    ladders = _ladders(hops)
-    rungs = ladders["/definitions/daypartRequirement/anyOf/1"]
-    assert rungs[0] == ("TargetingOverlayRequirements", "DaypartRequirement"), rungs
-    assert rungs[-1] != rungs[0], "the requirement rung has to be a chain to FALL to"
-    spelled = names.spell_the_rungs(ladders)
+    candidate_lists = _candidate_names(hops)
+    candidates = candidate_lists["/definitions/daypartRequirement/anyOf/1"]
+    assert candidates[0] == ("TargetingOverlayRequirements", "DaypartRequirement"), candidates
+    assert candidates[-1] != candidates[0], "the requirement candidate has to be a chain to FALL to"
+    spelled = names.spell_the_candidates(candidate_lists)
     assert not isinstance(spelled, Refusal), spelled
     # The ENTRY keeps the name §4 derives for it and SHORTENS back to it, because once the
     # branch has fallen nothing collides and a position whose short name collides with
@@ -951,7 +1023,7 @@ def test_a_member_type_colliding_with_its_union_falls_to_what_it_requires_one_le
 
 
 def test_requiredness_one_level_down_is_a_fall_and_never_the_name_a_branch_takes() -> None:
-    """The rung's PLACEMENT, which is the whole decision and not an implementation detail.
+    """The candidate's PLACEMENT, which is the whole decision and not an implementation detail.
 
     Read as a fifth IDENTITY rule the same fact renames classes that collide with nothing:
     ``core/targeting-overlay-requirements.json#/properties/geo_proximity/anyOf/1`` is a
@@ -960,7 +1032,7 @@ def test_requiredness_one_level_down_is_a_fall_and_never_the_name_a_branch_takes
     {required: [transport_modes]}]`` -- and bundle 3.2 ships it as
     ``TargetingOverlayRequirementsGeoProximity``.  §4's identity rules are a CLOSED list and
     its answer for a branch none of them names is the union's own derived name, which is a
-    rule and not a gap; so a branch that collides with nothing keeps it, and the rung is a
+    rule and not a gap; so a branch that collides with nothing keeps it, and the candidate is a
     name available only to one that cannot.
     """
     hops: dict[str, names.Hop] = {
@@ -975,21 +1047,21 @@ def test_requiredness_one_level_down_is_a_fall_and_never_the_name_a_branch_takes
     parent = ("TargetingOverlayRequirements", "GeoProximity")
     assert hop.requires_one_of, "the fact must be present, or the claim below is vacuous"
     assert names.branch_identity(hop, parent) is None, (
-        "the rung must not reach branch_identity: that is the name a branch TAKES"
+        "the candidate must not reach branch_identity: that is the name a branch TAKES"
     )
-    assert names.branch_rungs(hop, parent) == ()
+    assert names.branch_candidates(hop, parent) == ()
     # The union at the PROPERTY declares nothing -- it decides to an annotation,
-    # ``Required | GeoProximity | None`` -- and ``names.assign`` asks for a ladder at the
-    # pointers that DECLARE, so that position is not one of them.  The ladders are built
+    # ``Required | GeoProximity | None`` -- and ``names.assign`` asks for a candidate list at the
+    # pointers that DECLARE, so that position is not one of them.  The candidate_lists are built
     # over the same two, because handing in a pointer the module never declares would
     # invent a collision the run does not have.
-    ladders = _ladders(hops)
+    candidate_lists = _candidate_names(hops)
     at = "/properties/geo_proximity/anyOf/1"
-    assert ladders[at][0] == ("TargetingOverlayRequirements", "GeoProximity"), (
-        "the FIRST rung is the union's own derived chain, which is what the branch is "
-        "named by -- the requirement rung is below it"
+    assert candidate_lists[at][0] == ("TargetingOverlayRequirements", "GeoProximity"), (
+        "the FIRST candidate is the union's own derived chain, which is what the branch is "
+        "named by -- the requirement candidate is below it"
     )
-    spelled = names.spell_the_rungs({p: ladders[p] for p in ("", at)})
+    spelled = names.spell_the_candidates({p: candidate_lists[p] for p in ("", at)})
     assert not isinstance(spelled, Refusal), spelled
     # Spelled at depth 1 because nothing in this table collides; the shipped module
     # lengthens it to ``TargetingOverlayRequirementsGeoProximity`` for a collision outside
@@ -1031,7 +1103,7 @@ def test_the_reading_of_requiredness_one_level_down_is_the_declarations_and_not_
     # and a node with no property map is not this shape at all.
     assert requires({"properties": properties, "anyOf": [{"required": ["a"]}, {"required": ["z"]}]}) == ()
     assert requires({"anyOf": [{"required": ["a"]}, {"required": ["b"]}]}) == ()
-    # Where the branch states ``required`` ITSELF, rung 3 answers and this reads nothing.
+    # Where the branch states ``required`` ITSELF, candidate 3 answers and this reads nothing.
     assert requires(
         {"properties": properties, "required": ["a"], "anyOf": [{"required": ["a"]}, {"required": ["b"]}]}
     ) == ()

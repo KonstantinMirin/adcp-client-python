@@ -86,10 +86,10 @@ declares at a POINTER and :func:`assign` is still the one function that binds a 
 ``adcp-client-python-3be.5``, with the walk's per-node entry (``compiler.lower_node``),
 which is what stopped reaching them through ``codegen.emit``.
 
-**The index is the LAST rung and is accepted only there.**  A positional name carries
+**The index is the LAST candidate and is accepted only there.**  A positional name carries
 nothing about which position it names -- the upstream v9 SDK numbers 1,092 of its 4,360
 classes and renames a sibling when a branch is inserted ahead of it -- so §4 reaches for
-it only after the three IDENTITY rungs have each been tried and found nothing.  A document
+it only after the three IDENTITY candidates have each been tried and found nothing.  A document
 that gives a branch no identity at all leaves nothing else, and an index at least says
 WHICH branch.  :func:`branch_identity` is the one place the order is written.
 """
@@ -424,7 +424,7 @@ def _words(symbol: str) -> tuple[str, ...]:
 
 
 def _distinguishing(target: str, root: str) -> str:
-    """**What the TARGET's name says that the ROOT's does not** -- §4's fourth branch rung.
+    """**What the TARGET's name says that the ROOT's does not** -- §4's fourth branch candidate.
 
     §4: "Where the root's name and the target's share a leading run, the branch takes the
     root's name plus the target's distinguishing remainder -- so ``AssetRequirementsImage``,
@@ -433,22 +433,22 @@ def _distinguishing(target: str, root: str) -> str:
     ``ImageAssetRequirements`` shares its run as the target's SUFFIX, and
     ``GetCreativeFeaturesResponse`` beside ``GetCreativeFeaturesSuccess`` shares it as
     both names' PREFIX.  Measured over the 13 bare-``$ref`` branches of bundle 3.2 that
-    reach this rung: 12 share a suffix and 1 a prefix, and 0 share both.
+    reach this candidate: 12 share a suffix and 1 a prefix, and 0 share both.
 
-    **Why the remainder and not the target's name itself.**  §4's rung says "the TARGET's
+    **Why the remainder and not the target's name itself.**  §4's candidate says "the TARGET's
     own derived name", and spelled literally that name is already TAKEN: the branch's
     second base IS the target, so the module imports the symbol, and :func:`spell`'s
     ``occupied`` is the rule that an imported name is a name taken.  A branch is a chain
-    of one at this rung and has no ancestor to lengthen by, so ``occupied`` would keep the
+    of one at this candidate and has no ancestor to lengthen by, so ``occupied`` would keep the
     shadowing name rather than refuse it -- ``class ImageAssetRequirements(AssetRequirements,
     ImageAssetRequirements)`` -- and every field annotated with the import would be
     retyped.  The remainder spells the same fact onto the base's own segment, which is
-    what §4's own example asks for and what the three existing suffix rungs already do
+    what §4's own example asks for and what the three existing suffix candidates already do
     (:func:`_suffixed`).
 
-    Returns ``""`` where the target's name says nothing the root's does not; the rung then
+    Returns ``""`` where the target's name says nothing the root's does not; the candidate then
     answers nothing and the branch falls to its index, exactly as §4's root-collision
-    clause has a rung do.
+    clause has a candidate do.
     """
     them, mine = _words(target), _words(root)
     prefix = 0
@@ -601,7 +601,7 @@ class Branch:
     between the two positions a branch is named at.  A ROOT union declares one class per
     branch, so a root branch needs a name of its own whatever it states and the walk
     records its index; a NESTED union is a TYPE, and a branch that lowers to an annotation
-    needs no name at all, so the walk records none and §4's fourth rung has nothing to
+    needs no name at all, so the walk records none and §4's fourth candidate has nothing to
     apply -- the branch falls back to the union's own derived name, which is what a member
     type has always been spelled with.  One field carries that difference because it IS
     that difference: a second boolean beside it would be a second copy of the decision.
@@ -616,31 +616,31 @@ class Branch:
     #: The branch's own ``title``, where it states one that is a non-empty string.
     title: str | None = None
     #: **Every ``const`` the branch pins, in the order the document writes the keys**
-    #: (§4, "Rung 2 reads EVERY pin the branch states", decided 2026-10-29).  It held ONE
+    #: (§4, "Candidate 2 reads EVERY pin the branch states", decided 2026-10-29).  It held ONE
     #: pin and declined to choose where a branch pinned several, which sent the five most
     #: heavily identified branches of the bundle to their index.  A tuple and not a scalar
-    #: because the rung reads them all: one field, meaning "the pins this branch states",
+    #: because the candidate reads them all: one field, meaning "the pins this branch states",
     #: where a scalar beside a count would be two readings of one keyword.
     #:
     #: **Every pin the branch states, booleans included**, and which of them IDENTIFY it
-    #: is :func:`identifying_pins`' reading at the rung.  A ``bool`` filtered out here
+    #: is :func:`identifying_pins`' reading at the candidate.  A ``bool`` filtered out here
     #: would make the field mean "the pins that name something", which is a derivation
-    #: wearing a walk's record -- and §4's clause is about what the RUNG does with a pin,
+    #: wearing a walk's record -- and §4's clause is about what the CANDIDATE does with a pin,
     #: not about which pins the document states.
     pins: tuple[Any, ...] = ()
     #: Its ``required`` set, as the document lists it.
     required: tuple[str, ...] = ()
     #: **The keys a nested ``anyOf``/``oneOf`` requires one of**, where the branch states
     #: its requiredness one level down instead of at its top level
-    #: (``lower.union._requires_one_of``, which carries the reading).  §4's rung 3 reads
+    #: (``lower.union._requires_one_of``, which carries the reading).  §4's candidate 3 reads
     #: :attr:`required` and this is NOT a second spelling of it: it is the branch's LAST
-    #: rung and is reachable only by falling (:func:`_requirement_rung`, :func:`ladder`),
+    #: candidate and is reachable only by falling (:func:`_requirement_candidate`, :func:`candidate_names`),
     #: so no branch §4's four identity rules already name takes a name from it.
     requires_one_of: tuple[str, ...] = ()
-    #: **The SYMBOL a bare ``$ref`` branch's target declares** -- §4's fourth rung, which
+    #: **The SYMBOL a bare ``$ref`` branch's target declares** -- §4's fourth candidate, which
     #: reads "where the branch is a bare ``$ref``, the TARGET's own derived name".  It is
     #: the one naming fact of a branch that no reading of the branch's own node can reach:
-    #: such a branch states nothing but ``$ref``, so rungs 1 to 3 all answer ``None`` and
+    #: such a branch states nothing but ``$ref``, so candidates 1 to 3 all answer ``None`` and
     #: every one of them falls to the index.  ``lower/union.py`` resolves the target
     #: already (:class:`union.Inherited`, "the SYMBOL, which is the branch's second base")
     #: and hands the resolution over rather than this pass reading a reference.
@@ -691,7 +691,7 @@ A_BOOLEAN_PIN_NAMES_NOTHING = (
     "property in the bundle.  It is not a carve-out from the key-order rule -- it is the "
     "same sentence the section states for a branch, that true on both branches names "
     "neither, applied per PIN instead of per branch; so it subsumes the collision case, "
-    "and a branch whose pins are all boolean answers nothing at rung 2 and falls "
+    "and a branch whose pins are all boolean answers nothing at candidate 2 and falls "
     "through (section 4, decided 2026-10-29)"
 )
 
@@ -703,7 +703,7 @@ def identifying_pins(pins: tuple[Any, ...]) -> tuple[Any, ...]:
     branches pin a ``true``, and reading every pin appended a segment identifying
     nothing -- four of them pin something identifying beside it
     (``PackageSignalTargetingBinary`` became ``PackageSignalTargetingBinaryTrue``) and
-    four pin nothing else, so rung 2 answered ``…True`` where rung 3's ``required`` set
+    four pin nothing else, so candidate 2 answered ``…True`` where candidate 3's ``required`` set
     names the property whose PRESENCE is what identifies them.
 
     ``bool`` is tested before any other type would be, which matters because
@@ -712,7 +712,7 @@ def identifying_pins(pins: tuple[Any, ...]) -> tuple[Any, ...]:
     on the document's own two values and not on a numeric coincidence.
 
     A tuple and not a filter on the caller's side, so the reading that "a boolean names
-    nothing" is one function with one name: :func:`branch_rungs` asks for the pins that
+    nothing" is one function with one name: :func:`branch_candidates` asks for the pins that
     identify and never spells the test.
     """
     return tuple(p for p in pins if not isinstance(p, bool))
@@ -738,41 +738,41 @@ def branch_identity(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | N
     **A name is never derived from the neighbourhood.**  The rule a previous generator
     reached for -- name the sole classed branch after its PARENT -- makes a class name a
     function of what its siblings happen to be, so adding a branch renames an unrelated
-    class.  §4 has no such rule, and its fourth rung is not that rule either: an index is
+    class.  §4 has no such rule, and its fourth candidate is not that rule either: an index is
     a fact of the branch's OWN position, so what it reads is where this branch is and
     never what its siblings happen to state.  Inserting a branch AFTER this one moves no
-    name, which is the property :data:`INDEX_IS_THE_LAST_RUNG` states and
+    name, which is the property :data:`INDEX_IS_THE_LAST_CANDIDATE` states and
     ``tests/test_names_collision.py`` grades.
 
-    **The index is the LAST rung and only the last.**  It is tried after all FOUR identity
-    rungs have answered nothing, because a positional name says nothing about
+    **The index is the LAST candidate and only the last.**  It is tried after all FOUR identity
+    candidates have answered nothing, because a positional name says nothing about
     what it names; where an identity exists the identity wins, and a branch whose index
     the walk did not record (a nested union's, which needs no name of its own) answers
     ``None`` and takes the union's own derived name.
 
-    **The fourth identity rung is the bare ``$ref``'s target** (:data:`REF_TARGET_RUNG`),
+    **The fourth identity candidate is the bare ``$ref``'s target** (:data:`REF_TARGET_CANDIDATE`),
     added because the index was reaching 18 branches of this bundle and 13 of them are a
     bare ``$ref`` whose target names itself -- ``image-asset-requirements.json``,
     ``video-asset-requirements.json``.  ``isinstance(req, AssetRequirementsBranch7)``
     requires counting the document's branches to learn that it means JavaScript, which is
     the usability failure a positional name IS.
     """
-    rungs = branch_rungs(hop, parent)
-    return rungs[0] if rungs else None
+    candidates = branch_candidates(hop, parent)
+    return candidates[0] if candidates else None
 
 
-def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
-    """§4's four branch rules as a LADDER: every rung that answers, in the section's order.
+def branch_candidates(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
+    """§4's four branch rules as a CANDIDATE LIST: every candidate that answers, in the section's order.
 
-    :func:`branch_identity` is the FIRST rung of this and is what a chain starts at.  The
-    rest exist because §4 now says a rung can fail to identify: "Where a rung derives one
-    name for two branches it has not identified either, so BOTH fall to the next rung",
-    and "a branch colliding with its own document ROOT ... falls to the next rung"
+    :func:`branch_identity` is the FIRST candidate of this and is what a chain starts at.  The
+    rest exist because §4 now says a candidate can fail to identify: "Where a candidate derives one
+    name for two branches it has not identified either, so BOTH fall to the next candidate",
+    and "a branch colliding with its own document ROOT ... falls to the next candidate"
     (both decided 2026-10-29).  Falling is not lengthening -- these chains are one segment
-    with nothing to lengthen by -- so it is a second axis and :func:`spell_the_rungs`
+    with nothing to lengthen by -- so it is a second axis and :func:`spell_the_candidates`
     walks it.
 
-    **Rung 2 is EVERY pin that IDENTIFIES, in the document's own key order**
+    **Candidate 2 is EVERY pin that IDENTIFIES, in the document's own key order**
     (:attr:`Branch.pins`, :func:`identifying_pins`).  A branch pinning ``country: FR``
     and ``system: code_postal`` is ``FRCodePostal``; one pinning ``country: US`` alone is
     ``US``, because one pin in key order is that one pin.  The order is the DOCUMENT's and
@@ -781,14 +781,14 @@ def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...],
     such a branch.
 
     **A BOOLEAN pin contributes no segment** (:data:`A_BOOLEAN_PIN_NAMES_NOTHING`), so a
-    branch whose pins are all boolean answers nothing here and falls to rung 3 -- which
+    branch whose pins are all boolean answers nothing here and falls to candidate 3 -- which
     is what ``trusted-match/provider-registration.json``'s two branches need, reached now
     by one rule rather than by the collision clause below.
 
-    **Which rungs a ROOT has: exactly one.**  A root is not a branch and never reaches
-    here -- :func:`segments` answers it from :class:`Root` -- so its ladder is the single
+    **Which candidates a ROOT has: exactly one.**  A root is not a branch and never reaches
+    here -- :func:`segments` answers it from :class:`Root` -- so its candidate list is the single
     chain §4's D5 fixes, and "the root keeps the name" needs no clause of its own here.
-    That is why the collision rule below says only "a position with a rung left advances":
+    That is why the collision rule below says only "a position with a candidate left advances":
     the root has none, so it cannot move, and the branch beside it is the side that does.
     """
     out: list[tuple[str, ...]] = []
@@ -802,7 +802,7 @@ def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...],
             _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.required)))
         )
     if hop.target and parent:
-        # **Rung 4, and the last IDENTITY rung** (§4 "Names", the branch ladder): "else,
+        # **Candidate 4, and the last IDENTITY candidate** (§4 "Names", the branch candidate list): "else,
         # where the branch is a bare ``$ref``, the TARGET's own derived name".  Both
         # inputs -- the target's symbol and the root's own name -- are facts about the ONE
         # branch, so the rule is insertion-stable, which is §4's own criterion and what
@@ -811,19 +811,20 @@ def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...],
         remainder = _distinguishing(hop.target, parent[-1])
         if remainder:
             out.append(_suffixed(parent, remainder))
-    if hop.index is not None:
-        out.append(_suffixed(parent, f"Branch{hop.index}"))
-    # A rung spelling the same chain as the rung above it is not a rung to fall to: it
+    last = positional_chain(hop, parent)
+    if last is not None:
+        out.append(last)
+    # A candidate spelling the same chain as the candidate above it is not a candidate to fall to: it
     # identifies the branch no better and the fall would not terminate.  Measured: a
     # branch whose title spells its own pin, and a one-branch union whose index repeats
     # its required set.
     return tuple(dict.fromkeys(out))
 
 
-#: §4's fourth IDENTITY branch rung, in the section's own terms.  QUOTED by the check that
+#: §4's fourth IDENTITY branch candidate, in the section's own terms.  QUOTED by the check that
 #: grades it (``tests/test_names_collision.py``), so the sentence the code states and the
 #: sentence a check reports against are one string.
-REF_TARGET_RUNG = (
+REF_TARGET_CANDIDATE = (
     "where the branch is a bare $ref, the TARGET's own derived name; and where the root's "
     "name and the target's share a run, the branch takes the root's name plus the target's "
     "distinguishing remainder -- AssetRequirementsImage, not the target's name repeated. "
@@ -834,12 +835,150 @@ REF_TARGET_RUNG = (
 #: §4's fifth branch rule and the one ground it stands on, in the section's own terms.
 #: QUOTED by the check that grades it (``tests/test_names_collision.py``), so the sentence
 #: the code states and the sentence a check reports against are one string.
-INDEX_IS_THE_LAST_RUNG = (
+#:
+#: **The clause that says the name is PRIVATE is the second half of this rule and not a
+#: rider on it** (:data:`A_POSITIONAL_NAME_IS_PRIVATE`, the owner's ruling of 2026-11-10).
+#: The candidate still answers -- a branch has to be DECLARED or the union loses a branch and the
+#: model refuses a payload the document admits -- and what the ruling removes is the
+#: PUBLICATION of the name, which is the half a consumer meets.
+INDEX_IS_THE_LAST_CANDIDATE = (
     "a branch with no title, no pinned const and no required set takes its index among "
-    "the branches, <Base>Branch<i>; a name is not an acceptance fact, so the fallback "
-    "neither widens nor narrows, and the index is a fact of the branch's own position, "
-    "so inserting a branch after it moves no name (section 4)"
+    "the branches, <Base>Branch<i>, as a PRIVATE declaration name pending an upstream "
+    "title; a name is not an acceptance fact, so the fallback neither widens nor narrows, "
+    "and the index is a fact of the branch's own position, so inserting a branch after it "
+    "moves no name (section 4)"
 )
+
+#: **THE OWNER'S RULING OF 2026-11-10: A POSITIONAL NAME MAY EXIST, AND MAY NEVER BE
+#: PUBLIC.**  Recorded as a DECISION and not as a derivation -- nothing below measures its
+#: way to it -- and QUOTED by the gate that grades it
+#: (``tests_emit/test_no_positional_name_is_public.py``), so the sentence the code states
+#: and the sentence a failure reports against are one string.
+#:
+#: The condemnation it acts on is already written twice and both halves are cited here
+#: rather than restated:
+#:
+#: * ``docs/plan/rebuild-plan.md`` §4: "A positional name is the one outcome a consumer
+#:   cannot work with: a caller writing ``isinstance(req, AssetRequirementsBranch7)`` has
+#:   to count the document's branches to know that it means JavaScript."
+#: * ``docs/plan/final-state.md`` reading 4's placeholder rule: "a name minted for want of
+#:   a subject must not become a name an application depends on", and beside it "A NAME
+#:   THIS RULE MINTS IS STILL PENDING AN UPSTREAM TITLE".
+#:
+#: **WHAT IT FORBIDS IS PUBLISHING ONE, NEVER HAVING ONE.**  Deleting the class would drop
+#: a union arm and refuse payloads the document admits, so the declaration stays under
+#: ``_schemas/`` and ``isinstance`` through the union and validation both still hold.  What
+#: it may not do is reach :attr:`codegen.ir.Module.exports` -- so no ``__all__`` of the
+#: domain or flat surface carries it, and no application can come to depend on a
+#: placeholder.
+#:
+#: **IT IS A RULE AND NOT A LIST**, which is the other half of the ruling: the positional
+#: chain is minted at one expression (:func:`positional_chain`) and the ban is stated over
+#: every position whose settled name is a spelling of its own, so a document arriving
+#: tomorrow with an unnamed branch is covered with nobody editing a set.
+A_POSITIONAL_NAME_IS_PRIVATE = (
+    "a positional name may exist privately and may never be public: the branch is still "
+    "DECLARED under _schemas/, because deleting it would drop a branch from the union and refuse "
+    "payloads the document admits, and it is kept out of every __all__ and off the flat "
+    "and domain surfaces, because a name minted for want of a subject must not become a "
+    "name an application depends on -- isinstance through the union and validation hold "
+    "either way (the owner's ruling, 2026-11-10; rebuild-plan section 4 and final-state "
+    "reading 4 are the condemnation it acts on)"
+)
+
+
+def positional_chain(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:
+    """§4's LAST candidate's CHAIN -- ``<Base>Branch<i>`` -- or ``None`` where it has none.
+
+    One expression, with two readers, which is what makes
+    :data:`A_POSITIONAL_NAME_IS_PRIVATE` a rule rather than a list: :func:`branch_candidates`
+    appends it as the candidate a branch falls to when every identity candidate has answered nothing,
+    and :func:`assign` asks which of the names it SETTLED came from here, so the namer and
+    the ban cannot come to disagree about which chain is the positional one.
+
+    ``None`` is the member type's answer and it is the same fact :attr:`Branch.index`
+    carries: a nested union's branch lowers to an annotation and needs no name of its own,
+    so the walk records no index and there is no position for the candidate to be about.
+    """
+    if hop.index is None:
+        return None
+    return _suffixed(parent, f"Branch{hop.index}")
+
+
+def spelled_from(chain: tuple[str, ...], name: str) -> bool:
+    """Whether ``name`` is what ``chain`` spells at any depth the collision rule can reach.
+
+    The question :data:`A_POSITIONAL_NAME_IS_PRIVATE` is stated over, asked of a chain and
+    a settled name rather than of a candidate INDEX: §4's two axes are walked together
+    (:func:`spell_the_candidates`), and a position that fell to its last candidate and then spent two
+    ancestor segments is spelled ``GetProductsRequestFieldsItemBranch1`` -- the same chain
+    at another depth, and :func:`spelling` is the one function that says so.
+
+    **A TEXT PREDICATE OVER THE NAME IS WHAT THIS IS NOT.**  A regex for ``Branch\\d+``
+    over the emitted tree was measured at 467 hits of which 457 were ALIASES onto
+    correctly-titled classes; the chain here is the one the walk's own hop minted
+    (:func:`positional_chain`), so the set it ranges over is the compiler's record and the string is
+    only ever compared against the one chain that position has.
+
+    **Measured over bundle 3.2: 587 branch positions are named with an index available and
+    6 of them are spelled from it, and 0 of the 587 have a settled name that is a spelling
+    of BOTH this chain and an earlier candidate of their own candidate list** -- so the reading is
+    unambiguous over this bundle and the ban reaches exactly the positions that took the
+    candidate.  Where a branch somehow TITLED itself ``…Branch3`` the answer would still be the
+    right one: a consumer cannot tell that name from the candidate's, and it is the consumer the
+    ruling is about.
+    """
+    return any(spelling(chain, depth) == name for depth in range(1, len(chain) + 1))
+
+
+def the_positional_names(hops: Mapping[str, Hop], symbols: Mapping[str, str]) -> frozenset[str]:
+    """:data:`A_POSITIONAL_NAME_IS_PRIVATE`'s set over ONE module: every symbol it
+    declares whose name is a spelling of that position's own positional chain.
+
+    The walk's hop table and the symbol table this pass settled, which are the two records
+    the question needs and the only two: a hop says where a branch SITS (its index, the one
+    fact §4's last candidate reads) and the symbol table says what the position ended up CALLED.
+    Neither is the emitted text, and nothing here reads a position out of a pointer string
+    -- §6 forbids that and :attr:`Branch.index` is the field that exists so it is not
+    needed.
+
+    **IT IS NOT A SET OF KNOWN NAMES AND CANNOT BECOME ONE.**  The ruling's own words are
+    that the devices it forbids are "an allowlist, a per-name exception table, a known
+    positional names set"; what is here is the rule applied to whatever the bundle states,
+    so the six names of bundle 3.2 are an OBSERVATION of it and a seventh document needs no
+    edit.
+
+    Keyed by SYMBOL and not by pointer for :attr:`codegen.ir.Module.exports`' reason: what
+    the ban is about is a NAME, and the surface publishes names.
+    """
+    return frozenset(
+        symbols[pointer]
+        for pointer, chain in the_placeholder_chains(hops).items()
+        if pointer in symbols and spelled_from(chain, symbols[pointer])
+    )
+
+
+def the_placeholder_chains(hops: Mapping[str, Hop]) -> dict[str, tuple[str, ...]]:
+    """Pointer -> the chain §4's last candidate mints for it, for every position that has one.
+
+    :func:`segments` is called for the branch's PARENT exactly as :func:`candidate_names` calls it,
+    and that is one reading rather than two: the same function over the same hop table
+    answers the same chain, which is the property :func:`segments`' own first paragraph
+    states ("a function of the node's PATH through the document and of nothing else").
+    A parent that refuses is a module the pass refuses on another line, so the position is
+    skipped rather than guessed at.
+    """
+    out: dict[str, tuple[str, ...]] = {}
+    for pointer, hop in hops.items():
+        if not isinstance(hop, Branch):
+            continue
+        parent = segments(hop.parent, hops)
+        if isinstance(parent, Refusal):
+            continue
+        chain = positional_chain(hop, parent)
+        if chain is not None:
+            out[pointer] = chain
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -1092,7 +1231,7 @@ def segments(
     TITLE names itself, so it starts a chain and its ancestors are no part of it.
 
     **An INDEX is a fact of the node's own position and so it is a fact of its path**, and
-    that is why §4's fourth branch rung does not cost this function its first paragraph: a
+    that is why §4's fourth branch candidate does not cost this function its first paragraph: a
     branch's index is where it sits under its own combinator, not a reading of what its
     siblings state, so inserting a branch after it renames nothing.  The index arrives as
     a field on the hop (:class:`Branch`) because §6 forbids recovering a position from the
@@ -1125,8 +1264,8 @@ def segments(
     if isinstance(hop, Value):
         return _suffixed(parent, "Value")
     derived = branch_identity(hop, parent)
-    # A branch whose four rungs all answer nothing is a NESTED union's branch and nothing
-    # else -- §4's fourth rung always answers for a branch that is a class, because the
+    # A branch whose four candidates all answer nothing is a NESTED union's branch and nothing
+    # else -- §4's fourth candidate always answers for a branch that is a class, because the
     # union records its index -- and a member type takes the union's own derived name.
     # **This arm used to mint a VERDICT here**, and it was minting one where §4 states a
     # fallback; the raise site is gone with it, which is one of the hand-written
@@ -1134,35 +1273,35 @@ def segments(
     return parent if derived is None else derived
 
 
-#: §4's LAST branch rung, in the section's own terms.  QUOTED by the check that grades it
+#: §4's LAST branch candidate, in the section's own terms.  QUOTED by the check that grades it
 #: (``tests/test_names_collision.py``), so the sentence the code states and the sentence a
 #: check reports against are one string.
 REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT = (
     "a branch stating its requiredness one level down -- anyOf: [{required: [x]}, "
     "{required: [y]}] -- requires one of x and y as plainly as a top-level required set "
     "states its own, so that key set is a name the branch has available; it is the LAST "
-    "rung and is reachable only by FALLING, because section 4's four identity rules are "
+    "candidate and is reachable only by FALLING, because section 4's four identity rules are "
     "closed and its answer for a branch none of them names is the union's own derived "
     "name -- which is a rule and not a gap, so a branch that collides with nothing keeps "
-    "it.  What the rung serves is the one position in this pass that had a declared name "
+    "it.  What the candidate serves is the one position in this pass that had a declared name "
     "and no second name to fall to (section 4)"
 )
 
 
-def _requirement_rung(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:
-    """§4's LAST branch rung: the keys the branch requires ONE LEVEL DOWN, or ``None``.
+def _requirement_candidate(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:
+    """§4's LAST branch candidate: the keys the branch requires ONE LEVEL DOWN, or ``None``.
 
     :data:`REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT` is the rule and
-    ``lower.union._requires_one_of`` is the reading.  Spelled exactly as rung 3 spells its
+    ``lower.union._requires_one_of`` is the reading.  Spelled exactly as candidate 3 spells its
     own set -- sorted, onto the parent's last segment -- because it is the same fact about
     the same keys and a second spelling of "the branch's required set" is how the two would
     come to disagree about one document.
 
-    **IT IS NOT AN IDENTITY RUNG, AND THE PLACEMENT IS THE DECISION.**
+    **IT IS NOT AN IDENTITY CANDIDATE, AND THE PLACEMENT IS THE DECISION.**
     :func:`branch_identity` is what a branch is CALLED and §4's four identity rules are a
     closed list; its answer for a branch none of them names is :func:`segments`' fallback,
     the union's own derived name, and that is a rule rather than a gap.  **Measured, and
-    this is why the rung is a fall and not a fifth identity rule**: over bundle 3.2's 1,054
+    this is why the candidate is a fall and not a fifth identity rule**: over bundle 3.2's 1,054
     portable documents 21 nodes state requiredness this way and three of them are branch
     positions, and as a fifth IDENTITY rule it renames two classes the bundle is shipped
     with -- ``core/targeting-overlay-requirements.json#/properties/geo_proximity/anyOf/1``
@@ -1181,28 +1320,28 @@ def _requirement_rung(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] |
     return _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.requires_one_of)))
 
 
-def ladder(
+def candidate_names(
     pointer: str, hops: Mapping[str, Any], seen: frozenset[str] = frozenset()
 ) -> tuple[tuple[str, ...], ...] | Refusal:
-    """Every chain this position could be named by, best first: §4's rungs.
+    """Every chain this position could be named by, best first: §4's candidates.
 
-    One rung for every position but a BRANCH, which is the whole of §4's asymmetry here --
+    One candidate for every position but a BRANCH, which is the whole of §4's asymmetry here --
     a property, an element, a mapping value, a definitions entry and a ROOT each derive
-    their name from one fact, and only a branch has a section-ordered ladder of facts to
-    fall down (:func:`branch_rungs`).  So this is :func:`segments` with the branch arm
-    widened, and :func:`segments` is its first rung.
+    their name from one fact, and only a branch has a section-ordered candidate list of facts to
+    fall down (:func:`branch_candidates`).  So this is :func:`segments` with the branch case
+    widened, and :func:`segments` is its first candidate.
 
-    **THE REQUIREMENT RUNG IS APPENDED HERE AND NOT IN :func:`branch_rungs`, which is what
-    makes it a fall** (:func:`_requirement_rung`,
+    **THE REQUIREMENT CANDIDATE IS APPENDED HERE AND NOT IN :func:`branch_candidates`, which is what
+    makes it a fall** (:func:`_requirement_candidate`,
     :data:`REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT`).  :func:`branch_identity` is
-    ``branch_rungs(...)[0]``, so a rung inside that function is the name a branch TAKES the
-    moment the rungs above it answer nothing -- and §4's identity list is closed.  Appended
-    to the LADDER it is a name available to a position that collides and nothing else, which
+    ``branch_candidates(...)[0]``, so a candidate inside that function is the name a branch TAKES the
+    moment the candidates above it answer nothing -- and §4's identity list is closed.  Appended
+    to the CANDIDATE LIST it is a name available to a position that collides and nothing else, which
     is the one circumstance in which a branch needs a name beyond the one §4 derives for it.
 
-    **It serves a MEMBER TYPE above all, and that position is why the rung exists.**  A
-    branch §4 names after the union's own derived name has a ladder of ONE -- no identity
-    rung answered and the walk recorded no index, because a member type needs no name of its
+    **It serves a MEMBER TYPE above all, and that position is why the candidate exists.**  A
+    branch §4 names after the union's own derived name has a candidate list of ONE -- no identity
+    candidate answered and the walk recorded no index, because a member type needs no name of its
     own -- so it has nothing to lengthen by and nothing to fall to, and two such positions
     of one document are :func:`spell`'s refusal.  **MEASURED on bundle 3.3**:
     ``core/targeting-overlay-requirements.json`` refuses on ``title`` at
@@ -1212,12 +1351,12 @@ def ladder(
     one of ``timezone_modes`` and ``time_granularity``.  Bundle 3.2 states the same union
     with ``required: ["timezone_modes"]`` at the branch's top level and never refused.
 
-    The PARENT chain a rung is suffixed onto is the parent's own FIRST rung, which is
+    The PARENT chain a candidate is suffixed onto is the parent's own FIRST candidate, which is
     :func:`segments`' answer and the chain every other reading of the parent uses.  A
-    parent that itself falls to a later rung therefore keeps its children's SHORT names
+    parent that itself falls to a later candidate therefore keeps its children's SHORT names
     where they were -- and a short name is what a child is declared under unless it
     collides, so the parent's fall reaches a child only through the lengthening axis.
-    Measured over the portable set: of the branch positions that fall to a later rung, 0
+    Measured over the portable set: of the branch positions that fall to a later candidate, 0
     have a named descendant that collides, so the two axes do not interact in this bundle
     and the simpler reading is the measured one.
     """
@@ -1228,10 +1367,10 @@ def ladder(
     parent = segments(hop.parent, hops, seen | {pointer})
     if isinstance(parent, Refusal):
         return parent
-    chains = branch_rungs(hop, parent) or (parent,)
-    last = _requirement_rung(hop, parent)
-    # A rung spelling a chain already in the ladder is not a rung to fall to, which is
-    # ``branch_rungs``' own rule at the other end -- a branch whose top-level ``required``
+    chains = branch_candidates(hop, parent) or (parent,)
+    last = _requirement_candidate(hop, parent)
+    # A candidate spelling a chain already in the candidate list is not a candidate to fall to, which is
+    # ``branch_candidates``' own rule at the other end -- a branch whose top-level ``required``
     # and whose nested one name the same keys identifies itself no better the second time.
     return chains if last is None or last in chains else (*chains, last)
 
@@ -1315,9 +1454,9 @@ def spell(
     Lengthening is an improvement where it is available and the status quo where it is
     not.  **"Cannot lengthen past" is not "has nowhere left to go", and reading it as
     though it were is what shipped 56 shadowed names**: a BRANCH is a chain of one with a
-    whole LADDER under it, so where lengthening is spent the rung axis still answers and
-    :func:`spell_the_rungs` -- the function the run calls -- is what spends it.  What
-    reaches this function is the position with no rung left either, and a ROOT is the one
+    whole CANDIDATE LIST under it, so where lengthening is spent the candidate axis still answers and
+    :func:`spell_the_candidates` -- the function the run calls -- is what spends it.  What
+    reaches this function is the position with no candidate left either, and a ROOT is the one
     that always has none: §4's root clause is that it keeps the name, and so does this.
 
     The REFUSAL is the one this pass always had, and it needs two positions: both spelled
@@ -1339,22 +1478,22 @@ def spell(
     # **A group of ONE is a position alone on a name an IMPORT holds**, which the
     # paragraph above is about: it is kept, so it is not what this refusal is for.  The
     # filter is here rather than in :func:`_lengthened` because the lone group is exactly
-    # what :func:`spell_the_rungs` falls to the next rung, and one reading cannot be both
+    # what :func:`spell_the_candidates` falls to the next candidate, and one reading cannot be both
     # readers' answer unless each reader states what it does with it.
     unresolved = {name: ps for name, ps in shared.items() if len(ps) > 1}
     if not unresolved:
         return spelled
-    # Nothing colliding can lengthen and §4's rung axis is not this function's -- see
-    # :func:`spell_the_rungs`, which is what the run calls.  The pointer named is the one
+    # Nothing colliding can lengthen and §4's candidate axis is not this function's -- see
+    # :func:`spell_the_candidates`, which is what the run calls.  The pointer named is the one
     # that COLLIDED, the later of the two in declaration order, which is the pointer
     # ``Module.declare``'s symmetric check names as well.
     #
     # **IT IS REACHABLE AND BUNDLE 3.3 REACHED IT, which is the correction to the
     # measurement this comment used to carry.**  It read "MEASURED UNREACHABLE over the
     # 1,054 portable documents: 0 modules reach it" (``adcp-client-python-10l.78``) and
-    # quoted §4's sentence that "rung 4 always answers, because a branch always has an
+    # quoted §4's sentence that "candidate 4 always answers, because a branch always has an
     # index" -- and both halves were true of bundle 3.2 and of nothing wider.  A MEMBER
-    # TYPE has no index, because it needs no name of its own, so its ladder is a chain of
+    # TYPE has no index, because it needs no name of its own, so its candidate list is a chain of
     # one; ``core/targeting-overlay-requirements.json#/definitions/daypartRequirement`` on
     # bundle 3.3 is two such positions deriving
     # ``TargetingOverlayRequirementsDaypartRequirement``, and this arm answered them --
@@ -1362,19 +1501,19 @@ def spell(
     # A measurement over one bundle is an observation and not a property, and the second
     # bundle is what the goal grades (``tests/test_the_second_bundle.py``).
     #
-    # **What closes that document is a rung and not this raise**
-    # (:data:`REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT`, :func:`_requirement_rung`): the
+    # **What closes that document is a candidate and not this raise**
+    # (:data:`REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT`, :func:`_requirement_candidate`): the
     # branch states, one level down, that it requires one of ``timezone_modes`` and
     # ``time_granularity``, so it has a name available and falls to it.  **Measured over
-    # bundle 3.3's 1,138 portable documents with that rung in force: 0 modules reach this
+    # bundle 3.3's 1,138 portable documents with that candidate in force: 0 modules reach this
     # arm**, which is the same reading as before and now over both bundles rather than one.
     # It is kept for the reason it always was: the positions that are NOT branches have one
-    # rung each, two of them could in principle spell alike with nothing to lengthen by,
+    # candidate each, two of them could in principle spell alike with nothing to lengthen by,
     # and §9 says a crash is not an outcome.
     #
     # **The kind is HAND-WRITTEN and this row did not derive it, deliberately.**  §9's
     # test makes it a VERDICT and not a deferral -- two positions of one document spelling
-    # alike at every rung and every length is a fact about that document's own titles and
+    # alike at every candidate and every length is a fact about that document's own titles and
     # keys, and no unwritten row would clear it -- but ``compiler.kind_for("title", …)``
     # answers DEFERRED at every position, because ``title``'s cell is a lowering effect.
     # So the kind cannot be read off a cell here, and minting a different one to make the
@@ -1426,8 +1565,8 @@ def _lengthened(
     first's name and none was an honest second spelling.
 
     ONE reading with two readers, which is why it is split out: :func:`spell` turns a
-    surviving group into the refusal, and :func:`spell_the_rungs` turns it into the set of
-    positions that fall to their next rung.  Asked twice, the second ask would be a second
+    surviving group into the refusal, and :func:`spell_the_candidates` turns it into the set of
+    positions that fall to their next candidate.  Asked twice, the second ask would be a second
     reading of "which positions cannot be told apart", and the refusal and the fall would
     be free to disagree about the set.
     """
@@ -1459,23 +1598,23 @@ def _lengthened(
         # import holds, with no ancestor left to spend, was reported as resolved and kept
         # the name -- 56 of them over this bundle, each a subclass declared under the
         # symbol its own module imports.  What the two readers do with a lone group
-        # differs and is each one's own business: :func:`spell_the_rungs` falls it to its
-        # next rung, and :func:`spell` keeps it rather than refusing (both say so).
+        # differs and is each one's own business: :func:`spell_the_candidates` falls it to its
+        # next candidate, and :func:`spell` keeps it rather than refusing (both say so).
         return spelled, colliding
 
 
-#: §4's rung rule, in the section's own words.  QUOTED by the checks that grade it, so the
+#: §4's candidate rule, in the section's own words.  QUOTED by the checks that grade it, so the
 #: sentence the code states and the sentence a check reports against are one string.
-RUNG_FALL = (
-    "where a rung derives one name for two branches it has not identified either, so "
-    "both fall to the next rung; and a branch colliding with its own document ROOT loses "
+THE_NEXT_CANDIDATE_IS_TAKEN = (
+    "where a candidate derives one name for two branches it has not identified either, so "
+    "both fall to the next candidate; and a branch colliding with its own document ROOT loses "
     "the name -- the root keeps it, because D5 fixes a document's one exported symbol, "
-    "and the branch falls the same way any colliding rung does (section 4)"
+    "and the branch falls the same way any colliding candidate does (section 4)"
 )
 
 
-def spell_the_rungs(
-    ladders: Mapping[str, tuple[tuple[str, ...], ...]],
+def spell_the_candidates(
+    candidates: Mapping[str, tuple[tuple[str, ...], ...]],
     occupied: frozenset[str] = frozenset(),
     surface: frozenset[str] = frozenset(),
     exports: frozenset[str] = frozenset(),
@@ -1484,47 +1623,47 @@ def spell_the_rungs(
 ) -> dict[str, str] | Refusal:
     """§4's two naming axes together: LENGTHEN first, and FALL where lengthening is spent.
 
-    :data:`COLLISION` is the first axis and :data:`RUNG_FALL` the second.  A position
-    starts at its first rung; :func:`_lengthened` spends ancestor segments until no name
+    :data:`COLLISION` is the first axis and :data:`THE_NEXT_CANDIDATE_IS_TAKEN` the second.  A position
+    starts at its first candidate; :func:`_lengthened` spends ancestor segments until no name
     collides; and a group that still collides falls -- every member of it that has a
-    rung left takes the next one and starts lengthening again.
+    candidate left takes the next one and starts lengthening again.
 
     **A NAME ANOTHER MODULE OF THE DOMAIN EXPORTS is a third thing a position can collide
     with, and it reaches both axes for the same reason an import does** (§1's amendment,
     2026-10-30; :data:`COLLISION_SCOPE`).  The six it answers over this bundle are one
-    shape, and §4 already decides them with no new rung: an async response's ROOT named
+    shape, and §4 already decides them with no new candidate: an async response's ROOT named
     ``<Task>Submitted`` against the same-named BRANCH of the corresponding sync response.
-    The root's ladder has exactly one rung -- D5 fixes a document's exported symbol -- so
+    The root's candidate list has exactly one candidate -- D5 fixes a document's exported symbol -- so
     it has nothing to advance and nothing to lengthen, and the branch beside it is the only
     side that can move, which is §4's root clause one scope out: "it is ANOTHER document's
     name, which this module has no standing to move".  Both names are the documents' own:
     ``media-buy/create-media-buy-async-response-submitted.json`` is titled "Create Media
     Buy - Submitted" and ``media-buy/create-media-buy-response.json``'s ``/oneOf/2`` is
     titled ``CreateMediaBuySubmitted`` and pins ``status: "submitted"``, so the branch
-    falls to rung 2 and its own pin answers.
+    falls to candidate 2 and its own pin answers.
 
     **An IMPORT is one of the things a position can collide with, on BOTH axes.**  A
     module's namespace is its declarations and what it imports, so ``occupied`` is part of
     §4's "derive the same name" and not a second rule beside it -- and §4 already decides
     what a position colliding with something that cannot move does: it is the root clause
-    one notch over, the side that can move moves, "the same way any colliding rung does".
+    one notch over, the side that can move moves, "the same way any colliding candidate does".
     The axis it crossed only one of is what shipped 56 names bound twice: ``occupied`` was
     read when deciding whether to LENGTHEN and dropped before deciding whether to FALL, so
     a bare-``$ref`` branch deriving its target's own symbol -- a chain of one, nothing to
     prepend -- was reported resolved and declared a subclass under the name its module
-    imports.  Those positions have three rungs below the one they took.
+    imports.  Those positions have three candidates below the one they took.
 
     **The ROOT is not special-cased and must not be.**  "The root keeps the name" is not a
-    clause here: a root's ladder has exactly ONE rung, because D5 fixes a document's
+    clause here: a root's candidate list has exactly ONE candidate, because D5 fixes a document's
     exported symbol, so it has nothing to advance and the branch beside it is the only
-    side that can move.  §4's sentence is the CONSEQUENCE of the ladder's shape, and
+    side that can move.  §4's sentence is the CONSEQUENCE of how long the candidate list is, and
     writing it as a test on the pointer ``""`` would be a second statement of D5 for the
     two to disagree through.
 
     **Lengthening is tried before falling**, which is §4's order and not a preference: the
     collision rule is stated for every position and the fall is stated for the case where
     "these chains are one segment with nothing to lengthen by".  A branch that can
-    lengthen keeps the name its best rung derives, so no identity is given up while a
+    lengthen keeps the name its best candidate derives, so no identity is given up while a
     cheaper fix is available -- measured, that keeps every one of this bundle's existing
     branch names except the three §4 names.
 
@@ -1532,30 +1671,30 @@ def spell_the_rungs(
     reaches both axes for the same reason the other three do** (§3a step 3;
     :data:`SUBJECT_SCOPE`).  It cannot move -- the name is another document's, and §4's
     root clause already says "this module has no standing to move it" -- so only this
-    module's declaring positions do, and they do it by §4's own two axes with no new rung:
+    module's declaring positions do, and they do it by §4's own two axes with no new candidate:
     ``protocol/get-adcp-capabilities-response.json#/properties/media_buy`` spends its one
     ancestor segment and becomes ``GetAdcpCapabilitiesResponseMediaBuy``, which is what
     the position always had to spell to be honest about what it is.
 
-    It TERMINATES because each fall strictly advances at least one position's rung index
-    and :func:`branch_rungs` is finite and duplicate-free; when no member of a sharing
-    group has a rung left, the refusal is :func:`spell`'s and says what it always said.
+    It TERMINATES because each fall strictly advances at least one position's candidate index
+    and :func:`branch_candidates` is finite and duplicate-free; when no member of a sharing
+    group has a candidate left, the refusal is :func:`spell`'s and says what it always said.
     **The subject arm does not change that, because ``subjects`` is a function of the
     BUNDLE and is constant across every round of both axes** -- unlike the domain census,
     which ``emit.domain_exports`` has to accumulate to keep monotone.  A set that does not
     move cannot make a fixed point oscillate.
     """
-    rung = dict.fromkeys(ladders, 0)
+    chosen = dict.fromkeys(candidates, 0)
     while True:
-        chains = {p: ladders[p][rung[p]] for p in ladders}
+        chains = {p: candidates[p][chosen[p]] for p in candidates}
         spelled, shared = _lengthened(chains, occupied, surface, exports, subjects, declaring)
         if not shared:
             return spelled
         fell = False
         for group in shared.values():
             for pointer in group:
-                if rung[pointer] + 1 < len(ladders[pointer]):
-                    rung[pointer] += 1
+                if chosen[pointer] + 1 < len(candidates[pointer]):
+                    chosen[pointer] += 1
                     fell = True
         if not fell:
             return spell(chains, occupied, surface, exports, subjects, declaring)
@@ -2050,10 +2189,10 @@ def assign(
     class within one module and nowhere else.
 
     ``declared`` is §3a's JUDGED NAME for a catalogue entry declared at one of this
-    module's pointers (``codegen/vocabularies.py``), and it enters as an EXTRA FIRST RUNG
+    module's pointers (``codegen/vocabularies.py``), and it enters as an EXTRA FIRST CANDIDATE
     rather than as an override.  §3a's table admits "a stated name lengthened to avoid an
-    existing class -- that is the collision rule, not a mint", and a rung is how this pass
-    says that: a rung of ONE segment has nothing to prepend, so §4's own axes answer a
+    existing class -- that is the collision rule, not a mint", and a candidate is how this pass
+    says that: a candidate of ONE segment has nothing to prepend, so §4's own axes answer a
     collision by FALLING to the position's own chain -- the name this pass would have given
     it with no row at all.  Nothing is special-cased and no name is forced past a
     collision; the judgement is preferred and §4 still decides.
@@ -2088,9 +2227,9 @@ def assign(
     #: DIRECTLY, which is what mapping the adopting pointer onto the declaring symbol
     #: does for every type that names it.
     degenerate: set[int] = set()
-    #: Pointer -> §4's RUNGS for it, best first (:func:`ladder`).  One rung for every
-    #: position but a branch; :func:`spell_the_rungs` walks both axes.
-    ladders: dict[str, tuple[tuple[str, ...], ...]] = {}
+    #: Pointer -> §4's CANDIDATES for it, best first (:func:`candidate_names`).  One candidate for every
+    #: position but a branch; :func:`spell_the_candidates` walks both axes.
+    candidates: dict[str, tuple[tuple[str, ...], ...]] = {}
     #: An adopting pointer that binds no name of its own -> the pointer whose class it
     #: takes.  Resolved after :func:`spell`, because the symbol it takes is not decided
     #: until the declaring position's own name is.
@@ -2126,21 +2265,21 @@ def assign(
         kind = the_surface_exports(pointer, declaration, mod.hops)
         if kind is not None and kind != INNER:
             exports[pointer] = kind
-        rungs = ladder(pointer, mod.hops)
-        if isinstance(rungs, Refusal):
-            return rungs
-        #: The dedup comparison reads the FIRST rung, which is the name this position
+        offered = candidate_names(pointer, mod.hops)
+        if isinstance(offered, Refusal):
+            return offered
+        #: The dedup comparison reads the FIRST candidate, which is the name this position
         #: derives before any collision is known -- §4's dedup is about two positions
-        #: stating the same NODE, and a rung is about telling two names apart, so the
-        #: question this asks is settled before the rung axis is walked.
-        chain = rungs[0]
+        #: stating the same NODE, and a candidate is about telling two names apart, so the
+        #: question this asks is settled before the candidate axis is walked.
+        chain = offered[0]
         declares = mod.adopted.get(pointer)
         #: Compared over the WHOLE chain, which is this position's own longest spelling:
         #: two positions whose paths spell alike derive one name at every length, so the
-        #: degenerate arm is the same arm it was when the fold returned that spelling.
+        #: degenerate arm is the same answer it was when the fold returned that spelling.
         if declares is not None and "".join(chain) in (
             "",
-            "".join(ladders[declares][0] if declares in ladders else ()),
+            "".join(candidates[declares][0] if declares in candidates else ()),
         ):
             takes[pointer] = declares
             degenerate.add(i)
@@ -2150,11 +2289,11 @@ def assign(
         #: declares nothing for the clause to export and has no chain to word it from.
         if kind == INNER:
             inner[pointer] = chain
-        #: §3a's judged name as rung 0, read AFTER the dedup arm above: the comparison
+        #: §3a's judged name as candidate 0, read AFTER the dedup case above: the comparison
         #: there is §4's "two positions stating the same NODE", which a name the catalogue
         #: judged has no part in.
         name = declared.get(pointer)
-        ladders[pointer] = ((name,), *rungs) if name is not None else rungs
+        candidates[pointer] = ((name,), *offered) if name is not None else offered
     # **§1's one-path rule, as the RELOCATION it is (2026-11-03).**  "What remains for this
     # rule is the case it was written for -- one class declared once and EXPORTED TWICE --
     # and there the surface keeps only the declaring position's spelling.  **Applying it is
@@ -2216,8 +2355,8 @@ def assign(
         #: whose join is a Python keyword is a module that does not parse and that reading
         #: is already taken once.
         published[pointer] = spelling(chain, len(chain))
-    spelled = spell_the_rungs(
-        ladders,
+    spelled = spell_the_candidates(
+        candidates,
         carriers | {symbol for _, symbol in mod.imports},
         surface,
         # **The RELOCATED pointers are in §1's domain scope and the dropped ones are not**,
@@ -2244,20 +2383,48 @@ def assign(
         # coupling the clause exists to remove.
         frozenset(p for p in exports if p not in published),
         subjects,
-        # **§3a step 3's narrowing: the positions that DECLARE, which is ``ladders``
+        # **§3a step 3's narrowing: the positions that DECLARE, which is ``candidates``
         # MINUS the ones that bind.**  ``binds`` is §1's own reading -- "a position that
         # references a class does not name it" (:func:`names_a_declaration`) -- so the
         # two sides are one derivation and a position cannot be read as declaring here
         # and as binding three lines up.  §3a's answer at a restating position is "an
         # alias at its position, never a second class", and an alias is exactly what is
         # on the other side of this subtraction.
-        frozenset(ladders) - frozenset(binds),
+        frozenset(candidates) - frozenset(binds),
     )
     if isinstance(spelled, Refusal):
         return spelled
     symbols: dict[str, str] = dict(spelled)
     for pointer, declares in takes.items():
         symbols[pointer] = symbols[declares]
+    # **THE OWNER'S RULING: A POSITIONAL NAME IS WITHHELD FROM §1's EXPORT SET**
+    # (:data:`A_POSITIONAL_NAME_IS_PRIVATE`, 2026-11-10).  The declaration stands -- it is
+    # already in ``declarations`` below and the union still lists it as a branch -- and what
+    # is removed is the PATH: no ``_surface/<domain>.py`` imports it, no ``__all__``
+    # carries it, and the flat consolidation is that union, so the word is absent from
+    # every public namespace while ``isinstance`` through the union and validation are
+    # untouched.
+    #
+    # **AFTER THE NAMES ARE SETTLED, because the question is about a NAME.**  Which candidate a
+    # position took is decided by §4's two axes together (:func:`spell_the_candidates`), so no
+    # earlier point in this function knows whether this position ended up positional.
+    # Asking before would also be circular: ``exports`` is one of the inputs the collision
+    # rule narrows the domain scope by, so a drop made before spelling would change the
+    # scope that decides the spelling.
+    #
+    # **AND THAT ORDER IS CONSERVATIVE RATHER THAN MERELY CONVENIENT.**  The names were
+    # spelled with these positions IN §1's domain scope, so every one of them was
+    # lengthened against the domain's words as though it were exported.  Lengthening can
+    # only ever make a name longer and more distinct, so withdrawing it afterwards cannot
+    # introduce a §1 collision -- it can at most leave a sibling longer than the final
+    # export set required, which is the status quo and not a defect.
+    positional = the_positional_names(mod.hops, symbols)
+    for pointer in [p for p in exports if symbols.get(p) in positional]:
+        del exports[pointer]
+        # Reading 6's word goes with it: the inner clause mints a word for a class the
+        # surface would otherwise not reach, and a class §1 no longer exports has no
+        # surface statement for a word to be the right-hand side of.
+        published.pop(pointer, None)
     #: :data:`UPSTREAM_TITLE_CASE` over this module, read AFTER the names are settled
     #: because the rule's own guard is that the emitted symbol still IS the title's name
     #: (:func:`the_published_spellings`).  Asked of a finished table rather than mixed
@@ -2374,6 +2541,12 @@ def assign(
         # forbids two of.  A degenerate adoption is absent by construction: it binds no
         # name of its own, so no pointer of it reached ``exports``.
         exports={symbols[pointer]: kind for pointer, kind in exports.items()},
+        # **The names the ruling WITHHELD, as the run's own record of them**
+        # (:data:`A_POSITIONAL_NAME_IS_PRIVATE`, :attr:`codegen.ir.Module.positional`).  A
+        # ban recorded only by an absence is a ban nothing can range over: the gate asks
+        # "is any positional name public" and has to be handed the set, or it is a
+        # gate over a list of today's six and goes vacuous the moment one is renamed.
+        positional=positional,
         # **Reading 6's inner WORD beside the kind**, symbol -> the name the domain surface
         # publishes that symbol under (:data:`THE_INNER_EXPORT`).  Only the ``inner`` kind
         # is here: for the other three the surface's word IS the symbol, and an entry

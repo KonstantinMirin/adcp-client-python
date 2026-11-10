@@ -181,9 +181,9 @@ a run that holds all of it do the same work in the same time.
 **THE STORE WAS THE SHAPE OF A SEARCH, AND SEARCH IS WHAT IS GONE.** Sampling a composed node has
 two regimes and nothing between them — a value found at once, or a space the sampler cannot get
 out of — so the cost is a cliff rather than a curve, and every artifact around it (a committed
-floor, a cache above it, a key that must version the generator, a budget that cuts the second
-regime off) exists to fence the cliff. Construction has no second regime. Removing the search
-removes the fence, and the fence was the larger structure.
+floor, a cache above it, a key that must version the generator, a timeout that cuts the second
+regime off) exists to guard against the cliff. Construction has no second regime. Removing the
+search removes every one of those guards, and the guards were the larger structure.
 
 **WHERE CONSTRUCTION CANNOT PRODUCE A VALUE, THE DOCUMENT'S OWN `examples` IS THE VALUE.** An
 arbitrary `pattern` and a `format` no checker can generate are the two cases: the keyword states a
@@ -493,7 +493,7 @@ imports `codegen.refusal`, which is the import-graph half of the seam being tota
 over the RUN — the argument list, which differs between a one-document command and a
 whole-bundle emission. The bundle is pinned and is an input
 to every run alike, so a catalogue yields the same answer in both and is exactly what that rule
-protects. Those are different things, and a clause fencing cross-module identity to a single
+protects. Those are different things, and a clause confining cross-module identity to a single
 module on §9's authority has misread it. Without the catalogue the compiler reproduces the defect
 it was built to escape.
 
@@ -1155,7 +1155,7 @@ than overwriting it. An additive override that silently wins over a published va
 of this mechanism that could outlive its cause invisibly, and it would do so while looking like
 success.
 
-### WHERE A CATALOGUE ENTRY LIVES, which is what makes the fencing unnecessary
+### WHERE A CATALOGUE ENTRY LIVES, which is what makes the prohibition unnecessary
 
 The clause that forbade cross-module identity was guarding something real: shared types reached
 for across document modules create import cycles, and the bundle's own design invites them — one
@@ -1174,7 +1174,7 @@ L3 array types        → L0, L1, L2
 document modules       → any catalogue layer, and each other by §10's existing order
 ```
 
-That is the whole of the answer to the fencing. We cannot fix the schema's habit of restating a
+That is the whole of the answer to the prohibition. We cannot fix the schema's habit of restating a
 concept in several places; we decide the layers we emit it into, and the layering removes the
 hazard the prohibition was written for.
 
@@ -1686,6 +1686,17 @@ to it by identity.
 non-identifier root title takes the document's own file stem. A name is not an acceptance fact, so
 a fallback name neither widens nor narrows.
 
+**AND THAT INDEX NAMES A PRIVATE DECLARATION AND NEVER A PUBLIC ONE** — the owner's decision of
+2026-11-10, recorded here as a decision and not derived, and stated in full at
+`rebuild-plan.md` §4's branch candidate list. The class is declared under the positional symbol,
+because deleting it would drop a branch from the union and refuse payloads the document admits;
+the symbol is withheld from §1's export set, so no `adcp.types.<domain>.<Name>` and no `__all__`
+of the surface carries it. The ground is §4's own sentence — "a caller writing `isinstance(req,
+AssetRequirementsBranch7)` has to count the document's branches to know that it means JavaScript"
+— and `final-state.md` reading 4's placeholder rule, both of which condemned the name while this
+paragraph prescribed it. `codegen/lower/names.py`'s `A_POSITIONAL_NAME_IS_PRIVATE` is the
+implementation and `tests_emit/test_no_positional_name_is_public.py` is the gate.
+
 The walk computes no name, which is the semantics document's own
 rule that a name is an input to a lowering and is never computed inside one — read strictly,
 it is not an input either: it is assigned after.
@@ -2182,11 +2193,15 @@ decides instead. The owner of the semantics document decides each.
    and are the part a reader must keep honest against the cells.
 
 7. **§4 "Names", a branch with no identity.** Closed: a branch with no title, no pinned `const`
-   and no `required` set takes its index among the branches, `<Base>Branch<i>`. A name is not an
-   acceptance fact, so the fallback neither widens nor narrows and costs no approximation, and
-   the index is a function of document order, so it does not depend on which documents the run
-   includes. The same reasoning gives a missing or non-identifier root title the document's own
-   file stem.
+   and no `required` set takes its index among the branches, `<Base>Branch<i>`, **as a PRIVATE
+   declaration name pending an upstream title** (the owner's decision of 2026-11-10; §7 above and
+   `rebuild-plan.md` §4 carry it in full). A name is not an acceptance fact, so the fallback
+   neither widens nor narrows and costs no approximation, and the index is a function of document
+   order, so it does not depend on which documents the run includes. What the decision adds is
+   that such a name never reaches §1's export set, so the question "closed how" has two answers
+   and not one: the class is declared, and the name is not published. The same reasoning gives a
+   missing or non-identifier root title the document's own file stem — and that one IS public,
+   because a file stem says what the document is.
 
 ---
 

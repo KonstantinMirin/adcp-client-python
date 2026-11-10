@@ -117,12 +117,12 @@ DISSENTING = (
 #: (``adcp-client-python-82m.59``).  3.3's only hard verdict was ``title`` at
 #: ``core/targeting-overlay-requirements.json#/definitions/daypartRequirement`` -- two
 #: positions of one union deriving ``TargetingOverlayRequirementsDaypartRequirement``, and
-#: a MEMBER TYPE has no rung to fall to -- with five documents chained behind it:
+#: a MEMBER TYPE has no candidate to fall to -- with five documents chained behind it:
 #: ``media-buy/list-products-request.json``,
 #: ``media-buy/product-discovery-criteria.json``, ``media-buy/proposal-refinement.json``,
 #: ``media-buy/refine-proposals-request.json`` and
 #: ``media-buy/request-proposals-request.json``.  What closed all six is §4's LAST branch
-#: rung (``lower.names.REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT``): the branch states one
+#: candidate (``lower.names.REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT``): the branch states one
 #: level down that it requires one of ``timezone_modes`` and ``time_granularity``, so it
 #: has a name to fall to and takes ``DaypartRequirementTimeGranularityTimezoneModes``.
 #: **The bundle's VERDICT count is now 0** -- every refusal below is DEFERRED, which is a
