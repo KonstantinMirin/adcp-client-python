@@ -159,7 +159,11 @@ class TestResponseUnions:
 
     def test_create_media_buy_success_variant(self):
         """CreateMediaBuySuccessResponse should validate with required fields."""
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         success = CreateMediaBuySuccessResponse(
+            status="completed",
             media_buy_id="mb_123",
             buyer_ref="ref_456",
             packages=[],
@@ -172,7 +176,13 @@ class TestResponseUnions:
 
     def test_create_media_buy_error_variant(self):
         """CreateMediaBuyErrorResponse should validate with errors field."""
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        # `errors` is REQUIRED here, which marks the rejection arm of the
+        # oneOf; the envelope says such an arm emits `rejected`.
         error = CreateMediaBuyErrorResponse(
+            status="rejected",
             errors=[{"code": "invalid_budget", "message": "Budget too low"}],
         )
         assert len(error.errors) == 1
@@ -181,7 +191,11 @@ class TestResponseUnions:
 
     def test_activate_signal_success_variant(self):
         """ActivateSignalSuccessResponse should validate with required fields."""
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         success = ActivateSignalSuccessResponse(
+            status="completed",
             deployments=[],
         )
         assert success.deployments == []
@@ -189,7 +203,13 @@ class TestResponseUnions:
 
     def test_activate_signal_error_variant(self):
         """ActivateSignalErrorResponse should validate with errors field."""
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        # `errors` is REQUIRED here, which marks the rejection arm of the
+        # oneOf; the envelope says such an arm emits `rejected`.
         error = ActivateSignalErrorResponse(
+            status="rejected",
             errors=[{"code": "unauthorized", "message": "Not authorized"}],
         )
         assert len(error.errors) == 1
@@ -319,7 +339,11 @@ class TestSerializationRoundtrips:
 
     def test_success_response_roundtrip(self):
         """CreateMediaBuySuccessResponse should roundtrip through JSON."""
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         original = CreateMediaBuySuccessResponse(
+            status="completed",
             media_buy_id="mb_123",
             buyer_ref="ref_456",
             packages=[],
@@ -333,7 +357,13 @@ class TestSerializationRoundtrips:
 
     def test_error_response_roundtrip(self):
         """CreateMediaBuyErrorResponse should roundtrip through JSON."""
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        # `errors` is REQUIRED here, which marks the rejection arm of the
+        # oneOf; the envelope says such an arm emits `rejected`.
         original = CreateMediaBuyErrorResponse(
+            status="rejected",
             errors=[{"code": "invalid", "message": "Invalid"}],
         )
         json_str = original.model_dump_json()

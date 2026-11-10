@@ -242,7 +242,10 @@ class _PlatformWithRefine(DecisioningPlatform):
     def get_products(self, req, ctx):
         from adcp.types import GetProductsResponse
 
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     def refine_get_products(self, req, ctx):
         return RefineResult(
@@ -259,7 +262,10 @@ class _PlatformNoRefine(DecisioningPlatform):
     def get_products(self, req, ctx):
         from adcp.types import GetProductsResponse
 
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
 
 def test_has_refine_support_true_when_method_present() -> None:
@@ -320,7 +326,10 @@ async def test_handler_brief_mode_unaffected(executor) -> None:
 
     class _P(_PlatformWithRefine):
         def get_products(self, req, ctx):
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
         def refine_get_products(self, req, ctx):  # not called
             raise AssertionError("refine_get_products should not be called for brief mode")

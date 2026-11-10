@@ -106,7 +106,11 @@ def test_confirmed_at_accepts_null_and_stays_required() -> None:
     assert field.is_required(), "confirmed_at must not gain a default"
     assert type(None) in typing.get_args(field.annotation)
 
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     provisional = CreateMediaBuySuccessResponse(
+        status="completed",
         media_buy_id="mb_1",
         packages=[],
         confirmed_at=None,
@@ -136,7 +140,11 @@ def test_confirmed_at_null_survives_serialization_when_none_is_kept() -> None:
     """
     from adcp.types import CreateMediaBuySuccessResponse
 
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     resp = CreateMediaBuySuccessResponse(
+        status="completed",
         media_buy_id="mb_1",
         packages=[],
         confirmed_at=None,

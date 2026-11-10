@@ -517,11 +517,15 @@ async def test_typed_assignment_failures_keep_all_wire_valid_package_ids(
             def finish(task_ctx: Any = None) -> Any:
                 self.uploaded.extend(row.creative_id for row in req.creatives)
                 assert req.assignments is None
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
                 self.response = SyncCreativesSuccessResponse(
+                    status="completed",
                     creatives=[
                         {"creative_id": row.creative_id, "action": "created", "status": "approved"}
                         for row in req.creatives
-                    ]
+                    ],
                 )
                 self.original_rows = list(self.response.creatives)
                 return self.response

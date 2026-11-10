@@ -112,7 +112,14 @@ def _batch_preview_response(output_format: str, count: int = 1):
                 },
             }
         )
-    return LegacyPreviewCreativeBatchResponse(response_type="batch", results=results)
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
+    return LegacyPreviewCreativeBatchResponse(
+        status="completed",
+        response_type="batch",
+        results=results,
+    )
 
 
 @pytest.mark.asyncio
@@ -206,7 +213,11 @@ async def test_preview_creative():
     )
 
     # Parsed result from _parse_response
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     mock_response_data = LegacyPreviewCreativeResponse1(
+        status="completed",
         response_type="single",
         expires_at="2099-12-01T00:00:00Z",
         previews=[
@@ -275,7 +286,11 @@ async def test_get_preview_data_for_manifest():
     mock_raw_result = TaskResult(status=TaskStatus.COMPLETED, data={"previews": []}, success=True)
 
     # Parsed result from _parse_response
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     mock_preview_response = LegacyPreviewCreativeResponse1(
+        status="completed",
         response_type="single",
         expires_at="2099-12-01T00:00:00Z",
         previews=[
@@ -335,7 +350,11 @@ async def test_preview_data_caching():
     mock_raw_result = TaskResult(status=TaskStatus.COMPLETED, data={"previews": []}, success=True)
 
     # Parsed result from _parse_response
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     mock_preview_response = LegacyPreviewCreativeResponse1(
+        status="completed",
         response_type="single",
         expires_at="2099-12-01T00:00:00Z",
         previews=[
@@ -438,7 +457,14 @@ async def test_get_products_with_preview_urls():
     )
 
     # Parsed result from _parse_response
-    mock_products_response = GetProductsResponse(products=[product], errors=None)
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
+    mock_products_response = GetProductsResponse(
+        status="completed",
+        products=[product],
+        errors=None,
+    )
     mock_parsed_result = TaskResult(
         status=TaskStatus.COMPLETED, data=mock_products_response, success=True
     )
@@ -449,7 +475,11 @@ async def test_get_products_with_preview_urls():
     )
 
     # Parsed preview result
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     mock_preview_response = LegacyPreviewCreativeResponse1(
+        status="completed",
         response_type="single",
         expires_at="2099-12-01T00:00:00Z",
         previews=[
@@ -553,7 +583,14 @@ async def test_list_creative_formats_with_preview_urls():
     )
 
     # Parsed result from _parse_response
-    mock_formats_response = LegacyListCreativeFormatsResponse(formats=[fmt], errors=None)
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
+    mock_formats_response = LegacyListCreativeFormatsResponse(
+        status="completed",
+        formats=[fmt],
+        errors=None,
+    )
     mock_parsed_result = TaskResult(
         status=TaskStatus.COMPLETED, data=mock_formats_response, success=True
     )
@@ -564,7 +601,11 @@ async def test_list_creative_formats_with_preview_urls():
     )
 
     # Parsed preview result
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     mock_preview_response = LegacyPreviewCreativeResponse1(
+        status="completed",
         response_type="single",
         expires_at="2099-12-01T00:00:00Z",
         previews=[

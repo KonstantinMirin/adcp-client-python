@@ -220,7 +220,10 @@ async def test_get_products():
 
     mock_parsed_result = TaskResult[GetProductsResponse](
         status=TaskStatus.COMPLETED,
-        data=GetProductsResponse(products=[]),  # Properly typed result
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        data=GetProductsResponse(status="completed", products=[]),  # Properly typed result
         success=True,
     )
 

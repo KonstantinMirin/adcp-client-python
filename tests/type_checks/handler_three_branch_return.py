@@ -44,7 +44,10 @@ class SyncSeller(DecisioningPlatform, SalesPlatform[dict[str, Any]]):
         req: GetProductsRequest,
         ctx: RequestContext[dict[str, Any]],
     ) -> GetProductsResponse:
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     def create_media_buy(
         self,
@@ -74,7 +77,10 @@ class TaskHandoffSeller(DecisioningPlatform, SalesPlatform[dict[str, Any]]):
         req: GetProductsRequest,
         ctx: RequestContext[dict[str, Any]],
     ) -> GetProductsResponse:
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     def create_media_buy(
         self,
@@ -107,7 +113,10 @@ class AsyncSeller(DecisioningPlatform, SalesPlatform[dict[str, Any]]):
         req: GetProductsRequest,
         ctx: RequestContext[dict[str, Any]],
     ) -> GetProductsResponse:
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     async def create_media_buy(
         self,

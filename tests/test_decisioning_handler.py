@@ -79,7 +79,10 @@ async def test_get_products_routes_through_platform(executor) -> None:
 
         async def get_products(self, req, ctx):
             received_account_id.append(ctx.account.id)
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler(_Platform(), executor)
     req = GetProductsRequest(buying_mode="brief", brief="any inventory")
@@ -106,7 +109,10 @@ async def test_get_products_threads_auth_info_to_account(executor) -> None:
         async def get_products(self, req, ctx):
             received_principal.append(ctx.account.id)
             received_auth_info.append(ctx.auth_info)
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler(_Platform(), executor)
     ctx = ToolContext(
@@ -301,7 +307,10 @@ async def test_sync_creatives_routes_through_platform(executor) -> None:
         accounts = SingletonAccounts(account_id="hello")
 
         async def sync_creatives(self, req, ctx):
-            return SyncCreativesSuccessResponse(creatives=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return SyncCreativesSuccessResponse(status="completed", creatives=[])
 
     handler = _make_handler(_Platform(), executor)
     # SyncCreativesRequest has tight validation (creatives minItems=1,
@@ -333,7 +342,10 @@ async def test_list_creative_formats_resolves_with_no_ref(executor) -> None:
         accounts = SingletonAccounts(account_id="hello")
 
         async def list_creative_formats_legacy(self, req, ctx):
-            return LegacyListCreativeFormatsResponse(formats=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return LegacyListCreativeFormatsResponse(status="completed", formats=[])
 
     handler = _make_handler(_Platform(), executor)
     resp = await handler.list_creative_formats_legacy(
@@ -367,7 +379,10 @@ async def test_handler_awaits_async_account_resolver(executor) -> None:
 
         async def get_products(self, req, ctx):
             received_id.append(ctx.account.id)
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler(_Platform(), executor)
     await handler.get_products(GetProductsRequest(buying_mode="brief", brief="any"), ToolContext())
@@ -389,7 +404,10 @@ async def test_handler_extract_auth_info_from_dict(executor) -> None:
 
         async def get_products(self, req, ctx):
             received_kind.append(ctx.auth_info.kind if ctx.auth_info else "none")
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler(_Platform(), executor)
     ctx = ToolContext(

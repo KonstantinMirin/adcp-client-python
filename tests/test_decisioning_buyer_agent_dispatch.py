@@ -413,7 +413,10 @@ async def test_authinfo_from_verified_signer_dispatches_through_registry(
 
         async def get_products(self, req, ctx):
             seen.append(ctx.buyer_agent)
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = PlatformHandler(
         _Platform(),
@@ -546,7 +549,10 @@ async def test_signed_request_dispatches_through_registry_by_agent_url(
 
         async def get_products(self, req, ctx):
             received_buyer_agent.append(ctx.buyer_agent)
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler_with_registry(_Platform(), executor, registry)
     tool_ctx = ToolContext(
@@ -590,7 +596,10 @@ async def test_bearer_request_dispatches_through_registry_by_credential(
 
         async def get_products(self, req, ctx):
             received_agent_url.append(ctx.buyer_agent.agent_url)
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler_with_registry(_Platform(), executor, registry)
     tool_ctx = ToolContext(
@@ -840,7 +849,10 @@ async def test_no_registry_wired_skips_buyer_agent_resolution(executor) -> None:
 
         async def get_products(self, req, ctx):
             received_buyer_agent.append(ctx.buyer_agent)
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = PlatformHandler(
         _Platform(),
@@ -925,7 +937,10 @@ async def test_mixed_registry_routes_signed_and_bearer_correctly(executor) -> No
 
         async def get_products(self, req, ctx):
             seen.append(ctx.buyer_agent.agent_url)
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler_with_registry(_Platform(), executor, registry)
 

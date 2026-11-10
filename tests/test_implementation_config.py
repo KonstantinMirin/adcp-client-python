@@ -80,7 +80,11 @@ def _make_handler(
 def _create_success(media_buy_id: str):
     from adcp.types import CreateMediaBuySuccessResponse
 
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     return CreateMediaBuySuccessResponse(
+        status="completed",
         media_buy_id=media_buy_id,
         confirmed_at="2026-05-01T00:00:00Z",
         revision=1,

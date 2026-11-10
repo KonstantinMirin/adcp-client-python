@@ -80,7 +80,16 @@ def make_client(
     )
     client._capabilities_fetched_at = time.monotonic()
     client.adapter.get_products = AsyncMock(
-        return_value=TaskResult(status=TaskStatus.COMPLETED, data=GetProductsResponse(products=[]))
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return_value=TaskResult(
+            status=TaskStatus.COMPLETED,
+            data=GetProductsResponse(
+                status="completed",
+                products=[],
+            ),
+        )
     )
     return client
 
@@ -503,7 +512,10 @@ def make_handler(store, *, required=False, executor):
 
         async def get_products(self, request, ctx):
             assert ctx.account.id == "" or ctx.account.id == "provisioned"
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     return PlatformHandler(Seller(), executor=executor, registry=InMemoryTaskRegistry())
 

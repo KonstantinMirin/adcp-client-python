@@ -284,7 +284,10 @@ def test_context_object_dump_keeps_null_values() -> None:
     context = ContextObject.model_validate({"a": None, "b": 1, "n": {"x": None}})
     assert context.model_dump() == {"a": None, "b": 1, "n": {"x": None}}
     assert json.loads(context.model_dump_json()) == {"a": None, "b": 1, "n": {"x": None}}
-    response = GetProductsResponse(products=[], context=context)
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
+    response = GetProductsResponse(status="completed", products=[], context=context)
     assert response.model_dump(mode="json")["context"] == {"a": None, "b": 1, "n": {"x": None}}
     # An explicit exclusion still wins.
     assert context.model_dump(exclude={"a"}) == {"b": 1, "n": {"x": None}}
@@ -302,7 +305,10 @@ class _TypedEchoHandler(ADCPHandler[Any]):
 
     async def get_products(self, params: Any, context: Any = None) -> GetProductsResponse:
         raw = params if isinstance(params, dict) else params.model_dump(exclude_none=False)
-        return GetProductsResponse(products=[], context=raw.get("context"))
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[], context=raw.get("context"))
 
 
 @pytest.mark.parametrize("transport", ["mcp", "a2a"])

@@ -987,7 +987,16 @@ async def test_failed_read_raises() -> None:
             return TaskResult(status=TaskStatus.FAILED, success=False, error="boom")
 
         async def get_signals(self, request: GetSignalsRequest) -> TaskResult[GetSignalsResponse]:
-            return TaskResult(status=TaskStatus.COMPLETED, success=True, data=GetSignalsResponse())
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return TaskResult(
+                status=TaskStatus.COMPLETED,
+                success=True,
+                data=GetSignalsResponse(
+                    status="completed",
+                ),
+            )
 
     mirror = FeedMirror(FailingClient())
 
