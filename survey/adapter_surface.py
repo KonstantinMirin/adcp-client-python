@@ -1872,9 +1872,14 @@ def main() -> None:
         print(f"      {n:5}  {why[:92]}")
 
     if args.table:
-        cols = ("module", "name", "verdict", "how", "identity", "document", "word",
+        #: `method` is upstream's own KIND for the name -- `model`, `enum`, `adapter`,
+        #: `none` -- read off their dump and recorded because `adcp-client-python-69mi` is a
+        #: defect of KIND and not of name: a union of arms over the right values is still
+        #: the wrong thing where upstream published an enumeration, and a table with no
+        #: `method` column cannot be asked whether that happened.
+        cols = ("module", "name", "verdict", "how", "identity", "method", "document", "word",
                 "their_declaring", "target", "public", "pairs", "note",
-                "stated_by", "stated_terminal", "stated_refused")
+                "flattened_enum", "stated_by", "stated_terminal", "stated_refused")
         with args.table.open("w") as fh:
             fh.write(f"# survey/adapter_surface.py over upstream adcp {join.version}\n")
             fh.write("\t".join(cols) + "\n")

@@ -40,6 +40,7 @@ import csv
 import importlib
 import json
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -297,6 +298,46 @@ def test_a_name_their_tree_does_not_bind_is_reported_absent(tmp_path: Path) -> N
     assert oracle.trace("adcp.types.legacy", "Held")[0].kind == "declared-class"
     assert oracle.trace("adcp.types.legacy", "Absent")[0].kind == "absent"
     assert oracle.trace("adcp.types.nowhere", "Absent")[0].kind == "no-such-module"
+
+
+def test_no_name_upstream_published_as_an_enumeration_is_served_by_a_union_of_arms() -> None:
+    """``adcp-client-python-69mi``: the defect whose subject is right and whose KIND is wrong.
+
+    The writer bound ``GetProductsField`` to ``FieldsItem | ProductResponseFieldsItem``
+    under a key that required the VALUE SETS to be equal, and they were -- 17 and 38 members
+    overlapping on two, unioning to exactly upstream's 53.  What the key could not see is
+    that upstream's own ``decisioning/_get_products_helpers.py:66`` writes
+    ``frozenset(f.value for f in GetProductsField)``: ``for f in <name>`` and
+    ``<name>.MEMBER`` are the enumeration's contract and ``A | B`` has neither, so the name
+    raised ``TypeError: 'types.UnionType' object is not iterable`` at MODULE SCOPE in a
+    module ``adcp/decisioning/__init__.py`` imports.
+
+    Graded as BEHAVIOUR over the real adapter and not over the table's text, in both
+    directions: no name upstream declares as an ``enum`` resolves to a ``UnionType`` on any
+    adapter module, and every name that DOES resolve to one has upstream declaring a union
+    -- which is what keeps the reading from being "no unions anywhere", a claim
+    ``adcp.types.aliases.PublisherProperties`` would falsify for the right reason.
+    """
+    enum_words = {
+        r["name"] for r in rows() if r["identity"] != "union" and r["method"] == "enum"
+    }
+    claimed("names upstream declares as an enumeration", enum_words)
+    assert enum_words, "no row records upstream's method, so this reading grades nothing"
+    synthesised = []
+    for row in rows():
+        try:
+            carried = importlib.import_module(row["module"])
+        except ImportError:
+            continue
+        held = getattr(carried, row["name"], None)
+        if not isinstance(held, types.UnionType):
+            continue
+        if row["method"] == "enum":
+            synthesised.append(f"{row['module']}.{row['name']}")
+    assert not synthesised, (
+        "upstream declares these as an enumeration and the adapter serves a union of arms, "
+        f"which is a different KIND of name: {synthesised}"
+    )
 
 
 def test_the_oracle_and_the_structural_index_agree_about_upstream_s_generated_tree() -> None:
