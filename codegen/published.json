@@ -1,4 +1,5 @@
 {
+ "aliases_read": 18,
  "by_kind": {
   "enum": 1125,
   "model": 2796,
@@ -135830,6 +135831,365 @@
  "modules_read": 1087,
  "named": "2954b258b",
  "revision": "2954b258b6ec3114491433ed9aaac2cf8f145bb7",
+ "statements": {
+  "account/get_account_financials_response": {
+   "aliases": {},
+   "unions": {
+    "GetAccountFinancialsResponse": [
+     "GetAccountFinancialsResponse1",
+     "GetAccountFinancialsResponse2"
+    ]
+   }
+  },
+  "account/sync_accounts_response": {
+   "aliases": {},
+   "unions": {
+    "SyncAccountsResponse": [
+     "SyncAccountsResponse1",
+     "SyncAccountsResponse2"
+    ]
+   }
+  },
+  "adagents": {
+   "aliases": {
+    "RevokedPublisherDomain1": "RevokedPublisherDomain",
+    "RevokedPublisherDomain2": "RevokedPublisherDomain",
+    "RevokedPublisherDomain3": "RevokedPublisherDomain",
+    "RevokedPublisherDomain4": "RevokedPublisherDomain",
+    "RevokedPublisherDomain5": "RevokedPublisherDomain",
+    "RevokedPublisherDomain6": "RevokedPublisherDomain"
+   },
+   "unions": {}
+  },
+  "brand/acquire_rights_response": {
+   "aliases": {},
+   "unions": {
+    "AcquireRightsResponse": [
+     "AcquireRightsResponse1",
+     "AcquireRightsResponse2",
+     "AcquireRightsResponse3",
+     "AcquireRightsResponse4"
+    ]
+   }
+  },
+  "brand/get_brand_identity_response": {
+   "aliases": {},
+   "unions": {
+    "GetBrandIdentityResponse": [
+     "GetBrandIdentityResponse1",
+     "GetBrandIdentityResponse2"
+    ]
+   }
+  },
+  "brand/get_rights_response": {
+   "aliases": {},
+   "unions": {
+    "GetRightsResponse": [
+     "GetRightsResponse1",
+     "GetRightsResponse2"
+    ]
+   }
+  },
+  "brand/update_rights_response": {
+   "aliases": {},
+   "unions": {
+    "UpdateRightsResponse": [
+     "UpdateRightsResponse1",
+     "UpdateRightsResponse2"
+    ]
+   }
+  },
+  "brand/verify_brand_claim_response": {
+   "aliases": {},
+   "unions": {
+    "VerifyBrandClaimResponse": [
+     "VerifyBrandClaimSuccessResponse",
+     "VerifyBrandClaimErrorResponse"
+    ]
+   }
+  },
+  "brand/verify_brand_claims_response": {
+   "aliases": {},
+   "unions": {
+    "VerifyBrandClaimsResponse": [
+     "VerifyBrandClaimsResponseBulk",
+     "VerifyBrandClaimsErrorResponse"
+    ]
+   }
+  },
+  "content_standards/calibrate_content_response": {
+   "aliases": {},
+   "unions": {
+    "CalibrateContentResponse": [
+     "CalibrateContentResponse1",
+     "CalibrateContentResponse2"
+    ]
+   }
+  },
+  "content_standards/get_content_standards_response": {
+   "aliases": {},
+   "unions": {
+    "GetContentStandardsResponse": [
+     "GetContentStandardsResponse1",
+     "GetContentStandardsResponse2"
+    ]
+   }
+  },
+  "content_standards/get_media_buy_artifacts_response": {
+   "aliases": {},
+   "unions": {
+    "GetMediaBuyArtifactsResponse": [
+     "GetMediaBuyArtifactsResponse1",
+     "GetMediaBuyArtifactsResponse2"
+    ]
+   }
+  },
+  "content_standards/validate_content_delivery_response": {
+   "aliases": {},
+   "unions": {
+    "ValidateContentDeliveryResponse": [
+     "ValidateContentDeliveryResponse1",
+     "ValidateContentDeliveryResponse2"
+    ]
+   }
+  },
+  "core/budget_allocation": {
+   "aliases": {},
+   "unions": {
+    "OptimizationGoal": [
+     "OptimizationGoal5",
+     "OptimizationGoal6",
+     "OptimizationGoal7"
+    ]
+   }
+  },
+  "core/canonical_product": {
+   "aliases": {},
+   "unions": {
+    "PublisherProperty": [
+     "PublisherProperty5",
+     "PublisherProperty6",
+     "PublisherProperty7"
+    ]
+   }
+  },
+  "core/format": {
+   "aliases": {
+    "Assets94": "Assets29"
+   },
+   "unions": {}
+  },
+  "core/product": {
+   "aliases": {},
+   "unions": {
+    "PublisherProperty": [
+     "PublisherProperty85",
+     "PublisherProperty86",
+     "PublisherProperty87"
+    ]
+   }
+  },
+  "core/product_filters": {
+   "aliases": {},
+   "unions": {
+    "SignalTargetingItem": [
+     "SignalTargetingItem5",
+     "SignalTargetingItem6",
+     "SignalTargetingItem7"
+    ]
+   }
+  },
+  "core/transformer": {
+   "aliases": {},
+   "unions": {
+    "InputFormat": [
+     "InputFormat18",
+     "InputFormat19",
+     "InputFormat20",
+     "InputFormat21",
+     "InputFormat22",
+     "InputFormat23",
+     "InputFormat24",
+     "InputFormat25",
+     "InputFormat26",
+     "InputFormat27",
+     "InputFormat28",
+     "InputFormat29",
+     "InputFormat30",
+     "InputFormat31",
+     "InputFormat32",
+     "InputFormat33"
+    ]
+   }
+  },
+  "creative/get_creative_features_response": {
+   "aliases": {},
+   "unions": {
+    "GetCreativeFeaturesResponse": [
+     "GetCreativeFeaturesResponse1",
+     "GetCreativeFeaturesResponse2",
+     "GetCreativeFeaturesResponse3"
+    ]
+   }
+  },
+  "creative/list_creatives_response": {
+   "aliases": {
+    "Creatives": "Creative",
+    "Creatives1": "Creative"
+   },
+   "unions": {}
+  },
+  "creative/preview_creative_response": {
+   "aliases": {},
+   "unions": {
+    "PreviewCreativeResponse": [
+     "PreviewCreativeResponse1",
+     "PreviewCreativeResponse2",
+     "PreviewCreativeResponse3",
+     "PreviewCreativeResponse4"
+    ]
+   }
+  },
+  "creative/sync_creatives_response": {
+   "aliases": {},
+   "unions": {
+    "SyncCreativesResponse": [
+     "SyncCreativesResponse1",
+     "SyncCreativesResponse2",
+     "SyncCreativesResponse3"
+    ]
+   }
+  },
+  "enums/signal_catalog_type": {
+   "aliases": {
+    "SignalCatalogType": "SignalAvailabilityType"
+   },
+   "unions": {}
+  },
+  "media_buy/build_creative_request": {
+   "aliases": {},
+   "unions": {
+    "SignalCondition": [
+     "SignalCondition5",
+     "SignalCondition6",
+     "SignalCondition7"
+    ]
+   }
+  },
+  "media_buy/build_creative_response": {
+   "aliases": {},
+   "unions": {
+    "BuildCreativeResponse": [
+     "BuildCreativeResponse1",
+     "BuildCreativeResponse2",
+     "BuildCreativeResponse3",
+     "BuildCreativeResponse4",
+     "BuildCreativeResponse5",
+     "BuildCreativeResponse6"
+    ]
+   }
+  },
+  "media_buy/create_media_buy_response": {
+   "aliases": {},
+   "unions": {
+    "CreateMediaBuyResponse": [
+     "CreateMediaBuyResponse1",
+     "CreateMediaBuyResponse2",
+     "CreateMediaBuyResponse3"
+    ]
+   }
+  },
+  "media_buy/log_event_response": {
+   "aliases": {},
+   "unions": {
+    "LogEventResponse": [
+     "LogEventResponse1",
+     "LogEventResponse2"
+    ]
+   }
+  },
+  "media_buy/provide_performance_feedback_response": {
+   "aliases": {},
+   "unions": {
+    "ProvidePerformanceFeedbackResponse": [
+     "ProvidePerformanceFeedbackResponse1",
+     "ProvidePerformanceFeedbackResponse2"
+    ]
+   }
+  },
+  "media_buy/sync_audiences_response": {
+   "aliases": {},
+   "unions": {
+    "SyncAudiencesResponse": [
+     "SyncAudiencesResponse1",
+     "SyncAudiencesResponse2",
+     "SyncAudiencesResponse3"
+    ]
+   }
+  },
+  "media_buy/sync_catalogs_response": {
+   "aliases": {},
+   "unions": {
+    "SyncCatalogsResponse": [
+     "SyncCatalogsResponse1",
+     "SyncCatalogsResponse2",
+     "SyncCatalogsResponse3"
+    ]
+   }
+  },
+  "media_buy/sync_event_sources_response": {
+   "aliases": {},
+   "unions": {
+    "SyncEventSourcesResponse": [
+     "SyncEventSourcesResponse1",
+     "SyncEventSourcesResponse2"
+    ]
+   }
+  },
+  "media_buy/update_media_buy_response": {
+   "aliases": {},
+   "unions": {
+    "UpdateMediaBuyResponse": [
+     "UpdateMediaBuyResponse1",
+     "UpdateMediaBuyResponse2",
+     "UpdateMediaBuyResponse3"
+    ]
+   }
+  },
+  "protocol/get_principal_response": {
+   "aliases": {
+    "PrincipalCurrentResult": "Result2",
+    "PrincipalReadFailedResult": "Result5",
+    "PrincipalRecognizedResult": "Result3",
+    "PrincipalUnconfiguredResult": "Result"
+   },
+   "unions": {}
+  },
+  "protocol/sync_principal_response": {
+   "aliases": {
+    "PrincipalAppliedResult": "Result13",
+    "PrincipalSyncFailedResult": "Result15",
+    "PrincipalValidatedResult": "Result"
+   },
+   "unions": {}
+  },
+  "signals/activate_signal_response": {
+   "aliases": {},
+   "unions": {
+    "ActivateSignalResponse": [
+     "ActivateSignalResponse1",
+     "ActivateSignalResponse2"
+    ]
+   }
+  },
+  "trusted_match/identity_match_response": {
+   "aliases": {
+    "IdentityMatchResponse": "IdentityMatchResponseRouterPublisher"
+   },
+   "unions": {}
+  }
+ },
  "tree": "src/adcp/types/domains",
+ "unions_read": 30,
  "words_read": 4360
 }

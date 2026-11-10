@@ -283,4 +283,10 @@ AssignedPackage = AssignedPackagesItem
 Creative = CreativesItem
 
 
+Creatives = CreativesItem
+
+
+Creatives1 = CreativesItem
+
+
 __all__ = ["ListCreativesResponse"]

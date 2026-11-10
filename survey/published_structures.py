@@ -96,6 +96,18 @@ def index(revision: str, repo: Path) -> dict[str, Any]:
         module: {word: blob for word, blob in structure.from_source(text).items()}
         for module, text in sorted(sources.items())
     }
+    #: **UPSTREAM'S OWN STATEMENTS, BESIDE THE DECLARATIONS AND NEVER MIXED INTO THEM**
+    #: (``codegen.structure.statements_from_source``, which carries the whole reason).  A
+    #: declaration is a SUBJECT and has a structure; a statement is a NAME for a subject
+    #: already declared and has none, so folding the two would put a word into the
+    #: structural join at a structure that is not its own.  Modules that state nothing are
+    #: dropped, so this key is the seven and thirty modules that do rather than 1,088
+    #: empty entries.
+    statements = {
+        module: read
+        for module, text in sorted(sources.items())
+        if any((read := structure.statements_from_source(text)).values())
+    }
     kinds: collections.Counter[str] = collections.Counter(
         (blob or {}).get("kind", "none") for words in modules.values() for blob in words.values()
     )
@@ -106,8 +118,11 @@ def index(revision: str, repo: Path) -> dict[str, Any]:
         "identity": structure.STRUCTURAL_IDENTITY,
         "modules_read": len(modules),
         "words_read": sum(len(w) for w in modules.values()),
+        "aliases_read": sum(len(r["aliases"]) for r in statements.values()),
+        "unions_read": sum(len(r["unions"]) for r in statements.values()),
         "by_kind": dict(sorted(kinds.items())),
         "modules": modules,
+        "statements": statements,
     }
 
 
@@ -132,7 +147,9 @@ def main() -> int:
     args.out.write_text(json.dumps(blob, indent=1, sort_keys=True) + "\n")
     print(
         f"{blob['words_read']} published words in {blob['modules_read']} modules at "
-        f"{blob['revision'][:9]} ({blob['named']}); by kind {blob['by_kind']} -> {args.out}"
+        f"{blob['revision'][:9]} ({blob['named']}); by kind {blob['by_kind']}; "
+        f"statements {blob['aliases_read']} aliases + {blob['unions_read']} unions in "
+        f"{len(blob['statements'])} modules -> {args.out}"
     )
     return 0
 

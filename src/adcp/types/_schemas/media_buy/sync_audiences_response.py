@@ -189,4 +189,7 @@ SyncAudiencesResponse1 = SyncAudiencesSuccess
 SyncAudiencesResponse2 = SyncAudiencesError
 
 
+SyncAudiencesResponse3 = SyncAudiencesSubmitted
+
+
 __all__ = ["SyncAudiencesResponse"]

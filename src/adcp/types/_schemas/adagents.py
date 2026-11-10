@@ -505,4 +505,22 @@ PropertyFeature = PropertyFeaturesItem
 RevokedPublisherDomain = RevokedPublisherDomainsItem
 
 
+RevokedPublisherDomain1 = RevokedPublisherDomainsItem
+
+
+RevokedPublisherDomain2 = RevokedPublisherDomainsItem
+
+
+RevokedPublisherDomain3 = RevokedPublisherDomainsItem
+
+
+RevokedPublisherDomain4 = RevokedPublisherDomainsItem
+
+
+RevokedPublisherDomain5 = RevokedPublisherDomainsItem
+
+
+RevokedPublisherDomain6 = RevokedPublisherDomainsItem
+
+
 __all__ = ["AdCPAgentsAuthorization"]

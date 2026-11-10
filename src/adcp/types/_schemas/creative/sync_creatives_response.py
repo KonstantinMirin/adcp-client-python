@@ -140,4 +140,7 @@ SyncCreativesResponse1 = SyncCreativesSuccess
 SyncCreativesResponse2 = SyncCreativesError
 
 
+SyncCreativesResponse3 = SyncCreativesResponseSubmitted
+
+
 __all__ = ["SyncCreativesResponse"]

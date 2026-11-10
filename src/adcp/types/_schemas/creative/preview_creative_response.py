@@ -194,6 +194,9 @@ PreviewCreativeResponse2 = PreviewCreativeBatchResponse
 PreviewCreativeResponse3 = PreviewCreativeVariantResponse
 
 
+PreviewCreativeResponse4 = PreviewCreativeSubmitted
+
+
 Result = ResultsItem
 
 

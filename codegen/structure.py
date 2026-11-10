@@ -44,7 +44,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -525,7 +525,88 @@ REFUSALS = {
         "a subject we do not, or the two states differ at an element -- and which of those "
         "it is is a question for the bundle and not for a join"
     ),
+    "target-unbound": (
+        "upstream's own statement says this word is another word of theirs, and that other "
+        "word is not bound here -- so the statement is READ and still resolves to nothing. "
+        "An alias of an unbound name is unbound, never a guess at what it meant"
+    ),
+    "arity": (
+        "upstream's root union and ours do not list the same number of arms, so the Nth "
+        "arm of one is not the Nth of the other and the positions cannot be paired.  The "
+        "whole family is refused rather than the arms that happen to line up"
+    ),
+    "const-disagrees": (
+        "a property BOTH arms pin a ``const`` on does not agree across the pair, so the "
+        "two positions are not one subject however they are ordered.  The whole family is "
+        "refused, which is what makes a mis-ordered union detected instead of mis-bound"
+    ),
 }
+
+
+def statements_from_source(text: str) -> dict[str, Any]:
+    """One published module's own STATEMENTS, which are names and never subjects.
+
+    **A SECOND KIND, DELIBERATELY NOT FOLDED INTO :func:`from_source`.**  That reader
+    records a DECLARATION and its structural identity -- a subject.  A statement binds a
+    name to something already declared, so it has no structure of its own and indexing it
+    as though it did would make the oracle lie: ``Creatives1 = Creative`` would arrive as a
+    word with ``Creative``'s structure, and a join keyed on structure would then see two
+    of upstream's words at one identity and refuse BOTH as ``ambiguous``.  Measured over
+    ``2954b258b:src/adcp/types/domains`` -- 1,088 modules, 4,360 declarations -- there are
+    18 of the first kind and 30 of the second, and the index carried neither.
+
+    Two kinds are returned, because they resolve by different rules:
+
+    ``aliases``   ``X = Y`` with ``Y`` a bare name.  Eighteen in seven modules.  It
+                  resolves through whatever ``Y`` resolves to, so it is bound by
+                  :func:`bind_statements` AFTER the structural join has decided ``Y``.
+    ``unions``    ``X = A | B | ...`` with every arm a bare name -- upstream's generated
+                  spelling of a root union.  **THIS IS WHERE AN ORDINAL COMES FROM, and
+                  it is a POSITION and not a suffix**: upstream's statement lists its arms
+                  in the document's own order, so the Nth arm of their union is the Nth
+                  arm of ours, and no digit in any word is read.  A rule that parsed the
+                  ``1`` out of ``CreateMediaBuyResponse1`` would be a text match over a
+                  spelling their generator chose; this is their own statement of the
+                  order.
+
+    A ``TypeAlias`` annotation is the same statement with a type given, so an ``AnnAssign``
+    is read exactly as an ``Assign`` -- upstream writes both, and the annotation is about
+    the name rather than about the subject.
+    """
+    aliases: dict[str, str] = {}
+    unions: dict[str, list[str]] = {}
+    for node in ast.parse(text).body:
+        if isinstance(node, ast.Assign):
+            if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+                continue
+            word, value = node.targets[0].id, node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            word, value = node.target.id, node.value
+        else:
+            continue
+        if value is None or word.startswith("_") or word == "model_config":
+            continue
+        if isinstance(value, ast.Name):
+            aliases[word] = value.id
+        else:
+            arms = _arms_of(value)
+            if arms:
+                unions[word] = arms
+    return {"aliases": aliases, "unions": unions}
+
+
+def _arms_of(node: ast.expr) -> list[str]:
+    """``A | B | C`` as ``["A", "B", "C"]``, or ``[]`` where any arm is not a bare name.
+
+    All-or-nothing on purpose: a union one of whose arms is a subscript or a literal is not
+    a list of this module's words, and half of one is not a position table.
+    """
+    if isinstance(node, ast.Name):
+        return [node.id]
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        left, right = _arms_of(node.left), _arms_of(node.right)
+        return [*left, *right] if left and right else []
+    return []
 
 
 def bind(
@@ -586,6 +667,117 @@ def bind(
     return bound, refused
 
 
+def pins_of(blob: Mapping[str, Any] | None) -> dict[str, Any]:
+    """``{property: pinned value}`` for one model structure -- the ``const``s it states.
+
+    Read back off :func:`model`'s own element form, so there is no second notion of what a
+    pin is: an element whose third slot is non-empty is a pinned property, and the slot is
+    the value's canonical JSON.  Used by :func:`bind_statements`' const gate, which is the
+    one place a union's ORDER is checked against something the document states.
+    """
+    if not blob or blob.get("kind") != "model":
+        return {}
+    return {
+        element[0]: json.loads(element[2])
+        for element in blob.get("elements", ())
+        if len(element) > 2 and element[2] != ""
+    }
+
+
+def bind_statements(
+    statements: Mapping[str, Any],
+    branches: Sequence[str],
+    pins: Mapping[str, Mapping[str, Any]],
+    resolved: Mapping[str, str],
+    declared: Collection[str],
+    occupied: frozenset[str],
+) -> tuple[dict[str, str], dict[str, str]]:
+    """``(word -> our symbol, word -> why not)`` for upstream's own STATEMENTS of a module.
+
+    Run AFTER :func:`bind`, and handed that join's answer as ``resolved``, because both
+    kinds here resolve THROUGH a word the structural join has already decided.  Neither
+    reads a letter of any spelling.
+
+    **THE ALIAS KIND IS UPSTREAM'S OWN SENTENCE, FOLLOWED.**  ``Creatives1 = Creative``
+    says what ``Creatives1`` denotes; the only question is what ``Creative`` denotes here,
+    and that is ``resolved`` or -- where our module declares the word itself -- the word.
+    An alias whose target is unbound is refused ``target-unbound`` rather than guessed: a
+    statement that is read and still resolves to nothing is not a binding.
+
+    **THE UNION KIND IS A POSITION, GATED TWICE, and the gates are what make a
+    mis-ordered union detected instead of mis-bound.**  ``branches`` is OUR root's branch
+    order, which is the document's ``oneOf`` order (``ir.ClassDecl.branches``), and
+    upstream's statement lists theirs in the same document's order.  So arm *i* pairs with
+    arm *i*, and:
+
+    * the two families must list the SAME NUMBER of arms (``arity``), so a union either
+      side expanded is refused whole rather than paired as far as it goes; and
+    * every property BOTH sides pin a ``const`` on must AGREE (``const-disagrees``), which
+      is the discriminator the document states and the one fact a reordering would break.
+
+    ``pins`` is ``word -> {property: const}`` for both sides' arms, keyed by word; a
+    property only one side pins is not evidence either way and is skipped, because the two
+    generators do not agree about where a discriminator is restated.
+
+    **AN ARM REFUSED BY :func:`bind` ON SHAPE IS STILL BOUND HERE, and that is the point
+    of a second key rather than a loosening of the first.**  ``adcp-client-python-eknd``:
+    upstream's arms 1 and 3 carry a ``status`` default their own document does not state,
+    so their SHAPE differs from ours and :func:`bind` is right to refuse -- shape cannot
+    tell "a different subject" from "upstream's generator diverged".  The document's
+    position can: the pointer is the same, so the subject is the same, and ours is the one
+    that matches the document.  Upstream uses these four only as BASES, so a restored class
+    subclasses ours and inherits the requiredness the document states -- stricter than what
+    upstream shipped, with nothing weakened.
+    """
+    bound: dict[str, str] = {}
+    refused: dict[str, str] = {}
+
+    def target_of(word: str) -> str | None:
+        if word in resolved:
+            return resolved[word]
+        return word if word in declared else None
+
+    for word, arms in sorted(statements.get("unions", {}).items()):
+        # **THE UNION'S OWN WORD BEING TAKEN DOES NOT REFUSE ITS ARMS.**  It usually IS
+        # taken -- upstream's union word is the document's root word and our module
+        # declares the root -- and treating that as a refusal of the family bound none of
+        # the four ordinals on the first run.  The word and the positions are two
+        # questions: the word is the root's, which the TITLE rule owns, and the arms are
+        # this key's.
+        if word not in occupied and word not in resolved:
+            refused[word] = "the-root's-question"
+        if len(arms) != len(branches):
+            for arm in arms:
+                refused[arm] = "arity"
+            continue
+        disagrees = [
+            arm
+            for arm, ours in zip(arms, branches, strict=True)
+            for key in set(pins.get(arm, {})) & set(pins.get(ours, {}))
+            if pins[arm][key] != pins[ours][key]
+        ]
+        if disagrees:
+            for arm in arms:
+                refused[arm] = "const-disagrees"
+            continue
+        for arm, ours in zip(arms, branches, strict=True):
+            if arm in occupied or arm in resolved:
+                refused.setdefault(arm, "ours-already")
+            else:
+                bound[arm] = ours
+
+    for word, target in sorted(statements.get("aliases", {}).items()):
+        if word in occupied or word in resolved or word in bound:
+            refused[word] = "ours-already"
+            continue
+        symbol = target_of(target)
+        if symbol is None:
+            refused[word] = "target-unbound"
+        else:
+            bound[word] = symbol
+    return bound, refused
+
+
 def published(path: Path = PUBLISHED) -> dict[str, dict[str, dict[str, Any] | None]]:
     """Upstream's published structures, module by module, from :data:`PUBLISHED`.
 
@@ -597,6 +789,21 @@ def published(path: Path = PUBLISHED) -> dict[str, dict[str, dict[str, Any] | No
     blob: dict[str, Any] = json.loads(path.read_text())
     modules: dict[str, dict[str, dict[str, Any] | None]] = blob["modules"]
     return modules
+
+
+def published_statements(path: Path = PUBLISHED) -> dict[str, dict[str, Any]]:
+    """Upstream's published STATEMENTS, module by module, from :data:`PUBLISHED`.
+
+    :func:`published`'s sibling and deliberately not its contents
+    (:func:`statements_from_source`): one answers "what subject did upstream declare here
+    and what is its structure", the other "what names did upstream bind to something it had
+    already declared".  Read once per run and threaded the same way.
+
+    ``{}`` where the index predates this key, so an index not yet regenerated binds nothing
+    rather than failing a run -- the counts in :func:`provenance` are what say which it is.
+    """
+    blob: dict[str, Any] = json.loads(path.read_text())
+    return blob.get("statements") or {}
 
 
 def provenance(path: Path = PUBLISHED) -> dict[str, Any]:

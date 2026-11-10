@@ -31,4 +31,7 @@ class SignalAvailabilityType(StrEnum):
 strict_validate = strict_alias(__adcp_schema__, "SignalAvailabilityType", SignalAvailabilityType)
 
 
+SignalCatalogType = SignalAvailabilityType
+
+
 __all__ = ["SignalAvailabilityType"]

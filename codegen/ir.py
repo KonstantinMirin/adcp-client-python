@@ -852,6 +852,15 @@ class Module:
     #: position for the same reason: the symbol it binds already has the name its own
     #: position derives.
     restructured: Mapping[str, str] = field(default_factory=dict)
+    #: **The words upstream's own STATEMENTS bind**, which is the third key and the only
+    #: one that derives nothing: ``codegen.structure.bind_statements`` reads a sentence
+    #: upstream wrote -- ``Creatives1 = Creative``, or a root union listing its arms in the
+    #: document's order -- and follows it.  Beside :attr:`restructured` rather than inside
+    #: it because the two answer different questions about one word: that one matched a
+    #: structure, this one was TOLD.  The ordinal arms live here, and they are a POSITION
+    #: in upstream's own union statement paired with a position in ours -- never a digit
+    #: parsed out of a spelling.
+    stated: Mapping[str, str] = field(default_factory=dict)
     #: **Every published word this module did NOT bind, beside the reason**
     #: (``codegen.structure.REFUSALS``).  An ambiguous join is a defect to NAME and not one
     #: to break by picking a side, so the refusals are a record of the run and not a

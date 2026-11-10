@@ -86,6 +86,9 @@ UpdateRightsResponse._branch_models = (UpdateRightsSuccess, UpdateRightsError,)
 UpdateRightsResponse.model_rebuild(force=True)
 
 
+UpdateRightsResponse1 = UpdateRightsSuccess
+
+
 UpdateRightsResponse2 = UpdateRightsError
 
 

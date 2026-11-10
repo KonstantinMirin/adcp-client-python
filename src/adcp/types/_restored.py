@@ -44,7 +44,7 @@ import types
 #: The restored modules of ``adcp.types``, by MODULE.
 #:
 #: Upstream's own hand-written machinery, put back at upstream's own path byte for byte,
-#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Nine today.
+#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Ten today.
 #: Written here because a shipped package cannot read a survey table, and held against
 #: that table by the gate named in this module's docstring -- so the authority is byte
 #: identity against upstream's commit and this tuple is the derivation's cached answer
@@ -65,6 +65,13 @@ import types
 #: -- resolves here already.  It brings ``PRODUCT_FORMAT_DECLARATION_SCHEMA`` and
 #: ``check_declaration_rules``, which an adapter could never have served because one is a
 #: hand-written function and the other is a document path a re-export has no name for.
+#:
+#: ``canonical_creative`` is the one this epic's #1 item was about (`adcp-client-python-eh82`):
+#: 1,386 lines, 36 classes and 17 functions, and the path was served by a 2.5 KB re-export
+#: adapter -- which is why ``Format``, ``CanonicalBoundaryModel``,
+#: ``strip_legacy_creative_identity`` and the 31-entry ``PRIMARY_CANONICAL_MODELS`` tuple
+#: were simply absent.  An adapter restates names; it cannot supply a function, a tuple of
+#: model types, or a base class.
 MODULES = (
     "_geo_place_keys",
     "_legacy_assets",
@@ -73,6 +80,7 @@ MODULES = (
     "_str_enum",
     "_wire",
     "base",
+    "canonical_creative",
     "error_narrowing",
     "media_buy_status_helpers",
 )

@@ -1518,6 +1518,7 @@ def decidable(
     constrained: Mapping[object, str] = {},
     abroad: frozenset[str] = frozenset(),
     upstream: Mapping[str, Mapping[str, object] | None] = {},
+    statements: Mapping[str, object] = {},
     *,
     known: Collection[str],
 ) -> tuple[Module, ir.Module] | Refusal:
@@ -1610,7 +1611,9 @@ def decidable(
     # ``mod.root`` and not the title read again: the two agree by the assertion above, so
     # this spends the reading that is already in hand.
     subjects = frozenset(rooted_subjects(bundle_dir)) - {mod.root}
-    bound = lower_names.assign(mod, carriers, elsewhere, judged, abroad, subjects, upstream)
+    bound = lower_names.assign(
+        mod, carriers, elsewhere, judged, abroad, subjects, upstream, statements
+    )
     if isinstance(bound, Refusal):
         # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
         # one class name, and a branch with no identity.  Returned from here because this
@@ -1764,6 +1767,12 @@ def emit(
     #: Read here and not in ``lower/`` for §8's reason as well: nothing under ``lower/``
     #: opens a file, and the join is a function of its arguments.
     upstream = structure.published()
+    #: **AND UPSTREAM'S OWN STATEMENTS, from the same file and read the same once**
+    #: (``codegen.structure.published_statements``).  A sibling of the structures and not
+    #: part of them: one says what subject upstream declared at a position, the other what
+    #: names upstream BOUND to a subject it had already declared, and the second resolves
+    #: through the first.
+    upstream_statements = structure.published_statements()
     # **ONE SCAN of the bundle, and three readings of it** (``bundle.edges``): the
     # per-document ``named`` set, the pointers a root ``allOf`` composes, and the
     # reference graph the order is computed over.  Read from the BUNDLE rather than from
@@ -2755,6 +2764,8 @@ def emit(
             # ours agree on 1,081 modules of the two, and the handful that differ are
             # reported by the gate rather than guessed at here.
             upstream.get(module_path(document), {}),
+            # Upstream's own statements for that same module, looked up the same way.
+            upstream_statements.get(module_path(document), {}),
             known=known,
         )
         if isinstance(outcome, Refusal):
