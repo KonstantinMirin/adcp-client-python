@@ -28,6 +28,32 @@ are compared, never averaged.
 **NOTHING HERE FIXES ANYTHING.**  A class-3 finding is written out as a defect row with its
 document pointer, for whoever owns that emission; an instrument that repaired its subject
 could not be trusted about it.
+
+**AND ``wrong-subject`` IS SELF-ERASING, WHICH A READER OF THIS TABLE HAS TO KNOW BEFORE
+REGENERATING IT** (`adcp-client-python-y34k`, measured 2026-11-10).  That bucket is decided
+by resolving the word in THIS tree and reading the class's ``__adcp_schema__`` -- so once the
+flat word is upstream's own hand-written class, as their ``_eager`` states it and
+``adcp.types._restored.STATED`` now serves it, the key finds no document at the word and the
+same failures come back ``unattributed``.  **Measured on ONE junit, before and after that one
+change -- the 13,586-passing run of 2026-11-10, digest ``b2598de51f05ea2e7a34`` before and
+``4f808758bf5dba87b4f8`` after: wrong-subject 262 -> 87 and unattributed 221 -> 396, with
+``upstream-laxness`` 332, ``mixed`` 54 and the 870 total all unmoved.**  The bucket counts a
+SEAM, and a repaired seam has nothing for it to see.  (``y34k`` quotes 866 / 217 off an
+earlier junit of the same tree; the two runs differ by 4 tests whose ids carry a hash, so the
+pair to compare is always one junit's two readings and never two runs' figures.)
+
+Two consequences, both practical.  A re-run of this instrument over an old junit from a tree
+that has the ruling reports a smaller wrong-subject than the junit's own run had, and that is
+not a correction of the earlier figure.  And measuring whether the ruling worked is a
+question for the SUITE and not for this table: run both halves and diff the test ids.
+**Measured that way on the same pair of runs: of the 262, 167 RECOVERED and 95 CORRECTLY
+STILL FAIL, with 0 regressed** -- and the second column is not one cause.  28 of the 95 are
+the ones this table said in advance would not come back (``eknd``'s clause: upstream's
+hand-written class BASES on ours, so the restored class subclasses ours and inherits the
+document's requirement).  The other 67 are tests where the word DID re-point and a second
+requirement of upstream's own hand-written class then bit, or where the failure moved off
+``ValidationError`` entirely -- so a row saying "the restore replaces the subject" is a claim
+about the SUBJECT and never a prediction that the test passes.
 """
 
 from __future__ import annotations

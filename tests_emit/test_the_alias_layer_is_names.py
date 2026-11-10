@@ -192,11 +192,32 @@ def test_every_owed_spelling_resolves_at_the_flat_namespace(
     Reading 8 asks the same question of the installed wheel
     (``tests/test_the_wheel_is_the_artifact.py``), because an alias that resolves only from
     the source tree is not shipped.
+
+    **AND THE IDENTITY CLAUSE HAS ONE EXCEPTION, WHICH IS UPSTREAM'S OWN STATEMENT AND NOT A
+    CONCESSION** (``adcp-client-python-y34k``).  This table is keyed on a DOCUMENT and the
+    word that document gives, which is the right key for the domain spelling and for
+    ``adcp.types.compat``.  It is not the right key for the FLAT word where upstream's own
+    ``_eager.py`` binds that word to one of their hand-written files: they write
+    ``Format = _canonical_creative.Format``, so ``from adcp.types import Format`` is their
+    canonical class -- requiring ``format_kind`` and ``params`` -- and not
+    ``core/format.json``'s root, which requires ``format_id`` and ``name``.  262 of the 866
+    remaining ``ValidationError`` tests of their suite were this table's object answering the
+    flat word.
+
+    So for the 26 words ``adcp.types._restored.STATED`` names, the reading is BOTH halves and
+    neither is dropped: the flat word is upstream's stated subject, **and the table's own
+    object is still reachable at the module the table declares** -- which is what keeps this
+    an exception about WHICH SUBJECT A NAMESPACE DENOTES and not a name the layer stopped
+    serving.  The split is keyed on upstream's statement, so a word they stop binding that
+    way rejoins the identity clause by itself.
     """
+    stated = importlib.import_module("adcp.types._restored").STATED
     population = owed(rows)
     claimed("the flat spellings this layer owes", {r["name"] for r in population})
     failed: dict[str, str] = {}
     not_the_same: dict[str, str] = {}
+    upstream_states: dict[str, str] = {}
+    lost: dict[str, str] = {}
     for row in population:
         namespace: dict[str, object] = {}
         try:
@@ -205,14 +226,37 @@ def test_every_owed_spelling_resolves_at_the_flat_namespace(
             failed[row["name"]] = f"{type(error).__name__}: {error}"
             continue
         declared = getattr(importlib.import_module(row["declared_at"]), row["name"])
-        if namespace[row["name"]] is not declared:
-            not_the_same[row["name"]] = f"adcp.types.{row['name']} is not {row['declared_at']}.{row['name']}"
+        if namespace[row["name"]] is declared:
+            continue
+        where = stated.get(row["name"])
+        if where is None:
+            not_the_same[row["name"]] = (
+                f"adcp.types.{row['name']} is not {row['declared_at']}.{row['name']}"
+            )
+            continue
+        # Upstream's own statement decides the flat word.  Both halves asserted.
+        theirs = getattr(importlib.import_module(f"adcp.types.{where}"), row["name"])
+        if namespace[row["name"]] is not theirs:
+            not_the_same[row["name"]] = (
+                f"adcp.types.{row['name']} is neither {row['declared_at']}.{row['name']} nor "
+                f"adcp.types.{where}.{row['name']}, which upstream's own _eager states"
+            )
+            continue
+        if getattr(importlib.import_module(row["declared_at"]), row["name"], None) is not declared:
+            lost[row["name"]] = f"{row['declared_at']}.{row['name']} no longer resolves"
+        upstream_states[row["name"]] = f"adcp.types.{where}.{row['name']}"
     assert not failed, {
         "upstream spellings that do not resolve at the flat namespace": failed,
         "owed": len(population),
         "unresolved": len(failed),
     }
     assert not not_the_same, {"a second object wearing the flat spelling": not_the_same}
+    claimed("flat words upstream's own _eager takes from a restored file", upstream_states)
+    assert upstream_states, (
+        "no owed spelling is decided by upstream's own statement, so the exception above "
+        "grades nothing -- read adcp.types._restored.STATED"
+    )
+    assert not lost, {"the table's own object stopped resolving at the module it names": lost}
 
 
 def test_a_present_name_gains_the_flat_path_and_no_path_at_the_alias_module(
