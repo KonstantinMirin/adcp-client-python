@@ -314,6 +314,14 @@ extend-exclude = [
     # datamodel-code-generator output; regenerate with
     # scripts/vendor_reporting_status_preview.py rather than hand-editing.
     "src/adcp/reporting/_preview/_generated_models/",
+    # VENDORED, on the same terms: upstream's registry types are generated from
+    # `schemas/registry-openapi.yaml` by scripts/generate_registry_types.py, and that
+    # spec is not a document of the bundle THIS compiler compiles -- measured, nothing
+    # under `codegen/` opens a `.yaml` at all -- so its 155 classes are not reproducible
+    # here and the file is carried at upstream's bytes. Regenerate with that script
+    # rather than hand-editing (`make regenerate-registry`, which the restore of the
+    # script makes live again; it had been invoking a file this repository did not carry).
+    "src/adcp/types/registry.py",
     # THIS COMPILER'S OUTPUT, EXCLUDED ON THE POLICY THIS FILE ALREADY STATES.
     # Generated code is not linted here: the black config excludes `/types/domains/`
     # (the tree upstream's generator wrote) for the same reason, and the rule above
@@ -376,6 +384,15 @@ disable_error_code = ["import-not-found", "no-untyped-def", "var-annotated", "op
 # Same rationale as types/domains: codegen output, replaced wholesale at rc.2.
 [[tool.mypy.overrides]]
 module = "adcp.reporting._preview._generated_models.*"
+disable_error_code = ["valid-type", "assignment", "unused-ignore"]
+
+# Upstream's registry types, VENDORED. Generated from schemas/registry-openapi.yaml by
+# scripts/generate_registry_types.py -- an OpenAPI spec, not a document of the JSON-Schema
+# bundle this compiler compiles, so the 155 classes cannot be emitted here and the file is
+# carried at upstream's bytes. Same terms as the preview models above: generator output,
+# replaced wholesale by its own generator, so a finding here cannot be acted on.
+[[tool.mypy.overrides]]
+module = "adcp.types.registry"
 disable_error_code = ["valid-type", "assignment", "unused-ignore"]
 
 [[tool.mypy.overrides]]

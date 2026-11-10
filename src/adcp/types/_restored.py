@@ -60,7 +60,7 @@ import types
 #: The restored modules of ``adcp.types``, by MODULE.
 #:
 #: Upstream's own hand-written machinery, put back at upstream's own path byte for byte,
-#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Ten today.
+#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Eleven today.
 #: Written here because a shipped package cannot read a survey table, and held against
 #: that table by the gate named in this module's docstring -- so the authority is byte
 #: identity against upstream's commit and this tuple is the derivation's cached answer
@@ -88,6 +88,21 @@ import types
 #: ``strip_legacy_creative_identity`` and the 31-entry ``PRIMARY_CANONICAL_MODELS`` tuple
 #: were simply absent.  An adapter restates names; it cannot supply a function, a tuple of
 #: model types, or a base class.
+#:
+#: ``registry`` is VENDORED rather than restored-and-reproducible: upstream generates it
+#: from an OpenAPI spec that is not a document of the bundle this compiler compiles, so its
+#: 155 classes are unreproducible here whatever the emitter does.  It reaches this tuple by
+#: the same byte-identity reading as the other ten, because provenance is the only question
+#: this tuple answers.
+#:
+#: **AND 150 OF ITS NAMES ARE OFFERED FLAT HERE WHERE UPSTREAM OFFERS THEM ONLY AT THE
+#: MODULE PATH, which is an open question and not a decision.**  Upstream's own machinery
+#: writes ``from adcp.types.registry import BrandActivity``, which works either way;
+#: whether ``adcp.types.BrandActivity`` should ALSO answer is a surface question nobody has
+#: ruled on.  The survey's recorded flat surface cannot settle it -- measured, that
+#: 939-name reading omits ``MEDIA_BUY_LEGACY_STATUS_VALUES``, which 95 of upstream's own
+#: test files import flat and which this module exists for, so it is a filtered population
+#: and not upstream's whole flat surface.
 MODULES = (
     "_geo_place_keys",
     "_legacy_assets",
@@ -99,6 +114,7 @@ MODULES = (
     "canonical_creative",
     "error_narrowing",
     "media_buy_status_helpers",
+    "registry",
 )
 
 
