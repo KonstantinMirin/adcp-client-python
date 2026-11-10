@@ -97,7 +97,7 @@ from typing import (
 )
 
 import jsonschema
-from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, RootModel, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, TypeAdapter
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic.fields import FieldInfo
 from pydantic_core import (
@@ -109,6 +109,27 @@ from pydantic_core import (
 )
 
 from adcp.types._runtime import RuleBound, refuse
+
+#: **UPSTREAM'S OWN BASES, which ours DERIVE FROM** (`adcp-client-python-1zmw`).
+#:
+#: `adcp/types/base.py` is upstream's hand-written file restored byte for byte at upstream's
+#: own path, and it declares the two words this module also declares -- `AdCPBaseModel` and
+#: `AdCPRootModel`.  Two declarations of one word is two LINEAGES, and the cost is not a name
+#: clash but a behavioural one: `isinstance(value, adcp.types.base.AdCPBaseModel)` would be
+#: FALSE for every object the emitter produces, so upstream's machinery would import and then
+#: misbehave.  Deriving instead gives ONE lineage --
+#: `AdCPBaseModel -> SchemaBound -> RuleBound -> upstream's AdCPBaseModel -> BaseModel` --
+#: and `isinstance` holds against either spelling.
+#:
+#: **This direction and not the other**, because only one of the two files is ours to edit.
+#: Upstream's bytes stay upstream's, so the next version bump is a re-read of their file and
+#: not a merge of a copy; the edit that makes the lineage single is on OUR side of the line.
+#:
+#: No cycle: measured, nothing `base.py` reaches at module scope -- `adcp._deferred_adapters`,
+#: `adcp._formats`, `adcp.types._geo_place_keys`, `adcp.types._scalar`, `adcp.types._wire` --
+#: imports this module, and upstream's file cannot know it exists.
+from adcp.types.base import AdCPBaseModel as _UpstreamBaseModel
+from adcp.types.base import AdCPRootModel as _UpstreamRootModel
 
 #: The package the emitter writes both the modules and the documents into.  One
 #: JSON file per document, at the document's own bundle-relative path, so
@@ -1787,8 +1808,21 @@ class _Dispatching(ModelMetaclass):
         return super().__call__(*args, **data)
 
 
-class AdCPBaseModel(SchemaBound, metaclass=_Dispatching):
+class AdCPBaseModel(SchemaBound, _UpstreamBaseModel, metaclass=_Dispatching):
     """The base every emitted CLASS inherits.
+
+    **It DERIVES from upstream's `adcp.types.base.AdCPBaseModel`**, so the two spellings are
+    one lineage rather than two (:data:`_UpstreamBaseModel`, `adcp-client-python-1zmw`).  The
+    MRO is ``AdCPBaseModel -> SchemaBound -> RuleBound -> upstream's AdCPBaseModel ->
+    BaseModel``, and it resolves for a reason that is measured rather than hoped: our
+    metaclass :class:`_Dispatching` already DERIVES from pydantic's ``ModelMetaclass``, which
+    is upstream's, so the derived metaclass is ours and there is no conflict; and upstream's
+    ``AdCPBaseModel(BaseModel)`` declares no base of its own to fight ours.
+
+    ``RuleBound`` is not restated in the base list even though it is in the MRO: §8's
+    :class:`SchemaBound` already supplies it, and naming it twice would be one spelling of
+    the same linearisation.
+
 
     What is left here is the one thing that is a class's and not a root model's: the
     ``extra`` policy §2 of the semantics document derives from
@@ -1853,8 +1887,18 @@ class AdCPBaseModel(SchemaBound, metaclass=_Dispatching):
             delattr(cls, "__pydantic_extra__")
 
 
-class AdCPRootModel(SchemaBound, RootModel[Any]):
+class AdCPRootModel(SchemaBound, _UpstreamRootModel[Any]):
     """§4's third root shape: a root that is neither a class nor an alias.
+
+    **It DERIVES from upstream's `adcp.types.base.AdCPRootModel`** rather than from
+    ``RootModel`` directly, which is the same one-lineage reading :class:`AdCPBaseModel`
+    carries -- and here it also PRESERVES a property upstream's class exists for.  Upstream's
+    docstring: ``class X(RootModel[A | B])`` parametrizes a concrete class at the
+    ``RootModel[...]`` expression and that class carries pydantic's DEFAULT config, so the
+    whole union's validator is built right there, before ``X`` or any config ``X`` declares
+    exists.  Their class carries ``defer_build=True``, so parametrizing it defers instead
+    (#1694).  Taking it as our base inherits that config rather than shadowing it.
+
 
     ``docs/plan/architecture.md`` §8 declares it: "The semantics document's §4 now
     gives three shapes to a root model -- an array, a union mixing a scalar branch
