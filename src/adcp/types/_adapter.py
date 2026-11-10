@@ -115,7 +115,6 @@ from adcp.types.creative import PreviewCreativeSingleResponse as LegacyPreviewCr
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeResponse3
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeVariantResponse
 from adcp.types.creative import SyncCreativesRequest as LegacySyncCreativesRequest
-from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
 from adcp.types.enums import AudienceSource as AudienceSource
 from adcp.types.enums import PixelTrackingEvent as PixelTrackerEvent
@@ -149,7 +148,6 @@ from adcp.types.media_buy import PackageUpdate as LegacyPackageUpdate
 from adcp.types.media_buy import SyncAudiencesSuccess as SyncAudiencesSuccessResponse
 from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsSuccessResponse
 from adcp.types.media_buy import UpdateMediaBuyRequest as LegacyUpdateMediaBuyRequest
-from adcp.types.media_buy import UpdateMediaBuyResponseSubmitted as UpdateMediaBuyResponse3
 from adcp.types.pricing_options import CPMPricingOption as CpmAuctionPricingOption
 from adcp.types.pricing_options import CPMPricingOption as CpmFixedRatePricingOption
 from adcp.types.pricing_options import TimeBasedPricingOptionParametersTimeUnit as TimeUnit
@@ -273,7 +271,6 @@ __all__ = [
     "Source",
     "SyncAudiencesSuccessResponse",
     "SyncCatalogsSuccessResponse",
-    "SyncCreativesResponse1",
     "SyncCreativesSuccessResponse",
     "TextContent",
     "TimeUnit",
@@ -281,7 +278,6 @@ __all__ = [
     "Transform",
     "TrustedMatch",
     "UpdateMediaBuyResponse1",
-    "UpdateMediaBuyResponse3",
     "UpdateMediaBuySuccessResponse",
     "UrlContent",
     "VcpmAuctionPricingOption",
@@ -301,7 +297,6 @@ __all__ = [
 #: caller asked for.
 __adcp_refused__ = {
     "AcceptedLoss": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.legacy_purchase_continuation_input.AcceptedLoss, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AgentConfig": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.core.AgentConfig, which is NO-DOCUMENT-NO-SUBJECT",
     "AssetInstance": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'asset_type': the bare union under it admits a different set",
     "AssetInstanceType": "NO-DOCUMENT-NO-SUBJECT: upstream's expression names no arms to resolve: Literal['image', 'video', 'audio', 'text', 'html', 'url', 'css', 'javascript', '",
     "AuthorizedAgents": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
@@ -314,7 +309,6 @@ __adcp_refused__ = {
     "BrandIdentity": "DOCUMENT-WE-DO-NOT-COMPILE: upstream declares it at adcp.types.domains.brand_discovery.Brand, which is DOCUMENT-WE-DO-NOT-COMPILE",
     "CatalogGroupBinding": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.requirements.catalog_field_binding.CatalogFieldBinding1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "CpmVendorPricingOption": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.vendor_pricing_option.VendorPricingOption1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "CreativeApproval": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.get_media_buys_response.CreativeApproval, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "CreditLimit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.CreditLimit, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "DurationUnit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's own tree says no-such-module",
     "FormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
@@ -322,32 +316,18 @@ __adcp_refused__ = {
     "IdentityMatchTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.trusted_match.identity_match_response.TmpxMacro, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "ImageFormatAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's expression names no arms to resolve: _format_asset_class('image')",
     "LegacyProductFormatDeclaration": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'format_kind': the bare union under it admits a different set",
-    "PrincipalAppliedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.sync_principal_response.Result13, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PrincipalCurrentResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.get_principal_response.Result2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PrincipalReadFailedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.get_principal_response.Result5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalReadResult": "NO-DOCUMENT-NO-SUBJECT: arm 'PrincipalCurrentResult' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PrincipalRecognizedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.get_principal_response.Result3, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PrincipalSyncFailedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.sync_principal_response.Result15, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalSyncResult": "NO-DOCUMENT-NO-SUBJECT: arm 'PrincipalAppliedResult' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PrincipalUnconfiguredResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.get_principal_response.Result, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "PrincipalValidatedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.sync_principal_response.Result, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "Protocol": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.core.Protocol, which is NO-DOCUMENT-NO-SUBJECT",
     "ProviderRegistrationTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.trusted_match.provider_registration.TmpxMacro, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "PublisherDomain": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.canonical_product.PublisherDomain, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "Refine": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'scope': the bare union under it admits a different set",
     "RepeatableAssetGroup": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's expression names no arms to resolve: _repeatable_asset_group_class()",
-    "Setup": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.Setup, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncAccountsAccount": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.Account, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_audiences_request.Audience, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "UnknownFormatAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.format.UnknownFormatAsset, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "UnknownGroupAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.format.UnknownGroupAsset, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "VendorPricingOptionUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
-    "VerifyBrandClaimsErrorResponse": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsErrorResponse, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "VerifyBrandClaimsPayload": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsPayload, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "VerifyBrandClaimsSignedResponse": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsSignedResponse, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "VerifyBrandClaimsSignedSuccessPayload": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsSignedSuccessPayload, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "_generated": "UNRESOLVABLE-UPSTREAM",
-    "aliases": "NOT-A-TYPE: upstream's own tree says module",
     "v31": "UNRESOLVABLE-UPSTREAM",
     "validate_union": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.validation.validate_union, which is NO-DOCUMENT-NO-SUBJECT",
     "validation": "UNRESOLVABLE-UPSTREAM",
