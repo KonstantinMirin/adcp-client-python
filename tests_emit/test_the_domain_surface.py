@@ -42,6 +42,16 @@ tests and not one:
   the 3,091 classes the run declares**.  See
   :func:`test_every_class_the_tree_declares_is_reachable_at_one_domain_path`.
 
+  **WITH ONE SET CARVED OUT OF IT BY THE OWNER'S RULING OF 2026-11-10**
+  (``lower/names.A_POSITIONAL_NAME_IS_PRIVATE``): a class whose only available name is
+  ``<Base>Branch<i>`` is declared and is reachable at NO domain path.  Not an exception to
+  reading 6 so much as reading 4's placeholder rule meeting it -- "a name minted for want
+  of a subject must not become a name an application depends on" -- and the two sentences
+  disagreed in writing for ten days while the surface published six such names.  The
+  set is the run's own record and not a list, so the carve-out shrinks by itself as
+  the bundle titles those branches;
+  ``tests_emit/test_no_positional_name_is_public.py`` asserts the other direction.
+
 **WHAT THE SURFACE EXPORTS is §1's decision of 2026-10-30 as amended by reading 6 on
 2026-11-07, and is DERIVED here, never listed**: every document **ROOT**, every union
 **BRANCH**, every D2 type **ALIAS**, and every untitled **INNER** node.  Not the per-module
@@ -503,7 +513,22 @@ def test_every_class_the_tree_declares_is_reachable_at_one_domain_path(
         module = emit.module_path(document)
         bound = held.binds.get(module, {})
         private = importlib.import_module(f"adcp.types._schemas.{module.replace('/', '.')}")
-        for symbol in set(declared.values()) - set(bound):
+        # **THE POSITIONAL NAMES ARE SUBTRACTED, by the owner's ruling of 2026-11-10**
+        # (``lower/names.A_POSITIONAL_NAME_IS_PRIVATE``).  Reading 6's sentence is "reaches
+        # every class the tree declares", and the ruling carves one set out of it: a class
+        # whose only available name is ``<Base>Branch<i>`` is DECLARED -- deleting it would
+        # drop a branch from the union and refuse payloads the document admits -- and is reachable at
+        # NO domain path, because "a name minted for want of a subject must not become a
+        # name an application depends on".
+        #
+        # It is subtracted from the SET and not excused in the report, which is the
+        # difference between an amended reading and a suppression list: the run's own
+        # record says which names the ruling withheld (``emit.Emitted.positional``), so a
+        # class that stops being positional rejoins this test with nobody editing it, and
+        # ``tests_emit/test_no_positional_name_is_public.py`` is where the other direction
+        # is asserted -- that the withheld set is non-empty and that none of it is public.
+        # Measured over this bundle: 6 classes, over 6 modules of 4 domains.
+        for symbol in set(declared.values()) - set(bound) - held.positional.get(module, frozenset()):
             obj = getattr(private, symbol, None)
             if isinstance(obj, type):
                 classes[(obj.__module__, obj.__qualname__)] = f"{module}.{symbol}"

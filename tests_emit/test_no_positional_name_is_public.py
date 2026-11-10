@@ -25,17 +25,17 @@ in the suite asked the question, while
 output of the name rule.
 
 **WHAT IS FORBIDDEN IS PUBLISHING ONE, NEVER HAVING ONE.**  The branch is still declared
-under ``_schemas/`` and is still an arm of its union: deleting the class would drop an arm
+under ``_schemas/`` and is still a branch of its union: deleting the class would drop a branch
 and refuse payloads the document admits, so ``isinstance`` through the union and validation
 both still hold.  :func:`test_a_withheld_class_is_still_declared_and_still_validates` is
 that half, and it is as much of the ruling as the ban is.
 
-**THE POPULATION IS THE COMPILER'S OWN RECORD AND IS ASSERTED NON-EMPTY FIRST.**
+**THE SET IS THE COMPILER'S OWN RECORD AND IS ASSERTED NON-EMPTY FIRST.**
 ``emit.Emitted.positional`` is written by ``names.the_positional_names`` off the walk's hop
 table and the naming pass's symbol table -- not off the emitted text, and not off a regex
 over names: a regex for ``Branch\\d+`` was measured at 467 hits over this tree of which 457
 were ALIASES onto correctly-titled classes and one was a ``StrEnum`` read as "a class with
-no subject".  A gate whose population silently emptied would pass every assertion below
+no subject".  A gate whose set silently emptied would pass every assertion below
 while saying nothing, and a gate founded on today's six names would go vacuous the moment
 one of them is renamed; so the first test is that the rule still finds something, and
 every other test ranges over whatever it found.
@@ -62,7 +62,7 @@ BUNDLE = fresh.BUNDLE
 
 @pytest.fixture(scope="module")
 def run() -> emit.Emitted:
-    """One compile, shared: ``tests_emit/compiled.py`` holds it per population."""
+    """One compile, shared: ``tests_emit/compiled.py`` holds it per document set."""
     return compiled(BUNDLE, fresh.population())
 
 
@@ -92,10 +92,10 @@ def test_the_rule_still_finds_a_positional_name_to_withhold(
     """
     claimed("the names the ruling withholds", withheld)
     assert withheld, {
-        "the positional population is EMPTY": names.A_POSITIONAL_NAME_IS_PRIVATE,
+        "the positional set is EMPTY": names.A_POSITIONAL_NAME_IS_PRIVATE,
         "so every assertion in this file is vacuous": (
             "names.the_positional_names found nothing to withhold over the whole "
-            "population; either the derivation no longer recognises section 4's last "
+            "set; either the derivation no longer recognises section 4's last "
             "resort or emit stopped recording it"
         ),
     }
@@ -134,9 +134,9 @@ def test_no_public_all_carries_a_positional_name(
     reading the literal ``__all__`` assignment ``render.domain_module`` and
     ``render.flat_surface`` emit.  Both halves belong: a record that is right and a writer
     that re-derives a name from somewhere else would pass the test above and ship the
-    leak, which is the shape of defect §1's "read one record" rule exists against.
+    leak, which is the kind of defect §1's "read one record" rule exists against.
 
-    The population is every file of ``emit.Emitted.beside`` -- the domain aggregators, the
+    The scope is every file of ``emit.Emitted.beside`` -- the domain aggregators, the
     flat consolidation and D5's alias module -- so a fifth artifact gaining an ``__all__``
     is covered with no edit here.
     """
@@ -201,9 +201,9 @@ def test_a_withheld_class_is_still_declared_and_still_validates(
 ) -> None:
     """The other half of the ruling, which is as much of it as the ban is.
 
-    "Do not delete the branch's class -- that would drop a union arm and refuse payloads
+    "Do not delete the branch's class -- that would drop a branch from the union and refuse payloads
     the document admits."  So every withheld name is still a declaration of its private
-    module, and the union whose arm it is still lists it: an instance of the branch is
+    module, and the union whose branch it is still lists it: an instance of the branch is
     still an instance of the union, which is what makes a consumer's ``isinstance`` over
     the dispatch true and the validation of a payload the document admits possible.
 
@@ -212,7 +212,7 @@ def test_a_withheld_class_is_still_declared_and_still_validates(
     object the ruling withheld a public name from still exists.
     """
     missing: dict[str, str] = {}
-    unarmed: dict[str, str] = {}
+    not_a_branch: dict[str, str] = {}
     for module, words in sorted(withheld.items()):
         private = importlib.import_module(f"adcp.types._schemas.{module.replace('/', '.')}")
         for word in sorted(words):
@@ -220,10 +220,10 @@ def test_a_withheld_class_is_still_declared_and_still_validates(
             if held is None:
                 missing[f"{module}.{word}"] = "the class the ruling withheld a name from is gone"
                 continue
-            # The union's arms, as the runtime holds them: a branch class subclasses its
-            # union base, and the base lists its arms for the dispatch.  Both directions
+            # The union's branches, as the runtime holds them: a branch class subclasses its
+            # union base, and the base lists its branches for the dispatch.  Both directions
             # are asserted because the ban could break either -- a class dropped from the
-            # arm list still imports, and a class that is no longer a subclass still
+            # branch list still imports, and a class that is no longer a subclass still
             # appears in the list.
             bases = [
                 base
@@ -231,9 +231,9 @@ def test_a_withheld_class_is_still_declared_and_still_validates(
                 if getattr(base, "_branch_models", None) is not None
             ]
             if bases and not any(held in (base._branch_models or ()) for base in bases):
-                unarmed[f"{module}.{word}"] = (
-                    f"is not among the arms of {bases[0].__name__}, so a payload the "
+                not_a_branch[f"{module}.{word}"] = (
+                    f"is not among the branches of {bases[0].__name__}, so a payload the "
                     "document admits would be refused"
                 )
     assert not missing, {"a withheld class was deleted": missing}
-    assert not unarmed, {"a withheld class lost its union arm": unarmed}
+    assert not not_a_branch, {"a withheld class lost its place among the union's branches": not_a_branch}

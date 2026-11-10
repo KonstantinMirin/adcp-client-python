@@ -129,7 +129,7 @@ def constraint_aliases(source: str | None = None) -> dict[str, set[str]]:
     shape the committed module has no reason to carry, and grading against the
     committed file there would read a population this run did not emit.
 
-    D5's rung 3 gave a constrained scalar a THIRD place to live. A node's own alias
+    D5's candidate 3 gave a constrained scalar a THIRD place to live. A node's own alias
     used to carry its constraints as kwargs; now the alias names a type in
     ``constraints`` and that type carries them, so an assertion reading only the
     alias's own kwargs reads a spelling D5 deliberately moved. Following the

@@ -392,7 +392,7 @@ def domain_exports(
     name is not, because what it needs is ``mod.hops`` -- which positions exist and what
     kind each one is -- and that is the WALK's decision.  An untitled ``enum`` branch
     becomes a ``Literal`` and declares no class; §5's widenings drop a position; §4's
-    bare-``$ref`` branch rung takes the TARGET's distinguishing remainder, so the target
+    bare-``$ref`` branch candidate takes the TARGET's distinguishing remainder, so the target
     had to be named first (§10's order).  A parse answering any of that would
     re-implement three rules, which is the second derivation §3 forbids.
 
@@ -420,7 +420,7 @@ def domain_exports(
     replacing the census would let a position return to a name an earlier round had freed:
     round two frees ``FailItemUrl``, round three would take it back, and the loop would
     alternate forever.  Accumulating is monotone -- the set of taken names only grows, and
-    the rungs and depths a position can spell are finite -- so the loop stops.  Measured on
+    the candidates and depths a position can spell are finite -- so the loop stops.  Measured on
     this bundle it stops after **three** rounds with every domain collision resolved, and
     the accumulation costs nothing: the names dropped on the way are each wanted by two
     positions that both moved off them, so no position is pushed off a name another document
@@ -1071,7 +1071,7 @@ class Emitted:
     #: does this module put on the surface" and "which names may never be on it", and the
     #: two cannot name overlapping sets.
     #:
-    #: **IT IS THE POPULATION A GATE RANGES OVER, and that is why the record exists at
+    #: **IT IS THE SET A GATE RANGES OVER, and that is why the record exists at
     #: all.**  The ban shows up in :attr:`surface` as an ABSENCE, and an absence cannot be
     #: graded: a check over the export set alone passes identically on a run that minted no
     #: positional name and on a run that minted one and published it, and cannot tell the
@@ -1638,7 +1638,7 @@ def decidable(
     #
     # Empty on pass one, which is what makes the recursion finite and is not a second
     # answer: pass one is this compiler with the rule switched off, so each position
-    # reports its own rung-0 spelling, which is the question the rule asks.
+    # reports its own first-candidate spelling, which is the question the rule asks.
     #
     # The ROOT half is checked against the cheap reading of it as well, because the two
     # must agree: :func:`domain_roots` parses the RAW document where the walk read the
@@ -2712,7 +2712,7 @@ def emit(
           row that is not a derivation at all -- §4's step 1, read at the pointer the
           entry is DECLARED at rather than at the pointer the word is written at.
 
-        ``assign`` takes all of them as an extra FIRST RUNG, so §4's collision rule still
+        ``assign`` takes all of them as an extra FIRST CANDIDATE, so §4's collision rule still
         decides and a derived name that collides falls to the chain the position would have
         been named by anyway.
 

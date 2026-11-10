@@ -203,11 +203,11 @@ def test_a_constraining_sibling_of_a_nested_union_still_refuses() -> None:
 def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None:
     """``discriminator.propertyName`` is §4's FIRST DISPATCH SOURCE and names nothing.
 
-    **This test asserted the opposite and §4 decided against it** (rung 2 reads EVERY pin,
+    **This test asserted the opposite and §4 decided against it** (candidate 2 reads EVERY pin,
     2026-10-29; ``adcp-client-python-10l.78``).  The premise was that two pinned
     properties is "the case where the keyword decides, because ``_const_pin`` takes a
     single pin without it and refuses to choose between two by spelling" -- so the keyword
-    chose, and without it the branches had no identity at all.  Rung 2 now reads every pin
+    chose, and without it the branches had no identity at all.  Candidate 2 now reads every pin
     in the document's own key order, which is an answer the keyword is not needed for: the
     two branches below are ``XARound`` and ``XBSquare`` whether the union nominates a
     property or not.
@@ -218,7 +218,7 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
     identical with it and without it.  A reading that let it back into the naming path
     reddens on the second assertion.
 
-    :func:`union.branch_identity` is the one reading of §4's rungs and :func:`union.nested`
+    :func:`union.branch_identity` is the one reading of §4's candidates and :func:`union.nested`
     is one of its two callers, so this is the nested position's naming and not the root's.
     """
     branches = [
@@ -244,7 +244,7 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
     # them is this module's (``_naming_facts``), which is the seam §14 step 7 drew: the
     # walk extracts the three facts and the pass decides which one wins.
     def identity(branch: Any, key: str | None) -> str | None:
-        # ``key`` is accepted and deliberately NOT passed: §4's rung 2 takes no nominated
+        # ``key`` is accepted and deliberately NOT passed: §4's candidate 2 takes no nominated
         # property, and ``_naming_facts`` has no parameter for one.  The helper keeps the
         # argument so the two calls below read as the two cases they are.
         assert key is None or isinstance(key, str)
@@ -257,7 +257,7 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
         # ON it and a title names itself.  The parent here is a chain of one, ``X``, and
         # what is compared is the name that chain spells.
         #
-        # §4's FOURTH rung answers ``None`` here and that is this position's own rule:
+        # §4's FOURTH candidate answers ``None`` here and that is this position's own rule:
         # ``_naming_facts`` reads the three DECLARED facts and ``union.nested`` records no
         # INDEX, because a nested union's branch is a member type that needs no name of
         # its own (``adcp-client-python-10l.41``).  So "no identity at all" below is still

@@ -208,25 +208,25 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_names_its_branches_by_inde
     differently and better -- there is no refusal to carry a kind -- so what is left to
     assert is that the dispatch is silent and each fixture reaches ITS OWN next outcome.
 
-    **THE INDEX IS §4's FIFTH RUNG AND NOT ITS FOURTH, so a bare ``$ref`` branch
+    **THE INDEX IS §4's FIFTH CANDIDATE AND NOT ITS FOURTH, so a bare ``$ref`` branch
     reaches it only where the TARGET names nothing.**  This asserted
     ``AnimalBranch0``/``AnimalBranch1`` of all three fixtures, which was right while the
-    index was the rung after ``required``.  :data:`names.REF_TARGET_RUNG` sits between
+    index was the candidate after ``required``.  :data:`names.REF_TARGET_CANDIDATE` sits between
     them now -- "where the branch is a bare ``$ref``, the TARGET's own derived name" --
-    and a bare ``$ref`` branch ALWAYS has a target, so for these three fixtures rung 4
+    and a bare ``$ref`` branch ALWAYS has a target, so for these three fixtures candidate 4
     answers and the index is never reached: ``Cat`` and ``Dog`` say something
     ``Animal`` does not, so the branches are ``AnimalCat`` and ``AnimalDog``.
 
-    So the fixtures grade the LADDER and the index keeps a fixture of its own, which is
-    the one shape that reaches rung 5 through a ``$ref`` branch: a target whose derived
+    So the fixtures grade the CANDIDATE LIST and the index keeps a fixture of its own, which is
+    the one structure that reaches candidate 5 through a ``$ref`` branch: a target whose derived
     name says nothing the ROOT's does not (``names._distinguishing`` answers ``""``).
     ``AnimalKind`` over a target titled ``Animal`` is that case, and the second branch's
-    ``Zebra`` is rung 4 beside it -- the two rungs meeting in one module, which is what
+    ``Zebra`` is candidate 4 beside it -- the two candidates meeting in one module, which is what
     this test claimed before and now has a fixture that can show.
 
     Four fixtures, because "no shared distinct const" has three shapes -- no pin at all,
     a pin only one branch carries, and one pin repeated -- and the index has a fourth of
-    its own.  That all three of the first land on rung 4 and the fourth falls past it to
+    its own.  That all three of the first land on candidate 4 and the fourth falls past it to
     the index is what says the dispatch stopped standing in front of §4's naming rules.
 
     ``tests/test_union_disjointness.py::
@@ -244,17 +244,17 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_names_its_branches_by_inde
         for name, doc in _PINNED.items()
     }
     #: The one ``$ref``-branch shape that reaches the INDEX: the first target's derived
-    #: name is a leading run of the root's own, so rung 4 has no distinguishing remainder
-    #: to spell and answers nothing; the second target's does, so it keeps rung 4.
+    #: name is a leading run of the root's own, so candidate 4 has no distinguishing remainder
+    #: to spell and answers nothing; the second target's does, so it keeps candidate 4.
     index_root = {**_ROOT, "title": "Animal Kind"}
     index_targets = {
         "cat.json": {**unpinned["cat.json"], "title": "Animal"},
         "dog.json": {**unpinned["dog.json"], "title": "Zebra"},
     }
-    # **Rung 4 for all three**, from three different places on the ladder: the first
-    # fixture reaches it because rungs 1-3 answer nothing, the second because only one
-    # branch has a pin (that one takes rung 2, which spells the same chain here), and the
-    # third from a COLLISION -- rung 2 derives one name for both, so neither is
+    # **Candidate 4 for all three**, from three different places on the candidate list: the first
+    # fixture reaches it because candidates 1-3 answer nothing, the second because only one
+    # branch has a pin (that one takes candidate 2, which spells the same chain here), and the
+    # third from a COLLISION -- candidate 2 derives one name for both, so neither is
     # identified and both fall.
     for targets, want in ((unpinned, ["AnimalCat", "AnimalDog"]),
                           (one_sided, ["AnimalCat", "AnimalDog"]),
@@ -267,11 +267,11 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_names_its_branches_by_inde
             text = out.files["root.py"]
             for name in want:
                 assert f"class {name}(Animal, " in text, (name, text)
-            # **THE THIRD FIXTURE EMITS, and §4 is what changed** (rung 2 collides so
+            # **THE THIRD FIXTURE EMITS, and §4 is what changed** (candidate 2 collides so
             # both branches FALL, 2026-10-29; ``adcp-client-python-10l.78``).  It refused
             # here on the collision rule with a hand-minted VERDICT: both branches pin
             # ``pet``, both derived ``AnimalPet``, and both chains were one segment with
-            # nothing to lengthen by.  §4 reads that as the rung having failed to identify
+            # nothing to lengthen by.  §4 reads that as the candidate having failed to identify
             # either branch rather than as the document's own fault -- "two nodes of this
             # document derive one class name" is a fact about ``lower/names.py``.
             #
@@ -287,7 +287,7 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_names_its_branches_by_inde
         assert not out.refusals, out.refusals
         assert "root.json" in out.emitted, out.emitted
         text = out.files["root.py"]
-        # Rung 5 and rung 4 in one module, each named: the first branch's target says
+        # Candidate 5 and candidate 4 in one module, each named: the first branch's target says
         # nothing the root's name does not, the second's does.
         assert "class AnimalKindBranch0(AnimalKind, Animal):" in text, text
         assert "class AnimalKindZebra(AnimalKind, Zebra):" in text, text
