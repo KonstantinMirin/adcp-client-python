@@ -1814,7 +1814,50 @@ which carries a budget, and which therefore cannot be deleted while the check is
 reading is measurably weaker: constructing every value class a node's own keywords distinguish
 yields under two per pair and finds **one** class narrower than its document, where walking the
 subtree's leaves finds hundreds. That difference is not a defect of the constructor; it is this
-sentence, and the search survives inside it.
+sentence.
+
+**THE CLAUSE NOW HOLDS AND THE SEARCH IS DELETED, WHICH IS WHAT THE LAST SENTENCE USED TO SAY
+INSTEAD.** `Construction.admits` is the set — `subtree` recursion, read under the conjunction that
+reaches the pointer (`applied`'s reading), each class lifted one slot at a time — and
+`harness.check_admits` takes it as an argument and derives nothing. The search it replaces was a
+sampler over one DRAWN instance's string leaves carrying three numbers: `keep = 3` rows,
+`leaves = 60` leaves and a 4,096-character probe length. All three are gone with it, and the check
+is now a function of `(document, pointer)`.
+
+Measured over the 2,586 graded pairs of `schemas/cache/3.2`, the `admits` column of `verdicts.tsv`
+moved **732 / 270 / 1,584 → 1,754 / 824 / 8** (pass / fail / absent). The witness set went from
+15,406 candidates to **461,589**, of which the document's own screen admits 331,465 and the classes
+refuse 4,983. The pairs this check could say nothing about went from **1,573 to 0** — 1,560 that
+had no witness at all and 13 whose pass was a pass over the first 60 leaves — and the 8 absent
+cells that remain are 4 pairs whose pairing raises before any check runs and 4 the run's own
+per-pair wall clock cut.
+
+**The resolving SET and not only the count**, because a count that does not move is no evidence that
+the set did not: of the sampler's 270 narrowings 238 are also the construction's, and the
+construction finds **590** the sampler never reached. **The 239-pair hole the first wiring left was
+the applied reading**, not the recursion — every one of them was a branch pointer whose classes were
+built from the branch node alone and refused by the conjunction that reaches it, and threading
+`Subject.besides` and `Subject.picks` through `classes` and `subtree` closed all 239.
+
+**AND 32 PAIRS WENT THE OTHER WAY, WHICH IS THE PRICE AND IS RECORDED RATHER THAN NETTED OFF.** 30
+of the 32 carry a finding the sampler's 4,096-character probe produced — 22 of them carry nothing
+else — and 28 of those report `url_too_long`: the probe grew a string leaf past pydantic's 2,083-
+character URL cap at a position whose document states no `maxLength` at all. **A keyword the
+document does not state distinguishes no class**, so there is no value here for the construction to
+build — a position that admits a string of any length has no boundary to take, and every finite witness for
+it is a constant some instrument chose. That constant was the deleted budget. The honest record is
+therefore this number and not a probe length restored under another name; what would reach those 28
+is a statement upstream does not make, and §9 grades what the document states.
+
+The sampler's SECOND derivation is a different matter, and that one IS the construction's to make:
+a string drawn from a stated `pattern`. It is a class of a keyword the node states, so
+`_pattern_classes` takes it — `_patterned`'s minimal match, read off the pattern's own atoms with
+no draw and no example count, which is what the sampler paid `from_regex` and an example count for.
+It is a class and not the admitted value because `_string` reads `format` FIRST: a node stating
+`format: uri` beside `pattern: ^https://` takes `https://example.com` from the format table, and
+the pattern's own `https://` — which the document admits and pydantic refuses as an empty host — is
+never otherwise offered. Measured: that one derivation is the finding at **36** of the 68 pairs the
+construction was short of before it existed, and it is why the residue is 32 rather than 68.
 
 **A MUTATION NAMES THE KEYWORD IT VIOLATES, WHICH IS WHAT MAKES THE SECOND CHECK MORE THAN A
 BOOLEAN.** A class that refuses the mutation for the wrong reason has not been shown to carry the

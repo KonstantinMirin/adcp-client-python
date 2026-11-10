@@ -3220,7 +3220,12 @@ class Construction:
 
     # -- coverage by constraint class --------------------------------------- #
     def classes(
-        self, document: str, pointer: str = "", stack: tuple[str, ...] = ()
+        self,
+        document: str,
+        pointer: str = "",
+        stack: tuple[str, ...] = (),
+        besides: tuple[str, ...] = (),
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> tuple[Class, ...]:
         """Every value class the node's own keywords distinguish, all of them ADMITTED.
 
@@ -3235,64 +3240,123 @@ class Construction:
         document does not in fact admit -- a bound an exclusive sibling excludes, a branch
         a conjunct refuses -- is not handed to a subject as though the document stood
         behind it.
+
+        **``besides`` AND ``answered`` ARE :meth:`applied`'s TWO ARGUMENTS AND THEY MEAN
+        THE SAME THING HERE** (:meth:`admits`).  A class is a whole value at this instance
+        location, so it is built from the whole conjunction about that location -- and at a
+        BRANCH pointer the rest of that conjunction is the enclosing node's.  Measured over
+        the graded population before they were threaded through: all 239 pairs whose witness
+        set came out empty were branch pointers, every class built at the branch node alone
+        being one the applied schema refuses.
         """
-        built = self.value(document, pointer, stack)
+        built = self.value(document, pointer, stack, besides, answered)
         node = self.node(document, pointer)
         if not isinstance(node, Mapping):
             return ()
         out: list[Class] = []
         if built.held:
             out.append(Class("", "the admitted value", built.value))
+        views = self._views(document, pointer, stack, None, besides, answered)
         nodes = [
             node
-            for at, _ in self._views(document, pointer, stack)
+            for at, _ in views
             for node in [self.node(document, at)]
             if isinstance(node, Mapping)
         ]
         out.extend(_value_classes(nodes))
+        out.extend(_pattern_classes(nodes))
         for keyword, cases in _bound_classes(nodes, built).items():
             out.extend(Class(keyword, label, value) for label, value in cases)
-        out.extend(self._branch_classes(document, pointer, stack))
+        out.extend(self._branch_classes(document, views, besides, answered))
         return tuple(
             case for case in out if not self.refusals(document, pointer, case.value)
         )
 
     def _branch_classes(
-        self, document: str, pointer: str, stack: tuple[str, ...]
+        self,
+        document: str,
+        views: Sequence[tuple[str, tuple[str, ...]]],
+        besides: tuple[str, ...] = (),
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> tuple[Class, ...]:
         """One class per branch of a union, and one per arm of a type list.
 
         A union branch is an ALTERNATIVE, so each branch is a class of the keyword rather
         than a conjunct of it -- which is the same reading :meth:`_views` makes when it
         takes the first branch and leaves the rest to here.
+
+        **OVER THE VIEW SET AND NOT OVER THE NODE ALONE**, which is the correction the same
+        measurement forces as the arguments above: a union about this instance can be stated
+        by a co-describing conjunct rather than by the node itself --
+        ``core/media-buy-frequency-cap.json`` states its ``anyOf`` at ``/allOf/0`` -- and a
+        reading that only looked at the node had no class for its branches.  The branch's
+        own value is built under the rest of the conjunction for :meth:`classes`' reason.
+
+        **A UNION THE POINTER ITSELF ANSWERS CONTRIBUTES NO CLASS, and that clause is what
+        keeps this from manufacturing a failure.**  :attr:`Subject.picks` is the branch the
+        pointer SPELLS -- a class at ``#/oneOf/0`` is paired with branch 0, and branch 1's
+        value is one the document admits at the ROOT and the class at branch 0 is right to
+        refuse.  Offering it here would report that correctness as a narrowing.
         """
-        node = self.node(document, pointer)
-        if not isinstance(node, Mapping):
-            return ()
+        decided = dict(answered)
         out: list[Class] = []
-        for keyword in ("anyOf", "oneOf"):
-            members = node.get(keyword)
-            if not isinstance(members, list):
+        for where, path in views:
+            node = self.node(document, where)
+            if not isinstance(node, Mapping):
                 continue
-            for index in range(len(members)):
-                at = f"{pointer}/{keyword}/{index}"
-                inner = self.value(document, at, (*stack, at))
-                if inner.held:
-                    out.append(Class(keyword, f"branch {index}", inner.value))
-        words = node.get("type")
-        if isinstance(words, list):
-            for word in words:
-                if not isinstance(word, str) or word in _CONTAINERS:
+            for keyword in ("anyOf", "oneOf"):
+                members = node.get(keyword)
+                if not isinstance(members, list) or f"{where}/{keyword}" in decided:
                     continue
-                arm = {k: v for k, v in node.items() if k in keywords.ARM.get(word, ())}
-                built = _from_word(word, [{**arm, "type": word}])
-                if built.held:
-                    out.append(Class("type", f"the {word} arm", built.value))
+                for index in range(len(members)):
+                    at = f"{where}/{keyword}/{index}"
+                    inner = self.value(
+                        document, at, (*path, at, *besides), besides, answered
+                    )
+                    if inner.held:
+                        out.append(Class(keyword, f"branch {index} of {where or '#'}", inner.value))
+            words = node.get("type")
+            if isinstance(words, list):
+                for word in words:
+                    if not isinstance(word, str) or word in _CONTAINERS:
+                        continue
+                    arm = {k: v for k, v in node.items() if k in keywords.ARM.get(word, ())}
+                    built = _from_word(word, [{**arm, "type": word}])
+                    if built.held:
+                        out.append(Class("type", f"the {word} arm", built.value))
         return tuple(out)
 
     # -- the mutations ------------------------------------------------------ #
+    def admits(self, document: str, pointer: str = "") -> tuple[Class, ...]:
+        """**THE FIRST CHECK'S WITNESS SET for the subject a CLASS at this pointer names**,
+        and the one entry point a grader of a class uses.
+
+        :meth:`applied` is this method's shape for the single admitted value and carries the
+        reasoning: a class is paired with its node read UNDER THE CONJUNCTION that reaches
+        it, which is what ``SchemaBound.strict_validate`` validates against, so a witness
+        built from the node ALONE is narrower than the class it is offered to.  The two are
+        the same call with :attr:`Subject.besides` supplied as the rest of the conjunction
+        AND put on the stack, which is :meth:`value`'s own rule.
+
+        ``codegen.harness.check_admits`` is the caller, and it is the whole of the first
+        check's witness set: no instance is drawn, nothing is sampled, and the set is a
+        function of ``(document, pointer)`` and of nothing else -- which is
+        ``docs/plan/final-state.md`` reading 1's *"both checks are a function of (class,
+        document) and of nothing else"*, and the reason the check costs the same cold as
+        warm.
+        """
+        read = self.subject(document, pointer)
+        return self.subtree(
+            document, pointer, (pointer, *read.besides), read.besides, read.picks
+        )
+
     def subtree(
-        self, document: str, pointer: str = "", stack: tuple[str, ...] = ()
+        self,
+        document: str,
+        pointer: str = "",
+        stack: tuple[str, ...] = (),
+        besides: tuple[str, ...] = (),
+        answered: tuple[tuple[str, int], ...] = (),
     ) -> tuple[Class, ...]:
         """**THE FIRST CHECK'S WITNESS SET: one value per node of the subtree this node
         reaches**, each lifted to a whole value at THIS node.
@@ -3338,11 +3402,13 @@ class Construction:
         #: Seeded before the recursion, so a reference reaching a pointer already in
         #: progress answers "no witnesses from here" instead of recurring for ever.
         self._subtrees[key] = ()
-        base = self.value(document, pointer, stack)
-        out: list[Class] = list(self.classes(document, pointer, stack))
+        base = self.value(document, pointer, stack, besides, answered)
+        out: list[Class] = list(self.classes(document, pointer, stack, besides, answered))
         if base.held:
-            for slot, at, path in self._slots(document, pointer, stack, base.value):
-                for inner in self.subtree(document, at, path):
+            for slot, at, path, more in self._slots(
+                document, pointer, stack, base.value, besides, answered
+            ):
+                for inner in self.subtree(document, at, path, more):
                     lifted = _substituted(base.value, slot, inner.value)
                     if lifted is _MISSING:
                         continue
@@ -3357,13 +3423,23 @@ class Construction:
         pointer: str,
         stack: tuple[str, ...],
         value: Any,
-    ) -> Iterator[tuple[tuple[Any, ...], str, tuple[str, ...]]]:
+        besides: tuple[str, ...] = (),
+        answered: tuple[tuple[str, int], ...] = (),
+    ) -> Iterator[tuple[tuple[Any, ...], str, tuple[str, ...], tuple[str, ...]]]:
         """Each child position of this node that has a LOCATION in ``value``.
 
-        ``(slot, pointer, stack)``: the slot is the one-segment instance location, and the
-        pointer and stack are the child node's, read through :meth:`_views` so a conjunct's
+        ``(slot, pointer, stack, besides)``: the slot is the one-segment instance location,
+        and the rest is the child node's, read through :meth:`_views` so a conjunct's
         ``properties`` is reached exactly as :meth:`_object` reaches it -- one descent, and
         not a second reading of which keyword descends where.
+
+        **ONE ENTRY PER INSTANCE LOCATION AND NEVER ONE PER DESCRIBING POSITION**, which is
+        :meth:`_object`'s own rule for the same descent: *"a key several statements describe
+        gets ONE value built from all of them"*, because *"two pins on one location do not
+        narrow the node -- they empty it"*.  The first describing position is the child's
+        pointer and the rest are its ``besides``, so a key the node's own ``properties`` and
+        a conjunct's entry both describe contributes one subtree walk under the whole
+        conjunction rather than two under halves of it.
 
         **``properties`` and ``items`` ONLY, and the omission is named rather than
         silent.**  A mapping value (``additionalProperties``, ``patternProperties``) and a
@@ -3373,7 +3449,12 @@ class Construction:
         reading of :meth:`_spare`'s decision; the measured cost of the omission is reported
         beside the coverage rather than assumed to be nil.
         """
-        for at, path in self._views(document, pointer, stack):
+        views = self._views(document, pointer, stack, None, besides, answered)
+        #: Grouped by the instance LOCATION, in the order the views state it, so the
+        #: entry below is one per location with every describing position in it.
+        keys: dict[str, list[tuple[str, tuple[str, ...]]]] = {}
+        items: list[tuple[str, tuple[str, ...]]] = []
+        for at, path in views:
             node = self.node(document, at)
             if not isinstance(node, Mapping):
                 continue
@@ -3387,9 +3468,23 @@ class Construction:
                 #: decides whether the placement is one the document admits.
                 for name in declared:
                     if isinstance(name, str):
-                        yield (name,), f"{at}/properties/{bundle.escape_key(name)}", path
+                        keys.setdefault(name, []).append(
+                            (f"{at}/properties/{bundle.escape_key(name)}", path)
+                        )
             if isinstance(node.get("items"), Mapping) and isinstance(value, list) and value:
-                yield (0,), f"{at}/items", path
+                items.append((f"{at}/items", path))
+        #: ``(*path, *more)`` and not ``(*path, at, *more)``, which is :meth:`_object`'s and
+        #: :meth:`_array`'s own spelling of the child's key: a caller that put the child's
+        #: own pointer on the stack would key the same answer differently from them and the
+        #: memo would miss on every child the walk already built.
+        for name, where in keys.items():
+            at, path = where[0]
+            more = tuple(p for p, _ in where[1:])
+            yield (name,), at, (*path, *more), more
+        if items:
+            at, path = items[0]
+            more = tuple(p for p, _ in items[1:])
+            yield (0,), at, (*path, *more), more
 
     def mutations(
         self, document: str, pointer: str = "", stack: tuple[str, ...] = ()
@@ -3590,6 +3685,39 @@ def _value_classes(nodes: Sequence[Mapping[str, Any]]) -> tuple[Class, ...]:
                 Class("format", f"{named} case {index}", case)
                 for index, case in enumerate(FORMAT_CASES.get(named, ()))
             )
+    return tuple(out)
+
+
+def _pattern_classes(nodes: Sequence[Mapping[str, Any]]) -> tuple[Class, ...]:
+    """A string each stated ``pattern`` ADMITS, read off the pattern's own atoms.
+
+    **The class a ``pattern`` distinguishes, which is the same rule as an ``enum``'s
+    members and a ``format``'s cases** (:func:`_value_classes`): the keyword divides the
+    strings that match from the strings that do not, and the class on the matching side is
+    a value the document admits.  The far side is that keyword's MUTATION
+    (:func:`_candidates`) and is not a class.
+
+    **AND IT IS NOT THE SAME VALUE AS THE ADMITTED ONE, which is why it is a class at all.**
+    :func:`_string` reads ``format`` FIRST, so a node stating ``format: uri`` beside
+    ``pattern: ^https://`` takes ``https://example.com`` from the format table and the
+    pattern's own minimal match is never offered.  Measured over the graded population: that
+    value is ``'https://'`` -- a string the pattern matches, the document admits, and
+    pydantic's URL type refuses with ``url_parsing``, "empty host" -- and it is the finding
+    at 40 of the 68 pairs the deleted leaf sampler reached and the construction did not.
+
+    **DERIVED FROM THE KEYWORD AND NOT DRAWN FROM IT.**  What the sampler did here was
+    ``hypothesis.strategies.from_regex`` with an EXAMPLE COUNT on it; :func:`_patterned`
+    reads the pattern's atoms and quantifiers and takes the document's own first member of
+    each, so the witness is a function of the pattern alone and the count is gone with the
+    draw.
+    """
+    low = _bound(nodes, "minLength")
+    high = _bound(nodes, "maxLength")
+    out: list[Class] = []
+    for pattern in _patterns(nodes):
+        built = _patterned(pattern, int(low) if isinstance(low, (int, float)) else 0, high)
+        if built.held:
+            out.append(Class("pattern", f"a string {pattern!r} admits", built.value))
     return tuple(out)
 
 

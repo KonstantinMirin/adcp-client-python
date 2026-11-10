@@ -29,6 +29,16 @@ verifier knowing either one, and it knows neither.
 
 ``codegen.harness`` does not import this module and must not; nothing here imports
 ``codegen.harness``.
+
+**WHAT THE STORE IS STILL ON THE GRADING PATH FOR, measured and narrowed by one check.**
+``docs/plan/architecture.md`` §9's first check no longer reads a held instance at all: its
+witness set is ``codegen.verify.witness.Construction.admits`` -- a function of
+``(document, pointer)`` -- so ``harness.check_admits`` returns the same verdict on a fresh
+checkout as on a warm one, for all 2,586 graded pairs. What still reads a store is the
+ACCEPTS draw and the two directions of reading 2 that REDUCE an instance
+(``harness.check_widening``'s obligation and ``harness.check_refuses``' undeclared sweep),
+and that is the whole of why a cold grade still costs what it costs. The cache is a SAVING
+for those; it was the instrument for ``admits`` and is not any more.
 """
 
 from __future__ import annotations
