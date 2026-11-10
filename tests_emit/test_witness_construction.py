@@ -703,14 +703,72 @@ def test_a_positive_lookahead_is_SATISFIED_and_never_solved() -> None:
         assert harness.conforms({"type": "string", "pattern": text}, expected) is True, text
 
 
+def test_a_complement_class_is_read_as_the_vocabulary_the_document_does_not_exclude() -> None:
+    """**A COMPLEMENT NAMES WHAT IT EXCLUDES, so the reading needs a set to strike it FROM.**
+
+    ``[^...]``, ``\\S``, ``\\D`` and ``.`` state no members of their own: they leave them to
+    the dialect, and the dialect's answer is every codepoint of the plane.  That is not a set
+    a *document's own first* can be taken from, so the reading is the first character
+    :data:`codegen.verify.witness._VOCABULARY` names that the document does not exclude --
+    and the vocabulary is not a constant invented for this: it is
+    :data:`codegen.verify.witness._CLASS_ESCAPE`'s own members in its own order, which is the
+    one statement this module already makes about which characters it names.
+
+    **THE READING IS NARROWER THAN THE CLASS AND THAT IS THE SOUND DIRECTION.**  Every
+    character the vocabulary holds is one the complement admits, so a value this produces is
+    still a value the class admits -- asserted below by the pattern's own checker, which is
+    the only instrument that can say so.  The one case it cannot answer is a complement that
+    excludes the whole vocabulary, and that is DECLINED BY NAME rather than widened to a
+    character this reader would have chosen.
+    """
+    cases = {
+        # the two documents this reading exists for
+        "^[^\\u0000-\\u001F\\u007F]+$": "0",
+        "\\S": "0",
+        # the shorthand complements, read off the positive table they complement
+        "^\\D+$": "a",
+        # a dot is a complement over the line terminators and nothing else
+        "^[a-z_]+:.+$": "a:0",
+        # a complement a quantifier takes ZERO of still reads, as it always did
+        "^[^\\u0000-\\u001F\\u007F]*$": "",
+        "^(/[^\\s]*)$": "/",
+        # the bundle's own URL shapes, which were declined for this one reason
+        "^https://[^/?#@]+$": "https://0",
+        "^https://[^/?#@]+(?:/[^?#]*)?(?:\\?[^#]*)?$": "https://0",
+        # a complement conjoined with an assertion is still one character, read once
+        "^(?=[a-z])[^0-9]+$": "a",
+    }
+    for text, expected in sorted(cases.items()):
+        built = witness._patterned(text, 0, None)
+        assert built.held, (text, built.reason)
+        assert built.value == expected, (text, built.value, expected)
+        assert harness.conforms({"type": "string", "pattern": text}, expected) is True, text
+
+    # `\S` and `.` read as the WHOLE vocabulary, and that is a DERIVATION rather than a
+    # coincidence only while no character the reader writes is whitespace or a line
+    # terminator.  A vocabulary that grows one is a failure here, not a silent drift.
+    assert not set(witness._VOCABULARY) & set(witness._WHITESPACE), witness._VOCABULARY
+    assert not set(witness._VOCABULARY) & set(witness._LINE_TERMINATOR), witness._VOCABULARY
+    assert witness._ANY == witness._ranged(witness._VOCABULARY)
+    for text, named in {
+        "^\\W+$": "a complement that excludes every character it names",
+        "^[^0-9A-Za-z_]+$": "a complement that excludes every character it names",
+        "^\\s+$": "a class whose members it does not name",
+    }.items():
+        built = witness._patterned(text, 0, None)
+        assert not built.held, (text, built.value)
+        assert named in built.reason, (text, built.reason)
+
+
 def test_the_lookarounds_this_reader_declines_are_declined_by_name() -> None:
     """The line this reading stops at, and the stop is a NAMED refusal rather than a parse.
 
     Three spellings state what a reading cannot take a first member of.  ``(?!`` and
-    ``(?<!`` say what the text must NOT be, and *"the first string that is not this"* is
-    the choice :func:`codegen.verify.witness._members` already refuses to make for a
-    complement class; ``(?<=`` says it of characters the reading has already emitted, so
-    satisfying it would mean revising a reading that is finished.
+    ``(?<!`` say what the text must NOT be, and *"the first STRING that is not this"* is a
+    choice no vocabulary answers -- a complement over CHARACTERS is
+    :func:`codegen.verify.witness._unless`, and the set of strings is not one a table names;
+    ``(?<=`` says it of characters the reading has already emitted, so satisfying it would
+    mean revising a reading that is finished.
 
     **AND THE HONEST STOPS OF THE READING THAT WAS ADDED ARE HERE TOO**, because a reading
     that answered an assertion it could not satisfy with a cap, a default or a literal is
@@ -725,7 +783,8 @@ def test_the_lookarounds_this_reader_declines_are_declined_by_name() -> None:
         "^a(?<!b)c$": "the lookbehind '(?<!'",
         "^a(?=b)c$": "an assertion and a class that admit nothing in common",
         "^a(?=b)$": "an assertion no construct after it reaches",
-        "^(?=.{3})[a-z]+$": "an assertion over a class whose members it does not name",
+        "^(?=.{3})[a-z]+$": "an assertion no construct after it reaches",
+        "^(?=\\s)[a-z]+$": "an assertion over a class whose members it does not name",
         "^a(?=b)*b$": "a quantified lookahead",
         "^a(?=b)(?=c)b$": "two assertions that admit nothing in common",
     }.items():

@@ -70,20 +70,33 @@ already admits, which is the move :func:`_patterned` already makes for a ``minLe
 ``^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?...$`` gives ``"P1Y"``: nothing worked backwards from what
 the two lookaheads demand, and nothing generated a candidate and tested it.
 
+**A COMPLEMENT CLASS NAMES WHAT IT EXCLUDES, SO THE READING IS THE FIRST CHARACTER THIS
+READER NAMES THAT THE DOCUMENT DOES NOT EXCLUDE** (:data:`_VOCABULARY`, :func:`_unless`).
+``[^...]``, ``\\S``, ``\\D`` and ``.`` state no members of their own and leave them to the
+dialect, whose answer is every codepoint of the plane -- which is not a set a *document's
+own first* can be taken from.  It does not have to be: :data:`_CLASS_ESCAPE` is the one
+statement this module already makes about which characters it names, so its members in its
+own order are the vocabulary a value is written from, and a complement is read by striking
+what the document excludes from it.  ``^[^\\u0000-\\u001F\\u007F]+$`` gives ``"0"``, ``\\S``
+gives ``"0"``, ``\\D`` gives ``"a"``.  That reading is NARROWER than the class the document
+states and narrow is the sound direction -- every character it can produce is one the class
+admits -- so the only cost is a complement that excludes the whole vocabulary, which is
+DECLINED BY NAME.  Taking the plane's own first codepoint instead would put a constant here
+and a NUL in a witness; taking a printable range would be this reader's literal.
+
 **THIS IS NOT A REGEX ENGINE AND MUST NOT BECOME ONE**: there is no backtracking, no
 candidate generation, no negative lookaround, no lookbehind, no backreference, no
 alternation outside a group and no class subtraction here, and a pattern stating any of them
 is NOT ATTEMPTED -- the document's own ``examples`` is the value and failing that the fact
 is approximated with the pattern QUOTED (:func:`_atoms` names the construct it stopped at).
 **THE DECLINED LOOKAROUNDS ARE DECLINED BY NAME** rather than left to fall out of a group's
-parse (:func:`_opens`): ``(?!`` and ``(?<!`` state what the text must NOT be, which is the
-choice :func:`_members` already refuses to make for a complement class, and ``(?<=`` states
-it of characters the reading has already emitted.  An assertion whose demands no construct
-after it reaches is declined too (:func:`_sequence`), so the stop stays honest and is never
-replaced by a cap or a literal.  Measured over bundle 3.2: 101 of 110 distinct patterns and
-7,122 of 7,638 pattern-bearing positions are of the read shape; the 9 that are not are TWO
-negative lookaheads, six classes whose members this reader does not name, and one anchor
-inside a group's arm.
+parse (:func:`_opens`): ``(?!`` and ``(?<!`` state what the text must NOT be, and the first
+string that is not something is a choice no vocabulary answers; ``(?<=`` states it of
+characters the reading has already emitted.  An assertion whose demands no construct after
+it reaches is declined too (:func:`_sequence`), so the stop stays honest and is never
+replaced by a cap or a literal.  Measured over bundle 3.2: 107 of 110 distinct patterns and
+7,488 of 7,638 pattern-bearing positions are of the read shape; the 3 that are not are TWO
+negative lookaheads and one anchor inside a group's arm.
 
 **WHERE CONSTRUCTION CANNOT REACH, THE DOCUMENT'S OWN ``examples`` IS THE VALUE**, and
 failing that the fact is approximated with the reason named (:attr:`Source.APPROXIMATED`,
@@ -851,13 +864,71 @@ _CLASS_ESCAPE: Mapping[str, str] = {
     "w": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_",
 }
 
-#: The class escapes this reader does not name a member of.  A COMPLEMENT (``\S``, ``\D``,
-#: ``\W``) has no first member to take -- "the first character that is not a digit" is a
-#: choice and not a reading -- and ``\s``'s members are the whitespace a document almost
-#: never means.  A quantifier may still take such a class ZERO times, which is why these
-#: are an unnamed member rather than an outright refusal: ``^[^\x00-\x1f]*$`` is READ, as
-#: the empty string, and ``^[^\x00-\x1f]+$`` is not.
-_UNNAMED_CLASS = frozenset("sSDW")
+#: **THE CHARACTERS THIS READER WRITES A VALUE FROM**, in :data:`_CLASS_ESCAPE`'s own
+#: order, and the whole of why a COMPLEMENT is readable without a universe being chosen
+#: here.  A class stated as a complement -- ``[^...]``, ``\S``, ``.`` -- names what it
+#: EXCLUDES and leaves its members to the dialect, and the dialect's answer is every
+#: codepoint of the plane, which is not a set this reader can take a *document's own first*
+#: from.  It does not have to: the one statement this module already makes about which
+#: characters it names is :data:`_CLASS_ESCAPE`, so the reading is **the first character
+#: the reader NAMES that the document does not exclude** (:func:`_unless`).
+#:
+#: That is narrower than the class the document states, and narrower is the SAFE direction:
+#: every character here is one the complement admits, so a value this produces is still a
+#: value the class admits -- the screen's own obligation -- and the only cost is a complement
+#: excluding every character named, which is DECLINED by name rather than guessed at.
+#: Choosing the plane's own first codepoint instead would be a constant written here and a
+#: NUL in a witness; choosing a printable range would be a literal of this reader's.
+_VOCABULARY: str = "".join(dict.fromkeys(_CLASS_ESCAPE["d"] + _CLASS_ESCAPE["w"]))
+
+#: The whitespace ``\s`` names: the UNION of ECMA-262's ``WhiteSpace`` and
+#: ``LineTerminator`` productions -- draft-07 says ``pattern`` is an ECMA-262 regex -- and
+#: the four codepoints python's own ``re`` adds to ``\s`` (``\x1c``-``\x1f``, ``\x85``).
+#: Both are named because the two dialects that matter here are different ones: the DOCUMENT
+#: states ECMA-262 and the CHECKER that grades every value this module produces is
+#: ``jsonschema``'s python ``re``.
+#:
+#: **IT IS HERE TO EXCLUDE BY AND NEVER TO TAKE FROM**, and that is why naming the union is
+#: the safe direction rather than a hedge: a wider exclusion can only SHRINK what ``\S``
+#: admits, never let a character either dialect calls whitespace through.  The same fact
+#: reads both ways -- no member of this set is in :data:`_VOCABULARY`, so ``\s`` has no first
+#: member this reader will write (:data:`_UNNAMED_CLASS`) and ``\S`` excludes nothing the
+#: reader writes.  Measured: ``\S`` therefore reads as the WHOLE vocabulary, and
+#: ``tests_emit/test_witness_construction.py`` asserts the disjointness that makes that
+#: true, so a vocabulary that ever grows a whitespace member is a failure and not a drift.
+_WHITESPACE: str = (
+    "\t\n\x0b\x0c\r\x1c\x1d\x1e\x1f\x20\x85\xa0"
+    "\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+    "\u2028\u2029\u202f\u205f\u3000\ufeff"
+)
+
+#: What ``.`` excludes: ECMA-262's LineTerminator, and nothing else.  ``.`` is a COMPLEMENT
+#: class like any other: reading a negated class that spells this set out while declining
+#: the shorthand for it would be the reader stopping at a SPELLING, not at a construct.
+#: No member of it is in :data:`_VOCABULARY` either, so ``.`` reads as the whole vocabulary
+#: -- the set is named so the READING is right rather than so the answer comes out right.
+_LINE_TERMINATOR: str = "\n\r\u2028\u2029"
+
+#: The class escapes this reader does not name a member of -- ``\s`` alone.  Its members are
+#: the whitespace a document almost never means and none of them is in :data:`_VOCABULARY`,
+#: so there is no first member here to take.  A quantifier may still take it ZERO times,
+#: which is why this is an unnamed member rather than an outright refusal.
+#:
+#: **THE COMPLEMENTS ARE NO LONGER HERE** (:data:`_COMPLEMENT_ESCAPE`): "the first character
+#: that is not a digit" IS answerable once the reader has said which characters it writes,
+#: and answering it from :data:`_VOCABULARY` is a reading rather than a choice.
+_UNNAMED_CLASS = frozenset("s")
+
+#: What a COMPLEMENT class escape EXCLUDES -- the positive class each one is the complement
+#: of, read off the same table the positive spelling is read off, so the pair cannot drift.
+#: ``\W`` excludes every word character and :data:`_VOCABULARY` is word characters only, so
+#: ``\W`` admits nothing here and is declined by name; ``\S`` excludes whitespace, which the
+#: vocabulary holds none of, so it admits the whole of it.
+_COMPLEMENT_ESCAPE: Mapping[str, str] = {
+    "S": _WHITESPACE,
+    "D": _CLASS_ESCAPE["d"],
+    "W": _CLASS_ESCAPE["w"],
+}
 
 #: How a value READ OFF A PATTERN says so, on :attr:`Built.reason` -- which is that field's
 #: second half, *"how the one there is was reached"*.  A marker and not a sentence, because
@@ -942,6 +1013,33 @@ def _both(ours: _Ranges, theirs: _Ranges) -> _Ranges:
     return tuple(out)
 
 
+def _unless(excluded: _Ranges) -> _Ranges:
+    """A COMPLEMENT class: the characters this reader NAMES that ``excluded`` does not hold.
+
+    A complement says what it EXCLUDES and leaves its members to the dialect, so there is no
+    *document's own first* to take -- the dialect's answer is the plane.  :data:`_VOCABULARY`
+    is the one statement this module already makes about which characters it names, and the
+    reading is its first member the document does not exclude: ``[^\\u0000-\\u001F\\u007F]``
+    gives ``"0"`` because ``"0"`` is the first character this reader writes and the document
+    excludes only control characters.
+
+    **EMPTY IS A RESULT AND IT IS DECLINED BY NAME** (:func:`_patterned`), not widened: a
+    complement that excludes every character the reader names -- ``\\W`` over a vocabulary of
+    word characters -- is a class this reading cannot answer, and saying so is the honest
+    answer.  Nothing here reaches past the vocabulary to find a member, because the member it
+    would find is one this reader chose rather than one the document named.
+    """
+    return tuple(
+        (point, point)
+        for point in (ord(found) for found in _VOCABULARY)
+        if not any(low <= point <= high for low, high in excluded)
+    )
+
+
+#: What ``.`` admits, read once: the vocabulary less ECMA-262's LineTerminator.
+_ANY: _Ranges = _unless(_ranged(_LINE_TERMINATOR))
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class _Atom:
     """One construct of a pattern: what it admits, and how many times it may repeat.
@@ -972,12 +1070,20 @@ def _escaped(text: str, at: int) -> tuple[str | None, int, bool]:
     and is not in the tables is not read**: a digit is a backreference or an octal escape
     and a letter is a construct with semantics of its own, and guessing at either is the
     engine this module refuses to be.
+
+    **A COMPLEMENT ESCAPE GIVES WHAT IT DOES NOT EXCLUDE** (:data:`_COMPLEMENT_ESCAPE`,
+    :func:`_unless`), read off the same table its positive spelling is read off: ``\\S`` is
+    the vocabulary less the whitespace ``\\s`` names, and the empty answer a complement over
+    the whole vocabulary gives is declined by name rather than widened.
     """
     if at >= len(text):
         raise _Unread("a trailing backslash")
     found = text[at]
     if found in _CLASS_ESCAPE:
         return _CLASS_ESCAPE[found], at + 1, True
+    if found in _COMPLEMENT_ESCAPE:
+        excluded = _COMPLEMENT_ESCAPE[found]
+        return "".join(c for c in _VOCABULARY if c not in excluded), at + 1, True
     if found in _UNNAMED_CLASS:
         return None, at + 1, True
     if found in _ASSERTIONS:
@@ -1003,16 +1109,27 @@ def _members(text: str, at: int) -> tuple[_Ranges | None, int]:
     the two classes statements about one character and :func:`_both` needs more of each than
     its head.
 
-    **A NEGATED CLASS HAS NO FIRST MEMBER** and is reported as one whose members are not
-    named (``None``), not as a refusal: *"the first character that is not a digit"* is a
-    choice this reader does not make, and a quantifier admitting zero repetitions makes the
-    question moot.  The two ``]`` spellings draft-07's own grammar gives are read: a ``]``
-    immediately after ``[`` or ``[^`` is a literal member, and anywhere else it closes.
+    **A NEGATED CLASS NAMES WHAT IT EXCLUDES, AND THE RANGES IT LISTS ARE READ AS THE
+    EXCLUSION** (:func:`_unless`).  ``[^\\u0000-\\u001F\\u007F]`` is the characters this
+    reader writes that are not control characters, which is ``"0"`` onward; the ranges are
+    collected by the SAME loop either way, because what ``[^`` changes is what the loop's
+    answer MEANS and not how the members are parsed.  A negated class the reader can answer
+    nothing for -- every character it names excluded -- comes back EMPTY and is declined by
+    name at :func:`_patterned`.
+
+    **AND A MEMBER WHOSE CHARACTERS THE READER DOES NOT NAME MAKES THE WHOLE CLASS UNNAMED**
+    (``None``), negated or not: ``[^\\s]`` states an exclusion over a set this reader has no
+    members for, so it cannot say which characters survive it, and a quantifier admitting
+    zero repetitions makes the question moot anyway.
+
+    The two ``]`` spellings draft-07's own grammar gives are read: a ``]`` immediately after
+    ``[`` or ``[^`` is a literal member, and anywhere else it closes.
     """
     at += 1
-    unnamed = at < len(text) and text[at] == "^"
-    at += 1 if unnamed else 0
+    negated = at < len(text) and text[at] == "^"
+    at += 1 if negated else 0
     admits: list[tuple[int, int]] = []
+    unnamed = False
     stated = False
     if at < len(text) and text[at] == "]":
         admits, stated, at = [(ord("]"), ord("]"))], True, at + 1
@@ -1047,7 +1164,9 @@ def _members(text: str, at: int) -> tuple[_Ranges | None, int]:
         raise _Unread("a class with no end")
     if not stated:
         raise _Unread("a class that admits nothing")
-    return (None if unnamed else tuple(admits)), at + 1
+    if unnamed:
+        return None, at + 1
+    return (_unless(tuple(admits)) if negated else tuple(admits)), at + 1
 
 
 def _count(text: str, at: int) -> tuple[int, int | None, int]:
@@ -1104,8 +1223,9 @@ def _opens(text: str, at: int) -> tuple[int, bool]:
 
     **EVERY OTHER ``(?`` OPTION IS DECLINED, named by its own two characters.**  A NEGATIVE
     lookahead (``(?!``) and a negative lookbehind (``(?<!``) state what the text must NOT
-    be, and "the first string that is not this" is the choice :func:`_members` already
-    refuses to make for a complement class; a positive LOOKBEHIND (``(?<=``) states it of
+    be, and "the first STRING that is not this" is a choice no vocabulary answers -- a
+    complement over characters is :func:`_unless`, and there is no such reading over strings,
+    whose set is not one a table names; a positive LOOKBEHIND (``(?<=``) states it of
     characters the reading has already emitted, which would mean revising a reading that is
     finished.  A named group, an inline flag, a comment, an atomic group and a conditional
     each carry semantics of their own, and a reader that treated them as a plain group
@@ -1236,7 +1356,8 @@ def _demanded(atoms: Sequence[_Atom], pending: list[_Ranges]) -> None:
     ``^P(?=.*[1-9])(?=\\d|T)`` reads: ``[1-9]`` and ``\\d`` are two statements about the
     character after the ``P``, so what that character may be is what both admit.  A demand
     over a class whose members this reader does not name is declined, for :func:`_members`'
-    reason -- *"the first character that is not a digit"* is a choice, not a reading.
+    reason: ``\\s`` is the one class left with no member to take, so there is nothing to
+    demand of a character it would assert.
     """
     at = 0
     for atom in atoms:
@@ -1326,7 +1447,7 @@ def _sequence(text: str, at: int, *, nested: bool) -> tuple[tuple[_Atom, ...], i
             spelled, at, _holds_a_class = _escaped(text, at + 1)
             members = None if spelled is None else _ranged(spelled)
         elif found == ".":
-            members, at = None, at + 1
+            members, at = _ANY, at + 1
         elif found in _UNREAD:
             raise _Unread(_UNREAD[found])
         else:
@@ -1347,7 +1468,7 @@ def _atoms(pattern: str) -> tuple[_Atom, ...]:
     a class, is an assertion this reader stops at.  An UNANCHORED pattern is read too and
     needs no special case: draft-07's ``pattern`` is a SEARCH rather than a full match, so
     the string the atoms name is found in itself -- which is why ``^https://`` gives
-    ``"https://"`` and ``\\S`` gives nothing.
+    ``"https://"`` and a bare ``\\S`` gives the one character it names, ``"0"``.
 
     **AN EMPTY TUPLE IS A READING AND NOT A FAILURE, once a group can be taken zero times.**
     ``^(?:ab)?$`` states a construct and takes none of it, so the string it names is the
@@ -1410,7 +1531,12 @@ def _patterned(pattern: str, low: int, high: int | None) -> Built:
             return Built(
                 None,
                 Source.APPROXIMATED,
-                f"pattern {pattern!r} is not solved: a class whose members it does not name",
+                f"pattern {pattern!r} is not solved: "
+                + (
+                    "a complement that excludes every character it names"
+                    if atom.members == ()
+                    else "a class whose members it does not name"
+                ),
             )
         out.append(atom.member * count)
     return Built("".join(out), Source.CONSTRUCTED, READ_FROM_A_PATTERN)
