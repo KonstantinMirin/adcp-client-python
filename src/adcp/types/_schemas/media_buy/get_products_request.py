@@ -30,7 +30,6 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.delivery_type import DeliveryType
 from ._vocabularies import _VALUES_INCLUDE_OMIT_FINALIZE, _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS
 from .acceptance_context import AcceptanceContext
-from .product_fields import ProductResponseFieldsItem
 
 
 class BuyingMode(StrEnum):
@@ -103,6 +102,114 @@ class ObjScopeProposalIdActionAsk(AdCPBaseModel):
 
 
 class FieldsItem(StrEnum):
+    PRODUCT_ID = 'product_id'
+    product_id = MemberAlias('PRODUCT_ID')
+    NAME = 'name'
+    DESCRIPTION = 'description'
+    description = MemberAlias('DESCRIPTION')
+    PUBLISHER_PROPERTIES = 'publisher_properties'
+    publisher_properties = MemberAlias('PUBLISHER_PROPERTIES')
+    CHANNELS = 'channels'
+    channels = MemberAlias('CHANNELS')
+    VIDEO_PLACEMENT_TYPES = 'video_placement_types'
+    video_placement_types = MemberAlias('VIDEO_PLACEMENT_TYPES')
+    AUDIO_DISTRIBUTION_TYPES = 'audio_distribution_types'
+    audio_distribution_types = MemberAlias('AUDIO_DISTRIBUTION_TYPES')
+    SPONSORED_PLACEMENT_TYPES = 'sponsored_placement_types'
+    sponsored_placement_types = MemberAlias('SPONSORED_PLACEMENT_TYPES')
+    SOCIAL_PLACEMENT_SURFACES = 'social_placement_surfaces'
+    social_placement_surfaces = MemberAlias('SOCIAL_PLACEMENT_SURFACES')
+    FORMAT_OPTIONS = 'format_options'
+    format_options = MemberAlias('FORMAT_OPTIONS')
+    PLACEMENTS = 'placements'
+    placements = MemberAlias('PLACEMENTS')
+    DELIVERY_TYPE = 'delivery_type'
+    delivery_type = MemberAlias('DELIVERY_TYPE')
+    EXCLUSIVITY = 'exclusivity'
+    exclusivity = MemberAlias('EXCLUSIVITY')
+    PRICING_OPTIONS = 'pricing_options'
+    pricing_options = MemberAlias('PRICING_OPTIONS')
+    FORECAST = 'forecast'
+    forecast = MemberAlias('FORECAST')
+    REPORTING_CAPABILITIES = 'reporting_capabilities'
+    reporting_capabilities = MemberAlias('REPORTING_CAPABILITIES')
+    MEASUREMENT_TERMS = 'measurement_terms'
+    measurement_terms = MemberAlias('MEASUREMENT_TERMS')
+    PERFORMANCE_STANDARDS = 'performance_standards'
+    performance_standards = MemberAlias('PERFORMANCE_STANDARDS')
+    CATALOG_TYPES = 'catalog_types'
+    catalog_types = MemberAlias('CATALOG_TYPES')
+    SIGNAL_TARGETING_ALLOWED = 'signal_targeting_allowed'
+    signal_targeting_allowed = MemberAlias('SIGNAL_TARGETING_ALLOWED')
+    SIGNAL_TARGETING_RULES = 'signal_targeting_rules'
+    signal_targeting_rules = MemberAlias('SIGNAL_TARGETING_RULES')
+    DEMOGRAPHIC_TARGETING = 'demographic_targeting'
+    demographic_targeting = MemberAlias('DEMOGRAPHIC_TARGETING')
+    OVERLAY_SUPPORT = 'overlay_support'
+    overlay_support = MemberAlias('OVERLAY_SUPPORT')
+    COLLECTIONS = 'collections'
+    collections = MemberAlias('COLLECTIONS')
+    COLLECTION_TARGETING_ALLOWED = 'collection_targeting_allowed'
+    collection_targeting_allowed = MemberAlias('COLLECTION_TARGETING_ALLOWED')
+    MEDIA_BUY_SUPPORT = 'media_buy_support'
+    media_buy_support = MemberAlias('MEDIA_BUY_SUPPORT')
+    AUDIENCE_EVIDENCE = 'audience_evidence'
+    audience_evidence = MemberAlias('AUDIENCE_EVIDENCE')
+    AUDIENCE_EVIDENCE_SELECTIONS = 'audience_evidence_selections'
+    audience_evidence_selections = MemberAlias('AUDIENCE_EVIDENCE_SELECTIONS')
+    MAX_OPTIMIZATION_GOALS = 'max_optimization_goals'
+    max_optimization_goals = MemberAlias('MAX_OPTIMIZATION_GOALS')
+    CATALOG_MATCH = 'catalog_match'
+    catalog_match = MemberAlias('CATALOG_MATCH')
+    LIST_APPLICATIONS = 'list_applications'
+    list_applications = MemberAlias('LIST_APPLICATIONS')
+    BRIEF_RELEVANCE = 'brief_relevance'
+    brief_relevance = MemberAlias('BRIEF_RELEVANCE')
+    TARGETING_RESOLUTION = 'targeting_resolution'
+    targeting_resolution = MemberAlias('TARGETING_RESOLUTION')
+    ACCEPTANCE_POLICY_PROFILE_IDS = 'acceptance_policy_profile_ids'
+    acceptance_policy_profile_ids = MemberAlias('ACCEPTANCE_POLICY_PROFILE_IDS')
+    IDENTITY = 'identity'
+    identity = MemberAlias('IDENTITY')
+    EXECUTION_REQUIREMENTS = 'execution_requirements'
+    execution_requirements = MemberAlias('EXECUTION_REQUIREMENTS')
+    EXPIRES_AT = 'expires_at'
+    expires_at = MemberAlias('EXPIRES_AT')
+    ALLOWED_ACTIONS = 'allowed_actions'
+    allowed_actions = MemberAlias('ALLOWED_ACTIONS')
+    FORMAT_IDS = 'format_ids'
+    format_ids = MemberAlias('FORMAT_IDS')
+    OUTCOME_MEASUREMENT = 'outcome_measurement'
+    outcome_measurement = MemberAlias('OUTCOME_MEASUREMENT')
+    DELIVERY_MEASUREMENT = 'delivery_measurement'
+    delivery_measurement = MemberAlias('DELIVERY_MEASUREMENT')
+    CREATIVE_POLICY = 'creative_policy'
+    creative_policy = MemberAlias('CREATIVE_POLICY')
+    METRIC_OPTIMIZATION = 'metric_optimization'
+    metric_optimization = MemberAlias('METRIC_OPTIMIZATION')
+    CONVERSION_TRACKING = 'conversion_tracking'
+    conversion_tracking = MemberAlias('CONVERSION_TRACKING')
+    DATA_PROVIDER_SIGNALS = 'data_provider_signals'
+    data_provider_signals = MemberAlias('DATA_PROVIDER_SIGNALS')
+    INCLUDED_SIGNALS = 'included_signals'
+    included_signals = MemberAlias('INCLUDED_SIGNALS')
+    SIGNAL_TARGETING_OPTIONS = 'signal_targeting_options'
+    signal_targeting_options = MemberAlias('SIGNAL_TARGETING_OPTIONS')
+    INSTALLMENTS = 'installments'
+    installments = MemberAlias('INSTALLMENTS')
+    IS_CUSTOM = 'is_custom'
+    is_custom = MemberAlias('IS_CUSTOM')
+    PRODUCT_CARD = 'product_card'
+    product_card = MemberAlias('PRODUCT_CARD')
+    PRODUCT_CARD_DETAILED = 'product_card_detailed'
+    product_card_detailed = MemberAlias('PRODUCT_CARD_DETAILED')
+    ENFORCED_POLICIES = 'enforced_policies'
+    enforced_policies = MemberAlias('ENFORCED_POLICIES')
+    TRUSTED_MATCH = 'trusted_match'
+    trusted_match = MemberAlias('TRUSTED_MATCH')
+
+
+class FieldsItemBranch1(StrEnum):
     FORMAT_IDS = 'format_ids'
     format_ids = MemberAlias('FORMAT_IDS')
     OUTCOME_MEASUREMENT = 'outcome_measurement'
@@ -180,7 +287,7 @@ class GetProductsRequest(AdCPVersionEnvelope, AdcpRequest):
     required_overlay_support: Annotated[TargetingOverlayRequirements | None, Field(description="Minimum product-scoped targeting dimensions the buyer must be able to set independently on packages later. This requests selectable capability, not current targeting values, value-specific availability or forecasts, and not one product per possible value. A requirement true matches support true or any valid support object; an object requirement matches support true or an object containing every requested boolean and requested array subset. The backward-compatible daypart_targets support true is the exception: it satisfies inventory_local requirements only, not iana requirements. Unrequested object fields and numeric limits do not participate. Missing or unknown requirement fields do not match. Seller limit fields are response-only and cannot be requested here. On refine, presence is complete replacement state; when omitted, each referenced product's bound future-support requirements remain in force."), OmittedNotNull] = None
     required_media_buy_support: Annotated[ProductMediaBuySupportRequirements | None, Field(description='Minimum product participation in shared MediaBuy-level controls. For a frequency cap, every returned product must be composable in one seller-maintained aggregate counter for every requested per unit. On refine, presence is complete replacement state.'), OmittedNotNull] = None
     property_list: Annotated[PropertyListReference | None, Field(description='DEPRECATED discovery-only property filter. On compact discovery tasks use criteria.offer_filters.property_list to preserve product eligibility. Use targeting_overlay.property_list only when the buyer intends a delivery constraint, or required_overlay_support.property_list for future selectability. A facade MUST NOT convert this discovery filter into delivery targeting.'), OmittedNotNull] = None
-    fields: Annotated[list[ProductResponseFieldsItem | FieldsItem] | None, Field(description='Specific product fields to include in the response. When omitted, all fields are returned. Use for lightweight discovery calls where only a subset of product data is needed. product_id and name are always included. `format_ids` is a deprecated 3.x compatibility projection; new integrations request canonical `format_options`. Safety-critical request-specific fields override projection: Product.targeting_resolution and expires_at MUST be included whenever the seller returns modifications, overlay_support MUST be included when required_overlay_support was requested, media_buy_support MUST be included when required_media_buy_support or media_buy_frequency_cap was requested, list_applications MUST be included when a property or collection list is in the effective targeting, and audience_evidence_selections MUST be included when filters.audience_evidence_requirements affects eligibility or ranking. fields controls the optional audience_evidence payload, not either decision receipt. Response-level brief targeting confirmation is not a projected product field.', min_length=1), OmittedNotNull] = None
+    fields: Annotated[list[FieldsItem] | None, Field(description='Specific product fields to include in the response. When omitted, all fields are returned. Use for lightweight discovery calls where only a subset of product data is needed. product_id and name are always included. `format_ids` is a deprecated 3.x compatibility projection; new integrations request canonical `format_options`. Safety-critical request-specific fields override projection: Product.targeting_resolution and expires_at MUST be included whenever the seller returns modifications, overlay_support MUST be included when required_overlay_support was requested, media_buy_support MUST be included when required_media_buy_support or media_buy_frequency_cap was requested, list_applications MUST be included when a property or collection list is in the effective targeting, and audience_evidence_selections MUST be included when filters.audience_evidence_requirements affects eligibility or ranking. fields controls the optional audience_evidence payload, not either decision receipt. Response-level brief targeting confirmation is not a projected product field.', min_length=1), OmittedNotNull] = None
     time_budget: Annotated[TimeBudget | None, Field(description='Maximum time the buyer will commit to this request. The seller returns the best results achievable within this budget and does not start processes (human approvals, expensive external queries) that cannot complete in time. When omitted, the seller decides timing.'), OmittedNotNull] = None
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async terminal completion/failure notifications on curated discovery. Meaningful only for `buying_mode: "brief"` and `buying_mode: "refine"` requests that enter the async lifecycle. Submitted envelopes with `task_id` remain pollable through `get_task_status` (legacy `tasks/get`) whether or not this field is present. If a brief/refine request includes this field and the seller returns a Submitted envelope, the seller MUST deliver at least the terminal completion/failure notification to the configured URL; intermediate progress notifications are MAY. If the seller cannot honor the webhook channel, it MUST reject the request with a structured error instead of silently accepting. This field does not change wholesale timing semantics: sellers MUST NOT route `buying_mode: "wholesale"` requests through the async/Submitted arm or emit async delivery solely because `push_notification_config` is present; partial wholesale completion is reported via `incomplete[]`.'), OmittedNotNull] = None
     pagination: Annotated[PaginationRequest | None, Field(description="Cursor-based pagination controls for get_products. Valid in all buying modes. In brief mode, pagination bounds the seller's returned products[] for the curated answer to the brief and is not an exhaustive catalog-enumeration contract. In refine mode, pagination bounds the refined products[] result implied by refine[] and filters; proposals may accompany a page as plan metadata but are not independently counted by this pagination envelope. In wholesale mode, pagination walks the wholesale product feed and may be combined with wholesale feed versioning."), OmittedNotNull] = None
@@ -197,7 +304,10 @@ Action = RefineItemProductAction
 Action9 = RefineItemProposalAction
 
 
-Fields = FieldsItem
+Field1 = FieldsItem
+
+
+Fields = FieldsItemBranch1
 
 
 Refine1 = ObjScopeAsk

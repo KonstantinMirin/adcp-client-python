@@ -1193,8 +1193,8 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
 
     Asserted as the set of MODULES that call ``codegen.schema.parse.parse``, because the
     entry is what a second traversal would have to come through: every other module takes
-    a node and reads its fields.  Four callers and each is a position ``parse`` is
-    re-entered at rather than a second walk of one mapping:
+    a node and reads its fields.  Each caller is a position ``parse`` is re-entered at
+    rather than a second walk of one mapping:
 
     * ``codegen/emit.py`` -- the document ROOT, once per document (``lower_document``), and
       the document ROOT of every portable document of the BUNDLE, for the one fact §1's
@@ -1230,8 +1230,14 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
     for a LOCAL pointer and two documents were charged a verdict for it.  So the parser is
     re-entered for the one node the declaration implies, and no ``#`` is read here.
 
+    **The sixth entry's sentence** (``adcp-client-python-69mi``).  §5's
+    ``oneOf``/``anyOf`` row makes a bare combinator of PURE VALUE SETS one enumeration of
+    the union of its arms' members, and that enumeration arrives as a DECLARATION -- so it
+    goes back through the parser for the fourth entry's reason exactly, at the union's own
+    pointer and position.  The comment in the set below carries the rest.
+
     Named BY SITE and not by count: the set is ``{module, enclosing function}``, so a
-    fifth entry has to be added here with the sentence that re-enters the parser for it.
+    further entry has to be added here with the sentence that re-enters the parser for it.
 
     Resolved by AST, for the module docstring's reasons: a lazy import inside a function
     body and a relative ``from ..schema import parse`` are both invisible to a grep.
@@ -1272,6 +1278,23 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
         # a ``$ref`` CONJUNCT, for the DOCUMENT HALF that says which resolution it is (§5's
         # ``$ref`` row at CONJ; ``adcp-client-python-10l.43``)
         ("lower/composition.py", "_conjunct_base"),
+        # **THE MERGED VALUE SET a bare combinator of pure enumerations IS**
+        # (``lower.union.one_value_set``, ``adcp-client-python-69mi``, 2026-11-10).  §5's
+        # ``oneOf``/``anyOf`` row: a union every arm of which admits exactly the members it
+        # names admits exactly the union of those lists, so the node's accepted set is one
+        # ``enum`` -- and that ``enum`` is a DECLARATION, not a node.  It is the FOURTH
+        # entry's sentence at a second merge: §2's intersection rule "hands the merged
+        # declaration back to ``codegen.schema.parse.parse``" because the result has to be
+        # read as ONE node rather than composed out of several decided ones, and the same
+        # holds here -- ``union.py`` builds ``{"enum": [...], "type": ...}`` and the one
+        # reader of a raw mapping reads it, at the union's OWN pointer and position.
+        # Building a ``nodes.Enumeration`` here instead was the alternative and is the
+        # thing this rule forbids: it would make ``lower/union.py`` a second classifier of
+        # what an ``enum`` node is, and §4's dispatch could then disagree with it about a
+        # mapping neither of them parsed.  The merge is screened by ``isinstance(parsed,
+        # nodes.Enumeration)`` and raises ``BuildFailure`` where the two disagree, which is
+        # ``_conjunct_base``'s own guard one row along.
+        ("lower/union.py", "lower"),
     }, sorted(sites)
 
 

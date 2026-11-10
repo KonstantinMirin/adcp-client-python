@@ -3031,7 +3031,7 @@ from .media_buy import (
 from .media_buy import FailedLookup as FailedLookup
 from .media_buy import FailedReportingConsumerStatus as FailedReportingConsumerStatus
 from .media_buy import FailedReportingReceipt as FailedReportingReceipt
-from .media_buy import FieldsItem as FieldsItem
+from .media_buy import FieldsItemBranch1 as FieldsItemBranch1
 from .media_buy import FlightChangeConstraints as FlightChangeConstraints
 from .media_buy import FormatOptionRefs as FormatOptionRefs
 from .media_buy import GetMediaBuyDeliveryRequest as GetMediaBuyDeliveryRequest
@@ -3133,6 +3133,7 @@ from .media_buy import GetProductsInputRequiredReason as GetProductsInputRequire
 from .media_buy import GetProductsRejected as GetProductsRejected
 from .media_buy import GetProductsRequest as GetProductsRequest
 from .media_buy import GetProductsRequestBuyingMode as GetProductsRequestBuyingMode
+from .media_buy import GetProductsRequestFieldsItem as GetProductsRequestFieldsItem
 from .media_buy import GetProductsRequestRefineItemProductAction as GetProductsRequestRefineItemProductAction
 from .media_buy import GetProductsRequestRefineItemProposalAction as GetProductsRequestRefineItemProposalAction
 from .media_buy import GetProductsRequestTimeBudget as GetProductsRequestTimeBudget
@@ -5109,7 +5110,7 @@ __all__ = [
     'FeatureRequirementIfNotCovered',
     'FeedFormat',
     'FeedbackSource',
-    'FieldsItem',
+    'FieldsItemBranch1',
     'FileTransferDestination',
     'FileTransferDirectionsItem',
     'FileTransferFormat',
@@ -5436,6 +5437,7 @@ __all__ = [
     'GetProductsRejected',
     'GetProductsRequest',
     'GetProductsRequestBuyingMode',
+    'GetProductsRequestFieldsItem',
     'GetProductsRequestRefineItemProductAction',
     'GetProductsRequestRefineItemProposalAction',
     'GetProductsRequestTimeBudget',
