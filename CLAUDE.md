@@ -66,6 +66,63 @@ a domain path when the name it needs is not bound there.
 - Add specific `type: ignore` comments (e.g., `# type: ignore[no-any-return]`) rather than blanket ignores
 - Test type checking in CI across multiple Python versions (3.10+)
 
+## Formats are addressed two ways, and the conversion is ONE-WAY
+
+**`format_id` is the LEGACY (v1) way of addressing a format. `format_kind` is the NEW
+(v2 canonical) way.** Both are stated by bundle 3.2 and both are live during the
+migration window, so a class that carries only one of them is narrower than its
+document. This has been explained more than once and mis-read more than once; the
+measurements below are the record so it is not re-derived.
+
+**The two addressing forms, with their documents:**
+
+| | addresses a format by | document | state |
+|---|---|---|---|
+| v1, legacy | `format_id` — a structured `{agent_url, id}`, **not a string** | `core/format-id.json` ("Format Reference (Structured Object)", required `agent_url`, `id`) | `deprecated: true`, `x-removed-in: 4.0.0` at most sites |
+| v2, canonical | `format_kind` + `params` | `core/product-format-declaration.json` (required `['format_kind', 'params']`, a 16-arm `oneOf`: "Image Format Declaration", "HTML5 Format Declaration", …) | live; what new products author |
+
+`core/format.json` is the v1 named-format definition and is **`deprecated: true`** as a
+whole. Its own description: *"DEPRECATED in 3.2. Legacy named-format definition retained
+for older 3.x peers and list_creative_formats compatibility projections. New products and
+creative agents author ProductFormatDeclaration canonical contracts instead."* It is
+`$ref`-ed by 3 documents; `core/product-format-declaration.json` by 24.
+
+**A CONSUMER DOES NOT PICK THE BRANCH — PYDANTIC DOES.** A product passes the value it
+has and the union dispatches to the arm that matches. So `Format` is the union over the
+two addressing forms, not one of them, and code that hard-binds either leaf answers for
+only half the wire. `core/product.json` states the same choice at the field level with
+an `anyOf` over `required: ['format_ids']` and `required: ['format_options']`, which we
+lower to `RequiredGroups(groups=(('format_ids',), ('format_options',)), combinator='anyOf')`
+— and its own text says *"Products MUST carry `format_ids`, `format_options`, or **both**
+during the 3.x migration window."* Both is legal there.
+
+**THE CONVERSION IS ONE-WAY, AND THE REGISTRY SAYS SO NORMATIVELY.**
+`registries/v1-canonical-mapping.json` ("v1 → v2 Canonical Format Mapping Registry"):
+
+> **Direction of truth (normative).** This registry is authoritative for **v1 → v2
+> projection only**. v2 → v1 projection MUST rely on `v1_format_ref` on the v2
+> `ProductFormatDeclaration` — sellers assert the v1 mapping.
+
+So:
+
+* **id → kind is derivable.** The AAO-published registry maps v1 patterns to v2
+  canonical declarations. The SDK does this at `src/adcp/canonical_formats/v1_to_v2.py`.
+* **kind → id is NOT derivable** from the kind alone. It is only possible where the
+  declaration itself carries `v1_format_ref` — an array of one or more `format_id`
+  `{agent_url, id}` values, which the SELLER asserts. `src/adcp/canonical_formats/v2_to_v1.py`
+  is that path, and without `v1_format_ref` there is no answer to invent.
+
+**So never "normalise" a kind back to an id.** The mapping does not exist unless the
+document carries it, and manufacturing one is inventing a format identity.
+
+**And `deprecated` is metadata, not absence.** A document stating `format_ids` with
+`deprecated: true` STATES the field; suppressing it from a class (`format_ids = None` at
+class level) makes the class narrower than its document, which reading 1 forbids. Seven
+documents state one of these fields as deprecated-but-present:
+`core/product.json`, `core/package.json`, `core/placement.json`,
+`core/product-filters.json`, `core/creative-filters.json`,
+`core/creative-manifest.json`, `core/creative-asset.json`.
+
 ## Import-time model patches must defer their rebuild (#1694)
 
 `_ergonomic`, `_forward_compat`, `canonical_creative` and `aliases` edit generated
