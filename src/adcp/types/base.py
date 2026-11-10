@@ -56,10 +56,10 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "NoExplicitNull": "NOT-A-TYPE",
-    "WireUrl": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "NoExplicitNull": "NOT-A-TYPE: upstream's expression names no arms to resolve: FieldInfo(exclude_if=_is_none)",
+    "WireUrl": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's expression carries Annotated metadata to port",
     "_AdcpMessage": "UNRESOLVABLE-UPSTREAM",
-    "_REFUSE_JSON_NULL": "UNRESOLVABLE-UPSTREAM",
+    "_REFUSE_JSON_NULL": "UNRESOLVABLE-UPSTREAM: upstream's expression names no arms to resolve: _RefuseJsonNull()",
     "_resolve_extra_policy": "UNRESOLVABLE-UPSTREAM",
     "defer_model_rebuild": "NO-DOCUMENT-NO-SUBJECT",
     "is_no_explicit_null": "NOT-A-TYPE",

@@ -102,12 +102,12 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "AuthorizedAgents": "UPSTREAM-AMBIGUOUS",
-    "AuthorizedAgents1": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgents2": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgents3": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "CreateMediaBuyResponse1": "UPSTREAM-AMBIGUOUS",
-    "UpdateMediaBuyResponse1": "UPSTREAM-AMBIGUOUS",
+    "AuthorizedAgents": "UPSTREAM-AMBIGUOUS: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgents1": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgents2": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents3, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgents3": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents4, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "CreateMediaBuyResponse1": "UPSTREAM-AMBIGUOUS: their CreateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
+    "UpdateMediaBuyResponse1": "UPSTREAM-AMBIGUOUS: their UpdateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
 }
 
 #: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where

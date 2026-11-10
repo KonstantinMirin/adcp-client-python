@@ -114,9 +114,9 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "coerce_legacy_asset": "NO-DOCUMENT-NO-SUBJECT",
-    "coerce_legacy_assets": "NO-DOCUMENT-NO-SUBJECT",
-    "infer_asset_type": "NO-DOCUMENT-NO-SUBJECT",
+    "coerce_legacy_asset": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.coerce_legacy_asset, which is NO-DOCUMENT-NO-SUBJECT",
+    "coerce_legacy_assets": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.coerce_legacy_assets, which is NO-DOCUMENT-NO-SUBJECT",
+    "infer_asset_type": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.infer_asset_type, which is NO-DOCUMENT-NO-SUBJECT",
 }
 
 #: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where

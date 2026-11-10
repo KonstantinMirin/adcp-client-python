@@ -254,22 +254,22 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "AuthorizedAgent": "NO-DOCUMENT-NO-SUBJECT",
-    "AuthorizedAgentsByInlineProperties": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsByPropertyId": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsByPropertyTag": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT",
-    "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "SyncCatalogResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "SyncCreativeResult": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "UrlDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
-    "UrlVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgent": "NO-DOCUMENT-NO-SUBJECT: arm 'AuthorizedAgentsByPropertyId' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByInlineProperties": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents3, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPropertyId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPropertyTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents4, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents6, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: their CreateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
+    "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.get_creative_delivery_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.DaastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.VastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_audiences_request.Audience, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "SyncCatalogResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_catalogs_response.Catalog, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "SyncCreativeResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.sync_creatives_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UrlDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.DaastAsset1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UrlVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.VastAsset1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
 }
 
 #: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where

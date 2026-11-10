@@ -45,7 +45,7 @@ __adcp_refused__ = {
     "CreateMediaBuyResponse2": "NO-DOCUMENT-NO-SUBJECT",
     "DeliveryCreative": "NO-DOCUMENT-NO-SUBJECT",
     "Format": "MODULE-HAS-NO-BUNDLE-SUBJECT",
-    "PRIMARY_CANONICAL_MODELS": "NOT-A-TYPE",
+    "PRIMARY_CANONICAL_MODELS": "NOT-A-TYPE: upstream's expression names no arms to resolve: (Format, Product, Placement, CreativeAsset, Creative, CreativeManifest, Creative",
     "_DeliveryCreativeVariant": "UNRESOLVABLE-UPSTREAM",
     "is_canonical_format_kind": "NO-DOCUMENT-NO-SUBJECT",
     "is_legacy_creative_identity_key": "NO-DOCUMENT-NO-SUBJECT",

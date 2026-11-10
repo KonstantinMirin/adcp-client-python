@@ -889,6 +889,37 @@ class Join:
                 self._values[key] = frozenset()
         return self._values[key] or None
 
+    #: **A UNION OF ARMS IS A NAME FOR A UNION AND NEVER FOR AN ENUMERATION**, and the
+    #: distinction is the KIND of the thing upstream published rather than the values it
+    #: admits (`adcp-client-python-69mi`).  Measured, and it cost 105 of upstream's files
+    #: and ~1,797 test functions: the writer bound `GetProductsField` to
+    #: `FieldsItem | ProductResponseFieldsItem`, whose 53 admissible values are EXACTLY
+    #: upstream's 53 -- derived both ways, with our two arms overlapping on
+    #: `media_buy_support` and `overlay_support` -- and upstream's own
+    #: `decisioning/_get_products_helpers.py:66` writes
+    #: `frozenset(f.value for f in GetProductsField)`, which raises
+    #: `TypeError: 'types.UnionType' object is not iterable` at MODULE SCOPE in a module
+    #: `adcp/decisioning/__init__.py` imports.  So the whole `decisioning` package died at
+    #: import over a name whose value set was right.
+    #:
+    #: **AND THE REPAIR IS NOT A DIFFERENT ARM.**  It was proposed that their
+    #: `GetProductsField` is our 17-member `FieldsItem`, read off their comment's "38 + 17
+    #: members"; their own next clause refutes it -- "the public ``GetProductsField`` alias
+    #: resolves to a third, 53-member enum that the request never holds" -- and so does
+    #: their runtime, where the name is `domains.media_buy.get_products_request.Field1`
+    #: with 53 members.  Binding it to the 17 would take
+    #: `_GET_PRODUCTS_FIELD_VALUES` from 53 values to 17 and move 36 of `Product`'s fields
+    #: into that helper's `_PASSTHROUGH`, so a buyer asking for two fields would be sent
+    #: thirty-eight more: a wire-behaviour change dressed as a name.
+    #:
+    #: **AND NO DECLARATION OF OURS IS THAT ENUMERATION, which is a fact about the
+    #: DOCUMENT.**  `media-buy/get-products-request.json`'s `fields.items` is an `anyOf` of
+    #: two enumerations, so the bundle states two and our tree lowers two; upstream's
+    #: generator flattened the `anyOf` into one and deduplicated the two shared values.  A
+    #: 53-member enumeration of ours would be a type with no node behind it, which reading
+    #: 10 refuses outright.  So the row is REFUSED with the value-set agreement recorded as
+    #: the finding, and what would serve the name is a lowering of that `anyOf` -- owed by
+    #: whoever owns emission and not by an alias layer.
     def union(self, their_schema: str) -> list[str] | None:
         """The enumerations of ours whose value sets UNION to theirs EXACTLY, or nothing.
 
@@ -1257,11 +1288,19 @@ class Join:
             if len(hit) > 1:
                 row["prefix_refused"] = f"{len(hit)} declarations of ours carry a prefixed form"
 
-        # 7: they flattened a union we keep split
+        # 7: they flattened a union we keep split -- AND A UNION OF ARMS IS NOT AN
+        # ENUMERATION, which is what this key was measured to get wrong
+        # (`adcp-client-python-69mi`).  The value-set reading was right and is kept as the
+        # finding; what it licensed was not.  See :meth:`flattened`.
         if their["method"] == "enum":
             members = self.union(their["schema"])
             if members:
-                return bind("union+value-set", members, "value sets union to theirs exactly")
+                row["flattened_enum"] = (
+                    f"their one enumeration's values are exactly the union of "
+                    f"{len(members)} of ours ({', '.join(members)}), and a union of arms is "
+                    f"not an enumeration: `for f in <name>` and `<name>.MEMBER` are the "
+                    f"contract their own code uses and `A | B` has neither"
+                )
 
         # 8: their word, declared EXACTLY ONCE in our whole tree.  Their generator INLINES a
         # `$ref`'s target into the referring module and ours keeps the referenced document's
@@ -1621,7 +1660,16 @@ def write_modules(
         refused: dict[str, str] = {}
         for row in sorted(group, key=lambda r: r["name"]):
             if row["verdict"] != "BOUND":
-                refused[row["name"]] = row["verdict"]
+                # **THE REASON IS THE RICHEST ONE THE ROW HOLDS, not the verdict alone.**
+                # A verdict names the CLASS of refusal; the sentences below name THIS name's
+                # own obstruction, and the obstruction is what a caller reading an
+                # `AttributeError` needs.  Measured on the name that cost the most:
+                # `GetProductsField` read `DOCUMENT-NO-WORD-NO-IDENTITY`, which says nothing
+                # about the `anyOf` of two enumerations behind it.
+                detail = row.get("flattened_enum") or row.get("stated_refused") or ""
+                refused[row["name"]] = (
+                    f"{row['verdict']}: {detail}" if detail else row["verdict"]
+                )
                 continue
             paths = [
                 tuple(p) if p else tuple(k.rsplit(".", 1))
@@ -1630,10 +1678,24 @@ def write_modules(
             if len(paths) == 1:
                 mod, word = paths[0]
                 statements.append(f"from {mod} import {word} as {row['name']}")
+            elif row.get("method") == "enum":
+                # **AND NEVER FOR AN ENUMERATION**, the second half of the clause below and
+                # the one `adcp-client-python-69mi` is about.  Refused HERE as well as at the
+                # key, because this is the line that wrote the type: a union of arms has
+                # neither `for f in <name>` nor `<name>.MEMBER`, so standing it in for an
+                # enumeration changes the KIND of the name and costs an importing module its
+                # whole package.  Defence in depth and not a duplicate reading -- the key
+                # decides a binding, this decides whether a STATEMENT may be written.
+                refused[row["name"]] = (
+                    "UNION-OF-ARMS-IS-NOT-AN-ENUMERATION: upstream published one "
+                    f"enumeration and the subject is {len(paths)} of ours"
+                )
+                continue
             else:
                 # **A UNION ALIAS IS STILL A NAME.**  The arms are imported under private
                 # words and joined, so nothing is declared and every arm is the object the
-                # walk emitted -- `get_args` over the alias returns them by identity.
+                # walk emitted -- `get_args` over the alias returns them by identity.  Only
+                # where upstream published a UNION: see the `enum` arm above.
                 for i, (mod, word) in enumerate(paths):
                     statements.append(f"from {mod} import {word} as _arm{i}_{row['name']}")
                 arms = " | ".join(f"_arm{i}_{row['name']}" for i in range(len(paths)))

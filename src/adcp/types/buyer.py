@@ -48,7 +48,7 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "BrandIdentity": "DOCUMENT-WE-DO-NOT-COMPILE",
+    "BrandIdentity": "DOCUMENT-WE-DO-NOT-COMPILE: upstream declares it at adcp.types.domains.brand_discovery.Brand, which is DOCUMENT-WE-DO-NOT-COMPILE",
 }
 
 #: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where
