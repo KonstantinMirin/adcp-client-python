@@ -3405,9 +3405,10 @@ def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
         # That sentence read "a branch declaring no property constrains only requiredness:
         # that is a rule on the root's class (D2, D6), not a branch class" and the cell
         # says otherwise: §5's ``oneOf``/``anyOf`` row answers a presence rule only where
-        # the union is presence-only in EVERY branch -- ``parse.presence_only``, which
-        # keeps the combinator out of the union arm entirely and sends it to
-        # ``lower/rules.py`` -- and measured over the 1,054 portable documents 0 of the 8
+        # the union is presence-only in EVERY branch AND no base plus children says what
+        # the node says -- ``parse.presence_rule``, which keeps the combinator out of the
+        # union arm entirely and sends it to ``lower/rules.py`` -- and measured over the
+        # 1,054 portable documents 0 of the 8
         # unions reaching this refusal is one.  Every one of them is MIXED, so the row
         # that decides them is the same row's other sentence: "a branch that differs in a
         # type, a bound, a format, a nested shape or its ``required`` is a branch of

@@ -306,6 +306,16 @@ def _refuse_a_combinator_of_shapes(
     accepted set did not move: the refusal fires 0 times on the 1,054 portable documents
     before and after.
 
+    **AND THAT NODE IS A UNION AGAIN since the owner's correction of 2026-11-07**
+    (``adcp-client-python-j0fr``, ``schema.parse.presence_branches``): its two branches
+    differ in field PRESENCE, which is the one difference a subclass carries, so it is one
+    of the 8 emitted as a base plus children with a key-set dispatch rather than as a rule
+    on one class.  The sentence above is kept because it is this row's own measurement and
+    the route it describes is the route the node no longer takes -- what claims it now is
+    :func:`_decide`'s union arm, not the deferral here.  This row's accepted set still
+    does not move: the refusal fires 0 times on the 1,059 portable documents of the
+    patched bundle.
+
     **THE KIND IS THE PARSER'S FIRST, and the screen reading second**
     (``adcp-client-python-10l.37``).  A node whose combinator sits in an ``allOf``
     CONJUNCT states it about the same instance -- draft-07 conjoins a conjunct with the
