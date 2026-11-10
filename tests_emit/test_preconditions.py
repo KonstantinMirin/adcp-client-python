@@ -20,6 +20,18 @@ And underneath all three: the virtualenv was missing ``httpx``, ``a2a``, ``mcp``
 ``rfc8785``, ``tldextract``, ``sse_starlette`` and the sibling ``adcp_reporting_storage``,
 so a quarter of every reading was the environment rather than the tree.
 
+**AND THEN A FOURTH, WHICH THIS FILE'S FIRST VERSION FAILED TO CATCH AND WHICH DWARFED
+THE OTHER THREE.**  ``pytest-asyncio`` was declared and not installed, so all 4,432
+``async def test`` functions in the suite failed or skipped for an environment reason --
+visible only as ``PytestConfigWarning: Unknown config option: asyncio_mode``, a line in
+every run output anyone read, including every run taken while writing this file.
+Installing it moved one 69-file subset from 854 passed / 1246 failed / 103 errors to
+1616 passed / 523 failed / 1 error on an unchanged commit, and thirteen more declared
+distributions were missing behind it.  The reason the first version missed it is recorded
+on :func:`declared`: the dependency check was a HAND-WRITTEN TUPLE of ten import names,
+and a list cannot catch what it does not name.  It is now derived from the
+installed distribution's own metadata.
+
 **A FIGURE WITHOUT ITS PRECONDITIONS IS NOT A MEASUREMENT.**  So this file does three
 things in order and nothing else: it asserts the environment can answer, it states the
 population once, and it reports the reading.  Any instrument that wants that population
@@ -31,27 +43,63 @@ from __future__ import annotations
 import ast
 import importlib
 import pathlib
+import re
+from importlib import metadata
 from typing import NamedTuple
 
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
-#: Every third-party distribution ``pyproject.toml`` lists as a runtime dependency and
-#: whose absence silently inflates an import census.  Read as import names, not
-#: distribution names, because that is what an ``ImportError`` carries.
-RUNTIME = (
-    "httpx",
-    "httpcore",
-    "a2a",
-    "mcp",
-    "sse_starlette",
-    "rfc8785",
-    "jsonschema",
-    "tldextract",
-    "cryptography",
-    "pydantic",
-)
+#: The source :func:`declared` reads, named once so the failure message can cite it.
+DECLARED_SOURCE = "the installed adcp distribution's Requires-Dist (core plus extra == dev)"
+
+
+def declared() -> list[str]:
+    """Every distribution the project declares as required, off its own metadata.
+
+    **THIS WAS A HAND-WRITTEN TUPLE OF TEN NAMES, AND THAT IS WHY IT MISSED THE LARGEST
+    DEFECT OF THE EPIC.**  A list cannot catch a dependency it does not name, and this one
+    named no test-harness package at all: ``pytest-asyncio`` is declared at
+    ``pyproject.toml`` line 162 and ``asyncio_mode = "auto"`` is set at line 442, but the
+    package was absent from the virtualenv.  The suite holds 4,432 ``async def test``
+    functions, so every one of them failed or skipped for an environment reason, and
+    pytest reported it as nothing louder than ``PytestConfigWarning: Unknown config
+    option: asyncio_mode`` -- a line present in every run anyone read.  Installing it
+    moved a 69-file subset from 854 passed / 1246 failed / 103 errors to 1616 passed /
+    523 failed / 1 error on an UNCHANGED commit.  A further thirteen declared
+    distributions were missing behind it, ``pytest-cov`` among them, which is what
+    ``make test`` runs with.
+
+    So the population is DERIVED and the gate is general: whatever the project declares
+    must be installed, and a dependency added in a later release is covered with nothing
+    here edited.
+
+    Read off the INSTALLED distribution's own ``Requires-Dist`` rather than by parsing
+    ``pyproject.toml``, for two reasons.  ``tomllib`` is 3.11+ and this project's
+    ``requires-python`` is ``>=3.10`` with CI across 3.10-3.13, so a ``tomllib`` import
+    here would be an ImportError on the oldest supported interpreter -- and ``tomli`` is
+    not a declared dependency, so there is nothing to fall back to.  And the metadata IS
+    what ``pyproject.toml`` generates, so it is the same statement one step closer to what
+    the installer actually acted on.
+
+    Entries gated on an extra other than ``dev`` are excluded: ``pg``, ``docs`` and
+    ``observability`` are genuinely optional, and asserting them would redden the gate for
+    a correct install.  ``dev`` is included because ``make bootstrap`` installs it
+    (``uv run --extra dev --group dev``), which makes it the project's own line between
+    "must be present" and "may be".
+    """
+    names = set()
+    for spec in metadata.requires("adcp") or []:
+        head, _, marker = spec.partition(";")
+        if marker and "extra" in marker:
+            wanted = re.search(r"extra\s*==\s*[\"']([^\"']+)[\"']", marker)
+            if wanted and wanted.group(1) != "dev":
+                continue
+        name = re.split(r"[\[<>=!~ ]", head.strip(), maxsplit=1)[0].strip()
+        if name:
+            names.add(name)
+    return sorted(names)
 
 #: The sibling distribution in ``packages/``.  Upstream's own tests import it, and without
 #: it their reporting suite reads as our defect.
@@ -146,16 +194,33 @@ def resolves(module: str, name: str) -> bool:
 # --------------------------------------------------------------------------- #
 # 1. the environment can answer
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("dist", RUNTIME)
-def test_a_runtime_dependency_is_importable(dist: str) -> None:
-    """Without these, an import census measures the virtualenv and not the tree."""
-    pytest.importorskip.__module__  # keep the import of pytest meaningful to linters
+def test_the_declared_population_is_not_empty() -> None:
+    """A parse that silently matched nothing would make the gate below pass vacuously."""
+    names = declared()
+    assert len(names) >= 40, (
+        f"only {len(names)} distributions parsed out of pyproject.toml across "
+        f"{DECLARED_SOURCE}; the derivation is broken and the dependency gate reads nothing"
+    )
+
+
+@pytest.mark.parametrize("dist", declared())
+def test_a_declared_dependency_is_installed(dist: str) -> None:
+    """Asked of the DISTRIBUTION, never of an import name.
+
+    ``pytest-asyncio`` imports as ``pytest_asyncio``, ``types-protobuf`` imports as
+    nothing at all, and a hand-maintained spelling table is the same hand-written list
+    this gate exists to replace.  ``importlib.metadata`` answers for the installed
+    distribution directly, so no mapping can be wrong or go stale.
+    """
     try:
-        importlib.import_module(dist)
-    except ImportError as exc:  # pragma: no cover - the failure IS the message
+        metadata.distribution(dist)
+    except metadata.PackageNotFoundError:  # pragma: no cover - the failure IS the message
         pytest.fail(
-            f"{dist!r} is not installed, so every import figure taken here is inflated. "
-            f"Install the project's dependency set before measuring: {exc}"
+            f"{dist!r} is DECLARED in pyproject.toml and NOT INSTALLED, so every figure "
+            f"taken in this interpreter is measuring the virtualenv rather than the tree. "
+            f"Install the project's own set: uv pip install --python .venv/bin/python -e "
+            f'".[dev]" -- and note this venv has no `pip` module, so `python -m pip` and '
+            f"`make install-dev`'s `PIP := .venv/bin/pip` both fail on it."
         )
 
 
@@ -210,7 +275,11 @@ def test_the_population_is_stated_and_not_empty() -> None:
 def test_every_live_ask_of_upstreams_own_source_resolves() -> None:
     """Upstream's source is the party whose imports the substitution must not break."""
     unresolved = sorted(
-        {(p.module, p.name) for p in asked_of_us("src/adcp") if p.live and not resolves(p.module, p.name)}
+        {
+            (p.module, p.name)
+            for p in asked_of_us("src/adcp")
+            if p.live and not resolves(p.module, p.name)
+        }
     )
     assert not unresolved, (
         f"{len(unresolved)} live (module, name) asks of upstream's own source do not "
@@ -230,11 +299,12 @@ def test_the_test_side_reading_is_reported_with_its_guard() -> None:
     live = {(p.module, p.name) for p in tests if p.live}
     whole = {(p.module, p.name) for p in tests}
     live_bad = sorted(k for k in live if not resolves(*k))
+    live_set = set(live_bad)
     whole_bad = sorted(k for k in whole if not resolves(*k))
     assert len(live_bad) <= len(whole_bad), "the live set exceeds the whole set: guard inverted"
     print(
         f"\ntest-side asks: {len(whole)} declared, {len(live)} live\n"
         f"unresolved:     {len(whole_bad)} declared, {len(live_bad)} LIVE "
-        f"over {len({p.asker for p in tests if p.live and (p.module, p.name) in set(live_bad)})} files\n"
+        f"over {len({p.asker for p in tests if p.live and (p.module, p.name) in live_set})} files\n"
         "the LIVE number is the one that blocks; the other is the type checker's view."
     )
