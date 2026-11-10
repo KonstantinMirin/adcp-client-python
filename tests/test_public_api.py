@@ -308,7 +308,11 @@ def test_semantic_aliases_point_to_discriminated_variants():
     assert html_render.output_format == "html"
 
     # Success response should accept success fields
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     success = CreateMediaBuySuccessResponse(
+        status="completed",
         media_buy_id="mb_123",
         buyer_ref="ref_456",
         packages=[],
@@ -318,7 +322,13 @@ def test_semantic_aliases_point_to_discriminated_variants():
     assert success.media_buy_id == "mb_123"
 
     # Error response should accept error fields
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
+    # `errors` is REQUIRED here, which marks the rejection arm of the
+    # oneOf; the envelope says such an arm emits `rejected`.
     error = CreateMediaBuyErrorResponse(
+        status="rejected",
         errors=[{"code": "invalid", "message": "Failed"}],
     )
     assert len(error.errors) == 1
@@ -328,7 +338,11 @@ def test_public_api_types_serialize_to_json():
     """Public API types can be serialized to JSON."""
     from adcp import CreateMediaBuySuccessResponse
 
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     success = CreateMediaBuySuccessResponse(
+        status="completed",
         media_buy_id="mb_123",
         buyer_ref="ref_456",
         packages=[],

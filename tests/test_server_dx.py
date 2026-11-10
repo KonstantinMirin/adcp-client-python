@@ -235,7 +235,11 @@ class TestMediaBuyResponse:
     def test_typed_success_exposes_revision_and_confirmed_at_semantics(self):
         from adcp.types import CreateMediaBuySuccessResponse
 
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         result = CreateMediaBuySuccessResponse(
+            status="completed",
             media_buy_id="mb-123",
             packages=[],
             revision=1,
@@ -252,7 +256,10 @@ class TestMediaBuyResponse:
         from adcp.types import CreateMediaBuySuccessResponse
 
         with pytest.raises(ValidationError):
-            CreateMediaBuySuccessResponse(media_buy_id="mb-123", packages=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            CreateMediaBuySuccessResponse(status="completed", media_buy_id="mb-123", packages=[])
 
 
 class TestMediaBuyErrorResponse:
@@ -343,7 +350,10 @@ class TestUpdateMediaBuyResponse:
         from adcp.types import UpdateMediaBuySuccessResponse
 
         with pytest.raises(ValidationError):
-            UpdateMediaBuySuccessResponse(media_buy_id="mb-123")
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            UpdateMediaBuySuccessResponse(status="completed", media_buy_id="mb-123")
 
     def test_typed_submitted_response(self):
         from adcp import UpdateMediaBuyResponse3, UpdateMediaBuySubmittedResponse

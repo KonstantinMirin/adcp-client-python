@@ -404,7 +404,11 @@ class TestResponseTypeCoercion:
             name="Banner 300x250",
         )
 
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         response = ListCreativeFormatsResponse(
+            status="completed",
             formats=[format_obj],
             context={"request_id": "456"},
         )
@@ -434,7 +438,11 @@ class TestResponseTypeCoercion:
         )
 
         # No cast() needed!
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         response = ListCreativeFormatsResponse(
+            status="completed",
             formats=[format_obj],  # type: ignore[list-item]  # Ignoring due to Python list covariance limitation
         )
 
@@ -460,7 +468,11 @@ class TestResponseTypeCoercion:
         )
 
         # No cast() needed!
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         response = CreateMediaBuySuccessResponse(
+            status="completed",
             media_buy_id="mb1",
             buyer_ref="buyer-ref",
             packages=[package],  # type: ignore[list-item]  # Ignoring due to Python list covariance limitation
@@ -489,7 +501,11 @@ class TestResponseTypeCoercion:
             campaign_id="campaign-456",
         )
 
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         response = UpdateMediaBuySuccessResponse(
+            status="completed",
             media_buy_id="mb1",
             buyer_ref="buyer-ref",
             packages=[package],  # type: ignore[list-item]  # Ignoring due to Python list covariance limitation
@@ -510,7 +526,11 @@ class TestResponseTypeCoercion:
         """UpdateMediaBuySuccessResponse.media_buy_status accepts strings."""
         from adcp.types import MediaBuyStatus, UpdateMediaBuySuccessResponse
 
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         response = UpdateMediaBuySuccessResponse(
+            status="completed",
             media_buy_id="mb1",
             media_buy_status="active",
             revision=2,
@@ -540,7 +560,11 @@ class TestResponseTypeCoercion:
             totals={"impressions": 1000, "spend": 10.0},
         )
 
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         response = GetMediaBuyDeliveryResponse(
+            status="completed",
             currency="USD",
             reporting_period={
                 "start": datetime(2024, 1, 1, tzinfo=timezone.utc),
@@ -568,7 +592,11 @@ class TestResponseTypeCoercion:
             name="Banner 300x250",
         )
 
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         response = ListCreativeFormatsResponse(
+            status="completed",
             formats=[format_obj],
             context={"key": "value"},
         )
@@ -626,7 +654,11 @@ class TestResponseTypeCoercion:
         )
 
         # No cast() needed!
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
         response = GetProductsResponse(
+            status="completed",
             products=[product],  # type: ignore[list-item]  # Ignoring due to Python list covariance limitation
         )
 
@@ -656,7 +688,13 @@ class TestResponseTypeCoercion:
             internal_trace_id="trace-abc-123",
         )
 
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        # This construction passes a non-empty `errors[]`, which is the
+        # envelope's own 'Failed task response with error details'.
         response = GetProductsResponse(
+            status="failed",
             products=[],
             errors=[error],  # type: ignore[list-item]  # Ignoring due to Python list covariance limitation
         )

@@ -42,7 +42,10 @@ def echo_envelope(response: ProtocolEnvelope) -> str | None:
 
 # --- A plain success arm carries envelope state ---
 
-synced = SyncCreativesResponse1(creatives=[])
+# `status` is required by core/protocol-envelope.json, which this
+# document composes via allOf. Upstream's generator dropped
+# allOf-composed required fields, so their fixtures omit it.
+synced = SyncCreativesResponse1(status="completed", creatives=[])
 synced.replayed = True
 synced.task_id = "task_1"
 synced.context_id = "ctx_1"

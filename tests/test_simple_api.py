@@ -183,7 +183,11 @@ async def test_preview_creative_simple_api():
     """Test the explicit legacy preview helper."""
     from adcp.testing import creative_agent
 
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     mock_response = LegacyPreviewCreativeResponse1(
+        status="completed",
         response_type="single",
         expires_at="2025-12-01T00:00:00Z",
         previews=[

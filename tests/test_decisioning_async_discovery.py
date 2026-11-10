@@ -149,7 +149,10 @@ async def test_get_products_handoff_returns_submitted_envelope(executor) -> None
     from adcp.types import GetProductsRequest, GetProductsResponse
 
     async def _curate(task_ctx):
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()
@@ -182,7 +185,10 @@ async def test_get_products_handoff_completion_lands_in_registry(executor) -> No
         completed.set()
         # Empty products list is wire-valid; the terminal artifact shape is
         # what matters for the registry-completion assertion.
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()
@@ -212,7 +218,10 @@ async def test_get_signals_handoff_returns_submitted_envelope(executor) -> None:
     from adcp.types import GetSignalsRequest, GetSignalsResponse
 
     async def _discover(task_ctx):
-        return GetSignalsResponse(signals=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetSignalsResponse(status="completed", signals=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()
@@ -239,7 +248,10 @@ async def test_get_signals_handoff_completion_lands_in_registry(executor) -> Non
 
     async def _discover(task_ctx):
         completed.set()
-        return GetSignalsResponse(signals=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetSignalsResponse(status="completed", signals=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()
@@ -279,7 +291,10 @@ async def test_get_products_sync_path_no_task_id(executor) -> None:
         accounts = SingletonAccounts(account_id="seller")
 
         async def get_products(self, req, ctx):
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler(_Platform(), executor)
     resp = await handler.get_products(
@@ -300,7 +315,10 @@ async def test_get_signals_sync_path_no_task_id(executor) -> None:
         accounts = SingletonAccounts(account_id="signals-seller")
 
         async def get_signals(self, req, ctx):
-            return GetSignalsResponse(signals=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetSignalsResponse(status="completed", signals=[])
 
     handler = _make_handler(_Platform(), executor)
     resp = await handler.get_signals(
@@ -359,7 +377,10 @@ def _store_backed_platform(store: _RecordingStore, handoff: bool):
     _products: list[Any] = []
 
     async def _curate(task_ctx):
-        return GetProductsResponse(products=_products, proposals=_proposals)
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=_products, proposals=_proposals)
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()
@@ -371,7 +392,10 @@ def _store_backed_platform(store: _RecordingStore, handoff: bool):
         async def get_products(self, req, ctx):
             if handoff:
                 return ctx.handoff_to_task(_curate)
-            return GetProductsResponse(products=_products, proposals=_proposals)
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=_products, proposals=_proposals)
 
     return _Platform()
 
@@ -560,7 +584,10 @@ async def test_get_products_push_unresolved_account_rejected(executor) -> None:
             call_count["n"] += 1
             from adcp.types import GetProductsResponse
 
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     handler = _make_handler(_Platform(), executor)
     with pytest.raises(AdcpError) as exc:
@@ -589,7 +616,10 @@ async def test_get_signals_push_unresolved_account_rejected(executor) -> None:
         async def get_signals(self, req, ctx):
             from adcp.types import GetSignalsResponse
 
-            return GetSignalsResponse(signals=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetSignalsResponse(status="completed", signals=[])
 
     handler = _make_handler(_Platform(), executor)
     with pytest.raises(AdcpError) as exc:
@@ -755,7 +785,14 @@ async def test_persisted_draft_keeps_full_product_data_under_projection(executor
             return store
 
         async def get_products(self, req, ctx):
-            return GetProductsResponse(products=rich_products, proposals=proposals)
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(
+                status="completed",
+                products=rich_products,
+                proposals=proposals,
+            )
 
     store = _RecordingStore()
     handler = _make_handler(_Platform(), executor)
@@ -797,7 +834,10 @@ async def test_get_products_handoff_unresolved_account_no_push_rejected(executor
     from adcp.types import GetProductsRequest, GetProductsResponse
 
     async def _curate(task_ctx):
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()
@@ -836,7 +876,10 @@ async def test_wholesale_handoff_rejected_leaves_no_registry_row(executor) -> No
 
     async def _curate(task_ctx):
         ran["bg"] = True
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()
@@ -901,7 +944,10 @@ async def test_get_signals_wholesale_handoff_rejected_leaves_no_registry_row(exe
 
     async def _discover(task_ctx):
         ran["bg"] = True
-        return GetSignalsResponse(signals=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetSignalsResponse(status="completed", signals=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()
@@ -959,7 +1005,10 @@ async def test_get_products_external_push_owner_suppresses_sdk_sender(executor) 
     from adcp.types import GetProductsRequest, GetProductsResponse
 
     async def _curate(task_ctx):
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = _external_push_capabilities()
@@ -991,7 +1040,10 @@ async def test_get_signals_external_push_owner_suppresses_sdk_sender(executor) -
     from adcp.types import GetSignalsRequest, GetSignalsResponse
 
     async def _discover(task_ctx):
-        return GetSignalsResponse(signals=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetSignalsResponse(status="completed", signals=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = _external_push_capabilities()
@@ -1104,7 +1156,10 @@ async def test_get_products_handoff_no_push_no_webhook(executor) -> None:
 
     async def _curate(task_ctx):
         completed.set()
-        return GetProductsResponse(products=[])
+        # `status` is required by core/protocol-envelope.json, which this
+        # document composes via allOf. Upstream's generator dropped
+        # allOf-composed required fields, so their fixtures omit it.
+        return GetProductsResponse(status="completed", products=[])
 
     class _Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities()

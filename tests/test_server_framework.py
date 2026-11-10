@@ -249,16 +249,28 @@ class TestSponsoredIntelligenceHandler:
 
         class ConcreteSIHandler(SponsoredIntelligenceHandler):
             async def handle_si_get_offering(self, request, context=None):
-                return SiGetOfferingResponse()
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
+                return SiGetOfferingResponse(status="completed")
 
             async def handle_si_initiate_session(self, request, context=None):
-                return SiInitiateSessionResponse()
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
+                return SiInitiateSessionResponse(status="completed")
 
             async def handle_si_send_message(self, request, context=None):
-                return SiSendMessageResponse()
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
+                return SiSendMessageResponse(status="completed")
 
             async def handle_si_terminate_session(self, request, context=None):
-                return SiTerminateSessionResponse()
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
+                return SiTerminateSessionResponse(status="completed")
 
         return ConcreteSIHandler()
 
@@ -318,7 +330,10 @@ class TestGovernanceHandler:
                 return validate_union(GetCreativeFeaturesResponse, {"results": []})
 
             async def handle_sync_plans(self, request, context=None):
-                return SyncPlansResponse(plans=[])
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
+                return SyncPlansResponse(status="completed", plans=[])
 
             async def handle_check_governance(self, request, context=None):
                 return CheckGovernanceResponse(
@@ -335,7 +350,10 @@ class TestGovernanceHandler:
                 )
 
             async def handle_get_plan_audit_logs(self, request, context=None):
-                return GetPlanAuditLogsResponse(plans=[])
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
+                return GetPlanAuditLogsResponse(status="completed", plans=[])
 
             async def handle_create_property_list(self, request, context=None):
                 return CreatePropertyListResponse.model_construct()
@@ -343,18 +361,28 @@ class TestGovernanceHandler:
             async def handle_get_property_list(self, request, context=None):
                 from adcp.types.domains.property.property_list import PropertyList
 
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
                 return GetPropertyListResponse(
+                    status="completed",
                     list=PropertyList(list_id="pl-1", name="test"),
                 )
 
             async def handle_list_property_lists(self, request, context=None):
-                return ListPropertyListsResponse(lists=[])
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
+                return ListPropertyListsResponse(status="completed", lists=[])
 
             async def handle_update_property_list(self, request, context=None):
                 return UpdatePropertyListResponse.model_construct()
 
             async def handle_delete_property_list(self, request, context=None):
-                return DeletePropertyListResponse(deleted=True, list_id="pl-1")
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf. Upstream's generator dropped
+                # allOf-composed required fields, so their fixtures omit it.
+                return DeletePropertyListResponse(status="completed", deleted=True, list_id="pl-1")
 
         return ConcreteGovHandler()
 

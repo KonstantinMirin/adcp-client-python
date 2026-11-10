@@ -347,7 +347,10 @@ async def test_handler_returning_already_typed_params_no_double_validation():
             # Specialized-base pattern: defensively re-validate.
             req = GetProductsRequest.model_validate(params)
             received_types.append(type(req))
-            return GetProductsResponse(products=[])
+            # `status` is required by core/protocol-envelope.json, which this
+            # document composes via allOf. Upstream's generator dropped
+            # allOf-composed required fields, so their fixtures omit it.
+            return GetProductsResponse(status="completed", products=[])
 
     caller = create_tool_caller(_Agent(), "get_products")
     await caller({"buying_mode": "brief"})
