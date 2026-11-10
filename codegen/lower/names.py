@@ -811,8 +811,9 @@ def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...],
         remainder = _distinguishing(hop.target, parent[-1])
         if remainder:
             out.append(_suffixed(parent, remainder))
-    if hop.index is not None:
-        out.append(_suffixed(parent, f"Branch{hop.index}"))
+    last = positional_chain(hop, parent)
+    if last is not None:
+        out.append(last)
     # A rung spelling the same chain as the rung above it is not a rung to fall to: it
     # identifies the branch no better and the fall would not terminate.  Measured: a
     # branch whose title spells its own pin, and a one-branch union whose index repeats
@@ -834,12 +835,150 @@ REF_TARGET_RUNG = (
 #: §4's fifth branch rule and the one ground it stands on, in the section's own terms.
 #: QUOTED by the check that grades it (``tests/test_names_collision.py``), so the sentence
 #: the code states and the sentence a check reports against are one string.
+#:
+#: **The clause that says the name is PRIVATE is the second half of this rule and not a
+#: rider on it** (:data:`A_POSITIONAL_NAME_IS_PRIVATE`, the owner's ruling of 2026-11-10).
+#: The rung still answers -- a branch has to be DECLARED or the union loses an arm and the
+#: model refuses a payload the document admits -- and what the ruling removes is the
+#: PUBLICATION of the name, which is the half a consumer meets.
 INDEX_IS_THE_LAST_RUNG = (
     "a branch with no title, no pinned const and no required set takes its index among "
-    "the branches, <Base>Branch<i>; a name is not an acceptance fact, so the fallback "
-    "neither widens nor narrows, and the index is a fact of the branch's own position, "
-    "so inserting a branch after it moves no name (section 4)"
+    "the branches, <Base>Branch<i>, as a PRIVATE declaration name pending an upstream "
+    "title; a name is not an acceptance fact, so the fallback neither widens nor narrows, "
+    "and the index is a fact of the branch's own position, so inserting a branch after it "
+    "moves no name (section 4)"
 )
+
+#: **THE OWNER'S RULING OF 2026-11-10: A POSITIONAL NAME MAY EXIST, AND MAY NEVER BE
+#: PUBLIC.**  Recorded as a DECISION and not as a derivation -- nothing below measures its
+#: way to it -- and QUOTED by the gate that grades it
+#: (``tests_emit/test_no_positional_name_is_public.py``), so the sentence the code states
+#: and the sentence a failure reports against are one string.
+#:
+#: The condemnation it acts on is already written twice and both halves are cited here
+#: rather than restated:
+#:
+#: * ``docs/plan/rebuild-plan.md`` §4: "A positional name is the one outcome a consumer
+#:   cannot work with: a caller writing ``isinstance(req, AssetRequirementsBranch7)`` has
+#:   to count the document's branches to know that it means JavaScript."
+#: * ``docs/plan/final-state.md`` reading 4's placeholder rule: "a name minted for want of
+#:   a subject must not become a name an application depends on", and beside it "A NAME
+#:   THIS RULE MINTS IS STILL PENDING AN UPSTREAM TITLE".
+#:
+#: **WHAT IT FORBIDS IS PUBLISHING ONE, NEVER HAVING ONE.**  Deleting the class would drop
+#: a union arm and refuse payloads the document admits, so the declaration stays under
+#: ``_schemas/`` and ``isinstance`` through the union and validation both still hold.  What
+#: it may not do is reach :attr:`codegen.ir.Module.exports` -- so no ``__all__`` of the
+#: domain or flat surface carries it, and no application can come to depend on a
+#: placeholder.
+#:
+#: **IT IS A RULE AND NOT A LIST**, which is the other half of the ruling: the positional
+#: chain is minted at one expression (:func:`positional_chain`) and the ban is stated over
+#: every position whose settled name is a spelling of its own, so a document arriving
+#: tomorrow with an unnamed branch is covered with nobody editing a set.
+A_POSITIONAL_NAME_IS_PRIVATE = (
+    "a positional name may exist privately and may never be public: the branch is still "
+    "DECLARED under _schemas/, because deleting it would drop a union arm and refuse "
+    "payloads the document admits, and it is kept out of every __all__ and off the flat "
+    "and domain surfaces, because a name minted for want of a subject must not become a "
+    "name an application depends on -- isinstance through the union and validation hold "
+    "either way (the owner's ruling, 2026-11-10; rebuild-plan section 4 and final-state "
+    "reading 4 are the condemnation it acts on)"
+)
+
+
+def positional_chain(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:
+    """§4's LAST rung's CHAIN -- ``<Base>Branch<i>`` -- or ``None`` where it has none.
+
+    One expression, with two readers, which is what makes
+    :data:`A_POSITIONAL_NAME_IS_PRIVATE` a rule rather than a list: :func:`branch_rungs`
+    appends it as the rung a branch falls to when every identity rung has answered nothing,
+    and :func:`assign` asks which of the names it SETTLED came from here, so the namer and
+    the ban cannot come to disagree about which chain is the positional one.
+
+    ``None`` is the member type's answer and it is the same fact :attr:`Branch.index`
+    carries: a nested union's branch lowers to an annotation and needs no name of its own,
+    so the walk records no index and there is no position for the rung to be about.
+    """
+    if hop.index is None:
+        return None
+    return _suffixed(parent, f"Branch{hop.index}")
+
+
+def spelled_from(chain: tuple[str, ...], name: str) -> bool:
+    """Whether ``name`` is what ``chain`` spells at any depth the collision rule can reach.
+
+    The question :data:`A_POSITIONAL_NAME_IS_PRIVATE` is stated over, asked of a chain and
+    a settled name rather than of a rung INDEX: §4's two axes are walked together
+    (:func:`spell_the_rungs`), and a position that fell to its last rung and then spent two
+    ancestor segments is spelled ``GetProductsRequestFieldsItemBranch1`` -- the same chain
+    at another depth, and :func:`spelling` is the one function that says so.
+
+    **A TEXT PREDICATE OVER THE NAME IS WHAT THIS IS NOT.**  A regex for ``Branch\\d+``
+    over the emitted tree was measured at 467 hits of which 457 were ALIASES onto
+    correctly-titled classes; the chain here is the one the walk's own hop minted
+    (:func:`positional_chain`), so the population is the compiler's record and the string is
+    only ever compared against the one chain that position has.
+
+    **Measured over bundle 3.2: 587 branch positions are named with an index available and
+    6 of them are spelled from it, and 0 of the 587 have a settled name that is a spelling
+    of BOTH this chain and an earlier rung of their own ladder** -- so the reading is
+    unambiguous over this bundle and the ban reaches exactly the positions that took the
+    rung.  Where a branch somehow TITLED itself ``…Branch3`` the answer would still be the
+    right one: a consumer cannot tell that name from the rung's, and it is the consumer the
+    ruling is about.
+    """
+    return any(spelling(chain, depth) == name for depth in range(1, len(chain) + 1))
+
+
+def the_positional_names(hops: Mapping[str, Hop], symbols: Mapping[str, str]) -> frozenset[str]:
+    """:data:`A_POSITIONAL_NAME_IS_PRIVATE`'s population over ONE module: every symbol it
+    declares whose name is a spelling of that position's own positional chain.
+
+    The walk's hop table and the symbol table this pass settled, which are the two records
+    the question needs and the only two: a hop says where a branch SITS (its index, the one
+    fact §4's last rung reads) and the symbol table says what the position ended up CALLED.
+    Neither is the emitted text, and nothing here reads a position out of a pointer string
+    -- §6 forbids that and :attr:`Branch.index` is the field that exists so it is not
+    needed.
+
+    **IT IS NOT A SET OF KNOWN NAMES AND CANNOT BECOME ONE.**  The ruling's own words are
+    that the fences it forbids are "an allowlist, a per-name exception table, a known
+    positional names set"; what is here is the rule applied to whatever the bundle states,
+    so the six names of bundle 3.2 are an OBSERVATION of it and a seventh document needs no
+    edit.
+
+    Keyed by SYMBOL and not by pointer for :attr:`codegen.ir.Module.exports`' reason: what
+    the ban is about is a NAME, and the surface publishes names.
+    """
+    return frozenset(
+        symbols[pointer]
+        for pointer, chain in the_placeholder_chains(hops).items()
+        if pointer in symbols and spelled_from(chain, symbols[pointer])
+    )
+
+
+def the_placeholder_chains(hops: Mapping[str, Hop]) -> dict[str, tuple[str, ...]]:
+    """Pointer -> the chain §4's last rung mints for it, for every position that has one.
+
+    :func:`segments` is called for the branch's PARENT exactly as :func:`ladder` calls it,
+    and that is one reading rather than two: the same function over the same hop table
+    answers the same chain, which is the property :func:`segments`' own first paragraph
+    states ("a function of the node's PATH through the document and of nothing else").
+    A parent that refuses is a module the pass refuses on another line, so the position is
+    skipped rather than guessed at.
+    """
+    out: dict[str, tuple[str, ...]] = {}
+    for pointer, hop in hops.items():
+        if not isinstance(hop, Branch):
+            continue
+        parent = segments(hop.parent, hops)
+        if isinstance(parent, Refusal):
+            continue
+        chain = positional_chain(hop, parent)
+        if chain is not None:
+            out[pointer] = chain
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -2258,6 +2397,28 @@ def assign(
     symbols: dict[str, str] = dict(spelled)
     for pointer, declares in takes.items():
         symbols[pointer] = symbols[declares]
+    # **THE OWNER'S RULING: A POSITIONAL NAME IS WITHHELD FROM §1's EXPORT SET**
+    # (:data:`A_POSITIONAL_NAME_IS_PRIVATE`, 2026-11-10).  The declaration stands -- it is
+    # already in ``declarations`` below and the union still lists it as an arm -- and what
+    # is removed is the PATH: no ``_surface/<domain>.py`` imports it, no ``__all__``
+    # carries it, and the flat consolidation is that union, so the word is absent from
+    # every public namespace while ``isinstance`` through the union and validation are
+    # untouched.
+    #
+    # **AFTER THE NAMES ARE SETTLED, because the question is about a NAME.**  Which rung a
+    # position took is decided by §4's two axes together (:func:`spell_the_rungs`), so no
+    # earlier point in this function knows whether this position ended up positional.
+    # Asking before would also be circular: ``exports`` is one of the inputs the collision
+    # rule narrows the domain scope by, so a drop made before spelling would change the
+    # scope that decides the spelling.
+    #
+    # **AND THAT ORDER IS CONSERVATIVE RATHER THAN MERELY CONVENIENT.**  The names were
+    # spelled with these positions IN §1's domain scope, so every one of them was
+    # lengthened against the domain's words as though it were exported.  Lengthening can
+    # only ever make a name longer and more distinct, so withdrawing it afterwards cannot
+    # introduce a §1 collision -- it can at most leave a sibling longer than the final
+    # export set required, which is the status quo and not a defect.
+    positional = the_positional_names(mod.hops, symbols)
     #: :data:`UPSTREAM_TITLE_CASE` over this module, read AFTER the names are settled
     #: because the rule's own guard is that the emitted symbol still IS the title's name
     #: (:func:`the_published_spellings`).  Asked of a finished table rather than mixed
@@ -2374,6 +2535,12 @@ def assign(
         # forbids two of.  A degenerate adoption is absent by construction: it binds no
         # name of its own, so no pointer of it reached ``exports``.
         exports={symbols[pointer]: kind for pointer, kind in exports.items()},
+        # **The names the ruling WITHHELD, as the run's own record of them**
+        # (:data:`A_POSITIONAL_NAME_IS_PRIVATE`, :attr:`codegen.ir.Module.positional`).  A
+        # ban recorded only by an absence is a ban nothing can range over: the gate asks
+        # "is any positional name public" and has to be handed the population, or it is a
+        # gate over a list of today's six and goes vacuous the moment one is renamed.
+        positional=positional,
         # **Reading 6's inner WORD beside the kind**, symbol -> the name the domain surface
         # publishes that symbol under (:data:`THE_INNER_EXPORT`).  Only the ``inner`` kind
         # is here: for the other three the surface's word IS the symbol, and an entry
