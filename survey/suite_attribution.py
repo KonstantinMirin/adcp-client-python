@@ -86,7 +86,14 @@ BUCKETS = {
 HEAD = re.compile(r"(\d+) validation errors? for (\S+)")
 
 #: One error line's type, as pydantic spells it: ``[type=missing, input_value=...]``.
-DETAIL = re.compile(r"\[type=([a-z_0-9]+)(?:,\s*input_value=(.*?))?(?:,\s*input_type=(\w+))?\]")
+#:
+#: **THE CHARACTER CLASS IS MIXED CASE AND THAT IS NOT COSMETIC.**  pydantic's own types are
+#: snake_case (``missing``, ``string_type``), but the draft-07 screen this package runs beside
+#: it reports the KEYWORD, and a keyword is camelCase: ``oneOf``, ``anyOf``, ``minItems``,
+#: ``uniqueItems``.  A lower-case-only class matched ``one`` out of ``oneOf`` and then failed
+#: the rest of the pattern, so 49 tests whose head declared a ValidationError yielded no error
+#: at all and six distinct error types were reported under truncated names.
+DETAIL = re.compile(r"\[type=([A-Za-z_0-9]+)(?:,\s*input_value=(.*?))?(?:,\s*input_type=(\w+))?\]")
 
 #: The pydantic error types that mean **a property the model requires is ABSENT**.  The two
 #: spellings are pydantic's own: ``missing`` from a model field, ``required`` from a
@@ -159,6 +166,32 @@ def failures(junit: Path) -> list[Failure]:
                     _triples(whole, message) or _triples(message, message),
                 )
             )
+    return out
+
+
+def outcomes(junit: Path) -> dict[str, str]:
+    """``test id -> passed | failure | error | skipped`` for a whole junit.
+
+    **UPSTREAM'S OWN BASELINE IS A READING, and the cheapest decisive one there is.**  A test
+    that FAILS in upstream's own run against upstream's own tree is not this compiler's to
+    answer for whatever it says, and a test that PASSED there and fails here is a regression
+    whose cause the buckets above have to name.  Measured over the 2,460: 2,170 passed in the
+    baseline, 29 failed there too, 4 errored there, and 257 do not appear in it at all.  All
+    703 of the ValidationError tests passed there, which is what makes every one of them a
+    question this instrument owes an answer about.
+    """
+    out: dict[str, str] = {}
+    for case in ET.parse(junit).getroot().iter("testcase"):
+        kinds = [child.tag for child in case]
+        out[f"{case.get('classname', '')}::{case.get('name', '')}"] = (
+            "failure"
+            if "failure" in kinds
+            else "error"
+            if "error" in kinds
+            else "skipped"
+            if "skipped" in kinds
+            else "passed"
+        )
     return out
 
 
@@ -845,6 +878,13 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--junit", type=Path, required=True)
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        default=None,
+        help="upstream's OWN run against upstream's own tree, for the reading "
+        ":func:`outcomes` states: a test that fails there is not this compiler's to answer for",
+    )
     parser.add_argument("--revision", default=inv.REVISION)
     parser.add_argument("--records", type=Path, default=inv.RECORDS)
     parser.add_argument("--table", type=Path, default=None)
@@ -855,6 +895,19 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{len(found)} failing or erroring tests in {args.junit}")
     for cause, n in ranking.most_common():
         print(f"  {n:5d}  {cause}")
+
+    if args.baseline:
+        base = outcomes(args.baseline)
+        at_base: collections.Counter[str] = collections.Counter()
+        ve_base: collections.Counter[str] = collections.Counter()
+        for failure in found:
+            where = base.get(failure.test, "absent from the baseline")
+            at_base[where] += 1
+            if failure.triples:
+                ve_base[where] += 1
+        print(f"\nthe same tests, by their outcome in UPSTREAM'S OWN BASELINE ({args.baseline}):")
+        for where, n in at_base.most_common():
+            print(f"  {n:5d}  {where}" + (f"   (of which ValidationError: {ve_base[where]})"))
 
     src = inv.sources(args.revision, ROOT)
     upstream = inv.declarations(src)
