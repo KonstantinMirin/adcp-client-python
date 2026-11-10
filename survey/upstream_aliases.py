@@ -56,6 +56,7 @@ Five terminal kinds, each a different fact and each needing a different answer u
     PYTHONPATH=.:src ./.venv/bin/python survey/upstream_aliases.py --report
     PYTHONPATH=.:src ./.venv/bin/python survey/upstream_aliases.py \
         --trace adcp.types.legacy.LegacyCreateMediaBuyResponse
+    PYTHONPATH=.:src ./.venv/bin/python survey/upstream_aliases.py --flat-of canonical_creative
 """
 
 from __future__ import annotations
@@ -67,6 +68,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -464,6 +466,45 @@ class Oracle:
         return Terminal("too-deep", *current), tuple(chain)  # pragma: no cover
 
 
+def flat_statements(oracle: Oracle, modules: Iterable[str]) -> dict[str, Terminal]:
+    """**WHICH WORDS UPSTREAM'S OWN FLAT SURFACE TAKES FROM `modules`**, read statement by
+    statement from upstream's own tree and never from ours.
+
+    `modules` is bare module names under `adcp.types` -- `canonical_creative`, `variants`,
+    `projections` -- and the caller says which ones and why.  For
+    `adcp.types._restored.STATED` they are the modules restored BYTE FOR BYTE
+    (`survey/upstream_machinery.restored_paths`), because a statement of upstream's about a
+    file is a statement about the bytes at that path and nothing else.
+
+    **THE QUESTION IS THE TERMINAL AND NOT THE STATEMENT'S TEXT.**  `_eager.py:931` writes
+    `CreateMediaBuySuccessResponse = _canonical_creative.CreateMediaBuyResponse1` and
+    `_generated.py` writes the same WORD against their generated arm, so a reader matching
+    on "the right-hand side mentions canonical_creative" would answer for whichever line it
+    met first.  :meth:`Oracle.trace` follows their own chain from the flat namespace --
+    `adcp.types` -> `_eager` -> `_generated` -> `domains.<document>` -- and the terminal is
+    the module the word FINALLY lands in; a word whose terminal is one of `modules` is a word
+    upstream's flat surface takes from that module, whatever any other layer of theirs also
+    binds.
+
+    **AND IT RANGES OVER THEIR BINDINGS AND NOT OVER WHAT OURS OFFERS**, which is what keeps
+    this a fact about upstream.  The population is every `(module, word)` their tree binds in
+    one of `modules`, so a word their file merely IMPORTS is excluded by its own terminal
+    landing in `domains.<document>` rather than by a rule about imports.
+
+    Measured over upstream `4ed0bce87` and the thirteen restored modules: **37 words**, 29 of
+    them `canonical_creative`'s.
+    """
+    paths = {f"adcp.types.{module}" for module in modules}
+    out: dict[str, Terminal] = {}
+    for module, word in sorted(oracle.bindings):
+        if module not in paths or word in out:
+            continue
+        terminal, _ = oracle.trace(FLAT[0], word)
+        if terminal.module == module:
+            out[word] = terminal
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -471,9 +512,23 @@ def main() -> None:
     parser.add_argument("--rev", default=None)
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--trace", action="append", default=[], metavar="MODULE.NAME")
+    parser.add_argument(
+        "--flat-of",
+        action="append",
+        default=[],
+        metavar="MODULE",
+        help="which words upstream's own flat surface takes from this module of theirs",
+    )
     args = parser.parse_args()
 
     oracle = Oracle.at(args.rev)
+    if args.flat_of:
+        stated = flat_statements(oracle, args.flat_of)
+        print(f"\nupstream's flat surface takes {len(stated)} words from {args.flat_of}")
+        for word, terminal in sorted(stated.items()):
+            where = terminal.module.rpartition(".")[2]
+            print(f"    {word:34} {where}.py:{terminal.line}  {terminal.kind}")
+        return
     if args.report or not args.trace:
         kinds = collections.Counter(s.kind for s in oracle.bindings.values())
         hand = {

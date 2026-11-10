@@ -168,6 +168,26 @@ def __getattr__(name: str) -> object:
                 *_flat_module().__all__,
             }
         )
+    # **AND UPSTREAM'S OWN STATEMENT IS ASKED BEFORE THE TABLE, WHICH IS THE ONE PLACE THE
+    # ORDER BELOW IS NOT PRECEDENCE** (`adcp-client-python-y34k`).  Upstream's `_eager.py`
+    # writes `Format = _canonical_creative.Format`, so their flat `Format` IS their
+    # hand-written canonical class and not `core/format.json`'s root -- while the alias table
+    # binds that word to the document's root, correctly, for the DOMAIN spelling.  Both are
+    # right about different questions, and a lookup that simply consulted the table first
+    # answered the flat one wrongly: 262 of upstream's remaining `ValidationError` tests are
+    # that one word family resolving to the document's subject.
+    #
+    # So a word upstream's own chain terminates in a RESTORED module is answered from that
+    # module here, ahead of the four layers below, and precedence decides every word upstream
+    # says nothing about -- `adcp.types._restored.STATED`, derived from upstream's own
+    # statements by `survey/upstream_aliases.flat_statements` and held in both directions.
+    #
+    # It costs no import to ASK: `_restored`'s body binds `STATED` and imports nothing but
+    # `importlib` and `types`, so a word upstream does not state pays a dict lookup and goes
+    # on to the table exactly as before.
+    restored = _restored_module()
+    if name in restored.STATED:
+        return getattr(restored, name)
     try:
         return getattr(compat, name)
     except AttributeError:
@@ -196,10 +216,12 @@ def __getattr__(name: str) -> object:
     # lifecycle enumeration and no document states.  Upstream serves these from their own
     # ``_eager``, which is not restorable here -- 16 imports of the generated aggregator
     # this branch deleted -- so the module names the restored MODULES and derives the names
-    # from each one's own ``__all__`` or declarations.  CONSULTED LAST, so nothing the
-    # alias table or the adapter decided is overridden.
+    # from each one's own ``__all__`` or declarations.  CONSULTED HERE for every word
+    # upstream states nothing about, so nothing the alias table or the adapter decided is
+    # overridden -- and ABOVE, before the table, for the words upstream's own ``_eager``
+    # binds to one of these files.  Two questions, asked in the order the ruling gives them.
     try:
-        return getattr(_restored_module(), name)
+        return getattr(restored, name)
     except AttributeError:
         pass
     # **AND THE FLAT SURFACE OWES EVERY WORD THIS COMPILER ITSELF EMITTED, which is the
@@ -253,11 +275,13 @@ _NOT_ROUTED = ("compat", "_adapter", "_restored")
 def _restored_module():
     """``adcp.types._restored``, reached the same way and for the same reason.
 
-    The flat spelling of what upstream's own restored files declare.  Imported on a MISS
-    and never while this package's body runs: none of the six modules it reads imports
-    ``adcp.types``, so answering a name from here costs no generated import -- but the
-    import still happens at the moment a name is asked for rather than at this package's
-    own import, which is what keeps ``tests/fresh.py``'s binding ahead of it.
+    The flat spelling of what upstream's own restored files declare.  Imported on the FIRST
+    attribute miss and never while this package's body runs: the module's own body binds
+    ``MODULES`` and ``STATED`` and imports nothing but ``importlib`` and ``types``, so
+    asking whether upstream states a word costs a dict lookup, and the thirteen restored
+    files are imported only when one of them ANSWERS -- at the moment a name is asked for
+    rather than at this package's own import, which is what keeps ``tests/fresh.py``'s
+    binding ahead of it.
     """
     import importlib
 

@@ -50,6 +50,21 @@ canonical word for ``get-media-buys-response.json``'s ``Package`` and which no e
 layer binds -- so the screen withheld the only path to it and the kept-machinery gate lost
 a resolving pair.  A document-backed name is a second spelling only where the first one
 exists.
+
+**AND PRECEDENCE IS A TIE-BREAK AND NOT A PRIORITY** (`adcp-client-python-y34k`, the
+correction that :data:`STATED` is).  Asking the earlier layers alone -- "is this word one
+``compat`` or ``_adapter`` binds" -- answers the subject question for a word UPSTREAM SAYS
+NOTHING ABOUT, and gets it exactly backwards for a word upstream's own ``_eager`` binds to
+one of these files: an earlier layer does bind it, so this surface declined to offer it, so
+the flat word stayed the document's class -- which is not what upstream's flat word denotes.
+Measured against upstream's 13,586-passing run: **262 of the 866 remaining
+``ValidationError`` tests are that one defect, on 25 bindings over 14 words**, and every one
+says the same sentence -- upstream's flat ``Format`` is ``canonical_creative.Format``,
+hand-written and holding no document, while ours was ``core/format.json``'s root.
+
+So the order of the two questions is: **upstream's own statement first, and precedence only
+where upstream states nothing.**  :data:`STATED` is the first; :func:`_surface`'s
+subtraction is the second.
 """
 
 from __future__ import annotations
@@ -136,6 +151,79 @@ MODULES = (
 )
 
 
+#: **THE WORDS UPSTREAM'S OWN FLAT SURFACE TAKES FROM A RESTORED MODULE**, by word.
+#:
+#: Upstream's ``_eager.py`` reads, in its own statements::
+#:
+#:     Format               = _canonical_creative.Format                # _eager.py
+#:     PackageRequest       = _canonical_creative.PackageRequest
+#:     SyncCreativesRequest = _canonical_creative.SyncCreativesRequest
+#:
+#: so ``from adcp.types import Format`` is upstream's HAND-WRITTEN canonical class and not
+#: ``core/format.json``'s root -- two subjects, one word, and the flat one is theirs.  Each
+#: entry below names the restored module whose declaration their chain
+#: (``adcp.types`` -> ``_eager`` -> ``_generated`` -> ``domains.<document>``) terminates in,
+#: which is the only thing that can decide it: the same word is bound at three of their
+#: modules to two different subjects, so a reading of ONE statement answers for whichever
+#: line it met first, and the TERMINAL is what upstream's flat word means.
+#:
+#: **DERIVED, AND THIS IS THE DERIVATION'S CACHED ANSWER RATHER THAN ITS SOURCE** -- the same
+#: arrangement :data:`MODULES` has and for the same reason, that a shipped package cannot
+#: parse upstream's git tree.  The source is ``survey/upstream_aliases.flat_statements``
+#: over ``survey/upstream_machinery.restored_paths`` (byte identity against upstream's
+#: commit), and ``tests_emit/test_the_restored_flat_surface.py`` holds this mapping against
+#: that derivation in BOTH directions -- a word upstream states and this mapping omits
+#: reddens, and a word here upstream does not state reddens.  So a word upstream MOVES into
+#: or out of one of these files is a run reporting it, and no name is here because somebody
+#: read a failure list: 37 words are stated, the 25 failing bindings name 14 of them, and the
+#: other 23 are owed by the same sentence.
+#:
+#: ``MEDIA_BUY_LEGACY_STATUS_VALUES`` and ``project_geo_postal_areas`` are in here too, and
+#: they are the reading that shows this is not a second screen bolted onto the first: both
+#: were already offered flat -- no earlier layer binds either -- so for them the two
+#: questions agree and this mapping changes nothing.  11 of the 37 are that case; the other
+#: 26 are the ones the precedence subtraction was taking away.
+STATED = {
+    "AccountResponse": "projections",
+    "BrandSource": "registry",
+    "BusinessEntityResponse": "projections",
+    "CanonicalFormatKindStr": "canonical_creative",
+    "CreateMediaBuyResponse": "canonical_creative",
+    "CreateMediaBuyResponse1": "canonical_creative",
+    "Creative": "canonical_creative",
+    "CreativeAsset": "canonical_creative",
+    "CreativeFilters": "canonical_creative",
+    "CreativeManifest": "canonical_creative",
+    "CreativeVariant": "canonical_creative",
+    "Format": "canonical_creative",
+    "GetCreativeDeliveryResponse": "canonical_creative",
+    "GetMediaBuyDeliveryResponse": "canonical_creative",
+    "GetMediaBuysResponse": "canonical_creative",
+    "GetProductsRequest": "canonical_creative",
+    "GetProductsResponse": "canonical_creative",
+    "ListCreativesRequest": "canonical_creative",
+    "ListCreativesResponse": "canonical_creative",
+    "MEDIA_BUY_LEGACY_STATUS_VALUES": "media_buy_status_helpers",
+    "Package": "canonical_creative",
+    "PackageRequest": "canonical_creative",
+    "PackageUpdate": "canonical_creative",
+    "Placement": "canonical_creative",
+    "Product": "canonical_creative",
+    "ProductFilters": "canonical_creative",
+    "ProductFormatDeclaration": "canonical_creative",
+    "SchemaVariant": "variants",
+    "SyncCreativesRequest": "canonical_creative",
+    "UpdateMediaBuyResponse": "canonical_creative",
+    "UpdateMediaBuyResponse1": "canonical_creative",
+    "UpdateMediaBuyResponse3": "canonical_creative",
+    "is_canonical_format_kind": "canonical_creative",
+    "project_geo_postal_areas": "projections",
+    "require_canonical_format_kind": "canonical_creative",
+    "to_account_response": "projections",
+    "unwrap_enum_value": "media_buy_status_helpers",
+}
+
+
 def offered(module: types.ModuleType) -> dict[str, object]:
     """What ``module`` offers the flat surface: its ``__all__``, or what it DECLARED.
 
@@ -178,19 +266,32 @@ def _surface() -> dict[str, object]:
     none, and ``tests_emit/test_the_restored_flat_surface.py`` asserts that rather than
     leaving the order to carry the weight.
 
-    **AND A WORD AN EARLIER LAYER DECIDES IS NOT OFFERED HERE, which is this module's own
-    precedence said in its ``__all__`` and not only in its lookup.**  This surface is
-    consulted LAST, so such a word was never going to resolve here -- but advertising it
-    made ``__all__`` a promise the module does not keep, and ``adcp.types.__dir__`` unions
-    all four lists.  ``canonical_creative.Format`` is the measured case and it is the trap
-    this epic fell into twice: upstream's hand-written canonical ``Format`` carries no
-    ``__adcp_schema__``, so :func:`has_a_document` passes the VALUE, while the WORD
-    ``Format`` is ``core/format.json``'s and the alias table binds it to the document's
-    class.  Two subjects, one word, and the one that wins is the document's.
+    **AND A WORD AN EARLIER LAYER DECIDES IS NOT OFFERED HERE UNLESS UPSTREAM'S OWN
+    STATEMENT SAYS IT IS THIS MODULE'S** -- precedence said in the ``__all__`` and not only
+    in the lookup, and :data:`STATED` said ahead of precedence.  Two words and two different
+    answers, which is the whole of the distinction:
+
+    ``MediaBuy`` is declared by ``canonical_creative`` and is NOT stated: upstream's own
+    chain for the flat word runs ``_eager.py:56`` -> ``_generated.py:1500`` ->
+    ``domains/core/media_buy.py``, so their flat ``MediaBuy`` is their GENERATED class and
+    the word here is a second spelling of a subject the alias table already carries.
+    Precedence decides and the word is subtracted: advertising it would make ``__all__`` a
+    promise this module does not keep, and ``adcp.types.__dir__`` unions all four lists.
+    Ten words are that case, which is also what makes :data:`STATED` a reading of upstream's
+    statements rather than "everything ``canonical_creative`` declares".
+
+    ``Format`` is a word ``compat`` binds to ``core/format.json``'s root and upstream's
+    ``_eager`` binds to ``canonical_creative.Format`` -- hand-written, holding no document,
+    requiring ``format_kind`` and ``params`` where the document's root requires ``format_id``
+    and ``name``.  Upstream STATES it, so the subtraction does not reach it and the flat word
+    is upstream's subject.  This is the trap the epic fell into three times from the other
+    side: screening on the value (``no __adcp_schema__``) passes ``Format`` for the wrong
+    reason, and screening on precedence alone refuses it for the wrong reason.  The property
+    is upstream's own statement about the WORD.
 
     No import is added by this: ``adcp.types.__getattr__`` consults ``compat`` and
-    ``_adapter`` BEFORE this module, so both are in ``sys.modules`` whenever this function
-    runs and ``import_module`` on a loaded module is a dict lookup.
+    ``_adapter`` for every word this one does not state, so both are in ``sys.modules``
+    whenever this function runs and ``import_module`` on a loaded module is a dict lookup.
     """
     found: dict[str, object] = {}
     for module in MODULES:
@@ -199,7 +300,8 @@ def _surface() -> dict[str, object]:
     for module in ("compat", "_adapter"):
         held = importlib.import_module(f"{__package__}.{module}")
         for name in (*getattr(held, "__all__", ()), *getattr(held, "__adcp_flat_only__", {})):
-            found.pop(name, None)
+            if name not in STATED:
+                found.pop(name, None)
     return found
 
 

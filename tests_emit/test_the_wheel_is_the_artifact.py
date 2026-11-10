@@ -270,6 +270,18 @@ out["undocumented"] = sorted(undocumented)
 # itself, which is what ``PRESENT`` means.
 _compat = importlib.import_module("adcp.types.compat")
 flat_only = dict(_compat.__adcp_flat_only__)
+# **AND UPSTREAM'S OWN STATEMENT DECIDES THE FLAT WORD WHERE THEY MAKE ONE** (`y34k`).  Their
+# `_eager.py` writes `Format = _canonical_creative.Format`, so the flat spelling is their
+# hand-written class and the alias table's object -- `core/format.json`'s root -- keeps the
+# DOMAIN spelling.  `adcp.types._restored.STATED` is that set, derived from upstream's own
+# statements, and read here off the INSTALLED package so what is graded is still the
+# artifact.  The identity below is then asserted against the module upstream NAMES; nothing
+# is exempted from having to be one object under two spellings.
+stated = {
+    word: "adcp.types." + module
+    for word, module in importlib.import_module("adcp.types._restored").STATED.items()
+}
+out["flat_stated"] = sorted(stated)
 flat_owed = sorted(set(exported.get("compat", [])) | set(flat_only))
 flat_resolved = []
 flat_failed = {}
@@ -281,7 +293,7 @@ for one in flat_owed:
     except BaseException as error:  # noqa: BLE001 -- the payload is the report
         flat_failed[one] = f"{type(error).__name__}: {error}"
         continue
-    where = flat_only.get(one, "adcp.types.compat")
+    where = stated.get(one) or flat_only.get(one, "adcp.types.compat")
     declared = {}
     try:
         exec(f"from {where} import {one}", declared)
@@ -318,6 +330,12 @@ for node in ast.parse(Path(_compat.__file__).read_text()).body:
             spellings[alias.asname or alias.name] = (node.module, alias.name)
 for one, where in flat_only.items():
     spellings[one] = (where, one)
+# The same re-pointing as above, for the same reason: a word upstream's own `_eager` takes
+# from a restored file is that file's at the flat spelling, so the triple's third member is
+# `adcp.types.<restored module>.<word>` and `isinstance` is asserted against IT.
+for one, where in stated.items():
+    if one in spellings:
+        spellings[one] = (where, one)
 
 flat_isinstance = {}
 flat_isinstance_checked = []
@@ -650,6 +668,15 @@ def test_every_upstream_spelling_imports_from_the_flat_namespace() -> None:
         "resolved": len(out["flat_resolved"]),
         "owed": len(owed),
     }
+    # **AND THE WORDS UPSTREAM'S OWN STATEMENT RE-POINTS ARE A REAL SET IN THE ARTIFACT**
+    # (`y34k`).  Asserted non-empty and overlapping what this layer owes, so the exception
+    # the two loops above make for them cannot go quiet on a wheel that stopped shipping
+    # `adcp.types._restored` -- which would read green by having nothing to except.
+    stated = claimed(
+        "flat words upstream's own _eager takes from a restored file", set(out["flat_stated"])
+    )
+    assert stated, "the installed package states no such word"
+    assert stated & owed, {"stated": len(stated), "owed": len(owed)}
 
 
 def test_every_flat_spelling_consumer_code_writes_resolves_or_carries_a_verdict() -> None:
