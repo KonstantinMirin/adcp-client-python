@@ -339,7 +339,20 @@ def _flat_module():
 
     try:
         return importlib.import_module("adcp.types._surface._flat")
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as absent:
+        # **ONLY THIS MODULE'S OWN ABSENCE IS TOLERATED, AND THE NAME IS WHAT SAYS SO.**
+        # ``ModuleNotFoundError`` is raised BOTH when ``_flat`` is absent and when something
+        # ``_flat`` itself imports is absent, so a bare ``except`` here answers a broken
+        # inner import with ``__all__ = []`` -- the whole flat surface degraded to nothing,
+        # with no error anywhere. Measured: a wrong relative prefix inside ``_flat`` silently
+        # took all 738 upstream-word bindings and the 3,699-name surface with it, and it was
+        # found by reading this clause rather than by any failure
+        # (``adcp-client-python-3wbx``).
+        #
+        # ``absent.name`` is the module the import system could not find. Where that is not
+        # the one this shim stands in for, the failure is real and belongs to the caller.
+        if absent.name not in ("adcp.types._surface._flat", "adcp.types._surface"):
+            raise
         shim = _types.ModuleType("adcp.types._surface._flat")
         shim.__all__ = []
         shim.__adcp_ambiguous__ = {}
@@ -362,7 +375,13 @@ def _adapter_module():
 
     try:
         return importlib.import_module("adcp.types._adapter")
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as absent:
+        # The same hole as :func:`_flat_module`'s, for the same reason: this module imports
+        # from every domain aggregator, so a missing name there raises
+        # ``ModuleNotFoundError`` for THAT module and a bare ``except`` would answer with an
+        # empty adapter -- silently dropping every upstream spelling the adapter serves.
+        if absent.name != "adcp.types._adapter":
+            raise
         shim = _types.ModuleType("adcp.types._adapter")
         shim.__all__ = []
         return shim
