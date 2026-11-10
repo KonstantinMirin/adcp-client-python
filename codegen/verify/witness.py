@@ -887,19 +887,61 @@ class _Unread(Exception):
     """
 
 
+#: A character class as the RANGES the document lists, in the DOCUMENT'S OWN ORDER --
+#: ``[a-f0-9]`` is ``((97, 102), (48, 57))`` and its first member is therefore ``"a"``.
+#: Ranges rather than the characters themselves because a class is CONJOINED here
+#: (:func:`_both`): where a lookahead asserts ``[1-9]`` of a character a ``\d`` emits, the
+#: two are statements about ONE character and what it may be is what both admit -- and the
+#: overlap of two ranges is arithmetic on four endpoints, where expanding a class that
+#: spells a range over the whole plane in order to compare it would cost the whole plane.
+_Ranges = tuple[tuple[int, int], ...]
+
+
+def _ranged(members: str) -> _Ranges:
+    """The characters ``members`` lists, as one-point ranges in the order it lists them."""
+    return tuple((ord(found), ord(found)) for found in members)
+
+
+def _both(ours: _Ranges, theirs: _Ranges) -> _Ranges:
+    """The characters BOTH classes admit, in ``ours``' own order -- EMPTY where none.
+
+    Two statements about one character, read exactly as :func:`_bound` reads two
+    ``minLength``\\ s about one string: the admitted set is the INTERSECTION and the reading
+    takes its first member.  Nothing is tried and rejected -- the overlap of two ranges is
+    arithmetic on their endpoints -- which is what keeps a lookahead's conjunction a reading
+    rather than a search over the characters the two classes hold.
+    """
+    out: list[tuple[int, int]] = []
+    for low, high in ours:
+        out.extend(
+            sorted(
+                (max(low, start), min(high, end))
+                for start, end in theirs
+                if max(low, start) <= min(high, end)
+            )
+        )
+    return tuple(out)
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class _Atom:
     """One construct of a pattern: what it admits, and how many times it may repeat.
 
-    :attr:`member` is the class's FIRST member -- the one the reading takes -- or ``None``
-    where the class is one whose members the reader does not name.  A ``None`` member is
-    fatal only where the count is above zero (:func:`_patterned`), because a quantifier that
-    admits zero repetitions never asks what the class holds.
+    :attr:`members` is the class as the ranges the document lists it in
+    (:data:`_Ranges`), or ``None`` where the class is one whose members the reader does not
+    name; :attr:`member` is the FIRST of them, which is the one the reading takes.  A
+    ``None`` member is fatal only where the count is above zero (:func:`_patterned`),
+    because a quantifier that admits zero repetitions never asks what the class holds.
     """
 
-    member: str | None
+    members: _Ranges | None
     least: int
     most: int | None
+
+    @property
+    def member(self) -> str | None:
+        """The class's FIRST member -- the one the reading takes."""
+        return chr(self.members[0][0]) if self.members else None
 
 
 def _escaped(text: str, at: int) -> tuple[str | None, int, bool]:
@@ -930,15 +972,17 @@ def _escaped(text: str, at: int) -> tuple[str | None, int, bool]:
     return found, at + 1, False
 
 
-def _members(text: str, at: int) -> tuple[str | None, int]:
-    """A character class, from its ``[`` -- ``(its first member, the index after it)``.
+def _members(text: str, at: int) -> tuple[_Ranges | None, int]:
+    """A character class, from its ``[`` -- ``(the ranges it admits, the index after it)``.
 
     The FIRST MEMBER IS THE DOCUMENT'S OWN FIRST: the class is read left to right and the
     first thing it lists is the one the value takes, so ``[a-f0-9]`` gives ``"a"`` and
-    ``[-a-z]`` gives ``"-"``.  The whole class is read even though only its head is used,
-    because a member the reader cannot parse is a construct it has not understood -- a
-    POSIX class, a subtraction -- and a pattern it has not understood is one it leaves
-    unread.
+    ``[-a-z]`` gives ``"-"``.  The whole class is read because a member the reader cannot
+    parse is a construct it has not understood -- a POSIX class, a subtraction -- and a
+    pattern it has not understood is one it leaves unread; **and the whole class is KEPT**,
+    in the document's own order, because a lookahead asserting of this same character makes
+    the two classes statements about one character and :func:`_both` needs more of each than
+    its head.
 
     **A NEGATED CLASS HAS NO FIRST MEMBER** and is reported as one whose members are not
     named (``None``), not as a refusal: *"the first character that is not a digit"* is a
@@ -949,18 +993,18 @@ def _members(text: str, at: int) -> tuple[str | None, int]:
     at += 1
     unnamed = at < len(text) and text[at] == "^"
     at += 1 if unnamed else 0
-    first: str | None = None
+    admits: list[tuple[int, int]] = []
     stated = False
     if at < len(text) and text[at] == "]":
-        first, stated, at = "]", True, at + 1
+        admits, stated, at = [(ord("]"), ord("]"))], True, at + 1
     while at < len(text) and text[at] != "]":
         if text[at] == "\\":
             member, at, holds_a_class = _escaped(text, at + 1)
             if holds_a_class:
                 if member is None:
                     unnamed = True
-                elif first is None:
-                    first = member[0]
+                else:
+                    admits.extend(_ranged(member))
                 stated = True
                 continue
         else:
@@ -975,13 +1019,16 @@ def _members(text: str, at: int) -> tuple[str | None, int]:
                 high, at = text[at + 1], at + 2
             if high is None or member is None or ord(high) < ord(member):
                 raise _Unread("a range that admits nothing")
-        if first is None:
-            first = member
+            admits.append((ord(member), ord(high)))
+        elif member is None:
+            unnamed = True
+        else:
+            admits.append((ord(member), ord(member)))
     if at >= len(text):
         raise _Unread("a class with no end")
     if not stated:
         raise _Unread("a class that admits nothing")
-    return (None if unnamed else first), at + 1
+    return (None if unnamed else tuple(admits)), at + 1
 
 
 def _count(text: str, at: int) -> tuple[int, int | None, int]:
@@ -1119,18 +1166,18 @@ def _sequence(text: str, at: int, *, nested: bool) -> tuple[tuple[_Atom, ...], i
             out.extend(inlined)
             continue
         if found == "[":
-            member, at = _members(text, at)
+            members, at = _members(text, at)
         elif found == "\\":
-            member, at, holds_a_class = _escaped(text, at + 1)
-            member = (member[0] if member else None) if holds_a_class else member
+            spelled, at, _holds_a_class = _escaped(text, at + 1)
+            members = None if spelled is None else _ranged(spelled)
         elif found == ".":
-            member, at = None, at + 1
+            members, at = None, at + 1
         elif found in _UNREAD:
             raise _Unread(_UNREAD[found])
         else:
-            member, at = found, at + 1
+            members, at = _ranged(found), at + 1
         least, most, at = _count(text, at)
-        out.append(_Atom(member, least, most))
+        out.append(_Atom(members, least, most))
     return tuple(out), at
 
 
