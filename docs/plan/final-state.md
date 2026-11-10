@@ -465,6 +465,40 @@ domain carries many. So the export's word is minted from the parent class and th
 and **the fact that upstream's derivation lands on the same word is evidence the derivation is the
 natural one, not a concession to their spelling.**
 
+**BUT THE EXPORT AND THE NAME ARE OWED AT DIFFERENT LAYERS, AND READING THEM AS ONE PUTS UPSTREAM'S
+WORD AT A DOMAIN PATH.** The clause above reads as though one export settled both halves. It does
+not, and the measurement says which half is which: the tree states one `X = <symbol>` for each of
+the 862 upstream words its three joins recover, and **858 of those 862 bind a symbol that is already
+on its own module's export set** — reached at the domain under the word reading 6's inner clause
+minted from the parent class and the key together. So the NAME was never missing. What was missing
+was the EXPORT of upstream's word, and upstream's word is not a domain name: reading 6 gives the
+class one domain path and a second spelling of it there is the path that reading forbids outright.
+
+- **The NAME is reading 6's and lives at `adcp.types.<domain>`.** Minted from the parent class and
+  the key, a function of the document's own path, and one per class.
+- **The WORD is this reading's and lives at the ONE flat namespace, and nowhere else.** That is this
+  reading's own boundary clause read forward — "One declared flat surface is a canonical location; a
+  name at every module that mentions it is the accident."
+
+**AND A WORD WITH MORE THAN ONE SUBJECT IS DECLINED AND NAMED, BECAUSE THERE IS NOTHING TO
+ARBITRATE.** Upstream's generator mints its word from a property **key alone** — `accounts` →
+`Account`, `accepted_verifiers` → `AcceptedVerifier` — so two documents sharing a key derive one
+word for two classes that are distinct objects at distinct pointers. That is not a tie between
+claims to one name; it is one name with two subjects, which "an alias is keyed on a schema SUBJECT,
+never on a name" already refuses. A first-wins pick is that refusal decided by file order. The
+declined word is written into the flat module beside its subjects, and it costs no caller a class:
+each subject keeps the domain word the parent-class-plus-key rule gave it.
+
+**Decided by** a PARTITION of the compiler's own record of those words into the two outcomes —
+bound, or declined with every subject named — so that a word in neither is the defect and a word in
+both is a module contradicting itself; by identity at the flat module, `is` and not merely
+resolvable, against the object the private module's own statement binds; by
+`from adcp.types import <Word>` resolving for every bound word, to this arm's object or to one a
+layer the facade asks EARLIER decides and no other; and by no domain aggregator publishing one of
+these words, which is reading 6 holding rather than this reading's work left undone.
+`tests_emit/test_the_flat_alias_surface.py` is where all four are asserted, and the rule itself is
+perturbed there in both directions so that a rule deciding nothing cannot pass them.
+
 **AND WHERE UPSTREAM'S NAME MEANS A DIFFERENT SET OF VALUES, AN ALIAS IS A DEFECT AND NOT A
 BRIDGE.** Their `TaskStatus` is a transport's five states; the schema's is its own list. An alias
 there hands a caller something that silently is not what it asked for, which is worse than an

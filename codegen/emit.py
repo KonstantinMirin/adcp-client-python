@@ -1099,6 +1099,20 @@ class Emitted:
     #: at 101 of 101, and this one is the complement -- the union branch leaf, the array
     #: element, the nested model and the nested enumeration.
     restructured: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: **MODULE** -> ``ir.Module.stated``: upstream's own ``X = Y`` SENTENCE, word -> the
+    #: symbol of ours it binds (``codegen.structure.bind_statements``).  The third of the
+    #: three keys the lowering joins upstream's surface on, recorded here beside the other
+    #: two for the reason they are: the module EMITS an ``X = <symbol>`` for every entry of
+    #: all three, so a reader that ranged over two of them would range over part of what
+    #: the tree states.
+    #:
+    #: **IT WAS THE ONE PRODUCER WITH NO CONSUMER** (2026-11-10).  ``lower/names.assign``
+    #: has written this record since the statement key landed and :class:`Emitted` did not
+    #: carry it, so the 914 ``X = Y`` statements of the tree could be read only off the
+    #: emitted TEXT -- which is the reading §1 forbids everywhere else.
+    #: :func:`upstream_words` is the one consumer, and ``final-state.md``'s "every producer
+    #: reaches a consumer" is the invariant this entry closes.
+    stated: dict[str, dict[str, str]] = field(default_factory=dict)
     #: **MODULE** -> ``ir.Module.unbound``: every published word the join did NOT bind ->
     #: the ``codegen.structure.REFUSALS`` entry that says why.  **THE REFUSALS ARE PART OF
     #: THE RECORD AND NOT A SILENCE**: an ambiguous join is a defect to name, so a reader
@@ -1152,6 +1166,45 @@ class Emitted:
     #: its later sites, and §5(b)'s ``patternProperties`` widening drops a value schema, so
     #: a ``$ref`` inside it is at a position no class names and emits no import.
     asked: dict[str, set[tuple[str, str]]] = field(default_factory=dict)
+
+    def upstream_words(self) -> dict[str, dict[str, str]]:
+        """**MODULE** -> the word each ``X = <symbol>`` of it binds -> that symbol.
+
+        The union of :attr:`recased`, :attr:`restructured` and :attr:`stated`, which are
+        the three keys ``lower/names.assign`` joins upstream's published surface on -- a
+        title normalised, a structure matched, and a sentence upstream wrote.  Every entry
+        of all three is emitted as one module-scope ``X = <symbol>`` statement, from the
+        one expression that builds them (``sorted({**recased, **restructured, **stated})``),
+        so this is **that statement set read off the run's own record** rather than off the
+        emitted text.
+
+        **ONE READING AND NOT THREE**, which is why it is here and not at the caller: the
+        three records partition upstream's surface by construction -- each later key is
+        handed the earlier ones in ``occupied`` and never shadows them -- so a reader
+        asking "which words does this module bind" is asking one question, and three
+        readings of it would be three places to disagree about what the tree states.
+        The merge order is the lowering's, so a word two keys somehow reached resolves here
+        to the symbol the module's own statement binds it to.
+
+        **WHAT IT IS FOR**: :func:`domain_modules`' flat-alias arm (reading 10's
+        compatibility surface).  Measured on bundle 3.2, the record holds **862** such
+        statements -- 104 recased, 723 restructured, 35 stated -- over **798** distinct
+        words, and before that arm landed not one of them reached any surface a consumer can
+        import from: the ``PrincipalCurrentResult = CurrentPrincipalConfiguration`` of
+        ``protocol/get-principal-response.json`` is the witness that found it, and
+        ``tests/test_principal.py`` aborted at collection for it.
+
+        **A READING OVER THE EMITTED TEXT IS NOT THIS SET AND IS LARGER.**  A predicate over
+        module-scope ``Word = <bare name>`` statements answers **914**, because §4's content
+        dedup (``lower/names.adopt``) and a root binding render the same form -- and those
+        are positions of the document, already on the export set.  The record is what tells
+        the two apart; the text cannot.
+        """
+        words: dict[str, dict[str, str]] = {}
+        for record in (self.recased, self.restructured, self.stated):
+            for module, bound in record.items():
+                words.setdefault(module, {}).update(bound)
+        return words
 
 
 # **``_composed_nodes`` is ``bundle.composed`` now**, and the move is §11's row for it:
@@ -2920,6 +2973,11 @@ def emit(
         # Upstream's PUBLISHED words beside them, and the refusals beside those, same pass
         # and same reason (:attr:`Emitted.restructured`, :attr:`Emitted.unbound`).
         out.restructured[module_path(document)] = dict(bound.restructured)
+        # Upstream's own STATEMENTS beside them, which is the third of the three keys the
+        # module emits an ``X = Y`` for (:attr:`Emitted.stated`).  Recorded for every
+        # module for :attr:`recased`'s reason -- absence means "no statement of upstream's
+        # resolves against this module" -- so one reader ranges over all three.
+        out.stated[module_path(document)] = dict(bound.stated)
         out.unbound[module_path(document)] = dict(bound.unbound)
         if mod.drops:
             out.drops[document] = dict(mod.drops)
@@ -3029,7 +3087,14 @@ def emit(
     # export set holds** (:func:`domain_modules`).  Beside the tree rather than inside it
     # because ``_schemas`` is private (P8) and this is the one path a consumer reaches a
     # type at.
-    out.beside.update(domain_modules(out.surface, out.published))
+    #
+    # **AND UPSTREAM'S OWN WORDS RIDE IN WITH THEM**, for reading 10's flat arm
+    # (:meth:`Emitted.upstream_words`, :func:`_alias_words`): the tree already STATES an
+    # ``X = <symbol>`` for each, the three joins that decided them are on this record, and
+    # the only thing missing was the export.  Handed in rather than read off the files for
+    # :attr:`Emitted.surface`'s reason -- a reading over the emitted TEXT is not a reading
+    # of what the compiler decided.
+    out.beside.update(domain_modules(out.surface, out.published, out.upstream_words()))
     # **v9.6's MODULE LAYOUT, as a compatibility mirror of the private tree**
     # (:mod:`codegen.mirror`).  Beside the tree for the same reason the domain surface is:
     # the mirror is a public package and ``_schemas`` is private (P8).  It is a function of
@@ -3164,6 +3229,7 @@ SURFACE = "_surface"
 def domain_modules(
     surface: Mapping[str, Mapping[str, str]],
     published: Mapping[str, Mapping[str, str]] = {},
+    upstream: Mapping[str, Mapping[str, str]] = {},
 ) -> dict[str, str]:
     """§1's DOMAIN SURFACE: ``_surface/<domain>.py`` per domain, plus its ``__init__``.
 
@@ -3221,6 +3287,27 @@ def domain_modules(
     word (PEP 484's other arm); the ``X as X`` convention cannot be used here, since the
     two halves are two different names by construction.
 
+    **AND UPSTREAM'S OWN WORDS ARE A THIRD INPUT AND REACH THE FLAT MODULE ONLY**
+    (2026-11-10, ``adcp-client-python`` alias-export).  ``upstream`` is
+    :meth:`Emitted.upstream_words` -- the 914 ``X = <symbol>`` statements the tree already
+    states, from the compiler's own three joins -- and :func:`_alias_words` is where they
+    are decided.  They are NOT added to ``held``, so no domain aggregator gains one, and
+    that is reading 6 holding rather than an omission: the class each of them binds is
+    ALREADY on its domain surface under the word reading 6's inner clause minted for it
+    (``SyncGovernanceRequestAccountsItem`` for ``account.Account``,
+    ``CurrentPrincipalConfiguration`` for ``protocol.PrincipalCurrentResult``), and a
+    second domain path to one object is what "no second way reaches the same class"
+    forbids.  Measured over this bundle: **858 of the 862 statements bind a symbol already
+    on its own module's export set**, so the word is what is missing and never the path.
+
+    Reading 10 is the reading that owns them and it names the layer in one sentence --
+    "``adcp.types`` flat -- the compatibility surface: an alias for every name an
+    application actually imports today" -- and draws the boundary in the next: "Refusing
+    to reproduce upstream's spellings means refusing to put one object at every module
+    upstream happens to expose it from.  It does not mean refusing the ONE namespace an
+    application imports from ... One declared flat surface is a canonical location; a name
+    at every module that mentions it is the accident."
+
     Keyed relative to the package directory, like D5's alias module, so no caller of
     :func:`write` can be handed a path that escapes the directory it passed -- and written
     only on a run that passes ``package``, which is the scope both artifacts need.
@@ -3248,7 +3335,10 @@ def domain_modules(
         for word, (module, symbol) in sorted(held[known].items()):
             by_module.setdefault(module, []).append((symbol, word))
         out[f"{SURFACE}/{known}.py"] = render.domain_module(known, by_module)
-    out[f"{SURFACE}/{FLAT}.py"] = render.flat_surface(*_flat_words(held))
+    one, many = _flat_words(held)
+    out[f"{SURFACE}/{FLAT}.py"] = render.flat_surface(
+        one, many, *_alias_words(frozenset(one) | frozenset(many), upstream)
+    )
     return out
 
 
@@ -3296,6 +3386,84 @@ def _flat_words(
     one = {word: ds[0] for word, ds in domains.items() if len(ds) == 1}
     many = {word: ds for word, ds in domains.items() if len(ds) > 1}
     return one, many
+
+
+def _alias_words(
+    surfaced: frozenset[str],
+    upstream: Mapping[str, Mapping[str, str]],
+) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """Reading 10's flat ALIAS arm: upstream's own words, SPLIT the same way.
+
+    First the words this compiler can bind at the flat namespace, valued at the private
+    module whose own ``X = <symbol>`` statement binds each; then the words it DECLINES,
+    valued at every ``<module>.<symbol>`` subject the record gives the word.  Read off
+    :meth:`Emitted.upstream_words`, which is the run's record of the statements the tree
+    already states -- so this is an EXPORT of what the walk emitted and never a second
+    derivation of which words exist, let alone a list of them.
+
+    **THE WORD IS UPSTREAM'S AND IS NOT OURS TO RE-MINT.**  These are not names this
+    compiler chose: each is a word upstream's own wheel published, recovered by one of the
+    three joins ``lower/names.assign`` runs (a title recased, a structure matched, a
+    statement read).  Their whole purpose is that ``from adcp.types import
+    PrincipalCurrentResult`` -- an import an application has already written -- resolves,
+    so a re-minted spelling of one would answer no caller and would be the "nodeless class
+    to satisfy an import" read backwards.  Reading 10 admits them for exactly that reason
+    and no other: "Where upstream's wheel already ships that spelling, the commitment
+    exists and is theirs; an alias RECORDS it rather than minting it."
+
+    **TWO REASONS TO DECLINE AND BOTH ARE NAMED RATHER THAN RESOLVED.**
+
+    * **The §1 SURFACE already publishes the word.**  ``surfaced`` is every word the
+      domain aggregators put on the flat namespace -- :func:`_flat_words`' own two halves
+      -- and such a word is already bound there, to the class §1 gives it to.  Binding
+      upstream's subject over it would make the one namespace's word mean something other
+      than the surface's own, which is precisely the defect ``adcp/types/__init__.py``
+      states as "``core.Status`` meaning one of fourteen things"; and §4 forbids us to
+      give a subject the protocol has named a different word, so the surface's word is the
+      one that stands.  Measured over this bundle: **28 words**, ``Account``, ``Format``
+      and ``EventType`` among them.
+    * **THE WORD HAS MORE THAN ONE SUBJECT, AND THERE IS NOTHING TO ARBITRATE** -- which
+      is :func:`_flat_words`' sentence one layer out.  Upstream's generator mints a word
+      from a property KEY (``accounts`` -> ``Account``, ``accepted_verifiers`` ->
+      ``AcceptedVerifier``), so two documents using one key derive one word for two
+      classes that are distinct objects at distinct pointers.  ``final-state.md`` reading
+      10 is explicit that this is not a tie to break: "An alias is keyed on a schema
+      SUBJECT, never on a name.  A name resolves to a DIFFERENT class of ours depending on
+      which upstream module the import came from, so one flat alias cannot serve both."
+      A first-wins pick is that defect decided by file order.  Measured: **32 words** over
+      **83 subjects** -- and the two declines together leave **738** words bound, which is
+      what the flat module's ``__all__`` grows by.
+
+      **AND THE NAME SUCH A SUBJECT NEEDS IS ALREADY MINTED AND ALREADY EXPORTED**, by
+      reading 6's inner clause from the parent class and the key together
+      (``lower/names.THE_INNER_EXPORT``) -- ``SyncGovernanceRequestAccountsItem`` and
+      ``SyncGovernanceSuccessAccountsItem`` for the two ``account.Account`` wants, each at
+      its one domain path.  So declining the colliding word withholds no class from
+      anyone; it withholds one ambiguous SPELLING of a class that already has an
+      unambiguous one.
+
+    A declined word is written into the module by name beside its subjects, for the reason
+    :func:`_flat_words`' ``__adcp_ambiguous__`` is: a compiler that drops a word in silence
+    leaves a reader of a failing import with nothing to read, and the reason is derivable
+    at the one place both facts are -- a declined word that is in ``__all__`` is the first
+    case and resolves to §1's class, and one that is not is the second and resolves
+    nowhere.
+    """
+    subjects: dict[str, dict[str, None]] = {}
+    for module, words in sorted(upstream.items()):
+        for word, symbol in sorted(words.items()):
+            # Keyed on the WORD, which is the thing a flat namespace has one slot for; the
+            # subject is spelled ``<module>.<symbol>`` because a reader of a declined word
+            # needs the DECLARATION it would have reached and not merely its module.
+            subjects.setdefault(word, {})[f"{module.replace('/', '.')}.{symbol}"] = None
+    bound: dict[str, str] = {}
+    declined: dict[str, list[str]] = {}
+    for word, where in subjects.items():
+        if word in surfaced or len(where) > 1:
+            declined[word] = sorted(where)
+            continue
+        bound[word] = next(iter(where)).rsplit(".", 1)[0]
+    return bound, declined
 
 
 def _envelope_bases(bundle_dir: Path, shape: Sequence[bundle.Agreed]) -> str:

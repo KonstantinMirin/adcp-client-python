@@ -2159,6 +2159,8 @@ def domain_module(domain: str, held: Mapping[str, Sequence[tuple[str, str]]]) ->
 def flat_surface(
     held: Mapping[str, str],
     ambiguous: Mapping[str, Sequence[str]] = {},
+    aliases: Mapping[str, str] = {},
+    declined: Mapping[str, Sequence[str]] = {},
 ) -> str:
     """The text of ``adcp/types/_surface/_flat.py``: the CROSS-DOMAIN consolidation.
 
@@ -2207,6 +2209,25 @@ def flat_surface(
     reveals the real class even with ``--no-implicit-reexport``, where a module-level
     ``__getattr__`` reveals ``Any``.  Written from one ``held``, so the list and the imports
     cannot disagree.
+
+    **AND READING 10's ALIAS ARM IS THE SECOND HALF OF THE SAME MODULE** (2026-11-10).
+    ``aliases`` is upstream's own published word -> the PRIVATE module whose ``X = <symbol>``
+    statement binds it, and ``declined`` is the words that arm could not bind -> the
+    ``<module>.<symbol>`` subjects each has.  Both are ``emit._alias_words``' decision,
+    off the run's own record of the three joins that recovered those words.
+
+    **THE IMPORT IS TWO LEVELS AND NAMES ``_schemas``, which is the one difference from the
+    half above and is not a privacy leak**: the word is not on any domain aggregator -- it
+    must not be, because the class it binds already has its one domain path and a second
+    would be the path reading 6 forbids -- so there is no sibling to re-export it from and
+    the private module that states it is the only source.  This file is itself private and
+    is read by nothing but ``adcp.types.__getattr__``, so the spelling publishes nothing:
+    the PUBLIC path for the class stays ``adcp.types.<domain>.<its own word>``, and what
+    this module adds is the flat SPELLING an application already wrote.
+
+    ``X as X`` here too, and for the plainer reason: upstream's word IS the symbol the
+    private module binds, so the two halves are one name and the re-export convention
+    applies unchanged.
     """
     lines = [
         '"""Every word the domain aggregators publish, consolidated into one namespace.',
@@ -2227,10 +2248,19 @@ def flat_surface(
         "DECLINED rather than resolved to a winner and is named in ``__adcp_ambiguous__``:",
         "a flat namespace has one slot for the word, the domains have two classes, and",
         "picking one would hand a consumer a class whose document they did not name.",
+        "",
+        "**AND READING 10's ALIAS WORDS ARE HERE BESIDE THEM**: upstream's own published",
+        "spelling of a class of ours, which the private module already states as an",
+        "``X = <symbol>`` and which no domain aggregator carries -- the class has its one",
+        "domain path under its own word, and a second would be the path reading 6 forbids.",
+        "This is the ONE namespace a flat import resolves at, so it is the one place such a",
+        "spelling belongs.  A word the surface above already publishes, or that upstream's",
+        "generator derived from a property key two documents share, is DECLINED and named",
+        "in ``__adcp_alias_declined__``.",
         '"""',
         "",
     ]
-    declined = "\n".join(
+    declined_block = "\n".join(
         [
             "#: The words more than one domain publishes, and the domains that publish each.",
             "#: Bound nowhere in this module -- the public ``adcp.types.<domain>`` path is the",
@@ -2242,19 +2272,50 @@ def flat_surface(
             ),
             "}",
             "",
+            "",
+            "#: Upstream's published words this module declines, and the",
+            "#: ``<module>.<symbol>`` subjects each one has.  A word that IS in ``__all__``",
+            "#: is declined because the generated surface already publishes it and resolves",
+            "#: it to the class the schemas name; a word that is NOT resolves nowhere here,",
+            "#: because upstream derived it from a property key more than one document uses",
+            "#: and the subjects below are distinct classes.  Each is reachable under its",
+            "#: own ``adcp.types.<domain>`` word, which is the name minted from the parent",
+            "#: class and the key together.",
+            "__adcp_alias_declined__: dict[str, tuple[str, ...]] = {",
+            *(
+                f"    {word!r}: {tuple(declined[word])!r},"
+                for word in sorted(declined, key=_export_key)
+            ),
+            "}",
+            "",
         ]
     )
     body = "\n".join(
         [
             "__all__ = [",
-            *(f"    {word!r}," for word in sorted(held, key=_export_key)),
+            *(
+                f"    {word!r},"
+                for word in sorted({*held, *aliases}, key=_export_key)
+            ),
             "]",
             "",
             "",
-            declined,
+            declined_block,
         ]
     )
-    reexports = [(f".{held[word]}", word, word) for word in sorted(held, key=_export_key)]
+    reexports = [
+        *((f".{held[word]}", word, word) for word in sorted(held, key=_export_key)),
+        *(
+            # ``.._schemas.<module>``, the same arithmetic :func:`domain_module` writes and
+            # for the same reason -- this file sits in ``_surface/`` and ``_schemas`` is its
+            # parent's sibling.  A leading dot too few, or the prefix left off, resolves to
+            # ``adcp.types.<domain>.<module>``: a module that does NOT exist, and whose
+            # ``ModuleNotFoundError`` the facade's own missing-module shim swallows, so the
+            # whole arm degrades to silence rather than to an error.  Measured, once.
+            (f".._schemas.{aliases[word]}", word, word)
+            for word in sorted(aliases, key=_export_key)
+        ),
+    ]
     return "\n".join([*lines, *_import_section((), body, reexports), body])
 
 
