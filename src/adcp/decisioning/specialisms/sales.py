@@ -65,7 +65,7 @@ if TYPE_CHECKING:
         ControlMediaBuyRequest,
         ControlMediaBuyResponse,
         CreateMediaBuyRequest,
-        CreateMediaBuySuccessResponse,
+        CreateMediaBuySuccess,
         DeclineProposalsRequest,
         DeclineProposalsResponse,
         GetMediaBuyDeliveryRequest,
@@ -89,7 +89,7 @@ if TYPE_CHECKING:
         SyncCreativesRequest,
         SyncCreativesSuccessResponse,
         UpdateMediaBuyRequest,
-        UpdateMediaBuySuccessResponse,
+        UpdateMediaBuySuccess,
     )
     from adcp.types.legacy import (
         LegacyListCreativeFormatsRequest as ListCreativeFormatsRequest,
@@ -238,8 +238,8 @@ class SalesPlatform(Protocol, Generic[TMeta]):
         self,
         req: CreateMediaBuyRequest,
         ctx: RequestContext[TMeta],
-    ) -> SalesResult[CreateMediaBuySuccessResponse]:
-        """Unified hybrid. Return :class:`CreateMediaBuySuccessResponse` directly
+    ) -> SalesResult[CreateMediaBuySuccess]:
+        """Unified hybrid. Return :class:`CreateMediaBuySuccess` directly
         for sync fast path; return :meth:`RequestContext.handoff_to_task`
         for HITL slow path.
 
@@ -275,7 +275,7 @@ class SalesPlatform(Protocol, Generic[TMeta]):
         media_buy_id: str,
         patch: UpdateMediaBuyRequest,
         ctx: RequestContext[TMeta],
-    ) -> MaybeAsync[UpdateMediaBuySuccessResponse]:
+    ) -> MaybeAsync[UpdateMediaBuySuccess]:
         """Mutate an in-flight media buy.
 
         v6.0 returns sync only — the per-tool response schema doesn't

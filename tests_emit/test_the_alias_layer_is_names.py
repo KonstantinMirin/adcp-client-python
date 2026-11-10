@@ -197,14 +197,15 @@ def test_every_owed_spelling_resolves_at_the_flat_namespace(
     CONCESSION** (``adcp-client-python-y34k``).  This table is keyed on a DOCUMENT and the
     word that document gives, which is the right key for the domain spelling and for
     ``adcp.types.compat``.  It is not the right key for the FLAT word where upstream's own
-    ``_eager.py`` binds that word to one of their hand-written files: they write
-    ``Format = _canonical_creative.Format``, so ``from adcp.types import Format`` is their
-    canonical class -- requiring ``format_kind`` and ``params`` -- and not
-    ``core/format.json``'s root, which requires ``format_id`` and ``name``.  262 of the 866
-    remaining ``ValidationError`` tests of their suite were this table's object answering the
-    flat word.
+    ``_eager.py`` binds that word to one of their RESTORED files.  The measured case was
+    ``Format = _canonical_creative.Format`` -- their canonical class requiring
+    ``format_kind`` and ``params``, against ``core/format.json``'s root requiring
+    ``format_id`` and ``name`` -- and 262 of the 866 remaining ``ValidationError`` tests of
+    their suite were this table's object answering the flat word.  That file is deleted
+    (``adcp-client-python-2f52``) and ``Format`` is the document's root again; the clause
+    stands for whatever ``STATED`` derives to, which is 8 words today.
 
-    So for the 26 words ``adcp.types._restored.STATED`` names, the reading is BOTH halves and
+    So for the words ``adcp.types._restored.STATED`` names, the reading is BOTH halves and
     neither is dropped: the flat word is upstream's stated subject, **and the table's own
     object is still reachable at the module the table declares** -- which is what keeps this
     an exception about WHICH SUBJECT A NAMESPACE DENOTES and not a name the layer stopped
@@ -251,11 +252,16 @@ def test_every_owed_spelling_resolves_at_the_flat_namespace(
         "unresolved": len(failed),
     }
     assert not not_the_same, {"a second object wearing the flat spelling": not_the_same}
-    claimed("flat words upstream's own _eager takes from a restored file", upstream_states)
-    assert upstream_states, (
-        "no owed spelling is decided by upstream's own statement, so the exception above "
-        "grades nothing -- read adcp.types._restored.STATED"
-    )
+    # **THE EXCEPTION'S POPULATION IS EMPTY TODAY, and that is reported rather than
+    # asserted non-empty** (``adcp-client-python-2f52``).  Every owed spelling the exception
+    # ever covered was a word upstream's ``_eager`` took from
+    # ``adcp/types/canonical_creative.py``; that file is deleted, so no owed spelling is
+    # decided by upstream's statement and the identity clause above covers all of them with
+    # no exception taken.  The branch is still REACHED -- ``stated.get`` is consulted for
+    # every owed name and the "neither ... nor" refusal above is still live -- so what
+    # changed is which of the two outcomes the live tree produces, not whether the reading
+    # runs.  The non-emptiness that matters is the population, asserted at the top.
+    assert set(upstream_states) <= set(stated), sorted(set(upstream_states) - set(stated))
     assert not lost, {"the table's own object stopped resolving at the module it names": lost}
 
 
@@ -519,7 +525,7 @@ def test_what_this_file_does_not_grade(rows: list[dict[str, str]]) -> None:
     * ``MEANING-DIFFERS`` -- ours carries upstream's word for a different subject.  35
       names, and the measurement is the reason they are refused rather than aliased:
       upstream's ``Format``, ``Product``, ``Package`` and ``Placement`` are all defined by
-      ``adcp.types.canonical_creative``, a hand-written layer, and its ``Brand``,
+      their own hand-written ``adcp/types/canonical_creative.py``, and its ``Brand``,
       ``Targeting`` and ``AttributionWindow`` by an INNER node of
       ``protocol/get-adcp-capabilities-response.json`` -- not by the document whose subject
       ours names.  An alias there would hand a caller a type that is not the one their code

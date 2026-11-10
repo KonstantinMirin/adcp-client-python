@@ -31,13 +31,20 @@ the real modules.
 rather than a table over their paths** (``adcp-client-python-y34k``).  The module tuple
 answers PROVENANCE and the precedence subtraction answers SUBJECT, and neither could answer
 the third question: which words UPSTREAM'S OWN FLAT SURFACE takes from one of these files.
-Upstream's ``_eager.py`` reads ``Format = _canonical_creative.Format``, so their flat
-``Format`` is hand-written and holds no document while ours was ``core/format.json``'s root
--- 262 of the 866 remaining ``ValidationError`` tests of their suite, on 25 bindings, are
-that one defect.  ``STATED`` is held against ``survey/upstream_aliases.flat_statements`` in
-both directions by
+``STATED`` is held against ``survey/upstream_aliases.flat_statements`` in both directions by
 :func:`test_the_stated_mapping_is_exactly_what_upstream_s_own_source_states`, which parses
 upstream's tree at the commit the machinery classification pins and reads nothing of ours.
+
+**AND ``canonical_creative`` IS DELETED, which moves both data and is why this file changed**
+(``adcp-client-python-2f52``).  It was ``MODULES``' thirteenth entry and the terminal of 29
+of ``STATED``'s 37 words; its 32 classes subclassed an emitted class of ours and then
+SUPPRESSED a field the document states, so the tuple drops it, the mapping derives to 8, and
+``adcp.types.Format`` is ``core/format.json``'s root again.  y34k's own 262-test evidence was
+every one of those 29 words, so the ordering ``STATED`` buys now decides nothing -- measured:
+of the 8 that remain, only ``SchemaVariant`` is also bound by an earlier layer and it is
+bound there to the SAME object.  :func:`test_a_stated_word_resolves_flat_to_the_module_upstream_names`
+says that in its own docstring rather than leaving a reader to infer that a green gate is
+still grading a live disagreement.
 
 Perturbed in :func:`test_the_module_tuple_is_held_in_both_directions_and_reddens` and
 :func:`test_the_stated_mapping_is_held_in_both_directions_and_reddens`, which call the same
@@ -240,20 +247,31 @@ def test_the_stated_mapping_is_exactly_what_upstream_s_own_source_states() -> No
 
 
 def test_a_stated_word_resolves_flat_to_the_module_upstream_names() -> None:
-    """The ruling as BEHAVIOUR: ``adcp.types.Format`` IS ``canonical_creative.Format``.
+    """The ruling as BEHAVIOUR, three claims per stated word.
 
-    Three claims per word, because the defect could return through any of them: the restored
-    module upstream names holds the word, this surface offers it (the precedence subtraction
-    does not reach it), and the FLAT spelling is that one object and not the earlier layer's.
+    The restored module upstream names holds the word, this surface offers it (the precedence
+    subtraction does not reach it), and the FLAT spelling is that one object -- because the
+    defect could return through any of the three.
 
-    ``Format`` is asserted by its own requirements as well as by identity, which is the one
-    wrong answer that would still resolve: upstream's hand-written canonical class requires
-    ``format_kind`` and ``params``, ``core/format.json``'s root requires ``format_id`` and
-    ``name``, and a test of upstream's that constructs the first against the second is 164 of
-    the 262 on its own.
+    **AND THE ORDERING THIS GATE EXISTS FOR IS NO LONGER EXERCISED, which is measured and is
+    said here rather than left for a reader to infer from a green run.**  y34k's subject was
+    ``Format``: ``compat`` bound it to ``core/format.json``'s root and upstream's ``_eager``
+    bound it to ``canonical_creative.Format``, requiring ``format_kind`` + ``params`` where
+    the document's root requires ``format_id`` + ``name`` -- two subjects behind one word, 25
+    bindings over 14 words, 262 of upstream's remaining ``ValidationError`` tests.  Every one
+    of those words came from that file and ``adcp-client-python-2f52`` deleted it.  Of the 8
+    words the derivation now reports, exactly one (``SchemaVariant``) is bound by an earlier
+    layer at all, and it is bound to the SAME object -- asserted below, so a layer that
+    starts disagreeing about it is a failure here.  The loop keeps its three claims; what it
+    has lost is a word where the ordering changes the answer.
     """
     import adcp.types
 
+    compat = importlib.import_module("adcp.types.compat")
+    adapter = importlib.import_module("adcp.types._adapter")
+    stated = claimed("words upstream states at a restored module", set(surface().STATED))
+    assert stated, "nothing is stated, so this reading grades nothing"
+    overlapping = set()
     for word, module in sorted(surface().STATED.items()):
         held = importlib.import_module(f"adcp.types.{module}")
         assert hasattr(held, word), f"adcp.types.{module} does not hold {word}"
@@ -264,29 +282,41 @@ def test_a_stated_word_resolves_flat_to_the_module_upstream_names() -> None:
             f"adcp.types.{word} is not adcp.types.{module}.{word} -- the flat word is not "
             "upstream's subject"
         )
-    assert adcp.types.Format.__module__ == "adcp.types.canonical_creative"
-    required = {name for name, f in adcp.types.Format.model_fields.items() if f.is_required()}
-    assert required == {"format_kind", "params"}, sorted(required)
+        for earlier in (compat, adapter):
+            if hasattr(earlier, word):
+                overlapping.add(word)
+                assert getattr(earlier, word) is want, (
+                    f"{earlier.__name__}.{word} is a DIFFERENT object from the one upstream "
+                    f"states at adcp.types.{module} -- the ordering now decides this word"
+                )
+    assert overlapping == {"SchemaVariant"}, sorted(overlapping)
 
 
 def test_a_word_upstream_takes_from_its_generated_tree_is_not_stated() -> None:
-    """The separating case, named: ``canonical_creative`` DECLARES ``MediaBuy`` and upstream's
-    flat ``MediaBuy`` is their generated class.
+    """The separating case, named: ``registry`` DECLARES ``KellerType`` and upstream's flat
+    ``KellerType`` is their generated class.
 
     This is what makes :data:`STATED` a reading of upstream's statements rather than the
-    correlate "every word ``canonical_creative`` declares" -- the predicate substitution this
-    row is the fifth instance of.  Upstream's chain for the flat word is
-    ``_eager.py:56`` -> ``_generated.py:1500`` -> ``domains/core/media_buy.py``, so the word
-    is NOT upstream's hand-written one and the flat spelling stays the document's class.
+    correlate "every word a restored module declares" -- the predicate substitution this row
+    is the fifth instance of.  Upstream's chain for the flat word is ``_eager.py:56`` ->
+    ``_generated.py:455`` -> ``domains/brand/search_brands_response.py``, so the word is NOT
+    upstream's hand-written one and the flat spelling stays the document's class.
+
+    The case was ``canonical_creative``'s ``MediaBuy`` until that file was deleted
+    (``adcp-client-python-2f52``).  It is re-chosen by MEASUREMENT and not by taste: of the
+    words the twelve remaining modules declare, 19 have a chain terminating in upstream's
+    generated tree and all 19 are ``registry``'s; ``KellerType`` is the one whose chain runs
+    through ``_eager`` and ``_generated`` exactly as ``MediaBuy``'s did, so every clause
+    below is the clause it was.
     """
     import adcp.types
 
-    canonical = importlib.import_module("adcp.types.canonical_creative")
-    assert "MediaBuy" in surface().offered(canonical), "the separating case is no longer one"
-    assert "MediaBuy" not in surface().STATED
-    assert "MediaBuy" not in set(surface().__all__)
-    assert getattr(adcp.types, "MediaBuy") is not canonical.MediaBuy
-    assert getattr(adcp.types, "MediaBuy").__module__ != "adcp.types.canonical_creative"
+    registry = importlib.import_module("adcp.types.registry")
+    assert "KellerType" in surface().offered(registry), "the separating case is no longer one"
+    assert "KellerType" not in surface().STATED
+    assert "KellerType" not in set(surface().__all__)
+    assert getattr(adcp.types, "KellerType") is not registry.KellerType
+    assert getattr(adcp.types, "KellerType").__module__ != "adcp.types.registry"
 
 
 def test_the_derivation_admits_data_and_excludes_an_import() -> None:
@@ -330,11 +360,11 @@ def test_the_stated_mapping_is_held_in_both_directions_and_reddens() -> None:
     """
     live = dict(surface().STATED)
     assert live
-    added = {**live, "MediaBuy": "canonical_creative"}
+    added = {**live, "KellerType": "registry"}
     assert added != live, "adding a word did not break the equality"
-    removed = {k: v for k, v in live.items() if k != "Format"}
+    removed = {k: v for k, v in live.items() if k != "SchemaVariant"}
     assert removed != live, "removing a word did not break the equality"
-    moved = {**live, "Format": "variants"}
+    moved = {**live, "SchemaVariant": "registry"}
     assert moved != live, "moving a word to another module did not break the equality"
 
 

@@ -287,8 +287,10 @@ def document(relative: str) -> dict[str, object] | None:
 def schema_ref(model: type[pydantic.BaseModel]) -> str | None:
     """The document a model was generated from, found along its MRO.
 
-    ``canonical_creative``'s hand-written arms carry no marker of their own; the generated
-    wire model they subclass does, which is the document they must satisfy.
+    The MRO walk and not ``model.__dict__``, because a SUBCLASS an adopter writes carries
+    no marker of its own and the emitted class it extends does -- which is the document it
+    must satisfy.  (``canonical_creative``'s 32 hand-written arms were the measured case
+    for this, and that file is deleted; the walk still answers for anything else.)
     """
     for base in model.__mro__:
         marker = base.__dict__.get("__adcp_schema__")
@@ -1081,11 +1083,12 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="print the plan, write nothing")
     arguments = parser.parse_args()
 
-    # Realize the lazy public facade and the hand-written canonical surface, so
-    # ``same_named`` can see every class a test could have meant.
+    # Realize the lazy public facade and the legacy surface, so ``same_named`` can see
+    # every class a test could have meant.  ``adcp.types.canonical_creative`` was realized
+    # here too and is deleted (`adcp-client-python-2f52`); the classes it declared were
+    # subclasses of the emitted ones the facade already realizes.
     import adcp
     import adcp.types
-    import adcp.types.canonical_creative  # noqa: F401
     import adcp.types.legacy  # noqa: F401
 
     _ = adcp.types.Format

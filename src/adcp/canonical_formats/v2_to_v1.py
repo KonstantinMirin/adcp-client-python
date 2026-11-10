@@ -60,7 +60,8 @@ FormatId = LegacyFormatId
 # target — but a custom declaration MAY carry ``v1_format_ref`` and
 # project via step 2.
 # Keyed by the vocabulary's STRING values: ``format_kind`` is a ``str`` at
-# every reference (see adcp.types.canonical_creative), and a declaration
+# every reference (``OPEN_VOCABULARY_SCHEMAS`` in
+# ``scripts/generate_types.py``), and a declaration
 # may legitimately carry a kind promoted after this SDK's release — for
 # which ``.get(kind, True)`` is the right answer.
 V1_TRANSLATABLE: dict[str, bool] = {

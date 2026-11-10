@@ -169,13 +169,20 @@ def __getattr__(name: str) -> object:
             }
         )
     # **AND UPSTREAM'S OWN STATEMENT IS ASKED BEFORE THE TABLE, WHICH IS THE ONE PLACE THE
-    # ORDER BELOW IS NOT PRECEDENCE** (`adcp-client-python-y34k`).  Upstream's `_eager.py`
-    # writes `Format = _canonical_creative.Format`, so their flat `Format` IS their
-    # hand-written canonical class and not `core/format.json`'s root -- while the alias table
-    # binds that word to the document's root, correctly, for the DOMAIN spelling.  Both are
-    # right about different questions, and a lookup that simply consulted the table first
-    # answered the flat one wrongly: 262 of upstream's remaining `ValidationError` tests are
-    # that one word family resolving to the document's subject.
+    # ORDER BELOW IS NOT PRECEDENCE** (`adcp-client-python-y34k`).  Where upstream's own
+    # `_eager.py` binds a flat word to one of the RESTORED files, that word denotes their
+    # declaration and not the document's class the alias table binds -- two subjects behind
+    # one word, both right about different questions, and a lookup that simply consulted the
+    # table first answered the flat one wrongly.
+    #
+    # **AND IT NOW DECIDES NOTHING, which is measured** (`adcp-client-python-2f52`).  y34k's
+    # whole subject was `canonical_creative` -- `Format = _canonical_creative.Format`, 25
+    # bindings over 14 words, 262 of upstream's remaining `ValidationError` tests -- and that
+    # file is deleted, so `STATED` derives to 8 words of which exactly one (`SchemaVariant`)
+    # is bound by a layer below at all, and that one is bound to the same object.  The clause
+    # stays because `STATED`'s membership is DERIVED: a thirteenth module restored, or
+    # upstream moving a word into one of the twelve, puts a deciding word back with nothing
+    # edited here.  `adcp.types._restored`'s own docstring carries the measurement.
     #
     # So a word upstream's own chain terminates in a RESTORED module is answered from that
     # module here, ahead of the four layers below, and precedence decides every word upstream

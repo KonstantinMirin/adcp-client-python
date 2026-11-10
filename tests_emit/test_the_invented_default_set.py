@@ -11,10 +11,25 @@ it that a future change cannot quietly undo.
 **THE DECISION.**  For ``contradicts``, ``const-restated`` and ``collapsed-disjunction``
 the answer is REPORT AND DO NOT REPAIR: the defect is upstream's generator's, nothing of
 ours carries it, and a repair here would have to invent a subject.  For ``invented-value``
-the answer is the same for 143 of its 145 rows and *different for two*, because two of them
-are in this tree right now -- not emitted, but restored, in upstream's own hand-written
-``canonical_creative.py``, and reachable at a public name.  So there are three gates and
-the third is the only one with teeth over a live defect.
+the answer was the same for 143 of its 145 rows and *different for two*, because two of
+them were in this tree -- not emitted, but restored, in upstream's own hand-written
+``canonical_creative.py``, and reachable at a public name.
+
+**THOSE TWO ARE GONE, AND THE REPAIR IS THE ONE THE THIRD GATE NAMED.**  That gate's own
+closing clause read: "RED on a third site (a new defect) and RED on zero (repaired --
+update ``0z0u`` and delete this gate's record)."  ``adcp-client-python-2f52`` deleted
+``src/adcp/types/canonical_creative.py``, which is where both sites lived --
+``CreateMediaBuyResponse1._normalize_legacy_status`` and
+``UpdateMediaBuyResponse1._normalize_legacy_status``, each writing
+``{**data, "status": "completed"}`` into a payload that omitted a field our emitted arm
+requires.  So ``survey/invented_defaults.restored_injections`` now reports ZERO ``status``
+sites, the third gate and its live witness are deleted as that clause instructs, and the
+divergence is recorded closed on ``0z0u``.  **The repair is not that the alias layer was
+re-pointed one MRO hop up** -- which is what the gate proposed -- but that the lax subclass
+does not exist to be pointed at, and ``adcp.types.CreateMediaBuySuccessResponse`` is now
+REFUSED by name with that very reason in ``adcp.types._adapter.__adcp_refused__``: "their
+``CreateMediaBuyResponse1`` pins ``{'status': 'completed'}`` and the subject it reaches
+pins nothing there".  Two gates remain, and neither had teeth over a live defect of ours.
 
 **WHY THE CLAIM IS STATED OVER ``required_at`` AND NOTHING WIDER, which is measured and not
 a convenience.**  ``survey/invented_defaults.ours`` asks only about the CONJUNCTION reaching
@@ -60,16 +75,14 @@ TABLE = REPO / "survey" / "invented-defaults-9.6.1.tsv"
 #: not a census equality under ``test_every_check_names_its_set``.
 DIGEST = "7d05549bb6e45d66b955"
 
-#: The restored sites where upstream's own HAND-WRITTEN code invents a required field.
-#: ``(class, validator, field)`` in ``src/adcp/types/canonical_creative.py``, which is
-#: upstream's bytes byte for byte -- so this is a RECORD of a known divergence and not a
-#: list of things to fix here.  ``eknd`` asks for exactly this: "a NAMED, DERIVED set ...
-#: countable, and reportable beside the pass figure -- not silently absorbed into either
-#: column."
-RESTORED_INVENTIONS = {
-    ("CreateMediaBuyResponse1._normalize_legacy_status", "status"),
-    ("UpdateMediaBuyResponse1._normalize_legacy_status", "status"),
-}
+#: **NO RESTORED SITE INVENTS A REQUIRED FIELD, and this is the measurement rather than an
+#: empty default.**  The set held two ``(class.validator, field)`` pairs, both in
+#: ``src/adcp/types/canonical_creative.py``; that file is deleted and the set derives empty.
+#: Kept as a NAMED set with its own gate below, because "zero" is the claim and a reader
+#: cannot tell a zero that was measured from a reading that stopped matching -- which is the
+#: failure mode this whole module's docstring was written about.  A restored module that
+#: starts inventing a required field reddens :func:`test_no_restored_before_validator_invents_a_required_field`.
+RESTORED_INVENTIONS: set[tuple[str, str]] = set()
 
 
 def _rows() -> list[dict[str, str]]:
@@ -176,34 +189,33 @@ def test_each_disjunction_base_of_ours_refuses_the_omission() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# 3. the one live defect, NAMED -- and it is upstream's hand-written file, not our emitter
+# 3. the defect that WAS live, now zero -- measured, not defaulted
 # --------------------------------------------------------------------------- #
-def test_the_restored_invented_defaults_are_exactly_the_two_on_record() -> None:
-    """``canonical_creative.py``'s two ``status`` injections, and no third.
+def test_no_restored_before_validator_invents_a_required_field(tmp_path: Path) -> None:
+    """Zero injections across the restored modules, and the reading is PERTURBED to say so.
 
-    **THE SHAPE THE DECLARATIVE READING CANNOT SEE.**  ``CreateMediaBuyResponse1``
-    subclasses our emitted ``CreateMediaBuySuccess``, where ``status`` is required with no
-    default, and ``_normalize_legacy_status`` -- a ``model_validator(mode="before")`` in the
-    same file -- writes ``{**data, "status": "completed"}`` when the caller omitted it.  So
-    the field is required and the requirement is unreachable, and ``eknd``'s own ruling
+    **WHAT THIS GATE USED TO RECORD.**  ``canonical_creative.CreateMediaBuyResponse1``
+    subclassed our emitted ``CreateMediaBuySuccess``, where ``status`` is required with no
+    default, and ``_normalize_legacy_status`` -- a ``model_validator(mode="before")`` three
+    lines down -- wrote ``{**data, "status": "completed"}`` when the caller omitted it.  The
+    field was required and the requirement unreachable, which refuted ``eknd``'s ruling
     comment ("their restored classes would subclass OUR classes, inheriting the document's
-    requiredness ... Nothing is weakened anywhere") is refuted for this one field.
+    requiredness ... Nothing is weakened anywhere") for that one field.  Two sites, both in
+    that file, and the gate's own instruction for the zero case was "repaired -- update
+    ``0z0u`` and delete this gate's record".  ``adcp-client-python-2f52`` deleted the file;
+    the record is deleted and this is what replaced it.
 
-    **THIS GATE RECORDS A DEFECT RATHER THAN FORBIDDING ONE, which is deliberate and is the
-    only honest shape available here.**  The file is upstream's bytes byte for byte --
-    ``test_the_adapter_writer_owns_its_paths`` grades that against live blob identity and
-    ``adcp-client-python-knnw`` states it as "not one byte of upstream's source may change"
-    -- so the repair is NOT an edit to this file.  It is at the alias layer, where
-    ``src/adcp/types/aliases.py`` binds ``CreateMediaBuySuccessResponse`` to upstream's lax
-    subclass instead of to the correct class one MRO hop above it.  Until that is decided,
-    this gate is what keeps the divergence counted: RED on a third site (a new defect) and
-    RED on zero (repaired -- update ``0z0u`` and delete this gate's record).
+    **AND A ZERO HAS TO BE A MEASUREMENT, which is the whole reason this is still a gate.**
+    ``restored_injections`` now matches NOTHING in ``src/adcp/types`` -- not merely no
+    ``status`` -- so "no site invents a required field" and "the reading stopped matching
+    its own subject" are the same green, and the second is the failure mode this module's
+    docstring was written about.  The reading is therefore run against a module written for
+    the purpose, carrying the exact shape the deleted file carried, and is required to find
+    it.  RED on a restored module that starts inventing a field, and RED on a reading that
+    could no longer see one.
     """
-    found = claimed(
-        "keys a restored before-validator inserts",
-        {(who, key) for where, who, key in invented_defaults.restored_injections()},
-    )
-    status_sites = {(who, key) for who, key in found if key == "status"}
+    live = {(who, key) for _, who, key in invented_defaults.restored_injections()}
+    status_sites = {(who, key) for who, key in live if key == "status"}
     assert status_sites == RESTORED_INVENTIONS, {
         "a restored before-validator invents `status` at a site not on record": sorted(
             status_sites - RESTORED_INVENTIONS
@@ -213,17 +225,44 @@ def test_the_restored_invented_defaults_are_exactly_the_two_on_record() -> None:
         ),
     }
 
+    # The deleted shape, re-created, and the reading has to report it.  Written out rather
+    # than read from git: what is graded is the AST predicate, not upstream's bytes.
+    (tmp_path / "restored_like.py").write_text(
+        "from pydantic import model_validator\n\n\n"
+        "class CreateMediaBuyResponse1:\n"
+        "    @model_validator(mode='before')\n"
+        "    @classmethod\n"
+        "    def _normalize_legacy_status(cls, data):\n"
+        '        return {**data, "status": "completed"}\n'
+    )
+    perturbed = claimed(
+        "keys a restored before-validator inserts",
+        {(who, key) for _, who, key in invented_defaults.restored_injections(tmp_path)},
+    )
+    assert ("CreateMediaBuyResponse1._normalize_legacy_status", "status") in perturbed, sorted(
+        perturbed
+    )
 
-def test_the_emitted_arm_refuses_what_the_restored_subclass_admits() -> None:
-    """The live witness, as behaviour rather than as a table row.
+
+def test_the_emitted_arm_refuses_what_the_deleted_subclass_admitted() -> None:
+    """The emitted arm's own refusal, and the public name that no longer reaches a lax one.
 
     ``0z0u`` names ``CreateMediaBuyResponse1.status = 'completed'`` at ``#/oneOf/0`` as the
     worst kind's example: the document's ``allOf[1]`` requires ``status`` and its
     ``oneOf[0]`` states no value for it, so a class that defaults it both makes a required
-    field optional AND fills it with a value no reading of the document produces.  This
-    grades both halves of that sentence against the two classes at that one pointer.
+    field optional AND fills it with a value no reading of the document produces.  Our
+    emitted arm does neither, which is the half of that sentence this tree is answerable
+    for and is asserted here as behaviour.
 
-    **AND IT FIXES A TEST THAT PASSES FOR A REASON IT DOES NOT NAME.**
+    **AND THE OTHER HALF IS NOW A REFUSAL BY NAME.**  The lax subclass was reached at
+    ``adcp.types.CreateMediaBuySuccessResponse``; with the file deleted the adapter's
+    ordinal key cannot bind that word -- upstream's ``CreateMediaBuyResponse1`` pins
+    ``{'status': 'completed'}`` where the subject it reaches pins nothing -- so the word
+    raises from ``__getattr__`` carrying that reason.  Both are asserted, because an
+    unbound name and a name over a lax type are different outcomes and only one of them is
+    reading 10's.
+
+    **AND IT STILL FIXES A TEST THAT PASSES FOR A REASON IT DOES NOT NAME.**
     ``tests/test_server_dx.py::test_typed_success_rejects_async_task_status`` exists on both
     media-buy arms and reads as though the success arm pins ``status``.  It does not: the
     document's ``oneOf[0]`` states no ``status``, so the conjunction's enum of nine governs
@@ -232,12 +271,10 @@ def test_the_emitted_arm_refuses_what_the_restored_subclass_admits() -> None:
     ``revision`` and ``confirmed_at``.  That is a defect in the tests' premise and not in
     this tree; it is recorded on ``0z0u`` and ``tests/`` is not this file's to edit.
     """
-    from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuySuccess
-    from adcp.types.canonical_creative import CreateMediaBuyResponse1
+    import importlib
 
-    assert CreateMediaBuySuccess in CreateMediaBuyResponse1.__mro__, (
-        "the restored arm no longer subclasses the emitted one; this gate's subject moved"
-    )
+    from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuySuccess
+
     whole = {
         "media_buy_id": "mb-123",
         "packages": [],
@@ -251,16 +288,34 @@ def test_the_emitted_arm_refuses_what_the_restored_subclass_admits() -> None:
         CreateMediaBuySuccess.model_validate(whole)
     except Exception:  # noqa: BLE001 -- any refusal is the claim; the error shape is not
         pass
-    else:  # pragma: no cover -- the emitter would have to have regressed to reach this
+    else:  # pragma: no cover - the emitter would have to have regressed to reach this
         raise AssertionError(
             "the EMITTED success arm admits a payload with no `status`, which "
             "media-buy/create-media-buy-response.json's allOf[1] requires"
         )
 
-    # The restored subclass admits it, and invents `completed`.  Recorded, not asserted
-    # away: see this module's third gate for why the repair is not an edit to that file.
-    restored = CreateMediaBuyResponse1.model_validate(whole)
-    assert restored.status.value == "completed", (
-        "the restored subclass no longer invents `completed` for an absent `status` -- "
-        "if that was repaired, update adcp-client-python-0z0u and this module's record"
+    # The lax subclass is gone, and the public word that reached it is refused WITH the
+    # reason rather than silently absent.
+    assert importlib.util.find_spec("adcp.types.canonical_creative") is None, (
+        "adcp.types.canonical_creative is importable again; this gate's subject is back"
     )
+    adapter = importlib.import_module("adcp.types._adapter")
+    why = adapter.__adcp_refused__.get("CreateMediaBuySuccessResponse")
+    assert why is not None, "the word is bound again, with no record of what it reaches"
+    import adcp.types
+
+    try:
+        adcp.types.CreateMediaBuySuccessResponse
+    except AttributeError:
+        pass
+    else:  # pragma: no cover - the line above is the claim
+        raise AssertionError(
+            "adcp.types.CreateMediaBuySuccessResponse resolves; the adapter refuses it"
+        )
+    # And the refusal carries its reason at the module the verdict belongs to.
+    try:
+        adapter.CreateMediaBuySuccessResponse
+    except AttributeError as caught:
+        assert "CreateMediaBuyResponse1" in str(caught), str(caught)
+    else:  # pragma: no cover - the line above is the claim
+        raise AssertionError("adcp.types._adapter binds the word it records as refused")

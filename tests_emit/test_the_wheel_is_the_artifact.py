@@ -270,10 +270,11 @@ out["undocumented"] = sorted(undocumented)
 # itself, which is what ``PRESENT`` means.
 _compat = importlib.import_module("adcp.types.compat")
 flat_only = dict(_compat.__adcp_flat_only__)
-# **AND UPSTREAM'S OWN STATEMENT DECIDES THE FLAT WORD WHERE THEY MAKE ONE** (`y34k`).  Their
-# `_eager.py` writes `Format = _canonical_creative.Format`, so the flat spelling is their
-# hand-written class and the alias table's object -- `core/format.json`'s root -- keeps the
-# DOMAIN spelling.  `adcp.types._restored.STATED` is that set, derived from upstream's own
+# **AND UPSTREAM'S OWN STATEMENT DECIDES THE FLAT WORD WHERE THEY MAKE ONE** (`y34k`).  Where
+# their `_eager.py` binds a flat word to one of the RESTORED files, the flat spelling is
+# their hand-written class and the alias table's object keeps the DOMAIN spelling.  (The
+# measured case was `Format = _canonical_creative.Format`, and that file is deleted --
+# `adcp-client-python-2f52`.)  `adcp.types._restored.STATED` is that set, derived from upstream's own
 # statements, and read here off the INSTALLED package so what is graded is still the
 # artifact.  The identity below is then asserted against the module upstream NAMES; nothing
 # is exempted from having to be one object under two spellings.
@@ -282,6 +283,19 @@ stated = {
     for word, module in importlib.import_module("adcp.types._restored").STATED.items()
 }
 out["flat_stated"] = sorted(stated)
+# **AND EACH ONE RESOLVES AT THE FLAT SPELLING, ON THE INSTALLED TREE, AS THE OBJECT THE
+# RESTORED MODULE HOLDS.**  Read in the subprocess with everything else here, because the
+# claim is about the artifact: a wheel that shipped `_restored`'s mapping and not the module
+# it names would resolve nothing and the gate reading it must see that.
+_stated_resolved = []
+for _word, _where in sorted(stated.items()):
+    try:
+        _held = getattr(importlib.import_module(_where), _word)
+    except BaseException:  # noqa: BLE001
+        continue
+    if getattr(adcp.types, _word, None) is _held:
+        _stated_resolved.append(_word)
+out["flat_stated_resolved"] = _stated_resolved
 flat_owed = sorted(set(exported.get("compat", [])) | set(flat_only))
 flat_resolved = []
 flat_failed = {}
@@ -669,14 +683,27 @@ def test_every_upstream_spelling_imports_from_the_flat_namespace() -> None:
         "owed": len(owed),
     }
     # **AND THE WORDS UPSTREAM'S OWN STATEMENT RE-POINTS ARE A REAL SET IN THE ARTIFACT**
-    # (`y34k`).  Asserted non-empty and overlapping what this layer owes, so the exception
-    # the two loops above make for them cannot go quiet on a wheel that stopped shipping
-    # `adcp.types._restored` -- which would read green by having nothing to except.
+    # (`y34k`).  Asserted non-empty, and asserted to RESOLVE on the installed flat namespace
+    # at the restored module upstream names -- so the exception the two loops above make for
+    # them cannot go quiet on a wheel that stopped shipping `adcp.types._restored`, which
+    # would read green by having nothing to except.
+    #
+    # The overlap `stated & owed` used to be asserted here and is not any more
+    # (`adcp-client-python-2f52`): every stated word that was also a word this alias layer
+    # owes came from `adcp/types/canonical_creative.py`, and with that file deleted the
+    # mapping derives to 8 words none of which this layer owes -- so the overlap is EMPTY
+    # as a fact about the artifact and asserting it non-empty would be asserting the file
+    # back. What replaces it is stronger per word: the resolution and the identity, read off
+    # the installed tree.
     stated = claimed(
         "flat words upstream's own _eager takes from a restored file", set(out["flat_stated"])
     )
     assert stated, "the installed package states no such word"
-    assert stated & owed, {"stated": len(stated), "owed": len(owed)}
+    assert out["flat_stated_resolved"] == sorted(stated), {
+        "stated and not resolving at adcp.types on the installed wheel": sorted(
+            stated - set(out["flat_stated_resolved"])
+        )
+    }
 
 
 def test_every_flat_spelling_consumer_code_writes_resolves_or_carries_a_verdict() -> None:
