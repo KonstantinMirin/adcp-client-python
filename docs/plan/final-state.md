@@ -299,6 +299,21 @@ Measured on bundle 3.2: 6 classes of 3,092, over 6 modules of 4 domains, and the
 compiler's own record (`emit.Emitted.positional`) rather than a list — a branch the bundle later
 titles rejoins this reading with nothing edited.
 
+**AND THE TEST IS AN INDEX ANYWHERE IN THE SYMBOL, NOT AN INDEX AS ITS LAST SEGMENT.** The
+owner's decision of 2026-11-10, stated once. The first implementation read the narrower rule and
+withheld only the names whose OWN distinguishing part is an index, leaving five whose ANCESTOR's
+index survives in the spelling — `PostalAreaBranch9System`,
+`PostalCountrySystemBranch9System`, `BuyProductsRequestBranch1Account`, `…AccountId`,
+`…BrandOperator`. A caller still has to count a document's branches to know what `Branch9`
+selected before `System` narrowed it, so they are the same defect one remove out and are
+withheld on the same ground. The carve-out therefore reads: **a class whose public symbol
+contains an index-derived segment at any position is reached at no public path.**
+
+Withholding them does not weaken this reading. A withheld class is importable at none of the
+paths, which is what a name pending an upstream title is owed; this reading subtracts the
+withheld set from its own population, so "exactly one path" continues to hold over every class
+the surface offers.
+
 **AND AN UNTITLED INNER NODE IS EXPORTED UNDER ITS PARENT'S NAME AND ITS KEY, ALWAYS — NEVER ONLY
 WHEN THE KEY COLLIDES.** A domain carries many a `method`, a `target`, an `items`, so the key alone
 cannot be the export for all of them. The tempting rule is to export the key alone where it happens
@@ -520,7 +535,7 @@ each subject keeps the domain word the parent-class-plus-key rule gave it.
 bound, or declined with every subject named — so that a word in neither is the defect and a word in
 both is a module contradicting itself; by identity at the flat module, `is` and not merely
 resolvable, against the object the private module's own statement binds; by
-`from adcp.types import <Word>` resolving for every bound word, to this arm's object or to one a
+`from adcp.types import <Word>` resolving for every bound word, to this branch's object or to one a
 layer the facade asks EARLIER decides and no other; and by no domain aggregator publishing one of
 these words, which is reading 6 holding rather than this reading's work left undone.
 `tests_emit/test_the_flat_alias_surface.py` is where all four are asserted, and the rule itself is

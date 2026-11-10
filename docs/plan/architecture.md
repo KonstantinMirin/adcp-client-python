@@ -178,7 +178,7 @@ was expensive to obtain; construction is not expensive, so there is no corpus to
 space to version, no floor to promote and no staleness to gate. A run that holds no prior state and
 a run that holds all of it do the same work in the same time.
 
-**THE STORE WAS THE SHAPE OF A SEARCH, AND SEARCH IS WHAT IS GONE.** Sampling a composed node has
+**THE STORE WAS THE STRUCTURE OF A SEARCH, AND SEARCH IS WHAT IS GONE.** Sampling a composed node has
 two regimes and nothing between them — a value found at once, or a space the sampler cannot get
 out of — so the cost is a cliff rather than a curve, and every artifact around it (a committed
 floor, a cache above it, a key that must version the generator, a timeout that cuts the second
@@ -1696,6 +1696,47 @@ AssetRequirementsBranch7)` has to count the document's branches to know that it 
 — and `final-state.md` reading 4's placeholder rule, both of which condemned the name while this
 paragraph prescribed it. `codegen/lower/names.py`'s `A_POSITIONAL_NAME_IS_PRIVATE` is the
 implementation and `tests_emit/test_no_positional_name_is_public.py` is the gate.
+
+**AND THE RULE IS NO ORDINAL ANYWHERE IN A PUBLIC NAME, NOT MERELY AS THE DISTINGUISHING
+SEGMENT** — the owner's decision of 2026-11-10, stated here once and not to be re-read as the
+narrower thing. The first implementation withheld the six names whose OWN distinguishing part is
+an index and left five whose ANCESTOR's index survives in the spelling:
+`PostalAreaBranch9System`, `PostalCountrySystemBranch9System`,
+`BuyProductsRequestBranch1Account`, `…AccountId`, `…BrandOperator`. Those are the same defect at
+one remove — a caller still has to count a document's branches to know what `Branch9` selected
+before `System` narrowed it — so they are withheld on the same ground. **The test is the SYMBOL,
+not the final segment: a public name containing an index-derived segment at any position is
+private.**
+
+This is not an exception to reading 6 and does not weaken it. Reading 6 states that every class
+is importable at exactly ONE path; a withheld class is importable at none, which is what a
+placeholder pending an upstream title is owed, and the reading subtracts the withheld set from
+its own population (`emit.Emitted.positional`, read by
+`tests_emit/test_the_domain_surface.py`). Nothing is deleted: the class is still declared, still
+a branch of its union, and still validates every payload its document admits.
+
+**THE VOCABULARY, STATED ONCE.** These words are not used in this repository's documents,
+identifiers, docstrings, comments or commit messages, because each names something that already
+has a standard word:
+
+| not | use |
+|---|---|
+| arm | **branch** — already this codebase's word (`BranchDispatchMixin`, `_branch_classes`) |
+| shape | **structure**, or name the thing: object, type, field set |
+| population | **set**, **scope**, **sample** |
+| rung | **rule**, **candidate**, **precedence level** |
+| ladder | **precedence order** |
+| fence | the specific thing: **timeout**, **quota**, **limit**, **minimum**, **suppression list**, **regression threshold**, **reduced coverage** |
+
+`fence` has no single replacement because it never had one meaning: §14's own sentence enumerates
+what it stood for — a budget, a ratchet, a floor, an allowlist, a narrowed scope, a raised cap —
+and each of those is nameable. A word that covers six things describes none of them.
+
+Two carve-outs, both measured. `codegen/keywords.py`'s `Rung`/`LADDER` name §2's WIDENING ORDER,
+a different subject from §4's naming candidates, and `rebuild-plan.md` already prescribes
+`Widening`/`WIDENING_ORDER` for them. And `src/adcp/` is excluded: 44 files there carry `fence`
+in upstream's own prose and are byte-identical to `4ed0bce87`, which
+`tests_emit/test_the_adapter_writer_owns_its_paths.py` grades.
 
 The walk computes no name, which is the semantics document's own
 rule that a name is an input to a lowering and is never computed inside one — read strictly,
