@@ -115,8 +115,15 @@ def _carried(node: dict, record: dict) -> dict:
     ``{"$ref": "#/definitions/AssetPoolBinding"}``, which ``applied_schema`` leaves exactly
     as the document spells it -- the clause in ``through_the_store`` about a document's own
     local reference -- and which the construction reads through.
+
+    **AND IT STOPS ON THE POINTER, which is the reading the construction itself now takes**
+    (``witness.Construction.through``): this loop was ``range(witness._STORE_HOPS)``, and a
+    grader carrying its own count of a walk whose subject carries none is the second copy
+    ``docs/plan/architecture.md`` §11 forbids.  The pointer already followed is the back
+    edge, so the two walks terminate on the same fact.
     """
-    for _ in range(witness._STORE_HOPS):
+    seen: set[str] = set()
+    while True:
         own = {k: v for k, v in node.items() if k not in ("allOf", "type")}
         ref = own.get("$ref")
         if len(own) != 1 or not isinstance(ref, str):
@@ -124,8 +131,10 @@ def _carried(node: dict, record: dict) -> dict:
         target = witness._local(ref)
         if target is None:
             return own
+        if target in seen:
+            raise RecursionError(f"{target}: a sole reference does not settle")
+        seen.add(target)
         node = bundle.node_at(record, target)
-    raise RecursionError("a sole reference does not settle")
 
 
 def _subject_of(pair) -> dict:
