@@ -19,6 +19,20 @@ declaring module in `__module__`, and that module's path IS a bundle document's 
 carries its own word in `__qualname__`, and both trees derive that word from the document.
 So upstream's own name says WHICH DOCUMENT and WHICH NODE, and neither half is a guess.
 
+AND WHICH DECLARATION OF THEIRS A PAIR DENOTES IS PRIOR TO EVERY KEY, SO IT IS DECIDED BY
+IDENTITY AND NEVER BY A SPELLING (:meth:`Join.denoted`, `adcp-client-python-sj14`).  The
+dump indexes a declaration by its `names` and its `modules`, which it records as two
+INDEPENDENT lists, so the index built over them is a CROSS PRODUCT and for 94 pairs of 9.6.1
+it offers more than one candidate: `core/format.json`'s `Format` is `LegacyFormat` in the
+flat namespace and `Format` in its own module, and the product therefore claims that
+declaration at `('adcp.types', 'Format')`, where upstream's runtime answers with
+`canonical_creative`'s canonical class instead.  The pairing is not recoverable from the
+dump -- both candidates are models and both carry the word -- and the tie-break that stood
+in for it, prefer their generated tree then alphabetical, decided 33 of the 94 wrong.  So
+the subject is read off UPSTREAM'S OWN STATEMENT, confirmed against the dump's own
+candidates for that pair, and reported in its own column (`pair_ambiguous`); the keys below
+are unchanged and are asked about the declaration that reading names.
+
 THIRTEEN KEYS, each reported as itself because "what the key was read off" is the first thing
 a disagreement about a row turns out to be about.  `survey/alias_surface.py`'s two are the
 first three; the rest are the owner's extension (`adcp-client-python-1hck`, amended), and
@@ -1221,6 +1235,81 @@ class Join:
             **evidence,
         }
 
+    # -- WHICH DECLARATION THE PAIR DENOTES, where the dump offers more than one
+    def denoted(self, mod: str, name: str, keys: list[str]) -> tuple[str, str]:
+        """**WHICH of several declarations of theirs the name AT THAT MODULE denotes.**
+
+        Every key below starts from a declaration of theirs -- its document, its word, its
+        signature -- and :meth:`_by_dump` has to pick that declaration out of
+        :attr:`at`.  **AND `at` IS A CROSS PRODUCT, so for some pairs it is not a reading at
+        all.**  `structural_signature.dump` records a declaration's `names` and its
+        `modules` as two INDEPENDENT lists -- `core/format.json`'s `Format` carries
+        `names: ['LegacyFormat', 'Format']` and `modules: ['adcp.types',
+        'adcp.types.domains.core.format', 'adcp.types.legacy']`, because it is `LegacyFormat`
+        in the flat namespace and `Format` in its own module -- so the index built over the
+        product claims that declaration at `('adcp.types', 'Format')`, where upstream's
+        runtime answers with a different class entirely.  The pairing is not in the dump and
+        cannot be recovered from it: both candidates are models, both carry that word, and
+        nothing in either row says which the flat name is bound to.
+
+        Measured on 9.6.1: **94 pairs carry more than one candidate**, 50 of them in the flat
+        namespace, and the tie-break that stood here -- prefer `domains.`, then alphabetical
+        -- decided every one of them on a MODULE PATH'S SPELLING.  `final-state.md` reading
+        10 is about exactly this: "AN ALIAS IS KEYED ON A SCHEMA SUBJECT, NEVER ON A NAME.  A
+        name resolves to a DIFFERENT class of ours depending on which upstream module the
+        import came from".  33 of the 94 were decided WRONG, `adcp.types.Format` among them:
+        it took `core/format.json`'s deprecated registered format, whose required pair is
+        `format_id` + `name`, where upstream's `_eager.py:939` reads
+        `Format = _canonical_creative.Format` and the required pair is `format_kind` +
+        `params`.
+
+        So the subject is read off UPSTREAM'S OWN STATEMENT (`survey/upstream_aliases`),
+        which is the same oracle key 14 is made of and the one place upstream says, in its
+        own source, which object a name of theirs is.  **AND BOTH READINGS MUST CONFIRM IT**:
+        the statement's terminal has to be one of the dump's own candidates for the pair.
+        Upstream's source can name a declaration their public surface does not carry at that
+        module at all -- measured, `_eager` reaches `adcp.types.CreateMediaBuyRequest` and
+        `adcp.types.UpdateMediaBuyRequest` through `_forward_compat`, a private module the
+        dump never walked, and `adcp.types.Result` through
+        `content_standards/validate-content-delivery-response.json`, whose declaration does
+        not record the flat namespace among its modules -- and choosing a subject the dump
+        does not corroborate is a different and larger claim than choosing among the
+        candidates it offers.  Where the two readings disagree, or where upstream's statement
+        terminates in anything but a declaration, this returns nothing and the dump's own
+        order answers exactly as before; the row carries the reason either way.
+
+        **AND IT IS NOT AN IDENTITY GATE ON THE DOCUMENT KEYS, which was measured and is
+        wrong.**  Reading 10's identity belongs to the choice of SUBJECT, not to the
+        agreement of two emissions about one document: this script's own standing ruling is
+        that "a differing identity is not a different subject where the document and the word
+        both agree" (`core/product.json` compiles to 186 KB here and 215 KB there, and both
+        are `Product`).  Gating `document+word` on signature equality was run: 93 of its 131
+        rows report `differs`, BOUND falls from 327 names to 267, and `LegacyProduct`,
+        `LegacyFormat`, `LegacyPackage` and `LegacyProductFilters` -- the legacy spellings
+        that are supposed to keep the deprecated subject reachable -- all go
+        `DOCUMENT-NO-WORD-NO-IDENTITY`.  The defect is upstream of the keys, and so is the fix.
+
+        Returns `(declaration, why)` where `declaration` is one of `keys`, or `("", why)`.
+        """
+        if self.aliases is None:
+            return "", "no upstream source was read, so the dump's own order answers"
+        terminal, chain = self.aliases.trace(mod, name)
+        if terminal.kind not in ("declared-class", "declared-function"):
+            return "", (
+                f"upstream's own statement ends in {terminal.kind}, which names no "
+                "declaration, so the dump's own order answers"
+            )
+        said = f"{terminal.module}.{terminal.name}"
+        if said not in keys:
+            return "", (
+                f"upstream's own statement names {said}, which the dump does not record as "
+                f"carrying {name!r} at {mod}: the dump's own order answers"
+            )
+        return said, (
+            f"upstream's own statement names {said} -- "
+            + " ;; ".join(str(s) for s in chain)
+        )
+
     def unpinned(self, terminal: ua.Terminal, inner: dict) -> dict[str, object]:
         """**WHAT UPSTREAM'S DECLARATION PINS THAT THE SUBJECT IT REACHES DOES NOT.**
 
@@ -1301,6 +1390,20 @@ class Join:
             return row
         keys.sort(key=lambda k: (not k.startswith(THEIR_GEN + "."), k))
         key = keys[0]
+        # **AND WHERE THE DUMP OFFERS SEVERAL DECLARATIONS FOR ONE PAIR, WHICH ONE THE NAME
+        # DENOTES IS A QUESTION OF IDENTITY AND NOT OF SPELLING** (:meth:`denoted`).  The
+        # sort above is a tie-break over MODULE PATHS -- prefer their generated tree, then
+        # alphabetical -- and where the pair is ambiguous that is the one place this script
+        # keyed a subject on a name.  `denoted` reads upstream's own statement instead, and
+        # the row carries both readings.
+        chosen = ""
+        if len(keys) > 1:
+            said, why = self.denoted(mod, name, keys)
+            row["pair_ambiguous"] = (
+                f"{len(keys)} declarations of theirs carry {name!r} at {mod}; {why}"
+            )
+            if said:
+                key, chosen = said, "stated-subject -> "
         their = self.theirs["declarations"][key]
         # **A NAME WHOSE DECLARATION IS NOT IN `adcp` AT ALL IS THE STANDARD LIBRARY'S.**
         # Their `_str_enum.StrEnum` dumps as `enum.StrEnum`, which is what their own module
@@ -1355,7 +1458,7 @@ class Join:
             sigs = {self.ours["declarations"][t]["sig"] for t in tgts}
             row.update(
                 verdict="BOUND",
-                how=how,
+                how=chosen + how,
                 target=tgts,
                 note=note,
                 identity=(
@@ -1458,13 +1561,23 @@ class Join:
         # UpdateMediaBuySuccessResponse = _canonical_creative.UpdateMediaBuyResponse1`), so a
         # second declaration of the word elsewhere in our tree is not a tie at all.
         #
-        # **AND ONLY WHERE NO DOCUMENT IS KNOWN**, which is the clause that keeps
-        # `adcp.types.Format` the document's.  A word a document gives is decided by the
-        # document keys above and never here; `canonical_creative.Format` is upstream's
-        # hand-written canonical class and `core/format.json`'s `Format` is the subject, and
-        # the ordering is what says which.  The restored module is reached only where the
-        # bundle states no subject for the word at all -- which, for `canonical_creative`'s
-        # 36 classes, is exactly the 12 that are not one of ours subclassed.
+        # **AND ONLY WHERE NO DOCUMENT IS KNOWN**, which is an ordering between the keys and
+        # NOT a rule about which word reaches them.  This clause used to carry the sentence
+        # "which is the clause that keeps `adcp.types.Format` the document's", and
+        # `adcp-client-python-sj14` is the row that says the sentence was both false as a
+        # description and wrong as a ruling.  False, because `adcp.types.Format` never
+        # reached this key to be turned away: :meth:`_by_dump` had already chosen
+        # `domains/core/format.py`'s declaration as the row's SUBJECT off a tie-break over
+        # module-path spellings, so the document the keys above read was `core/format.json`
+        # and the clause was never consulted.  Wrong, because upstream's own `_eager.py:939`
+        # reads `Format = _canonical_creative.Format` -- `format_kind` + `params`, where
+        # `core/format.json`'s registered format is `format_id` + `name` and is marked
+        # `deprecated: true` by the bundle itself.  With the subject chosen by upstream's
+        # statement (:meth:`denoted`) the row arrives here with no document, this key
+        # answers, and `ProductFormatDeclaration` -- which subclasses that very class --
+        # satisfies `isinstance` against the flat word.  The ordering below is unchanged and
+        # is still right: a word a document gives IS decided by the document keys above.
+        # What moved is which declaration "the document" is read off.
         if doc is None and word and (their_mod, word) in self.restored_declarations():
             return bind(
                 "restored-module+word",
@@ -2120,6 +2233,12 @@ def main() -> None:
         #: `method` column cannot be asked whether that happened.
         cols = ("module", "name", "verdict", "how", "identity", "method", "document", "word",
                 "their_declaring", "target", "public", "pairs", "note",
+                #: **WHICH DECLARATION THE PAIR DENOTES, where the dump offered several**
+                #: (:meth:`Join.denoted`).  Reported as its own column because the subject a
+                #: key was asked about is prior to the key: a row bound by `document+word`
+                #: off the wrong one of two candidates reads identically to a right one, and
+                #: `adcp-client-python-sj14` is that row.
+                "pair_ambiguous",
                 "flattened_enum", "stated_by", "stated_terminal", "stated_refused")
         with args.table.open("w") as fh:
             fh.write(f"# survey/adapter_surface.py over upstream adcp {join.version}\n")
