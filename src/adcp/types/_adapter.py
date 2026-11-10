@@ -128,6 +128,7 @@ from adcp.types.media_buy import GetMediaBuyDeliveryResponse as LegacyGetMediaBu
 from adcp.types.media_buy import GetMediaBuysResponse as LegacyGetMediaBuysResponse
 from adcp.types.media_buy import GetProductsRequest as LegacyGetProductsRequest
 from adcp.types.media_buy import GetProductsRequestBuyingMode as BuyingMode
+from adcp.types.media_buy import GetProductsRequestFieldsItem as GetProductsField
 from adcp.types.media_buy import GetProductsResponse as LegacyGetProductsResponse
 from adcp.types.media_buy import GetReportingStatusResponseObligationCounts as ReportingObligationCounts
 from adcp.types.media_buy import ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest
@@ -177,6 +178,7 @@ __all__ = [
     "FormatCard",
     "GeneratedTaskStatus",
     "GetBrandIdentitySuccessResponse",
+    "GetProductsField",
     "GetRightsSuccessResponse",
     "GetSignalsDiscoveryRequest",
     "GetSignalsLookupRequest",
@@ -309,7 +311,6 @@ __adcp_refused__ = {
     "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.get_creative_delivery_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "DurationUnit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's own tree says no-such-module",
     "FormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
-    "GetProductsField": "DOCUMENT-NO-WORD-NO-IDENTITY: their one enumeration's values are exactly the union of 2 of ours (adcp.types._schemas.media_buy.get_products_request.FieldsItem, adcp.types._schemas.media_buy.product_fields.ProductResponseFieldsItem), and a union of arms is not an enumeration: `for f in <name>` and `<name>.MEMBER` are the contract their own code uses and `A | B` has neither",
     "GroupFormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "Gtin": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.catalog.Gtin, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "IdentityMatchTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.trusted_match.identity_match_response.TmpxMacro, which is DOCUMENT-NO-WORD-NO-IDENTITY",
