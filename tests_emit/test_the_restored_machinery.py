@@ -90,14 +90,32 @@ def test_no_class_a_restored_module_declares_is_a_class_of_ours(module: str) -> 
         for name, obj in vars(held).items()
         if isinstance(obj, type) and getattr(obj, "__module__", "") == held.__name__
     }
-    on_our_base = sorted(n for n, o in mine.items() if issubclass(o, base.AdCPBaseModel))
-    assert not on_our_base, (
-        f"adcp.types.{module} declares {on_our_base} on AdCPBaseModel; upstream's machinery "
-        "has no schema subject and putting it on our base invents one"
+    #: **INVENTING A SUBJECT IS LANDING ON OUR BASE FROM NOWHERE, AND EXTENDING ONE IS
+    #: NOT.**  This read ``not issubclass(o, AdCPBaseModel)``, which is the property for a
+    #: restored HELPER -- nine of the ten -- and the wrong one for a restored SUBCLASS
+    #: LAYER.  ``canonical_creative`` is the first of those: upstream's canonical boundary
+    #: is written as ``class Product(_LegacyProduct, CanonicalBoundaryModel)`` where
+    #: ``_LegacyProduct`` IS ``adcp.types.domains.core.product.Product``, so its classes are
+    #: on our base BY CONSTRUCTION and the document behind each is ours.  Measured over the
+    #: restored file: 36 classes, 32 on our base, and **0** of those 32 reach it without an
+    #: emitted ``_schemas`` class in the MRO.  So the assertion is the clause it always
+    #: meant -- a class on our base must have one of our document classes behind it -- and
+    #: a class that lands there from nowhere still fails.
+    invented = sorted(
+        n
+        for n, o in mine.items()
+        if issubclass(o, base.AdCPBaseModel)
+        and not any(getattr(b, "__module__", "").startswith(base.PACKAGE) for b in o.__mro__[1:])
+    )
+    assert not invented, (
+        f"adcp.types.{module} declares {invented} on AdCPBaseModel with no emitted class "
+        "behind them; upstream's machinery has no schema subject of its own and landing on "
+        "our base without one of ours in the MRO invents one"
     )
     for name, obj in mine.items():
-        assert getattr(obj, "__adcp_schema__", None) is None, (
-            f"adcp.types.{module}.{name} carries __adcp_schema__ and no document states it"
+        own = obj.__dict__.get("__adcp_schema__")
+        assert own is None, (
+            f"adcp.types.{module}.{name} DECLARES __adcp_schema__ and no document states it"
         )
 
 

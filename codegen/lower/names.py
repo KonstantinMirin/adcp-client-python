@@ -2011,6 +2011,7 @@ def assign(
     abroad: frozenset[str] = frozenset(),
     subjects: frozenset[str] = frozenset(),
     upstream: Mapping[str, Mapping[str, object] | None] = {},
+    statements: Mapping[str, object] = {},
 ) -> ir.Module | Refusal:
     """The pass: every declaration of one module given the name §4 derives for it.
 
@@ -2284,11 +2285,43 @@ def assign(
     #: at the positions a title cannot reach.  Read after ``recased`` and with ``recased``'s
     #: own words in ``occupied``, so the ROOT's rule is settled first and this one never
     #: shadows it -- the two rules partition upstream's surface rather than compete for it.
+    mine = structure.from_declarations(declarations)
     restructured, unbound = structure.bind(
-        structure.from_declarations(declarations),
+        mine,
         upstream,
         symbols.get("", mod.root),
         occupied | frozenset(recased),
+    )
+    #: **UPSTREAM'S OWN STATEMENTS, read as a THIRD key and run last**
+    #: (``codegen.structure.bind_statements``).  The two keys above are derivations -- a
+    #: title normalised, a structure matched -- and this one is a SENTENCE upstream wrote:
+    #: ``Creatives1 = Creative`` says what the word denotes, and a union statement lists its
+    #: arms in the document's own order, which is where an ordinal comes from without a
+    #: digit being read.  Last, and handed both earlier answers in ``occupied``/``resolved``,
+    #: so neither can be overridden and the three partition upstream's surface.
+    #:
+    #: ``branches`` is OUR root's branch order, which is the document's ``oneOf`` order, and
+    #: it is the half of the pairing the index cannot carry.
+    root_decl = next(
+        (
+            d
+            for d in declarations
+            if isinstance(d, ir.ClassDecl | ir.RootModelDecl)
+            and d.branches
+            and symbols.get("") == d.name
+        ),
+        None,
+    )
+    stated, unstated = structure.bind_statements(
+        statements,
+        [b.path for b in (root_decl.branches or ())] if root_decl else [],
+        {
+            **{word: structure.pins_of(blob) for word, blob in upstream.items()},
+            **{word: structure.pins_of(blob) for word, blob in mine.items()},
+        },
+        {**recased, **restructured},
+        frozenset(mine),
+        occupied | frozenset(recased) | frozenset(restructured),
     )
     return ir.Module(
         document=mod.document,
@@ -2322,7 +2355,7 @@ def assign(
             # move a line of any other module.
             *(
                 ir.AliasDecl(word, ir.TypeRef(symbol, local=True))
-                for word, symbol in sorted({**recased, **restructured}.items())
+                for word, symbol in sorted({**recased, **restructured, **stated}.items())
             ),
         ),
         imports=frozenset(mod.imports),
@@ -2364,5 +2397,10 @@ def assign(
         # refusals ride on the module because that is where the join happened: a count
         # recomputed later would be a second join.
         restructured=restructured,
-        unbound=unbound,
+        # Upstream's own STATEMENTS beside them (:attr:`codegen.ir.Module.stated`), and
+        # their refusals folded into the one record of what the join declined: a word a
+        # statement could not resolve is as much a reportable outcome as a structure that
+        # matched nothing, and two registers of "not bound" would be two places to read.
+        stated=stated,
+        unbound={**unbound, **unstated},
     )

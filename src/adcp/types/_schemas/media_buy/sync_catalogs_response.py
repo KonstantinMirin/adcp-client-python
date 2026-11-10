@@ -164,4 +164,7 @@ SyncCatalogsResponse1 = SyncCatalogsSuccess
 SyncCatalogsResponse2 = SyncCatalogsError
 
 
+SyncCatalogsResponse3 = SyncCatalogsResponseSubmitted
+
+
 __all__ = ["SyncCatalogsResponse"]

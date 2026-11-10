@@ -231,6 +231,9 @@ Asset = AssetsItem
 FontRole2 = GetBrandIdentityResponseFontRoleFamily
 
 
+GetBrandIdentityResponse1 = GetBrandIdentitySuccess
+
+
 GetBrandIdentityResponse2 = GetBrandIdentityError
 
 

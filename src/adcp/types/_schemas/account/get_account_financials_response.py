@@ -159,6 +159,9 @@ GetAccountFinancialsResponse._branch_models = (GetAccountFinancialsSuccess, GetA
 GetAccountFinancialsResponse.model_rebuild(force=True)
 
 
+GetAccountFinancialsResponse1 = GetAccountFinancialsSuccess
+
+
 GetAccountFinancialsResponse2 = GetAccountFinancialsError
 
 

@@ -97,6 +97,15 @@ Action = AppliedPrincipalConfigurationAction
 Action33 = ValidatedPrincipalDryRunAction
 
 
+PrincipalAppliedResult = AppliedPrincipalConfiguration
+
+
+PrincipalSyncFailedResult = FailedPrincipalSync
+
+
+PrincipalValidatedResult = ValidatedPrincipalDryRun
+
+
 Result = ValidatedPrincipalDryRun
 
 

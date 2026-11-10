@@ -754,6 +754,9 @@ Assets51 = GroupDaastTrackerAsset
 Assets9 = IndividualVideoAsset
 
 
+Assets94 = RepeatableGroupAsset
+
+
 DisclosureCapability = DisclosureCapabilitiesItem
 
 

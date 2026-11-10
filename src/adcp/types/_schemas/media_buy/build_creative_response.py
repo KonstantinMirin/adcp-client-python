@@ -388,7 +388,13 @@ BuildCreativeResponse2 = BuildCreativeError
 BuildCreativeResponse3 = BuildCreativeMultiSuccess
 
 
+BuildCreativeResponse4 = BuildCreativeEstimate
+
+
 BuildCreativeResponse5 = BuildCreativeEstimate
+
+
+BuildCreativeResponse6 = BuildCreativeResponseSubmitted
 
 
 Creative = CreativesItem
