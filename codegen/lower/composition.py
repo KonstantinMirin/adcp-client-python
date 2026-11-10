@@ -1873,12 +1873,41 @@ def lower_composition(
         # ``lower.union.lower_union`` reads it -- "the root's siblings compile onto the
         # base as they would on any class".
         #
-        # ``combinator`` and ``discriminator`` are the TARGET's, carried rather than
-        # re-derived (:class:`TargetBranches`): the distributed branches are the target's
-        # branches with this node's fields added, so they pin the same ``const`` on the
-        # same property and §4's dispatch derivation has already answered for them.
+        # ``combinator``, ``discriminator`` and ``presence`` are the TARGET's, carried
+        # rather than re-derived (:class:`TargetBranches`): the distributed branches are
+        # the target's branches with this node's fields added, so they pin the same
+        # ``const`` on the same property and state the same presence clauses, and §4's
+        # dispatch derivation has already answered for them.
+        #
+        # **``presence`` is the one of the three this row had to be TAUGHT, and the
+        # document that taught it is ``core/creative-representation.json``**
+        # (``adcp-client-python-j0fr``).  It composes ``core/creative-manifest.json``,
+        # which is one of the 8 nodes the base-plus-children emission claims, so the
+        # reference distributes here and the composed node becomes a union over the
+        # target's two branches.  Carrying only the first two left that union with an
+        # empty discriminator and no key set -- a PLAIN union, resolved by declaration
+        # order, which is the dispatch that row rules out -- and the clause that selects
+        # a product is the clause that selects the branch the product was made from.
         where, branches, reference = conjoined[0][0], answered, conjoined[0][2]
         distributing = (where, branches, reference)
+        # **§6 clause 3, "silence inherits", AT THE DISTRIBUTING TARGET** -- the one
+        # reading of a composed description that this arm did not have.  A conjunct that
+        # becomes a BASE sets ``inherited_description`` in the worklist above; a
+        # distributing one never reaches that line, because it is appended to
+        # ``conjoined`` and leaves the loop before it -- so the base this arm declares
+        # carried NO description where the composed document states the target's at this
+        # node's own pointer, and ``harness._composed`` folds that description in on the
+        # schema side of the pair.
+        #
+        # **Measured, and it is this row's own doing**: with ``core/creative-asset.json``
+        # a union root, ``creative/sync-creatives-request.json``
+        # ``#/properties/creatives/items`` newly distributes, and its base lost the
+        # target's own description -- the only ``/description`` this change dropped
+        # anywhere in the tree.  The same clause and the same spelling as the worklist's,
+        # so a composing base and a distributing base cannot come to answer differently
+        # about where a silent node's description comes from.
+        if inherited_description is None:
+            inherited_description = conjoined[0][1].declares.description
         union = compiler.UnionBase(
             # §5's ``required`` row at ROOT beside a union.  Every name here is one this
             # node's own views declare, so none of them selects a branch -- the branches'
@@ -1891,6 +1920,11 @@ def lower_composition(
                 ir.TypeRef(distributed_pointer(where, branches, j), local=True)
                 for j in range(len(branches.of))
             ),
+            # Indexed with ``of`` and not with ``live``, which is the branch slot's own
+            # arrangement one line up and :attr:`TargetBranches.dropped`'s reason: the
+            # index IS the pointer, so filtering would pair every surviving clause
+            # against the wrong branch node.
+            presence=branches.presence,
         )
         # The mixin FIRST so the MRO finds its ``__get_pydantic_core_schema__``, and the
         # model base only where this node composes nothing else -- the same arrangement
@@ -2099,14 +2133,16 @@ def lower_composition(
         ),
         rule_nodes=conjunct_rules,
         rule_sites=conjunct_sites,
-        # §4's three facts a union base carries and no other class does, and the
-        # branch list §7 gives the base's fourth slot: ``None`` for every node that is
-        # not one, which is what :func:`declare_object` reads to tell a base from a
-        # class (and, through ``branches``, what tells it to record no reusable shape).
+        # §4's three facts a union base carries and no other class does, the
+        # branch list §7 gives the base's fourth slot, and §4's SECOND dispatch source
+        # beside it: ``None`` for every node that is not one, which is what
+        # :func:`declare_object` reads to tell a base from a class (and, through
+        # ``branches``, what tells it to record no reusable shape).
         root_required=None if union is None else union.root_required,
         discriminator=None if union is None else union.discriminator,
         combinator=None if union is None else union.combinator,
         branches=None if union is None else union.branches,
+        presence=None if union is None else union.presence,
         # §6's description-authority rule, clause 3, at a CLASS: this node's own
         # description where it states one, and the base's where it is silent.  The
         # composed document states the base's at this pointer -- ``harness._composed``

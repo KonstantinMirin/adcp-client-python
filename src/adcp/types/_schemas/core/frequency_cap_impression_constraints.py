@@ -5,14 +5,14 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._runtime import ForbiddenGroups, Presence, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
 from .ext import ExtensionObject
 
 
-class FrequencyCapImpressionConstraints(AdCPBaseModel):
+class FrequencyCapImpressionConstraints(BranchDispatchMixin, AdCPBaseModel):
     """
     Exact supported values for max_impressions, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.
     """
@@ -20,14 +20,47 @@ class FrequencyCapImpressionConstraints(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap-impression-constraints.json', pointer='#')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('FrequencyCapImpressionConstraintsAllowedValues', Presence(require=(('allowed_values',),), forbid=(('minimum',), ('maximum',)))), ('FrequencyCapImpressionConstraintsMaximumMinimum', Presence(require=(('minimum', 'maximum'),), forbid=(('allowed_values',),))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=(('allowed_values',),), forbid=(('minimum',), ('maximum',))), Presence(require=(('minimum', 'maximum'),), forbid=(('allowed_values',),))), 'oneOf'),
         UniqueItems('allowed_values'),
     )
     minimum: Annotated[IntMin1 | None, OmittedNotNull] = None
     maximum: Annotated[IntMin1 | None, OmittedNotNull] = None
     allowed_values: Annotated[list[IntMin1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+
+
+class FrequencyCapImpressionConstraintsAllowedValues(FrequencyCapImpressionConstraints):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap-impression-constraints.json', pointer='#/oneOf/0')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('minimum',), ('maximum',))),
+    )
+    allowed_values: Annotated[list[IntMin1], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+
+
+class FrequencyCapImpressionConstraintsMaximumMinimum(FrequencyCapImpressionConstraints):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap-impression-constraints.json', pointer='#/oneOf/1')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('allowed_values',),)),
+    )
+    maximum: IntMin1
+    minimum: IntMin1
+
+
+FrequencyCapImpressionConstraints._branch_models = (FrequencyCapImpressionConstraintsAllowedValues, FrequencyCapImpressionConstraintsMaximumMinimum,)
+FrequencyCapImpressionConstraints.model_rebuild(force=True)
 
 
 __all__ = ["FrequencyCapImpressionConstraints"]

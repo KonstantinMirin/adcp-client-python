@@ -140,7 +140,7 @@ from enum import StrEnum
 from typing import Any, NamedTuple
 
 from adcp.types._base import Approximation, SchemaRef
-from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types._runtime import ForbiddenGroups, Presence, Rule
 from codegen import ir, keywords, refusal
 from codegen.keywords import Position
 from codegen.lower import names
@@ -630,12 +630,23 @@ class TargetBranches:
     :class:`Shape` and §4's naming facts -- which is a :class:`Target` per branch, the
     same carrier a ``$ref`` BRANCH of a root union already stands on.
 
-    ``combinator`` and ``discriminator`` are the two facts the target's own BASE carries
-    about its branches (:attr:`codegen.ir.ClassDecl.combinator`,
-    :attr:`codegen.ir.ClassDecl.discriminator`), and they cross for the reason the branch
-    list does: the target DERIVED them -- §4's dispatch derivation over its own branches
-    -- and the distributed union is over those same branches pinning those same consts, so
-    re-deriving either here would be a second answer to a question already answered.
+    ``combinator``, ``discriminator`` and ``presence`` are the facts the target's own BASE
+    carries about its branches (:attr:`codegen.ir.ClassDecl.combinator`,
+    :attr:`codegen.ir.ClassDecl.discriminator`, :attr:`codegen.ir.ClassDecl.presence`),
+    and they cross for the reason the branch list does: the target DERIVED them -- §4's
+    dispatch derivation over its own branches -- and the distributed union is over those
+    same branches pinning those same consts and stating those same clauses, so
+    re-deriving any of them here would be a second answer to a question already answered.
+
+    **``presence`` CROSSES, and that is measured rather than symmetric.**
+    ``core/creative-representation.json`` composes ``core/creative-manifest.json``, which
+    is one of the 8 nodes the base-plus-children emission claims, so the reference
+    DISTRIBUTES and the composing node becomes a union over the target's two branches.
+    Left behind, that union would carry an empty discriminator AND no key set -- a plain
+    union, resolved by declaration order, which is exactly the dispatch
+    ``adcp-client-python-j0fr`` rules out.  Carried, the distributed base dispatches on
+    the same key set the target does, and the clause that selects a product is the clause
+    that selects the branch it was made from.
     """
 
     combinator: str
@@ -654,6 +665,13 @@ class TargetBranches:
     #: list whole and the drop beside it makes that impossible to get wrong, and it keeps
     #: the drop READABLE: a refusal and a report can say which branches went and why.
     dropped: frozenset[int] = frozenset()
+    #: §4's SECOND dispatch source as the target's base carries it, one clause per entry
+    #: of :attr:`of` in the target's own branch order; ``None`` where the target
+    #: dispatches on a key's VALUE.  Indexed with :attr:`of` and not filtered by
+    #: :attr:`dropped`, for that field's own reason -- a dropped branch must not renumber
+    #: the ones after it -- so the reader pairs a clause with a product through the
+    #: target's index.
+    presence: tuple[Presence, ...] | None = None
 
     @property
     def live(self) -> tuple[tuple[int, Target], ...]:
@@ -688,6 +706,7 @@ def branches_of(
         declared.combinator or "",
         declared.discriminator or "",
         tuple(at(branch.path) for branch in declared.branches),
+        presence=declared.presence,
     )
 
 
@@ -2022,6 +2041,12 @@ class UnionBase:
     combinator: str
     #: The branch classes, by pointer until ``lower/names.py`` binds them.
     branches: tuple[ir.TypeRef, ...]
+    #: §4's SECOND dispatch source: the clause each branch states about key PRESENCE,
+    #: parallel to :attr:`branches` (:attr:`ir.ClassDecl.presence`, which carries the
+    #: reason it is parallel rather than a list of its own).  ``None`` at every union
+    #: that dispatches on a key's VALUE, which is every union but the 8
+    #: ``schema.parse.presence_branches`` claims.
+    presence: tuple[Presence, ...] | None = None
 
 
 def declaration_rule_sources(

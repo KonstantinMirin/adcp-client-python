@@ -6,8 +6,8 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Presence, PresenceGroups, Rule, UniqueItems
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Presence, Rule, UniqueItems
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, CreativesItemAssignmentsReturnedAssignmentCount
 from adcp.types.envelopes import AdcpResponse
 
@@ -189,13 +189,19 @@ class Purge(AdCPBaseModel):
     reason_code: Annotated[CreativeEventReasonCode, Field(description='Categorical reason for the purge. Matches the value the seller emitted on the corresponding `creative.purged` webhook fire.')]
 
 
-class CreativesItem(AdCPBaseModel):
+class CreativesItem(BranchDispatchMixin, AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('creative_id', 'name', 'status', 'created_date', 'updated_date')
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('ListedCreativeNamedFormatReference', Presence(require=(('format_id',),), forbid=(('format_kind',),))), ('ListedCreativeCanonicalFormatKind', Presence(require=(('format_kind',),), forbid=(('format_id',),))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=(('format_id',),), forbid=(('format_kind',),)), Presence(require=(('format_kind',),), forbid=(('format_id',),))), 'oneOf'),
         ConditionalRequired((Match('localization', True, None),), require=('status', 'assets'), forbid=('localization_unavailable',)),
         ConditionalRequired((Match('localization_unavailable', True, None),), require=('status',), forbid=('localization',)),
         ConditionalRequired((Match('rights_attestation_evaluations', True, None),), require=('rights',), forbid=()),
@@ -234,6 +240,32 @@ class CreativesItem(AdCPBaseModel):
     pricing_options: Annotated[list[VendorPricingOption] | None, Field(description='Pricing options for using this creative (serving, delivery). Used by ad servers and library agents. Transformation agents expose build pricing on canonical transformer.pricing_options entries from list_transformers instead. Present when include_pricing=true and account provided. The buyer passes the applied pricing_option_id in report_usage.', min_length=1), OmittedNotNull] = None
     purge: Annotated[Purge | None, Field(description="Tombstone block — present only when this record is a soft-purged creative surfaced via `include_purged: true`. The record's `status` field reflects the last status before purge (frozen — buyers MUST treat the creative as gone; assignments, snapshot, and serving operations no longer apply). Tombstones surface for the seller's webhook activity retention window (30 days from `purge.at`). Hard purges (`purge_kind: hard` on the webhook) do not surface on this read — the [`creative.purged`](https://adcontextprotocol.org/schemas/v3/creative/creative-purged-webhook.json) webhook is the only signal."), OmittedNotNull] = None
     webhook_activity: Annotated[list[WebhookActivityRecord] | None, Field(description='Recent webhook fires scoped to this creative — creative.status_changed, creative.purged, creative.assignment_changed, and assignment-level indicators.changed deliveries. Present only when include_webhook_activity is true. Account-anchored records include subscriber_id; the parent creative_id disambiguates the record. Retention: 30 days from completed_at. See snapshot-and-log.mdx § Webhook activity log pattern.', max_length=200), OmittedNotNull] = None
+
+
+class ListedCreativeNamedFormatReference(CreativesItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/oneOf/0')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('format_kind',),)),
+    )
+    format_id: Annotated[FormatReferenceStructuredObject, Field(description='**DEPRECATED in 3.2.** Legacy named-format path. New listed creatives use `format_kind` and optional `format_option_ref`.')]
+
+
+class ListedCreativeCanonicalFormatKind(CreativesItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/oneOf/1')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('format_id',),)),
+    )
+    format_kind: Annotated[CanonicalFormatKind, Field(description='Canonical 3.2 path. The canonical format kind this creative targets. Mutually exclusive with deprecated `format_id`.')]
+
+
+CreativesItem._branch_models = (ListedCreativeNamedFormatReference, ListedCreativeCanonicalFormatKind,)
+CreativesItem.model_rebuild(force=True)
 
 
 class StatusSummary(AdCPBaseModel):

@@ -54,19 +54,6 @@ class CommittedMetricsItemVendor(AdCPBaseModel):
     qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Optional disambiguator for vendor metrics committed under more than one methodology or window — same closed key set as standard-scope entries.'), OmittedNotNull] = None
 
 
-class CreativesItem(CreativeAsset):
-    """
-    Creative asset for upload to library — supports static assets, generative formats, and third-party snippets. Identifies which format this creative conforms to via EITHER a legacy `format_id` (structured `{agent_url, id}`) OR a 3.1+ `format_kind` (canonical format name), with optional `format_option_ref` when the target product needs disambiguation. Mutually exclusive — see the `oneOf` at the schema root.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/creatives/items')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        ForbiddenGroups((('localization',),)),
-    )
-
-
 class PackageRequest(AdCPVersionEnvelope):
     """
     Package configuration for media buy creation.
@@ -112,7 +99,7 @@ class PackageRequest(AdCPVersionEnvelope):
     performance_standards: Annotated[list[PerformanceStandard] | None, Field(description="Buyer's proposed performance standards for this package. Overrides product defaults. Seller accepts, rejects with TERMS_REJECTED, or adjusts. When absent, product's performance_standards apply.", min_length=1), OmittedNotNull] = None
     committed_metrics: Annotated[list[ObjScopeMetricIdQualifier | CommittedMetricsItemVendor] | None, Field(description="Buyer's proposed reporting contract for this package — the metrics the buyer wants the seller to commit to populating in delivery reports. Same negotiation pattern as `measurement_terms` and `performance_standards`: seller accepts (echoes on confirmed package with `committed_at` stamped), rejects with `TERMS_REJECTED` (with explanation of which entries were unworkable), or normalizes (echoes a different but compatible list — buyer can accept by retrying with the normalized terms). When absent, the seller decides what to commit based on the product's `available_metrics` and the buyer's `required_metrics` filter on `get_products`. Each entry uses an explicit `scope` discriminator (`standard` or `vendor`) and identifies the metric — request-side entries do NOT carry `committed_at`; that timestamp is stamped by the seller on accept. Constraints on what the buyer MAY propose: each `scope: standard` entry's `metric_id` MUST be in the product's `available_metrics`, and each `scope: vendor` entry's `(vendor, metric_id)` MUST appear in the product's `vendor_metrics` — sellers SHOULD reject with `TERMS_REJECTED` and reference the offending entry when the proposal exceeds product capability.", min_length=1), OmittedNotNull] = None
     creative_assignments: Annotated[list[CreativeAssignment] | None, Field(description='Assign existing library creatives to this package with optional rotation, grouping, weights, and placement targeting. rotation_mode is package-scoped: omission resolves to weighted, and every assignment MUST resolve to the same effective mode. In sequential mode, sequence_position MUST be unique within each package-local group. Sellers reject conflicts with VALIDATION_ERROR before creating the package.', min_length=1), OmittedNotNull] = None
-    creatives: Annotated[list[CreativesItem] | None, Field(description="Upload creative assets inline and assign to this package. Native localization is not accepted on this path; use sync_creatives before assigning the library creative. When the seller also advertises creative.has_creative_library: true, these creatives enter the seller's creative library and can be reused by creative_id while retained; inline-only sellers may store them as package-scoped assets. Use creative_assignments instead for existing library creatives.", max_length=100, min_length=1), OmittedNotNull] = None
+    creatives: Annotated[list[Annotated[CreativeAsset, AfterValidator(ForbiddenGroups((('localization',),)))]] | None, Field(description="Upload creative assets inline and assign to this package. Native localization is not accepted on this path; use sync_creatives before assigning the library creative. When the seller also advertises creative.has_creative_library: true, these creatives enter the seller's creative library and can be reused by creative_id while retained; inline-only sellers may store them as package-scoped assets. Use creative_assignments instead for existing library creatives.", max_length=100, min_length=1), OmittedNotNull] = None
     agency_estimate_number: Annotated[StrMaxLen100 | None, Field(description='Agency estimate or authorization number for this package. Overrides the media buy-level estimate number when different packages correspond to different agency estimates (e.g., different stations or flights within the same buy).'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, Field(description='Opaque package-level correlation data echoed unchanged in the package response, webhooks, and read surfaces. Buyers targeting mixed seller populations SHOULD include a per-package correlation value here, commonly context.buyer_ref, so responses from legacy sellers that do not echo product_id can still be mapped back to the requested product or line item. Do not use deprecated top-level buyer_ref for v3 correlation.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
+from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl, IntMin1, RegionsItem, StrMinLen1
 
 from ..enums.audio_distribution_type import AudioDistributionType
@@ -170,6 +170,9 @@ class TargetingMode(StrEnum):
 
 
 class SignalTargetingItem(BranchDispatchMixin, AdCPBaseModel):
+    """
+    Targeting constraint for a specific signal. Uses value_type as discriminator to determine the targeting expression format.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -214,14 +217,18 @@ SignalTargetingItem._branch_models = (SignalTargetingItemBinary, SignalTargeting
 SignalTargetingItem.model_rebuild(force=True)
 
 
-class GeoProximityItem(AdCPBaseModel):
+class GeoProximityItem(BranchDispatchMixin, AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/geo_proximity/items')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=(('lat', 'lng', 'travel_time', 'transport_mode'),), forbid=(('radius',), ('geometry',))), Presence(require=(('lat', 'lng', 'radius'),), forbid=(('travel_time',), ('geometry',))), Presence(require=(('geometry',),), forbid=(('travel_time',), ('radius',)))), 'oneOf'),
-    )
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('ProductFiltersGeoProximityItemLatLngTransportModeTravelTime', Presence(require=(('lat', 'lng', 'travel_time', 'transport_mode'),), forbid=(('radius',), ('geometry',)))), ('ProductFiltersGeoProximityItemLatLngRadius', Presence(require=(('lat', 'lng', 'radius'),), forbid=(('travel_time',), ('geometry',)))), ('ProductFiltersGeoProximityItemGeometry', Presence(require=(('geometry',),), forbid=(('travel_time',), ('radius',)))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     lat: Annotated[FloatMinNeg90Max90 | None, Field(description='Latitude in decimal degrees (WGS 84)'), OmittedNotNull] = None
     lng: Annotated[FloatMinNeg180Max180 | None, Field(description='Longitude in decimal degrees (WGS 84)'), OmittedNotNull] = None
     label: Annotated[str | None, Field(description="Human-readable label (e.g., 'Düsseldorf', 'Heathrow Airport')"), OmittedNotNull] = None
@@ -229,6 +236,48 @@ class GeoProximityItem(AdCPBaseModel):
     transport_mode: Annotated[TransportMode | None, Field(description='Transportation mode for isochrone calculation. Required when travel_time is provided.'), OmittedNotNull] = None
     radius: Annotated[Radius | None, Field(description='Simple radius from the point'), OmittedNotNull] = None
     geometry: Annotated[ObjTypeCoordinates | None, Field(description='Pre-computed GeoJSON geometry defining the proximity boundary'), OmittedNotNull] = None
+
+
+class ProductFiltersGeoProximityItemLatLngTransportModeTravelTime(GeoProximityItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/geo_proximity/items/oneOf/0')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('radius',), ('geometry',))),
+    )
+    lat: Annotated[FloatMinNeg90Max90, Field(description='Latitude in decimal degrees (WGS 84)')]
+    lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84)')]
+    transport_mode: Annotated[TransportMode, Field(description='Transportation mode for isochrone calculation. Required when travel_time is provided.')]
+    travel_time: Annotated[TravelTime, Field(description='Travel time limit for isochrone calculation')]
+
+
+class ProductFiltersGeoProximityItemLatLngRadius(GeoProximityItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/geo_proximity/items/oneOf/1')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('travel_time',), ('geometry',))),
+    )
+    lat: Annotated[FloatMinNeg90Max90, Field(description='Latitude in decimal degrees (WGS 84)')]
+    lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84)')]
+    radius: Annotated[Radius, Field(description='Simple radius from the point')]
+
+
+class ProductFiltersGeoProximityItemGeometry(GeoProximityItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/geo_proximity/items/oneOf/2')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('travel_time',), ('radius',))),
+    )
+    geometry: Annotated[ObjTypeCoordinates, Field(description='Pre-computed GeoJSON geometry defining the proximity boundary')]
+
+
+GeoProximityItem._branch_models = (ProductFiltersGeoProximityItemLatLngTransportModeTravelTime, ProductFiltersGeoProximityItemLatLngRadius, ProductFiltersGeoProximityItemGeometry,)
+GeoProximityItem.model_rebuild(force=True)
 
 
 class RequiredVendorMetricsItem(AdCPBaseModel):

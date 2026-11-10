@@ -5,14 +5,14 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
-from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, StrMinLen1
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
-from ..core.creative_asset import CreativeAsset
+from ..core.creative_asset import V1CreativeNamedFormatReference, V2CreativeCanonicalFormatKind
 from ..core.creative_localization import CreativeLocalization
 from ..core.creative_revision_id import CreativeRevisionID
 from ..core.ext import ExtensionObject
@@ -22,7 +22,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.validation_mode import ValidationMode
 
 
-class CreativesItem(CreativeAsset):
+class CreativesItem(BranchDispatchMixin, AdCPBaseModel):
     """
     Creative asset for upload to library — supports static assets, generative formats, and third-party snippets. Identifies which format this creative conforms to via EITHER a legacy `format_id` (structured `{agent_url, id}`) OR a 3.1+ `format_kind` (canonical format name), with optional `format_option_ref` when the target product needs disambiguation. Mutually exclusive — see the `oneOf` at the schema root.
     """
@@ -30,11 +30,42 @@ class CreativesItem(CreativeAsset):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('CreativesItemFormatId', Presence(require=(('format_id',),), forbid=(('format_kind',),))), ('CreativesItemFormatKind', Presence(require=(('format_kind',),), forbid=(('format_id',),))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('representation_selection', True, None),), require=(), forbid=('localization',)),
     )
     revision_id: Annotated[CreativeRevisionID | None, Field(description='Optional buyer-assigned identity for this exact input-content state. Buyers may send it to any 3.2 peer; creative.supports_revisions gates reliance on immutability, echo, readback, and delivery correlation, not whether the open request shape may carry the field. Within a supporting seller, a revision_id is immutable under one creative_id: reusing it with different canonical revision content MUST fail with CREATIVE_REVISION_CONTENT_MISMATCH. Metadata and assignment fields excluded from revision content may change without minting a new revision.'), OmittedNotNull] = None
     localization: Annotated[CreativeLocalization | None, Field(description='Sync-only materialized-localization mutation. The top-level assets are the source variant; optional locale_fallbacks declare buyer-approved language-family substitutions, and default_locale_variant_id selects the final serving fallback. An object transactionally replaces the source assets and complete locale set, omission preserves existing localization only when the top-level source assets are unchanged, and null removes localization. This field never requests translation or generation. Receivers MUST advertise get_adcp_capabilities creative.localization before accepting it.')] = None
+
+
+class CreativesItemFormatId(CreativesItem, V1CreativeNamedFormatReference):
+    """
+    Deprecated 3.x compatibility branch using a structured named-format reference.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/allOf/0/oneOf/0')
+
+
+class CreativesItemFormatKind(CreativesItem, V2CreativeCanonicalFormatKind):
+    """
+    Creative declares the portable canonical contract it targets via `format_kind` and optional `format_option_ref`.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/allOf/0/oneOf/1')
+
+
+CreativesItem._branch_models = (CreativesItemFormatId, CreativesItemFormatKind,)
+CreativesItem.model_rebuild(force=True)
 
 
 class AssignmentsItem(AdCPBaseModel):
@@ -129,9 +160,6 @@ AssignmentOperations2 = Unassign
 
 
 AssignmentOperations3 = ReplaceAssignment
-
-
-Creative = CreativesItem
 
 
 __all__ = ["SyncCreativesRequest"]

@@ -6,8 +6,8 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._runtime import ForbiddenGroups, Presence, Rule, UniqueItems
 from adcp.types.constraints import (
     AgeRestrictionMin,
     FloatGt0,
@@ -174,14 +174,18 @@ class ObjTypeCoordinates(AdCPBaseModel):
     coordinates: Annotated[list[Any], Field(description='GeoJSON coordinates array. For Polygon: array of linear rings. For MultiPolygon: array of polygons.')]
 
 
-class GeoProximityItem(AdCPBaseModel):
+class GeoProximityItem(BranchDispatchMixin, AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting.json', pointer='#/properties/geo_proximity/items')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=(('lat', 'lng', 'travel_time', 'transport_mode'),), forbid=(('radius',), ('geometry',))), Presence(require=(('lat', 'lng', 'radius'),), forbid=(('travel_time',), ('geometry',))), Presence(require=(('geometry',),), forbid=(('travel_time',), ('radius',)))), 'oneOf'),
-    )
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime', Presence(require=(('lat', 'lng', 'travel_time', 'transport_mode'),), forbid=(('radius',), ('geometry',)))), ('TargetingOverlayGeoProximityItemLatLngRadius', Presence(require=(('lat', 'lng', 'radius'),), forbid=(('travel_time',), ('geometry',)))), ('TargetingOverlayGeoProximityItemGeometry', Presence(require=(('geometry',),), forbid=(('travel_time',), ('radius',)))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     lat: Annotated[FloatMinNeg90Max90 | None, Field(description='Latitude in decimal degrees (WGS 84). Required for travel_time and radius methods.'), OmittedNotNull] = None
     lng: Annotated[FloatMinNeg180Max180 | None, Field(description='Longitude in decimal degrees (WGS 84). Required for travel_time and radius methods.'), OmittedNotNull] = None
     label: Annotated[str | None, Field(description="Human-readable label for this entry (e.g., 'Düsseldorf', 'Heathrow Airport', 'Primary trade area')."), OmittedNotNull] = None
@@ -190,6 +194,48 @@ class GeoProximityItem(AdCPBaseModel):
     radius: Annotated[Radius | None, Field(description='Simple radius from the point. The platform draws a circle of this distance around the coordinates.'), OmittedNotNull] = None
     geometry: Annotated[ObjTypeCoordinates | None, Field(description='Pre-computed GeoJSON geometry defining the proximity boundary. Use when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom boundaries. When geometry is provided, lat/lng are not required.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+
+
+class TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime(GeoProximityItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting.json', pointer='#/properties/geo_proximity/items/oneOf/0')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('radius',), ('geometry',))),
+    )
+    lat: Annotated[FloatMinNeg90Max90, Field(description='Latitude in decimal degrees (WGS 84). Required for travel_time and radius methods.')]
+    lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84). Required for travel_time and radius methods.')]
+    transport_mode: Annotated[TransportMode, Field(description='Transportation mode for isochrone calculation. Required when travel_time is provided.')]
+    travel_time: Annotated[TravelTime, Field(description='Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks.')]
+
+
+class TargetingOverlayGeoProximityItemLatLngRadius(GeoProximityItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting.json', pointer='#/properties/geo_proximity/items/oneOf/1')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('travel_time',), ('geometry',))),
+    )
+    lat: Annotated[FloatMinNeg90Max90, Field(description='Latitude in decimal degrees (WGS 84). Required for travel_time and radius methods.')]
+    lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84). Required for travel_time and radius methods.')]
+    radius: Annotated[Radius, Field(description='Simple radius from the point. The platform draws a circle of this distance around the coordinates.')]
+
+
+class TargetingOverlayGeoProximityItemGeometry(GeoProximityItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting.json', pointer='#/properties/geo_proximity/items/oneOf/2')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('travel_time',), ('radius',))),
+    )
+    geometry: Annotated[ObjTypeCoordinates, Field(description='Pre-computed GeoJSON geometry defining the proximity boundary. Use when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom boundaries. When geometry is provided, lat/lng are not required.')]
+
+
+GeoProximityItem._branch_models = (TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime, TargetingOverlayGeoProximityItemLatLngRadius, TargetingOverlayGeoProximityItemGeometry,)
+GeoProximityItem.model_rebuild(force=True)
 
 
 TargetingOverlayGeoProximity = Annotated[list[GeoProximityItem], Field(description='Target users within travel time, distance, or a custom boundary around arbitrary geographic points. Multiple entries use OR semantics — a user within range of any listed point is eligible. For campaigns targeting 10+ locations, consider using store_catchments with a location catalog instead. Seller must declare support in get_adcp_capabilities.', min_length=1)]

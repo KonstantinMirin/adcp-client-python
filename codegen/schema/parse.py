@@ -275,7 +275,7 @@ def parse(
             **common,
         )
     combinator = next((kw for kw in UNION if isinstance(raw.get(kw), list)), None)
-    if combinator is not None and not presence_only(raw, position):
+    if combinator is not None and not presence_rule(raw, position):
         return _union(raw, common, combinator, pointer, position, source)
     if isinstance(raw.get("allOf"), list) and raw.get("type") in (None, "object"):
         # **A combinator of SHAPES one of this node's own conjuncts carries**, which
@@ -760,9 +760,17 @@ def _borne_by_a_conjunct(
     conjunct's index is kept so every other conjunct keeps the pointer the document
     gives it.
 
-    ``presence_only`` is the same gate the node's own arm uses, so a conjunct stating a
-    combinator of presence GROUPS is a rule source of the composed class exactly as it
-    is today (``declaration_rule_sources`` at CONJ) and never reaches here.
+    :func:`presence_rule` is the same gate the node's own arm uses, so a conjunct stating
+    a combinator of presence GROUPS is a rule source of the composed class exactly as it
+    is today (``declaration_rule_sources`` at CONJ) and never reaches here.  **And the
+    gate is that predicate and not :func:`presence_only`, for §11's one-reading reason**:
+    a conjunct whose presence-only ``oneOf`` the base-plus-children emission expresses
+    (:func:`presence_branches`) is a combinator this node's class cannot carry as a rule,
+    so it is borne exactly as a conjunct of shapes is.  Measured over the 1,059 portable
+    documents of the patched bundle: **0 conjuncts** -- the three that carry a
+    presence-only ``oneOf`` in a conjunct are ``formats/canonical/display_tag.json``,
+    ``html5.json`` and ``image.json`` at ``/allOf/1``, and all three fail
+    :func:`presence_branches`' third condition, so the accepted set here does not move.
 
     **Three ways this declines, each leaving the node a :class:`nodes.Composition` and
     its refusal exactly where it is today.**  Nothing is admitted on a guess:
@@ -792,7 +800,7 @@ def _borne_by_a_conjunct(
             continue
         declared = {k for k in conjunct if keywords.declares(k, Position.CONJ)}
         combinator = next((kw for kw in UNION if isinstance(conjunct.get(kw), list)), None)
-        if combinator is None or presence_only(conjunct, Position.CONJ):
+        if combinator is None or presence_rule(conjunct, Position.CONJ):
             continue
         if declared != {combinator} or found is not None:
             return None
@@ -867,6 +875,21 @@ def _union(
             for i, branch in enumerate(branches)
         ),
         branch_raw=tuple(branches),
+        # **§4's SECOND dispatch source, computed HERE because this is the frame that
+        # has both the raw node and the position it is being classified at** (the
+        # owner's correction of 2026-11-07, ``adcp-client-python-j0fr``).
+        # :func:`presence_rule` is what routed this node to the union arm at all, and
+        # :func:`presence_branches` is the half of that predicate which answers with the
+        # clauses -- so the branches the children are built from are the branches the
+        # rule would have held, read ONCE.  ``()`` for every union whose branches are
+        # shapes, which is where :func:`presence_branches` answers ``None``.
+        #
+        # Asked of the node the keyword is STATED at, which is this node or the conjunct
+        # bearing it (``borne``): the clauses are a reading of that node's branches and
+        # :attr:`nodes.Union.branch_raw` is read from the same place one line up.
+        presence=presence_branches(
+            raw if borne is None else raw["allOf"][borne], position
+        ) or (),
         # §5's ``required`` row at ROOT beside a union -- "required on the base's
         # fields, and the names recorded in ``_ROOT_REQUIRED``" -- read the way every
         # other kind that can state one reads it, so ``lower.composition.lower_composition``
@@ -1014,13 +1037,19 @@ def _rule_sources(raw: Mapping[str, Any], position: Position) -> dict[str, Any]:
 
     §4: a node at RULE is "kept on the enclosing node as a rule source", and this is the
     carrier.  The combinators join the set only where every branch states which keys are
-    PRESENT -- a CO-OCCURRENCE and not a position, so the cell cannot answer it and
-    :func:`presence_only` is the parser's own classification (§11: "the kind read in
+    PRESENT **and no base-plus-children emission says the same thing** -- a
+    CO-OCCURRENCE and not a position, so the cell cannot answer it and
+    :func:`presence_rule` is the parser's own classification (§11: "the kind read in
     ``_decide``, in the root selectors, in ``union.keyword``, in ``rules.presence_only`` |
-    ``parse``'s classification").
+    ``parse``'s classification").  The second half is the owner's correction of
+    2026-11-07 (:func:`presence_branches`): at the 8 nodes it claims, the branches are
+    CHILD CLASSES, so the combinator is not a rule source and the keyword reaches
+    ``lower.union`` through :func:`_decide`'s union arm instead.  Both halves are one
+    predicate, because a node whose combinator was BOTH a rule source here and a union
+    arm there would carry the rule its own hierarchy already states.
     """
     sources = keywords.rule_sources(position)
-    if presence_only(raw, position):
+    if presence_rule(raw, position):
         sources |= keywords.combinators(position)
     return {k: raw[k] for k in raw if k in sources}
 
@@ -1098,6 +1127,111 @@ def presence_only(raw: Mapping[str, Any], position: Position = Position.ROOT) ->
         if not all(presence_clause(branch, position) is not None for branch in branches):
             return False
     return True
+
+
+def presence_branches(
+    raw: Mapping[str, Any], position: Position = Position.ROOT
+) -> tuple[Clause, ...] | None:
+    """A presence-only ``oneOf`` whose branches a BASE PLUS CHILDREN expresses, clause
+    per branch in document order -- or ``None`` where no such emission says what the node
+    says.
+
+    **The owner's correction of 2026-11-07, which reverses "a flattened presence-only
+    ``oneOf`` is correct"** (``adcp-client-python-j0fr``): *"what we want is to create one
+    or the other branch depending on the fact that ``format_id`` is specified or
+    ``format_kind`` ... it is xor"*.  The reason the old ruling gave -- that the children
+    would be field-identical -- is false: they differ in field PRESENCE, which is the one
+    difference a subclass carries, so §5's "the branches differ only in what is
+    ``required``" case takes the base-plus-children answer every other union takes.
+
+    **This is the PARSER's because the classification is** (§11: "the kind read in
+    ``_decide``, in the root selectors, in ``union.keyword``, in ``rules.presence_only``
+    | ``parse``'s classification").  :func:`presence_rule` is the complement and is what
+    every reader that means "this combinator is a RULE" asks, so the predicate that sends
+    a node to :func:`_union` and the predicate that writes its rule are one reading and
+    cannot come apart.  The clauses returned are :func:`presence_clause`'s own, so the
+    branches the children are built from and the branches the rule would have held are
+    the same values read once.
+
+    **THREE CONDITIONS, and each one is a limit on what a class can SAY.**
+
+    1. ``oneOf`` and no other combinator at the node.  A base plus children with a
+       dispatch says EXACTLY ONE branch, which is ``oneOf``'s own reading; ``anyOf``
+       admits an instance satisfying two and no dispatch answers with two classes.
+       Measured over the 1,059 portable documents of the patched bundle: **315
+       presence-only union nodes, 303 of them ``anyOf`` and 12 ``oneOf``** -- so the
+       keyword alone leaves 303 nodes' rule tuples exactly where they are.
+    2. Some clause FORBIDS.  With no ``not`` anywhere there is no exclusivity to make
+       structural: the node is "at least one of these groups" with a count, which is
+       :class:`adcp.types._runtime.RequiredGroups`' own statement and not an XOR.  **11
+       of the 12 forbid.**
+    3. Every clause's required half is EXACTLY ONE non-empty group.  **This is the
+       expressibility limit and it is the whole of what a child can carry**: a child
+       states its branch by declaring names REQUIRED, and field requiredness is a
+       conjunction -- one group.  A clause carrying several groups is "at least one of
+       these groups", which no class says by requiredness at any price; a clause carrying
+       NO group requires nothing and has no narrowing to be.
+
+    **8 of the 11 pass, and the 3 that fail KEEP their rule** -- they are reported rather
+    than forced, which is reading 2's own direction: a model wider than its document is
+    permitted and a narrower one is not.
+
+    =============================================================  ========  ===========
+    node                                                           branches  expressible
+    =============================================================  ========  ===========
+    ``core/creative-asset.json#``                                         2  yes
+    ``core/creative-manifest.json#``                                      2  yes
+    ``creative/list-creatives-response.json#``                            2  yes
+    ``core/catchment.json#``                                              3  yes
+    ``core/product-filters.json#/properties/geo_proximity/items``         3  yes
+    ``core/targeting.json#/properties/geo_proximity/items``               3  yes
+    ``core/frequency-cap-impression-constraints.json#``                   2  yes
+    ``core/frequency-cap-interval-constraints.json#``                     2  yes
+    ``formats/canonical/display_tag.json#/allOf/1``                       4  no
+    ``formats/canonical/html5.json#/allOf/1``                             4  no
+    ``formats/canonical/image.json#/allOf/1``                             4  no
+    =============================================================  ========  ===========
+
+    The three that fail, fail on condition 3 and fail TWICE each: their ``responsive``
+    branch states ``anyOf`` over ``min_width``/``max_width``/``min_height``/``max_height``
+    -- four separate groups, "at least one of these four present" -- and their ``none``
+    branch requires nothing at all and forbids all seven keys.  Neither is field
+    requiredness at any price, and neither is half of an XOR.
+    """
+    if raw.get("oneOf") is None or any(
+        raw.get(other) is not None for other in UNION if other != "oneOf"
+    ):
+        return None
+    if not presence_only(raw, position):
+        return None
+    branches = raw["oneOf"]
+    read = [presence_clause(branch, position) for branch in branches]
+    clauses = tuple(clause for clause in read if clause is not None)
+    if len(clauses) != len(read) or len(clauses) < 2:
+        return None
+    if not any(forbid for _, forbid in clauses):
+        return None
+    if any(len(require) != 1 or not require[0] for require, _ in clauses):
+        return None
+    return clauses
+
+
+def presence_rule(raw: Mapping[str, Any], position: Position = Position.ROOT) -> bool:
+    """Is every combinator at this node a presence statement a RULE expresses?
+
+    :func:`presence_only` asks the first half -- is every branch a presence clause -- and
+    :func:`presence_branches` asks the second: is the node one the base-plus-children
+    emission says the same thing as, in which case the branches are CLASSES and the rule
+    would be a second statement of a fact the hierarchy already carries.
+
+    **One predicate, and every reader that means "this combinator is a rule" asks it**:
+    :func:`_decide`'s union arm, :func:`_rule_sources`, :func:`_borne_by_a_conjunct` and
+    ``lower.rules.presence_only``.  Two readings of this one question is how a node comes
+    to be emitted as a union AND carry the rule the union replaced, or as an object whose
+    branch list nothing declares -- and §11's arrow is why the question is answered here
+    rather than once per reader.
+    """
+    return presence_only(raw, position) and presence_branches(raw, position) is None
 
 
 #: One branch read as a presence statement: the names it REQUIRES, and the groups it
