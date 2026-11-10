@@ -107,21 +107,25 @@ VERDICTS = "verdicts.tsv"
 #: still running at 90 s and recorded at 43 minutes and 17.7 GB on one of them).  So those
 #: two are what forces a bound, and everything else the old number cut was cut by noise.
 #:
-#: **THE NUMBER IS THEREFORE READ OFF THE MEASUREMENT: above the slowest pair that
-#: FINISHES, with the measured variance as headroom.**  The slowest finisher over the three
-#: runs is 49.7 s and the per-pair clock moves by 2.1x, so a bound below ~105 s can cut a
-#: working check on an unlucky run; 120 is the first round figure above that.  It costs the
-#: run ~180 s more on the two pairs it still cuts and it stops 2 to 6 pairs per run from
-#: reading ``absent`` for no reason but scheduling.
+#: **AND THE NUMBER IS NOT RAISED, WHICH IS THE WHOLE OF WHAT THE MEASUREMENT CHANGES.**
+#: The lane that took these readings proposed 120 -- above the slowest finisher (49.7 s) with
+#: the measured 2.1x variance as headroom -- and that is reverted. ``docs/plan/architecture.md``
+#: §9: *"A CHECK'S COST IS LINEAR IN THE DOCUMENT'S NODES, EACH VISITED ONCE -- AND A BUDGET
+#: IS EVIDENCE THAT ONE IS NOT."*  §14 names the forbidden forms and a RAISED CAP is one of
+#: them: it is the same limit with a larger number, and the lane's own note conceded the
+#: figure "remains a number nobody read off a document".  A bound that cuts a nondeterministic
+#: set is evidence for DELETING it, never for widening it.
 #:
-#: **AND IT IS STILL A NUMBER NOBODY READ OFF A DOCUMENT, WHICH §9 CONDEMNS AND THIS
-#: PARAGRAPH DOES NOT DEFEND.**  ``docs/plan/architecture.md`` §9: *"A CHECK'S COST IS
-#: LINEAR IN THE DOCUMENT'S NODES, EACH VISITED ONCE -- AND A BUDGET IS EVIDENCE THAT ONE IS
-#: NOT."*  The two pairs above are that evidence, their repair is in ``_Draws._draw``'s
-#: fail-safe rather than in this figure, and ``adcp-client-python-l6xn`` owns the deletion.
-#: This row moved the number off a refuted claim and onto a measurement; it did not make the
-#: number legitimate.
-BUDGET = 120
+#: **SO 30 STANDS AS A KNOWN DEFECT RATHER THAN A TUNED SETTING, AND THE REPAIR IS NAMED.**
+#: Only ``l6xn``/``x2se``'s two pairs exceed any budget on every run, and what makes them slow
+#: is measured: ``iter_errors`` is 55.0% inclusive with 25.4% leaf time REBUILDING A VALIDATOR
+#: OR A ``referencing`` RESOURCE, one per subschema per instance validated.
+#: ``adcp-client-python-2i99`` shared the ROOT validator and that holds; this is the
+#: per-descent rebuild below it, heaviest at ``adcp.types._base.strict_validate`` (9.7% of the
+#: run), the one validation path with neither the quiet class, nor the idless-Resource skip,
+#: nor a held validator instance. Fix that and the two pairs finish, after which this bound
+#: has nothing left to cut. ``adcp-client-python-l6xn`` owns the deletion.
+BUDGET = 30
 
 
 def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]:
