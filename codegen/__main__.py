@@ -55,6 +55,7 @@ from pathlib import Path
 from adcp.types._base import KINDS, SchemaRef, schema_at
 from codegen import bundle, catalogue, harness, held, keywords, patch, refusal
 from codegen.emit import PACKAGE, TREE, emit, write
+from codegen.verify import witness
 
 #: Where the run writes §10's per-pair verdict table, relative to the tree it wrote.
 #:
@@ -156,6 +157,33 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
         corpus=held.STORE,
         custom_formats=formats,
     )
+    #: **THE CONSTRUCTION, BUILT ONCE FOR THE WHOLE RUN** -- the row
+    #: ``adcp-client-python-8bw4`` names, and the clause of the fifth target that was not
+    #: met: *"the three checks ARE the grading path"*.  Before this, ``Construction``
+    #: appeared nowhere in ``codegen/`` -- ``harness`` borrowed two validator readings from
+    #: ``verify.witness`` and nothing else -- so every row this function writes was the
+    #: SAMPLER's verdict, and the construction's coverage was a property of
+    #: ``tests/test_witness_applied.py``: a test asserting construction COULD grade the
+    #: tree, beside an artifact it did not grade.
+    #:
+    #: **ONE object for the run, which is §9's memoisation rule and not an optimisation.**
+    #: "One answer per node per document, keyed on the pointer, is what makes the cost
+    #: linear, the budget unnecessary and the cycle closed."  The memo lives on the
+    #: instance, so a second ``Construction`` would pay the walk twice and -- worse --
+    #: would report two readings of one number; ``tests/constructed.py`` holds exactly one
+    #: per process for the suite and this is the run's half of that decision.
+    #:
+    #: **THE RECORDS ARE ``bundle.record``'s, and a document the record REFUSES is simply
+    #: absent** -- which is graded rather than silent: such a pair gets no witness, says so
+    #: in ``PairReport.witness_absent``, and falls through to the store exactly as a pair
+    #: whose pointer the record does not hold does.
+    known = set(bundle.portable(bundle_dir))
+    records = {}
+    for document in sorted(known):
+        record = bundle.record(bundle_dir, document, known)
+        if isinstance(record, dict):
+            records[document] = record
+    construction = witness.Construction(records)
     rows = [
         #: A row for a module that did not import, so the table has no HOLE where its
         #: pairs would have been.  ``harness.pairs`` records them rather than raising,
@@ -263,6 +291,7 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
                     corpus=held.STORE,
                     widening_corpus=held.WIDENING_STORE,
                     fixtures=fixtures,
+                    construction=construction,
                 )
         except harness.OverBudget:
             rows.append(

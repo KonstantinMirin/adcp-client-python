@@ -2801,7 +2801,7 @@ class FormatStrategyVerdict:
 class AcceptsResult:
     examples: int = 0
     #: pass | model_refused_valid | model_dropped_a_fact | strategy_error | model_error
-    #: | corpus_rejected
+    #: | corpus_rejected | witness_refused
     outcome: str = "unrun"
     detail: str = ""
     counterexample: str = ""
@@ -2853,6 +2853,20 @@ class AcceptsResult:
     #: costs nothing.
     stated: int = 0
 
+    #: How many of :attr:`examples` were CONSTRUCTED from the node's own keywords --
+    #: ``docs/plan/final-state.md`` reading 1's *"THE VALUE IS CONSTRUCTED, NEVER SEARCHED
+    #: FOR"*, built by ``codegen.verify.witness.Construction`` and offered here by
+    #: :func:`_check_pair`.
+    #:
+    #: **A FOURTH STATE BESIDE DRAWN, REPLAYED AND STATED, and it is the one the fifth
+    #: target names** (``adcp-client-python-8bw4``).  Until this field existed every row of
+    #: ``verdicts.tsv`` was the SAMPLER's verdict, and the construction's coverage was a
+    #: property of ``tests/test_witness_applied.py`` rather than of the artifact: a test
+    #: asserting that construction COULD grade the tree, beside an artifact that was not
+    #: graded by it.  ``constructed == examples`` is a pair whose evidence is its own
+    #: document's keywords and no store, no ``examples`` member and no generator.
+    constructed: int = 0
+
     #: Why §8's SUBSTITUTED node was abandoned and the pair redrawn from its own node, or
     #: ``""`` where the substitution answered.  ``hypothesis``'s own sentence, which
     #: carries the filtered-draw count.
@@ -2867,6 +2881,26 @@ class AcceptsResult:
     #: defect report attached, exactly as a non-empty :attr:`dump_exempt` is a conditional
     #: one; ``tests/test_emit.py`` ranges over the population and names them.
     abandoned: str = ""
+
+
+def witness_pointer(pointer: str) -> str | None:
+    """A ``SchemaRef`` pointer in the RECORD's pointer space, or ``None`` for a foreign one.
+
+    **``codegen.verify.witness._local`` is the ONE reading of it and this is a call, not a
+    copy.**  A ``SchemaRef`` spells ``#`` and ``#/oneOf/0`` where the record's pointer space
+    spells ``""`` and ``/oneOf/0``, and two spellings of that mapping is how a grader and a
+    construction come to disagree about which node a class names --
+    ``tests/test_witness_applied.py`` says so in those words and reaches the same function
+    for the same reason.  So the hop lives there, beside the construction's own ``$ref``
+    handling, and this is the name :func:`_check_pair` reaches it under.
+
+    Imported inside the call for :func:`quiet`'s reason one key space over: ``harness`` is
+    imported by the run and by the suite, and the two validator readings it already borrows
+    from that module are borrowed the same way.
+    """
+    from codegen.verify import witness
+
+    return witness._local(pointer)
 
 
 def stated_instances(node: Any, *, validator_cls: Any = None) -> list[Any]:
@@ -4379,6 +4413,7 @@ def check_accepts(
     corpus: Any = None,
     identity: Any = None,
     draw_from: dict | Callable[[], dict | None] | None = None,
+    witness: Sequence[Any] | None = None,
 ) -> AcceptsResult:
     """The accepts check: every instance the schema admits, ``accept`` admits --
     and what it constructed, DUMPED back out, is an instance the schema admits too.
@@ -4478,6 +4513,31 @@ def check_accepts(
     and visible only as a cold run nobody ordered -- so a store with no identity beside it
     raises instead.  A caller with no static identity to offer passes ``corpus=None`` and
     draws, which costs time and grades the same thing.
+
+    **``witness`` IS THE CONSTRUCTED VALUE AND IT ANSWERS BEFORE EVERY OTHER SOURCE**
+    (``adcp-client-python-8bw4``; ``docs/plan/final-state.md`` reading 1, *"THE VALUE IS
+    CONSTRUCTED, NEVER SEARCHED FOR ... A sampler is a different instrument answering a
+    different question, and this reading never asks it"*).  The caller builds it --
+    ``codegen.verify.witness.Construction``, reached by :func:`_check_pair`, which is the
+    frame that has the pointer -- so this function still reads nothing but its arguments
+    and §9's import rule is untouched.
+
+    **FIRST and not last, which is the whole of the row.**  Before this argument existed
+    the order was store -> ``examples`` -> draw, so every row of ``verdicts.tsv`` was the
+    SAMPLER's verdict however good the construction had become: the construction's
+    coverage lived in ``tests/test_witness_applied.py`` as a claim that it COULD grade the
+    tree, next to an artifact that was not graded by it.  A source that answered after the
+    store would have changed nothing, because the store answers 2,453 of 2,586 pairs.
+
+    **AND A WITNESS THE NODE REFUSES IS REPORTED, NEVER FALLEN BACK FROM.**  The value is
+    screened against ``schema`` exactly as a ``stated`` one is, and a refusal is
+    ``witness_refused`` naming the keywords -- it does NOT drop through to the store.
+    Falling back is what a fence does: it would restore the sampler's green verdict over a
+    construction the document rejects, which is the one outcome that must stay visible
+    (``adcp-client-python-hzio.11``/``.13``/``.14`` own that set, and
+    ``tests/test_witness_applied.py::test_no_class_s_witness_is_refused_by_its_own_subject``
+    is red on it by name).  A pair the construction has NO value for is a different case
+    and does fall through, because there is nothing to report about it yet.
     """
     if corpus is not None and identity is None:
         raise ValueError(
@@ -4526,12 +4586,38 @@ def check_accepts(
             )
         res.round_tripped += 1
 
+    #: **THE CONSTRUCTED WITNESS, SCREENED BY THE NODE, BEFORE ANY OTHER SOURCE IS ASKED**
+    #: (reading 1; the ``witness`` argument's own paragraph above).  The screen is the same
+    #: screen a ``stated`` instance gets and it is load-bearing in one direction only: a
+    #: value the node REFUSES stops the check here with the keywords named, because a
+    #: construction the document rejects is the finding and a fall-through to the store
+    #: would hide it behind the sampler's answer.
+    if witness:
+        refused = [
+            violated_keywords(schema, one, validator_cls=validator_cls)
+            for one in witness[:examples]
+            if conforms(schema, one, validator_cls=validator_cls) is False
+        ]
+        if refused:
+            res.outcome = "witness_refused"
+            res.detail = (
+                "the node refuses the value its own keywords construct, on "
+                f"{', '.join(sorted({k for one in refused for k in one}))}"
+                f"; constructed {_dump(witness[0])}"
+            )[:400]
+            return res
+
     #: The held instances, or ``None`` for a miss and for a caller that supplied no store.
     #: Both answer "draw", and they are not the same thing to a reader: a miss is a key
     #: this corpus has never been asked for, which is what a new or changed record
     #: produces.
+    #:
+    #: **NOT ASKED AT ALL WHERE THE CONSTRUCTION ANSWERED**, which is what makes the
+    #: construction the grading path rather than a fourth source beside three others: a
+    #: store consulted for a pair that already has its witness is a key computed, a file
+    #: read and a verdict that could still come from somewhere else.
     held = None
-    if corpus is not None:
+    if corpus is not None and not witness:
         res.corpus_key = corpus_key(identity, custom_formats=cf)
         held = corpus.get(res.corpus_key)
     if held is not None:
@@ -4569,13 +4655,22 @@ def check_accepts(
     #: :func:`stated_instances` carries that measurement and says why the wrapper is not
     #: unwrapped.
     stated = None
-    if held is None:
+    if held is None and not witness:
         found = stated_instances(schema, validator_cls=validator_cls)
         if len(found) >= examples:
             stated = found
 
     try:
-        if held is None and stated is not None:
+        if witness:
+            #: Through the SAME ``body`` every other source runs through, so ``accept``,
+            #: the dump, the exemption reading, the round-trip counter and the four
+            #: handlers below are the ones a drawing run produced.  That is what makes the
+            #: wiring a change of SOURCE and not a second instrument:
+            #: :attr:`AcceptsResult.constructed` is the only field that moves.
+            for instance in witness[:examples]:
+                res.constructed += 1
+                body(instance)
+        elif held is None and stated is not None:
             #: Through the SAME ``body`` a draw and a replay run through, so ``accept``,
             #: the dump, the exemption reading and every counter are the ones a drawing
             #: run produced; only ``from_schema`` is skipped.  :attr:`AcceptsResult.stated`
@@ -7472,6 +7567,32 @@ class PairReport:
     #: says anything about.  Read by :attr:`no_instrument` to name the shape behind an
     #: accepts check that could not draw.
     accepts_undrawable: tuple[str, ...] = ()
+    #: The SAMPLER's accepts result -- store, then the node's own ``examples``, then the
+    #: draw -- held beside :attr:`accepts` rather than replaced by it.
+    #:
+    #: **TWO RESULTS BECAUSE THE SIX COLUMNS ARE NOT SIX CHECKS.**  ``accepts``,
+    #: ``refuses`` and ``dump`` are reading 1's three and they read the CONSTRUCTED value;
+    #: ``widening`` and ``undeclared`` are reading 2's two directions and ``admits`` is
+    #: reading 1's check 1 over a second witness class, and all three of those read this
+    #: one.  The division is measured rather than chosen: ``check_admits`` perturbs every
+    #: STRING LEAF of the instance and finds 293 pairs narrower than their document, where
+    #: ``Construction.classes`` distinguishes the node's OWN keywords and finds 1 -- so the
+    #: constructed value cannot stand in for it until that witness set is recursive.
+    #:
+    #: Equal to :attr:`accepts` by IDENTITY on a pair the construction could not reach,
+    #: which is what makes the wiring fail-safe: such a pair reads exactly what it read.
+    sampled: AcceptsResult | None = None
+    #: Why the CONSTRUCTION produced no witness for this pair, or ``""`` where it did --
+    #: the document's own reason (``codegen.verify.witness.Built.reason``) or the exception
+    #: a pointer the record does not hold raised.
+    #:
+    #: **REPORTED, because a pair graded from a store while the construction had nothing to
+    #: say is the exact state ``adcp-client-python-8bw4`` exists to make visible.**  Such a
+    #: pair still reads ``accepts=pass`` -- the store answered -- and that pass is the
+    #: sampler's, not the construction's, so the row has to carry which one spoke.  Empty
+    #: on every pair the construction answered, and empty when no construction was supplied
+    #: at all, because "nobody asked" is not a fact about the document.
+    witness_absent: str = ""
     #: How many §8 FIXTURES were pinned at a referring position of this pair's node
     #: (:class:`Fixtures`).  Reported for ``AcceptsResult.replayed``'s reason: the draw
     #: varied this class's own payload and took each referenced document's value as given,
@@ -8406,6 +8527,7 @@ def check_pair(
     corpus: Any = None,
     widening_corpus: Any = None,
     fixtures: "Fixtures | None" = None,
+    construction: Any = None,
 ) -> PairReport:
     """ONE CLASS AGAINST ONE SCHEMA, with the grade's own validator sharing open.
 
@@ -8426,6 +8548,7 @@ def check_pair(
             corpus=corpus,
             widening_corpus=widening_corpus,
             fixtures=fixtures,
+            construction=construction,
         )
 
 
@@ -8437,6 +8560,7 @@ def _check_pair(
     corpus: Any = None,
     widening_corpus: Any = None,
     fixtures: "Fixtures | None" = None,
+    construction: Any = None,
 ) -> PairReport:
     """ONE CLASS AGAINST ONE SCHEMA: the whole harness, per section 6.
 
@@ -8512,7 +8636,15 @@ def _check_pair(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
     )
     rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
+    #: The CONSTRUCTED witness, which reading 1's three checks read.  Empty where the
+    #: construction had nothing for this pair, and the three checks then fall to
+    #: :data:`sampled` -- see the paragraph beside ``rep.sampled``.
     accepted: list[Any] = []
+    #: The SAMPLED instance -- store, then the node's own ``examples``, then the draw --
+    #: which reading 2's two directions and ``admits`` read.  Held separately because
+    #: ``admits`` is recursive over the instance's string leaves and the construction's
+    #: value classes are node-local, so the constructed value cannot stand in for it.
+    sampled: list[Any] = []
     #: **The instance checks need a self-contained schema, which is the whole of why
     #: this line exists.**  ``bundle.record`` inlines
     #: a remote reference and leaves a LOCAL one, so a nested node can say
@@ -8581,27 +8713,99 @@ def _check_pair(
             rep.fixtures, rep.pinned = 0, 0
             return None
         return substituted if (rep.fixtures or rep.pinned) else None
-    rep.accepts = check_accepts(
+    #: **THE WITNESS, CONSTRUCTED FROM THE NODE'S OWN KEYWORDS** -- the row
+    #: ``adcp-client-python-8bw4`` names, and the first clause of the fifth target: *"the
+    #: three checks ARE the grading path"*.  This frame is where it belongs because this is
+    #: the frame that has the POINTER: ``check_accepts`` reads nothing but its arguments
+    #: (§9's import rule), so it takes the VALUE and never the construction.
+    #:
+    #: **``applied`` and not ``value``, because a class is not paired with a node.**  §8's
+    #: pairing rule is that a branch class is graded against its branch node read UNDER THE
+    #: ROOT'S SIBLINGS, and ``adcp.types._base.applied_schema`` -- which is what
+    #: ``strict_validate`` validates against, and therefore what ``pair.accept`` screens
+    #: with -- is how this project reads that.  A witness built from the branch node ALONE
+    #: is narrower than the class it is offered to.  Measured over this bundle, the
+    #: difference is not marginal: the node's own reading admits 2,320 of 2,586 pairs and
+    #: the reading under the conjunction admits 2,577, with ``admitted -> anything else``
+    #: EMPTY in between (``tests/test_witness_applied.py``).
+    #:
+    #: FAIL-SAFE with no ``construction``: the pair grades from the store, the node's own
+    #: ``examples`` and the draw exactly as it did, which is what keeps every existing
+    #: caller of this function -- and the whole suite -- reading what it read.
+    built = None
+    if construction is not None and pair.ref is not None:
+        pointer = witness_pointer(pair.ref.pointer)
+        if pointer is not None:
+            try:
+                answer = construction.applied(pair.ref.document, pointer)
+                built = [answer.value] if answer.held else None
+                rep.witness_absent = "" if answer.held else answer.reason[:300]
+            except OverBudget:
+                raise
+            except Exception as e:  # noqa: BLE001 -- a pointer the record does not hold
+                rep.witness_absent = f"{type(e).__name__}: {e}"[:300]
+    #: **THE SAMPLER'S INSTANCE IS STILL TAKEN, AND THE CONSTRUCTION IS ADDED BESIDE IT
+    #: RATHER THAN OVER IT** (the owner's correction, measured on the artifact).  The six
+    #: columns are not six checks: ``accepts``, ``refuses`` and ``dump`` are reading 1's
+    #: three; ``widening`` and ``undeclared`` are reading 2's two directions; and
+    #: ``admits`` is reading 1's check 1 over a SECOND witness class
+    #: (:func:`admitted_witnesses`).  That last one is why a replacement would lose
+    #: findings: :meth:`codegen.verify.witness.Construction.classes` distinguishes the
+    #: value classes of the node's OWN keywords -- measured over this bundle, 5,027 classes
+    #: for 2,586 pairs, 1.9 each, finding 1 narrow pair -- while
+    #: :func:`admitted_witnesses` perturbs every STRING LEAF of the whole instance, which
+    #: is how it reaches a 4,096-character value at a key three levels down.  The two
+    #: answer the same question at different radii and only one of them is recursive, so
+    #: the construction cannot stand in for it YET.
+    #:
+    #: So two instances are held, and which check reads which is the whole of this
+    #: paragraph: reading 1's three checks read the CONSTRUCTED value, and reading 2's two
+    #: directions plus ``admits`` read the SAMPLED one.
+    rep.sampled = check_accepts(
         drawn_from,
         pair.accept,
         examples=accepts_examples,
         custom_formats=custom_formats,
-        seen=accepted,
+        seen=sampled,
         ref=pair.ref,
         corpus=corpus,
         identity=pair.identity,
         draw_from=draw_from,
+    )
+    #: Reading 1's checks 1 and 3 over the constructed witness, and ``rep.sampled`` where
+    #: there is none -- so a pair the construction cannot reach reads exactly what it read
+    #: before and no column goes blank for want of a value.
+    rep.accepts = (
+        check_accepts(
+            drawn_from,
+            pair.accept,
+            examples=accepts_examples,
+            custom_formats=custom_formats,
+            seen=accepted,
+            ref=pair.ref,
+            witness=built,
+        )
+        if built
+        else rep.sampled
     )
     #: Measured only where the generator errored, because that is the only pair the
     #: measurement says anything about -- 2 of 1,079 on the emitted tree, so the
     #: isolated draws cost nothing over the population.  The node is drawn from the
     #: SAME schema the accepts check drew from, so a position the resolution inlined
     #: is screened too.
-    if rep.accepts.outcome == "strategy_error":
+    if rep.sampled.outcome == "strategy_error":
         rep.accepts_undrawable = undrawable_formats(drawn_from, custom_formats=custom_formats)
+    #: **READING 1's SECOND CHECK, over the CONSTRUCTED value where there is one.**  §9's
+    #: check 2 is "each invalidating mutation of it ... the class refuses it, at the
+    #: location the mutation was made", and this is one payload rather than the mutation
+    #: SET -- :meth:`codegen.verify.witness.Construction.mutations` is the set and wiring
+    #: it is the remaining half of ``adcp-client-python-8bw4``.  What this line changes is
+    #: only WHICH value is perturbed: the constructed one, so the refusal is read against a
+    #: witness the document's own keywords produced.
+    refuted = accepted or sampled
     rep.liveness = (
-        check_liveness(drawn_from, pair.accept, accepted[0])
-        if accepted
+        check_liveness(drawn_from, pair.accept, refuted[0])
+        if refuted
         else LivenessResult(outcome="no_payload", detail="the accepts check drew no instance")
     )
     #: **READING 1's FIRST CHECK OVER THE WITNESS THE DRAW CANNOT MAKE**
@@ -8623,9 +8827,15 @@ def _check_pair(
     #: ``drawn_from`` and not ``pair.schema``, which is every instance check's rule here:
     #: the witness is screened against the node the instance was drawn from, so a position
     #: the resolution inlined is screened too.
+    #: **``sampled`` AND NOT THE CONSTRUCTED VALUE, which is the one line that keeps the
+    #: wiring ADDITIVE.**  This check is recursive over the instance's string leaves and
+    #: the construction's value classes are node-local (the paragraph beside
+    #: ``rep.sampled`` carries the measurement: 5,027 classes over 2,586 pairs find 1
+    #: narrow pair where this check finds 293).  Handing it the constructed value would
+    #: trade those findings for a reproducible path that cannot see them.
     rep.admits = (
-        check_admits(drawn_from, pair.accept, accepted[0])
-        if accepted
+        check_admits(drawn_from, pair.accept, sampled[0])
+        if sampled
         else AdmitsResult(outcome="unrun", detail="the accepts check drew no instance")
     )
     #: **READING 2's UNDECLARED DIRECTION, and the obstruction this line removes was the
@@ -8665,17 +8875,20 @@ def _check_pair(
     #: With no accepted instance there is nothing to reduce, and ``unrun`` says so rather
     #: than a pass: the table reads ``undeclared=absent:unrun``, which is a fact about the
     #: draw and not evidence about the class.
+    #: ``sampled`` for ``rep.admits``' reason: this is reading 2's undeclared direction and
+    #: it reduces the instance, so it keeps the sampler's until the construction's witness
+    #: set is recursive.
     rep.undeclared = (
         check_refuses(
             drawn_from,
             _constructor(pair.model),
-            accepted[0],
+            sampled[0],
             declared=tuple(
                 one.keyword
                 for one in (*pair.declared, *composed_declarations(pair.model))
             ),
         )
-        if accepted
+        if sampled
         else RefusesResult(outcome="unrun", detail="the accepts check drew no instance")
     )
     #: **Section 8's accepts obligation, and it runs only where a declaration claims
@@ -8697,7 +8910,10 @@ def _check_pair(
             pair.accept,
             pair.declared,
             at=pair.ref.pointer if pair.ref is not None else "#",
-            instances=accepted,
+            #: ``sampled`` for ``rep.admits``' reason: §8's obligation BORROWS the instance
+            #: as a base and derives wider values from it, so it reads the sampler's until
+            #: the construction's witness set is recursive.
+            instances=sampled,
             custom_formats=custom_formats,
             corpus=widening_corpus,
             identity=pair.identity,
@@ -9013,13 +9229,27 @@ def evidence_of(report: PairReport | None) -> str:
     ``none`` where no instance exists, which is not the same as ``drawn`` with a count of
     zero: a pair whose generator produced nothing paid a draw and holds no instance, and
     the count beside this says so.
+
+    **``constructed`` IS THE ONE THE FIFTH TARGET IS ABOUT, and it is read FIRST**
+    (``adcp-client-python-8bw4``).  This column is how a reviewer tells a row the
+    construction graded from a row the SAMPLER graded, which is the distinction the whole
+    row exists to make visible: before the wiring every row read ``replayed`` or ``drawn``
+    and there was no spelling for "its own document's keywords answered".  ``stated`` is
+    reported beside it and is not folded into it -- an ``examples`` member is the schema
+    author's instance, which is a different fact about coverage from a value this project
+    derived, and ``docs/plan/rebuild-plan.md`` §8's rule is that conflating two sources
+    hides which one is doing the work.
     """
     if report is None or report.accepts is None or not report.accepts.examples:
         return "none"
     a = report.accepts
+    if a.constructed == a.examples:
+        return "constructed"
+    if a.stated == a.examples:
+        return "stated"
     if a.replayed == a.examples:
         return "replayed"
-    if not a.replayed:
+    if not a.replayed and not a.constructed and not a.stated:
         return "drawn"
     return "mixed"
 
