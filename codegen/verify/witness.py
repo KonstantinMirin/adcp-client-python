@@ -41,7 +41,10 @@ anchor, a literal run, a character class, a quantifier and a GROUP are keywords 
 ``minLength`` is a keyword, and the reading is the same reading: the class's FIRST member
 repeated the quantifier's MINIMUM count, exactly as ``minLength: 3`` gives ``"aaa"``
 (:func:`_atoms`, :func:`_patterned`).  ``^[A-Z]{3}$`` gives ``"AAA"`` and
-``^sha256:[a-f0-9]{64}$`` gives ``"sha256:"`` and sixty-four ``"a"``\\ s.
+``^sha256:[a-f0-9]{64}$`` gives ``"sha256:"`` and sixty-four ``"a"``\\ s.  **A PARENTHESIS
+PLAYS ONE OF TWO ROLES AND THAT IS THE ONLY SIXTH THING HERE**: its contents are either
+CONSUMED, which is a group, or ASSERTED of the characters after it, which is a positive
+lookahead -- the five constructs read the contents either way (:func:`_opens`).
 
 **A GROUP IS THE QUANTIFIER'S MINIMUM TOO** (:func:`_group`).  A group followed by ``?`` or
 ``*`` is taken ZERO times and contributes NOTHING; a group followed by ``+``, or by no
@@ -53,18 +56,34 @@ that holds a sequence instead of a member, so
 its FIRST ARM, and every other arm is read too (:func:`_group` carries why that is a reading
 and not a choice between arms).
 
+**A POSITIVE LOOKAHEAD IS SATISFIED AND NEVER SOLVED, AND THAT DISTINCTION IS THE WHOLE OF
+IT** (:func:`_opens`, :func:`_asserts`).  A lookahead is an assertion AT a position, not a
+construct that consumes text, so no new construct has to be read: its body is parsed by the
+same arms a group's is (:func:`_arms`) and read into the string the BODY ITSELF admits, and
+the characters after the position are required to begin with that string
+(:func:`_demanded`).  Where a class emits one of those characters, the assertion's class and
+the document's class are two statements about ONE character and the reading takes what both
+admit (:func:`_both`, :func:`_asserted`) -- the same conjunction :func:`_bound` already
+makes of two ``minLength``\\ s; where the character would come from a construct the minimum
+reading takes none of, the assertion raises that quantifier's minimum inside the range it
+already admits, which is the move :func:`_patterned` already makes for a ``minLength``.  So
+``^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?...$`` gives ``"P1Y"``: nothing worked backwards from what
+the two lookaheads demand, and nothing generated a candidate and tested it.
+
 **THIS IS NOT A REGEX ENGINE AND MUST NOT BECOME ONE**: there is no backtracking, no
-lookaround, no backreference, no alternation outside a group and no class subtraction here,
-and a pattern stating any of them is NOT ATTEMPTED -- the document's own ``examples`` is the
-value and failing that the fact is approximated with the pattern QUOTED (:func:`_atoms`
-names the construct it stopped at).  **THE LOOKAROUNDS ARE DECLINED BY NAME** rather than
-left to fall out of a group's parse (:func:`_opens`): telling ``(?:...)`` from ``(?=...)``
-is a two-character test, and a reader that answered it by guessing is where the engine
-starts.  Measured over bundle 3.2: 99 of 110 distinct patterns and 7,075 of 7,638
-pattern-bearing positions are of the read shape; the 11 that are not are FOUR lookarounds,
-six classes whose members this reader does not name, and one anchor inside a group's arm --
-and a reader that solved ``^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?...`` by deciding what its two
-lookaheads demand is the thing this module refuses to be.
+candidate generation, no negative lookaround, no lookbehind, no backreference, no
+alternation outside a group and no class subtraction here, and a pattern stating any of them
+is NOT ATTEMPTED -- the document's own ``examples`` is the value and failing that the fact
+is approximated with the pattern QUOTED (:func:`_atoms` names the construct it stopped at).
+**THE DECLINED LOOKAROUNDS ARE DECLINED BY NAME** rather than left to fall out of a group's
+parse (:func:`_opens`): ``(?!`` and ``(?<!`` state what the text must NOT be, which is the
+choice :func:`_members` already refuses to make for a complement class, and ``(?<=`` states
+it of characters the reading has already emitted.  An assertion whose demands no construct
+after it reaches is declined too (:func:`_sequence`), so the stop stays honest and is never
+replaced by a cap or a literal.  Measured over bundle 3.2: 101 of 110 distinct patterns and
+7,122 of 7,638 pattern-bearing positions are of the read shape; the 9 that are not are TWO
+negative lookaheads, six classes whose members this reader does not name, and one anchor
+inside a group's arm.
 
 **WHERE CONSTRUCTION CANNOT REACH, THE DOCUMENT'S OWN ``examples`` IS THE VALUE**, and
 failing that the fact is approximated with the reason named (:attr:`Source.APPROXIMATED`,
@@ -821,7 +840,7 @@ def _implied(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
 
 
 # --------------------------------------------------------------------------- #
-# the five constructs a pattern is READ by
+# the five constructs a pattern is READ by, in either of two roles: CONSUME or ASSERT
 # --------------------------------------------------------------------------- #
 #: What a class ESCAPE admits, first member first -- a table of CONSTANTS and not a
 #: generator, which is the same reason :data:`FORMAT_CASES` is permitted here.  An escape
@@ -879,11 +898,11 @@ _UNREAD = {
 class _Unread(Exception):
     """The pattern states a construct this reader does not read, and ``str`` NAMES it.
 
-    An exception and not a sentinel because the five readings nest -- a class inside an
-    atom inside a group inside the sequence, and a group inside a group -- and a shape the
-    reader stops at has to stop all of them at once.  Every raise names the CONSTRUCT
-    rather than the position, because what the reason has to carry is why this pattern was
-    left unread.
+    An exception and not a sentinel because the readings nest -- a class inside an atom
+    inside a group inside the sequence, a group inside a group, and a group's own five
+    constructs inside a lookahead's body -- and a shape the reader stops at has to stop all
+    of them at once.  Every raise names the CONSTRUCT rather than the position, because what
+    the reason has to carry is why this pattern was left unread.
     """
 
 
@@ -1065,44 +1084,76 @@ def _count(text: str, at: int) -> tuple[int, int | None, int]:
     return least, most, at
 
 
-def _opens(text: str, at: int) -> int:
-    """A group's ``(`` -- the index its first arm STARTS at, or :class:`_Unread`.
+def _opens(text: str, at: int) -> tuple[int, bool]:
+    """A ``(`` -- ``(the index its first arm STARTS at, does it ASSERT rather than consume)``.
 
-    **THE LOOKAROUNDS ARE DECLINED HERE, EACH BY ITS OWN NAME.**  A lookaround opens as a
-    group, so telling ``(?:...)`` from ``(?=...)`` is the whole of what separates a
-    construct this reader reads from one it must not touch -- and it is a test on TWO
-    characters, which is why it is written out rather than left to fall out of the parse.
-    ``(?=`` and ``(?!`` are a lookahead, ``(?<=`` and ``(?<!`` a lookbehind, and each is
-    reported by the spelling the document used so the reason names the construct the reader
-    stopped at.  A lookaround states what the text AROUND a position must be; reading it
-    would mean deciding which strings satisfy an assertion about a neighbourhood, and that
-    decision is the engine.
+    **CONSUME OR ASSERT IS THE WHOLE OF WHAT THIS DECIDES**, and it is a test on TWO
+    characters.  ``(`` and ``(?:`` open a group whose contents the reading CONSUMES -- the
+    two differ only in whether the engine would capture, and nothing here captures.
+    ``(?=`` opens a positive lookahead, whose contents the reading never emits and instead
+    ASSERTS of the characters that follow (:func:`_asserts`).
 
-    **AND EVERY OTHER ``(?`` OPTION IS DECLINED TOO**, named by its own two characters: a
-    named group, an inline flag, a comment, an atomic group and a conditional each carry
-    semantics of their own, and a reader that treated them as a plain group would be
-    guessing at them.  The two openers that ARE read are the bare ``(`` and ``(?:``, which
-    differ only in whether the engine would capture -- and nothing here captures.
+    **AND SATISFYING AN ASSERTION IS NOT SOLVING ONE.**  A lookahead is an assertion AT a
+    position and not a construct that consumes text, so nothing has to work backwards from
+    what it demands: its body is read by these same constructs into the string the body
+    ITSELF admits, and the characters after the position are required to begin with that
+    string (:func:`_demanded`).  What this module refuses to be is a reader that decided
+    what ``(?=.*[1-9])`` demands and searched for a string meeting it; reading the body the
+    way every other group's arm is read, and conjoining the result into the class that
+    emits the character, is the reading it already does twice over.
+
+    **EVERY OTHER ``(?`` OPTION IS DECLINED, named by its own two characters.**  A NEGATIVE
+    lookahead (``(?!``) and a negative lookbehind (``(?<!``) state what the text must NOT
+    be, and "the first string that is not this" is the choice :func:`_members` already
+    refuses to make for a complement class; a positive LOOKBEHIND (``(?<=``) states it of
+    characters the reading has already emitted, which would mean revising a reading that is
+    finished.  A named group, an inline flag, a comment, an atomic group and a conditional
+    each carry semantics of their own, and a reader that treated them as a plain group
+    would be guessing at them.
     """
     if not text.startswith("(?", at):
-        return at + 1
+        return at + 1, False
     third = text[at + 2 : at + 3]
-    if third in ("=", "!"):
-        raise _Unread(f"the lookahead '(?{third}'")
+    if third == "=":
+        return at + 3, True
+    if third == "!":
+        raise _Unread("the lookahead '(?!'")
     if third == "<":
         fourth = text[at + 3 : at + 4]
         if fourth in ("=", "!"):
             raise _Unread(f"the lookbehind '(?<{fourth}'")
         raise _Unread("a named group")
     if third == ":":
-        return at + 3
+        return at + 3, False
     if not third:
         raise _Unread("a group with no end")
     raise _Unread(f"the group option '(?{third}'")
 
 
-def _group(text: str, at: int) -> tuple[tuple[_Atom, ...], int]:
-    """A group from its ``(`` -- ``(the atoms it contributes, the index after it)``.
+def _arms(text: str, at: int) -> tuple[tuple[tuple[_Atom, ...], ...], int]:
+    """The arms of a parenthesised construct, from the index its FIRST arm starts at.
+
+    ``(the arms, the index after the ``)``)``.  Shared by the construct that CONSUMES its
+    contents (:func:`_group`) and the one that ASSERTS them (:func:`_asserts`), because an
+    arm is parsed the same way whichever role the parenthesis plays -- which is the whole
+    reason a lookahead needs no reading of its own.
+    """
+    arms: list[tuple[_Atom, ...]] = []
+    while True:
+        atoms, at = _sequence(text, at, nested=True)
+        arms.append(atoms)
+        if at >= len(text):
+            raise _Unread("a group with no end")
+        closed = text[at] == ")"
+        at += 1
+        if closed:
+            return tuple(arms), at
+
+
+def _group(
+    text: str, at: int, pending: Sequence[_Ranges]
+) -> tuple[tuple[_Atom, ...], int]:
+    """A group from its first arm's index -- ``(the atoms it contributes, the index after)``.
 
     **A GROUP IS READ BY ITS QUANTIFIER'S MINIMUM, exactly as a character class is.**
     ``(...)?`` and ``(...)*`` are taken ZERO times and contribute NO atoms at all;
@@ -1112,6 +1163,15 @@ def _group(text: str, at: int) -> tuple[tuple[_Atom, ...], int]:
     already takes no character.  The contents are read by :func:`_sequence`, which reaches
     this function again for a group inside a group, so the recursion is the construct's own
     nesting and not a search.
+
+    **AN ASSERTION STILL IN HAND RAISES THAT MINIMUM TO ONE**, which is the move
+    :func:`_patterned` already makes for a ``minLength`` above the atoms' own minimum: a
+    statement about the instance that the minimum reading does not satisfy is met by taking
+    a quantifier HIGHER INSIDE THE RANGE IT ALREADY ADMITS.  ``(?:\\d+Y)?`` is taken zero
+    times where nothing is asserted of the characters after it and ONCE where a lookahead
+    has demanded one of them, and the group's own ``?`` is what says the second is
+    admitted.  Where the quantifier admits no repetition at all (``(...){0}``) the minimum
+    stands and the demand goes unmet, which :func:`_sequence` declines by name.
 
     **THE GROUP'S OWN ``most`` IS DROPPED, and that is a stated limit rather than an
     oversight.**  :func:`_patterned` grows a reading to meet a ``minLength`` by repeating an
@@ -1131,39 +1191,134 @@ def _group(text: str, at: int) -> tuple[tuple[_Atom, ...], int]:
     understood, and a pattern it has not understood is one it leaves unread.  ``(?:0|[1-9]
     [0-9]*)`` therefore gives ``"0"`` -- but only because ``[1-9][0-9]*`` parsed as well.
     """
-    arms: list[tuple[_Atom, ...]] = []
-    at = _opens(text, at)
-    while True:
-        atoms, at = _sequence(text, at, nested=True)
-        arms.append(atoms)
-        if at >= len(text):
-            raise _Unread("a group with no end")
-        closed = text[at] == ")"
-        at += 1
-        if closed:
-            break
-    least, _, at = _count(text, at)
+    arms, at = _arms(text, at)
+    least, most, at = _count(text, at)
+    if least == 0 and pending and (most is None or most >= 1):
+        least = 1
     return arms[0] * least, at
+
+
+def _asserts(text: str, at: int, pending: list[_Ranges]) -> int:
+    """A positive lookahead from its first arm's index -- the index after it.
+
+    **IT CONTRIBUTES NO ATOM.**  That is the distinction this whole reading turns on: a
+    group's contents are CONSUMED and appear in the string, a lookahead's are ASSERTED of
+    the characters that follow and appear in nothing.  The body is parsed by
+    :func:`_arms` -- the same arms, the same first-arm reading -- and :func:`_demanded`
+    records what it names against the characters not yet emitted.
+
+    **A QUANTIFIED LOOKAHEAD IS DECLINED.**  ``(?=a)*`` repeats an assertion that consumes
+    nothing, which is a statement about the engine's loop rather than about the instance,
+    and ``(?=a)?`` asserts something the match need not satisfy at all.
+    """
+    arms, after = _arms(text, at)
+    least, most, after = _count(text, after)
+    if (least, most) != (1, 1):
+        raise _Unread("a quantified lookahead")
+    _demanded(arms[0], pending)
+    return after
+
+
+def _demanded(atoms: Sequence[_Atom], pending: list[_Ranges]) -> None:
+    """Record an assertion's body as per-character demands on the characters not yet emitted.
+
+    ``pending[i]`` is the class the i-th character still to be emitted must come from.
+
+    **THE BODY'S OWN MINIMUM READING IS THE DEMAND**, which is the reading everywhere else
+    in this module: an atom its quantifier admits zero of demands nothing, so ``.*[1-9]``
+    demands one ``[1-9]`` AT the position and nothing before it.  That is STRONGER than the
+    assertion -- ``.*[1-9]`` is satisfied by a ``[1-9]`` anywhere at or after the position --
+    and stronger is what a construction needs rather than a weakness: the body's minimum
+    reading is a string the BODY ITSELF admits, so a remainder beginning with it satisfies
+    the assertion, and no weaker demand had to be characterised to know that.
+
+    **TWO ASSERTIONS AT ONE POSITION ARE CONJOINED** (:func:`_both`), which is how
+    ``^P(?=.*[1-9])(?=\\d|T)`` reads: ``[1-9]`` and ``\\d`` are two statements about the
+    character after the ``P``, so what that character may be is what both admit.  A demand
+    over a class whose members this reader does not name is declined, for :func:`_members`'
+    reason -- *"the first character that is not a digit"* is a choice, not a reading.
+    """
+    at = 0
+    for atom in atoms:
+        if not atom.least:
+            continue
+        members = atom.members
+        if members is None:
+            raise _Unread("an assertion over a class whose members it does not name")
+        for _ in range(atom.least):
+            if at == len(pending):
+                pending.append(members)
+            else:
+                shared = _both(pending[at], members)
+                if not shared:
+                    raise _Unread("two assertions that admit nothing in common")
+                pending[at] = shared
+            at += 1
+
+
+def _asserted(atom: _Atom, pending: list[_Ranges]) -> _Atom:
+    """``atom``, with every demand standing against the characters it emits CONJOINED in.
+
+    A lookahead leaves in ``pending`` statements about the characters that follow it, and
+    this atom is what emits them -- so the class it takes its member from is the class BOTH
+    statements admit (:func:`_both`), and the demands it covered are spent.  **This is the
+    CHECK the ruling asks for and not a solve**: the demand is read off the assertion's own
+    body, the class is read off the document, and what the character may be is the overlap.
+    A demand and a class with nothing in common is a position no string satisfies, declined
+    by name rather than answered with a string the pattern would refuse.
+
+    **AND A DEMAND RAISES THIS ATOM'S MINIMUM TO ONE** where its quantifier admits a
+    repetition, for :func:`_group`'s reason: ``[a-z]*`` under a demand for an ``[a-z]`` is
+    taken once, exactly as a ``minLength`` above the atoms' own minimum is met by taking a
+    quantifier higher inside the range it already admits.
+    """
+    if not pending:
+        return atom
+    least = atom.least
+    if least == 0 and (atom.most is None or atom.most >= 1):
+        least = 1
+    members = atom.members
+    for _ in range(min(least, len(pending))):
+        if members is None:
+            raise _Unread("an assertion over a class whose members it does not name")
+        members = _both(members, pending.pop(0))
+        if not members:
+            raise _Unread("an assertion and a class that admit nothing in common")
+    return _Atom(members, least, atom.most)
 
 
 def _sequence(text: str, at: int, *, nested: bool) -> tuple[tuple[_Atom, ...], int]:
     """The atoms from ``at`` onward -- ``(them, the index it stopped at)``.
 
-    One pass left to right, each atom with its own quantifier, and a group inlined as the
-    atoms it contributes (:func:`_group`).  ``nested`` says whether this sequence is one
-    group ARM: an arm ends at the ``)`` that closes its group or at the ``|`` that starts
-    the next arm, and at the top level those two characters have no group to belong to and
-    are a construct the reader stops at (:data:`_UNREAD` carries why the top-level
-    alternation in particular is a different construct from the one :func:`_group` reads).
+    One pass left to right, each atom with its own quantifier, a group inlined as the atoms
+    it CONSUMES (:func:`_group`) and a lookahead recorded as what it ASSERTS of the atoms
+    after it (:func:`_asserts`).  :func:`_opens` is where those two are told apart and this
+    is the one place the fork is taken.  ``nested`` says whether this sequence is one group
+    ARM: an arm ends at the ``)`` that closes its group or at the ``|`` that starts the next
+    arm, and at the top level those two characters have no group to belong to and are a
+    construct the reader stops at (:data:`_UNREAD` carries why the top-level alternation in
+    particular is a different construct from the one :func:`_group` reads).
+
+    **A DEMAND NO CONSTRUCT AFTER IT REACHES IS DECLINED, BY NAME.**  A lookahead whose
+    demands are still in hand when the sequence ends asserts something of characters this
+    reading does not emit, and nothing later will supply them.  That is the honest stop the
+    ruling preserves: the assertion is left unsatisfied and the pattern left unread, never
+    answered with a string the pattern refuses.
     """
     out: list[_Atom] = []
+    pending: list[_Ranges] = []
     while at < len(text):
         found = text[at]
         if nested and found in (")", "|"):
             break
         if found == "(":
-            inlined, at = _group(text, at)
-            out.extend(inlined)
+            first, asserts = _opens(text, at)
+            if asserts:
+                at = _asserts(text, first, pending)
+                continue
+            inlined, at = _group(text, first, pending)
+            for atom in inlined:
+                out.append(_asserted(atom, pending))
             continue
         if found == "[":
             members, at = _members(text, at)
@@ -1177,7 +1332,9 @@ def _sequence(text: str, at: int, *, nested: bool) -> tuple[tuple[_Atom, ...], i
         else:
             members, at = _ranged(found), at + 1
         least, most, at = _count(text, at)
-        out.append(_Atom(members, least, most))
+        out.append(_asserted(_Atom(members, least, most), pending))
+    if pending:
+        raise _Unread("an assertion no construct after it reaches")
     return tuple(out), at
 
 

@@ -570,7 +570,7 @@ def test_the_construction_reads_the_record_and_never_rebuilds_it() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# the pattern is READ by five constructs, and the sixth is declined by name
+# the pattern is READ by five constructs, in either of two roles: CONSUME or ASSERT
 # --------------------------------------------------------------------------- #
 def _bundle_patterns() -> dict[str, int]:
     """Every distinct ``pattern`` the bundle's records state, with how many nodes state it.
@@ -660,30 +660,90 @@ def test_a_group_is_taken_its_quantifiers_minimum_number_of_times() -> None:
         assert harness.conforms({"type": "string", "pattern": text}, expected) is True, text
 
 
-def test_a_lookaround_is_declined_by_name_and_never_read() -> None:
+def test_a_positive_lookahead_is_SATISFIED_and_never_solved() -> None:
+    """**CONSUME OR ASSERT IS THE DISTINCTION, and it is the whole of this reading.**
+
+    A lookahead is an assertion AT a position, not a construct that consumes text, so the
+    reader does not have to decide what the assertion demands and work backwards -- which
+    is the thing ``codegen/verify/witness.py`` refuses to be, and the refusal stands.  What
+    it does instead needs no construct it did not already read: the body is parsed by the
+    same arms a group's is, read into the string the BODY ITSELF admits, and the characters
+    after the position are required to begin with that string.  Where a class emits one of
+    them the two classes are statements about ONE character and the reading takes what both
+    admit; where the character would come from a group the minimum reading takes none of,
+    the assertion raises that group's minimum inside the range its own ``?`` already admits.
+
+    So ``^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?...$`` gives ``"P1Y"`` -- and every case here is
+    checked by its OWN pattern through ``codegen.harness.conforms``, never by a string
+    written here, because a reader that returned a value its pattern refuses would otherwise
+    be graded against this file's belief about what it produced
+    (``adcp-client-python-hzio.10``'s rule).
+    """
+    cases = {
+        # the bundle's own two duration patterns, which are why this reading exists
+        "^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?"
+        "(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$": "P1Y",
+        "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?"
+        "(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$": "P0Y",
+        # the assertion and the class that emits the character are conjoined
+        "^a(?=b)b$": "ab",
+        "^(?=[a-z])[a-z0-9]+$": "a",
+        "^(?=[c-z])[a-z]$": "c",
+        # the assertion raises an optional group's minimum, which its own `?` admits
+        "^A(?=X)(?:XY)?$": "AXY",
+        # an assertion over a class a quantifier takes none of demands nothing
+        "^a(?=b*)c$": "ac",
+        # a lookahead inside a group the reading takes zero times asserts nothing
+        "^a(?:b(?=c)c)?$": "a",
+    }
+    for text, expected in sorted(cases.items()):
+        built = witness._patterned(text, 0, None)
+        assert built.held, (text, built.reason)
+        assert built.value == expected, (text, built.value, expected)
+        assert harness.conforms({"type": "string", "pattern": text}, expected) is True, text
+
+
+def test_the_lookarounds_this_reader_declines_are_declined_by_name() -> None:
     """The line this reading stops at, and the stop is a NAMED refusal rather than a parse.
 
-    A lookaround opens as a group, so telling ``(?:...)`` from ``(?=...)`` is the whole of
-    what separates the construct the reader reads from the one it must not touch.  Reading
-    a lookaround would mean deciding which strings satisfy an assertion about a
-    neighbourhood, and that decision is the regex engine
-    ``docs/plan/architecture.md`` §2 forbids -- so each of the four spellings is declined
-    and the reason NAMES it, which is what lets a rootless document report why.
+    Three spellings state what a reading cannot take a first member of.  ``(?!`` and
+    ``(?<!`` say what the text must NOT be, and *"the first string that is not this"* is
+    the choice :func:`codegen.verify.witness._members` already refuses to make for a
+    complement class; ``(?<=`` says it of characters the reading has already emitted, so
+    satisfying it would mean revising a reading that is finished.
 
-    Both halves are here: the four spellings, which the bundle does not all state, and the
-    bundle's own lookaround-bearing patterns, which are the ones a document actually pays
-    for.
+    **AND THE HONEST STOPS OF THE READING THAT WAS ADDED ARE HERE TOO**, because a reading
+    that answered an assertion it could not satisfy with a cap, a default or a literal is
+    the failure mode ``adcp-client-python-4ipm`` names: an assertion with nothing in common
+    with the class that emits the character, an assertion no construct after it reaches, and
+    an assertion over a class whose members the reader does not name are each declined with
+    the construct named.
     """
     for text, named in {
-        "^a(?=b)c$": "the lookahead '(?='",
         "^a(?!b)c$": "the lookahead '(?!'",
         "^a(?<=b)c$": "the lookbehind '(?<='",
         "^a(?<!b)c$": "the lookbehind '(?<!'",
+        "^a(?=b)c$": "an assertion and a class that admit nothing in common",
+        "^a(?=b)$": "an assertion no construct after it reaches",
+        "^(?=.{3})[a-z]+$": "an assertion over a class whose members it does not name",
+        "^a(?=b)*b$": "a quantified lookahead",
+        "^a(?=b)(?=c)b$": "two assertions that admit nothing in common",
     }.items():
         built = witness._patterned(text, 0, None)
         assert not built.held, (text, built.value)
         assert named in built.reason, (text, built.reason)
 
+
+def test_the_bundles_own_lookaround_patterns_split_on_consume_versus_assert() -> None:
+    """The half a document actually pays for, derived from the bundle and not listed here.
+
+    The split is the reading's own line and nothing else: a pattern whose only lookaround is
+    POSITIVE is read, and a pattern stating one of the three declined spellings is declined
+    with the spelling named.  Both sides are asserted so that neither a pattern silently
+    falling off the read side nor one silently joining it passes unnoticed -- and a read
+    pattern's value is offered to the pattern itself, which is the only instrument that can
+    say the reading was right.
+    """
     stated = claimed(
         "distinct patterns of the bundle that state a lookaround",
         [
@@ -695,11 +755,17 @@ def test_a_lookaround_is_declined_by_name_and_never_read() -> None:
     )
     for text in sorted(stated):
         built = witness._patterned(text, 0, None)
-        assert not built.held, (text, built.value)
-        assert "lookahead" in built.reason or "lookbehind" in built.reason, (
-            text,
-            built.reason,
-        )
+        declined = any(spelling in text for spelling in ("(?!", "(?<=", "(?<!"))
+        assert built.held is not declined, (text, built.value, built.reason)
+        if declined:
+            assert "lookahead '(?!'" in built.reason or "lookbehind" in built.reason, (
+                text,
+                built.reason,
+            )
+        else:
+            assert (
+                harness.conforms({"type": "string", "pattern": text}, built.value) is True
+            ), (text, built.value)
 
 
 def test_a_pattern_the_reader_declines_names_the_construct_it_stopped_at() -> None:
