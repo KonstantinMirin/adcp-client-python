@@ -87,7 +87,7 @@ Three things decide the split and none of them is taste:
 * **A public domain path is also a path upstream kept hand-written machinery at.**
   ``adcp.types.core`` is the one genuine case -- 444 lines of the SDK's own ``TaskResult``,
   ``AgentConfig``, ``Protocol`` and ``TaskStatus``, no bundle document states any of them,
-  and they are restored at ``adcp._client_types``.  The two name sets may share a module
+  and they are restored at ``adcp.core``.  The two name sets may share a module
   PATH; they must not share one FILE.
 * **The gate is what rules out one file.**  ``emit.write`` is handed a FRESH EMPTY
   directory, so a read-modify-write emitter's output can never equal the committed file,

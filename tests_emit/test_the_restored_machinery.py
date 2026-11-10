@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import csv
 import importlib
+import types as types_module
 from pathlib import Path
 
 import pytest
@@ -127,13 +128,52 @@ def test_the_client_types_live_in_the_sdk_namespace_and_not_in_the_type_layer() 
     transport the client speaks, `TaskResult` is the SDK's return wrapper and `DebugInfo` is
     its diagnostics.  Upstream filed all five under `types/`, which is what makes
     `adcp.types.core` look like a naming collision when it is a LAYERING one.  They are
-    restored to the SDK's own namespace so that `adcp.types` stays schema-derived.
+    restored to `adcp.core` -- the SDK's own PUBLIC namespace, which is the path upstream's
+    own `tests/test_public_api.py::test_client_types_are_exported` already requires them at
+    (`adcp.AgentConfig`, `adcp.Protocol`) -- so that `adcp.types` stays schema-derived.
+
+    **THE ASSERTION IS ON OBJECT IDENTITY AND NEVER ON THE WORD, because eight of these
+    words are ALSO emitted and the rule is about which class answers.**  `TaskStatus` is
+    the case that separates them: `adcp.types.TaskStatus` is the nine-member enum from
+    `enums/task-status.json` and `adcp.core.TaskStatus` is upstream's five-member one, and
+    `Policy`, `PolicyExemplars`, `PolicyHistory`, `PolicyRevision`, `PolicySummary`,
+    `ResolvedBrand` and `ResolvedProperty` each name a `registry` class of ours as well.  A
+    gate written on the WORD would have to either forbid seven emitted names or pass
+    vacuously; written on identity it says the one true thing -- no object `adcp.core`
+    defines is what the flat type surface hands back.
+
+    `adcp.types.core` is EXEMPT by construction and deliberately so: 231 module-scope asks
+    in upstream's own source and tests name that path for these classes, and the twenty-one
+    `X as X` lines there are the compatibility seam that keeps them resolving.  The seam
+    re-exports; it does not declare, which is what
+    `test_the_public_domain_path.py::test_the_composition_names_no_type_of_its_own` reads.
     """
-    client = importlib.import_module("adcp._client_types")
+    client = importlib.import_module("adcp.core")
     for word in ("AgentConfig", "Protocol", "TaskResult", "TaskStatus", "DebugInfo"):
         assert isinstance(getattr(client, word, None), type), f"{word} is not here"
-    types = importlib.import_module("adcp.types")
-    assert not any(
-        getattr(types, "__dict__", {}).get(w) is getattr(client, w)
-        for w in ("TaskResult", "AgentConfig")
-    ), "a client type is bound in adcp.types' own namespace, which is the layer it is not in"
+
+    #: Every class and function `adcp.core` DEFINES, off the loaded module rather than its
+    #: text, so a name upstream adds in a later release joins the population with nothing
+    #: here edited.  Constants are dropped because identity does not discriminate an int.
+    defined = {
+        name: obj
+        for name, obj in vars(client).items()
+        if not name.startswith("_")
+        and getattr(obj, "__module__", None) == "adcp.core"
+        and isinstance(obj, type | types_module.FunctionType)
+    }
+    assert len(defined) >= 19, (
+        f"adcp.core defines only {len(defined)} classes and functions, so this gate has "
+        "lost its subject; upstream's restored machinery is twenty-one public names"
+    )
+
+    surface = importlib.import_module("adcp.types")
+    leaked = sorted(
+        name for name, obj in defined.items() if getattr(surface, name, None) is obj
+    )
+    assert not leaked, (
+        f"the flat type surface hands back adcp.core's own object for {leaked}; "
+        "adcp.types is the compiler's namespace and these describe the LIBRARY, so a "
+        "consumer writing `from adcp.types import " + (leaked[0] if leaked else "X") + "` "
+        "would get a hand-written class where a schema-derived one is the contract"
+    )

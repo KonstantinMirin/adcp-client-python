@@ -14,7 +14,7 @@ markers nor a marker moved inward.
 The honest cost is that the 23 public modules LEAVE that byte compare, because they stop
 being files the compiler writes.  **This file is what stands over them instead, and it is a
 byte compare too**: the composition is DERIVED here, once, from the domain list the
-compiler itself records and from ``adcp/_client_types.py``'s own declarations, and every
+compiler itself records and from ``adcp/core.py``'s own declarations, and every
 committed public module's WHOLE TEXT must equal it.  So a name added to one of those files
 by hand reddens, a docstring edited reddens, and the machinery list cannot go stale against
 the module it re-exports -- which a hand-maintained list in those files could.
@@ -25,7 +25,7 @@ export set.  ``test_the_domain_surface.py`` reads that list as "every name resol
 exactly one private ``adcp.types._schemas`` path and IS the object that path holds", and
 ``test_the_surface_provenance.py`` reads it as "every class advertised was declared inside
 the emitted tree".  Upstream's ``TaskResult`` answers neither -- it has no document and
-``adcp._client_types`` declared it -- so putting it in ``__all__`` would make both of those
+``adcp.core`` declared it -- so putting it in ``__all__`` would make both of those
 gates red for a name that is correctly present.  It is importable at
 ``adcp.types.core`` in the ``X as X`` form a type checker reads as a re-export, and it is
 advertised only where the compiler put a name.  :func:`test_the_machinery_is_importable_and_not_advertised`
@@ -58,7 +58,7 @@ TYPES = Path(__file__).resolve().parents[1] / "src" / "adcp" / "types"
 #: The path and not the name set: what the composition re-exports is derived from this
 #: file's own declarations below, so a release that adds one of upstream's types adds a
 #: re-export with nothing here edited -- and a release that removes one reddens.
-CLIENT_TYPES = TYPES.parent / "_client_types.py"
+CLIENT_TYPES = TYPES.parent / "core.py"
 
 #: The domain whose word upstream also used for hand-written machinery.
 #:
@@ -81,7 +81,7 @@ def domains() -> list[str]:
 
 
 def machinery() -> list[str]:
-    """The names ``adcp/_client_types.py`` makes public, from its own source.
+    """The names ``adcp/core.py`` makes public, from its own source.
 
     A module-scope ``class``, ``def`` or assignment whose name is public, plus an
     ``X as X`` import -- which is upstream's own re-export of
@@ -138,7 +138,7 @@ def composition(domain: str, restored: list[str]) -> str:
             "**AND THIS IS THE ONE DOMAIN WHOSE WORD UPSTREAM ALSO USED FOR HAND-WRITTEN",
             "MACHINERY.**  Upstream's module at this path was 444 lines of the SDK's own types --",
             "``TaskResult``, ``AgentConfig``, ``DebugInfo``, ``Member`` -- and no bundle document",
-            "states any of them.  They are restored at ``adcp._client_types``, the SDK's own",
+            "states any of them.  They are restored at ``adcp.core``, the SDK's own",
             "namespace, and re-exported below in the ``X as X`` form a type checker reads as a",
             "re-export, so that ``from adcp.types.core import TaskResult`` resolves to upstream's",
             "class and not to something invented for the word.",
@@ -166,7 +166,7 @@ def composition(domain: str, restored: list[str]) -> str:
     ]
     if restored:
         body = [
-            *(f"from .._client_types import {name} as {name}" for name in restored),
+            *(f"from ..core import {name} as {name}" for name in restored),
             "",
             *body,
         ]
@@ -221,7 +221,7 @@ def test_the_public_module_is_exactly_the_derived_composition(domain: str) -> No
     """One subject per domain, so a hand edit lands under the module it was made to.
 
     The whole file and every byte of it, against text derived from the compiler's domain
-    record and from ``adcp/_client_types.py``'s own declarations.  This is the compare the
+    record and from ``adcp/core.py``'s own declarations.  This is the compare the
     public module lost when it stopped being a file the compiler writes.
     """
     path = TYPES / f"{domain}.py"
@@ -273,7 +273,7 @@ def test_one_domain_composes_the_machinery() -> None:
     # lane's reading of the TSV's own src-importer columns.  So the set is checked for the
     # one name that needs a composition rather than for emptiness.
     assert COMPOSES_MACHINERY in collide, sorted(collide)
-    composed = {d for d in domains() if "from .._client_types import" in expected(d)}
+    composed = {d for d in domains() if "from ..core import" in expected(d)}
     assert composed == {COMPOSES_MACHINERY}, sorted(composed)
 
 
@@ -324,7 +324,7 @@ def test_one_object_across_the_seam(domain: str) -> None:
 def test_the_machinery_is_importable_and_not_advertised() -> None:
     """Both halves of the one deliberate asymmetry, so neither can drift unreported.
 
-    IMPORTABLE: every name ``adcp/_client_types.py`` makes public resolves at
+    IMPORTABLE: every name ``adcp/core.py`` makes public resolves at
     ``adcp.types.core`` and IS the object that module declared -- which is what the 112
     collection errors in upstream's own suite were asking for.
 
@@ -334,7 +334,7 @@ def test_the_machinery_is_importable_and_not_advertised() -> None:
     gate will go red and why.
     """
     public = importlib.import_module(f"adcp.types.{COMPOSES_MACHINERY}")
-    restored = importlib.import_module("adcp._client_types")
+    restored = importlib.import_module("adcp.core")
     for name in claimed("machinery names the public path serves", machinery()):
         assert hasattr(public, name), f"adcp.types.{COMPOSES_MACHINERY}.{name} does not resolve"
         assert getattr(public, name) is getattr(restored, name), name
@@ -378,7 +378,7 @@ def test_the_text_compare_reddens_on_a_hand_edit() -> None:
     assert (TYPES / f"{COMPOSES_MACHINERY}.py").read_text(encoding="utf8") == text
 
     added = text + "\nTaskResultLike = TaskResult\n"
-    dropped = text.replace("from .._client_types import TaskResult as TaskResult\n", "")
+    dropped = text.replace("from ..core import TaskResult as TaskResult\n", "")
     reworded = text.replace("neither set contains the other", "the sets agree")
     for mutated in (added, dropped, reworded):
         assert mutated != text, "the mutation did not change the text"
