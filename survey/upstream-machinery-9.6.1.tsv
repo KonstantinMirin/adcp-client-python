@@ -30,7 +30,7 @@ media_buy_status_helpers	src/adcp/types/media_buy_status_helpers.py	26	0	0	4	0	0
 mypy_plugin	src/adcp/types/mypy_plugin.py	39	0	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
 projections	src/adcp/types/projections.py	242	4	1	2	1	0	LIVE-RESTORE	absent	1 source importers outside types/
 protocol	src/adcp/types/protocol.py	172	3	0	2	2	0	LIVE-TRANSITIVELY	ours	no direct source importer; 2 importers inside types/
-registry	src/adcp/types/registry.py	2051	1	4	5	5	1	GENERATED-STAYS-DELETED	adapter-module	upstream's own header names the generator
+registry	src/adcp/types/registry.py	2051	1	4	5	5	1	VENDOR-UPSTREAMS-BYTES	restored	its generator reads schemas/registry-openapi.yaml, which is not in the compiler's input
 response_dispatch	src/adcp/types/response_dispatch.py	135	0	0	5	2	0	LIVE-TRANSITIVELY	absent	no direct source importer; 5 importers inside types/
 seller	src/adcp/types/seller.py	138	3	0	2	1	0	LIVE-TRANSITIVELY	absent	no direct source importer; 2 importers inside types/
 signals	src/adcp/types/signals.py	115	3	0	2	0	0	LIVE-TRANSITIVELY	ours	no direct source importer; 2 importers inside types/

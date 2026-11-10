@@ -90,6 +90,48 @@ GENERATED_HEADER = re.compile(
     re.IGNORECASE,
 )
 
+#: **THE BUNDLE THIS COMPILER COMPILES, which is the whole of its input.**  Named so
+#: :func:`reproducible_here` can ask the question the verdict is actually about instead of a
+#: correlate of it.
+BUNDLE = ROOT / "schemas/cache/3.2"
+
+#: A SOURCE PATH a generated header names -- `Source: schemas/registry-openapi.yaml`, or the
+#: input a rebuild command reads.  Only a path is matched: a URL is not a file a run can
+#: open and falls through to "names no source", which is the reproducible case.
+SOURCE_NAMED = re.compile(r"(?:Source|Generated from|Input)\s*:\s*([\w./-]+\.\w+)")
+
+
+def reproducible_here(head: str) -> tuple[bool, str]:
+    """Is the SOURCE this generated file names a document of the compiler's input?
+
+    **THE PROPERTY, after a correlate stood in for it through three rulings**
+    (`adcp-client-python-jlsp`).  `GENERATED-STAYS-DELETED` is a claim that OUR compiler
+    produces these subjects from its OWN input, so the file is owed no restore.  The test
+    for it was "does a header name a generator", which is a fact about upstream's prose
+    rather than about our input -- and it held for four of the five generated modules only
+    because those four happen to be generated FROM the bundle.
+
+    `registry.py` separated them.  Its header says `Source: schemas/registry-openapi.yaml`;
+    that file is in this repository and is NOT under :data:`BUNDLE`, and measured, nothing
+    under `codegen/` opens a `.yaml` at all.  So its 155 classes are unreproducible here --
+    `BrandActivity` occurs zero times in `codegen/published.json` because it was never in
+    the JSON-Schema tree -- and "stays deleted" was a promise about 155 classes no run can
+    emit.
+
+    **THE READING IS THE PATH AND NOT THE SUFFIX.**  A named source counts as the
+    compiler's input when :data:`BUNDLE` contains it, so a future generator reading some
+    other non-bundle file is caught whatever it is written in, and a header naming a bundle
+    document stays reproducible.  A header naming no path at all is reproducible, which is
+    the four: they say "from JSON schemas", "regenerated from schemas" and "from the
+    generated domain tree" -- the bundle, and the tree the bundle produces.
+    """
+    for match in SOURCE_NAMED.finditer(head):
+        named = match.group(1)
+        candidate = ROOT / named
+        if candidate.is_file() and BUNDLE not in candidate.resolve().parents:
+            return False, f"its generator reads {named}, which is not in the compiler's input"
+    return True, "upstream's own header names the generator"
+
 
 def blob(data: bytes) -> str:
     """Git's own object name for these bytes, which is byte identity said in one word."""
@@ -169,9 +211,16 @@ def main() -> None:
         src = [p for p in src_all if not p.startswith("src/adcp/types/")]
         tests = importers(args.rev, module, "tests")
         generated = bool(GENERATED_HEADER.search(head)) or adcp_types_lines > 200
+        # **GENERATED IS NOT THE SAME CLAIM AS REPRODUCIBLE** (:func:`reproducible_here`).
+        # A file upstream generated from OUR input stays deleted, because our compiler
+        # emits those subjects; one generated from a source the compiler never reads is
+        # owed a restore like any hand-written module, and `registry` is that case.
+        from_our_input, generated_why = reproducible_here(head) if generated else (True, "")
         here = HERE.parent / path
-        if generated:
-            verdict, why = "GENERATED-STAYS-DELETED", "upstream's own header names the generator"
+        if generated and from_our_input:
+            verdict, why = "GENERATED-STAYS-DELETED", generated_why
+        elif generated:
+            verdict, why = "VENDOR-UPSTREAMS-BYTES", generated_why
         elif src:
             verdict, why = "LIVE-RESTORE", f"{len(src)} source importers outside types/"
         elif src_all:
