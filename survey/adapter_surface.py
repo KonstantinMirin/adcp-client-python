@@ -19,7 +19,7 @@ declaring module in `__module__`, and that module's path IS a bundle document's 
 carries its own word in `__qualname__`, and both trees derive that word from the document.
 So upstream's own name says WHICH DOCUMENT and WHICH NODE, and neither half is a guess.
 
-ELEVEN KEYS, each reported as itself because "what the key was read off" is the first thing
+TWELVE KEYS, each reported as itself because "what the key was read off" is the first thing
 a disagreement about a row turns out to be about.  `survey/alias_surface.py`'s two are the
 first three; the rest are the owner's extension (`adcp-client-python-1hck`, amended), and
 each is tried in this order so a stronger key is never overridden by a weaker one:
@@ -58,6 +58,14 @@ each is tried in this order so a stronger key is never overridden by a weaker on
                             why the cover must be exact in both directions.  **A UNION ALIAS
                             IS STILL A NAME**: it declares no class and reading 6's count does
                             not move.
+    restored-module+word    their declaring module names no document and is OUR tree's file
+                            at UPSTREAM'S OWN BYTES (`upstream_machinery.restored_paths`), so
+                            the subject is upstream's own declaration and not a candidate to
+                            be found.  Keyed on the MODULE their own statement names, which
+                            is why the `canonical_creative` restore -- which makes `Creative`
+                            and `CreativeManifest` declared twice -- does not tie it the way
+                            it ties `word-unique`.  Only where no document is known, so
+                            `core/format.json`'s `Format` still beats their hand-written one.
     foreign                 their declaration is not in `adcp` at all.  `_str_enum.StrEnum`
                             dumps as `enum.StrEnum`, which their own module says it is, and
                             our generated enums subclass that very object -- so the re-export
@@ -704,6 +712,9 @@ class Join:
         self._roots: dict[str, str] = {}
         self._shapes: dict[str, tuple] = {}
         self._pools: dict[str, dict[str, str]] = {}
+        #: :meth:`restored_declarations`' answer, taken once; see that method for why it is
+        #: not read in this constructor.
+        self._restored: frozenset[tuple[str, str]] | None = None
         self.bundle_dir = bundle_dir
         #: The bundle's own documents, dotted as a module path is, so a document named in
         #: these rows is turned back into the PATH the bundle holds it at without a second
@@ -766,6 +777,49 @@ class Join:
         while mod and mod not in self.their_modules:
             mod = mod.rsplit(".", 1)[0] if "." in mod else ""
         return mod
+
+    def restored_declarations(self) -> frozenset[tuple[str, str]]:
+        """``(module, word)`` for every declaration of ours sitting at UPSTREAM'S OWN BYTES.
+
+        The intersection of two readings neither of which this function makes: the PATHS
+        where upstream's own hand-written file is on disk byte for byte
+        (:func:`survey.upstream_machinery.restored_paths`, blob identity against the commit
+        the classification pins) and the declarations :func:`dump_ours` walked out of our
+        live tree.  A module is in iff its file is upstream's; a word is in iff that module
+        declares it.  Nothing is listed, so a module the restore lane lands tomorrow joins
+        this set on the next run and a module whose bytes drift leaves it in the same breath.
+
+        Keyed on the module and not on the word, which is the whole of why it is not
+        :meth:`by_word`'s uniqueness with the gate relaxed -- see key 8.
+
+        Cached on the instance beside the other indexes rather than computed in
+        ``__init__``: the reading takes a ``git ls-tree`` and a row of the classification
+        table, and a ``Join`` built to resolve one row owes neither.
+        """
+        if self._restored is not None:
+            return self._restored
+        prefix = "adcp.types."
+        here = HERE.parent / "src" / "adcp" / "types"
+        restored = {
+            prefix + p.relative_to(here).with_suffix("").as_posix().replace("/", ".")
+            for p in um.restored_paths()
+        }
+        self._restored = frozenset(
+            (row["module"], row["word"])
+            for row in self.ours["declarations"].values()
+            if row["module"] in restored
+        )
+        return self._restored
+
+    def is_restored(self, key: str) -> bool:
+        """Is that declaration of ours upstream's own, in a file carrying upstream's bytes?
+
+        The same reading as :meth:`restored_declarations`, asked of one candidate -- which is
+        what the word keys need, because their question is "may this candidate be PROPOSED by
+        a word" and not "which module did their statement name".
+        """
+        row = self.ours["declarations"].get(key)
+        return row is not None and (row["module"], row["word"]) in self.restored_declarations()
 
     def shape_of(self, key: str) -> tuple:
         if key not in self._shapes:
@@ -951,11 +1005,11 @@ class Join:
                     return list(combo)
         return None
 
-    # -- the twelfth key: upstream's own statement, where their runtime carried no answer
+    # -- the thirteenth key: upstream's own statement, where their runtime carried no answer
     def stated(self, mod: str, name: str) -> dict | None:
         """**WHAT UPSTREAM'S OWN SOURCE SAYS THIS NAME IS, resolved to a subject of ours.**
 
-        The eleven keys above all start from upstream's RUNTIME dump, where a class says its
+        The twelve keys above all start from upstream's RUNTIME dump, where a class says its
         own declaring module and word.  A name upstream BINDS rather than DECLARES says
         neither: `adcp.types.legacy.LegacyCreateMediaBuyResponse` is a union `TypeAlias`, so
         the dump recorded it with no module at all and the table's verdict was
@@ -964,7 +1018,7 @@ class Join:
         (`survey/upstream_aliases.Oracle.trace`) and its chain is reported beside the row as
         the evidence, which is what makes it a reading and not a guess.
 
-        **AND IT RESOLVES NOTHING ITSELF.**  Every arm below ends in one of the eleven keys
+        **AND IT RESOLVES NOTHING ITSELF.**  Every arm below ends in one of the twelve keys
         above, re-entered at the name UPSTREAM'S OWN STATEMENT names -- so a binding this
         key reports was still decided by a document and a node, and the hazard the pointer
         keys exist to refuse (a word matched across the tree) is refused here too.  Three
@@ -1302,7 +1356,43 @@ class Join:
                     f"contract their own code uses and `A | B` has neither"
                 )
 
-        # 8: their word, declared EXACTLY ONCE in our whole tree.  Their generator INLINES a
+        # 8: THEIR OWN DECLARING MODULE, SITTING IN OUR TREE AT THEIR OWN BYTES.  Upstream's
+        # name resolves to a declaration in a module of THEIRS that no document states -- a
+        # hand-written one -- and the restore lane has put that very file at that very path
+        # byte for byte (`survey/upstream_machinery.restored_paths`, which is blob identity
+        # against the commit the classification pins and not "a file is at the path").  So
+        # the subject is not a candidate to be found: it is upstream's own declaration, and
+        # `isinstance` against it holds for the same reason it holds for `foreign` above --
+        # the object is the one upstream's source created.
+        #
+        # **WHY THIS IS NOT `word-unique` WITH A WEAKER GATE, and the measurement that says
+        # so.**  `word-unique` keys on a word being declared ONCE in our whole tree, and the
+        # restore lane breaks that gate wherever one of upstream's hand-written classes
+        # subclasses ours under a word our generated tree also carries: measured on
+        # `dropin/lastthree`, the `canonical_creative` restore made `Creative`,
+        # `CreativeManifest` and `ProductFormatDeclaration` each declared TWICE, and all
+        # three rows -- bound by `word-unique` while that file was absent -- fell to
+        # `NO-DOCUMENT-NO-SUBJECT` on the next run, to be answered by a flat spelling off
+        # `adcp.types._restored` with nothing recording the subject.  This key keys on the
+        # MODULE, which upstream's own statement names (`_eager.py:965
+        # UpdateMediaBuySuccessResponse = _canonical_creative.UpdateMediaBuyResponse1`), so a
+        # second declaration of the word elsewhere in our tree is not a tie at all.
+        #
+        # **AND ONLY WHERE NO DOCUMENT IS KNOWN**, which is the clause that keeps
+        # `adcp.types.Format` the document's.  A word a document gives is decided by the
+        # document keys above and never here; `canonical_creative.Format` is upstream's
+        # hand-written canonical class and `core/format.json`'s `Format` is the subject, and
+        # the ordering is what says which.  The restored module is reached only where the
+        # bundle states no subject for the word at all -- which, for `canonical_creative`'s
+        # 36 classes, is exactly the 12 that are not one of ours subclassed.
+        if doc is None and word and (their_mod, word) in self.restored_declarations():
+            return bind(
+                "restored-module+word",
+                f"{their_mod}.{word}",
+                f"{their_mod} is upstream's own file in our tree byte for byte",
+            )
+
+        # 9: their word, declared EXACTLY ONCE in our whole tree.  Their generator INLINES a
         # `$ref`'s target into the referring module and ours keeps the referenced document's
         # class, so the node is in a different document and the document key cannot reach it
         # (`sync-accounts-response`'s `CreditLimit` is `core/account.json`'s).  One word with
@@ -1317,11 +1407,25 @@ class Join:
         # claim and `word+identity` above is the key that is allowed to make it.  Where their
         # name differs from their word they are asserting a refinement of one class, and
         # which refinement is a reading and not a uniqueness.
-        if word and name == word and doc is None and len(self.by_word.get(word.lower(), [])) == 1:
-            only = self.by_word[word.lower()][0]
-            return bind("word-unique", only, "the only declaration of that word in our tree")
+        # **AND THE POOL EXCLUDES OUR TREE'S COPIES OF UPSTREAM'S OWN FILES, which is the
+        # symmetric half of this script's standing rule about THEIR undocumented modules.**
+        # That rule refuses `adcp.types.registry` on their side because "a word firing on one
+        # of them would be exactly the 'identity equal under a word the bundle does not give'
+        # that reading 10 refuses"; the same module is now VENDORED into our tree, so the same
+        # word fires from our side and this key cannot tell the two cases apart.  Measured on
+        # `dropin/lastthree`: the vendoring made `AuthorizedAgent` the only declaration of
+        # that word in our tree, and this key bound upstream's `aliases.AuthorizedAgent` --
+        # the `adagents.json` union of six arms -- to the registry OpenAPI model of that name,
+        # identity `differs`, two unrelated subjects under one word.  A declaration of ours
+        # that is upstream's own bytes is reached at upstream's own MODULE PATH (key 8) and
+        # never by a word search.  `word+identity` above is left alone: its gate is exact
+        # signature equality, which upstream's hand-written subclass of one of our classes
+        # does not meet, and where it did meet it the object would be the right one.
+        pool = [k for k in self.by_word.get(word.lower(), []) if not self.is_restored(k)]
+        if word and name == word and doc is None and len(pool) == 1:
+            return bind("word-unique", pool[0], "the only declaration of that word in our tree")
 
-        # 9 / 10: THE POINTERS THE DOCUMENT STATES, which is where their generator's INLINED
+        # 10 / 11: THE POINTERS THE DOCUMENT STATES, which is where their generator's INLINED
         # node and our referenced document's class are one subject under two words.  Not one
         # letter of either side's spelling is read: the pool is
         # :meth:`pointer_pool` -- the declarations of ours the document states, inline or
@@ -1784,7 +1888,7 @@ def main() -> None:
     parser.add_argument("--suite", type=Path, default=HERE.parent / "tests")
     #: The oracle for a name upstream BINDS rather than declares, read off their own source
     #: at the commit the machinery classification pins.  `--no-upstream-source` runs the
-    #: eleven dump-keys alone, which is how the key's own yield is measured.
+    #: twelve dump-keys alone, which is how the key's own yield is measured.
     parser.add_argument("--no-upstream-source", action="store_true")
     args = parser.parse_args()
 

@@ -62,8 +62,10 @@ about the rule.
 from __future__ import annotations
 
 import ast
+import functools
 import importlib
 import re
+import subprocess
 from dataclasses import fields as dataclass_fields
 from dataclasses import is_dataclass
 from pathlib import Path
@@ -222,6 +224,95 @@ def resolve(dotted: str) -> bool | None:
     return False
 
 
+#: ``survey/upstream_machinery.py``'s classification, which is this file's authority for
+#: WHOSE prose a file carries.  Same table and same column as
+#: ``tests_emit/test_the_restored_flat_surface.py``; read here rather than imported from
+#: ``survey/`` so the gate has no dependency on that package's import surface.
+MACHINERY_TABLE = ROOT / "survey" / "upstream-machinery-9.6.1.tsv"
+
+
+def _upstream() -> tuple[str, frozenset[Path]]:
+    """Upstream's commit, and the paths carrying upstream's bytes right now.
+
+    ``here_now == "restored"`` and nothing else, which is
+    ``survey/upstream_machinery.restored_paths``' own reading taken off the recorded column:
+    byte identity against the commit on the table's first line, not "a file is at the path".
+    """
+    lines = MACHINERY_TABLE.read_text().splitlines()
+    rev = lines[0].rsplit(" ", 1)[1]
+    header = lines[1].split("\t")
+    rows = [dict(zip(header, line.split("\t"))) for line in lines[2:] if line]
+    return rev, frozenset(ROOT / r["upstream_path"] for r in rows if r["here_now"] == "restored")
+
+
+@functools.cache
+def _upstream_modules(rev: str) -> dict[str, str]:
+    """Every module of upstream's package at ``rev``, dotted -> its blob name.
+
+    One ``git ls-tree``; the blob is fetched only when a trailing symbol has to be read.
+    """
+    out: dict[str, str] = {}
+    listing = subprocess.run(
+        ["git", "ls-tree", "-r", rev, "--", "src/adcp/"],
+        cwd=ROOT, capture_output=True, text=True, check=True,
+    ).stdout
+    for line in listing.splitlines():
+        meta, _, path = line.partition("\t")
+        parts = meta.split()
+        if len(parts) != 3 or parts[1] != "blob" or not path.endswith(".py"):
+            continue
+        segments = list(Path(path).relative_to("src").with_suffix("").parts)
+        if segments[-1] == "__init__":
+            segments = segments[:-1]
+        out[".".join(segments)] = parts[2]
+    return out
+
+
+def _resolves_in_upstream(token: str, rev: str) -> bool:
+    """Does ``token`` name a module or a top-level symbol of UPSTREAM'S OWN tree at ``rev``?
+
+    **WHY A SECOND RESOLVER, and it is not a relaxation of the first.**  A restored file is
+    upstream's bytes byte for byte (``tests_emit/test_the_restored_machinery.py`` grades
+    that, and `adcp-client-python-knnw` states it as "not one byte of upstream's source may
+    change"), so its prose is UPSTREAM'S prose about UPSTREAM'S artifact and the repair
+    clause 4's message offers -- point the role at the symbol that exists, or drop it --
+    is not available to anyone here.  Measured: ``src/adcp/types/variants.py`` writes
+    ``:mod:`adcp.types.mypy_plugin```, which is upstream's own module and is classified
+    ``TEST-ONLY-DELETE`` here, so the sentence is TRUE of the artifact it describes.
+    Excluding the file would be a narrowed population; grading the claim against the
+    artifact it is about is strictly stronger, and it still reddens on a role upstream's
+    own tree does not carry either.
+
+    By AST and not by import: upstream's tree is not importable in this interpreter -- it is
+    the tree this branch replaced -- so the reading is the blob's own top-level names, which
+    is what a ``from M import N`` would have found.
+    """
+    modules = _upstream_modules(rev)
+    parts = token.split(".")
+    for cut in range(len(parts), 0, -1):
+        blob = modules.get(".".join(parts[:cut]))
+        if blob is None:
+            continue
+        rest = parts[cut:]
+        if not rest:
+            return True
+        source = subprocess.run(
+            ["git", "cat-file", "blob", blob], cwd=ROOT, capture_output=True, check=True
+        ).stdout.decode()
+        declared: set[str] = set()
+        for node in ast.parse(source).body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                declared.add(node.name)
+            elif isinstance(node, ast.Assign):
+                declared |= {t.id for t in node.targets if isinstance(t, ast.Name)}
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                declared.add(node.target.id)
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                declared |= {(a.asname or a.name).split(".")[0] for a in node.names}
+        return rest[0] in declared  # one hop; a deeper attribute walk needs the object
+    return False
+
+
 def _resolves_somewhere(token: str, scope: str | None = None) -> bool | None:
     """``token`` resolved absolutely, under its leaf module, or under ``scope``."""
     head = token.split(".")[0]
@@ -289,16 +380,28 @@ def test_every_import_path_the_shipped_prose_names_resolves(path: Path) -> None:
     This is the clause ``constraints.py`` failed for the whole time it shipped.  The
     failure message names the path and the file, because the repair is always one of two
     things: spell the path that does resolve, or stop spelling a path.
+
+    **AND A FILE CARRYING UPSTREAM'S BYTES IS GRADED AGAINST UPSTREAM'S TREE**, for the
+    reason :func:`_resolves_in_upstream` gives and on the same terms clause 4 states it:
+    the path still has to arrive in one of the two artifacts, and the failure says which.
     """
+    rev, theirs = _upstream()
+    mine = path.resolve() not in theirs
     for text in prose(path):
         for match in PATH.finditer(text):
             token = match.group(0)
             if "<" in token:
                 continue  # clause 2's, and it reports them with its own reason
-            assert resolve(token) is not False, (
+            if resolve(token) is not False:
+                continue
+            assert not mine, (
                 f"{path.relative_to(ROOT)} names {token!r} and it does not resolve. "
                 "A path a consumer can type is a claim about the artifact: either the "
                 "path arrives or the sentence goes."
+            )
+            assert _resolves_in_upstream(token, rev), (
+                f"{path.relative_to(ROOT)} is upstream's own file at {rev} and names "
+                f"{token!r}, which arrives in neither this tree nor upstream's."
             )
 
 
@@ -365,16 +468,32 @@ def test_every_dotted_cross_reference_in_the_prose_resolves(path: Path) -> None:
     resolve is either a rename nobody followed through or prose about a thing that has
     moved -- both of which mislead the next reader, and the ``emit._decide`` family is
     what this clause was written for.
+
+    **AND A FILE CARRYING UPSTREAM'S BYTES IS GRADED AGAINST UPSTREAM'S TREE**
+    (:func:`_resolves_in_upstream`), because its prose is upstream's claim about upstream's
+    artifact and neither repair above is available without breaking the byte identity a
+    different gate asserts.  Not an exclusion: the role still has to resolve SOMEWHERE, and
+    the failure says which of the two artifacts it was weighed against.
     """
+    rev, theirs = _upstream()
+    mine = path.resolve() not in theirs
     for text in prose(path):
         for match in ROLE.finditer(text):
             token = match.group(1)
             if "." not in token:
                 continue  # bare roles name their enclosing scope; see the module docstring
-            assert _resolves_somewhere(token) is not False, (
+            if _resolves_somewhere(token) is not False:
+                continue
+            assert not mine, (
                 f"{path.relative_to(ROOT)} writes :role:`{token}` and it resolves to "
                 "nothing. Point it at the symbol that exists, or drop the role and say in "
                 "plain words that the symbol is gone."
+            )
+            assert _resolves_in_upstream(token, rev), (
+                f"{path.relative_to(ROOT)} is upstream's own file at {rev} and writes "
+                f":role:`{token}`, which names nothing in THIS tree and nothing in "
+                "upstream's either -- so it is not a sentence the restore carried over and "
+                "the role is stale on both sides."
             )
 
 
