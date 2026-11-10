@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1Max99, StrMaxLen2000
 from adcp.types.envelopes import AdcpRequest
 
@@ -17,7 +17,7 @@ from ..core.pagination_request import PaginationRequest
 from ..enums.advertiser_industry import AdvertiserIndustry
 
 
-class SearchBrandsRequest(AdcpRequest):
+class SearchBrandsRequest(AdCPBaseModel, AdcpRequest):
     """
     Discover brands on a brand agent's roster using a natural language query. Returns lightweight brand stubs — use get_brand_identity to fetch full identity data for a selected brand_id, and get_rights to fetch pricing options. Read-only; naturally idempotent.
     """

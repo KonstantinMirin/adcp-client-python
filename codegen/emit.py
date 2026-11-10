@@ -3313,11 +3313,16 @@ def _envelope_bases(bundle_dir: Path, shape: Sequence[bundle.Agreed]) -> str:
     """
     # **The two MESSAGE bases share this file**, which is the one artifact holding every
     # base that belongs to no document (``lower/message.MODULE``).  They are a function of
-    # nothing -- they state no field -- so they are declared whatever the envelope family
+    # nothing -- they state no field -- so they are offered whatever the envelope family
     # turned out to be, including when it is empty: a bundle with no envelope still has a
-    # task registry, and a base that appeared and disappeared with another row's family
+    # task registry, and a name that appeared and disappeared with another row's family
     # would be one more thing for a reader to account for.
-    message, message_imports = lower_message.bases()
+    #
+    # **THEY ARE RE-EXPORTS OF UPSTREAM'S OWN TWO AND NOT DECLARATIONS**
+    # (``lower/message.UPSTREAM``), so what comes back is an import set and the prose that
+    # explains it -- no ``ClassDecl`` at all.  A declaration of ours under upstream's word
+    # would be a second type for one word, and this file's own alias clause forbids that.
+    message_imports, message_prose = lower_message.bases()
     binding: dict[str, tuple[str, str]] = {}
     for one in shape:
         title = bundle.read(bundle_dir, one.target).get("title")
@@ -3330,9 +3335,9 @@ def _envelope_bases(bundle_dir: Path, shape: Sequence[bundle.Agreed]) -> str:
             )
         binding[one.target] = (module_name(one.target), symbol)
     if not shape:
-        return render.envelopes_module(message, message_imports)
+        return render.envelopes_module([], message_imports, message_prose)
     declaration, imports = lower_envelope.base(shape, binding, render.RESERVED)
-    return render.envelopes_module([declaration, *message], imports | message_imports)
+    return render.envelopes_module([declaration], imports | message_imports, message_prose)
 
 
 def write(out: Emitted, tree: Path, package: Path | None = None) -> None:

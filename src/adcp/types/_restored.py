@@ -44,7 +44,7 @@ import types
 #: The restored modules of ``adcp.types``, by MODULE.
 #:
 #: Upstream's own hand-written machinery, put back at upstream's own path byte for byte,
-#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Eight today.
+#: which is ``survey/upstream-machinery-9.6.1.tsv``'s ``restored`` verdict.  Nine today.
 #: Written here because a shipped package cannot read a survey table, and held against
 #: that table by the gate named in this module's docstring -- so the authority is byte
 #: identity against upstream's commit and this tuple is the derivation's cached answer
@@ -58,9 +58,17 @@ import types
 #: against any of the three.  The 10 names only upstream's ``base.py`` declares arrive with
 #: it (``defer_model_rebuild``, ``inherit_field``, ``NoExplicitNull``, ``WireUrl`` and the
 #: rest); nothing else in ``src/adcp/`` declares any of them.
+#:
+#: ``_product_format_declaration`` joined beside them as ``canonical_creative``'s last
+#: MECHANICAL blocker (`adcp-client-python-rqjo`): 102 lines, no ``adcp.types`` import at
+#: all, and its one import of ours -- ``adcp.validation.schema_loader.get_named_validator``
+#: -- resolves here already.  It brings ``PRODUCT_FORMAT_DECLARATION_SCHEMA`` and
+#: ``check_declaration_rules``, which an adapter could never have served because one is a
+#: hand-written function and the other is a document path a re-export has no name for.
 MODULES = (
     "_geo_place_keys",
     "_legacy_assets",
+    "_product_format_declaration",
     "_scalar",
     "_str_enum",
     "_wire",
