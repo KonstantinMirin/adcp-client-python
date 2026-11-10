@@ -68,12 +68,60 @@ from codegen.verify import witness
 VERDICTS = "verdicts.tsv"
 
 #: Seconds one pair of the verdict table may cost before the run gives up on it and writes
-#: ``absent`` instead.  ``harness.within`` says what forces a bound at all; what forces THIS
-#: number is the shape of the cost: a pair whose instances are held replays in 0.0 to 0.4 s,
-#: and the pairs that exceed a budget of any size are the ones that DRAW -- 133 s to over
-#: 2 h 57 m each.  There is nothing between the two, so the budget is small enough that the
-#: whole table stays obtainable and large enough that no replayed pair can reach it.
-BUDGET = 30
+#: ``absent`` instead.  ``harness.within`` says what forces a bound at all.
+#:
+#: **ITS OWN SENTENCE HERE WAS MEASURED FALSE, WHICH IS THE FOURTH CAP DOCSTRING IN THIS
+#: EPIC TO BE** (``adcp-client-python-auw6``).  It read: *"a pair whose instances are held
+#: replays in 0.0 to 0.4 s, and the pairs that exceed a budget of any size are the ones
+#: that DRAW -- 133 s to over 2 h 57 m each.  There is nothing between the two, so the
+#: budget is small enough that the whole table stays obtainable and large enough that no
+#: replayed pair can reach it."*  Three readings refute it, each over all 2,586 pairs this
+#: function grades, warm corpora, the committed tree:
+#:
+#: * **THERE IS NO GAP.**  p50 **0.014 s**, p90 **0.369 s**, p95 **1.324 s**, p99
+#:   **7.213 s**, with **159** pairs between 1 s and 60 s.  The cost is a continuum, so
+#:   "small enough ... and large enough" names a window that does not exist, and the
+#:   number sits inside the working population rather than outside it.
+#:
+#: * **THE CLOCK IT IS SPENT AGAINST IS NOT A FUNCTION OF THE PAIR.**  Two runs of
+#:   identical code over the identical population priced ``core/wholesale-feed-webhook.json#``
+#:   at **49.7 s and 23.6 s** -- 2.1x for one pair -- because the memos, the records and the
+#:   validator stores are process-wide and what a pair costs depends on what the process
+#:   graded before it.  The SET this bound cut was therefore **8, 4 and 2 pairs** in three
+#:   runs, diffed by NAME and not by count: ``core/wholesale-feed-event.json#/oneOf/0`` and
+#:   ``core/wholesale-feed-webhook.json#`` were cut in one run and graded in the next.  A
+#:   verdict of ``absent`` that moves with scheduling is §9's *"recorded as though
+#:   something had been learned"*.
+#:
+#: * **WHAT IT WAS BLAMED ON IS NOT WHAT IT CUTS.**  The sentence above says the cut pairs
+#:   are "the ones that DRAW", meaning ``check_accepts``.  Profiled (py-spy, 112,701 samples
+#:   at 100 Hz) over the 155 most expensive pairs: ``check_widening`` **52.6%**,
+#:   ``check_admits`` **39.5%**, ``check_accepts`` **0.7%**.  Over the whole population
+#:   ``check_admits`` is **50.1%** and ``iter_errors`` is **55.0% inclusive** --
+#:   so this bound cuts VALIDATION and the widening draw, and never the accepts draw the
+#:   committed floor already answers.  ``harness.check_accepts`` carries that attribution.
+#:
+#: **ONLY TWO PAIRS EXCEED IT IN EVERY RUN**, and they are the two that do not terminate at
+#: all: ``media-buy/get-media-buys-response.json#`` and
+#: ``media-buy/refine-proposals-response.json#`` (``adcp-client-python-l6xn``/``-x2se``,
+#: still running at 90 s and recorded at 43 minutes and 17.7 GB on one of them).  So those
+#: two are what forces a bound, and everything else the old number cut was cut by noise.
+#:
+#: **THE NUMBER IS THEREFORE READ OFF THE MEASUREMENT: above the slowest pair that
+#: FINISHES, with the measured variance as headroom.**  The slowest finisher over the three
+#: runs is 49.7 s and the per-pair clock moves by 2.1x, so a bound below ~105 s can cut a
+#: working check on an unlucky run; 120 is the first round figure above that.  It costs the
+#: run ~180 s more on the two pairs it still cuts and it stops 2 to 6 pairs per run from
+#: reading ``absent`` for no reason but scheduling.
+#:
+#: **AND IT IS STILL A NUMBER NOBODY READ OFF A DOCUMENT, WHICH §9 CONDEMNS AND THIS
+#: PARAGRAPH DOES NOT DEFEND.**  ``docs/plan/architecture.md`` §9: *"A CHECK'S COST IS
+#: LINEAR IN THE DOCUMENT'S NODES, EACH VISITED ONCE -- AND A BUDGET IS EVIDENCE THAT ONE IS
+#: NOT."*  The two pairs above are that evidence, their repair is in ``_Draws._draw``'s
+#: fail-safe rather than in this figure, and ``adcp-client-python-l6xn`` owns the deletion.
+#: This row moved the number off a refuted claim and onto a measurement; it did not make the
+#: number legitimate.
+BUDGET = 120
 
 
 def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]:
