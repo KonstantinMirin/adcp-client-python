@@ -78,9 +78,6 @@ from .._schemas.content_standards.get_content_standards_response import (
     GetContentStandardsResponse as GetContentStandardsResponse,
 )
 from .._schemas.content_standards.get_content_standards_response import (
-    GetContentStandardsResponseBranch0 as GetContentStandardsResponseBranch0,
-)
-from .._schemas.content_standards.get_content_standards_response import (
     GetContentStandardsResponseErrors as GetContentStandardsResponseErrors,
 )
 from .._schemas.content_standards.get_media_buy_artifacts_request import (
@@ -192,7 +189,6 @@ __all__ = [
     'CreateContentStandardsResponseStandardsId',
     'GetContentStandardsRequest',
     'GetContentStandardsResponse',
-    'GetContentStandardsResponseBranch0',
     'GetContentStandardsResponseErrors',
     'GetMediaBuyArtifactsRequest',
     'GetMediaBuyArtifactsRequestTimeRange',

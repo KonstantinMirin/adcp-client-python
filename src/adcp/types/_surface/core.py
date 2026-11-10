@@ -1122,7 +1122,6 @@ from .._schemas.core.platform_extension_ref import PlatformExtensionReference as
 from .._schemas.core.positive_postal_area_support import PositivePostalAreaSupport as PositivePostalAreaSupport
 from .._schemas.core.postal_area import PostalArea as PostalArea
 from .._schemas.core.postal_area import PostalAreaAUPostcode as PostalAreaAUPostcode
-from .._schemas.core.postal_area import PostalAreaBranch9 as PostalAreaBranch9
 from .._schemas.core.postal_area import PostalAreaBRCep as PostalAreaBRCep
 from .._schemas.core.postal_area import PostalAreaCA as PostalAreaCA
 from .._schemas.core.postal_area import PostalAreaCountrySystemValues as PostalAreaCountrySystemValues
@@ -1141,7 +1140,6 @@ from .._schemas.core.postal_country_system import Country as PostalCountrySystem
 from .._schemas.core.postal_country_system import GBPostalCodeSystem as PostalCountrySystemGBSystem
 from .._schemas.core.postal_country_system import PostalCountrySystem as PostalCountrySystem
 from .._schemas.core.postal_country_system import PostalCountrySystemAUPostcode as PostalCountrySystemAUPostcode
-from .._schemas.core.postal_country_system import PostalCountrySystemBranch9 as PostalCountrySystemBranch9
 from .._schemas.core.postal_country_system import PostalCountrySystemBRCep as PostalCountrySystemBRCep
 from .._schemas.core.postal_country_system import PostalCountrySystemCA as PostalCountrySystemCA
 from .._schemas.core.postal_country_system import PostalCountrySystemFRCodePostal as PostalCountrySystemFRCodePostal
@@ -2994,7 +2992,6 @@ __all__ = [
     'PostalArea',
     'PostalAreaAUPostcode',
     'PostalAreaBRCep',
-    'PostalAreaBranch9',
     'PostalAreaBranch9System',
     'PostalAreaCA',
     'PostalAreaCountrySystemValues',
@@ -3010,7 +3007,6 @@ __all__ = [
     'PostalCountrySystem',
     'PostalCountrySystemAUPostcode',
     'PostalCountrySystemBRCep',
-    'PostalCountrySystemBranch9',
     'PostalCountrySystemBranch9System',
     'PostalCountrySystemCA',
     'PostalCountrySystemCASystem',

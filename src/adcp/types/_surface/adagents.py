@@ -44,9 +44,6 @@ from .._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags,
 )
 from .._schemas.adagents import (
-    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0 as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0,
-)
-from .._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistryCollections as AdCPAgentsAuthorizationCommunityFormatRegistryCollections,
 )
 from .._schemas.adagents import (
@@ -102,7 +99,6 @@ __all__ = [
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags',
-    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0',
     'AdCPAgentsAuthorizationCommunityFormatRegistryCollections',
     'AdCPAgentsAuthorizationCommunityFormatRegistryContact',
     'AdCPAgentsAuthorizationCommunityFormatRegistryFormats',

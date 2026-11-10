@@ -2419,6 +2419,12 @@ def assign(
     # introduce a §1 collision -- it can at most leave a sibling longer than the final
     # export set required, which is the status quo and not a defect.
     positional = the_positional_names(mod.hops, symbols)
+    for pointer in [p for p in exports if symbols.get(p) in positional]:
+        del exports[pointer]
+        # Reading 6's word goes with it: the inner clause mints a word for a class the
+        # surface would otherwise not reach, and a class §1 no longer exports has no
+        # surface statement for a word to be the right-hand side of.
+        published.pop(pointer, None)
     #: :data:`UPSTREAM_TITLE_CASE` over this module, read AFTER the names are settled
     #: because the rule's own guard is that the emitted symbol still IS the title's name
     #: (:func:`the_published_spellings`).  Asked of a finished table rather than mixed

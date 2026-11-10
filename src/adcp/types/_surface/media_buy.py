@@ -161,7 +161,6 @@ from .._schemas.media_buy.buy_products_async_response_input_required import (
 from .._schemas.media_buy.buy_products_async_response_submitted import BuyProductsSubmitted as BuyProductsSubmitted
 from .._schemas.media_buy.buy_products_async_response_working import BuyProductsWorking as BuyProductsWorking
 from .._schemas.media_buy.buy_products_request import BuyProductsRequest as BuyProductsRequest
-from .._schemas.media_buy.buy_products_request import BuyProductsRequestBranch1 as BuyProductsRequestBranch1
 from .._schemas.media_buy.buy_products_request import (
     BuyProductsRequestBranch1Account as BuyProductsRequestBranch1Account,
 )
@@ -386,7 +385,6 @@ from .._schemas.media_buy.get_products_async_response_working import GetProducts
 from .._schemas.media_buy.get_products_rejected import GetProductsRejected as GetProductsRejected
 from .._schemas.media_buy.get_products_request import BuyingMode as GetProductsRequestBuyingMode
 from .._schemas.media_buy.get_products_request import FieldsItem as GetProductsRequestFieldsItem
-from .._schemas.media_buy.get_products_request import FieldsItemBranch1 as FieldsItemBranch1
 from .._schemas.media_buy.get_products_request import GetProductsRequest as GetProductsRequest
 from .._schemas.media_buy.get_products_request import ObjScopeAsk as ObjScopeAsk
 from .._schemas.media_buy.get_products_request import ObjScopeProductIdActionAsk as ObjScopeProductIdActionAsk
@@ -832,7 +830,6 @@ __all__ = [
     'BuildCreativeWorking',
     'BuyProductsInputRequired',
     'BuyProductsRequest',
-    'BuyProductsRequestBranch1',
     'BuyProductsRequestBranch1Account',
     'BuyProductsRequestBranch1AccountAccountId',
     'BuyProductsRequestBranch1AccountBrandOperator',
@@ -903,7 +900,6 @@ __all__ = [
     'FailedLookup',
     'FailedReportingConsumerStatus',
     'FailedReportingReceipt',
-    'FieldsItemBranch1',
     'FlightChangeConstraints',
     'FormatOptionRefs',
     'GetMediaBuyDeliveryRequest',
