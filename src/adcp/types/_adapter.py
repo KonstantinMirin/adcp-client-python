@@ -49,6 +49,8 @@ from adcp.types.canonical_creative import Creative as Creative
 from adcp.types.canonical_creative import CreativeManifest as CreativeManifest
 from adcp.types.canonical_creative import ProductFormatDeclaration as ProductFormatDeclaration
 from adcp.types.canonical_creative import UpdateMediaBuyResponse1 as UpdateMediaBuySuccessResponse
+from adcp.types.constraints import CanonicalProductCatalogMatchMatchedGtinsItem as Gtin
+from adcp.types.constraints import StrMinLen1 as AcceptancePolicyProfileId
 from adcp.types.core import AccountReferenceAccountId as AccountReferenceById
 from adcp.types.core import AccountReferenceBrandOperator as AccountReferenceByNaturalKey
 from adcp.types.core import AccountReportingBucket as ReportingBucket
@@ -162,6 +164,7 @@ from adcp.types.variants import SchemaVariant as SchemaVariant
 
 __all__ = [
     "AcceptancePolicyDiscovery",
+    "AcceptancePolicyProfileId",
     "AccountReferenceById",
     "AccountReferenceByNaturalKey",
     "ActivateSignalSuccessResponse",
@@ -188,6 +191,7 @@ __all__ = [
     "GetSignalsDiscoveryRequest",
     "GetSignalsLookupRequest",
     "GovernanceAgent",
+    "Gtin",
     "HtmlContent",
     "ImageContent",
     "JavascriptContent",
@@ -294,7 +298,6 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "AcceptancePolicyProfileId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.acceptance_policy_profile_ids.AcceptancePolicyProfileId, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AcceptedLoss": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.legacy_purchase_continuation_input.AcceptedLoss, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AgentConfig": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.core.AgentConfig, which is NO-DOCUMENT-NO-SUBJECT",
     "AssetInstance": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'asset_type': the bare union under it admits a different set",
@@ -315,7 +318,6 @@ __adcp_refused__ = {
     "FormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "GetProductsField": "DOCUMENT-NO-WORD-NO-IDENTITY: their one enumeration's values are exactly the union of 2 of ours (adcp.types._schemas.media_buy.get_products_request.FieldsItem, adcp.types._schemas.media_buy.product_fields.ProductResponseFieldsItem), and a union of arms is not an enumeration: `for f in <name>` and `<name>.MEMBER` are the contract their own code uses and `A | B` has neither",
     "GroupFormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
-    "Gtin": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.catalog.Gtin, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "IdentityMatchTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.trusted_match.identity_match_response.TmpxMacro, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "ImageFormatAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's expression names no arms to resolve: _format_asset_class('image')",
     "LegacyProductFormatDeclaration": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'format_kind': the bare union under it admits a different set",
