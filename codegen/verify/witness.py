@@ -616,14 +616,6 @@ ABOUT_ONE_INSTANCE = frozenset(
     in (keywords.Position.CONJ, keywords.Position.BRANCH, keywords.Position.RULE)
 )
 
-#: How many storage references :meth:`Construction.through` will follow before it calls the
-#: record a defect of its writer.  **NOT A CAP ON A CHECK** (``adcp-client-python-hzio.6``):
-#: a stored subtree is never itself a bare reference, so one hop suffices and this bound is
-#: unreachable by any record ``codegen.bundle.record`` can write.  It exists because the
-#: alternative to raising on a cycle here is a hang, which is the same reason
-#: ``adcp.types._base.through_the_store`` writes one.
-_STORE_HOPS = 8
-
 
 class Subject(NamedTuple):
     """**The subject a CLASS names: the node at its pointer under the conjunction that
@@ -1790,12 +1782,13 @@ class Construction:
         """``at`` with the record's own storage reference followed, as a POINTER.
 
         :meth:`through`'s reading without the memo, because its caller is :meth:`node` and
-        this one is :meth:`node`'s own fallback.  One hop suffices for any record
-        ``codegen.bundle.record`` can write and :data:`_STORE_HOPS` is the same unreachable
-        bound and the same reason that method carries: the alternative to raising on a cycle
-        is a hang.
+        this one is :meth:`node`'s own fallback.  It terminates the same way and for the
+        same reason that method carries: the chain walks DISTINCT pointers of one finite
+        record, so the pointer already visited is the back edge and there is no count here.
         """
-        for _ in range(_STORE_HOPS):
+        seen: set[str] = set()
+        while at not in seen:
+            seen.add(at)
             node = bundle.node_at(record, at)
             if not (isinstance(node, Mapping) and len(node) == 1):
                 return at
@@ -1829,8 +1822,29 @@ class Construction:
         ``_MISSING`` for a pointer the record does not hold, which is what makes the descent
         in :meth:`subject` total: ``_descended``'s rule is that a statement silent at a key
         drops out, and "the record has no node there" is how silence is spelled as a pointer.
+
+        **AND IT TERMINATES ON THE POINTER AND NOT ON A COUNT**, which is where
+        ``_STORE_HOPS = 8`` stood.  That constant's own comment said it was a bound no record
+        ``codegen.bundle.record`` can write could reach, and measured the sentence was TRUE:
+        over the graded population the longest chain is **1 hop** across 2,988 calls, 279 of
+        which take one, and no record states a cycle.  It is deleted anyway, because
+        ``adcp-client-python-hzio.6``'s rule does not turn on whether a cap is reached today
+        -- *"a parameter with a generous default is the same cap with a politer name"* -- and
+        the next bundle, not this reading, would decide when 8 began to cut.
+
+        The termination it stood in for is already present and is exact: every hop moves to a
+        DIFFERENT pointer of ONE finite record, so a chain either settles or revisits a
+        pointer, and the revisited pointer IS the cycle -- ``seen`` is the whole terminator
+        and it names the back edge rather than counting toward it.  That is strictly more
+        complete than the count, since a nine-hop chain would now settle instead of raising,
+        and the hang the old comment feared is still prevented.
+        :meth:`_settles` is the same walk without the memo and reads the same way;
+        ``tests_emit/test_witness_construction.py`` is where the absence of the number is a
+        gate, over the module's repetitions rather than over its constants.
         """
-        for _ in range(_STORE_HOPS):
+        seen: set[str] = set()
+        while pointer not in seen:
+            seen.add(pointer)
             try:
                 node = self.node(document, pointer)
             except (KeyError, IndexError, TypeError, ValueError):

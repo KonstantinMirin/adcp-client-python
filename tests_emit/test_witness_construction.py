@@ -393,6 +393,77 @@ def test_the_module_introduces_no_cap_of_any_kind() -> None:
     assert not found, found
 
 
+def test_every_repetition_this_module_performs_counts_something_the_input_states() -> None:
+    """**The hole the parameter-only reading leaves, and the one that was live in it.**
+
+    :func:`test_the_module_introduces_no_cap_of_any_kind` reads SIGNATURES, on the argument
+    that "a cap has to be a parameter to be a knob".  That is true of a knob and false of a
+    cap: ``_STORE_HOPS = 8`` stood on this module's storage walk as a module CONSTANT read
+    by two methods, settable by nobody and cutting a reading all the same -- the shape
+    ``harness._OWN_DEPTH`` had, which is why
+    ``tests_emit/test_no_cap_is_on_the_grading_path.py`` grew a constants clause for it
+    there.  This is that clause for this module.
+
+    **AND THE POPULATION IS THE REPETITIONS AND NOT THE CONSTANTS**, which is the whole
+    reason this gate says anything: read as "no module constant counts a walk" it ranges
+    over the constants, so deleting the last one makes it green over an EMPTY set and it
+    decides nothing from then on -- ``docs/plan/final-state.md``'s *"a check that passes
+    when nothing happens decides nothing"*.  Read this way the set is every ``range``-driven
+    loop the module performs, which stays live as long as the module repeats anything at
+    all, and the assertion is that each one counts something the INPUT states.
+
+    What the module repeats over today is ``_demanded``'s ``atom.least``, ``_asserted``'s
+    ``min(least, len(pending))``, and ``_array``/``_branch_classes``' ``len(members)``: a
+    quantifier minimum the pattern states, that minimum against the assertions in hand, and
+    the length of a collection built from the node.  Every one is a number off the document
+    or off something derived from it, and none is a number this module chose, which is the
+    property asserted rather than the list.  A chain the module
+    FOLLOWS is not in here at all, which is the change this gate records:
+    ``Construction.through`` and ``Construction._settles`` walk distinct pointers of one
+    finite record and stop on the pointer already visited, so there is no count to repeat.
+    """
+    #: **THE MODULE BODY AND NOT ``ast.walk``**, a distinction this clause was written wrong
+    #: first and then measured: walking the whole tree collects every LOCAL assignment too,
+    #: so ``least`` and ``at`` read as module constants and the gate indicts the document's
+    #: own quantifier minimum.  A clause that cannot tell the module's constant from the
+    #: document's number forbids the reading instead of the cap.
+    constants = {
+        target.id
+        for node in _module().body
+        if isinstance(node, ast.Assign)
+        for target in node.targets
+        if isinstance(target, ast.Name)
+        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, int)
+        if not isinstance(node.value.value, bool)
+    }
+    found = [
+        (holder.name, node.iter)
+        for holder in ast.walk(_module())
+        if isinstance(holder, (ast.FunctionDef, ast.AsyncFunctionDef))
+        for node in ast.walk(holder)
+        if isinstance(node, ast.For)
+        if isinstance(node.iter, ast.Call)
+        if isinstance(node.iter.func, ast.Name) and node.iter.func.id == "range"
+    ]
+    claimed(
+        "range-driven repetitions of this module",
+        {(where, ast.unparse(counts)) for where, counts in found},
+    )
+    counted = sorted(
+        (where, ast.unparse(counts))
+        for where, counts in found
+        if any(
+            isinstance(inner, ast.Name) and inner.id in constants
+            for inner in ast.walk(counts)
+        )
+    )
+    assert not counted, (
+        f"{counted} repeats a walk one of this module's own constants counts "
+        f"({sorted(constants)}); a repetition on the grading path counts something the "
+        "document states or it is a cap"
+    )
+
+
 def test_no_clock_and_no_randomness_is_reachable_from_the_construction() -> None:
     """A wall-clock bound and a draw are the two caps that do not look like parameters.
 
