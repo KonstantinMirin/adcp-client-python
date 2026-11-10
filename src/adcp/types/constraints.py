@@ -32,18 +32,31 @@ PATTERN.
 and the document agree.
 
 ``HttpUrl`` -- pydantic's own, re-exported here so that both arms are named in one
-place -- annotates every other ``uri`` field.  ``AdCPUrl`` everywhere was tried and
+place -- annotates every other ``uri`` field whose document asserts NOTHING ELSE.
+``AdCPUrl`` everywhere was tried and
 withdrawn: ``format: uri`` is RFC 3986, so a document stating only
 ``{"type": "string", "format": "uri"}`` admits ``http://``, ``urn:`` and
 ``file:///`` as well, and refusing those made the SDK stricter than the spec it
 implements -- at 228 of 300 positions.  ``HttpUrl`` still refuses ``urn:`` and
 ``file:``, which is a named ceiling rather than an oversight.
 
-Either way the document's own ``pattern`` stays with the schema half: the bundle
-states eight distinct ones across 73 of its 300 ``uri`` uses, and no URL type can
-carry a ``pattern`` at all -- pydantic refuses to build one.  ``strict_validate``
-applies the document before the constructor ever runs, so the accepted set at the
-entry point is the document's.
+**A ``uri`` NODE THAT ASSERTS ANYTHING THE URL TYPE DOES NOT STATE KEEPS THE
+ASSERTION AND GIVES UP THE TYPE**, and a ``pattern`` is such an assertion.  No URL
+type can carry a ``pattern`` at all -- pydantic refuses to build one -- so the node
+becomes a constrained ``str`` here with the format riding as
+``json_schema_extra={"format": "uri"}``, and BOTH of the document's facts are in the
+annotation.  ``^https://`` is the one exception and it is not an exception to the
+rule: that pattern IS ``AdCPUrl``'s ``allowed_schemes``, so the type states it.
+
+What stood here read "either way the document's own ``pattern`` stays with the schema
+half ... ``strict_validate`` applies the document before the constructor ever runs, so
+the accepted set at the entry point is the document's", and the last clause is true of
+the ENTRY POINT and false of the CLASS.  A consumer who constructs got a field wider
+than its document at 408 positions in 115 documents, with no
+``__adcp_approximations__`` entry to say so -- measured on
+``core/reference-renderer.json``'s ``provenance.source_repository``, whose document
+pins ``^https://github\.com/`` and calls the field an allowlist, and whose class
+round-tripped four non-GitHub URLs (``adcp-client-python-bgyd``).
 """
 
 from __future__ import annotations
@@ -60,7 +73,7 @@ V = TypeVar("V")
 AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
 AcceptancePolicyProfileRegionAliases = Annotated[str, Field(pattern='^[A-Z][A-Z0-9_-]*$')]
 AcceptancePolicyRequirementId = Annotated[str, Field(pattern='^[a-z][a-z0-9_.:-]*$')]
-AcceptedGovernanceAgentsAnyOfItemAgentUrl = Annotated[str, Field(max_length=2048, pattern='^https://[^/?#@]+(?:/[^?#]*)?$')]
+AcceptedGovernanceAgentsAnyOfItemAgentUrl = Annotated[str, Field(json_schema_extra={'format': 'uri'}, max_length=2048, pattern='^https://[^/?#@]+(?:/[^?#]*)?$')]
 AccountAuthorizationAllowedTasksItem = Annotated[str, Field(pattern='^[a-z][a-z0-9_]*$')]
 AccountChangeChangedPathsItem = Annotated[str, Field(max_length=500, pattern='^(|/.*)$')]
 AccountChangeFeedSupportedRetentionDays = Annotated[int, Field(ge=90)]
@@ -87,8 +100,10 @@ AssetPath = Annotated[str, Field(pattern='^/')]
 AssetsItemContent = Annotated[str, Field(max_length=100000)]
 AssetsItemHeadingLevel = Annotated[int, Field(ge=1, le=6)]
 AssetsItemTranscript = Annotated[str, Field(max_length=200000)]
-AttemptedAgentOrigin = Annotated[str, Field(max_length=2048, pattern='^https://[^/?#@]+$')]
+AttemptedAgentOrigin = Annotated[str, Field(json_schema_extra={'format': 'uri'}, max_length=2048, pattern='^https://[^/?#@]+$')]
+AttestationCapabilitiesAcceptedIssuersItemCredentialOriginsItem = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://[^/?#@]+$')]
 AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId = Annotated[str, Field(max_length=255, min_length=1, pattern='^[A-Za-z0-9._:-]+$')]
+AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://[^/?#@]+(?:/[^?#]*)?(?:\\?[^#]*)?$')]
 AuthorizedOperatorBrandsItem = Annotated[str, Field(pattern='^([a-z0-9_]+|\\*)$')]
 BankBic = Annotated[str, Field(pattern='^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')]
 BankIban = Annotated[str, Field(pattern='^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}$')]
@@ -124,7 +139,7 @@ CreativesItemAssignmentsReturnedAssignmentCount = Annotated[int, Field(ge=0, le=
 CustomScope = Annotated[str, Field(pattern='^custom:[a-z][a-z0-9_]*$')]
 DAASTTrackerAssetOffset = Annotated[str, Field(pattern='^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$')]
 DataSubjectRightsResponseSlaDays = Annotated[int, Field(ge=1, le=90)]
-DataSubjectRightsUpstreamSourceDomain = Annotated[str, Field(max_length=253)]
+DataSubjectRightsUpstreamSourceDomain = Annotated[str, Field(json_schema_extra={'format': 'hostname'}, max_length=253)]
 DecimalReportingControlTotalValue = Annotated[str, Field(pattern='^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$')]
 DeclarationId = Annotated[str, Field(min_length=1, pattern='^[A-Za-z0-9_-]+$')]
 DemographicReportingCapabilityAgeIntervalsItemDemographic = Annotated[str, Field(min_length=1, pattern='\\S')]
@@ -183,7 +198,7 @@ MimeTypesItem = Annotated[str, Field(pattern='^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/
 MinCards = Annotated[int, Field(ge=2)]
 NonEmptyList = Annotated[list[T], Field(min_length=1)]
 OohMetricsIlluminatedHours = Annotated[float, Field(ge=0.0, le=24.0)]
-OperationsContactUrl = Annotated[str, Field(max_length=2048, pattern='^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)')]
+OperationsContactUrl = Annotated[str, Field(json_schema_extra={'format': 'uri'}, max_length=2048, pattern='^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)')]
 Package = Annotated[str, Field(pattern='^(?:@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*$')]
 PaginationMaxResults = Annotated[int, Field(ge=1, le=10000)]
 PartitionValue = Annotated[str, Field(max_length=512)]
@@ -194,6 +209,7 @@ PrincipalDeclarationsStateSelectedAsyncAdcpVersion = Annotated[str, Field(patter
 ProductCardCtaLabel = Annotated[str, Field(max_length=25)]
 ProductLimit = Annotated[int, Field(ge=1, le=50)]
 PropertyRegion = Annotated[str, Field(pattern='^([A-Z]{2}|global)$')]
+ProvenanceSourceRepository = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://github\\.com/')]
 ProvenanceWorkflowPath = Annotated[str, Field(pattern='^\\.github/workflows/[A-Za-z0-9._/-]+\\.ya?ml$')]
 Reason = Annotated[str, Field(max_length=100, pattern='^[a-z][a-z0-9_.-]{0,99}$')]
 ReasonCodesItem = Annotated[str, Field(pattern='^[A-Za-z0-9._:-]+$')]
@@ -205,6 +221,7 @@ ReportingAdjustmentReceiptRejectionCode = Annotated[str, Field(max_length=128, m
 ReportingBucketBucket = Annotated[str, Field(max_length=63, min_length=3, pattern='^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$')]
 ReportingBucketPrefix = Annotated[str, Field(max_length=512, pattern='^[a-zA-Z0-9/_.-]+$')]
 ReportingBucketRegion = Annotated[str, Field(max_length=64, pattern='^[a-z0-9-]+$')]
+ReportingCanonicalContentDigestCanonicalizationUri = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)')]
 ReportingCanonicalizationContractGoldenVectorsAdditionalItemName = Annotated[str, Field(max_length=128, min_length=1, pattern='^[A-Za-z0-9_.:-]{1,128}$')]
 ReportingReliabilityStatisticsAdjustmentMagnitudeItemP50AbsoluteDelta = Annotated[str, Field(pattern='^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$')]
 ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd = Annotated[str, Field(pattern='^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$')]
@@ -213,6 +230,7 @@ RetryAfter = Annotated[float, Field(ge=1.0, le=3600.0)]
 SLAWindowCompletionMax = Annotated[str, Field(pattern='^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$')]
 SealedCredentialsItemPayload = Annotated[str, Field(max_length=8192)]
 ServeWindowSec = Annotated[int, Field(ge=1, le=300)]
+SetupSetupUrl = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://[!$&-;=@-~]+$')]
 SourceCoverageItemStaleAfterSeconds = Annotated[int, Field(ge=1, le=2592000)]
 StarRating = Annotated[int, Field(ge=1, le=5)]
 StartHour = Annotated[int, Field(ge=0, le=23)]
@@ -221,7 +239,9 @@ StrCountryCode = Annotated[str, Field(pattern='^[A-Z]{2}$')]
 StrCurrencyCode = Annotated[str, Field(pattern='^[A-Z]{3}$')]
 StrDomainName = Annotated[str, Field(pattern='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$')]
 StrExperimentalFeatureID = Annotated[str, Field(max_length=128, min_length=1, pattern='^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$')]
-StrFormatEmailMaxLen254 = Annotated[str, Field(max_length=254)]
+StrFormatEmailMaxLen254 = Annotated[str, Field(json_schema_extra={'format': 'email'}, max_length=254)]
+StrFormatEmailMaxLen255 = Annotated[str, Field(json_schema_extra={'format': 'email'}, max_length=255)]
+StrFormatEmailMinLen1MaxLen255 = Annotated[str, Field(json_schema_extra={'format': 'email'}, max_length=255, min_length=1)]
 StrFormatHostname = Annotated[str, Field(json_schema_extra={'format': 'hostname'})]
 StrFormatUriTemplate = Annotated[str, Field(json_schema_extra={'format': 'uri-template'})]
 StrFormatUuid = Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
@@ -229,6 +249,7 @@ StrIANATimezoneIdentifier = Annotated[str, Field(max_length=255, min_length=1, p
 StrIdempotencyKey = Annotated[str, Field(max_length=255, min_length=16, pattern='^[A-Za-z0-9_.:-]{16,255}$')]
 StrLanguageTag = Annotated[str, Field(max_length=63, min_length=2, pattern='^(?:[a-z]{2,8}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?|x(?:-[a-z0-9]{1,8})+)$')]
 StrMacroBearingURL = Annotated[str, Field(pattern='^https?://(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?|\\[[0-9A-Fa-f:.]+\\])(?::[0-9]{1,5})?(?:[/?#](?:[^%\\s\\u0000-\\u001F\\u007F"<>`\\\\]|%[0-9A-Fa-f]{2}|%%[A-Za-z0-9_.:-]+%%)*)?$')]
+StrMacroBearingURLFormatUri = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern="^https?://(?:[A-Za-z0-9._~!$&'()*+,;=:%-]+@)?(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?|\\[[0-9A-Fa-f:.]+\\])(?::[0-9]{1,5})?(?:[/?#]|$)")]
 StrMaxLen100 = Annotated[str, Field(max_length=100)]
 StrMaxLen1000 = Annotated[str, Field(max_length=1000)]
 StrMaxLen128 = Annotated[str, Field(max_length=128)]

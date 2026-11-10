@@ -30,7 +30,7 @@ class GovernanceAgentNotAcceptedDetailsDisclosed(GovernanceAgentNotAcceptedDetai
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/governance-agent-not-accepted.json', pointer='#/oneOf/0')
     disclosure: Literal['disclosed']
-    attempted_agent_origin: Annotated[AttemptedAgentOrigin, Field(description='Parsed HTTPS origin only. The seller MUST strip userinfo, path, query, and fragment and MUST NOT echo the raw candidate URL.', json_schema_extra={'format': 'uri'})]
+    attempted_agent_origin: Annotated[AttemptedAgentOrigin, Field(description='Parsed HTTPS origin only. The seller MUST strip userinfo, path, query, and fragment and MUST NOT echo the raw candidate URL.')]
     accepted_governance_agents: AcceptedGovernanceAgents
 
 

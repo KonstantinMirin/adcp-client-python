@@ -9,7 +9,9 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
+    AttestationCapabilitiesAcceptedIssuersItemCredentialOriginsItem,
     AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
+    AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
     HttpUrl,
     MaxEmbeddedCredentialBytes,
 )
@@ -43,7 +45,7 @@ class ResolversItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/resolvers/items')
     resolver_id: AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId
-    url: Annotated[HttpUrl, Field(description='Evaluator-configured HTTPS resolver endpoint. Calls use POST with Content-Type application/json and a body containing only credential_id; query-string and path interpolation are forbidden. The evaluator still applies the attestation fetch contract before every call.')]
+    url: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='Evaluator-configured HTTPS resolver endpoint. Calls use POST with Content-Type application/json and a body containing only credential_id; query-string and path interpolation are forbidden. The evaluator still applies the attestation fetch contract before every call.')]
     authentication: Annotated[Authentication, Field(description='Whether the resolver is public or uses credentials managed outside AdCP task payloads. Presenter-supplied credentials are never accepted.')]
 
 
@@ -60,7 +62,7 @@ class AcceptedIssuersItem(AdCPBaseModel):
     issuer: AttestationIssuer
     claim_types: Annotated[list[HttpUrl] | None, Field(description='Optional subset of accepted_claim_types this issuer may assert. Omit to allow any globally accepted claim type for this issuer.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     proof_formats: Annotated[list[HttpUrl] | None, Field(description='Optional subset of accepted_proof_formats allowed for this issuer. Omit to allow any globally accepted proof format for this issuer.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    credential_origins: Annotated[list[HttpUrl] | None, Field(description='Canonical HTTPS origins from which credential_uri locators may be fetched for this issuer. Exact origin matching happens after URL canonicalization and before DNS resolution. Paths in the credential URI may vary; userinfo is forbidden.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    credential_origins: Annotated[list[AttestationCapabilitiesAcceptedIssuersItemCredentialOriginsItem] | None, Field(description='Canonical HTTPS origins from which credential_uri locators may be fetched for this issuer. Exact origin matching happens after URL canonicalization and before DNS resolution. Paths in the credential URI may vary; userinfo is forbidden.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     resolvers: Annotated[list[ResolversItem] | None, Field(description='Evaluator-approved resolver endpoints for issuer_credential_id delivery. Presentations carry only resolver_id; they cannot replace url or authentication policy.', min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -74,7 +76,7 @@ class AcceptedVerifiersItem(AdCPBaseModel):
         UniqueItems('claim_types'),
         UniqueItems('proof_formats'),
     )
-    agent_url: HttpUrl
+    agent_url: AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl
     claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     proof_formats: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

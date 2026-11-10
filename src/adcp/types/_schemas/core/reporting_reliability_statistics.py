@@ -9,9 +9,9 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
-    HttpUrl,
     IntMin1,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
+    ReportingCanonicalContentDigestCanonicalizationUri,
     ReportingCanonicalizationContractGoldenVectorsAdditionalItemName,
     ReportingReliabilityStatisticsAdjustmentMagnitudeItemP50AbsoluteDelta,
     StrMinLen1MaxLen32,
@@ -67,7 +67,7 @@ class Evidence(AdCPBaseModel):
     )
     basis: Basis
     generated_at: AwareDatetime
-    attestation_uri: Annotated[HttpUrl | None, OmittedNotNull] = None
+    attestation_uri: Annotated[ReportingCanonicalContentDigestCanonicalizationUri | None, OmittedNotNull] = None
     attestation_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, OmittedNotNull] = None
 
 

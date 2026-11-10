@@ -157,6 +157,36 @@ def url_type(node: Mapping[str, Any]) -> str:
     """
     return f"{MODULE}.{URL if node.get('pattern') == HTTPS_ONLY else HTTP_URL}"
 
+
+def expressed_by_url_type(node: Mapping[str, Any]) -> frozenset[str]:
+    """Which of ``node``'s own constraint keywords the URL type :func:`url_type` picks
+    ALREADY STATES.
+
+    **The question a format can only answer per NODE, which is why it is here beside
+    :func:`url_type` and not a set beside :data:`URL`.**  ``AdCPUrl`` is
+    ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]`` and the one node it is
+    chosen at is the node whose own ``pattern`` is :data:`HTTPS_ONLY` -- so there the type
+    and the ``pattern`` are the SAME assertion stated once, and the keyword is EXPRESSED
+    rather than dropped.  That is :func:`url_type`'s own derivation read from the other
+    side: the type is chosen BY the pattern, so the type carries it.
+
+    ``HttpUrl`` expresses no constraint keyword at all.  ``UrlConstraints`` has no slot for
+    a regular expression and pydantic refuses to apply a string constraint to a URL type --
+    measured on 2.13.5, ``Annotated[HttpUrl, Field(pattern=...)]`` raises ``TypeError:
+    Unable to apply constraint 'pattern' to supplied value ... for schema of type
+    'function-wrap'``, and the ``pattern`` is absent from that annotation's rendered schema
+    as well.  So at every other ``uri`` pattern the type and the pattern are TWO assertions
+    and the type can carry only one of them.
+
+    Read by ``codegen.lower.scalars.selects_a_url_type``, the one function that decides
+    whether a ``uri`` selects its type here or takes the row's own fallback.  The
+    comparison is for EQUALITY against :data:`HTTPS_ONLY` for that constant's own stated
+    reason: a prefix test would claim ``allowed_schemes`` expresses a pattern that also
+    pins a host or forbids userinfo, which it does not.
+    """
+    return frozenset({"pattern"}) if node.get("pattern") == HTTPS_ONLY else frozenset()
+
+
 #: The constraint keywords a SCALAR can carry, in the order a symbol spells them,
 #: each with the word it contributes.  The ORDER is fixed here and not read off a
 #: document, so the name is a function of the constraint SET rather than of the

@@ -6,7 +6,12 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen1024, ZipAssetDigest
+from adcp.types.constraints import (
+    AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
+    HttpUrl,
+    StrMinLen1MaxLen1024,
+    ZipAssetDigest,
+)
 
 from .brand_ref import BrandReference
 from .ext import ExtensionObject
@@ -41,7 +46,7 @@ class AttestationAgentSubject(AttestationSubject):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-subject.json', pointer='#/oneOf/1')
     type: Literal['agent']
-    agent_url: Annotated[HttpUrl, Field(description='Canonical HTTPS endpoint of the agent the claim concerns.')]
+    agent_url: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='Canonical HTTPS endpoint of the agent the claim concerns.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

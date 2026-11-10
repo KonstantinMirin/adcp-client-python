@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1, HttpUrl
+from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, FloatMin0Max1, HttpUrl
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -75,7 +75,7 @@ class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/1')
     type: Literal['agent']
-    agent_url: HttpUrl
+    agent_url: AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

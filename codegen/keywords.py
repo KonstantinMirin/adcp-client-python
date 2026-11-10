@@ -747,8 +747,15 @@ _STRINGS: dict[str, Row] = {
             Effect.TYPE,
             True,
             None,
-            "`pattern` on the type, as a named alias. On `format: uri` → selects the "
-            "type instead, and the pattern stays with the schema half. The regex "
+            "`pattern` on the type, as a named alias. On `format: uri` → **both**: the "
+            "format selects a type only where that type STATES the pattern, which is "
+            "`^https://` and `AdCPUrl`'s `allowed_schemes` alone, and the node takes the "
+            "constrained `str` with `json_schema_extra={\"format\": \"uri\"}` at every "
+            "other pattern. The row read \"selects the type instead, and the pattern "
+            "stays with the schema half\" and that was a SILENT widening at 408 "
+            "positions in 115 documents: `strict_validate` applied it, the class did "
+            "not, and no `__adcp_approximations__` entry said so "
+            "(adcp-client-python-bgyd). The regex "
             "engine is derived per class, because a pattern using look-around needs "
             "Python's engine rather than Rust's.",
         ),
@@ -776,8 +783,12 @@ _STRINGS: dict[str, Row] = {
             "Selects a TYPE where the document's draft asserts the format and a type "
             "is named: `date-time` → `AwareDatetime`, `date` → `datetime.date`, `uri` "
             "→ a URL type chosen by `pattern`. Otherwise rides as "
-            '`json_schema_extra={"format": …}` on the field. A `uri` beside another '
-            "string constraint → refused: a URL type carries none.",
+            '`json_schema_extra={"format": …}` on the field. **A `uri` beside any '
+            "assertion the URL type does not itself state → the constrained `str`, and "
+            "the format rides**: a URL type carries no string constraint, so the type "
+            "is given up and both of the document's facts are kept. Where a constraint "
+            "is there to join it the format joins the NAMED TYPE rather than the field, "
+            "because an ELEM, a MAPV and a BRANCH have no field to ride on.",
         ),
         {
             **_group(

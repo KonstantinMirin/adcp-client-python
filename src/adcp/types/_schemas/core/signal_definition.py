@@ -376,7 +376,7 @@ class DataSubjectRights(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/data_subject_rights')
-    upstream_source_domain: Annotated[DataSubjectRightsUpstreamSourceDomain | None, Field(description='Domain of the upstream data source whose rights process these channels reach, when different from the publishing domain.', json_schema_extra={'format': 'hostname'}), OmittedNotNull] = None
+    upstream_source_domain: Annotated[DataSubjectRightsUpstreamSourceDomain | None, Field(description='Domain of the upstream data source whose rights process these channels reach, when different from the publishing domain.'), OmittedNotNull] = None
     channels: Annotated[list[ChannelsItem], Field(description='Rights request channels and the rights each channel supports. At least one declared channel MUST support one or more of access, erasure, or objection; schema validators enforce this with draft-07 contains, and consumers whose SDK drops contains need an equivalent runtime check.', min_length=1)]
     response_sla_days: Annotated[DataSubjectRightsResponseSlaDays | None, Field(description="Maximum response time in days for rights requests handled through the declared rights channels. For provider-published signals, providers SHOULD avoid duplicating this field across every signal unless the value varies by signal or upstream source; consumers MAY also consult the provider's public privacy policy or registry disclosures when present."), OmittedNotNull] = None
     ccpa_opt_out_url: Annotated[HTTPSURL | None, Field(description="US-specific 'Do Not Sell or Share' opt-out URL where required."), OmittedNotNull] = None

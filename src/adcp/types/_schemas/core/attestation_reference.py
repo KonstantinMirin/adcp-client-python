@@ -9,6 +9,7 @@ from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, RequiredGroups, Rule
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
+    AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
     HttpUrl,
     StrMinLen1,
     StrMinLen1MaxLen255,
@@ -27,7 +28,7 @@ class AttestationCredentialUriLocator(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/locator/oneOf/0')
     type: Literal['credential_uri']
-    credential_uri: Annotated[HttpUrl, Field(description='HTTPS URI of the credential. Before any fetch, evaluators MUST match its canonical origin to credential_origins on the accepted issuer capability and then apply the attestation fetch contract.')]
+    credential_uri: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='HTTPS URI of the credential. Before any fetch, evaluators MUST match its canonical origin to credential_origins on the accepted issuer capability and then apply the attestation fetch contract.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
@@ -78,7 +79,7 @@ class VerifyAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/verify_agent')
-    agent_url: HttpUrl
+    agent_url: AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl
 
 
 class AttestationReference(AdCPBaseModel):
