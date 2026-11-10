@@ -2033,11 +2033,18 @@ The boundary is structural — the subject's own members against everything belo
 function of the document and carries no number. An instance so bounded costs what the subject
 costs, which is why §9's cost sentence is a property of this rule rather than a separate target.
 
-**The store is a CACHE and not an artifact to commit.** It is regeneratable from the documents,
-content-addressed on each document's raw bytes and its raw reference closure
-(`harness.corpus_key`), so a document that changes invalidates its own entry and a cold store
-rebuilds without review. Same reading `examples` gets: the document decides, and nothing is
-written down that the document does not.
+**AND THE BOUNDARY IS WHAT RETIRES THE STORE, WHICH IS WHY IT IS STATED HERE AND NOT BESIDE A
+CACHE SETTING.** `final-state.md` reading 1 is already decided on this: a pair that can only be
+graded from a store is remembered rather than verified, so no corpus of values is held, committed
+or versioned, and construction is what makes the reading hold without one. An instance bounded by
+the subject's own members is cheap enough to build per pair, so there is no answer expensive
+enough to be worth keeping.
+
+A store may still exist as a pure saving — regeneratable from the documents and content-addressed
+on each document's raw bytes and its raw reference closure (`harness.corpus_key`) — but it decides
+nothing: every pair is graded by construction whether the store answers or not, and a cold run and
+a warm run do the same work. The moment a pair is green only because an entry exists, the store is
+load-bearing and the reading does not hold for that pair.
 
 **AND THE BUNDLE ALREADY STATES ITS OWN INSTANCES: `examples` IS THE SOURCE, AND THE HARNESS USES
 IT.** `examples` is JSON Schema's keyword for *this is a valid instance of

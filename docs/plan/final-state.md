@@ -294,25 +294,18 @@ below states it in full. Where §4's candidate list falls all the way to the ind
 prevent rather than an instance of the guarantee it makes — a consumer who imports it has to count
 the document's branches to learn what it is. So the class is declared, validated and dispatched to
 as a branch of its union, and it is at no public path; reading 4's placeholder rule and this
-sentence stood in contradiction for ten days while the surface published **six** such names.
-Measured on bundle 3.2: 6 classes of 3,092, over 6 modules of 4 domains, and the set is the
-compiler's own record (`emit.Emitted.positional`) rather than a list — a branch the bundle later
-titles rejoins this reading with nothing edited.
+sentence. The set is the compiler's own record (`emit.Emitted.positional`) rather than a list, so
+a branch the bundle later titles rejoins this reading with nothing edited.
 
-**AND THE TEST IS AN INDEX ANYWHERE IN THE SYMBOL, NOT AN INDEX AS ITS LAST SEGMENT.** The
-owner's decision of 2026-11-10, stated once. The first implementation read the narrower rule and
-withheld only the names whose OWN distinguishing part is an index, leaving five whose ANCESTOR's
-index survives in the spelling — `PostalAreaBranch9System`,
-`PostalCountrySystemBranch9System`, `BuyProductsRequestBranch1Account`, `…AccountId`,
-`…BrandOperator`. A caller still has to count a document's branches to know what `Branch9`
-selected before `System` narrowed it, so they are the same defect one remove out and are
-withheld on the same ground. The carve-out therefore reads: **a class whose public symbol
-contains an index-derived segment at any position is reached at no public path.**
+**AND THE TEST IS AN INDEX ANYWHERE IN THE SYMBOL, NOT AN INDEX AS ITS LAST SEGMENT**: a class
+whose public symbol contains an index-derived segment at any position is reached at no public
+path. An ancestor's index in the spelling is the same name, since a caller reading
+`PostalAreaBranch9System` must still count a document's branches to know what `Branch9` selected
+before `System` narrowed it.
 
-Withholding them does not weaken this reading. A withheld class is importable at none of the
-paths, which is what a name pending an upstream title is owed; this reading subtracts the
-withheld set from its own population, so "exactly one path" continues to hold over every class
-the surface offers.
+This reading continues to hold over every class the surface offers: a withheld class is
+importable at none of the paths, which is what a name pending an upstream title is owed, and the
+reading subtracts the withheld set from its own population.
 
 **AND AN UNTITLED INNER NODE IS EXPORTED UNDER ITS PARENT'S NAME AND ITS KEY, ALWAYS — NEVER ONLY
 WHEN THE KEY COLLIDES.** A domain carries many a `method`, a `target`, an `items`, so the key alone

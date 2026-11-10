@@ -1697,23 +1697,16 @@ AssetRequirementsBranch7)` has to count the document's branches to know that it 
 paragraph prescribed it. `codegen/lower/names.py`'s `A_POSITIONAL_NAME_IS_PRIVATE` is the
 implementation and `tests_emit/test_no_positional_name_is_public.py` is the gate.
 
-**AND THE RULE IS NO ORDINAL ANYWHERE IN A PUBLIC NAME, NOT MERELY AS THE DISTINGUISHING
-SEGMENT** — the owner's decision of 2026-11-10, stated here once and not to be re-read as the
-narrower thing. The first implementation withheld the six names whose OWN distinguishing part is
-an index and left five whose ANCESTOR's index survives in the spelling:
-`PostalAreaBranch9System`, `PostalCountrySystemBranch9System`,
-`BuyProductsRequestBranch1Account`, `…AccountId`, `…BrandOperator`. Those are the same defect at
-one remove — a caller still has to count a document's branches to know what `Branch9` selected
-before `System` narrowed it — so they are withheld on the same ground. **The test is the SYMBOL,
-not the final segment: a public name containing an index-derived segment at any position is
-private.**
+**THE TEST IS THE SYMBOL AND NOT ITS FINAL SEGMENT: a public name carrying an index-derived
+segment at any position is private.** An ancestor's index in the spelling is the same name — a
+caller reading `PostalAreaBranch9System` still has to count a document's branches to know what
+`Branch9` selected before `System` narrowed it.
 
-This is not an exception to reading 6 and does not weaken it. Reading 6 states that every class
-is importable at exactly ONE path; a withheld class is importable at none, which is what a
-placeholder pending an upstream title is owed, and the reading subtracts the withheld set from
-its own population (`emit.Emitted.positional`, read by
-`tests_emit/test_the_domain_surface.py`). Nothing is deleted: the class is still declared, still
-a branch of its union, and still validates every payload its document admits.
+Reading 6 continues to hold over every class the surface offers: a withheld class is importable
+at none of the paths, and the reading subtracts the withheld set from its own population
+(`emit.Emitted.positional`, read by `tests_emit/test_the_domain_surface.py`). Nothing is deleted
+— the class is declared, is a branch of its union, and validates every payload its document
+admits.
 
 **THE VOCABULARY, STATED ONCE.** These words are not used in this repository's documents,
 identifiers, docstrings, comments or commit messages, because each names something that already
@@ -1728,14 +1721,13 @@ has a standard word:
 | ladder | **precedence order** |
 | fence | the specific thing: **timeout**, **quota**, **limit**, **minimum**, **suppression list**, **regression threshold**, **reduced coverage** |
 
-`fence` has no single replacement because it never had one meaning: §14's own sentence enumerates
-what it stood for — a budget, a ratchet, a floor, an allowlist, a narrowed scope, a raised cap —
-and each of those is nameable. A word that covers six things describes none of them.
+The last has no single replacement because each thing it covered is nameable on its own: §14
+enumerates them as a budget, a ratchet, a floor, an allowlist, a narrowed scope and a raised cap.
 
-Two carve-outs, both measured. `codegen/keywords.py`'s `Rung`/`LADDER` name §2's WIDENING ORDER,
-a different subject from §4's naming candidates, and `rebuild-plan.md` already prescribes
-`Widening`/`WIDENING_ORDER` for them. And `src/adcp/` is excluded: 44 files there carry `fence`
-in upstream's own prose and are byte-identical to `4ed0bce87`, which
+Two carve-outs. `codegen/keywords.py`'s `Rung`/`LADDER` name §2's widening order, which is a
+different subject from §4's naming candidates and which `rebuild-plan.md` spells
+`Widening`/`WIDENING_ORDER`. And `src/adcp/` is excluded, because the files there carrying these
+words are upstream's own and are byte-identical to `4ed0bce87`, which
 `tests_emit/test_the_adapter_writer_owns_its_paths.py` grades.
 
 The walk computes no name, which is the semantics document's own
