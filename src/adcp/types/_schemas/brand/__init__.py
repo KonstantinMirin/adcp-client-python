@@ -21,8 +21,8 @@ from adcp.types.constraints import (
     IntMin100Max900,
     NonEmptyList,
     PropertyRegion,
+    StrFormatEmailMaxLen255,
     StrMaxLen100,
-    StrMaxLen255,
     StrMaxLen500,
     StrMinLen1,
     StrMinLen1MaxLen255,
@@ -160,7 +160,7 @@ class BrandDiscoveryContact(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/contact')
     name: StrMinLen1MaxLen255
-    email: Annotated[StrMaxLen255 | None, Field(json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    email: Annotated[StrFormatEmailMaxLen255 | None, OmittedNotNull] = None
     domain: Annotated[DomainName | None, OmittedNotNull] = None
 
 

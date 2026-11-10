@@ -18,7 +18,7 @@ class AnyOfItemAgentUrl(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/accepted-governance-agents.json', pointer='#/properties/any_of/items/oneOf/0')
     kind: Literal['agent_url']
-    agent_url: Annotated[AcceptedGovernanceAgentsAnyOfItemAgentUrl, Field(description='Exact canonical agent endpoint without userinfo, query, or fragment. Redirect targets, DNS aliases, and URLs asserted by the candidate do not satisfy this matcher.', json_schema_extra={'format': 'uri'})]
+    agent_url: Annotated[AcceptedGovernanceAgentsAnyOfItemAgentUrl, Field(description='Exact canonical agent endpoint without userinfo, query, or fragment. Redirect targets, DNS aliases, and URLs asserted by the candidate do not satisfy this matcher.')]
 
 
 class AnyOfItemVerification(AdCPBaseModel):
@@ -30,7 +30,7 @@ class AnyOfItemVerification(AdCPBaseModel):
         UniqueItems('verification_modes'),
     )
     kind: Literal['verification']
-    registry: Annotated[AcceptedGovernanceAgentsAnyOfItemAgentUrl, Field(description='Seller-configured trusted verification registry without userinfo, query, or fragment. The candidate cannot supply or override this URL; fetches use the registry-resolution security contract.', json_schema_extra={'format': 'uri'})]
+    registry: Annotated[AcceptedGovernanceAgentsAnyOfItemAgentUrl, Field(description='Seller-configured trusted verification registry without userinfo, query, or fragment. The candidate cannot supply or override this URL; fetches use the registry-resolution security contract.')]
     role: Annotated[AnyOfItemRole, Field(description="Role asserted by the trusted registry's verified record, never by candidate self-description.")]
     adcp_version: Annotated[AnyOfItemAdcpVersion, Field(description='Registry protocol version in canonical MAJOR.MINOR form.')]
     verification_modes: Annotated[list[VerificationMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]

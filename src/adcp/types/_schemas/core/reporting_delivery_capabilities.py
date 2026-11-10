@@ -24,8 +24,8 @@ class OperationsContact(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    url: Annotated[OperationsContactUrl | None, Field(description='HTTPS page a human uses to open or track a reporting issue, such as a support portal or status page. Same hardened origin shape as the offering document URIs: never an IP literal, userinfo URL, loopback host, AdCP task endpoint, webhook target, or credentialed link.', json_schema_extra={'format': 'uri'}), OmittedNotNull] = None
-    email: Annotated[StrFormatEmailMaxLen254 | None, Field(description='Monitored operations mailbox for reporting escalations. A role address, not an individual.', json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    url: Annotated[OperationsContactUrl | None, Field(description='HTTPS page a human uses to open or track a reporting issue, such as a support portal or status page. Same hardened origin shape as the offering document URIs: never an IP literal, userinfo URL, loopback host, AdCP task endpoint, webhook target, or credentialed link.'), OmittedNotNull] = None
+    email: Annotated[StrFormatEmailMaxLen254 | None, Field(description='Monitored operations mailbox for reporting escalations. A role address, not an individual.'), OmittedNotNull] = None
 
 
 class ReportingDeliveryCapabilities(AdCPBaseModel):

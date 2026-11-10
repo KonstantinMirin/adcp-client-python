@@ -2056,18 +2056,31 @@ PATTERN.
 and the document agree.
 
 ``HttpUrl`` -- pydantic's own, re-exported here so that both arms are named in one
-place -- annotates every other ``uri`` field.  ``AdCPUrl`` everywhere was tried and
+place -- annotates every other ``uri`` field whose document asserts NOTHING ELSE.
+``AdCPUrl`` everywhere was tried and
 withdrawn: ``format: uri`` is RFC 3986, so a document stating only
 ``{"type": "string", "format": "uri"}`` admits ``http://``, ``urn:`` and
 ``file:///`` as well, and refusing those made the SDK stricter than the spec it
 implements -- at 228 of 300 positions.  ``HttpUrl`` still refuses ``urn:`` and
 ``file:``, which is a named ceiling rather than an oversight.
 
-Either way the document's own ``pattern`` stays with the schema half: the bundle
-states eight distinct ones across 73 of its 300 ``uri`` uses, and no URL type can
-carry a ``pattern`` at all -- pydantic refuses to build one.  ``strict_validate``
-applies the document before the constructor ever runs, so the accepted set at the
-entry point is the document's.
+**A ``uri`` NODE THAT ASSERTS ANYTHING THE URL TYPE DOES NOT STATE KEEPS THE
+ASSERTION AND GIVES UP THE TYPE**, and a ``pattern`` is such an assertion.  No URL
+type can carry a ``pattern`` at all -- pydantic refuses to build one -- so the node
+becomes a constrained ``str`` here with the format riding as
+``json_schema_extra={"format": "uri"}``, and BOTH of the document's facts are in the
+annotation.  ``^https://`` is the one exception and it is not an exception to the
+rule: that pattern IS ``AdCPUrl``'s ``allowed_schemes``, so the type states it.
+
+What stood here read "either way the document's own ``pattern`` stays with the schema
+half ... ``strict_validate`` applies the document before the constructor ever runs, so
+the accepted set at the entry point is the document's", and the last clause is true of
+the ENTRY POINT and false of the CLASS.  A consumer who constructs got a field wider
+than its document at 408 positions in 115 documents, with no
+``__adcp_approximations__`` entry to say so -- measured on
+``core/reference-renderer.json``'s ``provenance.source_repository``, whose document
+pins ``^https://github\\.com/`` and calls the field an allowlist, and whose class
+round-tripped four non-GitHub URLs (``adcp-client-python-bgyd``).
 """'''
 
 

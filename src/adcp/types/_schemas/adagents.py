@@ -13,6 +13,7 @@ from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
     AdCPAgentsAuthorizationFormatsItemFormatRevision,
     HttpUrl,
+    StrFormatEmailMinLen1MaxLen255,
     StrMinLen1MaxLen100,
     StrMinLen1MaxLen255,
 )
@@ -90,7 +91,7 @@ class Contact(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/contact')
     name: Annotated[StrMinLen1MaxLen255, Field(description="Name of the entity managing this file (e.g., 'Meta Advertising Operations', 'Clear Channel Digital')")]
-    email: Annotated[StrMinLen1MaxLen255 | None, Field(description='Contact email for questions or issues with this authorization file', json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    email: Annotated[StrFormatEmailMinLen1MaxLen255 | None, Field(description='Contact email for questions or issues with this authorization file'), OmittedNotNull] = None
     domain: Annotated[DomainName | None, Field(description='Primary domain of the entity managing this file'), OmittedNotNull] = None
     seller_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller ID from IAB Tech Lab sellers.json (if applicable)'), OmittedNotNull] = None
     tag_id: Annotated[StrMinLen1MaxLen100 | None, Field(description='TAG Certified Against Fraud ID for verification (if applicable)'), OmittedNotNull] = None

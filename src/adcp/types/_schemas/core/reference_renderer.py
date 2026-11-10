@@ -8,9 +8,9 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationFormatsItemFormatRevision,
-    HttpUrl,
     Integrity,
     Package,
+    ProvenanceSourceRepository,
     ProvenanceWorkflowPath,
     StrMinLen1,
     Version,
@@ -22,7 +22,7 @@ class ReferenceRendererProvenance(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reference-renderer.json', pointer='#/properties/provenance')
-    source_repository: Annotated[HttpUrl, Field(description='Allowlisted source repository that the npm provenance attestation MUST identify.')]
+    source_repository: Annotated[ProvenanceSourceRepository, Field(description='Allowlisted source repository that the npm provenance attestation MUST identify.')]
     workflow_path: Annotated[ProvenanceWorkflowPath, Field(description='Repository-relative GitHub Actions workflow path that npm provenance buildDefinition.externalParameters.workflow.path MUST identify.')]
 
 

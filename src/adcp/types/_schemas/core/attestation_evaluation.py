@@ -8,7 +8,14 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1, HttpUrl, ReasonCodesItem, StrMinLen1MaxLen1024, ZipAssetDigest
+from adcp.types.constraints import (
+    AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
+    FloatMin0Max1,
+    HttpUrl,
+    ReasonCodesItem,
+    StrMinLen1MaxLen1024,
+    ZipAssetDigest,
+)
 
 from .ext import ExtensionObject
 
@@ -77,8 +84,8 @@ class AttestationEvaluation(AdCPBaseModel):
     proof_format: Annotated[HttpUrl | None, Field(description='Absolute URI identifying the credential/proof format used to interpret and hash obtained credential bytes. REQUIRED whenever credential_digest is present.'), OmittedNotNull] = None
     outcome: Annotated[Outcome, Field(description='Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.')]
     evaluated_at: AwareDatetime
-    evaluated_by: Annotated[HttpUrl, Field(description='Canonical agent URL of the evaluator-of-record that produced this result, even when it delegated proof checking to an accepted verifier.')]
-    verifier_agent_url: Annotated[HttpUrl | None, Field(description='Accepted verifier agent actually used, when verification was delegated. Omit for local verification or when no verifier was called.'), OmittedNotNull] = None
+    evaluated_by: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='Canonical agent URL of the evaluator-of-record that produced this result, even when it delegated proof checking to an accepted verifier.')]
+    verifier_agent_url: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl | None, Field(description='Accepted verifier agent actually used, when verification was delegated. Omit for local verification or when no verifier was called.'), OmittedNotNull] = None
     reason_codes: Annotated[list[ReasonCodesItem] | None, Field(description='Open, machine-readable reason identifiers supplied by the evaluator. Consumers MUST branch on outcome, not on free-form or evaluator-specific reason codes.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator-produced confidence in the normalized outcome on the AdCP 0–1 scale. This is evaluation output, never copied from an authoritative presenter field. Omit when the proof or evaluator does not support a meaningful confidence score.'), OmittedNotNull] = None
     revocation_checked_at: Annotated[AwareDatetime | None, Field(description='When the evaluator last checked authoritative revocation state. Its freshness is governed by proof format and evaluator policy.'), OmittedNotNull] = None
