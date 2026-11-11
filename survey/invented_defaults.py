@@ -1211,6 +1211,358 @@ def _report_ours(records: dict[str, dict]) -> int:
     return 0
 
 
+
+#: WHOSE each pair of the set is, which is ``adcp-client-python-0z0u``'s own question and the
+#: one thing the four :data:`KINDS` do not answer.  A kind says what the document states AT
+#: the position; this says who is wrong about it:
+WHOSE = {
+    "THEIRS": (
+        "the document states no `default` for this property ANYWHERE the instance can reach "
+        "-- not at the position, not in a conjunct, not through a `$ref`, not in a branch of a "
+        "disjunction, not in an `if`/`then`/`else`, and not at any other position of the same "
+        "document that declares the property -- and the conjunction REQUIRES it.  So the "
+        "default is upstream's generator's own, and every test of theirs that omits the "
+        "property cannot pass against a class that honours the document"
+    ),
+    "OURS": (
+        "the document DOES state a `default` for this property somewhere the conjunction "
+        "reaching the position holds against the same instance, and our emitted class does "
+        "not carry it.  The keyword is named in the row.  This is the only outcome of the "
+        "three that is a defect of this compiler"
+    ),
+    "ELSEWHERE": (
+        "a `default` for this property is stated in the document but NOT where the "
+        "conjunction at this position reaches it -- a branch of a disjunction the instance need "
+        "not have taken, an `if`/`then` whose condition is not asserted here, or another "
+        "position of the same document entirely.  Neither side reads it there, and neither "
+        "side is wrong to: draft-07 does not hold a branch's statement against an instance that "
+        "took another branch.  Reported with WHERE it is stated so the reading can be argued"
+    ),
+}
+
+#: Where a widened search for a ``default`` looks, beyond what :func:`stated_value` reads.
+#:
+#: **EACH IS A PLACE THE ROW'S OWN QUESTION NAMES** -- "an enclosing ``allOf``, a ``$ref``
+#: target, a sibling ``if``/``then``" -- and the first two are already inside
+#: :func:`conjoined`, which is why only the last two are new here.  ``dependencies`` is not
+#: looked in: it states a schema that applies when ANOTHER property is present, so a default
+#: under it is conditioned on a key this reading has not asserted, which is the same thing an
+#: branch is and would be reported as :data:`WHOSE`'s ``ELSEWHERE`` under a different name.
+WIDENED = ("branch-of-a-disjunction", "if-then-else", "another-position-of-the-document")
+
+
+def _default_for(node: object, field: str) -> str | None:
+    """The ``default`` one node states for ``field``, as canonical JSON, or ``None``."""
+    if not isinstance(node, dict):
+        return None
+    declared = node.get("properties")
+    if not isinstance(declared, dict):
+        return None
+    held = declared.get(field)
+    if isinstance(held, dict) and "default" in held:
+        return json.dumps(held["default"], sort_keys=True)
+    return None
+
+
+def _conditional_nodes(root: dict, nodes: list[dict]) -> list[dict]:
+    """The ``if``/``then``/``else`` sub-nodes of a conjunction, through the store.
+
+    Read as a SEPARATE place and not folded into :func:`conjoined`, which is the distinction
+    that makes the answer honest: draft-07 applies ``then`` only to an instance the ``if``
+    accepts, so a ``default`` there is not one the conjunction states unconditionally.  A pair
+    whose only default is here is :data:`WHOSE`'s ``ELSEWHERE`` and not ``OURS``.
+    """
+    out: list[dict] = []
+    for node in nodes:
+        for keyword in ("if", "then", "else"):
+            found = through_the_store(node.get(keyword), root)
+            if isinstance(found, dict):
+                out.extend(_conjuncts(root, found))
+    return out
+
+
+def default_elsewhere(
+    root: dict, pointer: str, field: str, positions: dict[str, Position]
+) -> tuple[str, str, str]:
+    """``(where, at, value)`` for a ``default`` this reading finds OUTSIDE the conjunction.
+
+    ``("", "", "")`` where the document states none anywhere.  The three places are
+    :data:`WIDENED`, asked in that order, so the nearest statement is the one reported.
+
+    **ASKED OF THE PROPERTY AND NEVER OF THE FIELD NAME**: ``field`` here is the WIRE key the
+    caller already resolved from upstream's own declaration, so nothing is inferred from the
+    python attribute's spelling -- which is ``adcp-client-python-0z0u``'s instruction read
+    literally ("derive; do not infer from the field name").
+    """
+    for disjunction in arms_at(root, pointer):
+        for node in disjunction:
+            for found in _conjuncts(root, node):
+                value = _default_for(found, field)
+                if value is not None:
+                    return "branch-of-a-disjunction", pointer, value
+    for node in _conditional_nodes(root, conjoined(root, pointer)):
+        value = _default_for(node, field)
+        if value is not None:
+            return "if-then-else", pointer, value
+    for other in sorted(positions):
+        if other == pointer:
+            continue
+        try:
+            held = conjoined(root, other)
+        except _RAISES:
+            continue
+        for node in held:
+            value = _default_for(node, field)
+            if value is not None:
+                return "another-position-of-the-document", other, value
+    return "", "", ""
+
+
+class Whose(NamedTuple):
+    """One pair of the set, attributed."""
+
+    whose: str
+    kind: str
+    upstream: str
+    field: str
+    document: str
+    pointer: str
+    upstream_default: str
+    document_states: str
+    #: Where a ``default`` was found outside the conjunction, or ``""``.
+    elsewhere: str
+    #: The pointer that statement sits at, or ``""``.
+    elsewhere_at: str
+    #: What our own emitted class does with the field: ``required``, a default, or absent.
+    ours: str
+
+
+
+def _a_rule_names(cls: Any, wire: str) -> bool:
+    """Does a RULE of this class carry the requirement the annotation does not?
+
+    **AN OPTIONAL ANNOTATION IS NOT LAXNESS WHERE A RULE REFUSES THE SAME OBJECT.**  Where the
+    document states a disjunction and SOME branch requires a property, the requirement cannot
+    sit on the annotation -- no branch is the whole position -- so this compiler puts it in a
+    rule and the class refuses an instance satisfying none.  Measured on
+    ``core/attestation-evaluation.json#/properties/action_binding``: our ``ActionBinding``
+    carries ``RequiredGroups(groups=(('action_id',), ('action_digest',)), combinator='anyOf')``
+    and ``strict_validate({'action_type': 'x'})`` is REFUSED, while upstream's class admits it.
+
+    Read off the class's own ``_adcp_rules`` by the NAMES each rule holds, so a rule kind this
+    does not know about answers ``False`` rather than silently passing.
+    """
+    for rule in getattr(cls, "_adcp_rules", ()) or ():
+        for group in getattr(rule, "groups", ()) or ():
+            if wire in group:
+                return True
+    return False
+
+def attribute(
+    rows: list[Row], records: dict[str, dict], package: str = OURS
+) -> list[Whose]:
+    """Each of the set's pairs as :data:`WHOSE`, with the document and pointer it is read at.
+
+    **THE THREE OUTCOMES ARE DECIDED BY THE DOCUMENT AND NOT BY THE KIND.**  A kind is what
+    the document states at the position; this asks the further question the row needs -- is
+    there a ``default`` for this property anywhere, and does our class carry it:
+
+    1. the conjunction's own reading states a ``default`` (:func:`stated_value`'s second
+       keyword) and ours does not carry it -> ``OURS``, with the keyword named;
+    2. a widened search finds one somewhere the conjunction does not reach ->
+       ``ELSEWHERE``, with where;
+    3. nothing anywhere -> ``THEIRS``.
+
+    Our side is read off the emitted classes the same way :func:`ours` reads them, by the
+    class's own ``__adcp_schema__`` and its pydantic field, so "ours does not carry it" is a
+    measurement of this tree and not an assumption about it.
+    """
+    # **OUR SIDE IS READ WITH THE SAME THREE OUTCOMES ``ours()`` USES, and the third is the
+    # one that matters here.**  A default on a class of ours is not laxness where the class is
+    # a union BASE and the requirement is carried by its branches -- ``_disjunction_base`` is
+    # that reading, and it is the same function ``ours()`` decides by, so the two readings of
+    # our tree cannot come to disagree.  Measured: 115 of the 867 land on a class of ours that
+    # defaults the field, and every one is a base of that kind.
+    mine: dict[tuple[str, str, str], str] = {}
+    for _key, cls in our_classes(package):
+        ref = cls.__adcp_schema__
+        document = document_for(ref.document, records)
+        record = records.get(document) if document else None
+        pointer = "" if ref.pointer == "#" else ref.pointer.lstrip("#")
+        for name, info in cls.model_fields.items():
+            wire = info.alias or name
+            if info.is_required():
+                mine[(ref.document, pointer, wire)] = "required"
+                continue
+            base = False
+            if record is not None:
+                try:
+                    base = _disjunction_base(record, pointer, wire, cls)
+                except _RAISES:
+                    base = False
+            mine[(ref.document, pointer, wire)] = (
+                "disjunction-base"
+                if base
+                else "carried-by-a-rule"
+                if _a_rule_names(cls, wire)
+                else f"default={json.dumps(info.default, default=str, sort_keys=True)}"
+            )
+
+    out: list[Whose] = []
+    positions: dict[str, dict[str, Position]] = {}
+    for row in rows:
+        document = document_for(row.document, records)
+        record = records.get(document) if document else None
+        # A row whose pointer column names SEVERAL candidate positions is read at the first:
+        # the set's own derivation emitted it only where every candidate AGREES about the
+        # field (``verdict-depends-on-position`` is the refusal for the rest), so any one of
+        # them answers and the first is not a pick between disagreeing readings.
+        pointer = row.pointer.split(",")[0]
+        states = row.document_states
+        ours_says = mine.get((row.document, pointer, row.field), "not-declared-here")
+        if record is None:
+            out.append(
+                Whose("ELSEWHERE", row.kind, row.upstream, row.field, row.document, pointer,
+                      row.upstream_default, states, "document-absent", "", ours_says)
+            )
+            continue
+        if states.startswith("default="):
+            whose = "OURS" if not ours_says.startswith("default=") else "THEIRS"
+            out.append(
+                Whose(whose, row.kind, row.upstream, row.field, row.document, pointer,
+                      row.upstream_default, states, "", "", ours_says)
+            )
+            continue
+        if document not in positions:
+            positions[document] = object_positions(record)
+        try:
+            where, at, _ = default_elsewhere(record, pointer, row.field, positions[document])
+        except _RAISES:
+            where, at = "", ""
+        if where:
+            out.append(
+                Whose("ELSEWHERE", row.kind, row.upstream, row.field, row.document, pointer,
+                      row.upstream_default, states, where, at, ours_says)
+            )
+            continue
+        out.append(
+            Whose("THEIRS", row.kind, row.upstream, row.field, row.document, pointer,
+                  row.upstream_default, states, "", "", ours_says)
+        )
+    return out
+
+
+#: Upstream's own behavioural suite, on this branch.  ``tests/`` is THEIRS here and
+#: ``tests_emit/`` is ours, which is the same reading ``./check`` makes of which directory
+#: holds the suite.
+UPSTREAM_TESTS = ROOT / "tests"
+
+#: Upstream's own test files that grade THEIR GENERATOR rather than SDK behaviour, DECLARED in
+#: this repository because no predicate over a path separates them.  104 of their 681
+#: ``test_*.py``; the remaining 577 are the behavioural set every drop-in figure is over.
+GENERATOR_TESTS = ROOT / "survey" / "dropin" / "upstream-tests-about-their-generator.txt"
+
+
+def _constructs_without(call: ast.Call, field: str) -> bool:
+    """Does this call construct something WITHOUT naming ``field``, and with no ``**`` splat?
+
+    A ``**kwargs`` call cannot be read: the field may be in the mapping, so such a site is not
+    counted -- the figure is a FLOOR and a site this cannot decide must not inflate it.
+    """
+    if any(word.arg is None for word in call.keywords):
+        return False
+    return all(word.arg != field for word in call.keywords)
+
+
+def tests_depending_on(pairs: list[Whose], where: Path = UPSTREAM_TESTS) -> dict[str, object]:
+    """How many of upstream's own behavioural TESTS depend on a ``THEIRS`` default.
+
+    **THE FLOOR AND NOT THE TOTAL.**  A test depends on one of these defaults when it
+    constructs one of the set's classes and does NOT pass the field -- the class fills it in,
+    and a class honouring the document refuses the same call.  Counted per TEST FUNCTION, not
+    per site, because a function is what passes or fails.
+
+    Parsed with ``ast`` and never grepped, so a class named in a string or a comment is not a
+    construction.  Two screens keep it a floor: a call carrying ``**`` is skipped (the field
+    may be in the mapping), and a file on :data:`GENERATOR_TESTS` is attributed to the 104 that
+    grade upstream's generator rather than to the 577 behavioural ones -- the denominator this
+    repository already declares.
+
+    **TWO IDIOMS, because one of them is the dominant one.**  A keyword construction
+    ``X(a=1)`` is read from the call's own keywords; a ``X.model_validate({...})`` is read from
+    the dict LITERAL's own keys, where the payload is a literal at the call site.  A payload
+    built elsewhere and passed by name is not read -- the keys are not at the site -- so the
+    number stays a floor, and the two idioms are counted separately so a reader can see which
+    is carrying it.
+    """
+    by_class: dict[str, set[str]] = collections.defaultdict(set)
+    for pair in pairs:
+        if pair.whose == "THEIRS":
+            by_class[pair.upstream.rsplit(".", 1)[1]].add(pair.field)
+    declared = {
+        line.strip()
+        for line in GENERATOR_TESTS.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+    behavioural: set[tuple[str, str]] = set()
+    generator: set[tuple[str, str]] = set()
+    files: set[str] = set()
+    idioms: collections.Counter[str] = collections.Counter()
+    sites = 0
+    for path in sorted(where.rglob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        name = str(path.relative_to(ROOT))
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if not node.name.startswith("test"):
+                continue
+            for inner in ast.walk(node):
+                if not isinstance(inner, ast.Call):
+                    continue
+                omitted = False
+                if isinstance(inner.func, ast.Name) and by_class.get(inner.func.id):
+                    omitted = any(
+                        _constructs_without(inner, field) for field in by_class[inner.func.id]
+                    )
+                    if omitted:
+                        idioms["keyword-construction"] += 1
+                elif (
+                    isinstance(inner.func, ast.Attribute)
+                    and inner.func.attr in ("model_validate", "model_validate_json")
+                    and isinstance(inner.func.value, ast.Name)
+                    and by_class.get(inner.func.value.id)
+                    and inner.args
+                    and isinstance(inner.args[0], ast.Dict)
+                ):
+                    keys = {
+                        k.value
+                        for k in inner.args[0].keys
+                        if isinstance(k, ast.Constant) and isinstance(k.value, str)
+                    }
+                    if None in inner.args[0].keys:
+                        continue  # a ``**`` splat: the field may be in the mapping
+                    omitted = any(
+                        field not in keys for field in by_class[inner.func.value.id]
+                    )
+                    if omitted:
+                        idioms["model_validate-dict-literal"] += 1
+                if omitted:
+                    sites += 1
+                    files.add(name)
+                    (generator if name in declared else behavioural).add((name, node.name))
+    return {
+        "classes_with_a_theirs_default": len(by_class),
+        "idioms": dict(idioms),
+        "sites": sites,
+        "files": sorted(files),
+        "behavioural_tests": sorted(behavioural),
+        "generator_tests": sorted(generator),
+    }
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -1224,6 +1576,17 @@ def main(argv: list[str] | None = None) -> int:
         "--ours",
         action="store_true",
         help="ask OUR tree the identical question instead of upstream's (survey.ours)",
+    )
+    parser.add_argument(
+        "--attribute",
+        type=Path,
+        default=None,
+        help="write the WHOSE attribution of every pair -- OURS, THEIRS or ELSEWHERE",
+    )
+    parser.add_argument(
+        "--tests",
+        action="store_true",
+        help="count upstream's own tests that depend on a THEIRS default (needs --attribute)",
     )
     args = parser.parse_args(argv)
 
@@ -1263,6 +1626,45 @@ def main(argv: list[str] | None = None) -> int:
             + "\n"
         )
         print(f"-> {args.unread}")
+
+    if args.attribute or args.tests:
+        pairs = attribute(rows, records)
+        if not pairs:
+            raise SystemExit("REFUSED: no pair attributed -- every figure over it is vacuous")
+        print()
+        print("WHOSE IS IT:")
+        for whose, n in sorted(collections.Counter(p.whose for p in pairs).items()):
+            print(f"  {n:5d}  {whose}")
+        print("  by kind:")
+        for key, n in sorted(collections.Counter((p.whose, p.kind) for p in pairs).items()):
+            print(f"    {n:5d}  {key[0]:<10} {key[1]}")
+        print("  what OUR class does with the same field:")
+        by_ours = collections.Counter((p.whose, p.ours.split("=")[0]) for p in pairs)
+        for key, n in sorted(by_ours.items()):
+            print(f"    {n:5d}  {key[0]:<10} ours={key[1]}")
+        elsewhere = collections.Counter(p.elsewhere for p in pairs if p.elsewhere)
+        for key, n in sorted(elsewhere.items()):
+            print(f"    {n:5d}  ELSEWHERE via {key}")
+        if args.attribute:
+            lines = ["\t".join(Whose._fields)]
+            lines += ["\t".join(str(v) for v in p) for p in sorted(pairs)]
+            args.attribute.write_text("\n".join(lines) + "\n")
+            print(f"-> {args.attribute}")
+        if args.tests:
+            census = tests_depending_on(pairs)
+            print()
+            print("UPSTREAM TESTS THAT DEPEND ON A *THEIRS* DEFAULT (a floor):")
+            held = census["classes_with_a_theirs_default"]
+            print(f"  {held:5d}  classes of the set carrying a THEIRS default")
+            print(f"  {census['sites']:5d}  sites omitting such a field, by idiom:")
+            for idiom, n in sorted(census["idioms"].items()):
+                print(f"      {n:5d}  {idiom}")
+            print(f"  {len(census['files']):5d}  files")
+            behav, gen = census["behavioural_tests"], census["generator_tests"]
+            print(f"  {len(behav):5d}  TEST FUNCTIONS in the 577 behavioural files")
+            print(f"  {len(gen):5d}  TEST FUNCTIONS in the 104 generator files")
+            for name in census["files"]:
+                print(f"      {name}")
     return 0
 
 
