@@ -69,6 +69,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -517,6 +518,69 @@ def drop_their_generator_tests(out: Path) -> dict[str, object]:
     return {"their generator tests deleted": len(declared)}
 
 
+def deselect_the_delete_set(out: Path) -> dict[str, object]:
+    """The DELETE set removed from the run, DERIVED over the tree that was just laid.
+
+    **THIS IS THE FILE-LEVEL REMOVAL ABOVE, CARRIED DOWN TO THE FUNCTION.**
+    :func:`drop_their_generator_tests` takes 104 whole files whose SUBJECT is their
+    generator.  What is left over is 147 individual test functions, scattered through 65
+    files that are otherwise behavioural, whose ASSERTION is about upstream's own
+    representation: ``__module__``, ``__all__``, ``model_fields``, the annotation object,
+    ``sys.modules``, pydantic's private attributes.  There is no behaviour behind one of
+    them -- no payload, no envelope, no value a document admits or refuses -- so no
+    replacement generator can pass them, and a denominator that counts them is a figure
+    this project could never earn.
+
+    **DERIVED HERE AND NEVER WRITTEN DOWN.**  ``survey/upstream_test_character.py`` is the
+    classifier and ``--delete-tsv`` is its output; this calls it against ``out`` rather than
+    against a recorded list, so the table deselects over the files that are THERE.  That is
+    the discipline :func:`population` already follows, and it is what makes a stale row
+    impossible rather than merely unlikely.
+
+    **AND IT DESELECTS RATHER THAN EXCISES, which §8a decides.**  :func:`audit` calls any
+    retained file that is not byte-identical to upstream's ``UPSTREAM EDITED``, and an edit
+    in a disposable tree is a fork beginning.  Cutting 147 functions out would make 65 of
+    upstream's test files edits; deselecting them leaves every one of those files
+    byte-identical and still takes them out of the count.  ``survey/dropin/deselect.py``
+    carries the rest of that reading, including why a row matching nothing fails the run.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import upstream_test_character as character
+
+    rows: list[dict] = []
+    for path in sorted((out / "tests").rglob("test_*.py")):
+        for row in character.classify(path):
+            row["file"] = str(path.relative_to(out))
+            rows.append(row)
+    deleted = sorted(
+        (r for r in rows if r["verdict"] == "DELETE"), key=lambda r: (r["file"], r["test"])
+    )
+    lines = [
+        "# DERIVED by survey/upstream_test_character.py over this tree -- do not edit.",
+        "# Each row is a test function whose ASSERTION is about upstream's own",
+        "# implementation.  survey/dropin/deselect.py deselects exactly these at",
+        "# collection, so they leave the denominator with no file of upstream's changed.",
+        "path\ttest\treason\tassertion",
+    ]
+    for row in deleted:
+        lines.append(
+            f"{row['file']}\t{row['test']}\t{row['why']}\t{' '.join(row['assertion'].split())}"
+        )
+    (out / "deselect.tsv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (out / "deselect.py").write_text(
+        (PAYLOAD / "deselect.py").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    by_reason = collections.Counter(r["why"] for r in deleted)
+    return {
+        "test functions deselected": len(deleted),
+        "files they are spread over": len({r["file"] for r in deleted}),
+        "test functions retained": sum(1 for r in rows if r["verdict"] != "DELETE"),
+        "PORT (kept, re-pointed by the finder)": sum(1 for r in rows if r["verdict"] == "PORT"),
+        "BEHAVIOUR (kept, must pass)": sum(1 for r in rows if r["verdict"] == "BEHAVIOUR"),
+        "reasons": dict(by_reason.most_common()),
+    }
+
+
 def _declared_lines(path: Path) -> list[str]:
     return [
         line.strip()
@@ -614,18 +678,49 @@ def _against_the_committed_tree(
     return agree, differ
 
 
+def _composes_the_surface(path: Path) -> bool:
+    """Is this module of ours the one-line PUBLIC path over a ``_surface`` aggregator?
+
+    ``adcp.types.<domain>`` is a two-file arrangement: ``codegen/emit.py``'s ``SURFACE``
+    writes ``adcp/types/_surface/<domain>.py`` outright and compares it byte for byte, and
+    ``adcp/types/<domain>.py`` is a hand-written composition whose whole body is
+    ``from ._surface.<domain> import *`` with that aggregator's own ``__all__``.  The
+    compiler owns the first and does not write the second, so a graft that copies only the
+    emitter's output lands a tree where ``adcp.types.core`` does not exist.
+
+    Read off the file rather than listed, for the reason every other population in this
+    module is: a 24th domain must arrive by a run reporting it.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return f"from ._surface.{path.stem} import *" in text
+
+
 def _copy_ours_beside(types: Path) -> list[str]:
-    """``__init__.py``, ``_base.py``, ``_runtime.py``, ``compat.py`` -- and only those.
+    """The four named modules, AND every public domain path that composes ``_surface``.
 
     ``compat.py`` is generated in THIS repository by ``survey/alias_surface.py``, whose input
     is upstream's wheel surface and whose gate is
     ``tests/test_the_alias_layer_is_names.py``; it is committed here as that run's artifact
     and copied, not re-derived, because re-deriving it inside a build would put this
     repository's alias decisions downstream of a measurement that reads them.
+
+    **AND THE DOMAIN COMPOSITIONS GO WITH THEM, which the four-name list used to miss.**
+    Measured on this trunk: ``compat.py``'s first statement is
+    ``from adcp.types.a2ui import ...``, and with no ``a2ui.py`` beside the emit the alias
+    module raised at import -- through ``adcp.types.__getattr__`` -> ``_alias_module`` ->
+    ``compat`` -- and took **366 of upstream's 577 behavioural files** with it at collection
+    (287 on ``a2ui``, 69 on ``base``, the rest on ``registry``, ``legacy``, ``core``,
+    ``capabilities``, ``error_narrowing``).  The list was written before
+    ``codegen/emit.py``'s ``SURFACE`` split the public path from the aggregator; the
+    compositions are its other half and the graft is not complete without them.
     """
     copied = []
+    source_dir = ROOT / "src" / DIST / "types"
     for name in OURS_BESIDE_THE_EMIT:
-        source = ROOT / "src" / DIST / "types" / name
+        source = source_dir / name
         if not source.is_file():
             raise SystemExit(f"this repository has no src/{DIST}/types/{name} to graft")
         text = source.read_text(encoding="utf-8")
@@ -633,6 +728,59 @@ def _copy_ours_beside(types: Path) -> list[str]:
             text = text.rstrip("\n") + "\n" + TYPES_INIT_TAIL
         (types / name).write_text(text)
         copied.append(name)
+    for source in sorted(source_dir.glob("*.py")):
+        if source.name in OURS_BESIDE_THE_EMIT or not _composes_the_surface(source):
+            continue
+        (types / source.name).write_text(source.read_text(encoding="utf-8"))
+        copied.append(source.name)
+    if not any(name not in OURS_BESIDE_THE_EMIT for name in copied):
+        raise SystemExit(
+            "no public domain composition was found beside the emit: either the "
+            "`_surface` split has moved or this repository's `adcp/types/<domain>.py` "
+            "files are gone, and the grafted tree would have no public domain path."
+        )
+    copied += _copy_the_package_root_modules_they_lack(types.parent)
+    return copied
+
+
+def _copy_the_package_root_modules_they_lack(package: Path) -> list[str]:
+    """Every ``adcp/<name>.py`` a grafted ``types/`` module imports that upstream has not.
+
+    **MEASURED AND NOT LISTED, and on this trunk it is exactly one.**  Our
+    ``adcp/types/core.py`` re-exports the SDK's own client types -- ``TaskResult``,
+    ``AgentConfig``, ``Protocol``, ``TaskStatus``, ``DebugInfo`` -- with ``from ..core
+    import ...``, because the ruling that keeps ``adcp.types`` schema-derived moved them to
+    ``adcp.core``, the SDK's own public namespace.  Upstream has no ``adcp/core.py`` at all,
+    so nothing collides and nothing of theirs is overwritten: the rule is "ours, where
+    theirs has no module at that path", and a name they DO carry is left alone and stays
+    their bytes.
+
+    Without this the graft lands a ``types/core.py`` whose first import raises, and the
+    whole public surface goes with it.
+    """
+    source_dir = ROOT / "src" / DIST
+    wanted: set[str] = set()
+    for path in sorted((package / "types").glob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.level == 2 and node.module:
+                wanted.add(node.module.split(".")[0])
+    copied = []
+    for name in sorted(wanted):
+        if (package / f"{name}.py").exists() or (package / name).is_dir():
+            continue  # upstream carries it; theirs stands
+        source = source_dir / f"{name}.py"
+        if not source.is_file():
+            raise SystemExit(
+                f"a grafted types module imports `adcp.{name}`, upstream has no module at "
+                f"that path, and neither does this repository: the graft would land a "
+                f"surface that cannot import."
+            )
+        (package / f"{name}.py").write_text(source.read_text(encoding="utf-8"))
+        copied.append(f"../{name}.py")
     return copied
 
 
@@ -774,8 +922,8 @@ def run_lines(out: Path, venv: Path, junit: Path) -> list[str]:
     """The command per chunk, printed so the measurement is a command and not a procedure."""
     return [
         f"sudo systemd-run --scope --uid=1002 --gid=1002 -p MemoryMax=20G -q -- env "
-        f"PYTHONDONTWRITEBYTECODE=1 FWVM_PROBE=1 PYTHONPATH={out}/probe "
-        f"{venv}/bin/python -m pytest $(cat {out}/chunks/{chunk}) -q -p no:cacheprovider "
+        f"PYTHONDONTWRITEBYTECODE=1 FWVM_PROBE=1 PYTHONPATH={out}:{out}/probe "
+        f"{venv}/bin/python -m pytest $(cat {out}/chunks/{chunk}) -q -p no:cacheprovider -p deselect "
         f"--continue-on-collection-errors -n 4 --junitxml={junit}/{chunk}.xml"
         for chunk in ("chunk-00", "chunk-01", "chunk-02", "chunk-r159")
     ]
@@ -936,6 +1084,7 @@ def build(ns: argparse.Namespace) -> int:
     )
     report.say("4. their types and their generator removed", strip_their_types(out, ours))
     report.say("5. their generator's tests removed", drop_their_generator_tests(out))
+    report.say("5b. the DELETE set deselected, derived", deselect_the_delete_set(out))
     report.say("6. our types grafted, FRESH", graft_ours(out, Path(ns.bundle)))
     report.say("7. the alias layer", alias_layer(out))
     report.say("8. the probe", probe(out, wheel))
