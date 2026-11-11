@@ -1812,7 +1812,7 @@ pairs a root model as it pairs a class.
 ## 8a. The drop-in tree is DISPOSABLE, and is rebuilt from this one
 
 **OUR SOURCE CHANGES LAND HERE AND NOWHERE ELSE.** The tree that measures us
-against upstream's behavioural suite — their wheel with our types grafted in and
+against upstream's behavioural suite — their wheel with our types substituted in and
 the alias layer over it — is **regenerated from this repository and never edited
 directly.** It is an instrument, not a branch.
 
@@ -1822,7 +1822,7 @@ lines are our own `src/` and `codegen/`**. A repair to `BranchDispatchMixin` mad
 there would not transplant back — the patch failed at `_base.py:99` because both
 copies had moved. Three symptoms that were tracked as separate rows are that one
 cause: the two trees' lint configuration could not be reconciled, our own suite
-did not run there at all (the graft renamed `tests/` and left its imports
+did not run there at all (the substitution renamed `tests/` and left its imports
 dangling, so `./check` raised and the accepts floor answered `None` for **every**
 branch position), and a landed fix had nowhere to go.
 

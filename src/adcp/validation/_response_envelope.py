@@ -7,7 +7,7 @@ in ``test_compact_lifecycle_matrix.py`` aligned when adding another exception.
 
 # These compact synchronous responses contradict the general protocol-envelope
 # default: list_products forbids status outright, while decline_proposals only
-# permits status on its submitted arm. Grafting ``completed`` onto either makes
+# permits status on its submitted arm. Substituting ``completed`` onto either makes
 # the result fail the pinned response schema.
 _NATIVE_COMPACT_ENVELOPE_TOOLS: frozenset[str] = frozenset(
     {

@@ -36,7 +36,7 @@ the same suite and the claim needs no trust.
    ``versioned_bases/`` go, their 40 hand-written package-root modules stay.
    ``error_narrowing.narrow_union_errors`` is a FUNCTION and machinery; deleting it cost
    1,350 tests once (``verdicts/dropin-modules.md`` §2).
-3. :func:`graft_ours` and :func:`alias_layer` -- our emitted tree, and the layer that serves
+3. :func:`substitute_ours` and :func:`alias_layer` -- our emitted tree, and the layer that serves
    upstream's own module paths and flat spellings out of it.
 4. :func:`manifest` -- a digest over every file written, beside the digests of both inputs.
    Two runs on one trunk produce one digest; that is what makes the measurement re-derivable
@@ -116,7 +116,7 @@ MACHINERY_MARKER = '''
 __adcp_upstream_machinery__ = "adcp 9.6.1"
 '''
 
-#: The three modules of ours that the compiler does not write and that the graft needs:
+#: The three modules of ours that the compiler does not write and that the substitution needs:
 #: ``__init__.py`` is §1's surface, ``_base.py`` and ``_runtime.py`` are the hand-written
 #: base the emitted modules import, and ``compat.py`` is generated HERE by
 #: ``survey/alias_surface.py`` from upstream's wheel and committed as that run's artifact.
@@ -589,10 +589,10 @@ def _declared_lines(path: Path) -> list[str]:
     ]
 
 
-# ----------------------------------------------------------------------------- 4. the graft
+# ----------------------------------------------------------------------------- 4. the substitution
 
 
-def graft_ours(out: Path, bundle: Path) -> dict[str, object]:
+def substitute_ours(out: Path, bundle: Path) -> dict[str, object]:
     """Our types: a FRESH EMIT, plus the three modules the compiler does not write.
 
     **§2's rule, applied to the one tree that is not graded here.**  "The subject of grading
@@ -622,7 +622,7 @@ def graft_ours(out: Path, bundle: Path) -> dict[str, object]:
     if out_emit.refusals:
         raise SystemExit(
             f"{len(out_emit.refusals)} documents refused by this emit; ./check reads "
-            f"'refused 0' on trunk, so the tree this would graft is not the tree the "
+            f"'refused 0' on trunk, so the tree this would substitute is not the tree the "
             f"repository states."
         )
     agree, differ = _against_the_committed_tree(types, out_emit.files, out_emit.beside)
@@ -685,7 +685,7 @@ def _composes_the_surface(path: Path) -> bool:
     writes ``adcp/types/_surface/<domain>.py`` outright and compares it byte for byte, and
     ``adcp/types/<domain>.py`` is a hand-written composition whose whole body is
     ``from ._surface.<domain> import *`` with that aggregator's own ``__all__``.  The
-    compiler owns the first and does not write the second, so a graft that copies only the
+    compiler owns the first and does not write the second, so a substitution that copies only the
     emitter's output lands a tree where ``adcp.types.core`` does not exist.
 
     Read off the file rather than listed, for the reason every other population in this
@@ -715,14 +715,14 @@ def _copy_ours_beside(types: Path) -> list[str]:
     (287 on ``a2ui``, 69 on ``base``, the rest on ``registry``, ``legacy``, ``core``,
     ``capabilities``, ``error_narrowing``).  The list was written before
     ``codegen/emit.py``'s ``SURFACE`` split the public path from the aggregator; the
-    compositions are its other half and the graft is not complete without them.
+    compositions are its other half and the substitution is not complete without them.
     """
     copied = []
     source_dir = ROOT / "src" / DIST / "types"
     for name in OURS_BESIDE_THE_EMIT:
         source = source_dir / name
         if not source.is_file():
-            raise SystemExit(f"this repository has no src/{DIST}/types/{name} to graft")
+            raise SystemExit(f"this repository has no src/{DIST}/types/{name} to substitute")
         text = source.read_text(encoding="utf-8")
         if name == "__init__.py":
             text = text.rstrip("\n") + "\n" + TYPES_INIT_TAIL
@@ -737,14 +737,14 @@ def _copy_ours_beside(types: Path) -> list[str]:
         raise SystemExit(
             "no public domain composition was found beside the emit: either the "
             "`_surface` split has moved or this repository's `adcp/types/<domain>.py` "
-            "files are gone, and the grafted tree would have no public domain path."
+            "files are gone, and the substituted tree would have no public domain path."
         )
     copied += _copy_the_package_root_modules_they_lack(types.parent)
     return copied
 
 
 def _copy_the_package_root_modules_they_lack(package: Path) -> list[str]:
-    """Every ``adcp/<name>.py`` a grafted ``types/`` module imports that upstream has not.
+    """Every ``adcp/<name>.py`` a substituted ``types/`` module imports that upstream has not.
 
     **MEASURED AND NOT LISTED, and on this trunk it is exactly one.**  Our
     ``adcp/types/core.py`` re-exports the SDK's own client types -- ``TaskResult``,
@@ -755,7 +755,7 @@ def _copy_the_package_root_modules_they_lack(package: Path) -> list[str]:
     theirs has no module at that path", and a name they DO carry is left alone and stays
     their bytes.
 
-    Without this the graft lands a ``types/core.py`` whose first import raises, and the
+    Without this the substitution lands a ``types/core.py`` whose first import raises, and the
     whole public surface goes with it.
     """
     source_dir = ROOT / "src" / DIST
@@ -775,8 +775,8 @@ def _copy_the_package_root_modules_they_lack(package: Path) -> list[str]:
         source = source_dir / f"{name}.py"
         if not source.is_file():
             raise SystemExit(
-                f"a grafted types module imports `adcp.{name}`, upstream has no module at "
-                f"that path, and neither does this repository: the graft would land a "
+                f"a substituted types module imports `adcp.{name}`, upstream has no module at "
+                f"that path, and neither does this repository: the substitution would land a "
                 f"surface that cannot import."
             )
         (package / f"{name}.py").write_text(source.read_text(encoding="utf-8"))
@@ -923,7 +923,8 @@ def run_lines(out: Path, venv: Path, junit: Path) -> list[str]:
     return [
         f"sudo systemd-run --scope --uid=1002 --gid=1002 -p MemoryMax=20G -q -- env "
         f"PYTHONDONTWRITEBYTECODE=1 FWVM_PROBE=1 PYTHONPATH={out}:{out}/probe "
-        f"{venv}/bin/python -m pytest $(cat {out}/chunks/{chunk}) -q -p no:cacheprovider -p deselect "
+        f"{venv}/bin/python -m pytest $(cat {out}/chunks/{chunk}) -q "
+        "-p no:cacheprovider -p deselect "
         f"--continue-on-collection-errors -n 4 --junitxml={junit}/{chunk}.xml"
         for chunk in ("chunk-00", "chunk-01", "chunk-02", "chunk-r159")
     ]
@@ -1085,7 +1086,7 @@ def build(ns: argparse.Namespace) -> int:
     report.say("4. their types and their generator removed", strip_their_types(out, ours))
     report.say("5. their generator's tests removed", drop_their_generator_tests(out))
     report.say("5b. the DELETE set deselected, derived", deselect_the_delete_set(out))
-    report.say("6. our types grafted, FRESH", graft_ours(out, Path(ns.bundle)))
+    report.say("6. our types substituted, FRESH", substitute_ours(out, Path(ns.bundle)))
     report.say("7. the alias layer", alias_layer(out))
     report.say("8. the probe", probe(out, wheel))
     report.say(
