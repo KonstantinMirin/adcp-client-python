@@ -195,23 +195,38 @@ def _tests(tree: ast.Module):
             yield node
 
 
-def _assertion_text(fn: ast.AST) -> list[str]:
-    """Everything this test ASSERTS, as source text.
+def _assertion_text(fn: ast.AST) -> list[tuple[str, str]]:
+    """Everything this test ASSERTS, as ``(claim, whole statement)``.
 
     ``ast.Assert`` is the plain form; ``pytest.raises`` is the other one, because a test
     whose whole claim is "this construction raises" asserts through the context manager
     and carries no ``assert`` at all.
+
+    **THE CLAIM IS ``Assert.test`` AND NEVER ``Assert.msg``, which is the same rule this
+    module's docstring already states one level out.**  An ``assert`` carries two
+    expressions and only the first is asserted; the second runs when the first is FALSE and
+    exists to say why.  Reading the message is the exact trap the docstring warns about --
+    "a test may import ``model_fields`` to build a fixture and then assert on a wire
+    envelope" -- arriving through the diagnostic instead of through the fixture.  Measured
+    on upstream 9.6.1: 14 test functions carry an implementation token ONLY in a message,
+    and for 10 of them the claim is behaviour.  Two assert ``not any(isinstance(result,
+    BaseException) ...)`` -- a claim about whether a gather raised -- and report
+    ``[type(result).__name__ for result in results]`` when it did; under the older reading
+    the ``__name__`` in that report deleted them.  The whole statement is still carried, so
+    the ``assertion`` column quotes what a reader would look at.
     """
-    out = []
+    out: list[tuple[str, str]] = []
     for sub in ast.walk(fn):
         if isinstance(sub, ast.Assert):
-            out.append(ast.unparse(sub))
+            out.append((ast.unparse(sub.test), ast.unparse(sub)))
         elif isinstance(sub, ast.withitem):
-            out.append(ast.unparse(sub))
+            text = ast.unparse(sub)
+            out.append((text, text))
         elif isinstance(sub, ast.Call):
             func = ast.unparse(sub.func)
             if func.endswith("assert_called_with") or func.startswith("assert"):
-                out.append(ast.unparse(sub))
+                text = ast.unparse(sub)
+                out.append((text, text))
     return out
 
 
@@ -261,13 +276,13 @@ def classify(path: pathlib.Path) -> list[dict]:
     for fn in _tests(tree):
         asserts = _assertion_text(fn)
         verdict, why, quoted = "BEHAVIOUR", "", ""
-        for text in asserts:
-            stripped = text
+        for claim, whole in asserts:
+            stripped = claim
             for keep in WIRE_NOT_IMPLEMENTATION:
                 stripped = stripped.replace(keep, "«wire»")
             hit = next((t for t in IMPLEMENTATION_TOKENS if t[0] in stripped), None)
             if hit is not None:
-                verdict, why, quoted = "DELETE", hit[1], text[:220]
+                verdict, why, quoted = "DELETE", hit[1], whole[:220]
                 break
         routes = _routes(bound, fn) + _routes(_their_bindings(fn), fn)
         if verdict == "BEHAVIOUR" and routes:
@@ -293,6 +308,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--junit", nargs="*", default=(), help="junit xml to join collected items on")
     ap.add_argument("--json", help="write every row here")
     ap.add_argument("--residue-json", help="write every failing row, with its verdict, here")
+    ap.add_argument(
+        "--delete-tsv",
+        help="write the DELETE set here, as the deselect table the drop-in build consumes: "
+        "`path<TAB>test<TAB>reason<TAB>the assertion that decided it`.  This is the ONLY "
+        "source of that list -- nothing hand-written names a test function.",
+    )
     args = ap.parse_args(argv)
 
     root = pathlib.Path(args.root)
@@ -308,6 +329,24 @@ def main(argv: list[str] | None = None) -> int:
             for row in classify(path):
                 row["file"] = rel
                 rows.append(row)
+
+    if args.delete_tsv:
+        out = pathlib.Path(args.delete_tsv)
+        lines = [
+            "# DERIVED by survey/upstream_test_character.py -- do not edit.",
+            "# Every row is a test function whose ASSERTION is about upstream's own",
+            "# implementation: no payload, no envelope, no value a document admits or",
+            "# refuses.  survey/dropin/deselect.py deselects exactly these at collection,",
+            "# so they leave the denominator without one byte of upstream's tests changing.",
+            "path\ttest\treason\tassertion",
+        ]
+        for row in sorted(
+            (r for r in rows if r["verdict"] == "DELETE"), key=lambda r: (r["file"], r["test"])
+        ):
+            quoted = " ".join(row["assertion"].split())
+            lines.append(f"{row['file']}\t{row['test']}\t{row['why']}\t{quoted}")
+        out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        print(f"delete table                    : {out} ({len(lines) - 6} rows)")
 
     by = collections.Counter(r["verdict"] for r in rows)
     print(f"files read                      : {len(rels)}")
