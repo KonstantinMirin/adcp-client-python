@@ -516,8 +516,19 @@ value set** — finite, monotone, and terminating at its greatest element:
 1. **KEYWORD** — drop the one keyword, keep the type. (`uniqueItems` where no class and no
    named type hold the rule → `list[X]`.)
 2. **TYPE** — drop a type selection the constraints contradict, keep the constraints.
-   (`format: uri` beside `maxLength` → the constrained `str`, the format riding as
-   `json_schema_extra`.)
+   (A format whose selected type cannot carry a keyword the node states, where the type is not
+   a URL type.)
+
+ **A URL IS NEVER DEMOTED BY THIS STEP, AND THAT IS NOT AN EXCEPTION TO THE CHAIN — IT IS THE
+  "TWO URL TYPES" DECISION ABOVE.** Every `format: uri` node gets a URL type at every position,
+  whatever else it states: a `pattern`, a `maxLength`, any combination. A node that reached the
+  constrained `str` because a sibling keyword contradicted the type is the bundle's
+  inconsistency reproduced in the surface, which is the one thing that decision exists to
+  prevent — a consumer would get a parsed URL at one position and a bare string at the next for
+  one concept. **The keywords ride WITH the type rather than instead of it**: `maxLength` and
+  `minLength` apply to a URL type through `Field(...)` directly, and a `pattern` applies through
+  a chained core schema, so nothing the document states is dropped and the widening has nothing
+  to do.
 3. **JOIN** — replace a type with the union of the types it holds. (A list-valued `items` →
    `list[A | B | …]`, dropping position and arity.)
 4. **CONTAINER** — replace the node with its bare container: `list[Any]`, `dict[str, Any]`.
