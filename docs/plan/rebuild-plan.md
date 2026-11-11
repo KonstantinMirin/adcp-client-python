@@ -487,7 +487,13 @@ Two cases survive, and the design keeps both.
   | type | where |
   | --- | --- |
   | `AdCPUrl` — `Annotated[HttpUrl, UrlConstraints(allowed_schemes=["https"])]` | **every AdCP protocol address: an agent URL and a webhook URL.** These are how an agent is identified and how a receiver is called back, and they are https by protocol. |
-  | `AdCPUri` — `Annotated[AnyUrl, UrlConstraints(host_required=True)]` | every other `format: uri` node. |
+  | `HostedUrl` — `Annotated[AnyUrl, UrlConstraints(host_required=True)]` | every other `format: uri` node. |
+
+ **THE SECOND NAME IS `HostedUrl` AND NOT `AdCPUri`**, because `AdCPUrl` and `AdCPUri` differ by
+  one letter: a reader cannot tell which is which, and a typo selects the wrong one silently at a
+  position where the wrong one still compiles. This module names a type **for the constraint it
+  carries**, and the constraint here is the required host — scheme-freedom needs no name, being
+  what `format: uri` already means.
 
  **THE BUNDLE IS WRONG ABOUT URLs, and that is the whole premise.** It spells "a URL" many
   different ways across its `uri` positions — a bare `format: uri`, an `^https://` pattern, a
@@ -504,7 +510,7 @@ Two cases survive, and the design keeps both.
   renders as `maxLength: 2083`; that keyword is pydantic's and not a document's, and a reader
   comparing the schema to the bundle should expect it.
 
- **AND `AdCPUri` IS NOT `HttpUrl` AND NOT A BARE `AnyUrl`.** A bare
+ **AND `HostedUrl` IS NOT `HttpUrl` AND NOT A BARE `AnyUrl`.** A bare
   `format: uri` is RFC 3986 and admits every scheme, so `HttpUrl` — which admits two — refuses
   values the document admits, and the bundle supplies one of them itself: `core/app-item.json`'s
   `deep_link_url` is `{type: string, format: uri}` and its own description says *"Falls back to
@@ -519,7 +525,7 @@ Two cases survive, and the design keeps both.
 
  **AN AdCP ADDRESS REACHES `AdCPUrl` THROUGH THE OVERRIDE TABLE, NOT THROUGH A RULE IN THE
   EMITTER.** The emitter's rule is one line and reads a keyword: a node whose `pattern` pins
-  `^https://` is `AdCPUrl`, every other `format: uri` node is `AdCPUri`. The bundle states that
+  `^https://` is `AdCPUrl`, every other `format: uri` node is `HostedUrl`. The bundle states that
   pin at 8 of its 57 agent and webhook addresses, so the other 49 are an **overlay**: §3a's
   override mechanism adds `core/https-url.json` and rewrites each site to `$ref` it, which is
   what `patches/8525` already does for the 46 sites that stated the pattern inline. **A type is
@@ -538,7 +544,7 @@ Two cases survive, and the design keeps both.
  **NEITHER TYPE NEEDS A NARROWING ADMITTED, because neither refuses more than its document
   does.** `AdCPUrl` is reached only where the node pins `^https://`, whether the bundle states
   that pin or the overlay does, so the scheme restriction is the document-of-record's own and
-  the type reproduces it. `AdCPUri` refuses only non-hierarchical URIs, which no document
+  the type reproduces it. `HostedUrl` refuses only non-hierarchical URIs, which no document
   states. §2's deliberate-narrowing registry therefore has nothing to admit here; it is for the
   cases where the SDK decides to refuse more. **Where a URL type would refuse a scheme its node
   admits, the type is wrong and the fix is the type.**
