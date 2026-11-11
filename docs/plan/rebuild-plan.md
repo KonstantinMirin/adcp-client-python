@@ -480,13 +480,13 @@ Two cases survive, and the design keeps both.
   it did. So the guard switches each admission mechanism off in turn and pins which keywords
   reappear.
 
- **THE TWO URL TYPES STAND, AND THERE ARE EXACTLY TWO.** Both are `AnyUrl` under
-  `UrlConstraints` — one general and one https-pinned descendant — and which a node takes is
+ **THE TWO URL TYPES STAND, AND THERE ARE EXACTLY TWO.** `HttpUrl` is a subclass of `AnyUrl`,
+  so both are a `UrlConstraints` refinement of one runtime type, and which a node takes is
   decided by what the node is:
 
   | type | where |
   | --- | --- |
-  | `AdCPUrl` — `Annotated[AnyUrl, UrlConstraints(host_required=True, allowed_schemes=["https"])]` | **every AdCP protocol address: an agent URL and a webhook URL.** These are how an agent is identified and how a receiver is called back, and they are https by protocol. |
+  | `AdCPUrl` — `Annotated[HttpUrl, UrlConstraints(allowed_schemes=["https"])]` | **every AdCP protocol address: an agent URL and a webhook URL.** These are how an agent is identified and how a receiver is called back, and they are https by protocol. |
   | `AdCPUri` — `Annotated[AnyUrl, UrlConstraints(host_required=True)]` | every other `format: uri` node. |
 
  **THE BUNDLE IS WRONG ABOUT URLs, and that is the whole premise.** It spells "a URL" many
@@ -495,19 +495,16 @@ Two cases survive, and the design keeps both.
   concept inconsistently, the SDK states it consistently**, and consistency across the bundle is
   what a consumer experiences.
 
- **AND `AdCPUrl` IS NOT `HttpUrl` WITH THE SCHEME PINNED, BECAUSE `HttpUrl` IS NOT ONLY A
-  SCHEME PIN.** It is `UrlConstraints(max_length=2083, allowed_schemes=["http", "https"])`, and
-  adding `allowed_schemes=["https"]` composes with the cap rather than replacing it. **55 of the
-  bundle's 57 AdCP addresses state no `maxLength` of their own** — the two that do say 2048,
-  tighter — so `HttpUrl` would impose an undocumented 2,083-character limit at 55 sites and
-  refuse values those documents admit, which is the same defect as the scheme refusal in a
-  different keyword, and it would render `maxLength: 2083` into the schema as though a document
-  had said it. `AdCPUrl` is exactly `HttpUrl` with the scheme pinned and that cap removed.
-  Interoperability does not decide it either way — `HttpUrl` IS a subclass of `AnyUrl` — but
-  `host_required` is needed for `AdCPUri` regardless, so one base makes `AdCPUrl` a strict
-  refinement of `AdCPUri` rather than a parallel concept.
+ **`AdCPUrl` IS `HttpUrl`, AND ITS 2,083-CHARACTER CAP IS ACCEPTED.** `HttpUrl` is
+  `UrlConstraints(max_length=2083, allowed_schemes=["http", "https"])`, so pinning the scheme
+  composes with that cap rather than replacing it, and 55 of the bundle's 57 AdCP addresses state
+  no `maxLength` of their own — the two that do say 2048, tighter. **The cap is a decided
+  narrowing at those 55 and needs no registry entry**, because an AdCP address is an agent
+  identity or a callback target and 2,083 characters is not a limit a real one reaches. It
+  renders as `maxLength: 2083`; that keyword is pydantic's and not a document's, and a reader
+  comparing the schema to the bundle should expect it.
 
- **NEITHER TYPE IS `HttpUrl`, AND THE GENERAL ONE IS NOT A BARE `AnyUrl` EITHER.** A bare
+ **AND `AdCPUri` IS NOT `HttpUrl` AND NOT A BARE `AnyUrl`.** A bare
   `format: uri` is RFC 3986 and admits every scheme, so `HttpUrl` — which admits two — refuses
   values the document admits, and the bundle supplies one of them itself: `core/app-item.json`'s
   `deep_link_url` is `{type: string, format: uri}` and its own description says *"Falls back to
