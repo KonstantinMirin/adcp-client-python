@@ -485,20 +485,32 @@ Two cases survive, and the design keeps both.
   different ways across its `uri` positions — a bare `format: uri`, an `^https://` pattern, a
   length bound, several combinations — for what is one concept. **Where the schema states one
   concept inconsistently, the SDK states it consistently**, and consistency across the bundle is
-  what a consumer experiences. There are exactly **two** URL types and there will not be a third:
-  `AdCPUrl` where the document pins `^https://`, which is the agent-facing form, and `AnyUrl`
-  everywhere else, which is the identity form. `AdCPUrl` IS an `AnyUrl` with
-  `allowed_schemes=["https"]`, so the pair is one type and its https-pinned descendant.
+  what a consumer experiences. There are exactly **two** URL types and there will not be a third,
+  and both are `AnyUrl` under `UrlConstraints` — one general and one https-pinned descendant:
 
- **THE GENERAL FORM IS `AnyUrl` AND NOT `HttpUrl`, BECAUSE A BARE `format: uri` IS RFC 3986 AND
-  ADMITS EVERY SCHEME.** `HttpUrl` admits two, so at every bare `uri` node it refuses values the
-  document admits — and the bundle supplies one of them itself:
-  `core/app-item.json`'s `deep_link_url` is `{type: string, format: uri}` and its own
-  description says *"Falls back to URI scheme (e.g., `'acmegames://level/5'`) when universal
-  links are not configured."* **Consistently as a URL is the decision; consistently as an HTTP
-  URL is a different and narrower claim the bundle does not make.** `AnyUrl` is a parsed URL
-  object carrying `.scheme`, `.host` and `.path`, so the developer-facing property this section
-  exists for is unaffected by the choice.
+  | | |
+  | --- | --- |
+  | `Annotated[AnyUrl, UrlConstraints(host_required=True)]` | the identity form, at every bare `format: uri` node |
+  | `AdCPUrl` — the same plus `allowed_schemes=["https"]` | the agent-facing form, where the document's own `pattern` pins `^https://` |
+
+ **THE GENERAL FORM IS THE HIERARCHICAL URL, AND NEITHER `HttpUrl` NOR A BARE `AnyUrl`.** A bare
+  `format: uri` is RFC 3986 and admits every scheme, so `HttpUrl` — which admits two — refuses
+  values the document admits, and the bundle supplies one of them itself: `core/app-item.json`'s
+  `deep_link_url` is `{type: string, format: uri}` and its own description says *"Falls back to
+  URI scheme (e.g., `'acmegames://level/5'`) when universal links are not configured."* A bare
+  `AnyUrl` goes too far the other way — it admits `data:text/plain,hi` and `tel:+15551234` at a
+  webhook-endpoint field, and it leaves `.host` possibly `None`, which gives up the one property
+  this section exists for. `host_required` keeps the parsed object worth having: `.scheme`,
+  `.host` and `.path` are all reliable, `acmegames://level/5` parses to
+  `scheme='acmegames' host='level' path='/5'`, and the non-hierarchical URIs are refused.
+
+ **AND ITS ONE NARROWING HAS ZERO SITES.** Derived over the bundle: of the 227 bare `format: uri`
+  nodes, **none** names a non-hierarchical scheme in its description, examples or `$comment`, and
+  **one** names a non-http hierarchical one. So the form refuses nothing any document states and
+  admits the one value `HttpUrl` wrongly refused. **The type is a function of the KEYWORD, never
+  of a description**: every bare `format: uri` node takes the same annotation, and that one node
+  is what proved the http narrowing unsafe rather than a case the rule is keyed on. Reading prose
+  to choose a type would be an allowlist of one wearing a derivation.
 
  **AND THE ONE NARROWING LEFT IS THE ONE THE DOCUMENT ITSELF STATES**, which is not a
   narrowing at all: `AdCPUrl` is chosen only where the node pins `^https://`, so the scheme
