@@ -112,6 +112,31 @@ directory names are in ``codegen/held.py`` and every name this module used to de
 imported from there under the name it always had. ``codegen/held.py``'s own docstring
 carries why the floor's path is still inside ``tests/`` and why the verifier still knows
 neither path.
+
+**AND THE WIDENING STORE DOES NOT MEET "COLD == WARM", WHICH IS A MEASUREMENT AND NOT A
+PROPERTY OF THE ACCEPTS TABLE ABOVE** (``adcp-client-python-luik``/``-d5zb``;
+``verdicts/budget.md`` carries the method). The table above compares cold against warm for
+the ACCEPTS store and reports every verdict identical in both. The same comparison on the
+WIDENING store does not have that result, because the pairs whose draw is unbounded are
+exactly the pairs whose entries the cache supplies:
+
+====================================================  ===============  ==========
+``check_pair``, no budget set anywhere                           cold        warm
+====================================================  ===============  ==========
+``media-buy/refine-proposals-response.json#``          did not finish     9.12 s
+``media-buy/get-media-buys-response.json#``            did not finish     0.82 s
+====================================================  ===============  ==========
+
+Cold is :data:`WIDENING_FLOOR` alone -- the committed 290 entries -- and warm is that floor
+with a lane's :data:`WIDENING_CACHE` in front of it, 530 entries written by the runs that
+took the figures. **So a warm lane cannot see the defect at all**, and two rows were filed
+and a bound was defended on figures that a warm cache had already answered. Every figure
+in ``verdicts/budget.md`` is cold for that reason, and the reading a lane owes a draw-cost
+measurement is this one: move the cache aside, then measure.
+
+This is not an argument for deleting the cache. It is the reason the accepts table's
+"every verdict was identical" sentence may not be read across to this store: there the
+cache replaces a draw that TERMINATES, and here it replaces one that does not.
 """
 
 from __future__ import annotations
