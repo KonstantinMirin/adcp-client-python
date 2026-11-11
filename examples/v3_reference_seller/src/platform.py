@@ -116,7 +116,6 @@ from adcp.types import (
     BusinessEntity,
     CreateMediaBuyRequest,
     CreateMediaBuySuccessResponse,
-    Format,
     GetMediaBuyDeliveryRequest,
     GetMediaBuyDeliveryResponse,
     GetMediaBuysRequest,
@@ -128,6 +127,7 @@ from adcp.types import (
     ListProductsResponse,
     MediaBuyStatus,
     Product,
+    ProductFormatDeclaration,
     ProvidePerformanceFeedbackRequest,
     ProvidePerformanceFeedbackSuccessResponse,
     SyncCreativeResult,
@@ -748,7 +748,7 @@ def _product_format_options(
     product_id: str,
     name: str,
     format_ids: list[dict[str, Any]],
-) -> list[Format]:
+) -> list[ProductFormatDeclaration]:
     options: list[dict[str, Any]] = []
     for i, fmt in enumerate(format_ids):
         v1_format_id = str(fmt.get("id") or "display_300x250")
@@ -783,7 +783,7 @@ def _product_format_options(
                 },
             }
         )
-    return [Format.model_validate(option) for option in options]
+    return [ProductFormatDeclaration.model_validate(option) for option in options]
 
 
 def _projected_package_state(state: dict[str, Any]) -> dict[str, Any]:
@@ -2252,7 +2252,7 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         total = len(upstream_creatives)
         page = upstream_creatives[offset : offset + limit]
         creatives: list[dict[str, Any]] = []
-        format_options: list[Format] = []
+        format_options: list[ProductFormatDeclaration] = []
         for c in page:
             legacy_ref = {
                 "agent_url": "https://reference.adcp.org",
@@ -2272,14 +2272,20 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                 }
             )
             format_options.append(
-                Format.model_validate(
+                ProductFormatDeclaration.model_validate(
                     {
                         "format_option_id": option_id,
                         "publisher_domain": "reference.adcp.org",
                         "format_kind": format_kind,
                         "params": params,
-                        # Compatibility evidence is private to Format and
-                        # cannot leak through model_dump/model_json_schema.
+                        # ``v1_format_ref`` is a DECLARED field of
+                        # core/product-format-declaration.json and is on the
+                        # wire, which is what makes the kind -> id direction
+                        # answerable at all: registries/v1-canonical-mapping.json
+                        # is authoritative for v1 -> v2 only, and says v2 -> v1
+                        # "MUST rely on ``v1_format_ref`` ... sellers assert the
+                        # v1 mapping".  It used to be private state on upstream's
+                        # hand-written ``Format``, which is deleted.
                         "v1_format_ref": [legacy_ref],
                     }
                 )
