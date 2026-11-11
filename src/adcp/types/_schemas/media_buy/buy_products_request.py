@@ -125,14 +125,14 @@ class BuyProductsRequestAccountAccountAccountId(BuyProductsRequestAccountAccount
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account')
 
 
 class BuyProductsRequestAccountAccountBrandOperator(BuyProductsRequestAccountAccount, CanonicalAccountReferenceBrandOperator):
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account')
 
 
 BuyProductsRequestAccountAccount._branch_models = (BuyProductsRequestAccountAccountAccountId, BuyProductsRequestAccountAccountBrandOperator,)

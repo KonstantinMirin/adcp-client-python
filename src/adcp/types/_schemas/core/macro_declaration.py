@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import DeclarationId, HttpUrl, StrMinLen1
+from adcp.types.constraints import DeclarationId, HostedUrl, StrMinLen1
 
 from ..enums.macro_dialect import MacroDialectFamily
 from ..enums.macro_mapping_status import MacroMappingStatus
@@ -96,7 +96,7 @@ class MacroDeclaration(AdCPBaseModel):
     declaration_id: Annotated[DeclarationId, Field(description='Identifier unique within the enclosing asset, used to correlate validation results.')]
     token: Annotated[StrMinLen1, Field(description='Exact byte-preserved token expression at this occurrence, including delimiters.')]
     dialect: MacroDialectFamily
-    dialect_namespace: Annotated[HttpUrl | None, Field(description='Authority-controlled registry or mapping URI. Required for IAB VAST, IAB DAAST, and vendor dialects.'), OmittedNotNull] = None
+    dialect_namespace: Annotated[HostedUrl | None, Field(description='Authority-controlled registry or mapping URI. Required for IAB VAST, IAB DAAST, and vendor dialects.'), OmittedNotNull] = None
     dialect_revision: Annotated[StrMinLen1 | None, Field(description='Immutable registry/mapping revision, release, commit, or digest. Required for IAB VAST, IAB DAAST, and vendor dialects.'), OmittedNotNull] = None
     dialect_semantic: Annotated[StrMinLen1, Field(description='Exact semantic identifier in the cited dialect, such as `CACHEBUSTING`, `PLAYERSTATE`, or a documented vendor name. This is not inferred from token spelling.')]
     mapping_status: MacroMappingStatus

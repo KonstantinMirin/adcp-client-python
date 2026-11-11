@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import HttpUrl, StrMaxLen500
+from adcp.types.constraints import HostedUrl, StrMaxLen500
 
 from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
@@ -59,7 +59,7 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     policy_categories: Annotated[list[str] | None, Field(description='Policy categories this signal is sensitive for.', min_length=1), OmittedNotNull] = None
     taxonomy: Annotated[Taxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.'), OmittedNotNull] = None
     segmentation_criteria: Annotated[StrMaxLen500 | None, OmittedNotNull] = None
-    criteria_url: Annotated[HttpUrl | None, OmittedNotNull] = None
+    criteria_url: Annotated[HostedUrl | None, OmittedNotNull] = None
     data_sources: Annotated[list[DataSourcesItem] | None, Field(min_length=1), OmittedNotNull] = None
     methodology: Annotated[Methodology | None, OmittedNotNull] = None
     audience_expansion: Annotated[bool | None, OmittedNotNull] = None

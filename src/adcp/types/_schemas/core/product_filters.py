@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl, IntMin1, RegionsItem, StrMinLen1
+from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HostedUrl, IntMin1, RegionsItem, StrMinLen1
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.available_metric import AvailableMetric
@@ -59,7 +59,7 @@ class ProvidersItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/trusted_match/properties/providers/items')
-    agent_url: Annotated[HttpUrl, Field(description="Provider's agent URL from the registry.")]
+    agent_url: Annotated[HostedUrl, Field(description="Provider's agent URL from the registry.")]
     context_match: Annotated[bool | None, Field(description='When true, require this provider to support context match.'), OmittedNotNull] = None
     identity_match: Annotated[bool | None, Field(description='When true, require this provider to support identity match.'), OmittedNotNull] = None
 
@@ -190,7 +190,7 @@ class SignalTargetingItemBinary(SignalTargetingItem, SignalTargetingBinary):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0')
 
 
 class SignalTargetingItemCategorical(SignalTargetingItem, SignalTargetingCategorical):
@@ -200,7 +200,7 @@ class SignalTargetingItemCategorical(SignalTargetingItem, SignalTargetingCategor
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0')
 
 
 class SignalTargetingItemNumeric(SignalTargetingItem, SignalTargetingNumeric):
@@ -210,7 +210,7 @@ class SignalTargetingItemNumeric(SignalTargetingItem, SignalTargetingNumeric):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0')
 
 
 SignalTargetingItem._branch_models = (SignalTargetingItemBinary, SignalTargetingItemCategorical, SignalTargetingItemNumeric,)
@@ -346,7 +346,7 @@ class ProductFilters(AdCPBaseModel):
     audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(description='Filter product metadata by declared audio distribution types, using IAB Tech Lab/OpenRTB 2.6 audio.feed definitions with AdCP-native names. A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested type. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(description='Filter retail-media product metadata by declared sponsored-placement types (sponsored search, sponsored display, or sponsored native). A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested type. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(description='Filter social-product metadata by declared placement surfaces (feed, stories, short_video, explore, or search). A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested surface; buyers needing an exact public placement use targeting_overlay.placement_selection. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    required_axe_integrations: Annotated[list[HttpUrl] | None, Field(description='Deprecated: Use trusted_match filter instead. Filter to products executable through specific agentic ad exchanges. URLs are canonical identifiers.', min_length=1), OmittedNotNull] = None
+    required_axe_integrations: Annotated[list[HostedUrl] | None, Field(description='Deprecated: Use trusted_match filter instead. Filter to products executable through specific agentic ad exchanges. URLs are canonical identifiers.', min_length=1), OmittedNotNull] = None
     trusted_match: Annotated[ObjProvidersResponseTypes | None, Field(description='Filter products by Trusted Match Protocol capabilities. Only products with matching TMP support are returned.'), OmittedNotNull] = None
     audience_activation_methods: Annotated[list[AdCPAudienceSync | AudienceActivationMethodsItemTmpIdentityMatch | AudienceActivationMethodsItemFileTransfer | AudienceActivationMethodsItemDatasetQuery | AudienceActivationMethodsItemCleanRoom | AudienceActivationMethodsItemPlatformDistribution] | None, Field(description="Filter to products whose audience_activation.methods matches at least one requested entry (OR across entries). Within an entry every specified field must match (AND); omitted optional fields are wildcards; directions matches on non-empty intersection, and a method that omits directions matches any requested directions; vendor matches on domain, plus brand_id when specified. Fields inapplicable to the requested pattern (e.g. transport on a clean_room entry) make that entry unsatisfiable. Sellers MUST exclude products with no audience_activation declaration when this filter is present; exclusions MAY be reported via filter_diagnostics.excluded_by. Experimental: part of the media_buy.audience_activation surface — buyers SHOULD check the seller's experimental_features before filtering on it; sellers that do not list the feature ignore this filter.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     required_features: Annotated[MediaBuyFeatures | None, Field(description='Filter to products from sellers supporting specific protocol features. Only features set to true are used for filtering.'), OmittedNotNull] = None

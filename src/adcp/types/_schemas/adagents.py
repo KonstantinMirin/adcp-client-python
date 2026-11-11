@@ -12,7 +12,7 @@ from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
     AdCPAgentsAuthorizationFormatsItemFormatRevision,
-    HttpUrl,
+    HostedUrl,
     StrFormatEmailMinLen1MaxLen255,
     StrMinLen1MaxLen100,
     StrMinLen1MaxLen255,
@@ -95,7 +95,7 @@ class Contact(AdCPBaseModel):
     domain: Annotated[DomainName | None, Field(description='Primary domain of the entity managing this file'), OmittedNotNull] = None
     seller_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller ID from IAB Tech Lab sellers.json (if applicable)'), OmittedNotNull] = None
     tag_id: Annotated[StrMinLen1MaxLen100 | None, Field(description='TAG Certified Against Fraud ID for verification (if applicable)'), OmittedNotNull] = None
-    privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the entity's privacy policy. Used for consumer consent flows when interacting with this sales agent."), OmittedNotNull] = None
+    privacy_policy_url: Annotated[HostedUrl | None, Field(description="URL to the entity's privacy policy. Used for consumer consent flows when interacting with this sales agent."), OmittedNotNull] = None
 
 
 class Reason(StrEnum):
@@ -149,70 +149,70 @@ class FormatsItem(BranchDispatchMixin, AdCPBaseModel):
 
 
 class FormatsItemImage(FormatsItem, ImageFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemHtml5(FormatsItem, HTML5FormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemDisplayTag(FormatsItem, DisplayTagFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemImageCarousel(FormatsItem, ImageCarouselFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/3')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemVideoHosted(FormatsItem, HostedVideoFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/4')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemVideoVast(FormatsItem, VASTVideoFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/5')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemAudioHosted(FormatsItem, HostedAudioFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/6')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemAudioVast(FormatsItem, VASTAudioFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/7')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemAudioDaast(FormatsItem, DAASTAudioFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/8')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemSponsoredPlacement(FormatsItem, SponsoredPlacementFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/9')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemNativeInFeed(FormatsItem, NativeInFeedFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/10')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemResponsiveCreative(FormatsItem, ResponsiveCreativeFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/11')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemAgentPlacement(FormatsItem, AgentPlacementFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/12')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemSellerRenderedStatefulDisplay(FormatsItem, SellerRenderedStatefulDisplayFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/13')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemCoordinatedPlacements(FormatsItem, CoordinatedPlacementsFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/14')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemCustom(FormatsItem, CustomFormatDeclaration):
     """
     Adopter-defined shape that doesn't fit the 15 canonicals. Requires `format_shape` (vocabulary-registered global pattern) and `format_schema` (URI+digest reference to a fetchable schema describing the actual params/slots). `params` shape is governed by the fetched schema rather than baked into AdCP — kept as `type: object` here with `additionalProperties: true` because the canonical schema validates dynamically post-fetch.
     """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/15')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 FormatsItem._branch_models = (FormatsItemImage, FormatsItemHtml5, FormatsItemDisplayTag, FormatsItemImageCarousel, FormatsItemVideoHosted, FormatsItemVideoVast, FormatsItemAudioHosted, FormatsItemAudioVast, FormatsItemAudioDaast, FormatsItemSponsoredPlacement, FormatsItemNativeInFeed, FormatsItemResponsiveCreative, FormatsItemAgentPlacement, FormatsItemSellerRenderedStatefulDisplay, FormatsItemCoordinatedPlacements, FormatsItemCustom,)
@@ -383,7 +383,7 @@ class PropertyFeaturesItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/property_features/items')
-    url: Annotated[HttpUrl, Field(description="The agent's API endpoint URL. Callers comparing this URL against a feature-provider registry MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
+    url: Annotated[HostedUrl, Field(description="The agent's API endpoint URL. Callers comparing this URL against a feature-provider registry MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
     name: Annotated[str, Field(description="Human-readable name of the vendor/agent (e.g., 'Scope3', 'TAG', 'OneTrust')")]
     features: Annotated[list[str], Field(description="Feature IDs this agent provides (e.g., 'carbon_score', 'tag_certified_against_fraud'). Use get_adcp_capabilities on the agent for full definitions.", min_length=1)]
     publisher_id: Annotated[str | None, Field(description='Optional publisher identifier at this agent (for lookup)'), OmittedNotNull] = None

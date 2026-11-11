@@ -12,7 +12,7 @@ from adcp.types.constraints import (
     BrandDiscoveryFontRoleOpentypeFeaturesItem,
     DictMinProperties1,
     DictMinProperties1MaxProperties1,
-    HttpUrl,
+    HostedUrl,
     NonEmptyList,
     StrMaxLen100,
     StrMinLen1,
@@ -64,7 +64,7 @@ class LogosItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items')
-    url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
+    url: Annotated[HostedUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation'), OmittedNotNull] = None
     background: Annotated[Background | None, Field(description='Background compatibility'), OmittedNotNull] = None
     variant: Annotated[LogoVariant | None, Field(description='Logo variant type'), OmittedNotNull] = None
@@ -154,7 +154,7 @@ class AssetsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items')
     asset_id: Annotated[str, Field(description='Unique identifier')]
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
-    url: Annotated[HttpUrl, Field(description='URL to CDN-hosted asset file')]
+    url: Annotated[HostedUrl, Field(description='URL to CDN-hosted asset file')]
     tags: Annotated[list[str] | None, Field(description='Tags for discovery'), OmittedNotNull] = None
     name: Annotated[str | None, Field(description='Human-readable name'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Asset description or usage notes'), OmittedNotNull] = None

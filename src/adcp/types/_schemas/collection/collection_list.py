@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl, IntMin1
+from adcp.types.constraints import HostedUrl, IntMin1
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -29,7 +29,7 @@ class CollectionList(AdCPBaseModel):
     base_collections: Annotated[list[BaseCollectionSource] | None, Field(description="Array of collection sources to evaluate. Each entry is a discriminated union: distribution_ids (platform-independent identifiers), publisher_collections (publisher_domain + collection_ids), or publisher_genres (publisher_domain + genres). If omitted, queries the agent's entire collection database."), OmittedNotNull] = None
     filters: Annotated[CollectionListFilters | None, Field(description='Dynamic filters applied when resolving the list'), OmittedNotNull] = None
     brand: Annotated[BrandReference | None, Field(description='Brand reference used to automatically apply appropriate rules. Resolved to full brand identity at execution time.'), OmittedNotNull] = None
-    webhook_url: Annotated[HttpUrl | None, Field(description='URL to receive notifications when the resolved list changes'), OmittedNotNull] = None
+    webhook_url: Annotated[HostedUrl | None, Field(description='URL to receive notifications when the resolved list changes'), OmittedNotNull] = None
     cache_duration_hours: Annotated[IntMin1 | None, Field(description='Recommended cache duration for resolved list. Consumers should re-fetch after this period. Defaults to 168 (one week) because collection metadata changes less frequently than property metadata.'), OmittedNotNull] = 168
     created_at: Annotated[AwareDatetime | None, Field(description='When the list was created'), OmittedNotNull] = None
     updated_at: Annotated[AwareDatetime | None, Field(description='When the list was last modified'), OmittedNotNull] = None

@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -36,7 +36,7 @@ class PassItemUrl(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf/0')
     type: Annotated[Literal['url'], Field(description='Indicates this is a URL reference')]
-    value: Annotated[HttpUrl, Field(description="Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')")]
+    value: Annotated[HostedUrl, Field(description="Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')")]
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL'), OmittedNotNull] = None
 
 
@@ -46,7 +46,7 @@ class ObjTypeValueLanguage(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf/0')
     type: Annotated[Literal['url'], Field(description='Indicates this is a URL reference')]
-    value: Annotated[HttpUrl, Field(description="Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')")]
+    value: Annotated[HostedUrl, Field(description="Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')")]
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL'), OmittedNotNull] = None
 
 

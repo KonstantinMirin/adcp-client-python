@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import HttpUrl, ZipAssetDigest
+from adcp.types.constraints import HostedUrl, ZipAssetDigest
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.brand_ref import BrandReference
@@ -80,7 +80,7 @@ class AcquireRightsAcquired(AcquireRightsResponse):
     restrictions: Annotated[list[str] | None, Field(description='Usage restrictions and requirements'), OmittedNotNull] = None
     disclosure: Annotated[Disclosure | None, Field(description='Required disclosure for creatives using these rights'), OmittedNotNull] = None
     approval_webhook: Annotated[PushNotificationConfig | None, Field(description='Authenticated webhook for submitting creatives for approval. POST a creative-approval-request to the URL using the provided authentication. The response is a creative-approval-response.'), OmittedNotNull] = None
-    usage_reporting_url: Annotated[HttpUrl | None, Field(description='Endpoint for reporting usage against these rights'), OmittedNotNull] = None
+    usage_reporting_url: Annotated[HostedUrl | None, Field(description='Endpoint for reporting usage against these rights'), OmittedNotNull] = None
     rights_constraint: Annotated[AcquireRightsAcquiredRightsConstraint, Field(description='Pre-built rights constraint for embedding in creative manifests. Populated from the agreed terms — the buyer does not need to construct it manually.')]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

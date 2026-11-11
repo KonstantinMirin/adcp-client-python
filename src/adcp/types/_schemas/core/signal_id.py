@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HostedUrl
 
 from .domain_name import DomainName
 
@@ -46,7 +46,7 @@ class SignalIDAgent(SignalID):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-id.json', pointer='#/oneOf/1')
     source: Annotated[Literal['agent'], Field(description="Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions.")]
-    agent_url: Annotated[HttpUrl, Field(description="URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')")]
+    agent_url: Annotated[HostedUrl, Field(description="URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')")]
     id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')")]
 
 

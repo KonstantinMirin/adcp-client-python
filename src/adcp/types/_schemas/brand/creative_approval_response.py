@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
@@ -44,7 +44,7 @@ class CreativeApproved(CreativeApprovalResponse):
     approval_status: Annotated[Literal['approved'], Field(description='Creative has been approved for distribution. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization (#4878).')]
     rights_id: str
     creative_id: Annotated[str | None, Field(description="Echo of the buyer's creative identifier"), OmittedNotNull] = None
-    creative_url: Annotated[HttpUrl | None, OmittedNotNull] = None
+    creative_url: Annotated[HostedUrl | None, OmittedNotNull] = None
     approved_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
     conditions: Annotated[list[str] | None, Field(description="Conditions on the approval (e.g., 'approved for NL market only')"), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
@@ -62,7 +62,7 @@ class CreativeRejected(CreativeApprovalResponse):
     approval_status: Annotated[Literal['rejected'], Field(description='Creative was rejected')]
     rights_id: str
     creative_id: Annotated[str | None, Field(description="Echo of the buyer's creative identifier"), OmittedNotNull] = None
-    creative_url: Annotated[HttpUrl | None, OmittedNotNull] = None
+    creative_url: Annotated[HostedUrl | None, OmittedNotNull] = None
     reason: Annotated[str, Field(description='Why the creative was rejected')]
     suggestions: Annotated[list[str] | None, Field(description='Actionable feedback for revision. If present, the buyer can revise and resubmit the creative. If absent, the rejection is final for this creative concept.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
@@ -80,9 +80,9 @@ class CreativePendingReview(CreativeApprovalResponse):
     approval_status: Annotated[Literal['pending_review'], Field(description='Creative is queued for review')]
     rights_id: str
     creative_id: Annotated[str | None, Field(description="Echo of the buyer's creative identifier"), OmittedNotNull] = None
-    creative_url: Annotated[HttpUrl | None, OmittedNotNull] = None
+    creative_url: Annotated[HostedUrl | None, OmittedNotNull] = None
     estimated_response_time: Annotated[str | None, Field(description="Expected time for review (e.g., '24h', '2 business days')"), OmittedNotNull] = None
-    status_url: Annotated[HttpUrl | None, Field(description='URL to poll for updated approval status. GET this URL to receive a creative-approval-response. Poll at reasonable intervals (suggested: every 5 minutes, back off after 1 hour to every 30 minutes). Stop polling after estimated_response_time has elapsed and the approval_status is still pending_review.'), OmittedNotNull] = None
+    status_url: Annotated[HostedUrl | None, Field(description='URL to poll for updated approval status. GET this URL to receive a creative-approval-response. Poll at reasonable intervals (suggested: every 5 minutes, back off after 1 hour to every 30 minutes). Stop polling after estimated_response_time has elapsed and the approval_status is still pending_review.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

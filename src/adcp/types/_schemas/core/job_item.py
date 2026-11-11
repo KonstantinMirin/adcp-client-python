@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 
 from .currency_code import CurrencyCode
 from .ext import ExtensionObject
@@ -93,7 +93,7 @@ class JobItem(AdCPBaseModel):
     salary: Annotated[Salary | None, Field(description='Salary range. Specify min and/or max with currency and period.'), OmittedNotNull] = None
     date_posted: Annotated[date | None, Field(description='Date the job was posted (ISO 8601 date).'), OmittedNotNull] = None
     valid_through: Annotated[date | None, Field(description='Application deadline (ISO 8601 date).'), OmittedNotNull] = None
-    apply_url: Annotated[HttpUrl | None, Field(description='Direct application URL.'), OmittedNotNull] = None
+    apply_url: Annotated[HostedUrl | None, Field(description='Direct application URL.'), OmittedNotNull] = None
     job_functions: Annotated[list[str] | None, Field(description="Job function categories (e.g., 'engineering', 'marketing', 'sales', 'finance').", min_length=1), OmittedNotNull] = None
     industries: Annotated[list[str] | None, Field(description="Industry classifications (e.g., 'technology', 'healthcare', 'retail').", min_length=1), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'remote', 'visa-sponsorship', 'equity').", min_length=1), OmittedNotNull] = None

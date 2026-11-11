@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import AssetPath, HttpUrl, StrMinLen1
+from adcp.types.constraints import AssetPath, HostedUrl, StrMinLen1
 
 from ..enums.macro_dialect import MacroDialectFamily
 from ..enums.macro_mapping_status import MacroMappingStatus
@@ -65,7 +65,7 @@ class MacroResolutionResult(AdCPBaseModel):
     asset_path: Annotated[AssetPath, Field(description='JSON Pointer to the asset carrying the declaration.')]
     token: StrMinLen1
     dialect: MacroDialectFamily
-    dialect_namespace: Annotated[HttpUrl | None, OmittedNotNull] = None
+    dialect_namespace: Annotated[HostedUrl | None, OmittedNotNull] = None
     dialect_revision: Annotated[StrMinLen1 | None, OmittedNotNull] = None
     dialect_semantic: StrMinLen1
     mapping_status: MacroMappingStatus

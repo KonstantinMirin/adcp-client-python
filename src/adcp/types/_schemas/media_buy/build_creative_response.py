@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, 
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
-    HttpUrl,
+    HostedUrl,
     IntMin1,
     StrMaxLen2000,
 )
@@ -77,7 +77,7 @@ class BuildCreativeSuccessPreview(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/0/properties/preview')
     previews: Annotated[list[BuildCreativeSuccessPreviewPreviewsItem], Field(description='Array of preview variants. Each preview corresponds to an input set from preview_inputs, or a single default preview if no inputs were provided.', min_length=1)]
-    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them.'), OmittedNotNull] = None
+    interactive_url: Annotated[HostedUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them.'), OmittedNotNull] = None
     expires_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when preview URLs expire. May differ from the manifest's expires_at.")]
 
 
@@ -135,7 +135,7 @@ class BuildCreativeMultiSuccessPreview(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/1/properties/preview')
     previews: Annotated[list[BuildCreativeMultiSuccessPreviewPreviewsItem], Field(description='Array of preview entries, one per requested capability. Array order matches creative_manifests. Canonical responses use capability_id for explicit correlation.', min_length=1)]
-    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all format previews with controls to switch between them.'), OmittedNotNull] = None
+    interactive_url: Annotated[HostedUrl | None, Field(description='Optional URL to an interactive testing page that shows all format previews with controls to switch between them.'), OmittedNotNull] = None
     expires_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when preview URLs expire. May differ from the manifest's expires_at.")]
 
 

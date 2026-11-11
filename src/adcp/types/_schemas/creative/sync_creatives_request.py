@@ -51,7 +51,7 @@ class CreativesItemFormatId(CreativesItem, V1CreativeNamedFormatReference):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/allOf/0')
 
 
 class CreativesItemFormatKind(CreativesItem, V2CreativeCanonicalFormatKind):
@@ -61,7 +61,7 @@ class CreativesItemFormatKind(CreativesItem, V2CreativeCanonicalFormatKind):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/allOf/0')
 
 
 CreativesItem._branch_models = (CreativesItemFormatId, CreativesItemFormatKind,)

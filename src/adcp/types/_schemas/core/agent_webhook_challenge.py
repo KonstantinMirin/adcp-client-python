@@ -12,7 +12,7 @@ from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     AgentWebhookChallengeChallenge,
     ComplyTestControllerRequestParamsIdentifierValueDigestsItem,
-    HttpUrl,
+    HostedUrl,
 )
 
 from ..common._vocabularies import _VALUES_CAPABILITIES_CHANGED
@@ -65,7 +65,7 @@ class AgentWebhookChallenge(AdCPBaseModel):
     scope: Annotated[Literal['agent'], Field(description='Discriminator for agent-level endpoint proof challenges.')]
     challenge: Annotated[AgentWebhookChallengeChallenge, Field(description='Opaque, cryptographically random value that the receiver must echo in the response body. Recommended encoding: base64url without padding.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Buyer-supplied subscriber identifier from the caller-scoped notification_configs[] entry being challenged.')]
-    seller_agent_url: Annotated[HttpUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
+    seller_agent_url: Annotated[HostedUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
     delivery_auth: Annotated[ObjModeCredentialFingerprint, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
     event_types: Annotated[list[EventTypesItem], Field(description='Normalized agent-level notification types requested by the subscriber at the time of the challenge. Part of the endpoint proof scope; changing event_types[] requires a fresh challenge before the new set can become active. Currently only `capabilities.changed` is valid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 

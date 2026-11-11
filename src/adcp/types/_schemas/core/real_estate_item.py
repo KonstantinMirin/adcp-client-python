@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 
 from .destination_item import ObjLatLng
 from .ext import ExtensionObject
@@ -85,8 +85,8 @@ class RealEstateItem(AdCPBaseModel):
     area: Annotated[Area | None, Field(description='Property size.'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Property description.'), OmittedNotNull] = None
     location: Annotated[ObjLatLng | None, Field(description='Geographic coordinates of the property.'), OmittedNotNull] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Primary property image URL.'), OmittedNotNull] = None
-    url: Annotated[HttpUrl | None, Field(description='Listing page URL.'), OmittedNotNull] = None
+    image_url: Annotated[HostedUrl | None, Field(description='Primary property image URL.'), OmittedNotNull] = None
+    url: Annotated[HostedUrl | None, Field(description='Listing page URL.'), OmittedNotNull] = None
     neighborhood: Annotated[str | None, Field(description='Neighborhood or area name.'), OmittedNotNull] = None
     year_built: Annotated[int | None, Field(description='Year the property was built.'), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'garden', 'parking', 'renovated', 'waterfront').", min_length=1), OmittedNotNull] = None

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl, IntMin1
+from adcp.types.constraints import HostedUrl, IntMin1
 
 from ...enums.audio_channel_layout import AudioChannelLayout
 from ...enums.frame_rate_type import FrameRateType
@@ -88,7 +88,7 @@ class VideoAsset(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/video-asset.json', pointer='#')
     asset_type: Annotated[Literal['video'], Field(description='Discriminator identifying this as a video asset. See /schemas/creative/asset-types for the registry.')]
-    url: Annotated[HttpUrl, Field(description='URL to the video asset')]
+    url: Annotated[HostedUrl, Field(description='URL to the video asset')]
     width: Annotated[IntMin1, Field(description="Width in pixels — the video file's intrinsic native width. Required: a hosted file always has concrete dimensions. (Tag-delivered video carries no width; see the `vast` asset.)")]
     height: Annotated[IntMin1, Field(description="Height in pixels — the video file's intrinsic native height. Required: a hosted file always has concrete dimensions. (Tag-delivered video carries no height; see the `vast` asset.)")]
     duration_ms: Annotated[IntMin1 | None, Field(description='Video duration in milliseconds'), OmittedNotNull] = None
@@ -114,9 +114,9 @@ class VideoAsset(AdCPBaseModel):
     audio_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Audio bitrate in kilobits per second'), OmittedNotNull] = None
     audio_loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS'), OmittedNotNull] = None
     audio_true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS'), OmittedNotNull] = None
-    captions_url: Annotated[HttpUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)'), OmittedNotNull] = None
-    transcript_url: Annotated[HttpUrl | None, Field(description='URL to text transcript of the video content'), OmittedNotNull] = None
-    audio_description_url: Annotated[HttpUrl | None, Field(description='URL to audio description track for visually impaired users'), OmittedNotNull] = None
+    captions_url: Annotated[HostedUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)'), OmittedNotNull] = None
+    transcript_url: Annotated[HostedUrl | None, Field(description='URL to text transcript of the video content'), OmittedNotNull] = None
+    audio_description_url: Annotated[HostedUrl | None, Field(description='URL to audio description track for visually impaired users'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 

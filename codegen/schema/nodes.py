@@ -139,6 +139,33 @@ class Base:
     #: -- absent and ``true`` are different statements, and ``"additionalProperties" in
     #: declares`` is how "stated at all" is asked.
     extra: Any = None
+    #: **IS THIS NODE'S TEXT A MERGE OF TWO DECLARATIONS?**  (``adcp-client-python-8awh``,
+    #: the owner's ruling of 2026-11-11.)  §2's intersection rule merges a composing
+    #: node's restatement of a property with the declaration it inherits and hands the
+    #: merged one back to :func:`parse` -- so a keyword of such a node may be stated at
+    #: ANOTHER POSITION of the document, and **a child pointer composed onto this node's
+    #: own pointer is then a path the document does not contain.**
+    #:
+    #: Measured: ``media-buy/buy-products-request.json`` at
+    #: ``#/anyOf/1/properties/account`` is exactly ``{"required": ["brand", "operator"]}``
+    #: and nothing else -- no ``allOf``, no ``anyOf``, no ``$ref``.  The ``allOf`` it is
+    #: merged with is the ROOT's, at ``#/properties/account``.  Four classes were stamped
+    #: at ``#/anyOf/1/properties/account/allOf/0/...`` and the only pointer of the four
+    #: segments that the document holds is the first three.
+    #:
+    #: **It is a FLAG and not a second pointer**, because what a reader needs is not
+    #: "where is my ``allOf`` stated" -- the merge does not record that per keyword -- but
+    #: "may I compose a child pointer onto mine".  The answer is no, and the nearest
+    #: position the document holds is then this node's own :attr:`pointer`.  A reader that
+    #: needs more than that is asking for per-keyword provenance, which §2's intersection
+    #: does not carry and which no site of this bundle needs: the restatements measured
+    #: contribute ``required`` and ``minItems``, and neither bears a child node.
+    #:
+    #: ``False`` for every node the walk parsed from one position's own text, which is
+    #: every node but the merged property declarations.  Excluded from equality for
+    #: :attr:`pointer`'s reason -- it is a fact about where the text came from and not
+    #: about what the node says of an instance.
+    merged: bool = field(default=False, compare=False)
 
     @property
     def description(self) -> str | None:

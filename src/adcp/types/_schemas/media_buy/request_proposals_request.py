@@ -90,14 +90,14 @@ class RequestProposalsRequestAccountAccountAccountId(RequestProposalsRequestAcco
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account')
 
 
 class RequestProposalsRequestAccountAccountBrandOperator(RequestProposalsRequestAccountAccount, CanonicalAccountReferenceBrandOperator):
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account')
 
 
 RequestProposalsRequestAccountAccount._branch_models = (RequestProposalsRequestAccountAccountAccountId, RequestProposalsRequestAccountAccountBrandOperator,)

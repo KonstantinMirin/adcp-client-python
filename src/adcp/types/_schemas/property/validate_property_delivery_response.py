@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -47,7 +47,7 @@ class Aggregate(AdCPBaseModel):
     score: Annotated[float | None, Field(description='Numeric score (0-100 scale typical, but agent-defined)'), OmittedNotNull] = None
     grade: Annotated[str | None, Field(description="Letter grade or category (e.g., 'A+', 'B-', 'Gold', 'Compliant')"), OmittedNotNull] = None
     label: Annotated[str | None, Field(description="Human-readable summary (e.g., '85% compliant', 'High quality')"), OmittedNotNull] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description='URL explaining how this aggregate was calculated'), OmittedNotNull] = None
+    methodology_url: Annotated[HostedUrl | None, Field(description='URL explaining how this aggregate was calculated'), OmittedNotNull] = None
 
 
 class AuthorizationSummary(AdCPBaseModel):

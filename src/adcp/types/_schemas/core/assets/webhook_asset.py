@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl, IntMin10Max5000
+from adcp.types.constraints import HostedUrl, IntMin10Max5000
 
 from ...enums.http_method import HTTPMethod
 from ...enums.universal_macro import UniversalMacro
@@ -34,7 +34,7 @@ class WebhookAsset(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/webhook-asset.json', pointer='#')
     asset_type: Annotated[Literal['webhook'], Field(description='Discriminator identifying this as a webhook asset. See /schemas/creative/asset-types for the registry.')]
-    url: Annotated[HttpUrl, Field(description='Webhook URL to call for dynamic content')]
+    url: Annotated[HostedUrl, Field(description='Webhook URL to call for dynamic content')]
     method: Annotated[HTTPMethod | None, Field(description='HTTP method', json_schema_extra={'default': 'POST'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(HTTPMethod).validate_python('POST'))
     timeout_ms: Annotated[IntMin10Max5000 | None, Field(description='Maximum time to wait for response in milliseconds'), OmittedNotNull] = 500
     supported_macros: Annotated[list[UniversalMacro | str] | None, Field(description='Universal macros that can be passed to webhook (e.g., DEVICE_TYPE, COUNTRY). See docs/creative/universal-macros.mdx for full list.'), OmittedNotNull] = None

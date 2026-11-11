@@ -54,7 +54,7 @@ class CreativeRepresentationFormatId(CreativeRepresentation, NamedFormatManifest
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/allOf/0')
 
 
 class CreativeRepresentationFormatKind(CreativeRepresentation, CanonicalFormatManifest):
@@ -64,7 +64,7 @@ class CreativeRepresentationFormatKind(CreativeRepresentation, CanonicalFormatMa
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/allOf/0')
 
 
 CreativeRepresentation._branch_models = (CreativeRepresentationFormatId, CreativeRepresentationFormatKind,)

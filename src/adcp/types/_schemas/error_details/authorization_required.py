@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 
 from ..core.downstream_connection_requirement import DownstreamConnectionRequirement
 
@@ -21,7 +21,7 @@ class AuthorizationRequiredDetails(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/authorization-required.json', pointer='#')
     required_connections: Annotated[list[DownstreamConnectionRequirement] | None, Field(description='Complete set of downstream connections known to be required for the relevant product, format, or request.'), OmittedNotNull] = None
     missing_connections: Annotated[list[DownstreamConnectionRequirement] | None, Field(description='Subset of downstream connections that blocked the current request. Sellers SHOULD populate this array when the caller needs to route a human through a connections flow. Entries with `status` of `missing`, `pending`, `expired`, or `revoked` MUST include either `provider` or `authorization_url` so the buyer can route the remediation unambiguously.'), OmittedNotNull] = None
-    authorization_url: Annotated[HttpUrl | None, Field(description='General recovery URL when there is a single obvious authorization step or when the seller has its own connection-management page.'), OmittedNotNull] = None
+    authorization_url: Annotated[HostedUrl | None, Field(description='General recovery URL when there is a single obvious authorization step or when the seller has its own connection-management page.'), OmittedNotNull] = None
     authorization_instructions: Annotated[str | None, Field(description='Human-readable recovery instructions. Use `missing_connections[].authorization_instructions` when instructions differ per downstream connection.'), OmittedNotNull] = None
     reference_authorization: Annotated[dict[str, Any] | None, Field(description='Legacy or provider-specific authorization hint for the referenced object. Prefer `missing_connections[]` for new implementations.'), OmittedNotNull] = None
 

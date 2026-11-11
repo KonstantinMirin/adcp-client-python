@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 
 from ..enums.right_use import RightUse
 from .ext import ExtensionObject
@@ -24,7 +24,7 @@ class GenerationCredential(AdCPBaseModel):
     rights_key: Annotated[str, Field(description='Scoped API key or token for generating rights-cleared content. The provider validates this key at generation time to verify the caller is authorized.')]
     uses: Annotated[list[RightUse], Field(description='Which rights uses this credential covers', min_length=1)]
     expires_at: Annotated[AwareDatetime | None, Field(description='When this credential expires. Key lifetime is determined by the provider.'), OmittedNotNull] = None
-    endpoint: Annotated[HttpUrl | None, Field(description="Provider API endpoint to use with this credential, if different from the provider's default"), OmittedNotNull] = None
+    endpoint: Annotated[HostedUrl | None, Field(description="Provider API endpoint to use with this credential, if different from the provider's default"), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

@@ -17,7 +17,7 @@ from adcp.types.constraints import (
     BrandDiscoveryLogoId,
     BrandDiscoveryPhotographyStylePreferredAspectRatiosItem,
     FloatGt0,
-    HttpUrl,
+    HostedUrl,
     IntMin100Max900,
     NonEmptyList,
     PropertyRegion,
@@ -330,7 +330,7 @@ class Logo(AdCPBaseModel):
         UniqueItems('slots'),
     )
     id: Annotated[LogoId | None, Field(description='Stable identifier for this logo entry. Recommended when logo usage rules or mark lockups need to bind to a specific logo asset.'), OmittedNotNull] = None
-    url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
+    url: Annotated[HostedUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements'), OmittedNotNull] = None
     background: Annotated[Background | None, Field(description='Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background'), OmittedNotNull] = None
     variant: Annotated[LogoVariant | None, Field(description='Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo'), OmittedNotNull] = None
@@ -456,7 +456,7 @@ class Asset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset')
     asset_id: Annotated[str, Field(description='Unique identifier')]
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
-    url: Annotated[HttpUrl, Field(description='URL to CDN-hosted asset file')]
+    url: Annotated[HostedUrl, Field(description='URL to CDN-hosted asset file')]
     tags: Annotated[list[str] | None, Field(description="Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')"), OmittedNotNull] = None
     name: Annotated[LocalizedScalar | None, Field(description='Human-readable name, either a legacy plain string or localized values.'), OmittedNotNull] = None
     description: Annotated[LocalizedScalar | None, Field(description='Asset description or usage notes, either a legacy plain string or localized values.'), OmittedNotNull] = None
@@ -523,7 +523,7 @@ class AgenticCheckout(AdCPBaseModel):
     Agentic checkout endpoint configuration
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/product_catalog/properties/agentic_checkout')
-    endpoint: Annotated[HttpUrl, Field(description='Base URL for checkout session API')]
+    endpoint: Annotated[HostedUrl, Field(description='Base URL for checkout session API')]
     spec: Annotated[str, Field(description='Checkout API specification identifier. Use a namespaced string to identify the checkout protocol (e.g., vendor-prefixed or custom). Vendor-specific values belong under ext.{vendor}.')]
     supported_payment_providers: Annotated[list[str] | None, Field(description='Payment providers supported by this checkout endpoint'), OmittedNotNull] = None
 
@@ -536,7 +536,7 @@ class ProductCatalog(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/product_catalog')
-    feed_url: Annotated[HttpUrl, Field(description='URL to product catalog feed')]
+    feed_url: Annotated[HostedUrl, Field(description='URL to product catalog feed')]
     feed_format: Annotated[FeedFormat | None, Field(description='Format of the product feed'), OmittedNotNull] = None
     categories: Annotated[list[str] | None, Field(description='Product categories available in the catalog'), OmittedNotNull] = None
     last_updated: Annotated[AwareDatetime | None, Field(description='When the product catalog was last updated'), OmittedNotNull] = None
@@ -1418,7 +1418,7 @@ class LogoUsageRule(AdCPBaseModel):
         RequiredGroups((('logo_id',), ('logo_url',), ('logo_variant',), ('logo_tags',), ('slots',)), 'anyOf'),
         UniqueItems('slots'),
     )
-    logo_url: Annotated[HttpUrl | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.'), OmittedNotNull] = None
+    logo_url: Annotated[HostedUrl | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.'), OmittedNotNull] = None
     logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` this rule applies to. Prefer this over logo_url when the rule targets a specific logo entry.'), OmittedNotNull] = None
     logo_variant: Annotated[LogoVariant | None, Field(description='Logo variant this rule applies to.'), OmittedNotNull] = None
     logo_tags: Annotated[list[str] | None, Field(description='Logo tags this rule applies to.', min_length=1), OmittedNotNull] = None
@@ -1611,7 +1611,7 @@ class AssetLibrary(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset_library')
     name: Annotated[str, Field(description='Display name of the asset library')]
     type: Annotated[AssetLibraryType | None, Field(description='Type of asset library'), OmittedNotNull] = None
-    url: Annotated[HttpUrl, Field(description='URL to the asset library (for human access)')]
+    url: Annotated[HostedUrl, Field(description='URL to the asset library (for human access)')]
     description: Annotated[str | None, Field(description='Description of the library contents and usage'), OmittedNotNull] = None
     color_guide: Annotated[ColorGuide | None, Field(description='Color guide for the asset library defining roles and palettes'), OmittedNotNull] = None
 
@@ -1676,7 +1676,7 @@ class CollectionsItem(AdCPBaseModel):
     collection_id: Annotated[str | None, Field(description="Collection identifier as used in the seller's get_products responses"), OmittedNotNull] = None
     name: Annotated[str, Field(description='Human-readable collection name')]
     role: Annotated[TalentRole | None, Field(description="This person's role on the collection"), OmittedNotNull] = None
-    seller_agent_url: Annotated[HttpUrl | None, Field(description='URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products.'), OmittedNotNull] = None
+    seller_agent_url: Annotated[HostedUrl | None, Field(description='URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products.'), OmittedNotNull] = None
 
 
 class Brand(AdCPBaseModel):
@@ -1688,7 +1688,7 @@ class Brand(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand')
     id: Annotated[BrandId, Field(description='Brand identifier within the house. House chooses this ID.')]
-    url: Annotated[HttpUrl | None, Field(description='Primary brand URL for context and asset discovery'), OmittedNotNull] = None
+    url: Annotated[HostedUrl | None, Field(description='Primary brand URL for context and asset discovery'), OmittedNotNull] = None
     identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description='Verified-identity relying parties scoped to this brand/property, for attestation provenance in TMP Identity Match. Use when a brand or property runs its own relying_party_id (per-property pseudonyms); entity-wide relying parties live on the house object. See specs/tmp-verified-identity-attestation.md.'), OmittedNotNull] = None
     names: Annotated[list[LocalizedName], Field(description='Localized brand names. Multiple entries per language allowed for aliases.', min_length=1)]
     keller_type: Annotated[KellerType | None, OmittedNotNull] = None
@@ -1704,7 +1704,7 @@ class Brand(AdCPBaseModel):
     assets: Annotated[list[Asset] | None, Field(description='Brand asset library'), OmittedNotNull] = None
     properties: Annotated[list[BrandDiscoveryProperty] | None, Field(description='Digital properties associated with this brand — owned, managed, or represented'), OmittedNotNull] = None
     product_catalog: Annotated[ProductCatalog | None, OmittedNotNull] = None
-    privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the brand's privacy policy"), OmittedNotNull] = None
+    privacy_policy_url: Annotated[HostedUrl | None, Field(description="URL to the brand's privacy policy"), OmittedNotNull] = None
     data_subject_contestation: Annotated[DataSubjectContestation | None, OmittedNotNull] = None
     disclaimers: Annotated[list[DisclaimersItem] | None, Field(description='Legal disclaimers for creatives'), OmittedNotNull] = None
     trademarks: Annotated[list[Trademark] | None, Field(description="Brand-level registered trademarks. Use for marks the brand owns or controls (e.g., a sub-brand's own marks distinct from the corporate parent). House-level trademarks live on the house object; resolution between the two is union — both lists are valid claims."), OmittedNotNull] = None

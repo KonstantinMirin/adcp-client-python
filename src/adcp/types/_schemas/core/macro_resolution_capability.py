@@ -8,7 +8,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, NotValue, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMinLen1
+from adcp.types.constraints import HostedUrl, StrMinLen1
 
 from ..enums.macro_dialect import MacroDialectFamily
 from ..enums.macro_resolver import MacroProcessingActor
@@ -58,7 +58,7 @@ class MacroProcessingCapability(AdCPBaseModel):
         Approximation(document='core/macro-resolution-capability.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'enum': ['iab_vast', 'iab_daast']}, 'operation': {'const': 'resolve_value'}}, 'required': ['dialect', 'operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     dialect: MacroDialectFamily
-    dialect_namespace: Annotated[HttpUrl | None, OmittedNotNull] = None
+    dialect_namespace: Annotated[HostedUrl | None, OmittedNotNull] = None
     dialect_revision: Annotated[StrMinLen1 | None, OmittedNotNull] = None
     dialect_semantic: StrMinLen1
     mapping_status: MappingStatus

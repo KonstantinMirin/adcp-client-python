@@ -427,6 +427,43 @@ class ClassDecl:
     #: branch is neither a ``$ref`` (so it cannot DISTRIBUTE into several products) nor
     #: a union of its own, so one branch is exactly one class.
     presence: tuple[Presence, ...] | None = None
+    #: **THE THIRD COMPONENT OF A CLASS'S IDENTITY: which BRANCH of its node's target this
+    #: class is** (``adcp-client-python-8awh``, the owner's ruling of 2026-11-11).
+    #:
+    #: §5's distribution gives a composing node one class per branch of a ``$ref``
+    #: target's own combinator -- ``(A | B) and C`` is ``(A and C) | (B and C)`` -- and the
+    #: subject of one such class is a CONJUNCTION: the referencing node's own statements
+    #: AND one arm of the target.  **No single JSON pointer names that, and both halves of
+    #: the pair were measured on ``core/postal-area.json``**: the arm alone
+    #: (``core/postal-country-system.json#/anyOf/9``) admits ``{}`` where the class
+    #: requires ``country``, ``system`` and ``values``, and the referencing node alone
+    #: (``#/anyOf/0/allOf/0``) is the whole ten-arm union the class is ONE arm of.  Either
+    #: sole pointer makes the class narrower than the node it names, which reading 1
+    #: forbids outright.
+    #:
+    #: So the identity is a TRIPLE -- the document, the pointer the document HOLDS, and
+    #: this index -- and the index is a SLOT rather than a segment of a pointer string.
+    #: Spliced into the string instead it produced **70 classes over 12 documents stamped
+    #: at a path their own document does not contain**, measured by walking every stamped
+    #: pointer through its document: 16 ``adagents.json``, 16
+    #: ``core/package-format-snapshot.json``, 10 ``core/postal-area.json``, 6
+    #: ``core/async-response-data.json``, 5 ``core/vendor-pricing-option.json``, 3 each
+    #: ``core/package-signal-targeting.json``, ``core/product-filters.json`` and
+    #: ``media-buy/build-creative-request.json``, and 2 each
+    #: ``core/creative-representation.json``, ``creative/sync-creatives-request.json``,
+    #: ``media-buy/buy-products-request.json`` and
+    #: ``media-buy/request-proposals-request.json``.
+    #:
+    #: **It is the TARGET's own index and never a loop's position**
+    #: (:attr:`codegen.compiler.TargetBranches.dropped`): a branch whose intersection with
+    #: the referencing node is provably empty is DROPPED, and renumbering the survivors
+    #: would pair every one of them with the wrong arm.
+    #:
+    #: ``None`` on every class that is not one branch of a distributed target.  **The slot
+    #: is written by the walk and is read by the STAMP** -- and until
+    #: ``adcp.types._base.SchemaRef`` carries a third field the stamp has two components,
+    #: so this one stops at the IR.  The handover is on the bead.
+    branch_of: int | None = None
 
     def __post_init__(self) -> None:
         """**A base list naming one class twice RAISES** (``architecture.md``, 2026-10-29).
