@@ -39,7 +39,7 @@ class VendorPricingOptionCpm(VendorPricingOption, CpmPricing):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1')
 
 
 class VendorPricingOptionPercentOfMedia(VendorPricingOption, PercentOfMediaPricing):
@@ -49,7 +49,7 @@ class VendorPricingOptionPercentOfMedia(VendorPricingOption, PercentOfMediaPrici
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1')
 
 
 class VendorPricingOptionFlatFee(VendorPricingOption, FlatFeePricing):
@@ -59,7 +59,7 @@ class VendorPricingOptionFlatFee(VendorPricingOption, FlatFeePricing):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1')
 
 
 class VendorPricingOptionPerUnit(VendorPricingOption, PerUnitPricing):
@@ -69,7 +69,7 @@ class VendorPricingOptionPerUnit(VendorPricingOption, PerUnitPricing):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/3')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1')
 
 
 class VendorPricingOptionCustom(VendorPricingOption, CustomPricing):
@@ -79,7 +79,7 @@ class VendorPricingOptionCustom(VendorPricingOption, CustomPricing):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/4')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1')
 
 
 VendorPricingOption._branch_models = (VendorPricingOptionCpm, VendorPricingOptionPercentOfMedia, VendorPricingOptionFlatFee, VendorPricingOptionPerUnit, VendorPricingOptionCustom,)

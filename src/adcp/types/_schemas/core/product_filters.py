@@ -190,7 +190,7 @@ class SignalTargetingItemBinary(SignalTargetingItem, SignalTargetingBinary):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0')
 
 
 class SignalTargetingItemCategorical(SignalTargetingItem, SignalTargetingCategorical):
@@ -200,7 +200,7 @@ class SignalTargetingItemCategorical(SignalTargetingItem, SignalTargetingCategor
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0')
 
 
 class SignalTargetingItemNumeric(SignalTargetingItem, SignalTargetingNumeric):
@@ -210,7 +210,7 @@ class SignalTargetingItemNumeric(SignalTargetingItem, SignalTargetingNumeric):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0')
 
 
 SignalTargetingItem._branch_models = (SignalTargetingItemBinary, SignalTargetingItemCategorical, SignalTargetingItemNumeric,)

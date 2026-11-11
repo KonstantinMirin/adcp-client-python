@@ -76,7 +76,7 @@ class SignalConditionsItemBinary(SignalConditionsItem, SignalTargetingBinary):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/signal_conditions/items/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/signal_conditions/items/allOf/0')
 
 
 class SignalConditionsItemCategorical(SignalConditionsItem, SignalTargetingCategorical):
@@ -86,7 +86,7 @@ class SignalConditionsItemCategorical(SignalConditionsItem, SignalTargetingCateg
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/signal_conditions/items/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/signal_conditions/items/allOf/0')
 
 
 class SignalConditionsItemNumeric(SignalConditionsItem, SignalTargetingNumeric):
@@ -96,7 +96,7 @@ class SignalConditionsItemNumeric(SignalConditionsItem, SignalTargetingNumeric):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/signal_conditions/items/allOf/0/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/signal_conditions/items/allOf/0')
 
 
 SignalConditionsItem._branch_models = (SignalConditionsItemBinary, SignalConditionsItemCategorical, SignalConditionsItemNumeric,)

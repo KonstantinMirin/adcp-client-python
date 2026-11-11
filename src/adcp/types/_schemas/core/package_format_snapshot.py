@@ -76,105 +76,105 @@ class PackageFormatSnapshotImage(PackageFormatSnapshot, ImageFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotHtml5(PackageFormatSnapshot, HTML5FormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotDisplayTag(PackageFormatSnapshot, DisplayTagFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotImageCarousel(PackageFormatSnapshot, ImageCarouselFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/3')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotVideoHosted(PackageFormatSnapshot, HostedVideoFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/4')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotVideoVast(PackageFormatSnapshot, VASTVideoFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/5')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotAudioHosted(PackageFormatSnapshot, HostedAudioFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/6')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotAudioVast(PackageFormatSnapshot, VASTAudioFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/7')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotAudioDaast(PackageFormatSnapshot, DAASTAudioFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/8')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotSponsoredPlacement(PackageFormatSnapshot, SponsoredPlacementFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/9')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotNativeInFeed(PackageFormatSnapshot, NativeInFeedFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/10')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotResponsiveCreative(PackageFormatSnapshot, ResponsiveCreativeFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/11')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotAgentPlacement(PackageFormatSnapshot, AgentPlacementFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/12')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotSellerRenderedStatefulDisplay(PackageFormatSnapshot, SellerRenderedStatefulDisplayFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/13')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotCoordinatedPlacements(PackageFormatSnapshot, CoordinatedPlacementsFormatDeclaration):
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/14')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 class PackageFormatSnapshotCustom(PackageFormatSnapshot, CustomFormatDeclaration):
@@ -184,7 +184,7 @@ class PackageFormatSnapshotCustom(PackageFormatSnapshot, CustomFormatDeclaration
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0/oneOf/15')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/allOf/0')
 
 
 PackageFormatSnapshot._branch_models = (PackageFormatSnapshotImage, PackageFormatSnapshotHtml5, PackageFormatSnapshotDisplayTag, PackageFormatSnapshotImageCarousel, PackageFormatSnapshotVideoHosted, PackageFormatSnapshotVideoVast, PackageFormatSnapshotAudioHosted, PackageFormatSnapshotAudioVast, PackageFormatSnapshotAudioDaast, PackageFormatSnapshotSponsoredPlacement, PackageFormatSnapshotNativeInFeed, PackageFormatSnapshotResponsiveCreative, PackageFormatSnapshotAgentPlacement, PackageFormatSnapshotSellerRenderedStatefulDisplay, PackageFormatSnapshotCoordinatedPlacements, PackageFormatSnapshotCustom,)

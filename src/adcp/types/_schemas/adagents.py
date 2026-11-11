@@ -149,70 +149,70 @@ class FormatsItem(BranchDispatchMixin, AdCPBaseModel):
 
 
 class FormatsItemImage(FormatsItem, ImageFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemHtml5(FormatsItem, HTML5FormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemDisplayTag(FormatsItem, DisplayTagFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemImageCarousel(FormatsItem, ImageCarouselFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/3')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemVideoHosted(FormatsItem, HostedVideoFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/4')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemVideoVast(FormatsItem, VASTVideoFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/5')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemAudioHosted(FormatsItem, HostedAudioFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/6')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemAudioVast(FormatsItem, VASTAudioFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/7')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemAudioDaast(FormatsItem, DAASTAudioFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/8')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemSponsoredPlacement(FormatsItem, SponsoredPlacementFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/9')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemNativeInFeed(FormatsItem, NativeInFeedFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/10')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemResponsiveCreative(FormatsItem, ResponsiveCreativeFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/11')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemAgentPlacement(FormatsItem, AgentPlacementFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/12')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemSellerRenderedStatefulDisplay(FormatsItem, SellerRenderedStatefulDisplayFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/13')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemCoordinatedPlacements(FormatsItem, CoordinatedPlacementsFormatDeclaration):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/14')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 class FormatsItemCustom(FormatsItem, CustomFormatDeclaration):
     """
     Adopter-defined shape that doesn't fit the 15 canonicals. Requires `format_shape` (vocabulary-registered global pattern) and `format_schema` (URI+digest reference to a fetchable schema describing the actual params/slots). `params` shape is governed by the fetched schema rather than baked into AdCP — kept as `type: object` here with `additionalProperties: true` because the canonical schema validates dynamically post-fetch.
     """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/15')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0')
 
 
 FormatsItem._branch_models = (FormatsItemImage, FormatsItemHtml5, FormatsItemDisplayTag, FormatsItemImageCarousel, FormatsItemVideoHosted, FormatsItemVideoVast, FormatsItemAudioHosted, FormatsItemAudioVast, FormatsItemAudioDaast, FormatsItemSponsoredPlacement, FormatsItemNativeInFeed, FormatsItemResponsiveCreative, FormatsItemAgentPlacement, FormatsItemSellerRenderedStatefulDisplay, FormatsItemCoordinatedPlacements, FormatsItemCustom,)

@@ -435,6 +435,8 @@ def declare_object(
     discriminator: str | None = None,
     combinator: str | None = None,
     presence: tuple[Presence, ...] | None = None,
+    held_at: str | None = None,
+    branch_of: int | None = None,
 ) -> str | Refusal:
     """Assemble one class out of decided properties, and record what it declares.
 
@@ -467,6 +469,13 @@ def declare_object(
     ``additionalProperties`` on a class is -- or ``None`` where the document states
     ``false``, ``true``, the empty schema or nothing.  The parser builds it
     (``schema.parse.extras_store``) and the three callers that can meet one pass it.
+
+    ``held_at`` is the pointer the DOCUMENT holds this node at, where that is not the
+    ``pointer`` the walk addresses it by, and ``branch_of`` is which branch of its node's
+    ``$ref`` target the class is (:attr:`codegen.ir.ClassDecl.branch_of`).  Both are
+    ``None`` for every class the walk reached by descending its own document, which is
+    every class but §5's distributed branches; the comment at the ``ref=`` line carries
+    the reason the two pointers are separate at all.
 
     ``root_required``, ``discriminator`` and ``combinator`` are §4's three facts a UNION
     BASE carries and no other class does, so all three are ``None`` for every row but
@@ -664,7 +673,29 @@ def declare_object(
         # declaration carries is where it sits and ``names.assign`` binds the name §4
         # derives for it.
         name=pointer,
-        ref=compiler.schema_ref(mod.document, pointer),
+        # **THE ADDRESS AND THE IDENTITY ARE TWO THINGS, and ``held_at`` is what tells
+        # them apart** (``adcp-client-python-8awh``, the owner's ruling of 2026-11-11).
+        # ``pointer`` is the walk's own ADDRESS for this node: every map the walk keys by
+        # position is keyed by it -- ``Module.declared``, ``Module.shapes``,
+        # ``Module.hops``, ``Module.at``, and every ``ir.TypeRef(pointer, local=True)``
+        # the naming pass binds -- and it must stay distinct per class or two classes
+        # collide in all five.  The STAMP is something else: it is the claim a class makes
+        # about WHICH NODE OF WHICH DOCUMENT it is, and ``docs/plan/architecture.md`` §9
+        # forbids it naming "a position the bundle does not hold".
+        #
+        # §5's distribution is where the two came apart.  It addresses one class per
+        # branch of a ``$ref`` target by splicing the target's own branch index onto the
+        # REFERENCING path, which is a fine address and a false claim: measured by walking
+        # every stamped pointer through its own document, **70 classes over 12 documents
+        # named a path their document does not contain**.  So the address keeps the splice
+        # and the stamp takes ``held_at`` -- the pointer the DOCUMENT holds -- with
+        # :attr:`ir.ClassDecl.branch_of` carrying which arm.
+        #
+        # ``None`` means the two are the same, which is every class but a distributed
+        # branch: a node the walk reached by descending its own document is addressed and
+        # stamped at one pointer, and passing ``held_at=pointer`` there would be a second
+        # spelling of one fact.
+        ref=compiler.schema_ref(mod.document, pointer if held_at is None else held_at),
         fields=tuple(props),
         description=described,
         # D8, and §5's ``additionalProperties`` row: **a class DECLARES the ``extra``
@@ -686,6 +717,7 @@ def declare_object(
         combinator=combinator,
         branches=branches,
         presence=presence,
+        branch_of=branch_of,
     )
     # :attr:`Shape.decided` is written HERE and by no caller, for the reason the rule
     # tuple above is: this is the one funnel a class with fields passes through, so a

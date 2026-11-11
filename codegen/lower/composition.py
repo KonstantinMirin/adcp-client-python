@@ -2014,8 +2014,29 @@ def lower_composition(
     # :func:`codegen.schema.parse.parse`", because the result has to be parsed as ONE node
     # rather than composed out of two decided ones.  So the one reader of a raw mapping
     # reads these too, at the pointer the key was declared at.
+    # **AND A MERGED ONE SAYS SO** (:attr:`nodes.Base.merged`, ``adcp-client-python-8awh``,
+    # the owner's ruling of 2026-11-11).  A key BOTH this node and a base declare arrives
+    # here as §2's intersection of the two, so a keyword of it may be stated at the BASE's
+    # position and not at ``at[key]`` -- and a child pointer composed onto ``at[key]`` is
+    # then a path the document does not contain.  Measured:
+    # ``media-buy/buy-products-request.json`` at ``#/anyOf/1/properties/account`` is
+    # exactly ``{"required": ["brand", "operator"]}``, its ``allOf`` is the ROOT's at
+    # ``#/properties/account``, and four classes were stamped at
+    # ``#/anyOf/1/properties/account/allOf/0/...``.
+    #
+    # **The test is ``key in inherited`` and it is this loop's only reading of it**: a key
+    # no base declares was not merged with anything (:func:`lower.inherited.merge`'s first
+    # arm hands it straight back), and a key some base declares went through the
+    # intersection whichever arm decided it.  Told to the parser rather than inferred
+    # there, because a merged declaration is byte-identical to one a document could have
+    # written at that position.
     parsed_own = {
-        key: intersect.parsed_property(declaration, at.get(key, f"{pointer}/properties/{key}"), mod)
+        key: _parsed_property(
+            declaration,
+            at.get(key, f"{pointer}/properties/{key}"),
+            mod,
+            merged=key in inherited,
+        )
         for key, declaration in own.items()
     }
     # **:func:`codegen.refusal.first_refusal` over the whole batch**, which is §2's one
@@ -2166,7 +2187,18 @@ def lower_composition(
     if distributing is None or isinstance(declared, Refusal):
         return declared
     return _distribute(
-        declared, *distributing, asserted=asserted_properties(node, conjuncts), mod=mod
+        declared,
+        *distributing,
+        asserted=asserted_properties(node, conjuncts),
+        mod=mod,
+        # **THE NEAREST POSITION THE DOCUMENT HOLDS, which is the conjunct's own pointer
+        # unless this node's text is a MERGE** (:attr:`nodes.Base.merged`,
+        # ``adcp-client-python-8awh``).  A merged declaration's ``allOf`` is stated at the
+        # BASE's position, so ``<this node>/allOf/<i>`` is a path the document does not
+        # contain and the nearest one it does is this node's own pointer.  Decided HERE
+        # because this is the frame that has the node; :func:`_distribute` is handed the
+        # answer rather than the flag, so there is one reading of it.
+        held_at=node.pointer if node.merged else distributing[0],
     )
 
 
@@ -2259,22 +2291,65 @@ def a_sibling_with_no_type_to_constrain(
     return None
 
 
-def distributed_pointer(where: str, branches: compiler.TargetBranches, index: int) -> str:
-    """Where the class for one DISTRIBUTED branch sits, as a pointer of this document.
+def _parsed_property(
+    declaration: Any, at: str, mod: compiler.Module, *, merged: bool
+) -> nodes.Node | Refusal:
+    """``intersect.parsed_property`` with §2's MERGE recorded on the node.
 
-    ``<the conjunct>/<the target's combinator>/<index>``, and it is **a pointer the
-    document of record HOLDS** rather than one this row invents (§9: "do not decide a
-    position the bundle does not hold from a view of it").  §3 inlines every
+    That function is the one reader of a property declaration and this adds the one fact
+    it has no parameter for: whether the declaration it is handed is a single position's
+    text or §2's intersection of two (:attr:`nodes.Base.merged`,
+    ``adcp-client-python-8awh``).  Written here and not there because
+    ``codegen/intersect.py`` is another lane's; the shape guard and the position are that
+    function's own and are restated rather than re-decided -- a property that is not a
+    schema is a VERDICT at its own pointer, and a property's value is at PROP.
+
+    **The handover is recorded on the bead**: the two should be ONE function, and the
+    merge of them belongs in ``intersect.parsed_property`` with ``merged`` as a keyword.
+    """
+    if not isinstance(declaration, Mapping):
+        return Refusal("properties", at, "property is not a schema", kind=Kind.VERDICT)
+    return schema.parse(
+        declaration,
+        pointer=at,
+        position=Position.PROP,
+        source=mod.source,
+        merged=merged,
+    )
+
+
+def distributed_pointer(where: str, branches: compiler.TargetBranches, index: int) -> str:
+    """**THE WALK'S OWN ADDRESS for the class of one DISTRIBUTED branch, and NOT its
+    stamp** -- ``<the conjunct>/<the target's combinator>/<index>``.
+
+    **THIS DOCSTRING CLAIMED THE OPPOSITE AND THE CLAIM WAS FALSE**
+    (``adcp-client-python-8awh``, the owner's ruling of 2026-11-11).  It read: "it is **a
+    pointer the document of record HOLDS** rather than one this row invents (§9: do not
+    decide a position the bundle does not hold from a view of it).  §3 inlines every
     cross-document ``$ref`` unchanged, so the conjunct's own pointer carries the target's
-    root in the record and the target's branch list hangs off it there -- which is also
-    what makes the branch class GRADEABLE: ``_base.applied_schema`` resolves that pointer
-    to the branch node and conjoins what the enclosing node asserts about the same
-    instance, so the fields the branch inherits from this node's base are facts its node
-    states (§8's pairing rule).
+    root in the record and the target's branch list hangs off it there."  Every clause of
+    that is true of the RECORD and the sentence it was offered as a defence of is about
+    the BUNDLE -- and the record is a view of the bundle, which is the one thing §9's
+    rule names.  Measured by walking every stamped pointer through its own document:
+    **70 classes over 12 documents named a path their document does not contain**, and 4
+    of them do not resolve in the record either, because the conjunct a restated property
+    merges in is not held under the restating node at all.
+
+    So this composes an ADDRESS.  It is a key and nothing else: ``Module.declared``,
+    ``Module.shapes``, ``Module.hops``, ``Module.at`` and every
+    ``ir.TypeRef(pointer, local=True)`` the naming pass binds are keyed by it, and it must
+    stay distinct per class or two classes collide in all five.  What a class CLAIMS about
+    its document is ``declare_object``'s ``held_at`` -- the ``$ref`` conjunct, which the
+    document does hold -- with :attr:`codegen.ir.ClassDecl.branch_of` carrying which arm,
+    because the subject of a product is a CONJUNCTION no single pointer names: the arm
+    alone admits instances the product refuses and the referencing node alone is the whole
+    union the product is one arm of.
 
     Built and never parsed: the index is the position in the target's own branch list and
     the keyword is :attr:`TargetBranches.combinator`, both held as values, so no reader
-    recovers a position from the string (``docs/plan/architecture.md`` §3).
+    recovers a position from the string (``docs/plan/architecture.md`` §3) -- and
+    :func:`lower.union._products` now carries the index beside the address for that
+    reason, rather than leaving it recoverable only from the string.
     """
     return f"{where}/{branches.combinator}/{index}"
 
@@ -2287,6 +2362,7 @@ def _distribute(
     *,
     asserted: Mapping[str, list[dict]],
     mod: compiler.Module,
+    held_at: str,
 ) -> str | Refusal:
     """§5's distribution, written: one subclass per branch of the target, over the base.
 
@@ -2392,6 +2468,15 @@ def _distribute(
             Position.BRANCH,
             bases=(ir.TypeRef(base, local=True), ir.TypeRef(branch.symbol, local=True)),
             description=inherited,
+            # **THE STAMP IS THE ``$ref`` NODE AND THE INDEX IS A SLOT**
+            # (``adcp-client-python-8awh``, the owner's ruling of 2026-11-11).
+            # ``held_at`` is the nearest position the DOCUMENT holds -- the conjunct the
+            # reference is written at, or the composing node itself where its text is §2's
+            # merge of two declarations -- and :func:`distributed_pointer`'s splice stays
+            # the walk's own address, which is what every map keyed by position needs it
+            # to be.  The caller decides it, because the caller has the node.
+            held_at=held_at,
+            branch_of=index,
         )
         if isinstance(made, Refusal):
             return made

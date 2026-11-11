@@ -163,6 +163,7 @@ def parse(
     source: Source,
     objectish: bool = False,
     applied: str | None = None,
+    merged: bool = False,
 ) -> nodes.Node:
     """One raw subschema as the node its keys and its type select.
 
@@ -224,6 +225,13 @@ def parse(
         "declared": declared if isinstance(declared, Mapping) else {},
         "extra": raw.get("additionalProperties"),
         "faults": _faults(raw),
+        # **§2's INTERSECTION hands this parser a declaration whose keywords come from
+        # TWO positions, and a node that knows it cannot be descended into by pointer**
+        # (:attr:`nodes.Base.merged`, ``adcp-client-python-8awh``).  Told by the caller
+        # and never inferred, which is §6's rule for every fact about the text that the
+        # text does not state: a merged declaration is byte-identical to one a document
+        # could have written at that position, so there is nothing here to read it off.
+        "merged": merged,
     }
 
     # **The arm order is the classification, and it is §5's decision rather than a

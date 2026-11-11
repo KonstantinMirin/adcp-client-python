@@ -41,7 +41,7 @@ class PackageSignalTargetingBinary(PackageSignalTargeting, SignalTargetingExpres
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0')
 
 
 class PackageSignalTargetingCategorical(PackageSignalTargeting, SignalTargetingExpressionCategorical):
@@ -51,7 +51,7 @@ class PackageSignalTargetingCategorical(PackageSignalTargeting, SignalTargetingE
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0')
 
 
 class PackageSignalTargetingNumeric(PackageSignalTargeting, SignalTargetingExpressionNumeric):
@@ -61,7 +61,7 @@ class PackageSignalTargetingNumeric(PackageSignalTargeting, SignalTargetingExpre
     model_config = ConfigDict(
         extra='allow',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0')
 
 
 PackageSignalTargeting._branch_models = (PackageSignalTargetingBinary, PackageSignalTargetingCategorical, PackageSignalTargetingNumeric,)

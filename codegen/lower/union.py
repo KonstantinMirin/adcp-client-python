@@ -1485,22 +1485,28 @@ def _distributing(
 
 def _products(
     plan: Branch, distributed: Mapping[str, compiler.TargetBranches]
-) -> list[tuple[str, compiler.Target]]:
-    """One ``(pointer, target branch)`` pair per LIVE product of a distributing branch,
-    and the empty list for every other branch.
+) -> list[tuple[int, str, compiler.Target]]:
+    """One ``(target index, address, target branch)`` triple per LIVE product of a
+    distributing branch, and the empty list for every other branch.
 
-    The pointer is ``composition.distributed_pointer``'s -- ``<the branch>/<the target's
-    combinator>/<index>`` -- which is a pointer the document of RECORD holds: §3 inlines
-    every cross-document ``$ref`` unchanged, so the branch's own pointer carries the
-    target's root in the record and the target's branch list hangs off it there.  That is
-    also what makes each product GRADEABLE, and it is the same reading §5's distribution
-    at CONJ already makes of the same arrangement.
+    The address is ``composition.distributed_pointer``'s -- ``<the branch>/<the target's
+    combinator>/<index>`` -- and that function's docstring is where what it is and what it
+    is NOT are stated: it is the walk's own key for a product and it is **not** a pointer
+    the branch's document holds, so it is never the class's stamp.
+
+    **THE INDEX IS CARRIED AND NOT RECOVERED** (``adcp-client-python-8awh``, the owner's
+    ruling of 2026-11-11).  It is the third component of a product's identity
+    (:attr:`codegen.ir.ClassDecl.branch_of`) and it is the TARGET's own, which
+    :attr:`compiler.TargetBranches.dropped` is the reason for: a branch whose intersection
+    with this one is provably empty is dropped and the survivors are NOT renumbered.  The
+    triple is what keeps a reader from parsing the index back out of the address, which
+    ``docs/plan/architecture.md`` §3 forbids and which a two-tuple invited.
     """
     branches = distributed.get(plan.pointer)
     if branches is None:
         return []
     return [
-        (composition.distributed_pointer(plan.pointer, branches, index), product)
+        (index, composition.distributed_pointer(plan.pointer, branches, index), product)
         for index, product in branches.live
     ]
 
@@ -1516,7 +1522,7 @@ def _branch_classes(
     are returned rather than the two readers each deriving them.
     """
     products = _products(plan, distributed)
-    return [at for at, _ in products] if products else [plan.pointer]
+    return [at for _, at, _ in products] if products else [plan.pointer]
 
 
 def _presence_clauses(
@@ -1588,7 +1594,7 @@ def _declare_products(
     way round and the target's declaration shadowed.
     :func:`intersect.intersected_at_a_branch` carries the measurement.
     """
-    for at, product in _products(plan, {plan.pointer: branches}):
+    for index, at, product in _products(plan, {plan.pointer: branches}):
         mod.importing(product.symbol, product.where)
         # §6 clause 3 at a product: silence inherits, and what it inherits is the TARGET
         # BRANCH's description, because that is what the composed document states at the
@@ -1623,6 +1629,13 @@ def _declare_products(
                 ir.TypeRef(product.symbol, local=True),
             ),
             description=inherited,
+            # **THE STAMP IS THE BRANCH NODE AND THE INDEX IS A SLOT**
+            # (``adcp-client-python-8awh``).  ``plan.pointer`` is the branch the document
+            # writes the reference at -- ``#/<combinator>/<i>``, a node the document HOLDS
+            # -- and ``at`` is the walk's own address for this product, which stays the
+            # splice because every map keyed by position needs it distinct per class.
+            held_at=plan.pointer,
+            branch_of=index,
         )
         if isinstance(made, Refusal):
             return made
@@ -2012,7 +2025,7 @@ def lower_union(
         # No new naming rule and no index of this loop's own: the target branch's hop
         # already carries the index its declaring module gave it, exactly as §5's
         # distribution at CONJ keeps it (``lower.composition._distribute``).
-        for at, product in _products(plan, distributed):
+        for _, at, product in _products(plan, distributed):
             if product.naming is None:
                 return Refusal(
                     "$ref",

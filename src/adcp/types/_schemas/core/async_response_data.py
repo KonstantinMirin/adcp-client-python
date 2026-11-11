@@ -174,7 +174,7 @@ class MediaBuyCommitmentResponseCompleted(AdCPAsyncResponseData, CommittedMediaB
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10')
 
 
 class MediaBuyCommitmentResponseFailed(AdCPAsyncResponseData, CommitmentError):
@@ -184,7 +184,7 @@ class MediaBuyCommitmentResponseFailed(AdCPAsyncResponseData, CommitmentError):
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10')
 
 
 class MediaBuyCommitmentResponseSubmitted(AdCPAsyncResponseData, CommitmentSubmitted):
@@ -194,7 +194,7 @@ class MediaBuyCommitmentResponseSubmitted(AdCPAsyncResponseData, CommitmentSubmi
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10')
 
 
 class ControlMediaBuyResponseCompleted(AdCPAsyncResponseData, ControlApplied):
@@ -204,7 +204,7 @@ class ControlMediaBuyResponseCompleted(AdCPAsyncResponseData, ControlApplied):
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11/oneOf/0')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11')
 
 
 class ControlMediaBuyResponseFailed(AdCPAsyncResponseData, ControlError):
@@ -214,7 +214,7 @@ class ControlMediaBuyResponseFailed(AdCPAsyncResponseData, ControlError):
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11/oneOf/1')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11')
 
 
 class ControlMediaBuyResponseSubmitted(AdCPAsyncResponseData, ControlSubmitted):
@@ -224,7 +224,7 @@ class ControlMediaBuyResponseSubmitted(AdCPAsyncResponseData, ControlSubmitted):
     model_config = ConfigDict(
         extra='forbid',
     )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11/oneOf/2')
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11')
 
 
 class AdCPAsyncResponseDataCompactTaskSubmitted(AdCPAsyncResponseData, CompactTaskSubmitted):
