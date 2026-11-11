@@ -486,16 +486,27 @@ Two cases survive, and the design keeps both.
   length bound, several combinations — for what is one concept. **Where the schema states one
   concept inconsistently, the SDK states it consistently**, and consistency across the bundle is
   what a consumer experiences. There are exactly **two** URL types and there will not be a third:
-  `AdCPUrl` where the document pins `^https://`, which is the agent-facing form, and `HttpUrl`
-  everywhere else, which is the identity form.
+  `AdCPUrl` where the document pins `^https://`, which is the agent-facing form, and `AnyUrl`
+  everywhere else, which is the identity form. `AdCPUrl` IS an `AnyUrl` with
+  `allowed_schemes=["https"]`, so the pair is one type and its https-pinned descendant.
 
- **SO THE NORMALISATION IS A NARROWING TAKEN ON PURPOSE, not a defect**, and §2's rule about
-  deliberate narrowings applies to it in full: it must be **admitted by the enumerated registry
-  and by nothing else**, because an unadmitted narrowing is invisible and permanent. The
-  registry's own mechanism does not express it yet — an entry is compared by equality so that it
-  admits one fact and not its kind, and a normalisation is a kind — so **the mechanism is what
-  changes, not the decision.** Until it does, the narrowing is live and unadmitted, which is a
-  defect of the registry and not of the type.
+ **THE GENERAL FORM IS `AnyUrl` AND NOT `HttpUrl`, BECAUSE A BARE `format: uri` IS RFC 3986 AND
+  ADMITS EVERY SCHEME.** `HttpUrl` admits two, so at every bare `uri` node it refuses values the
+  document admits — and the bundle supplies one of them itself:
+  `core/app-item.json`'s `deep_link_url` is `{type: string, format: uri}` and its own
+  description says *"Falls back to URI scheme (e.g., `'acmegames://level/5'`) when universal
+  links are not configured."* **Consistently as a URL is the decision; consistently as an HTTP
+  URL is a different and narrower claim the bundle does not make.** `AnyUrl` is a parsed URL
+  object carrying `.scheme`, `.host` and `.path`, so the developer-facing property this section
+  exists for is unaffected by the choice.
+
+ **AND THE ONE NARROWING LEFT IS THE ONE THE DOCUMENT ITSELF STATES**, which is not a
+  narrowing at all: `AdCPUrl` is chosen only where the node pins `^https://`, so the scheme
+  restriction is the document's own and the type reproduces it. §2's rule about deliberate
+  narrowings therefore has nothing to admit here — a type selection that refuses only what its
+  document refuses needs no registry entry, and the registry is for the cases where the SDK
+  decides to refuse more. Where a URL type would refuse a scheme the node admits, the type is
+  wrong and the fix is the type.
 
  **A reading that finds code contradicting this section reports it and does not change either
   side.** A registry entry is a decision even though it is not in this document.
