@@ -495,6 +495,18 @@ Two cases survive, and the design keeps both.
   concept inconsistently, the SDK states it consistently**, and consistency across the bundle is
   what a consumer experiences.
 
+ **AND `AdCPUrl` IS NOT `HttpUrl` WITH THE SCHEME PINNED, BECAUSE `HttpUrl` IS NOT ONLY A
+  SCHEME PIN.** It is `UrlConstraints(max_length=2083, allowed_schemes=["http", "https"])`, and
+  adding `allowed_schemes=["https"]` composes with the cap rather than replacing it. **55 of the
+  bundle's 57 AdCP addresses state no `maxLength` of their own** — the two that do say 2048,
+  tighter — so `HttpUrl` would impose an undocumented 2,083-character limit at 55 sites and
+  refuse values those documents admit, which is the same defect as the scheme refusal in a
+  different keyword, and it would render `maxLength: 2083` into the schema as though a document
+  had said it. `AdCPUrl` is exactly `HttpUrl` with the scheme pinned and that cap removed.
+  Interoperability does not decide it either way — `HttpUrl` IS a subclass of `AnyUrl` — but
+  `host_required` is needed for `AdCPUri` regardless, so one base makes `AdCPUrl` a strict
+  refinement of `AdCPUri` rather than a parallel concept.
+
  **NEITHER TYPE IS `HttpUrl`, AND THE GENERAL ONE IS NOT A BARE `AnyUrl` EITHER.** A bare
   `format: uri` is RFC 3986 and admits every scheme, so `HttpUrl` — which admits two — refuses
   values the document admits, and the bundle supplies one of them itself: `core/app-item.json`'s
