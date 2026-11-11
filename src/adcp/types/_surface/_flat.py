@@ -1722,6 +1722,7 @@ from .core import CanonicalForecastPointMetrics as CanonicalForecastPointMetrics
 from .core import CanonicalForecastPointViewability as CanonicalForecastPointViewability
 from .core import CanonicalForecastVendorMetricValue as CanonicalForecastVendorMetricValue
 from .core import CanonicalFormatKind as CanonicalFormatKind
+from .core import CanonicalFormatManifest as CanonicalFormatManifest
 from .core import CanonicalFormatOption as CanonicalFormatOption
 from .core import CanonicalFormatOptionFormatKind as CanonicalFormatOptionFormatKind
 from .core import CanonicalMeasurementTerms as CanonicalMeasurementTerms
@@ -1804,6 +1805,9 @@ from .core import CatalogItemReferenceNotFoundError as CatalogItemReferenceNotFo
 from .core import CatalogRequirements as CatalogRequirements
 from .core import CatalogSelection as CatalogSelection
 from .core import Catchment as Catchment
+from .core import CatchmentGeometry as CatchmentGeometry
+from .core import CatchmentRadius as CatchmentRadius
+from .core import CatchmentTransportModeTravelTime as CatchmentTransportModeTravelTime
 from .core import Category as Category
 from .core import ChangedFields as ChangedFields
 from .core import CleanRoom as CleanRoom
@@ -1870,6 +1874,8 @@ from .core import CreativePolicy as CreativePolicy
 from .core import CreativePolicyAcceptedVerifiersItem as CreativePolicyAcceptedVerifiersItem
 from .core import CreativePolicyProvenanceRequirements as CreativePolicyProvenanceRequirements
 from .core import CreativeRepresentation as CreativeRepresentation
+from .core import CreativeRepresentationFormatId as CreativeRepresentationFormatId
+from .core import CreativeRepresentationFormatKind as CreativeRepresentationFormatKind
 from .core import CreativeRepresentationSet as CreativeRepresentationSet
 from .core import CreativeRepresentationSource as CreativeRepresentationSource
 from .core import CreativeRevisionID as CreativeRevisionID
@@ -2067,7 +2073,13 @@ from .core import FrequencyCap as FrequencyCap
 from .core import FrequencyCapConstraints as FrequencyCapConstraints
 from .core import FrequencyCapDurationUnit as FrequencyCapDurationUnit
 from .core import FrequencyCapImpressionConstraints as FrequencyCapImpressionConstraints
+from .core import FrequencyCapImpressionConstraintsAllowedValues as FrequencyCapImpressionConstraintsAllowedValues
+from .core import FrequencyCapImpressionConstraintsMaximumMinimum as FrequencyCapImpressionConstraintsMaximumMinimum
 from .core import FrequencyCapIntervalConstraints as FrequencyCapIntervalConstraints
+from .core import FrequencyCapIntervalConstraintsAllowedIntervals as FrequencyCapIntervalConstraintsAllowedIntervals
+from .core import (
+    FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval as FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval,
+)
 from .core import FrequencyCapRequirements as FrequencyCapRequirements
 from .core import FrequencyCapSuppress as FrequencyCapSuppress
 from .core import FrequencyCapWindow as FrequencyCapWindow
@@ -2258,6 +2270,7 @@ from .core import MetroSupport as MetroSupport
 from .core import MetroSupportSystems as MetroSupportSystems
 from .core import MissingMetric as MissingMetric
 from .core import MissingMetricVendor as MissingMetricVendor
+from .core import NamedFormatManifest as NamedFormatManifest
 from .core import NativeInFeedFormatDeclaration as NativeInFeedFormatDeclaration
 from .core import NegativeKeyword as NegativeKeyword
 from .core import NonblockingImpacts as NonblockingImpacts
@@ -2474,6 +2487,11 @@ from .core import ProductDeliveryMeasurement as ProductDeliveryMeasurement
 from .core import ProductExecutionRequirement as ProductExecutionRequirement
 from .core import ProductFilters as ProductFilters
 from .core import ProductFiltersGeoProximityItem as ProductFiltersGeoProximityItem
+from .core import ProductFiltersGeoProximityItemGeometry as ProductFiltersGeoProximityItemGeometry
+from .core import ProductFiltersGeoProximityItemLatLngRadius as ProductFiltersGeoProximityItemLatLngRadius
+from .core import (
+    ProductFiltersGeoProximityItemLatLngTransportModeTravelTime as ProductFiltersGeoProximityItemLatLngTransportModeTravelTime,
+)
 from .core import ProductFiltersKeywordsItem as ProductFiltersKeywordsItem
 from .core import ProductFiltersMetrosItem as ProductFiltersMetrosItem
 from .core import ProductFiltersRequiredGeoTargetingItem as ProductFiltersRequiredGeoTargetingItem
@@ -2898,6 +2916,10 @@ from .core import TargetingOverlayGeoProximity as TargetingOverlayGeoProximity
 from .core import TargetingOverlayGeoProximityItem as TargetingOverlayGeoProximityItem
 from .core import TargetingOverlayGeoProximityItemGeometry as TargetingOverlayGeoProximityItemGeometry
 from .core import TargetingOverlayGeoProximityItemGeometryType as TargetingOverlayGeoProximityItemGeometryType
+from .core import TargetingOverlayGeoProximityItemLatLngRadius as TargetingOverlayGeoProximityItemLatLngRadius
+from .core import (
+    TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime as TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime,
+)
 from .core import TargetingOverlayGeoProximityItemRadius as TargetingOverlayGeoProximityItemRadius
 from .core import TargetingOverlayGeoProximityItemTravelTime as TargetingOverlayGeoProximityItemTravelTime
 from .core import TargetingOverlayInput as TargetingOverlayInput
@@ -2965,6 +2987,8 @@ from .core import URLAssetRequirements as URLAssetRequirements
 from .core import URLAssetRequirementsProtocolsItem as URLAssetRequirementsProtocolsItem
 from .core import URLAssetRequirementsRole as URLAssetRequirementsRole
 from .core import UserMatch as UserMatch
+from .core import V1CreativeNamedFormatReference as V1CreativeNamedFormatReference
+from .core import V2CreativeCanonicalFormatKind as V2CreativeCanonicalFormatKind
 from .core import VASTAsset as VASTAsset
 from .core import VASTAssetInline as VASTAssetInline
 from .core import VASTAssetRequirements as VASTAssetRequirements
@@ -3073,6 +3097,8 @@ from .creative import CreativeCapabilityTarget as CreativeCapabilityTarget
 from .creative import CreativeFeatureResult as CreativeFeatureResult
 from .creative import CreativePurgedWebhook as CreativePurgedWebhook
 from .creative import CreativePurgedWebhookInitiator as CreativePurgedWebhookInitiator
+from .creative import CreativesItemFormatId as CreativesItemFormatId
+from .creative import CreativesItemFormatKind as CreativesItemFormatKind
 from .creative import CreativeStatusChangedWebhook as CreativeStatusChangedWebhook
 from .creative import CreativeStatusChangedWebhookTransition as CreativeStatusChangedWebhookTransition
 from .creative import CreativeStatusChangedWebhookTransitionFrom as CreativeStatusChangedWebhookTransitionFrom
@@ -3119,6 +3145,8 @@ from .creative import ListCreativesResponseCreativesItemSnapshot as ListCreative
 from .creative import ListCreativesResponseQuerySummary as ListCreativesResponseQuerySummary
 from .creative import ListCreativesResponseQuerySummarySortApplied as ListCreativesResponseQuerySummarySortApplied
 from .creative import ListCreativesResponseStatusSummary as ListCreativesResponseStatusSummary
+from .creative import ListedCreativeCanonicalFormatKind as ListedCreativeCanonicalFormatKind
+from .creative import ListedCreativeNamedFormatReference as ListedCreativeNamedFormatReference
 from .creative import ListTransformersRequestCreativeAgent as ListTransformersRequestCreativeAgent
 from .creative import (
     ListTransformersRequestCreativeAgentExpandPaginationItem as ListTransformersRequestCreativeAgentExpandPaginationItem,
@@ -4108,7 +4136,6 @@ from .media_buy import PackageControl as PackageControl
 from .media_buy import PackageCountConstraints as PackageCountConstraints
 from .media_buy import PackageRequest as PackageRequest
 from .media_buy import PackageRequestBidding as PackageRequestBidding
-from .media_buy import PackageRequestCreativesItem as PackageRequestCreativesItem
 from .media_buy import PackagesItemIndicatorsItemType as PackagesItemIndicatorsItemType
 from .media_buy import PackageUpdate as PackageUpdate
 from .media_buy import PerformanceStandards as PerformanceStandards
@@ -5635,6 +5662,7 @@ __all__ = [
     'CanonicalFormatImageMotionLevel',
     'CanonicalFormatImageSizesItem',
     'CanonicalFormatKind',
+    'CanonicalFormatManifest',
     'CanonicalFormatNativeInFeed',
     'CanonicalFormatNativeInFeedAssetSource',
     'CanonicalFormatNativeInFeedBuyerAssetAcceptance',
@@ -5771,6 +5799,9 @@ __all__ = [
     'CatalogSelection',
     'CatalogType',
     'Catchment',
+    'CatchmentGeometry',
+    'CatchmentRadius',
+    'CatchmentTransportModeTravelTime',
     'Category',
     'ChangeFeed',
     'ChangedFields',
@@ -6062,6 +6093,8 @@ __all__ = [
     'CreativeRejected',
     'CreativeRejectedDetails',
     'CreativeRepresentation',
+    'CreativeRepresentationFormatId',
+    'CreativeRepresentationFormatKind',
     'CreativeRepresentationSet',
     'CreativeRepresentationSource',
     'CreativeRepresentationUnresolvedDetails',
@@ -6081,6 +6114,8 @@ __all__ = [
     'CreativeVariantGenerationContextArtifact',
     'Creatives',
     'Creatives1',
+    'CreativesItemFormatId',
+    'CreativesItemFormatKind',
     'CssAsset',
     'CssAssetRequirements',
     'CtvAdExperience',
@@ -6410,7 +6445,11 @@ __all__ = [
     'FrequencyCapControlMode',
     'FrequencyCapDurationUnit',
     'FrequencyCapImpressionConstraints',
+    'FrequencyCapImpressionConstraintsAllowedValues',
+    'FrequencyCapImpressionConstraintsMaximumMinimum',
     'FrequencyCapIntervalConstraints',
+    'FrequencyCapIntervalConstraintsAllowedIntervals',
+    'FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval',
     'FrequencyCapMutableField',
     'FrequencyCapRequirements',
     'FrequencyCapScope',
@@ -6960,6 +6999,8 @@ __all__ = [
     'ListTransformersRequestCreativeAgent',
     'ListTransformersRequestCreativeAgentExpandPaginationItem',
     'ListTransformersResponseCreativeAgent',
+    'ListedCreativeCanonicalFormatKind',
+    'ListedCreativeNamedFormatReference',
     'LocaleFallback',
     'LocalizedCreativeAsset',
     'LocalizedName',
@@ -7083,6 +7124,7 @@ __all__ = [
     'MissingMetricVendor',
     'MixTargets',
     'MoovAtomPosition',
+    'NamedFormatManifest',
     'NativeInFeedFormatDeclaration',
     'NegativeKeyword',
     'NonblockingImpacts',
@@ -7178,7 +7220,6 @@ __all__ = [
     'PackageFormatSnapshotVideoVast',
     'PackageRequest',
     'PackageRequestBidding',
-    'PackageRequestCreativesItem',
     'PackageSignalTargeting',
     'PackageSignalTargetingBinary',
     'PackageSignalTargetingCategorical',
@@ -7442,6 +7483,9 @@ __all__ = [
     'ProductExecutionRequirement3',
     'ProductFilters',
     'ProductFiltersGeoProximityItem',
+    'ProductFiltersGeoProximityItemGeometry',
+    'ProductFiltersGeoProximityItemLatLngRadius',
+    'ProductFiltersGeoProximityItemLatLngTransportModeTravelTime',
     'ProductFiltersKeywordsItem',
     'ProductFiltersMetrosItem',
     'ProductFiltersRequiredGeoTargetingItem',
@@ -8346,6 +8390,8 @@ __all__ = [
     'TargetingOverlayGeoProximityItem',
     'TargetingOverlayGeoProximityItemGeometry',
     'TargetingOverlayGeoProximityItemGeometryType',
+    'TargetingOverlayGeoProximityItemLatLngRadius',
+    'TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime',
     'TargetingOverlayGeoProximityItemRadius',
     'TargetingOverlayGeoProximityItemTravelTime',
     'TargetingOverlayInput',
@@ -8530,6 +8576,7 @@ __all__ = [
     'UrlAssetRequirements',
     'UrlAssetType',
     'UserMatch',
+    'V1CreativeNamedFormatReference',
     'V1Pattern',
     'V1Pattern1',
     'V1PatternFormatIdGlob',
@@ -8541,6 +8588,7 @@ __all__ = [
     'V1V2CanonicalFormatMappingRegistryMappingsItemV2',
     'V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItem',
     'V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItemTransform',
+    'V2CreativeCanonicalFormatKind',
     'VASTAsset',
     'VASTAssetInline',
     'VASTAssetRequirements',
@@ -8773,7 +8821,7 @@ __adcp_alias_declined__: dict[str, tuple[str, ...]] = {
     'Category': ('governance.sync_plans_response.CategoriesItem',),
     'ContentStandards': ('protocol.get_adcp_capabilities_response.MediaBuyContentStandards',),
     'Countries': ('core.geo_region_support.ObjAllValues',),
-    'Creative': ('creative.get_creative_delivery_response.CreativesItem', 'creative.list_creatives_response.CreativesItem', 'creative.sync_creatives_request.CreativesItem', 'creative.sync_creatives_response.CreativesItem', 'media_buy.build_creative_response.CreativesItem'),
+    'Creative': ('creative.get_creative_delivery_response.CreativesItem', 'creative.list_creatives_response.CreativesItem', 'creative.sync_creatives_response.CreativesItem', 'media_buy.build_creative_response.CreativesItem'),
     'Demographics': ('core.targeting_overlay_requirements.TargetingOverlayRequirementsDemographicsAge', 'core.targeting_overlay_support.TargetingOverlaySupportDemographicsAge'),
     'EventSource': ('core.canonical_optimization_goal.EventSourcesItem', 'core.optimization_goal.EventSourcesItem', 'media_buy.sync_event_sources_request.EventSourcesItem'),
     'EventType': ('core.notification_config.EventTypesItem', 'core.registry_event.RegistryEventEventType', 'core.wholesale_feed_event.WholesaleFeedEventType'),

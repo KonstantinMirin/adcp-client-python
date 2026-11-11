@@ -56,6 +56,9 @@ class MaxSpend(AdCPBaseModel):
 
 
 class SignalConditionsItem(BranchDispatchMixin, AdCPBaseModel):
+    """
+    Targeting constraint for a specific signal. Uses value_type as discriminator to determine the targeting expression format.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/signal_conditions/items')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

@@ -1476,10 +1476,9 @@ different places, and the generated cell is written by the row that implements e
 **Group A — every branch is `required` plus a `not` of required groups. This is FAITHFUL, and
 it needs one new rule kind.**
 
-Every branch constrains which keys are present and nothing else, so it is a rule on the root's
-class and not a branch class. **The answer is ONE rule whose clauses are the branches, each
-clause carrying its own required group AND its own forbidden group, with the combinator deciding
-how many clauses an instance may satisfy.**
+Every branch constrains which keys are present and nothing else. **The answer is ONE rule whose
+clauses are the branches, each clause carrying its own required group AND its own forbidden
+group, with the combinator deciding how many clauses an instance may satisfy.**
 
 Widening `_required_only` to admit `not` is WRONG: the `not`
 is per BRANCH, so branch *i* reads "every name in R*ᵢ* present and no group of F*ᵢ* present". A
@@ -1488,6 +1487,60 @@ F*ᵢ* unconditionally, which refuses a payload the document admits. The two
 halves must stay paired per clause, and neither `RequiredGroups` (groups and a combinator) nor
 `ForbiddenGroups` (groups alone) has a slot for the other half. So `_runtime.py` declares the
 new kind and `lower/rules.py` writes it. Nothing is dropped.
+
+**AND THE RULE IS NOT THE WHOLE OF GROUP A — THE OWNER'S CORRECTION OF 2026-11-07.** This
+section read "so it is a rule on the root's class and not a branch class", and the owner
+reverses that: *"what we want is to create one or the other branch depending on the fact that
+`format_id` is specified or `format_kind` … it is xor"*. The reason the old sentence gave was
+wrong — the two children are NOT field-identical, they differ in field **presence**, which is
+the one difference a subclass carries — so a Group A node whose branches are an XOR takes the
+base-plus-children answer every other union takes, and the rule stays only where no hierarchy
+says what the node says.
+
+**The line is what a child can SAY, and it is three conditions** (`schema.parse.presence_branches`):
+the combinator is `oneOf` and the node states no other, because a dispatch answers with exactly
+one class; some clause forbids, because with no `not` anywhere there is no exclusivity to make
+structural and `RequiredGroups` already states the node; and **every clause's required half is
+exactly one non-empty group**, because a child states its branch by declaring names REQUIRED and
+field requiredness is a conjunction. A clause carrying several groups is "at least one of these
+groups" and a clause carrying none requires nothing; no class says either by requiredness at any
+price.
+
+Measured off `parse.presence_clause` over the 1,059 portable documents of the patched bundle:
+**315 presence-only union nodes, 303 `anyOf` and 12 `oneOf`, 11 of the 12 with a forbid half, 8
+of the 11 expressible.** The 8 are `core/creative-asset.json#`, `core/creative-manifest.json#`,
+`creative/list-creatives-response.json#/properties/creatives/items`, `core/catchment.json#`,
+both `geo_proximity` items (`core/product-filters.json`, `core/targeting.json`) and the two
+`core/frequency-cap-{impression,interval}-constraints.json#`. The 3 that are not —
+`formats/canonical/{display_tag,html5,image}.json#/allOf/1` — **keep this section's rule**: each
+fails the third condition twice, with a `responsive` branch requiring one of four separate
+groups and a `none` branch requiring nothing at all.
+
+**THE DISPATCH IS A CALLABLE DISCRIMINATOR AND THE CHOICE IS A MEASUREMENT.** §4's first source
+names a property whose `const` selects and there is no such property here, so the base carries a
+second slot — `_BRANCH_PRESENCE`, the key set per branch — and builds pydantic's
+`Discriminator(callable)` out of it. A plain `A | B` is sound at such a node only where it says
+`additionalProperties: false`, because `extra="forbid"` is then what refuses the sibling key;
+that keyword has nothing to do with the exclusivity and it is `true` at **6 of the 8**. The
+callable is sound at all 8 uniformly and is payload-determined by construction: the tag function
+is a total function from the mapping's key set to a branch name, computed BEFORE any branch is
+tried, so declaration order is never consulted — which is the guarantee `_BRANCH_DISCRIMINATOR`
+gives for the `const` case. Zero clauses holding or two answer with no tag, and the refusal is
+`PresenceGroups`' own sentence over the clauses the base holds, so the hierarchy and the rule it
+replaced cannot describe the document differently.
+
+Each child declares its clause's required names as REQUIRED fields and carries its branch's own
+`ForbiddenGroups`, so the forbid half has a carrier at the child as well as at the dispatch.
+Leaving the forbidden name declared NOWHERE is what has no carrier: `_runtime.supplied` reads
+`__pydantic_fields_set__`, and under `extra="ignore"` the key is dropped before any rule runs.
+Measured over the 8, none carries `ignore` — 6 are `allow` and 2 are `forbid` — so both readings
+refuse the both-keys payload there, and the one that keeps the field refuses it at the child on
+every extra policy.
+
+A node of the 8 that another document COMPOSES distributes (§5's `$ref` row at CONJ), and the
+clauses cross with the combinator and the discriminator on `TargetBranches`: carrying only those
+two leaves the distributed union a plain one. `core/creative-representation.json` and
+`creative/sync-creatives-request.json#/properties/creatives/items` are the two sites.
 
 **Group B — the union MIXES case branches with presence-only ones. This is a WIDENING.**
 

@@ -95,6 +95,12 @@ from .._schemas.creative.list_creatives_response import CreativesItem as ListCre
 from .._schemas.creative.list_creatives_response import Kind as ListCreativesResponseCreativesItemPurgeKind
 from .._schemas.creative.list_creatives_response import ListCreativesResponse as ListCreativesResponse
 from .._schemas.creative.list_creatives_response import (
+    ListedCreativeCanonicalFormatKind as ListedCreativeCanonicalFormatKind,
+)
+from .._schemas.creative.list_creatives_response import (
+    ListedCreativeNamedFormatReference as ListedCreativeNamedFormatReference,
+)
+from .._schemas.creative.list_creatives_response import (
     LocalizationUnavailable as ListCreativesResponseCreativesItemLocalizationUnavailable,
 )
 from .._schemas.creative.list_creatives_response import (
@@ -159,6 +165,8 @@ from .._schemas.creative.sync_creatives_async_response_working import SyncCreati
 from .._schemas.creative.sync_creatives_request import AssignmentsItem as SyncCreativesRequestAssignmentsItem
 from .._schemas.creative.sync_creatives_request import AssignOrUpdate as AssignOrUpdate
 from .._schemas.creative.sync_creatives_request import CreativesItem as SyncCreativesRequestCreativesItem
+from .._schemas.creative.sync_creatives_request import CreativesItemFormatId as CreativesItemFormatId
+from .._schemas.creative.sync_creatives_request import CreativesItemFormatKind as CreativesItemFormatKind
 from .._schemas.creative.sync_creatives_request import ReplaceAssignment as ReplaceAssignment
 from .._schemas.creative.sync_creatives_request import SyncCreativesRequest as SyncCreativesRequest
 from .._schemas.creative.sync_creatives_request import Unassign as Unassign
@@ -203,6 +211,8 @@ __all__ = [
     'CreativeStatusChangedWebhook',
     'CreativeStatusChangedWebhookTransition',
     'CreativeStatusChangedWebhookTransitionFrom',
+    'CreativesItemFormatId',
+    'CreativesItemFormatKind',
     'GetCreativeDeliveryRequest',
     'GetCreativeDeliveryResponse',
     'GetCreativeDeliveryResponseCreativesItem',
@@ -239,6 +249,8 @@ __all__ = [
     'ListTransformersRequestCreativeAgent',
     'ListTransformersRequestCreativeAgentExpandPaginationItem',
     'ListTransformersResponseCreativeAgent',
+    'ListedCreativeCanonicalFormatKind',
+    'ListedCreativeNamedFormatReference',
     'PreviewBatchResultError',
     'PreviewBatchResultSuccess',
     'PreviewCreativeBatchResponse',

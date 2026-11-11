@@ -28,6 +28,7 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import replace
 from typing import Any
 
+from adcp.types._runtime import Presence
 from codegen import compiler, ir
 from codegen.ir import MISSING
 from codegen.keywords import Position
@@ -433,6 +434,7 @@ def declare_object(
     root_required: tuple[str, ...] | None = None,
     discriminator: str | None = None,
     combinator: str | None = None,
+    presence: tuple[Presence, ...] | None = None,
 ) -> str | Refusal:
     """Assemble one class out of decided properties, and record what it declares.
 
@@ -468,7 +470,10 @@ def declare_object(
 
     ``root_required``, ``discriminator`` and ``combinator`` are §4's three facts a UNION
     BASE carries and no other class does, so all three are ``None`` for every row but
-    the union row.  They are declared on the class rather than formatted into a body
+    the union row.  ``presence`` is §4's SECOND dispatch source beside them -- the clause
+    each branch states about key PRESENCE, parallel to ``branches``
+    (:attr:`codegen.ir.ClassDecl.presence`) -- and is ``None`` at every union that
+    dispatches on a key's VALUE.  They are declared on the class rather than formatted into a body
     line, which is §7's gate at this seam: ``render._union_base_lines`` writes the four
     statements and nothing before it holds one.
 
@@ -680,6 +685,7 @@ def declare_object(
         discriminator=discriminator,
         combinator=combinator,
         branches=branches,
+        presence=presence,
     )
     # :attr:`Shape.decided` is written HERE and by no caller, for the reason the rule
     # tuple above is: this is the one funnel a class with fields passes through, so a

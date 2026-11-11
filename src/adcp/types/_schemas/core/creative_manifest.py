@@ -5,14 +5,13 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import (
     ConditionalRequired,
     ForbiddenGroups,
     Match,
     NegatedConditional,
     Presence,
-    PresenceGroups,
     Rule,
     UniqueItems,
 )
@@ -30,7 +29,7 @@ from .representation_selection import RepresentationSelection
 from .rights_constraint import RightsConstraint
 
 
-class CreativeManifest(AdCPBaseModel):
+class CreativeManifest(BranchDispatchMixin, AdCPBaseModel):
     """
     Complete specification of a creative: format identification + assets. In 3.2 a manifest uses `format_kind` (the canonical format name it targets), paired with optional `format_option_ref` when a product has multiple declarations sharing that kind. The deprecated `format_id` named-format branch remains only for 3.x wire compatibility. Ordinary and shared assets live in `assets`; a `coordinated_placements` additionally namespaces each component's canonical slots under `component_assets.<component_id>`.
     """
@@ -38,9 +37,15 @@ class CreativeManifest(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-manifest.json', pointer='#')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('assets',)
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('NamedFormatManifest', Presence(require=(('format_id',),), forbid=(('format_kind',),))), ('CanonicalFormatManifest', Presence(require=(('format_kind',),), forbid=(('format_id',),))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('capability_id',), ('capability_ref',))),
-        PresenceGroups((Presence(require=(('format_id',),), forbid=(('format_kind',),)), Presence(require=(('format_kind',),), forbid=(('format_id',),))), 'oneOf'),
         UniqueItems('industry_identifiers'),
         ConditionalRequired((Match('format_kind', True, ('coordinated_placements',)),), require=('component_assets',), forbid=()),
         NegatedConditional((Match('format_kind', True, ('coordinated_placements',)),), require=(), forbid=('component_assets',)),
@@ -60,6 +65,38 @@ class CreativeManifest(AdCPBaseModel):
     industry_identifiers: Annotated[list[IndustryIdentifier] | None, Field(description='Industry-standard or market-specific identifiers for this specific manifest (e.g., Ad-ID, ISCI, Clearcast clock number, IDcrea). When present, overrides creative-level identifiers. Use when different format versions of the same source creative have distinct traffic identifiers (e.g., the :15 and :30 cuts, or separate TV and radio versions). Add a PR to extend creative-identifier-type when another shared identifier scheme needs first-class support.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this creative manifest. Serves as the default provenance for all assets in this manifest. An asset with its own provenance replaces this object entirely (no field-level merging).'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+
+
+class NamedFormatManifest(CreativeManifest):
+    """
+    Deprecated 3.x compatibility branch. Manifest references a named format via the structured format_id object. New 3.2 manifests use format_kind.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-manifest.json', pointer='#/oneOf/0')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('format_kind',),)),
+    )
+    format_id: Annotated[FormatReferenceStructuredObject, Field(description='**DEPRECATED in 3.2.** Legacy named-format path retained for 3.x compatibility. New manifests use canonical `format_kind` and, when product routing requires it, `format_option_ref`. Mutually exclusive with format_kind.')]
+
+
+class CanonicalFormatManifest(CreativeManifest):
+    """
+    Manifest declares which canonical format it targets via `format_kind` (e.g., `image`). This 3.1+ canonical-format path was introduced by RFC #3305.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-manifest.json', pointer='#/oneOf/1')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('format_id',),)),
+    )
+    format_kind: Annotated[CanonicalFormatKind, Field(description="Canonical 3.2 path. The canonical format name this manifest targets (e.g., `image`, `video_hosted`, `audio_vast`, `seller_rendered_stateful_display`, `coordinated_placements`). Selects the contract against which the seller validates the manifest's assets. Mutually exclusive with deprecated `format_id`.")]
+
+
+CreativeManifest._branch_models = (NamedFormatManifest, CanonicalFormatManifest,)
+CreativeManifest.model_rebuild(force=True)
 
 
 __all__ = ["CreativeManifest"]

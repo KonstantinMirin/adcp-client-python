@@ -5,15 +5,15 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types._runtime import Presence, PresenceGroups, Rule
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._runtime import ForbiddenGroups, Presence, Rule
 
 from ..enums.transport_mode import TransportMode
 from .ext import ExtensionObject
 from .targeting import ObjTypeCoordinates, Radius, TravelTime
 
 
-class Catchment(AdCPBaseModel):
+class Catchment(BranchDispatchMixin, AdCPBaseModel):
     """
     A catchment area definition for a store or location. Defines the geographic area from which a store draws customers. Three methods are supported: isochrone inputs (travel time + transport mode, platform resolves the shape), simple radius (distance from location), or pre-computed GeoJSON geometry (buyer provides the exact boundary). Provide exactly one method per catchment.
     """
@@ -21,9 +21,13 @@ class Catchment(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catchment.json', pointer='#')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=(('travel_time', 'transport_mode'),), forbid=(('radius',), ('geometry',))), Presence(require=(('radius',),), forbid=(('travel_time',), ('geometry',))), Presence(require=(('geometry',),), forbid=(('travel_time',), ('radius',)))), 'oneOf'),
-    )
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('catchment_id',)
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('CatchmentTransportModeTravelTime', Presence(require=(('travel_time', 'transport_mode'),), forbid=(('radius',), ('geometry',)))), ('CatchmentRadius', Presence(require=(('radius',),), forbid=(('travel_time',), ('geometry',)))), ('CatchmentGeometry', Presence(require=(('geometry',),), forbid=(('travel_time',), ('radius',)))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     catchment_id: Annotated[str, Field(description="Identifier for this catchment, used to reference specific catchment areas in targeting (e.g., 'walk', 'drive', 'primary').")]
     label: Annotated[str | None, Field(description="Human-readable label for this catchment (e.g., '15-min drive', '1km walking radius')."), OmittedNotNull] = None
     travel_time: Annotated[TravelTime | None, Field(description='Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain.'), OmittedNotNull] = None
@@ -31,6 +35,44 @@ class Catchment(AdCPBaseModel):
     radius: Annotated[Radius | None, Field(description="Simple radius from the store location. The platform draws a circle of this distance around the store's coordinates."), OmittedNotNull] = None
     geometry: Annotated[ObjTypeCoordinates | None, Field(description='Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+
+
+class CatchmentTransportModeTravelTime(Catchment):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catchment.json', pointer='#/oneOf/0')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('radius',), ('geometry',))),
+    )
+    transport_mode: Annotated[TransportMode, Field(description='Transportation mode for isochrone calculation. Required when travel_time is provided.')]
+    travel_time: Annotated[TravelTime, Field(description='Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain.')]
+
+
+class CatchmentRadius(Catchment):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catchment.json', pointer='#/oneOf/1')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('travel_time',), ('geometry',))),
+    )
+    radius: Annotated[Radius, Field(description="Simple radius from the store location. The platform draws a circle of this distance around the store's coordinates.")]
+
+
+class CatchmentGeometry(Catchment):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catchment.json', pointer='#/oneOf/2')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('travel_time',), ('radius',))),
+    )
+    geometry: Annotated[ObjTypeCoordinates, Field(description='Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.')]
+
+
+Catchment._branch_models = (CatchmentTransportModeTravelTime, CatchmentRadius, CatchmentGeometry,)
+Catchment.model_rebuild(force=True)
 
 
 __all__ = ["Catchment"]

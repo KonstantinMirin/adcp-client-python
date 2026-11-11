@@ -12,6 +12,7 @@ from adcp.types.constraints import StrMaxLen500
 from ..core.bidding_policy import BiddingPolicy
 from ..core.catalog import Catalog
 from ..core.context import ContextObject
+from ..core.creative_asset import CreativeAsset
 from ..core.creative_assignment import CreativeAssignment
 from ..core.ext import ExtensionObject
 from ..core.keyword_target import KeywordTarget
@@ -19,7 +20,6 @@ from ..core.negative_keyword import NegativeKeyword
 from ..core.optimization_goal import OptimizationGoal
 from ..core.targeting_input import TargetingOverlayInput
 from ..enums.pacing import Pacing
-from .package_request import CreativesItem
 
 
 class PackageUpdate(AdCPBaseModel):
@@ -57,7 +57,7 @@ class PackageUpdate(AdCPBaseModel):
     negative_keywords_add: Annotated[list[NegativeKeyword] | None, Field(description='Negative keywords to add to this package. Appends to the existing negative keyword list — does not replace it. If a keyword+match_type pair already exists, sellers SHOULD treat it as a no-op for that entry. Use targeting_overlay.negative_keywords in create_media_buy to set the initial list.', min_length=1), OmittedNotNull] = None
     negative_keywords_remove: Annotated[list[NegativeKeyword] | None, Field(description='Negative keywords to remove from this package. Removes matching keyword+match_type pairs from the existing list. If a specified pair is not present, sellers SHOULD treat it as a no-op for that entry.', min_length=1), OmittedNotNull] = None
     creative_assignments: Annotated[list[CreativeAssignment] | None, Field(description='Replace creative assignments for this package with optional rotation, grouping, weights, and placement routing. Uses replacement semantics - omit to leave assignments unchanged. rotation_mode is package-scoped: omission resolves to weighted, and every assignment MUST resolve to the same effective mode. In sequential mode, sequence_position MUST be unique within each package-local group. Sellers reject conflicts with VALIDATION_ERROR before mutation. When the same mutation narrows or clears targeting_overlay.placement_selection, this complete replacement MUST remove or reroute every assignment reference that would otherwise be orphaned; the seller validates both changes atomically.'), OmittedNotNull] = None
-    creatives: Annotated[list[CreativesItem] | None, Field(description="Replace this package's inline creative assets. Native localization is not accepted on this path; use sync_creatives before assigning the library creative. When the seller also advertises creative.has_creative_library: true, new inline creatives enter the seller's creative library and can be reused by creative_id while retained; inline-only sellers may store them as package-scoped assets. Use creative_assignments instead for existing library creatives.", max_length=100, min_length=1), OmittedNotNull] = None
+    creatives: Annotated[list[Annotated[CreativeAsset, AfterValidator(ForbiddenGroups((('localization',),)))]] | None, Field(description="Replace this package's inline creative assets. Native localization is not accepted on this path; use sync_creatives before assigning the library creative. When the seller also advertises creative.has_creative_library: true, new inline creatives enter the seller's creative library and can be reused by creative_id while retained; inline-only sellers may store them as package-scoped assets. Use creative_assignments instead for existing library creatives.", max_length=100, min_length=1), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

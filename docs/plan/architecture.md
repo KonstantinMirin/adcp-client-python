@@ -1354,8 +1354,10 @@ present select the kind, and the co-occurrences the semantics document decides a
 here and nowhere else — a `$ref` beside a constraining key refuses on the sibling; an `enum`
 beside `type` is an enumeration whose base the members decide; `allOf` beside `properties` is a
 composition with fields of its own; a combinator whose every branch is `required`-only is not a
-`Union` but a rule source of the enclosing object (the `presence_only` reading, read once
-here); a `type: object` beside `oneOf` is a union whose branches inherit the applied word. It
+`Union` but a rule source of the enclosing object **unless a base plus children says what the
+node says** (the `presence_rule` reading, read once here — `presence_only` is its first half and
+`presence_branches` its second, and the owner's correction of 2026-11-07 is why there are two);
+a `type: object` beside `oneOf` is a union whose branches inherit the applied word. It
 descends by the table's descent column, assigning each child its position and the applied
 word for a same-instance hop. And it validates case: `required` is a list of names,
 `properties` is a mapping of schemas, and so on, each failure a `BuildFailure` by the paragraph
@@ -2153,7 +2155,7 @@ node reaching no outcome — is prevented by banning the only other way out.
 | --- | --- |
 | three descent tables (`bundle.nodes`, `harness._nodes`, the walk's implicit descent) | the table's `descends` column, read by `parse`, `bundle.edges`, `verify/record.py` |
 | keyword screens with a hand-written set at every lowering | admission in `parse`, from the table |
-| the kind read in `lower.decide.decide`, in the root selectors, in `union.keyword`, in `rules.presence_only` | `parse`'s classification |
+| the kind read in `lower.decide.decide`, in the root selectors, in `union.keyword`, in `rules.presence_only` | `parse`'s classification — and for the presence combinator that is `parse.presence_rule`, asked by `_decide`'s union arm, `_rule_sources`, `_borne_by_a_conjunct` and `lower.rules.presence_only` alike |
 | the annotation set, the rule-keyword set, the constraint spelling in three modules | rows of the table; `constraints.SPELLING` keeps the alias WORD per keyword, which is a naming fact and not a decision |
 | the applied type (`constrained_to_object`, `object_constrained`, `applied_type`) | `Node.applied`, set by `parse` through `applied_schema`'s rule |
 | node rewrites (key schema, extras store, multi-type members, `uniqueItems` stripped before the array row) | positions and node fields: `Mapping.key` at KEY, `Object.extras`, `MultiType.members`, `Array.distinct` |

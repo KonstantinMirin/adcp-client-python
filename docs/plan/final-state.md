@@ -189,6 +189,16 @@ A payload offered to a union base resolves to its branch, for every payload the 
 The dispatch key is one that **determines** the branch, which requires the document to guarantee
 its presence in every instance it admits — pinning a key is not determining it.
 
+**AND WHAT DETERMINES THE BRANCH IS NOT ALWAYS A KEY'S VALUE.** Where the branches differ only in
+which keys are PRESENT, no property identifies the branch and the thing that does is the payload's
+KEY SET (`_BRANCH_PRESENCE`, the owner's correction of 2026-11-07 — `adcp-client-python-j0fr`).
+The requirement is the same one and it is the only one: **selection must be a function of the
+payload, never of the order the classes happen to be declared in.** A callable discriminator meets
+it by construction — the tag is computed before any branch is tried — and a plain `A | B` meets it
+only by accident, because its correctness at such a node turns on `additionalProperties`, a keyword
+with nothing to do with the exclusivity. So the second source is a second CARRIER and not a second
+rule: one obligation, read off whichever of the two things the document gave the branches.
+
 **AND EVERY REFUSAL NAMES WHERE.** A union is emitted as a base and one class per branch precisely
 so that a caller learns *which field* was wrong — so a refusal that reports the combinator at the
 root and discards the path has thrown away the thing the structure was built to carry. **The
