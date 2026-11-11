@@ -1494,6 +1494,35 @@ tree is an ARTIFACT and not a phase. The steps' selectors grade their steps and 
 this; written from their union the tree omits documents that emit, and which ones it happens to
 carry depends on what a past run reached through `$ref` closure, which is not a derivation.
 
+### THE COMPILER TRANSCRIBES A DOCUMENT; IT NEVER DECIDES WHETHER THE DOCUMENT IS SATISFIABLE
+
+**A branch whose conjunction admits nothing still gets a class.** A document may require a key
+at one `allOf` member and forbid it at another, and the two statements reach one branch through a
+`$ref`: `core/creative-representation.json` requires `format_kind` and forbids `format_id` at
+`allOf/1`, `$ref`s `core/creative-manifest.json` at `allOf/0`, and that manifest's `oneOf/0`
+requires `format_id` and forbids `format_kind`. The conjunction is a contradiction on both keys
+at once, so the named-format branch of a Creative Representation admits nothing. The compiler
+emits `CreativeRepresentationFormatId` anyway: the class carries the pointer
+`#/allOf/0/oneOf/0`, inherits the forbidding rule from the root and the requiring field from the
+manifest, and refuses every instance — which is the document's own answer, reached by the
+document's own rules.
+
+**NOTHING IS SUPPRESSED, BECAUSE SUPPRESSION WOULD BE A PROOF AND A WRONG PROOF DELETES A TYPE
+SILENTLY.** Declining to emit a class requires deciding that no instance satisfies it, which is
+satisfiability over `required`, `not`, `oneOf`, `if`/`then` and every `$ref` they reach — a
+solver, inside a compiler whose one correctness claim is that it transcribes. A solver that is
+wrong in the admitting direction emits a dead class, which costs a name; wrong in the refusing
+direction it removes a class a payload needs, and the only evidence is an `ImportError` in an
+adopter's code. The asymmetry decides it: **the compiler reports a contradiction, it does not
+act on one.**
+
+So an empty branch is a finding about the BUNDLE and is raised there — upstream
+[#8922](https://github.com/adcontextprotocol/adcp/issues/8922) asks whether that narrowing is
+intended — and never a case in a handler. §3a's rule that a gate finding duplication is evidence
+the order is wrong has its counterpart here: a gate finding an unsatisfiable class is evidence
+about the document, and the grade is unmoved by it, because a class that refuses everything
+refuses faithfully.
+
 **The context.** `Context` is a frozen value built once per document by `lower_document` and
 passed down unchanged:
 
