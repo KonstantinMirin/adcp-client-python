@@ -42,7 +42,6 @@ from typing import Annotated, Any, Union, get_origin
 import rfc8785
 from pydantic import TypeAdapter, ValidationError
 
-import adcp.types._eager  # noqa: F401  (see below)
 from adcp.validation.schema_loader import (
     _ensure_state,
     _make_ref_resolver,
@@ -50,13 +49,12 @@ from adcp.validation.schema_loader import (
 )
 from tests.conformance import _schema_parity as parity
 
-# The models graded here are the ones adopters get: ``adcp.types._eager`` runs
-# the import-time patchers (``_ergonomic``, ``_forward_compat``) that add
-# validators and coercions to the generated classes. Importing a domain module
-# directly before that has happened grades an unpatched class, and the verdict
-# then depends on test order (a mutual-exclusivity validator on
-# ``PublisherPropertySelector`` refused a document in CI's full session that an
-# isolated run accepted).
+# ``adcp.types._eager`` used to be imported here to run upstream's import-time
+# patchers (``_ergonomic``, ``_forward_compat``) before any domain module was
+# touched, so the graded class was the one an adopter gets.  None of those three
+# modules exists in this tree -- the patchers were upstream's and went with their
+# generator -- so there is nothing to run first and the ordering hazard the import
+# guarded against cannot arise.
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

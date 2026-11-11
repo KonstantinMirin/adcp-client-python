@@ -28,10 +28,11 @@ __all__ = ["expand_key", "resolution_key", "snapshot_entry", "snapshot_modules"]
 #: ``adcp`` until asked.
 #:
 #: ``error_details`` is deliberately absent. Every name it carries is a class
-#: its own domain module also exports, and
-#: ``tests/test_export_surface_is_derived.py`` asserts the identity against the
-#: generated class from the tree. A snapshot of it would record what a derived
-#: test already proves.
+#: its own domain module also exports, and the identity against the generated
+#: class is asserted by ``tests_emit/test_the_public_domain_path.py``. A snapshot
+#: of it would record what a derived test already proves.
+#: (It was ``tests/test_export_surface_is_derived.py`` until
+#: ``adcp-client-python-csj0`` removed that file with the generator it graded.)
 def snapshot_modules() -> tuple[tuple[str, str], ...]:
     """The namespaces to snapshot, in a stable order."""
     import adcp.types.domains

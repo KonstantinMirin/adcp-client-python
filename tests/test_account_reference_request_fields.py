@@ -15,7 +15,6 @@ from adcp.types import (
     ListCreativesRequest,
     SyncAccountsRequest,
 )
-from adcp.types.versioned import make_versioned_base
 
 
 def _contains_generated_wrapper(annotation: object) -> bool:
@@ -89,20 +88,5 @@ def test_compatibility_input_account_returns_concrete_union_arm() -> None:
     assert isinstance(request.account, AccountReferenceById)
 
 
-def test_versioned_request_account_returns_concrete_union_arm() -> None:
-    request_type = make_versioned_base("3.1", "GetProductsRequest")
-    request = request_type(
-        buying_mode="wholesale",
-        brief="test",
-        account={"account_id": "acc_123"},
-    )
-
-    assert isinstance(request.account, AccountReferenceById)
-    assert not _contains_generated_wrapper(request_type.model_fields["account"].annotation)
 
 
-def test_versioned_nested_account_returns_concrete_union_arm() -> None:
-    request_type = make_versioned_base("3.1", "ListCreativesRequest")
-    request = request_type(filters={"accounts": [{"account_id": "acc_123"}]})
-
-    assert isinstance(request.filters.accounts[0], AccountReferenceById)
