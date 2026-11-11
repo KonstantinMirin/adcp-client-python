@@ -1147,7 +1147,7 @@ class Fixtures:
                 placements.append((position.pointer, instance))
         return fixtured(schema, placements)
 
-    def reduced(self, schema: Any) -> tuple[Any, int]:
+    def reduced(self, schema: Any, demanded: Sequence[str] = ()) -> tuple[Any, int]:
         """``schema`` with every outermost instance location under it pinned to one value.
 
         **§8's fixture rule read off the NODE BEING GRADED**, which is the half
@@ -1300,11 +1300,62 @@ class Fixtures:
         """
         placements = []
         for item in locations(schema):
+            #: **A LOCATION A DEMAND NEEDS IS DESCENDED INTO AND NEVER PINNED**, which is
+            #: :func:`locations`' own treatment of a scoped location arriving from the
+            #: other side: a pin says "this location is exactly v" and a demand says "an
+            #: instance that HAS this location", and the two contradict wherever ``v`` does
+            #: not carry it.  Measured before this clause existed
+            #: (``adcp-client-python-luik``): the reduction placed, the conjunction then
+            #: admitted nothing, and :meth:`_Draws._draw`'s fail-safe paid the UNREDUCED
+            #: conjunction in full -- 3,326,709 bytes on
+            #: ``media-buy/get-media-buys-response.json#`` -- which is the draw
+            #: ``codegen/__main__.BUDGET`` existed to cut.
+            if _on_the_demanded_path(item.at, demanded):
+                inner = self._opened(item, demanded)
+                if inner is not NONE:
+                    placements.extend((pointer, inner) for pointer in item.pointers)
+                continue
             answer = self._pin(item)
             if answer is NONE:
                 continue
             placements.extend((pointer, answer) for pointer in item.pointers)
         return replaced(schema, placements)
+
+    def _opened(self, item: Location, demanded: Sequence[str]) -> Any:
+        """The subschema a DEMANDED location is replaced by: reduced, never pinned.
+
+        The location the demand names is left exactly as the document states it -- there
+        is nothing below it the demand does not decide, and a restriction of it is what
+        empties the conjunction.  A location merely ON THE WAY to it is reduced
+        recursively with the rest of the path still open, so everything OFF the path is
+        pinned and the path itself stays reachable.
+
+        A restriction either way, which is what keeps the conjunction sound:
+        :meth:`reduced` returns a restriction of what it is handed, and the statements
+        conjoined here are all the statements about that location, so the result admits a
+        subset of what each position admitted.
+        """
+        #: **THE REMAINDER OF THE PATH, RELATIVE TO THIS LOCATION.**  :func:`locations`
+        #: builds ``Location.at`` from the node it is handed, so the token namespace
+        #: RESTARTS at every re-entry -- an absolute token compared one level down matches
+        #: nothing, and the measured consequence is not a lost saving but the wrong one:
+        #: every location below the path's first segment was left unreduced, which is the
+        #: cost this clause exists to remove.  So the prefix is stripped and what is handed
+        #: on is what is still owed.
+        rest = tuple(
+            one[len(item.at) :] for one in demanded if one.startswith(item.at + "/")
+        )
+        #: Nothing still owed means this IS the demanded location: left exactly as the
+        #: document states it, because a restriction of it is what empties the conjunction
+        #: and there is nothing below it the demand does not decide.
+        if not rest:
+            return NONE
+        kept = [s for s in item.nodes if isinstance(s, Mapping)]
+        if not kept:
+            return NONE
+        conjunction: Any = kept[0] if len(kept) == 1 else {"allOf": list(kept)}
+        inner, _ = self.reduced(conjunction, rest)
+        return inner
 
     def _pin(self, item: Location) -> Any:
         """The subschema one frontier item is replaced by, or :data:`NONE`.
@@ -2077,7 +2128,40 @@ def validator_classes_shared_within_one_call() -> Iterator[Any]:
     #: what reaches the library's own call site without touching the library's source.
     name = "__get_validator_class"
     bounded = module[name]
-    unbounded = functools.lru_cache(maxsize=None)(bounded.__wrapped__)
+    #: **AND THE WALK ITSELF GOES, NOT ONLY THE EVICTION** (``adcp-client-python-d5zb``).
+    #: Unbounding the cache removes the RE-walks and leaves the first walk of every
+    #: distinct merged schema, and that residue is what two pairs could not finish inside.
+    #: Measured on ``media-buy/refine-proposals-response.json#`` at 50 Hz with the cache
+    #: already unbounded: ``jsonschema``'s ``check_schema`` is **74.4% of the pair (315.8 s
+    #: of 424 s)**, ``descend`` 75.7%, ``evolve`` 20.4%, and ``urllib.parse`` --
+    #: ``urljoin``, ``urlunsplit``, ``urlparse``, ``_coerce_args`` -- is **67.6 s of leaf
+    #: time, 16% of the pair**, re-deriving a base URI per node.  The cache cannot reach it
+    #: because the keys are genuinely distinct: ``merged`` produces a new schema each call
+    #: and asks about that one.
+    #:
+    #: **WHAT THE WALK ESTABLISHES AT THE CALL THAT COSTS: nothing the caller does not
+    #: already know.**  ``_canonicalise.py:853`` is ``merged``'s last statement and reads
+    #: ``_get_validator_class(out)`` with **the result DISCARDED** -- it is the library
+    #: asserting that its own merge of two valid schemas produced a valid schema.  Every
+    #: schema this harness hands the library is ``bundle.record``'s rendering of a document
+    #: that already compiled, or a conjunction of such renderings, so the premise holds at
+    #: every call site this module has; and ``merged`` preserves it, because a merge of two
+    #: draft-07 schemas is a draft-07 schema.
+    #:
+    #: So for the duration of one grade the CLASS is resolved and the walk is not. The
+    #: class still comes from the library's own ``validator_for``, which reads ``$schema``
+    #: and nothing else, so ``make_validator`` (``_canonicalise.py:113``) -- the one caller
+    #: that USES the answer -- gets the class it got before.
+    #:
+    #: **THE ROOT IS STILL WALKED, so a schema that is not one is still reported.**
+    #: ``_from_schema.py:219`` walks the schema ``from_schema`` was handed, once per build,
+    #: and that is untouched: what is skipped is the re-walk of every subschema derived
+    #: from an already-walked root.  A malformed schema therefore still raises
+    #: ``SchemaError`` at the door rather than silently generating from nonsense.
+    def resolved(wrapper: Any) -> Any:
+        return jsonschema.validators.validator_for(wrapper.schema, jsonschema.Draft7Validator)
+
+    unbounded = functools.lru_cache(maxsize=None)(resolved)
     module[name] = unbounded
     try:
         yield unbounded
@@ -5067,6 +5151,10 @@ class _Draws:
     #: because it is a third thing: not this check's draw, and not a held entry either --
     #: the first run that borrows one also HOLDS it, so the next run reports it replayed.
     borrowed: int = 0
+    #: How many draws fell through to the node AS DERIVED because the reduction placed
+    #: nothing, or placed and yielded no value the schema admits.  ``adcp-client-python-luik``
+    #: measured this at every demand conjunction before :func:`demanded_locations` existed.
+    unreduced: int = 0
 
     def one(
         self,
@@ -5106,9 +5194,21 @@ class _Draws:
         This is :func:`_bases`' own sentence one level down -- "the base instance is a FREE
         CHOICE among the ones the accepts check already drew" -- applied to the value.
         """
+        #: **READ OFF THE POSITION THE CALLER ALREADY PASSES, not a new argument.**  The
+        #: position is what names the derivation for the store key, and for the demand
+        #: conjunction it already carries the path: ``("demand", [...])``.  So the
+        #: reduction learns which locations to leave standing without a second channel
+        #: that could disagree with the key.
+        demanded = (
+            demanded_locations(position[1])
+            if isinstance(position, tuple) and len(position) == 2 and position[0] == "demand"
+            else ()
+        )
         if self.corpus is None or self.identity is None:
             answer = self._borrowed(schema, borrowed)
-            return self._draw(schema, custom_formats) if answer is None else answer
+            return (
+                self._draw(schema, custom_formats, demanded) if answer is None else answer
+            )
         key = corpus_key(self.identity, custom_formats=custom_formats, position=position)
         held = self.corpus.get(key)
         if isinstance(held, list) and held:
@@ -5118,7 +5218,7 @@ class _Draws:
         if answer is not None:
             self.corpus.put(key, answer)
             return answer
-        answer = self._draw(schema, custom_formats)
+        answer = self._draw(schema, custom_formats, demanded)
         #: **A cut is not an answer, so nothing holds it** -- ``check_accepts``' own
         #: ``res.outcome != "strategy_error"`` clause, for this key space.
         #: :func:`records_a_cut` carries the reasoning and the measurement.  The answer is
@@ -5148,7 +5248,12 @@ class _Draws:
                 return [candidate]
         return None
 
-    def _draw(self, schema: Any, custom_formats: Mapping[str, Any]) -> list[Any]:
+    def _draw(
+        self,
+        schema: Any,
+        custom_formats: Mapping[str, Any],
+        demanded: Sequence[str] = (),
+    ) -> list[Any]:
         #: **WHAT THE DERIVED SCHEMA ITSELF STATES, ASKED BEFORE ANYTHING IS GENERATED.**
         #: :func:`check_widening`'s value classes are RESTRICTIONS of the node
         #: (:func:`_restricted`), so a node carrying ``examples`` carries it into every
@@ -5169,7 +5274,7 @@ class _Draws:
         #: exactly as it did before -- which is the fail-safe direction §8 requires.
         if self.fixtures is not None:
             try:
-                narrowed, placed = self.fixtures.reduced(schema)
+                narrowed, placed = self.fixtures.reduced(schema, demanded)
             except OverBudget:
                 raise
             except Exception:  # noqa: BLE001 -- a derivation that raises loses the saving
@@ -5183,6 +5288,14 @@ class _Draws:
                     value = NONE
                 if value is not NONE and conforms(schema, value) is True:
                     return [value]
+        #: **THE FALL-THROUGH, COUNTED** (``docs/plan/architecture.md`` §9: "every memo and
+        #: every claimed funnel carries a counter the gate reads").  Reaching this line
+        #: means the reduction placed nothing, or placed and then yielded no value this
+        #: schema admits -- and what follows is a draw of the node AS DERIVED, which on a
+        #: multi-megabyte conjunction is the unbounded cost ``codegen/__main__.BUDGET``
+        #: existed to cut.  It is still the fail-safe direction and it is still taken, but
+        #: it is no longer silent: ``tests_emit/corpus.py`` reads this counter.
+        self.unreduced += 1
         try:
             return [one_instance(schema, custom_formats)]
         except Exception as e:  # an undrawable position is unproved
@@ -5827,6 +5940,34 @@ def _value_at(instance: Any, path: Sequence[Any]) -> list[Any]:
             return []
         cursor = cursor[segment]
     return [cursor]
+
+
+def demanded_locations(path: Sequence[Any]) -> tuple[str, ...]:
+    """The instance-location tokens :func:`_demanding` needs left standing, outermost first.
+
+    **Spelled exactly as :func:`locations` spells ``Location.at``**, because that is the
+    only thing the two readings have to agree about: a key segment is
+    ``/<escaped key>`` and an index segment is ``/*`` -- an index demands a list long
+    enough, and the reduction decides a list's members at one token.  Two spellings of
+    one token would make the comparison in :meth:`Fixtures.reduced` silently never match,
+    which is a saving that is never lost and a conjunction that is always empty, so the
+    agreement is read off one function rather than restated.
+
+    ``adcp-client-python-luik``: the demand is a statement about the subject's own
+    instance, so the enclosures beside the path are bounded exactly as they are in the
+    node and the path itself is not.
+    """
+    out = []
+    at = ""
+    for segment in path:
+        at = f"{at}/*" if isinstance(segment, int) else f"{at}/{bundle.escape_key(segment)}"
+        out.append(at)
+    return tuple(out)
+
+
+def _on_the_demanded_path(at: str, demanded: Sequence[str]) -> bool:
+    """Is ``at`` the demanded location, or a location on the way to it?"""
+    return any(one == at or one.startswith(at + "/") for one in demanded)
 
 
 def _demanding(path: Sequence[Any]) -> dict:

@@ -174,6 +174,47 @@ VERDICTS = "verdicts.tsv"
 #: root it fixed, and the demand conjunction ``_bases``/``_reached`` hands to
 #: ``from_schema`` unbounded.  Both are owed a row; until one of them lands, this number
 #: stands as a known defect with its repair named and not as a tuned setting.
+#:
+#: **BOTH OF THOSE ROWS ARE NOW FIXED AND THE NUMBER STILL STANDS, WHICH REFUTES THE CLAIM
+#: THE ROWS THEMSELVES MADE** (``adcp-client-python-luik`` and ``-d5zb``; the figures and
+#: the method are in ``verdicts/budget.md``).  Each row said the two of them were the only
+#: thing standing between this tree and deleting this bound.  That claim was written by the
+#: lane that measured ``auw6``, it was not measured, and it is wrong.  Cold -- the widening
+#: cache moved aside, the committed floor alone, no budget anywhere, one pair per process:
+#:
+#: ====================================================  =============  ============
+#: ``check_pair``, cold, no budget                              before    both fixed
+#: ====================================================  =============  ============
+#: ``media-buy/refine-proposals-response.json#``         did not finish       10.27 s
+#: ``media-buy/get-media-buys-response.json#``           did not finish  did not finish
+#: ====================================================  =============  ============
+#:
+#: ``d5zb``'s repair is visible in the figures it was filed on: over
+#: ``get-media-buys-response.json#``, ``jsonschema``'s ``check_schema`` goes from **74.4%
+#: of the pair (315.8 s) to 1.3% (4.8 s)**, ``descend`` 75.7% -> 1.5%, ``evolve`` 20.4% ->
+#: 0.6%.  ``luik``'s is visible in the conjunction: the demand's own locations are descended
+#: instead of pinned (:func:`harness.demanded_locations`), so the reduction no longer empties
+#: the conjunction and :meth:`harness._Draws._draw` no longer falls through to the unreduced
+#: 3,326,709-byte draw -- which :attr:`harness._Draws.unreduced` now counts rather than
+#: leaving to a profile.
+#:
+#: **WHAT THE SECOND PAIR IS BOUND BY IS A THIRD CAUSE, and it is the canonicalisation
+#: memo's per-call render.**  With both repairs it spends 84.0% in ``check_widening`` and
+#: 62.6% inclusive in :func:`harness.shared`, and the leaf time is JSON serialisation --
+#: ``raw_decode`` 78.3 s, ``iterencode`` 62.8 s, ``_iterencode_dict`` 25.7 s,
+#: ``_iterencode_list`` 6.2 s, **173 s of 357 s**.  The memo's KEY is a 32-byte digest, but
+#: producing it still renders the whole multi-megabyte schema on every call, and the entry
+#: is compressed on write and parsed back on every hit.  ``adcp-client-python-pcqy`` closed
+#: having fixed the key and having explicitly left the per-call render standing, so this is
+#: a row of its own and not that one reopened.
+#:
+#: **AND THIS PAIR CANNOT BE INTERRUPTED BY ANYTHING BUT ``SIGALRM``**, which is a second
+#: reason the bound cannot simply go today: a watchdog thread calling ``os._exit`` never
+#: runs, because the main thread holds the GIL inside the C JSON encoder.
+#: :func:`harness.within` uses ``SIGALRM`` and is the only thing that reaches it.
+#:
+#: So the list of causes behind this number is two shorter and one longer, every one of
+#: them is named, and ``adcp-client-python-l6xn`` still owns the deletion.
 BUDGET = 30
 
 
