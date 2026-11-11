@@ -1185,6 +1185,43 @@ class Fixtures:
         the location's own pair would pay, recursively reduced the same way, so the cost of
         a node is the SUM over its locations and not the product.
 
+    **AND THIS METHOD IS NOT THE OWNER'S BOUNDARY, WHICH IS A MEASUREMENT AND NAMES WHAT
+        IS STILL OWED.**  ``docs/plan/rebuild-plan.md`` §8 rules that a payload is COMPLETE
+        at the subject under test and MINIMAL at every enclosure, on attribution grounds and
+        not cost ones -- so this method, which pins EVERY child location of the subject to
+        one value, narrows the subject as well as its enclosures and is the wrong reading of
+        that rule even where it is cheap.  The right one pins only at an enclosure, to
+        ``verify.witness.Construction.floor`` -- the least instance that document admits,
+        CONSTRUCTED from its keywords and never drawn.
+
+        Put to a measurement over all 2,586 graded pairs (``adcp-client-python-auw6``), and
+        the finding is that the ENCLOSURE CANNOT YET BE LOCATED, which is this method's own
+        subject arriving from the other side:
+
+        * read off the RAW document's ``$ref`` strings (:func:`referring_positions`), the
+          boundary takes the schema handed to the draw from 630,418,192 bytes to
+          **16.4%** -- ``core/mcp-webhook-payload.json#`` 44,320,211 -> 7,329 -- but it
+          leaves **1,059 of 2,586 nodes with nothing placed at all**, and names **ZERO**
+          enclosures in ``refine-proposals-response.json#/properties/results/items/oneOf/0``.
+          That is :func:`locations`' measured reason restated: ``applied_schema`` conjoins
+          the enclosing statements, so the enclosed document arrives inside a conjunct at a
+          pointer the document never spells.
+        * recognised instead by WHAT A SUBTREE ADMITS, matched against every portable
+          document's own nodes, it does reach that node -- 107 enclosures where the raw
+          reading found none -- but only **52.0%** overall, because an outer enclosure is a
+          conjunction ``applied_schema`` built and is identical to no document. It matches
+          the untouched inner copies and misses the big outer ones.
+        * the union of both is verdict-neutral (**0 of 2,586 outcomes moved**) and no
+          cheaper (604.6 s against 701.6 s, inside the 2.1x per-pair variance
+          ``codegen/__main__.BUDGET`` records), and the two pairs that do not finish still
+          do not finish with NO budget.
+
+        So the boundary is right and its READING is not settled: a record inlines a
+        cross-document reference by copying and then conjoins the copy, so neither the raw
+        ``$ref`` nor the copy's content locates it in general. Naming an enclosure inside a
+        conjunction is the open question, it belongs upstream of this method, and nothing
+        here should be taken as that rule.
+
         An item no value survives for is left exactly as it stands: the fail-safe
         direction is to lose the saving, never to place a value the document does not
         admit.

@@ -123,8 +123,57 @@ VERDICTS = "verdicts.tsv"
 #: ``adcp-client-python-2i99`` shared the ROOT validator and that holds; this is the
 #: per-descent rebuild below it, heaviest at ``adcp.types._base.strict_validate`` (9.7% of the
 #: run), the one validation path with neither the quiet class, nor the idless-Resource skip,
-#: nor a held validator instance. Fix that and the two pairs finish, after which this bound
-#: has nothing left to cut. ``adcp-client-python-l6xn`` owns the deletion.
+#: nor a held validator instance. ``adcp-client-python-l6xn`` owns the deletion.
+#:
+#: **AND THE STRUCTURAL BOUNDARY IS NOT WHAT DELETES IT, WHICH WAS PUT TO A MEASUREMENT
+#: RATHER THAN ASSUMED** (``adcp-client-python-auw6``, after the ruling at
+#: ``rebuild-plan.md`` §8).  The sentence above used to end "fix that and the two pairs
+#: finish"; the boundary is the other candidate, and the reasoning was that an instance
+#: stopping at each enclosure leaves far fewer subschemas to validate.  Implemented as an
+#: experiment -- every enclosure pinned to ``witness.Construction.floor``, the least
+#: instance that document admits, constructed and never drawn, with the subject's own
+#: members left exactly as stated -- and graded over all 2,586 pairs:
+#:
+#: * **it is verdict-neutral: 0 of 2,586 outcomes moved**, diffed by NAME;
+#: * **it is not cheaper**: 604.6 s against 701.6 s in ``check_pair``, inside the 2.1x
+#:   per-pair variance already recorded above, so neither figure is a saving;
+#: * **the set a 30 s bound cuts is IDENTICAL -- the same two pairs by NAME**, and so is
+#:   the set reaching a 60 s ceiling;
+#: * **and neither of those two finishes with NO budget at all.**  Run to a 400 s watchdog
+#:   that dumps its stacks rather than writing a verdict: both were still inside the draw.
+#:
+#: What the boundary DOES remove is real and is a different cost: the fixture derivation.
+#: ``Fixtures.reduced`` is 19.8% inclusive (223.3 s) over the graded set without it and
+#: **0.0% to 0.3% with it** on exactly the two pairs that do not finish.  It is simply not
+#: what those two are bound by, and it is not where the clock goes: the boundary bounds
+#: what the draw GENERATES, while ``check_admits`` validates against the UNFIXTURED node by
+#: design, and that is 50.1% of the run.
+#:
+#: **WHAT THEY ARE BOUND BY, PROFILED WITH THE BOUNDARY APPLIED** (py-spy, 50 Hz, one pair
+#: per process, no budget).  Both spend all of it in ``check_widening``'s draw, and the
+#: cause is the per-descent rebuild arriving through SCHEMA validation rather than instance
+#: validation -- which is why the first profile under-read it:
+#:
+#: * ``media-buy/refine-proposals-response.json#``, 424 s: ``check_widening`` 92.2%,
+#:   ``Fixtures.reduced`` 0.0%.  ``_Draws._reached`` -> ``one_instance`` -> ``from_schema``
+#:   -> ``merged`` 78.9% -> ``canonicalish`` 37.4%, and inside it
+#:   **``jsonschema``'s ``check_schema`` at 74.4% (315.8 s)** with ``descend`` 75.7% and
+#:   ``evolve`` 20.4%.  ``urllib.parse`` alone -- ``urljoin``, ``urlunsplit``, ``urlparse``,
+#:   ``_coerce_args`` -- is **67.6 s of leaf time, 16% of the pair**, re-deriving a base URI
+#:   per node.
+#: * ``media-buy/get-media-buys-response.json#``, 403 s: ``check_widening`` 100% of the
+#:   non-idle time, ``canonicalish`` 401.5 s and ``merged`` 395.5 s of it,
+#:   ``Fixtures.reduced`` 1.2 s.  ``iter_errors``/``descend`` 233 s inside the merge and
+#:   125 s of leaf time in ``json`` encode/decode -- the canonicaliser's own round-trip
+#:   copy and the memo key beside it.
+#:
+#: So ``hypothesis_jsonschema`` re-validates a multi-megabyte schema against the
+#: meta-schema on each ``merged``/``canonicalish`` call, descending it with a fresh
+#: validator and a fresh URI join per node.  **That is TWO defects and neither is this
+#: bound**: the per-descent validator-and-resource rebuild, which ``2i99`` left below the
+#: root it fixed, and the demand conjunction ``_bases``/``_reached`` hands to
+#: ``from_schema`` unbounded.  Both are owed a row; until one of them lands, this number
+#: stands as a known defect with its repair named and not as a tuned setting.
 BUDGET = 30
 
 
