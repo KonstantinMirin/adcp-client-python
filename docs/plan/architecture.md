@@ -1502,10 +1502,12 @@ at one `allOf` member and forbid it at another, and the two statements reach one
 `allOf/1`, `$ref`s `core/creative-manifest.json` at `allOf/0`, and that manifest's `oneOf/0`
 requires `format_id` and forbids `format_kind`. The conjunction is a contradiction on both keys
 at once, so the named-format branch of a Creative Representation admits nothing. The compiler
-emits `CreativeRepresentationFormatId` anyway: the class carries the pointer
-`#/allOf/0/oneOf/0`, inherits the forbidding rule from the root and the requiring field from the
-manifest, and refuses every instance — which is the document's own answer, reached by the
-document's own rules.
+emits `CreativeRepresentationFormatId` anyway: the class is stamped at the branch it came from,
+inherits the forbidding rule from the root and the requiring field from the manifest, and
+refuses every instance — which is the document's own answer, reached by the document's own
+rules. **The STAMP at that position is a separate defect and not this rule's business**: the
+branch is the referenced manifest's, reached through a `$ref`, and the pointer the emitter
+composes for it is one of the 70 that resolve in no document.
 
 **NOTHING IS SUPPRESSED, BECAUSE SUPPRESSION WOULD BE A PROOF AND A WRONG PROOF DELETES A TYPE
 SILENTLY.** Declining to emit a class requires deciding that no instance satisfies it, which is
