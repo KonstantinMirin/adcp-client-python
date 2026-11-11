@@ -53,7 +53,7 @@ import time
 from pathlib import Path
 
 from adcp.types._base import KINDS, SchemaRef, schema_at
-from codegen import bundle, catalogue, harness, held, keywords, patch, refusal
+from codegen import bundle, catalogue, harness, keywords, patch, refusal
 from codegen.emit import PACKAGE, TREE, emit, write
 from codegen.verify import witness
 
@@ -67,155 +67,25 @@ from codegen.verify import witness
 #: committed tree leaves it where a reviewer and ``git diff`` can both reach it.
 VERDICTS = "verdicts.tsv"
 
-#: Seconds one pair of the verdict table may cost before the run gives up on it and writes
-#: ``absent`` instead.  ``harness.within`` says what forces a bound at all.
+#: **THERE IS NO BUDGET, AND THAT IS THE ROW RATHER THAN A TIDY-UP**
+#: (``adcp-client-python-hzio.5``; ``adcp-client-python-l6xn`` owned the deletion and this
+#: is it).  ``BUDGET = 30`` stood here through four readings of why, and the last of them
+#: recorded it as a known defect with its repair named: *"a bound that cuts a
+#: nondeterministic set is evidence for deleting it, never for widening it"*.
 #:
-#: **ITS OWN SENTENCE HERE WAS MEASURED FALSE, WHICH IS THE FOURTH CAP DOCSTRING IN THIS
-#: EPIC TO BE** (``adcp-client-python-auw6``).  It read: *"a pair whose instances are held
-#: replays in 0.0 to 0.4 s, and the pairs that exceed a budget of any size are the ones
-#: that DRAW -- 133 s to over 2 h 57 m each.  There is nothing between the two, so the
-#: budget is small enough that the whole table stays obtainable and large enough that no
-#: replayed pair can reach it."*  Three readings refute it, each over all 2,586 pairs this
-#: function grades, warm corpora, the committed tree:
+#: What it bounded was a GENERATOR running at grade time -- ``hypothesis_jsonschema``
+#: asked for an instance of a multi-megabyte merged conjunction, once per value class, on
+#: a check with no committed floor.  Nothing generates at grade time now: the payload is
+#: CONSTRUCTED from the node's own keywords, which the measurement sizes at **2,608 of
+#: 2,608 graded pairs answered in 0.4 s cold** against 604-750 s warm for the apparatus it
+#: replaces.  The two pairs that never finished at any bound --
+#: ``media-buy/get-media-buys-response.json#`` and
+#: ``media-buy/refine-proposals-response.json#`` -- grade in **0.21 s and 6.23 s** cold
+#: with nothing warmed and no bound set anywhere.
 #:
-#: * **THERE IS NO GAP.**  p50 **0.014 s**, p90 **0.369 s**, p95 **1.324 s**, p99
-#:   **7.213 s**, with **159** pairs between 1 s and 60 s.  The cost is a continuum, so
-#:   "small enough ... and large enough" names a window that does not exist, and the
-#:   number sits inside the working population rather than outside it.
-#:
-#: * **THE CLOCK IT IS SPENT AGAINST IS NOT A FUNCTION OF THE PAIR.**  Two runs of
-#:   identical code over the identical population priced ``core/wholesale-feed-webhook.json#``
-#:   at **49.7 s and 23.6 s** -- 2.1x for one pair -- because the memos, the records and the
-#:   validator stores are process-wide and what a pair costs depends on what the process
-#:   graded before it.  The SET this bound cut was therefore **8, 4 and 2 pairs** in three
-#:   runs, diffed by NAME and not by count: ``core/wholesale-feed-event.json#/oneOf/0`` and
-#:   ``core/wholesale-feed-webhook.json#`` were cut in one run and graded in the next.  A
-#:   verdict of ``absent`` that moves with scheduling is §9's *"recorded as though
-#:   something had been learned"*.
-#:
-#: * **WHAT IT WAS BLAMED ON IS NOT WHAT IT CUTS.**  The sentence above says the cut pairs
-#:   are "the ones that DRAW", meaning ``check_accepts``.  Profiled (py-spy, 112,701 samples
-#:   at 100 Hz) over the 155 most expensive pairs: ``check_widening`` **52.6%**,
-#:   ``check_admits`` **39.5%**, ``check_accepts`` **0.7%**.  Over the whole population
-#:   ``check_admits`` is **50.1%** and ``iter_errors`` is **55.0% inclusive** --
-#:   so this bound cuts VALIDATION and the widening draw, and never the accepts draw the
-#:   committed floor already answers.  ``harness.check_accepts`` carries that attribution.
-#:
-#: **ONLY TWO PAIRS EXCEED IT IN EVERY RUN**, and they are the two that do not terminate at
-#: all: ``media-buy/get-media-buys-response.json#`` and
-#: ``media-buy/refine-proposals-response.json#`` (``adcp-client-python-l6xn``/``-x2se``,
-#: still running at 90 s and recorded at 43 minutes and 17.7 GB on one of them).  So those
-#: two are what forces a bound, and everything else the old number cut was cut by noise.
-#:
-#: **AND THE NUMBER IS NOT RAISED, WHICH IS THE WHOLE OF WHAT THE MEASUREMENT CHANGES.**
-#: The lane that took these readings proposed 120 -- above the slowest finisher (49.7 s) with
-#: the measured 2.1x variance as headroom -- and that is reverted. ``docs/plan/architecture.md``
-#: §9: *"A CHECK'S COST IS LINEAR IN THE DOCUMENT'S NODES, EACH VISITED ONCE -- AND A BUDGET
-#: IS EVIDENCE THAT ONE IS NOT."*  §14 names the forbidden forms and a RAISED CAP is one of
-#: them: it is the same limit with a larger number, and the lane's own note conceded the
-#: figure "remains a number nobody read off a document".  A bound that cuts a nondeterministic
-#: set is evidence for DELETING it, never for widening it.
-#:
-#: **SO 30 STANDS AS A KNOWN DEFECT RATHER THAN A TUNED SETTING, AND THE REPAIR IS NAMED.**
-#: Only ``l6xn``/``x2se``'s two pairs exceed any budget on every run, and what makes them slow
-#: is measured: ``iter_errors`` is 55.0% inclusive with 25.4% leaf time REBUILDING A VALIDATOR
-#: OR A ``referencing`` RESOURCE, one per subschema per instance validated.
-#: ``adcp-client-python-2i99`` shared the ROOT validator and that holds; this is the
-#: per-descent rebuild below it, heaviest at ``adcp.types._base.strict_validate`` (9.7% of the
-#: run), the one validation path with neither the quiet class, nor the idless-Resource skip,
-#: nor a held validator instance. ``adcp-client-python-l6xn`` owns the deletion.
-#:
-#: **AND THE STRUCTURAL BOUNDARY IS NOT WHAT DELETES IT, WHICH WAS PUT TO A MEASUREMENT
-#: RATHER THAN ASSUMED** (``adcp-client-python-auw6``, after the ruling at
-#: ``rebuild-plan.md`` §8).  The sentence above used to end "fix that and the two pairs
-#: finish"; the boundary is the other candidate, and the reasoning was that an instance
-#: stopping at each enclosure leaves far fewer subschemas to validate.  Implemented as an
-#: experiment -- every enclosure pinned to ``witness.Construction.floor``, the least
-#: instance that document admits, constructed and never drawn, with the subject's own
-#: members left exactly as stated -- and graded over all 2,586 pairs:
-#:
-#: * **it is verdict-neutral: 0 of 2,586 outcomes moved**, diffed by NAME;
-#: * **it is not cheaper**: 604.6 s against 701.6 s in ``check_pair``, inside the 2.1x
-#:   per-pair variance already recorded above, so neither figure is a saving;
-#: * **the set a 30 s bound cuts is IDENTICAL -- the same two pairs by NAME**, and so is
-#:   the set reaching a 60 s ceiling;
-#: * **and neither of those two finishes with NO budget at all.**  Run to a 400 s watchdog
-#:   that dumps its stacks rather than writing a verdict: both were still inside the draw.
-#:
-#: What the boundary DOES remove is real and is a different cost: the fixture derivation.
-#: ``Fixtures.reduced`` is 19.8% inclusive (223.3 s) over the graded set without it and
-#: **0.0% to 0.3% with it** on exactly the two pairs that do not finish.  It is simply not
-#: what those two are bound by, and it is not where the clock goes: the boundary bounds
-#: what the draw GENERATES, while ``check_admits`` validates against the UNFIXTURED node by
-#: design, and that is 50.1% of the run.
-#:
-#: **WHAT THEY ARE BOUND BY, PROFILED WITH THE BOUNDARY APPLIED** (py-spy, 50 Hz, one pair
-#: per process, no budget).  Both spend all of it in ``check_widening``'s draw, and the
-#: cause is the per-descent rebuild arriving through SCHEMA validation rather than instance
-#: validation -- which is why the first profile under-read it:
-#:
-#: * ``media-buy/refine-proposals-response.json#``, 424 s: ``check_widening`` 92.2%,
-#:   ``Fixtures.reduced`` 0.0%.  ``_Draws._reached`` -> ``one_instance`` -> ``from_schema``
-#:   -> ``merged`` 78.9% -> ``canonicalish`` 37.4%, and inside it
-#:   **``jsonschema``'s ``check_schema`` at 74.4% (315.8 s)** with ``descend`` 75.7% and
-#:   ``evolve`` 20.4%.  ``urllib.parse`` alone -- ``urljoin``, ``urlunsplit``, ``urlparse``,
-#:   ``_coerce_args`` -- is **67.6 s of leaf time, 16% of the pair**, re-deriving a base URI
-#:   per node.
-#: * ``media-buy/get-media-buys-response.json#``, 403 s: ``check_widening`` 100% of the
-#:   non-idle time, ``canonicalish`` 401.5 s and ``merged`` 395.5 s of it,
-#:   ``Fixtures.reduced`` 1.2 s.  ``iter_errors``/``descend`` 233 s inside the merge and
-#:   125 s of leaf time in ``json`` encode/decode -- the canonicaliser's own round-trip
-#:   copy and the memo key beside it.
-#:
-#: So ``hypothesis_jsonschema`` re-validates a multi-megabyte schema against the
-#: meta-schema on each ``merged``/``canonicalish`` call, descending it with a fresh
-#: validator and a fresh URI join per node.  **That is TWO defects and neither is this
-#: bound**: the per-descent validator-and-resource rebuild, which ``2i99`` left below the
-#: root it fixed, and the demand conjunction ``_bases``/``_reached`` hands to
-#: ``from_schema`` unbounded.  Both are owed a row; until one of them lands, this number
-#: stands as a known defect with its repair named and not as a tuned setting.
-#:
-#: **BOTH OF THOSE ROWS ARE NOW FIXED AND THE NUMBER STILL STANDS, WHICH REFUTES THE CLAIM
-#: THE ROWS THEMSELVES MADE** (``adcp-client-python-luik`` and ``-d5zb``; the figures and
-#: the method are in ``verdicts/budget.md``).  Each row said the two of them were the only
-#: thing standing between this tree and deleting this bound.  That claim was written by the
-#: lane that measured ``auw6``, it was not measured, and it is wrong.  Cold -- the widening
-#: cache moved aside, the committed floor alone, no budget anywhere, one pair per process:
-#:
-#: ====================================================  =============  ============
-#: ``check_pair``, cold, no budget                              before    both fixed
-#: ====================================================  =============  ============
-#: ``media-buy/refine-proposals-response.json#``         did not finish       10.27 s
-#: ``media-buy/get-media-buys-response.json#``           did not finish  did not finish
-#: ====================================================  =============  ============
-#:
-#: ``d5zb``'s repair is visible in the figures it was filed on: over
-#: ``get-media-buys-response.json#``, ``jsonschema``'s ``check_schema`` goes from **74.4%
-#: of the pair (315.8 s) to 1.3% (4.8 s)**, ``descend`` 75.7% -> 1.5%, ``evolve`` 20.4% ->
-#: 0.6%.  ``luik``'s is visible in the conjunction: the demand's own locations are descended
-#: instead of pinned (:func:`harness.demanded_locations`), so the reduction no longer empties
-#: the conjunction and :meth:`harness._Draws._draw` no longer falls through to the unreduced
-#: 3,326,709-byte draw -- which :attr:`harness._Draws.unreduced` now counts rather than
-#: leaving to a profile.
-#:
-#: **WHAT THE SECOND PAIR IS BOUND BY IS A THIRD CAUSE, and it is the canonicalisation
-#: memo's per-call render.**  With both repairs it spends 84.0% in ``check_widening`` and
-#: 62.6% inclusive in :func:`harness.shared`, and the leaf time is JSON serialisation --
-#: ``raw_decode`` 78.3 s, ``iterencode`` 62.8 s, ``_iterencode_dict`` 25.7 s,
-#: ``_iterencode_list`` 6.2 s, **173 s of 357 s**.  The memo's KEY is a 32-byte digest, but
-#: producing it still renders the whole multi-megabyte schema on every call, and the entry
-#: is compressed on write and parsed back on every hit.  ``adcp-client-python-pcqy`` closed
-#: having fixed the key and having explicitly left the per-call render standing, so this is
-#: a row of its own and not that one reopened.
-#:
-#: **AND THIS PAIR CANNOT BE INTERRUPTED BY ANYTHING BUT ``SIGALRM``**, which is a second
-#: reason the bound cannot simply go today: a watchdog thread calling ``os._exit`` never
-#: runs, because the main thread holds the GIL inside the C JSON encoder.
-#: :func:`harness.within` uses ``SIGALRM`` and is the only thing that reaches it.
-#:
-#: So the list of causes behind this number is two shorter and one longer, every one of
-#: them is named, and ``adcp-client-python-l6xn`` still owns the deletion.
-BUDGET = 30
+#: So there is nothing left for a wall clock to cut, and a pair that took one would be a
+#: finding about that pair rather than a number to raise.  ``verdicts/apparatus-deleted.md``
+#: carries the measurement.
 
 
 def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]:
@@ -283,22 +153,12 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
     #: ``harness.pairs``' own answer rather than an inference from a path.  A document with
     #: no pair of its own (nothing emitted for it) falls back to the imported package, which
     #: is the only tree such a caller has named.
-    module_of = {p.ref.document: p.module for p in found}
-    #: §8's FIXTURES FOR THE RUN, the same object and the same three readers the suite's
-    #: grading pass builds (``tests/test_emit.fixtures``).  Without it the run's draw pays
-    #: the unsubstituted node at every referring position -- ``adcp-client-python-gbw``:
-    #: "the fixture derivation is in codegen/harness.py and the suite passes fixtures
-    #: through it, but codegen/__main__.py was not wired to harness.Fixtures".
-    fixtures = harness.Fixtures(
-        read=lambda document: bundle.read(bundle_dir, document),
-        node=lambda document, pointer: schema_at(
-            SchemaRef(document, pointer), module=module_of.get(document)
-        ),
-        identity=identity_of,
-        documents=frozenset(bundle.portable(bundle_dir)),
-        corpus=held.STORE,
-        custom_formats=formats,
-    )
+    #: **NO FIXTURE DERIVATION AND NO STORE** (``adcp-client-python-hzio.5``).  A
+    #: ``harness.Fixtures`` stood here, pinning a fixture at every referring position so
+    #: that one sampled draw of a multi-megabyte node was affordable.  Nothing is drawn,
+    #: so there is nothing to make affordable, and the accepts corpus it read is gone with
+    #: it: the payload is constructed from the document's own keywords on every run, which
+    #: makes a cold run and a warm one the same run.
     #: **THE CONSTRUCTION, BUILT ONCE FOR THE WHOLE RUN** -- the row
     #: ``adcp-client-python-8bw4`` names, and the clause of the fifth target that was not
     #: met: *"the three checks ARE the grading path"*.  Before this, ``Construction``
@@ -433,23 +293,14 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
         #: check that computed nothing is a blank column, and a blank column is still a
         #: row.  ``SIGALRM`` and not a thread, because the harness is pure Python on this
         #: thread and a timer that cannot interrupt it is not a bound.
+        #: **NO BOUND, which is the deletion above arriving at its one call site.**  A
+        #: pair either grades or raises, and a raise is a row with a cause in it.
         try:
-            with harness.within(BUDGET):
-                report = harness.check_pair(
-                    pair,
-                    custom_formats=formats,
-                    corpus=held.STORE,
-                    widening_corpus=held.WIDENING_STORE,
-                    fixtures=fixtures,
-                    construction=construction,
-                )
-        except harness.OverBudget:
-            rows.append(
-                harness.verdict_row(
-                    p.ref, None, model=model, error=f"did not finish inside {BUDGET} s"
-                )
+            report = harness.check_pair(
+                pair,
+                custom_formats=formats,
+                construction=construction,
             )
-            continue
         except Exception as e:  # as above: the run reports, it does not die
             rows.append(
                 harness.verdict_row(

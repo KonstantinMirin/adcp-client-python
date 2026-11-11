@@ -2103,6 +2103,18 @@ class Construction:
             self.counters.back_edges += 1
         return built
 
+    @staticmethod
+    def least_instance(statements: Sequence[Mapping[str, Any]]) -> Built:
+        """The least instance a NODE admits, bound here so a caller needs no import.
+
+        ``codegen/harness.py`` may not import this module (§9's import rule: the verifier
+        reads nothing but its arguments), so the reading travels as an argument and this
+        is where the one object a caller already holds carries it.  A ``staticmethod``
+        because it reads the node and nothing of this instance -- a derived node has no
+        pointer in any record, which is :func:`least_instance`'s whole subject.
+        """
+        return least_instance(statements)
+
     def floor(self, document: str, pointer: str, seen: frozenset[str] = frozenset()) -> Built:
         """The target's MINIMAL value, for a back edge at a position the document REQUIRES.
 
@@ -3971,3 +3983,132 @@ def _outside(members: Sequence[Any]) -> Any:
     if isinstance(first, (int, float)):
         return max(m for m in members if isinstance(m, (int, float))) + 1
     return "not a member"
+
+
+# --------------------------------------------------------------------------- #
+# the least instance a NODE admits, read off the node alone
+# --------------------------------------------------------------------------- #
+#: The conjoining keywords this reading descends through: each states something about the
+#: SAME instance, so their statements join one list.  ``oneOf``/``anyOf`` are NOT here --
+#: a union's branches are alternatives and the reading takes the FIRST that answers, which
+#: is the one place this differs from a conjunction.
+_JOINS = ("allOf",)
+
+
+def least_instance(
+    statements: Sequence[Mapping[str, Any]],
+    seen: frozenset[frozenset[int]] = frozenset(),
+) -> Built:
+    """The least instance the CONJUNCTION of ``statements`` admits, or a named reason.
+
+    **READ OFF THE NODE AND NEVER OFF A POINTER**, which is the whole of why this exists
+    beside :meth:`Construction.floor` rather than inside it.  That method recurses by
+    POINTER into the record -- ``self.floor(document, f"{pointer}/items", seen)`` -- so it
+    can only answer about a node the document spells.  ``check_widening`` derives schemas
+    the document does not spell: a value class, an intermediate node, a node conjoined
+    with a demand.  Those have no pointer, so the pointer reading cannot reach them, and
+    reaching for a DRAW to cover them is what ``adcp-client-python-hzio.5`` deletes.
+
+    The same construction §2 states, applied to a node rather than to a pointer:
+    ``const`` gives its value, ``enum`` its first member, ``required`` its keys each built
+    the same way, ``minItems`` exactly that many elements, a type word its floor.  Bottom
+    up and total, so the cost of a node is the cost of walking it ONCE.
+
+    **A union takes the first branch that answers**, because the branches are alternatives
+    and a value satisfying one satisfies the node.  A conjunction joins its conjuncts'
+    statements into one list, which is how two statements about one location are answered
+    by one value rather than by two that cannot both hold.
+
+    **A ``$ref`` is NOT followed and is reported.**  A reference is a string in a record,
+    so following one here would need the document this reading deliberately does not have.
+    Where a node's own instance is decided by a reference, the answer is the named reason
+    and the caller reports it -- which is the fail-safe direction: lose the answer, never
+    invent one the document does not admit.
+
+    ``seen`` closes a cycle on the OBJECT, because a node built by conjoining a document's
+    statements can hold the same mapping at two depths; a repeat answers with a reason
+    rather than recursing.
+    """
+    kept = [s for s in statements if isinstance(s, Mapping)]
+    if not kept:
+        return Built(None, Source.CONSTRUCTED)
+    #: **THE GUARD IS ON THE WHOLE CONJUNCTION AND NOT ON ANY ONE MEMBER OF IT**, which is
+    #: a correction a measurement forced: descending into a union branch legitimately
+    #: re-presents the sibling statements, so a guard tripping on a repeated MEMBER
+    #: refused every union it was asked about.  What cannot make progress is arriving at
+    #: the same SET of statements twice, and that is what this trips on.
+    here = frozenset(id(s) for s in kept)
+    if here in seen:
+        return Built(None, Source.APPROXIMATED, "a cycle of statements admits no instance")
+    seen = seen | {here}
+
+    joined: list[Mapping[str, Any]] = []
+    for one in kept:
+        joined.append(one)
+        for word in _JOINS:
+            held = one.get(word)
+            if isinstance(held, list):
+                joined.extend(s for s in held if isinstance(s, Mapping))
+    for one in joined:
+        if "const" in one:
+            return Built(one["const"], Source.CONSTRUCTED)
+        members = one.get("enum")
+        if isinstance(members, list) and members:
+            return Built(members[0], Source.CONSTRUCTED)
+    for one in joined:
+        if isinstance(one.get("$ref"), str):
+            return Built(
+                None, Source.APPROXIMATED, f"the node's instance is {one['$ref']!r}, a reference"
+            )
+    #: A union: the FIRST branch that answers, with the unconditional statements joined
+    #: into it so the value satisfies the node and not only the branch.
+    for word in ("oneOf", "anyOf"):
+        for one in joined:
+            branches = one.get(word)
+            if not isinstance(branches, list):
+                continue
+            for branch in branches:
+                if not isinstance(branch, Mapping):
+                    continue
+                inner = least_instance([branch, *(s for s in joined if s is not one)], seen)
+                if inner.held:
+                    return inner
+            return Built(None, Source.APPROXIMATED, f"no branch of {word} admits an instance")
+
+    words = _words(joined) or _implied(joined)
+    word = words[0] if words else "null"
+    if word == "object":
+        placed: dict[str, Any] = {}
+        for name in _required(joined):
+            about = [
+                held[name]
+                for one in joined
+                for held in [one.get("properties")]
+                if isinstance(held, Mapping) and isinstance(held.get(name), Mapping)
+            ]
+            inner = least_instance(about, seen) if about else Built(None, Source.CONSTRUCTED)
+            if not inner.held and about:
+                return Built(
+                    None, Source.APPROXIMATED, f"the least instance needs {name!r}: {inner.reason}"
+                )
+            placed[name] = inner.value
+        return Built(placed, Source.CONSTRUCTED)
+    if word == "array":
+        least = _bound(joined, "minItems")
+        count = int(least) if isinstance(least, (int, float)) else 0
+        if count == 0:
+            return Built([], Source.CONSTRUCTED)
+        items = [one["items"] for one in joined if isinstance(one.get("items"), Mapping)]
+        if not items:
+            return Built([None] * count, Source.CONSTRUCTED)
+        inner = least_instance(items, seen)
+        if not inner.held:
+            return Built(
+                None, Source.APPROXIMATED, f"the least instance needs an element: {inner.reason}"
+            )
+        return Built([inner.value] * count, Source.CONSTRUCTED)
+    if word == "string":
+        return _string(joined)
+    if word in ("integer", "number"):
+        return _number(joined, whole=word == "integer")
+    return Built(WORD_FLOOR.get(word), Source.CONSTRUCTED)

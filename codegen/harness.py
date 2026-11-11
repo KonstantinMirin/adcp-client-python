@@ -73,7 +73,6 @@ dict section 6 deleted.
 
 from __future__ import annotations
 
-import contextlib
 import copy
 import ctypes
 import ctypes.util
@@ -84,24 +83,16 @@ import json
 import pkgutil
 import re
 import traceback
-import zlib
 from collections import Counter
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
-import hypothesis
-import hypothesis_jsonschema
 import jsonschema
-from hypothesis import HealthCheck, Phase, given, settings
-from hypothesis import strategies as st
-from hypothesis.errors import HypothesisException
-from hypothesis.internal.conjecture.engine import BUFFER_SIZE as _HYPOTHESIS_BUFFER_SIZE
-from hypothesis_jsonschema import _canonicalise as _hjs_canon
-from hypothesis_jsonschema import _encode as _hjs_encode
-from hypothesis_jsonschema import _from_schema as _hjs_from
-from hypothesis_jsonschema import from_schema
+#: **THE REFERENCE RESOLVER AND NOTHING ELSE OF THE LIBRARY.**  The generator is
+#: gone from this module (``adcp-client-python-hzio.5``); what remains is a reader
+#: that follows a ``$ref``, which is not a draw and reaches no strategy.
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver
 from pydantic import TypeAdapter, ValidationError
@@ -151,7 +142,7 @@ except ImportError:  # pragma: no cover
 #: a vacuous pass is reported by nothing.
 #: ``tests/test_emit.py::test_every_format_strategy_is_graded_before_it_is_trusted`` is the
 #: reading, and it asserts over this dict rather than over a copy of it.
-FORMAT_STRATEGIES: dict[str, st.SearchStrategy] = {"uuid": st.uuids().map(str)}
+FORMAT_STRATEGIES: dict[str, Any] = {}
 
 
 def format_occurrences(schema: Any) -> Counter[str]:
@@ -397,36 +388,6 @@ def resolve(
     return _inlined(doc, resolver)
 
 
-def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrategy:
-    return from_schema(schema, custom_formats=dict(custom_formats))
-
-
-# --------------------------------------------------------------------------- #
-# §8: a referenced document is a FIXTURE at a referring position, not a draw
-# --------------------------------------------------------------------------- #
-#: **The positions at which a referenced document describes an instance of ITS OWN**, read
-#: off the descent column rather than named.  §8's rule is that "every subtree a class
-#: reaches through a reference is a document with a pair of its own, graded there -- so at
-#: the referring position the instrument needs one instance that document admits and one it
-#: refuses, not a generated space."  The subtree has to describe its own instance for that
-#: to be true: a PROP value, an ELEM member, a MAPV or KEY value and a DEF entry each name
-#: a position of the payload that the referenced document, and nothing else, decides.
-#:
-#: **A CONJ, a RULE, a ``not`` and a ``oneOf`` branch are NOT such positions, and this is
-#: the one clause the rule as written does not carry** (measured, see :class:`Fixtures`).
-#: A conjunct co-describes the ENCLOSING instance, so two references at two conjuncts of one
-#: ``allOf`` are two documents deciding one value -- and substituting each one's own fixture
-#: independently makes the intersection EMPTY, which is a draw that reports
-#: ``Unsatisfiable`` rather than a cheap one.  Measured on
-#: ``media-buy/get-products-response.json#``, whose root states
-#: ``allOf: [{$ref: core/version-envelope.json}, {$ref: core/protocol-envelope.json}, ...]``:
-#: one fixture per conjunct draws nothing at all.
-#:
-#: So such a reference is TRANSPARENT instead: :func:`referring_positions` reads THROUGH it
-#: and keeps looking for own-instance positions below, which is the same reading
-#: ``architecture.md`` already makes of the record's storage -- "a reader asking what the
-#: document states reads through the storage".  The fixtures then land inside the
-#: conjunct, at its own ``properties`` and ``items``, where they do not meet each other.
 _OWN_INSTANCE = frozenset(
     {Position.PROP, Position.ELEM, Position.MAPV, Position.KEY, Position.DEF}
 )
@@ -1082,712 +1043,6 @@ def replaced(schema: Any, placements: Sequence[tuple[str, Any]]) -> tuple[Any, i
     return out, placed
 
 
-@dataclass
-class Fixtures:
-    """**WHERE §8's FIXTURE FOR A REFERENCED DOCUMENT COMES FROM, and why it is DERIVED.**
-
-    §8: "the fixture is DERIVED from the referenced document, never hand-written: a
-    hand-written one is a thousand files to maintain and a silent exemption the first time
-    a document changes under it."  Two derivations, in this order, and the first answers
-    for almost all of them:
-
-    * **the accepts corpus's own held instance for that document's pair.**  That corpus is
-      one instance per graded pair, drawn from the document by ``check_accepts``, keyed on
-      the document's RAW BYTES and its raw reference closure's (``corpus_key``), and
-      re-offered to the document on every read (``corpus_defect``).  So it is a derivation
-      in the strict sense -- nothing is written down that the document does not decide --
-      and it is already in the tree. **Measured: it answers 2,674 of the 2,753 pairs.**
-    * **a fixtured draw over that document's own node, recursively**, for the rest.  The 79
-      pairs the corpus holds nothing for are exactly the pairs the pole cannot finish, so
-      the entry is missing precisely where it is needed: the referenced document's own
-      draw is unaffordable for the same reason its referrer's is.  The recursion
-      terminates because it is the sum the rule describes -- each document's fixtures are
-      derived once, memoised, and the visited set cuts a cycle in the reference graph.
-
-    A document neither answers for is reported rather than guessed: ``None``, the position
-    is not substituted, and the pair draws exactly as it did before.  **The fail-safe
-    direction is to lose the saving, never to place a value the document does not admit.**
-
-    The three callables are the seam ``docs/plan/architecture.md`` §9 draws for the corpus
-    and for the same reason -- "the store is the CALLER's, the key is the harness's" -- so
-    this holds no path and reads no filesystem:
-
-    * ``read(document)`` -- the RAW document, which is what still spells a ``$ref``;
-    * ``node(document, pointer)`` -- the RECORD node a pair is graded against;
-    * ``identity(document, pointer)`` -- the pair's static identity, for the corpus key.
-    """
-
-    read: Callable[[str], Any]
-    node: Callable[[str, str], Any]
-    identity: Callable[[str, str], Any]
-    documents: Collection[str]
-    corpus: Any = None
-    custom_formats: Mapping[str, Any] = ()
-
-    #: ``(document, pointer) -> the instance, or None``.  Memoised for the run, which is
-    #: what turns the product into a sum.
-    held: dict[tuple[str, str], Any] = field(default_factory=dict)
-    #: ``digest of a frontier item's statements -> the subschema it is replaced by, or
-    #: NONE``.  The node-side rule's memo, keyed on CONTENT and not on a pointer for the
-    #: reason :func:`locations` measures: a location inside a pair's node sits at pointers
-    #: ``applied_schema`` minted and the document does not spell, so there is no
-    #: ``(document, pointer)`` to key on.  Content is the honest key and the stronger one
-    #: -- two pairs holding one subtree at two pointers share one derivation.
-    pins: dict[bytes, Any] = field(default_factory=dict)
-
-    def positions(self, document: str, pointer: str) -> tuple[Referring, ...]:
-        return referring_positions(self.read, document, pointer, self.documents)
-
-    def substitute(self, schema: Any, document: str, pointer: str) -> tuple[Any, int]:
-        """``schema`` with a fixture pinned at every referring position under ``pointer``."""
-        placements = []
-        for position in self.positions(document, pointer):
-            instance = self.one(position.document, position.target)
-            if instance is not NONE:
-                placements.append((position.pointer, instance))
-        return fixtured(schema, placements)
-
-    def reduced(self, schema: Any, demanded: Sequence[str] = ()) -> tuple[Any, int]:
-        """``schema`` with every outermost instance location under it pinned to one value.
-
-        **§8's fixture rule read off the NODE BEING GRADED**, which is the half
-        :meth:`substitute` cannot reach.  That method asks the RAW document which positions
-        refer, and at a composed position the answer is nothing: measured on
-        ``media-buy/refine-proposals-response.json#/properties/results/items/oneOf/0``, the
-        raw branch is 454 bytes with no ``$ref`` in it and the graded node is 683,849
-        bytes, because ``applied_schema`` conjoins the enclosing node's statements about
-        the same instance and ``core/canonical-proposal.json`` arrives inside that
-        conjunct.  Having found nothing to place, the draw was handed the whole node.
-
-        So the frontier is read off the node itself (:func:`locations`) and each item is
-        pinned:
-
-        * a **child location** -- what one ``properties`` entry or one ``items`` decides --
-          is pinned to ONE value, drawn from the CONJUNCTION of every statement about that
-          location and placed at all of them.  ``{"const": v}`` admits a subset of what
-          each of those statements admits, so the result is a restriction, and the value is
-          screened against the conjunction before it is kept.
-        * a **location a SCOPE also decides** -- a consequent's or a union branch's own
-          statement about the same instance location -- is pinned once per scope, each from
-          the conjunction of that scope's statement WITH the unconditional ones, and the
-          unconditional position itself is LEFT EXACTLY AS THE DOCUMENT STATES IT.  A union
-          is not monotone branch by branch (narrowing one branch of a ``oneOf`` can make an
-          instance that matched two match one, which the node then ADMITS) and the scopes
-          are alternatives with no value in common, so there is no one value for that
-          position, no restriction of it that cannot empty the node, and no ORDER of the
-          two that makes them agree.  A statement left standing cannot contradict a value
-          drawn from a conjunction that contains it, which is why that direction is the one
-          that terminates; :func:`locations` carries all three measurements.
-
-        **Every pin is DERIVED and never hand-written** (§8: "a hand-written one is a
-        thousand files to maintain and a silent exemption the first time a document changes
-        under it").  The value comes from that location's own statements by the same draw
-        the location's own pair would pay, recursively reduced the same way, so the cost of
-        a node is the SUM over its locations and not the product.
-
-    **AND THIS METHOD IS NOT THE OWNER'S BOUNDARY, WHICH IS A MEASUREMENT AND NAMES WHAT
-        IS STILL OWED.**  ``docs/plan/rebuild-plan.md`` §8 rules that a payload is COMPLETE
-        at the subject under test and MINIMAL at every enclosure, on attribution grounds and
-        not cost ones -- so this method, which pins EVERY child location of the subject to
-        one value, narrows the subject as well as its enclosures and is the wrong reading of
-        that rule even where it is cheap.  The right one pins only at an enclosure, to
-        ``verify.witness.Construction.floor`` -- the least instance that document admits,
-        CONSTRUCTED from its keywords and never drawn.
-
-        Put to a measurement over all 2,586 graded pairs (``adcp-client-python-auw6``), and
-        the finding is that the ENCLOSURE CANNOT YET BE LOCATED, which is this method's own
-        subject arriving from the other side:
-
-        * read off the RAW document's ``$ref`` strings (:func:`referring_positions`), the
-          boundary takes the schema handed to the draw from 630,418,192 bytes to
-          **16.4%** -- ``core/mcp-webhook-payload.json#`` 44,320,211 -> 7,329 -- but it
-          leaves **1,059 of 2,586 nodes with nothing placed at all**, and names **ZERO**
-          enclosures in ``refine-proposals-response.json#/properties/results/items/oneOf/0``.
-          That is :func:`locations`' measured reason restated: ``applied_schema`` conjoins
-          the enclosing statements, so the enclosed document arrives inside a conjunct at a
-          pointer the document never spells.
-        * recognised instead by WHAT A SUBTREE ADMITS, matched against every portable
-          document's own nodes, it does reach that node -- 107 enclosures where the raw
-          reading found none -- but only **52.0%** overall, because an outer enclosure is a
-          conjunction ``applied_schema`` built and is identical to no document. It matches
-          the untouched inner copies and misses the big outer ones.
-        * the union of both is verdict-neutral (**0 of 2,586 outcomes moved**) and no
-          cheaper (604.6 s against 701.6 s, inside the 2.1x per-pair variance
-          ``codegen/__main__.BUDGET`` records), and the two pairs that do not finish still
-          do not finish with NO budget.
-
-        So the boundary is right and its READING is not settled: a record inlines a
-        cross-document reference by copying and then conjoins the copy, so neither the raw
-        ``$ref`` nor the copy's content locates it in general. Naming an enclosure inside a
-        conjunction is the open question, it belongs upstream of this method, and nothing
-        here should be taken as that rule.
-
-        An item no value survives for is left exactly as it stands: the fail-safe
-        direction is to lose the saving, never to place a value the document does not
-        admit.
-
-        **A BOUND STOOD HERE (``depth: int = 8``, cut by :meth:`_pin`'s ``depth <= 0``
-        one frame away) AND IT IS GONE, WHICH IS A MEASUREMENT AND NOT A TIDYING**
-        (``adcp-client-python-auw6``; ``docs/plan/final-state.md`` reading 1: *"NO CHECK
-        CARRIES A BUDGET, A DEPTH LIMIT OR AN EXAMPLE COUNT.  Each of the three terminates
-        structurally."*).  Three things were measured before it was touched, over all
-        2,586 pairs the population pairs, and each is recorded here because the sentence
-        this paragraph replaced was itself the second wrong one on this bound.
-
-        **1. THE RECURSION TERMINATES ON ITS OWN, which was UNVERIFIED and is now read off
-        the ANSWER.**  Instrumented over every one of the 2,586 graded nodes with the
-        content memo OFF and the draw removed -- so the descent walked is the FULL
-        recursion tree and the real one is a subset of it, because :meth:`value` returns
-        early from ``stated_instances`` on some paths and re-enters here on the rest --
-        **0 of 2,586 descents failed to terminate**, against a tripwire at 1,000
-        re-entries.  The deepest is ``compliance/comply-test-controller-request.json#`` at
-        **21 re-entries**, whose own node is 8,248,082 bytes and 43 pointer segments tall.
-
-        **2. WHAT TERMINATES IT IS THE DESCENT, and no already-followed guard is owed
-        here.**  Each re-entry's conjunction is built from ONE frontier item's statements,
-        and :func:`locations` collects only mapping VALUES inside the node it is handed and
-        follows no ``$ref`` -- a reference is a STRING in a record -- so every re-entry's
-        frontier lies strictly inside its caller's and the level is bounded by the node's
-        own HEIGHT (21 reached against a maximum of 44 over this bundle).  That is
-        :func:`locations`' own terminator, one frame out.  The ``followed`` set
-        :func:`_normalize` and :func:`_composed` received is NOT the same obligation: those
-        two FOLLOW a pointer and can arrive back at a node they have already read, so they
-        have a back edge to close; this recursion follows none, so there is none to close.
-
-        **3. REMOVING IT COSTS 3.6% OF THE REDUCTION'S CLOCK AND BUYS 256 PINNED
-        POSITIONS.**  Measured with the DRAW ON and one memo shared across the population,
-        as ``codegen/__main__.grade`` and ``test_emit.fixtures`` share one object for a
-        whole run -- this method called on every one of the 2,586 graded nodes, each node
-        bounded at 60 s so that a node reaching it is reported rather than hiding the rest:
-
-        ====================================  =============  ===========
-        over the 2,586 graded nodes               bounded 8    unbounded
-        ====================================  =============  ===========
-        seconds                                    1,846.3      1,912.4
-        derivations                                  4,495        4,515
-        pins CUT by the bound                          183            0
-        positions pinned                            33,001       33,237
-        deepest level reached                   8 (the cap)           12
-        nodes reaching the 60 s ceiling                 25           25
-        ====================================  =============  ===========
-
-        **The pinned sets are compared as SETS and not as sizes**: 256 positions gained, 20
-        lost.  The 20 are §8's own named caveat arriving one level deeper -- a pin placed
-        further in can empty a conjunction an outer pin was drawn from, so that outer pin
-        answers :data:`NONE` instead -- and they cost nothing but the saving, because an
-        item no value survives for is left exactly as the document states it.  **And the
-        ceiling set is IDENTICAL -- the same 25 nodes by NAME and not the same count of
-        them** -- which is the figure that decides this: the bound was not what kept any
-        node inside 60 s, and removing it adds no 26th.
-
-        **And the memo is what makes that affordable, not the bound.**  With the memo OFF
-        the same descent visits 1,721,076 frontier items, 656,168 of them at that one
-        compliance node; with it on, 4,515 derivations answer the whole population.  Read
-        without the draw the same two readings are 4,693 derivations against 4,787 and 224
-        pins cut -- the figures differ from the table above because a cut derivation is
-        also a memo entry not made, and both are recorded so neither looks like the other.
-        **412 of the 2,586 nodes reach past level 8**, so the bound was cutting 16% of the
-        population's descents and not a tail.
-
-        **AND THE COST IT WAS KEPT FOR IS NOT HERE.**  ``adcp-client-python-auw6``'s
-        sampling profile over the population (py-spy, 112,701 samples at 100 Hz, warm
-        corpora) attributes **10.5%** of the run to ``check_accepts`` and **0.7%** of the
-        155 most expensive pairs to it; ``from_schema``'s 296.2 s is 249.4 s under
-        ``check_widening``, reached through :meth:`_Draws._draw` -> this method ->
-        :meth:`value` -> :func:`one_instance`.  So the draw this reduction feeds is
-        ``check_widening``'s, the check with no committed floor, and a depth bound here was
-        containing 2% of its derivations while suppressing 224 of its savings.
-        """
-        placements = []
-        for item in locations(schema):
-            #: **A LOCATION A DEMAND NEEDS IS DESCENDED INTO AND NEVER PINNED**, which is
-            #: :func:`locations`' own treatment of a scoped location arriving from the
-            #: other side: a pin says "this location is exactly v" and a demand says "an
-            #: instance that HAS this location", and the two contradict wherever ``v`` does
-            #: not carry it.  Measured before this clause existed
-            #: (``adcp-client-python-luik``): the reduction placed, the conjunction then
-            #: admitted nothing, and :meth:`_Draws._draw`'s fail-safe paid the UNREDUCED
-            #: conjunction in full -- 3,326,709 bytes on
-            #: ``media-buy/get-media-buys-response.json#`` -- which is the draw
-            #: ``codegen/__main__.BUDGET`` existed to cut.
-            if _on_the_demanded_path(item.at, demanded):
-                inner = self._opened(item, demanded)
-                if inner is not NONE:
-                    placements.extend((pointer, inner) for pointer in item.pointers)
-                continue
-            answer = self._pin(item)
-            if answer is NONE:
-                continue
-            placements.extend((pointer, answer) for pointer in item.pointers)
-        return replaced(schema, placements)
-
-    def _opened(self, item: Location, demanded: Sequence[str]) -> Any:
-        """The subschema a DEMANDED location is replaced by: reduced, never pinned.
-
-        The location the demand names is left exactly as the document states it -- there
-        is nothing below it the demand does not decide, and a restriction of it is what
-        empties the conjunction.  A location merely ON THE WAY to it is reduced
-        recursively with the rest of the path still open, so everything OFF the path is
-        pinned and the path itself stays reachable.
-
-        A restriction either way, which is what keeps the conjunction sound:
-        :meth:`reduced` returns a restriction of what it is handed, and the statements
-        conjoined here are all the statements about that location, so the result admits a
-        subset of what each position admitted.
-        """
-        #: **THE REMAINDER OF THE PATH, RELATIVE TO THIS LOCATION.**  :func:`locations`
-        #: builds ``Location.at`` from the node it is handed, so the token namespace
-        #: RESTARTS at every re-entry -- an absolute token compared one level down matches
-        #: nothing, and the measured consequence is not a lost saving but the wrong one:
-        #: every location below the path's first segment was left unreduced, which is the
-        #: cost this clause exists to remove.  So the prefix is stripped and what is handed
-        #: on is what is still owed.
-        rest = tuple(
-            one[len(item.at) :] for one in demanded if one.startswith(item.at + "/")
-        )
-        #: Nothing still owed means this IS the demanded location: left exactly as the
-        #: document states it, because a restriction of it is what empties the conjunction
-        #: and there is nothing below it the demand does not decide.
-        if not rest:
-            return NONE
-        kept = [s for s in item.nodes if isinstance(s, Mapping)]
-        if not kept:
-            return NONE
-        conjunction: Any = kept[0] if len(kept) == 1 else {"allOf": list(kept)}
-        inner, _ = self.reduced(conjunction, rest)
-        return inner
-
-    def _pin(self, item: Location) -> Any:
-        """The subschema one frontier item is replaced by, or :data:`NONE`.
-
-        **Memoised on the item's CONTENT and not on a pointer**, which is the key §8's
-        "the key is the declaration" becomes here: a location inside a pair's node sits at
-        pointers ``applied_schema`` minted and the document does not spell, so there is no
-        ``(document, pointer)`` to key on.  Content is the honest key and the stronger one
-        -- the three ``refine-proposals-response.json#/properties/results/items/oneOf/*``
-        pairs hold the same commercial-terms subtree at three different pointers and share
-        one derivation, which a pointer key cannot do.
-
-        **AND THE MEMO IS NOT WHAT TERMINATES THIS**, which is worth saying where the
-        deleted bound's own sentence said the opposite: a frontier one level deeper has
-        different content, so it is a different entry.  :meth:`reduced` carries what does
-        terminate it and the measurement that establishes it.  What the memo decides is the
-        COST -- 4,787 derivations over the population against 1,721,076 frontier items
-        without it.
-        """
-        #: The KIND is in the key, because a branch and a child location with identical
-        #: content get different answers -- a reduced node and a ``{"const": v}`` -- and a
-        #: key that could not tell them apart would hand one the other's.
-        key = _content_key(item.nodes, kind=item.kind.encode())
-        if key is not None and key in self.pins:
-            return self.pins[key]
-        answer = self._derived_pin(item)
-        if key is not None:
-            self.pins[key] = answer
-        return answer
-
-    def _derived_pin(self, item: Location) -> Any:
-        """The subschema one frontier item is replaced by, or :data:`NONE`.
-
-        One kind since this row (:class:`Location`), so this is the pin and not a
-        dispatch: one value for the conjunction of the item's statements, as a
-        ``{"const": v}``.  :data:`NONE` where no value survives, which is the fail-safe
-        direction -- the position then stands as the document states it.
-        """
-        value = self.value(item.nodes)
-        return NONE if value is NONE else {"const": value}
-
-    def value(self, statements: Sequence[Mapping[str, Any]]) -> Any:
-        """One instance the CONJUNCTION of ``statements`` admits, or :data:`NONE`.
-
-        Several statements about one instance location are conjoined as the document
-        conjoins them -- as an ``allOf`` -- and the draw is over that conjunction, which is
-        what keeps §8's measured clause from biting: "a fixture per conjunct is two
-        documents answering one question and the intersection is empty."  One value for the
-        location, satisfying every statement about it, is the answer that cannot be empty
-        by construction.
-
-        The conjunction's own frontier is reduced first (:meth:`reduced`), so the draw is
-        over a node whose children are already pinned.  **No budget of its own**, for
-        :meth:`_derived`'s measured reason: ``signal.setitimer`` is process-global, so a
-        nested :func:`within` would re-arm the caller's timer and clear it on the way out,
-        leaving the enclosing grade unbounded.
-
-        The value is screened against the conjunction before it is returned, because the
-        restriction is this module's claim and the claim is cheap to check.
-        """
-        kept = [s for s in statements if isinstance(s, Mapping)]
-        if not kept:
-            return NONE
-        conjunction: Any = kept[0] if len(kept) == 1 else {"allOf": list(kept)}
-        #: **WHAT ANY STATEMENT ABOUT THIS LOCATION SAYS A VALID INSTANCE OF IT LOOKS LIKE,
-        #: SCREENED AGAINST THE CONJUNCTION OF ALL OF THEM.**  The same rule
-        #: :meth:`_stated` applies at a referring position, applied to a frontier item:
-        #: where the document states an instance there is nothing to generate.  The screen
-        #: is the conjunction and not the stating statement, because several statements
-        #: decide one location and a member only one of them admits is not a pin -- which
-        #: is the empty-intersection clause this method exists for, arriving by a new door.
-        try:
-            for statement in kept:
-                for member in stated_instances(statement):
-                    if conforms(conjunction, member) is True:
-                        return member
-        except OverBudget:
-            raise
-        except Exception:  # noqa: BLE001 -- an unusable statement states nothing
-            pass
-        narrowed, _ = self.reduced(conjunction)
-        try:
-            instance = one_instance(narrowed, self.custom_formats)
-        except OverBudget:
-            raise
-        except Exception:  # noqa: BLE001 -- an undrawable location has no pin
-            if budget_expired():
-                raise OverBudget("a fixture derivation was cut") from None
-            return NONE
-        if conforms(conjunction, instance) is not True:
-            return NONE
-        return instance
-
-    def one(self, document: str, pointer: str, seen: frozenset = frozenset()) -> Any:
-        """One instance ``document``'s node at ``pointer`` admits, or :data:`NONE`.
-
-        **:data:`NONE` and never ``None``, which is the mistake :class:`_Draws` records
-        one key space over**: a document can admit JSON ``null``, so ``None`` means both
-        "the fixture is null" and "there is no fixture", and the first of those is a value
-        the draw must be allowed to pin.
-        """
-        key = (document, pointer)
-        if key in self.held:
-            return self.held[key]
-        if key in seen:
-            return NONE  # a cycle in the reference graph is no fixture
-        answer = self._replayed(key)
-        if answer is NONE:
-            answer = self._stated(key)
-        if answer is NONE:
-            answer = self._derived(key, seen)
-        self.held[key] = answer
-        return answer
-
-    def _stated(self, key: tuple[str, str]) -> Any:
-        """The referenced document's OWN ``examples``, which is the fixture with no draw.
-
-        **§8's fixture rule and JSON Schema's own keyword are the same sentence** (the
-        owner's decision, 2026-11-04).  The rule is that at a referring position the
-        instrument needs "one instance that document admits", derived from the document and
-        never hand-written -- and ``examples`` is the document's own statement of exactly
-        that, maintained by whoever maintains the schema.  112 of this bundle's portable
-        documents state one at their root, which is where a reference lands.
-
-        Asked after :meth:`_replayed` and before :meth:`_derived`, so the committed floor
-        still decides which witness is graded and this answers the positions it does not --
-        and it answers them for nothing, where :meth:`_derived` pays a whole draw.
-        Screened by the node it will stand for, which is :func:`stated_instances`' whole
-        content.
-        """
-        document, pointer = key
-        try:
-            node = self.node(document, pointer)
-        except Exception:  # noqa: BLE001 -- a pointer the record does not carry
-            return NONE
-        found = stated_instances(node)
-        if not found:
-            return NONE
-        return found[0]
-
-    def _replayed(self, key: tuple[str, str]) -> Any:
-        if self.corpus is None:
-            return NONE
-        try:
-            identity = self.identity(*key)
-        except Exception:  # noqa: BLE001 -- a pair the caller cannot name has no entry
-            return NONE
-        entry = self.corpus.get(corpus_key(identity, custom_formats=self.custom_formats))
-        if not isinstance(entry, list) or not entry:
-            return NONE
-        return entry[0]
-
-    def _derived(self, key: tuple[str, str], seen: frozenset) -> Any:
-        document, pointer = key
-        try:
-            node = self.node(document, pointer)
-        except Exception:  # noqa: BLE001 -- a pointer the record does not carry
-            return NONE
-        try:
-            root = self.node(document, "#")
-            drawn_from = resolve(node, store={}, referrer=root)
-        except Exception:  # noqa: BLE001 -- as check_pair: an unresolved node is used as is
-            drawn_from = node
-        placements = []
-        for position in self.positions(document, pointer):
-            instance = self.one(position.document, position.target, seen | {key})
-            if instance is not NONE:
-                placements.append((position.pointer, instance))
-        substituted, _ = fixtured(drawn_from, placements)
-        #: The union rule applies to a referenced document's own draw too, and it is the
-        #: same call the pair makes: a referenced document whose cost is its OWN internal
-        #: branches is exactly the case :meth:`substitute` leaves standing, and this is the
-        #: position where that cost used to be paid in full.
-        substituted, _ = self.reduced(substituted)
-        #: **NO BUDGET OF ITS OWN, and that is a correction rather than an omission.**  A
-        #: :func:`within` here looked right and silently removed the CALLER's bound:
-        #: ``signal.setitimer`` is process-global, so a nested block re-arms the timer to
-        #: its own interval and then clears it on the way out, leaving the enclosing grade
-        #: with no timer at all.  Measured: one pair ran ten minutes against a 20 s budget.
-        #: ``OverBudget`` is therefore not caught either -- a cut belongs to whoever set
-        #: the budget, and a derivation that swallowed one would make the pair run past it.
-        #: The caller's bound is the only bound, and a derivation that exceeds it cuts the
-        #: pair, which is what the pair did before this rule existed.
-        try:
-            instance = one_instance(substituted, self.custom_formats)
-        except Exception:  # noqa: BLE001 -- an undrawable node has no fixture
-            if budget_expired():
-                raise OverBudget("the fixture derivation was cut") from None
-            return NONE
-        #: **The DOCUMENT decides, before anything else reads the value.**  The
-        #: substitution is a restriction, so this cannot fail by construction; it is
-        #: checked because the construction is this module's claim and because an empty
-        #: intersection is the one way the clause :data:`_OWN_INSTANCE` carries could be
-        #: wrong at a position nobody has measured yet.
-        if conforms(drawn_from, instance) is False:
-            return NONE
-        return instance
-
-
-#: The identity of ``from_schema``'s own behaviour, in the key below.  The drawn stream is
-#: a function of the library as much as of the schema, so a version bump MISSES every
-#: entry and the population is re-drawn -- which is the honest direction: a held instance
-#: from an older generator is a witness the generator in use would not have produced, and
-#: the suite would then grade a stream nothing in the tree produces.
-_DRAW_VERSION = f"hypothesis={hypothesis.__version__} hjs={hypothesis_jsonschema.__version__}"
-
-
-def corpus_key(
-    identity: Any,
-    *,
-    custom_formats: Mapping[str, Any] = (),
-    position: Any = None,
-) -> str:
-    """The content address of the instances :func:`check_accepts` draws, under ``identity``.
-
-    **``identity`` is what the CALLER says makes two draws the same question, and this
-    function hashes it beside the two facts it owns**: the format strategies and the
-    generator.  It is never derived from the schema the draw is handed, and the reason is
-    the defect this signature exists to close.
-
-    **THE EXAMPLE COUNT IS NOT IN THE KEY, AND REMOVING IT IS THIS FUNCTION'S WHOLE
-    CURRENT CHANGE** (``adcp-client-python-82m.3``).  It was, and the consequence was
-    measured: the count is the one input a lane raises deliberately, so every raise
-    invalidated all 2,693 committed entries and paid a full cold draw of the population --
-    and walking the count up through 1, 5 and 25 paid it three times over, for an artifact
-    that was committed precisely so that nobody would ever redraw it.  Measured on this
-    row before it was stopped: 2,635 entries drawn at ``examples=1`` and 2,407 at
-    ``examples=5``, 8.5 MB of them, all of it answering questions the floor already held
-    the beginning of.
-
-    **An entry for N examples CONTAINS the answer for every n <= N**, which is why the
-    count was never a property of the question.  ``check_accepts`` offers the instances in
-    order, so the first n of a held list are exactly the list a draw of n would have been
-    asked for -- the SAME witness, not a comparable one -- and
-    :func:`corpus_defect` re-offers the n it serves to the document before any of them
-    counts.  So one fill at the highest count anyone wants makes every lower setting free,
-    and the committed floor stops being a single-count artifact.
-
-    What the key must still move on is unchanged and is the property
-    ``adcp-client-python-3be.22`` established: the DOCUMENT (through ``identity``), the
-    format strategies, and the generator version.  A compiler edit moves nothing; a bundle
-    bump or a generator bump moves everything.  Removing the count moves every key ONCE,
-    which is the last time a count can move one, and the entries are RE-KEYED rather than
-    redrawn -- the content is the instances and the instances did not change.
-
-    **AND THE IDENTITY IS OVER WHAT THE DOCUMENT ADMITS, NEVER OVER ITS BYTES, WHICH IS
-    THIS FUNCTION'S OTHER CURRENT CHANGE** (``adcp-client-python-lzzj.8``).  That is a
-    statement about what a CALLER may hand in, so it is stated here and enforced where the
-    identity is built (``catalogue.admitted_identities``, which carries the measurement).
-    ``docs/plan/final-state.md`` reading 1 is the rule:
-
-        "**BOTH CHECKS ARE A FUNCTION OF (class, document) AND OF NOTHING ELSE.** Point
-        them at another bundle and they answer for that bundle, because there is nothing to
-        carry over and nothing to expire. **A stored value, a key over a document's bytes,
-        or any artifact that must be re-derived when the bundle moves makes an improvement
-        to the schema cost exactly as much as a regression** -- and it makes the instrument
-        answer for the bundle it was built against instead of for the compiler."
-
-    The identity used to be a digest of a document's raw bytes and its raw reference
-    closure's, which satisfied the paragraph below and nothing more: an
-    ACCEPTANCE-PRESERVING rewrite of the bundle moved every key.  Measured over the
-    published bundle against the patched one: 22,338 differences,
-    ``patch.seen_by_a_validator`` zero -- nothing lost, nothing changed, every difference a
-    gained ``$schema``/``title``/``description`` -- and all 1,054 identities moved, 854 of
-    them by a TRAILING NEWLINE.  Over that same pair the admitted identity moves 0 of 1,054.
-
-    Three things stay IN the key, and the test for each is whether it changes WHICH VALUE
-    IS DRAWN: the format strategies and the generator version (this function's own two
-    facts), and -- inside the identity -- the instances the node's document STATES and
-    ADMITS, because ``check_accepts`` answers "the store, then the document's own
-    ``examples``, then the draw" and ``examples`` is a dropped annotation that is also a
-    source of witnesses.  The DIALECT is the fourth such fact and is deliberately NOT
-    digested: the measured patch adds ``$schema: draft-07`` where none was stated, which
-    changes no keyword's meaning, so carrying the string would move keys for an improvement
-    -- and a document in ANOTHER dialect is a question about the whole bundle rather than
-    about one key, asserted by
-    ``tests/test_accepts_corpus.py::test_every_portable_document_states_one_dialect``.
-
-    **THE SCHEMA IS NOT A STATIC FACT ABOUT THE DOCUMENT, BECAUSE THE RESOLVER IS OURS.**
-    The schema ``check_accepts`` draws from is ``bundle.record``'s output -- this package's
-    own inliner -- read at a pointer and inlined again by :func:`resolve`.  Keyed on that,
-    the address moved with every change to how we inline, for the share of the bundle whose
-    record differs from its raw document at all; the reading is ``bundle.record`` against
-    ``bundle.read`` over ``bundle.portable``, and it is most of it.  So every held instance
-    was redrawn on a change that altered no document, at the per-pair cold cost
-    ``tests/corpus.py`` tabulates.  The document was static the whole time; only our
-    rendering of it moved, and the key was tied to the rendering.
-
-    **It was hashing the argument at the call site, which is the natural key right up to
-    the point where the argument is OURS.**  The record is what ``from_schema`` is handed,
-    so hashing it is hashing the input -- correct if the resolved document were a given,
-    wrong because this package resolves it and this package changes.  So the identity comes
-    from the caller, which is the half of the seam that can see upstream:
-    ``catalogue.admitted_identities`` is one answer for a bundle document -- what that
-    document ADMITS with every ``$ref`` resolved, and the instances it STATES and ADMITS --
-    and a caller handing a literal schema is its own answer, since a literal is already
-    static.
-
-    **THE KEY WAS NEVER THE SAFETY NET AND MUST NOT BE MISTAKEN FOR ONE.**
-    :func:`corpus_defect` re-offers every held instance to the DOCUMENT on every read, and
-    its own docstring states the principle: a held corpus is a derived equality and never a
-    stored answer.  So the key answers "is this the same question" and the document answers
-    "is this value still admissible".  Two different inlinings of one document admit the
-    same instances; a held instance that still conforms is still evidence, and the re-read
-    proves that each time rather than assuming it.
-
-    **It is a content address and NOT a claim that the draw is a pure function of its
-    inputs**, which was measured rather than assumed: over two full passes of one pinned
-    population a small share of pairs drew a different instance, and re-running one
-    identical shard of one pass differed from itself -- the reading is the instances two
-    passes hold for one key, and the share is read there.  The seed is not the cause
-    (``_SETTINGS`` fixes ``derandomize``), nor ``PYTHONHASHSEED``, nor the recursion limit;
-    what moves is process-global state inside ``hypothesis`` whose lifetime garbage
-    collection governs.  Holding the witness makes the suite's evidence reproducible where
-    the draw is not -- ``_SETTINGS``' own comment intends exactly that and does not achieve
-    it.
-
-    **WHAT A LOOSER KEY CAN FIND, and it is reported rather than guarded against.**  The
-    draw is over the RESOLVED schema, so a resolution change could in principle alter what
-    is DRAWABLE where the accepted set is identical -- a ``$ref`` the resolver used to fail
-    on.  That is what the re-validation is for, and a rejection is a finding: the rate is
-    read off :attr:`AcceptsResult.outcome` ``== "corpus_rejected"`` over the population, and
-    a non-zero one says the looser key reached a pair whose question really did move.
-
-    **``position`` IS THE SECOND HALF OF THE IDENTITY, and only §8's obligation has one.**
-    The accepts draw is over the whole node a pair names, so the pair's identity names it
-    completely.  :func:`check_widening` draws several times WITHIN one pair, each time from
-    a schema it derived from a different place in that node -- a value class at one declared
-    pointer and keyword (:func:`value_classes`), an intermediate node on the way to an
-    instance location (:func:`_reached`), the node conjoined with a demand
-    (:func:`_demanding`) -- and those draws are different questions about one document.  So
-    the caller names WHICH derivation, and each of the three is a reading of the DECLARED
-    POINTER and of nothing the compiler can move: ``_demanding``'s own docstring says the
-    demand "is a reading of the POINTER and not of the document", and the other two are the
-    document's own subschema reached along a stated pointer.  A position is therefore as
-    static as the identity beside it, which is what makes the pair one key.
-
-    **ABSENT FROM THE MATERIAL WHERE THERE IS NO POSITION, which is not a convenience.**
-    ``check_accepts``' key is the address of 2,693 committed entries
-    (``tests/accepts-corpus``), and a new material field would have moved every one of
-    them -- a key change wearing a refactor, with
-    ``test_every_graded_pair_has_a_committed_entry_under_the_current_key`` red on a bundle
-    nobody bumped.  So the accepts key is unmoved BY CONSTRUCTION and not by inspection:
-    the field appears only when a caller names a position, and
-    ``test_the_accepts_key_does_not_move_when_a_position_is_available`` reads that back.
-
-    The serialisation is ``json.dumps(..., sort_keys=True)``, the same canonical spelling
-    ``canonicalisation_shared_within_one_call`` keys its within-call memo with -- and
-    since ``adcp-client-python-82m.25.1`` that memo digests it too, for the reason this
-    function always did: a key decides whether two things are one thing, and holding the
-    text to decide it holds the text.
-    """
-    material: dict[str, Any] = {
-        "identity": identity,
-        "formats": sorted(custom_formats),
-        "draw": _DRAW_VERSION,
-    }
-    if position is not None:
-        material["position"] = position
-    return hashlib.sha256(
-        json.dumps(material, sort_keys=True, default=repr).encode()
-    ).hexdigest()
-
-
-def corpus_defect(
-    schema: dict, held: Any, examples: int, *, validator_cls: Any = None
-) -> str:
-    """Why ``held`` may NOT stand in for this pair's draw, or ``""`` when it may.
-
-    **A held corpus is a derived equality and never a stored answer**, which is the shape
-    ``codegen.dump_exemptions`` is built in and for the same reason: an entry nobody
-    re-derives is an allowlist of payloads that silently stops covering the schema.  So
-    every instance is re-offered to the DOCUMENT before it is allowed to count, and the
-    count is checked against the obligation the caller asked for:
-
-    * **fewer instances than ``examples``** -- including none at all, which is the one
-      failure mode a cache of this shape can have.  §8's accepts draw is what PROVES a
-      widening rather than believing it, so an empty or short entry that read as "the
-      obligation passed" would be the cache grading something else.
-
-      **EMPTY and no longer "short", which is the change that took the count out of the
-      key** (:func:`corpus_key`).  Two readings moved and they moved in opposite
-      directions:
-
-      * an entry holding MORE than the obligation asks for was never a defect and is no
-        longer treated as one.  The instances are offered in order, so the first
-        ``examples`` of them are the list a draw of ``examples`` would have produced, and
-        those are the ones this function checks and the ones ``check_accepts`` replays: a
-        25-instance entry served as 5 is checked as 5.
-      * an entry holding FEWER -- but at least one -- is not a wrong answer either.  It is
-        a question nobody has yet asked at this depth, so ``check_accepts`` treats it as a
-        MISS: it redraws to ``examples`` and holds the longer list.  Reporting it here
-        instead would make raising the example count turn every pair of the population
-        ``corpus_rejected`` at once, which is a red suite standing in for a fill that is
-        owed.  **A redraw and not "draw the difference"**, because the draw is one
-        ``hypothesis`` run over one strategy and there is no affordance for resuming it at
-        instance n; the entry it produces then covers every lower count for ever, so the
-        redraw is paid once.
-
-      ZERO instances stays a defect, and that is the clause this one keeps: a store
-      answering with an empty LIST rather than with ``None`` is broken, and a pair that
-      graded no instance has not passed.
-    * **an instance the document REFUSES**.  The key already makes this unreachable --
-      it hashes the schema the instance was drawn from -- so reaching it means the store
-      answered for a key it was not asked about, and that is the one way a stale entry
-      could grade a model against the wrong document.  ``is False`` and not ``is not
-      True``: a document ``jsonschema`` cannot build a validator from states nothing
-      about any instance, and the accepts check's own dump half already reads that
-      answer the same way.
-
-    Both are reported by :attr:`AcceptsResult.outcome` as ``corpus_rejected``, which
-    :attr:`PairReport.outcome` turns into ``accepts:corpus_rejected``: a verdict on the
-    pair, with the instance count at zero, so the pair reddens twice over rather than
-    passing on evidence it does not have.
-    """
-    if not isinstance(held, list) or not held:
-        n = len(held) if isinstance(held, list) else "a non-list"
-        return (
-            f"the held corpus carries {n} instances where the obligation is {examples}; "
-            "an entry that cannot cover the draw is not evidence"
-        )
-    cls = validator_cls or validator_for(schema)
-    for i, instance in enumerate(held[:examples]):
-        if conforms(schema, instance, validator_cls=cls) is False:
-            broke = violated_keywords(schema, instance, validator_cls=cls)
-            return (
-                f"the document refuses held instance {i} on {', '.join(broke)}"
-                f": {_dump(instance)}"
-            )
-    return ""
-
-
 @functools.cache
 def _malloc_trim() -> Any:
     """``malloc_trim`` off the C library, or ``None`` where there is no such symbol.
@@ -1825,183 +1080,6 @@ def _release_freed_pages() -> None:
     trim = _malloc_trim()
     if trim is not None:
         trim(0)
-
-
-@contextmanager
-def canonicalisation_shared_within_one_call() -> Iterator[dict[bytes, Any]]:
-    """Share ``canonicalish`` results for the duration of ONE check, then drop them.
-
-    **THIS IS A DIVERGENCE FROM SECTION 6's LETTER AND IT IS MEASURED.**  Section 6
-    says ``_CANON_MEMO`` is "DELETED, not bounded", because "a repetition that
-    resolution removes needs no cache at all".  The first half is right and is done:
-    there is no process-global dict here, nothing is retained between pairs, and
-    nothing is patched at import time.  **The second half is refuted by the
-    measurement.**  The repetition the memo covered is not only across step sites --
-    ``merged`` re-enters ``canonicalish`` for every subschema it sorts
-    (``_canonicalise.py:631``), so ONE ``from_schema`` call on ONE already-resolved
-    document re-canonicalises the same subtrees. Resolution cannot remove that: the
-    document arrives with zero ``$ref`` and the repetition is inside the library's
-    own recursion.
-
-    Measured on ``core/macro-declaration.json#``, 18,301 bytes, one pair, single
-    process, no profiler:
-
-    ======================================  ==========  =============
-    ``from_schema`` on that one document    seconds     memo entries
-    ======================================  ==========  =============
-    sharing within the call                     43.58            504
-    no sharing at all                         >600.0  (stopped)     -
-    ======================================  ==========  =============
-
-    So deleting the sharing outright does not make the suite cheaper, it makes one
-    pair cost more than the whole population does with it.
-
-    **What section 6's complaint actually names, and what this keeps out.**  The
-    defect was "an unbounded process-global dict ... grows by roughly 340 entries per
-    pair", retained across every pair of the population and multiplied by ten
-    workers, with a measured hit rate and no measured size.  A memo whose lifetime is
-    one call has none of those properties: its contents are one document's
-    subschemas, 504 at the measured worst, it is discarded on exit including on an
-    exception, and that size is the figure above rather than an unknown.  The name
-    says the lifetime, so a later reader cannot widen it without renaming it.
-
-    **THE ENTRY IS A SERIALISED COPY AND NOT THE OBJECT, because the way OUT of this
-    memo was the second largest cost in the whole check.**  An entry must be handed
-    back as an independent value -- the library rewrites the nodes it is given -- and
-    ``copy.deepcopy`` is the wrong instrument for that here.  ``canonicalish`` rebuilds
-    its argument before recursing, so its result carries NO internal aliasing: measured
-    over the 300 largest results of three pairs, 275,143 / 808,576 / 851,328 structural
-    ``dict``/``list`` nodes at 275,143 / 808,576 / 851,328 distinct ``id``s -- an aliasing
-    factor of 1.000 in every case.  ``deepcopy``'s whole extra machinery over a plain
-    rebuild is the identity memo that preserves aliasing there is none of, and it shows:
-    110,496,108 ``id()`` calls and 16,194,960 ``_keep_alive`` calls on one 120 s pair.
-
-    So the entry holds the result's JSON text and a hit is ``json.loads``, which is C and
-    allocates the same tree:
-
-    ======================================  ==============  ================  ==========
-    300 largest results of                  ``deepcopy``    ``json.loads``    speed-up
-    ======================================  ==============  ================  ==========
-    ``governance/check-governance-request``        247.6 ms           80.3 ms       3.1x
-    ``core/creative-representation-set``           993.7 ms          291.7 ms       3.4x
-    ``core/mcp-webhook-payload``                  1076.0 ms          370.7 ms       2.9x
-    ======================================  ==============  ================  ==========
-
-    **The serialisation is CHECKED rather than assumed**, which is what makes it a copy
-    and not an approximation of one: the text is read back and compared to the result
-    before the entry is kept, so a value the round trip would alter -- a non-string key, a
-    tuple, anything ``json`` declines -- is held as the object and deep-copied as before.
-    Measured over 900 results of those three pairs: 0 that ``json`` declined and 0 that
-    came back unequal, so the fallback is a guarantee and not a cost.
-
-    The MISS hands back the result itself and holds only the text, so a miss now copies
-    once where it copied twice.
-
-    **AN ENTRY COUNT IS NOT A SIZE, AND THE PARAGRAPHS ABOVE SIZED THIS MEMO BY COUNTING
-    ENTRIES** (``adcp-client-python-82m.25.1``).  "504 at the measured worst" is a COUNT,
-    taken on an 18,301-byte document, and the two halves of an entry are each a whole
-    subtree's TEXT -- the key is ``json.dumps`` of the subschema and the value is
-    ``json.dumps`` of its canonical form.  ``canonicalish`` recurses, so a parent's entry
-    holds every descendant's text again and the memo's BYTES grow as the text times the
-    depth where its entry count grows as the distinct subschemas.  Measured on
-    ``adagents.json#/oneOf/1/allOf/0/anyOf/1``, one pair, cut at 60 s with the draw still
-    running: **2,793 entries holding 437 MiB of keys and 544 MiB of values**, from a
-    36,283-byte document -- 981 MiB, which is 28,370x the document it is a memo of and
-    the whole of that pair's 2.15 GB peak.  The count was in range; the size was four
-    orders of magnitude outside it.
-
-    So the two halves are held as what the memo needs them for rather than as text, and
-    neither change can move an answer:
-
-    * **THE KEY IS A DIGEST OF THE TEXT AND NOT THE TEXT.**  The key decides one
-      question -- whether this subschema is the one an entry was made for -- and a digest
-      of the canonical text answers exactly it, with the same equivalence classes.  2,793
-      keys are 89 KB where the text was 437 MiB.
-    * **THE VALUE IS THE TEXT COMPRESSED.**  The value is handed back through
-      ``json.loads``, so what it has to be is the bytes that parse to the result; schema
-      text is repetitive and ``zlib`` at level 1 is the cheap end of the trade.  The
-      round trip is still CHECKED on the uncompressed text before the entry is kept, so
-      :func:`_round_trips`' guarantee is untouched and the object fallback is still the
-      object.
-
-    **AND THE PAGES THE MEMO OCCUPIED ARE RETURNED WHEN IT IS DROPPED**, which is the
-    other half of what "then drop them" has to mean on this allocator.  Measured on the
-    same pair: Python's own traced total comes back to the baseline when the memo goes --
-    nothing is retained, which is what the name promises -- and RSS does not, because
-    glibc holds the freed arenas. 0.45 GB baseline, 0.70 GB after the pair, **0.50 GB
-    after ``malloc_trim``**.  Over the 77 pairs of this bundle that DRAW rather than
-    replay, that un-returned remainder is what makes a worker's peak RSS look like a
-    function of how many documents it has graded when it is a function of how many cold
-    draws it has been given: four workers reached 28.8 / 28.3 / 17.6 / 9.9 GB on one
-    domain.  It is not a cap and it is not a budget -- nothing is bounded, evicted or
-    skipped; the process returns memory it has already freed.
-
-    **THE KEY IS NOT KEYED ON IDENTITY, AND THAT IS A MEASUREMENT AND NOT AN OVERSIGHT**
-    (``adcp-client-python-pcqy``).  The row that reads this memo as quadratic reads the
-    profile's hot frame -- 33.0 s of tottime in ``json/encoder.py:_iterencode_dict`` --
-    as belonging to the call site that makes the most ``json.dumps`` calls, which is this
-    one.  It cannot: ``json.dumps`` with no ``cls`` takes the C encoder
-    (``json/encoder.py:245``), and that frame is the PURE-PYTHON one, reachable in this
-    library from ``encode_canonical_json`` alone
-    (:func:`the_canonical_encoding_is_not_rebuilt_in_python` carries it).  Timed at the
-    call site instead, on ``media-buy/get-media-buys-response.json#``, one draw, 60 s:
-    **this key is 3.58 s of 61.5 s**, 65,541 calls rendering 1.09 GB through the C
-    encoder, against 18.69 s for ``encode_canonical_json`` and 20.46 s for the metaschema
-    walk ``merged`` asks for.
-
-    And the two cheaper keys the row proposes are both refuted on the same pair:
-
-    * **IDENTITY IS SOUND HERE AND IT IS NOT SUFFICIENT.**  Instrumented with every
-      argument held alive so no address could be reused: 64,759 calls, 3,790 distinct
-      CONTENTS and **55,992 distinct ``id``s** -- so identity answers 8,767 of the 60,969
-      repetitions the content key answers, 13.5%.  The reason is in the library's second
-      line: ``canonicalish`` REBUILDS its argument (``json.loads(encode_canonical_json
-      (schema))``, ``_canonicalise.py:251``) before recursing, so every child the recursion
-      presents is a fresh object with the same content.  0 of the 55,992 ``id``s was ever
-      seen holding two different contents, which is what makes identity sound -- and the
-      docstring above measures what losing 86.5% of the hits costs: "no sharing at all,
-      >600.0 s, stopped".
-    * **THERE IS NO POINTER TO KEY ON** at 81% of the calls.  By caller: 41,460 of 63,673
-      arrive from ``merged``'s own ``canonicalish(s) for s in schemas``
-      (``_canonicalise.py:631``) and 10,125 from ``merged``'s result
-      (``_canonicalise.py:849``) -- schemas the library CONSTRUCTS as intersections, which
-      are at no pointer of any document.  ``codegen.bundle``'s :data:`~codegen.bundle.
-      Origins` can name a node of the RECORD; it cannot name a conjunction's merge.
-
-    So what was removed here is the work that was actually measurable --
-    :func:`_round_trips`' second rendering -- and the key is left as the C encoder renders
-    it, with the figures above in place of the reading they refute.
-    """
-    memo: dict[bytes, tuple[bytes | None, Any]] = {}
-    uncached = _hjs_canon.canonicalish
-
-    def shared(schema: Any) -> Any:
-        try:
-            text = json.dumps(schema, sort_keys=True, default=repr)
-        except (TypeError, ValueError):
-            return uncached(schema)
-        key = hashlib.blake2b(text.encode(), digest_size=32).digest()
-        entry = memo.get(key)
-        if entry is None:
-            result = uncached(schema)
-            blob = _round_trips(result)
-            memo[key] = (
-                None if blob is None else zlib.compress(blob.encode(), 1),
-                None if blob is not None else result,
-            )
-            return result
-        packed, held = entry
-        if packed is None:
-            return copy.deepcopy(held)
-        return json.loads(zlib.decompress(packed))
-
-    _hjs_canon.canonicalish = shared
-    try:
-        yield memo
-    finally:
-        _hjs_canon.canonicalish = uncached
-        memo.clear()
-        _release_freed_pages()
 
 
 def _is_a_plain_json_tree(value: Any, *, floats_are_admitted: bool) -> bool:
@@ -2046,129 +1124,6 @@ def _is_a_plain_json_tree(value: Any, *, floats_are_admitted: bool) -> bool:
     return True
 
 
-#: **THE THREE THINGS JSON TEXT CANNOT STAND IN FOR**, which is the whole of what
-#: :func:`_round_trips` has to decide and the reason it no longer decides it by reading the
-#: text back.  ``json.dumps`` has already screened the TYPES it declines, so what is left
-#: is the values it accepts and renders as something else:
-#:
-#: * a dict key that is not a ``str`` -- ``{1: x}`` is written ``{"1": x}``, so the key
-#:   comes back a different value (and two keys that render alike COLLIDE);
-#: * a ``tuple`` -- written as an array, so it comes back a ``list``, which is not equal
-#:   to it;
-#: * a NaN -- written ``NaN`` and read back as a float that is not equal to itself.
-#:
-#: Every other PLAIN value ``json.dumps`` accepts comes back equal: ``bool`` and ``None``
-#: are their own spellings, an infinity is written ``Infinity`` and read back equal to
-#: itself, and ``-0.0`` keeps its sign.  So the predicate is a walk over the value, and the
-#: ``json.loads`` plus the deep ``==`` that used to answer it are gone.
-def _json_text_stands_in_for(value: Any) -> bool:
-    """Would ``json.loads(json.dumps(value))`` equal ``value``?  Decided off the value."""
-    return _is_a_plain_json_tree(value, floats_are_admitted=True)
-
-
-def _round_trips(value: Any) -> str | None:
-    """``value`` as JSON text if reading that text back yields ``value``, else ``None``.
-
-    The copy clause of :func:`canonicalisation_shared_within_one_call`, stated as a
-    predicate so the fallback is readable: ``None`` means "this value is not a thing JSON
-    text can stand in for", and the one caller then holds the object and deep-copies it.
-
-    **IT NO LONGER ANSWERS BY RENDERING THE VALUE TWICE, which is measured and not a
-    tidiness** (``adcp-client-python-pcqy``).  The predicate used to be
-    ``json.loads(blob) == value``: a second full parse that allocates the whole tree again
-    and a deep ``==`` over both copies, on every result the memo stores.  Measured on
-    ``media-buy/get-media-buys-response.json#``, one draw, 60 s, timed at the call site:
-    3,794 calls spent 1.42 s in the ``dumps`` the entry NEEDS and 1.86 s in the ``loads``
-    it did not, plus the compare.  :func:`_json_text_stands_in_for` decides the same
-    question off the value alone, and the comment above it carries the enumeration that
-    makes the two answers the same one.
-    """
-    try:
-        blob = json.dumps(value)
-    except (TypeError, ValueError):
-        return None
-    return blob if _json_text_stands_in_for(value) else None
-
-
-@contextmanager
-def validator_classes_shared_within_one_call() -> Iterator[Any]:
-    """Unbound ``hypothesis_jsonschema``'s validator-class cache for ONE check.
-
-    **THE LARGEST SINGLE COST IN THE CHECK, and it is a cache that is too small rather
-    than a computation that is needed.**  ``merged`` ends by calling
-    ``_get_validator_class`` on every schema it produces (``_canonicalise.py:853``), which
-    validates that merged schema against its own METASCHEMA -- a full
-    ``jsonschema.check_schema`` walk, measured at 41.6 ms each.  The library caches the
-    answer under ``lru_cache(maxsize=128)``, and 128 does not hold one document's merged
-    subschemas, so the cache EVICTS entries the same call asks for again.  Measured per
-    pair, single process, instrumented rather than profiled:
-
-    ==========================================  =======  ==========  ======  ==========
-    pair                                          calls    distinct  misses  re-walked
-    ==========================================  =======  ==========  ======  ==========
-    ``core/creative-representation-set#``         8,181         600   1,069        44%
-    ``governance/check-governance-request#``     47,697         926   3,527        74%
-    ``core/mcp-webhook-payload#``                29,401       1,604   2,082        23%
-    ==========================================  =======  ==========  ======  ==========
-
-    "re-walked" is the share of metaschema walks that re-derive an answer the SAME call
-    already had and the bound threw away.  That share of 74.1% / 14.8% / 40.4% of those
-    pairs' budgets is what this removes, and it removes nothing else: the cache is the
-    library's own function under its own key, rebuilt with no bound and put back on exit.
-
-    **The lifetime is the same lifetime the canonicalisation sharing has, and for the same
-    reason.**  What section 6 forbids is a process-global store that grows across pairs and
-    workers; this one holds one document's distinct merged subschemas -- 1,604 at the
-    measured worst -- and is dropped on exit including on an exception, which the restored
-    bounded cache then proves by holding its own 128 again.
-    """
-    module = _hjs_canon.__dict__
-    #: The private name as the module spells it.  Module scope does not mangle, so this is
-    #: the global ``_get_validator_class`` resolves at call time -- rebinding it here is
-    #: what reaches the library's own call site without touching the library's source.
-    name = "__get_validator_class"
-    bounded = module[name]
-    #: **AND THE WALK ITSELF GOES, NOT ONLY THE EVICTION** (``adcp-client-python-d5zb``).
-    #: Unbounding the cache removes the RE-walks and leaves the first walk of every
-    #: distinct merged schema, and that residue is what two pairs could not finish inside.
-    #: Measured on ``media-buy/refine-proposals-response.json#`` at 50 Hz with the cache
-    #: already unbounded: ``jsonschema``'s ``check_schema`` is **74.4% of the pair (315.8 s
-    #: of 424 s)**, ``descend`` 75.7%, ``evolve`` 20.4%, and ``urllib.parse`` --
-    #: ``urljoin``, ``urlunsplit``, ``urlparse``, ``_coerce_args`` -- is **67.6 s of leaf
-    #: time, 16% of the pair**, re-deriving a base URI per node.  The cache cannot reach it
-    #: because the keys are genuinely distinct: ``merged`` produces a new schema each call
-    #: and asks about that one.
-    #:
-    #: **WHAT THE WALK ESTABLISHES AT THE CALL THAT COSTS: nothing the caller does not
-    #: already know.**  ``_canonicalise.py:853`` is ``merged``'s last statement and reads
-    #: ``_get_validator_class(out)`` with **the result DISCARDED** -- it is the library
-    #: asserting that its own merge of two valid schemas produced a valid schema.  Every
-    #: schema this harness hands the library is ``bundle.record``'s rendering of a document
-    #: that already compiled, or a conjunction of such renderings, so the premise holds at
-    #: every call site this module has; and ``merged`` preserves it, because a merge of two
-    #: draft-07 schemas is a draft-07 schema.
-    #:
-    #: So for the duration of one grade the CLASS is resolved and the walk is not. The
-    #: class still comes from the library's own ``validator_for``, which reads ``$schema``
-    #: and nothing else, so ``make_validator`` (``_canonicalise.py:113``) -- the one caller
-    #: that USES the answer -- gets the class it got before.
-    #:
-    #: **THE ROOT IS STILL WALKED, so a schema that is not one is still reported.**
-    #: ``_from_schema.py:219`` walks the schema ``from_schema`` was handed, once per build,
-    #: and that is untouched: what is skipped is the re-walk of every subschema derived
-    #: from an already-walked root.  A malformed schema therefore still raises
-    #: ``SchemaError`` at the door rather than silently generating from nonsense.
-    def resolved(wrapper: Any) -> Any:
-        return jsonschema.validators.validator_for(wrapper.schema, jsonschema.Draft7Validator)
-
-    unbounded = functools.lru_cache(maxsize=None)(resolved)
-    module[name] = unbounded
-    try:
-        yield unbounded
-    finally:
-        module[name] = bounded
-
-
 #: **EVERY NAMESPACE THE LIBRARY RESOLVES ``encode_canonical_json`` THROUGH.**  It is
 #: defined in ``_encode`` and imported BY NAME into three other modules, so a rebinding on
 #: the defining module alone reaches ``_encode.sort_key`` and nothing else.  Written as the
@@ -2176,366 +1131,6 @@ def validator_classes_shared_within_one_call() -> Iterator[Any]:
 #: and missed here is a call that keeps the slow encoder and no test that says so --
 #: ``tests/test_harness_halves.py`` reads this tuple back against the library's own
 #: ``from ._encode import`` lines.
-_CANONICAL_ENCODING_SITES = (_hjs_encode, _hjs_canon, _hjs_from)
-
-
-def _c_encoder_is_canonical(value: Any) -> bool:
-    """Does ``json``'s C encoder render ``value`` exactly as the library's own would?
-
-    :func:`the_canonical_encoding_is_not_rebuilt_in_python` carries the measurement; this
-    is the predicate that makes the substitution EXACT rather than close.  The two
-    encoders are the same stdlib encoder with one override --
-    ``CanonicalisingJsonEncoder._floatstr`` writes an integer-valued float as an integer
-    (``_encode.py:19``) -- and ``_floatstr`` is reached for a ``float`` and for nothing
-    else.  So the texts differ only where a ``float`` is reachable, at a value or at a KEY,
-    and anything that is not a plain ``dict``/``list``/``str``/``int``/``bool``/``None`` is
-    refused here rather than reasoned about: a subclass, a tuple, a ``Decimal`` are all
-    handed to the library's own encoder, which is what answered before this function
-    existed.
-    """
-    return _is_a_plain_json_tree(value, floats_are_admitted=False)
-
-
-@contextmanager
-def the_canonical_encoding_is_not_rebuilt_in_python() -> Iterator[Any]:
-    """Take the C encoder where its text is the library's text, for the duration of ONE check.
-
-    **THE LARGEST SINGLE COST ON THE TWO PAIRS §8's RESIDUE NAMES, and the one the
-    profile's hot frame was being read as something else** (``adcp-client-python-pcqy``).
-    ``cProfile`` on ``one_instance`` over ``media-buy/get-media-buys-response.json#`` puts
-    33.0 s of tottime in ``json/encoder.py:_iterencode_dict`` -- the PURE-PYTHON encoder --
-    and the natural reading is that it belongs to whichever call site makes the most
-    ``json.dumps`` calls.  It does not.  ``json.dumps`` with no ``cls`` takes the C encoder
-    (``json/encoder.py:245``: ``c_make_encoder`` whenever ``_one_shot`` and no ``indent``),
-    so NONE of this module's own ``dumps`` calls can reach that frame.
-    ``CanonicalisingJsonEncoder.iterencode`` calls ``_make_iterencode`` UNCONDITIONALLY
-    (``_encode.py:36``), so ``encode_canonical_json`` -- and only it -- renders every
-    subtree through a Python generator, one frame per node.
-
-    **Timed at the call site rather than inferred from the profile**, same pair, one draw,
-    60 s, each ``encode_canonical_json`` call rendered BOTH ways and the texts compared:
-
-    ========================================  =========  ==========  ============
-    8,350 ``encode_canonical_json`` calls       seconds   bytes out    texts agree
-    ========================================  =========  ==========  ============
-    the library's encoder (``_make_iterencode``)  17.26          --             --
-    ``json.dumps(value, sort_keys=True)`` (C)      2.53   same text   8,350/8,350
-    :func:`_c_encoder_is_canonical`                2.27          --             --
-    ========================================  =========  ==========  ============
-
-    6.8x on the rendering, 3.6x with the predicate that makes it exact, and **0 of the
-    8,350 values held a float at all** -- which is what the substitution rests on and why
-    it is a predicate and not an assumption: a value that holds one is handed straight to
-    the library's own encoder, unchanged.
-
-    **WHY A SHARING AND NOT A PATCH.**  Nothing is rebound at import time, so a caller
-    that did not ask for it gets the library exactly as it ships, and the rebinding is
-    undone on exit including on an exception -- the same lifetime rule
-    :func:`canonicalisation_shared_within_one_call` and
-    :func:`validator_classes_shared_within_one_call` are held to.  This one holds no
-    state at all: there is no memo to size and nothing to drop, because what it changes is
-    WHICH encoder renders a text and not whether the text is kept.
-
-    **AND IT IS NOT A BUDGET**, which §9 is the reason to say out loud: no draw is cut, no
-    entry evicted, no pair skipped and no example count reduced.  The texts are equal
-    where the substitution applies, and :func:`_c_encoder_is_canonical` decides where it
-    applies by reading the value.
-    """
-    shipped = _hjs_encode.encode_canonical_json
-
-    def canonical(value: Any) -> str:
-        if _c_encoder_is_canonical(value):
-            return json.dumps(value, sort_keys=True)
-        return shipped(value)
-
-    for site in _CANONICAL_ENCODING_SITES:
-        site.encode_canonical_json = canonical
-    try:
-        yield canonical
-    finally:
-        for site in _CANONICAL_ENCODING_SITES:
-            site.encode_canonical_json = shipped
-
-
-@contextmanager
-def a_combinator_is_covered_and_never_enumerated() -> Iterator[list[tuple[int, int, int]]]:
-    """Build a combinator's strategy over a COVER of its branches, never over their POWER SET.
-
-    **§8's own residue clause, made true of the library that does the drawing**: "a
-    combinator root is not graded by drawing the power set of its branches ... that is
-    2^n, not a product, and it is why no constant factor reaches it."  The rule was
-    written and the library does not honour it.
-
-    **WHERE IT SITS, BY STACK AND NOT BY INFERENCE.**  ``hypothesis_jsonschema``'s
-    ``merged_as_strategies`` is handed every statement that has to hold about ONE instance
-    -- for a node with an ``allOf`` that is the node's own keywords plus every conjunct --
-    and it looks for the largest subsets it can intersect by enumerating
-    ``itertools.combinations(inputs, n)`` for ``n`` from ``len(inputs)`` down to 1.  That
-    is the power set, and ``merged`` runs on each group.  The first group is the whole set,
-    and when it intersects the loop stops there -- ``combined`` then supersets every later
-    group -- so the cost is 2^n only when the WHOLE conjunction does not merge, which is
-    exactly the shape §8 names.
-
-    Measured on the two pairs this leaves cut, each with its §8 substitution already
-    applied, stack-sampled at 4 Hz under :func:`within`:
-
-    ====================================================  =======  =======  =============
-    node                                                   bytes    inputs  60 s sample
-    ====================================================  =======  =======  =============
-    ``protocol/get-adcp-capabilities-response.json#``       50,256       19  ``merged`` under ``merged_as_strategies``, 220/240
-    ``compliance/comply-test-controller-request.json#``     14,871       32  ``merged`` under ``merged_as_strategies``, 232/240
-    ====================================================  =======  =======  =============
-
-    2^19 and 2^32 groups.  ``canonicalish`` had already tried the one whole-conjunction
-    merge (``_canonicalise.py:593``) and it returned ``None``, which is why the ``allOf``
-    survived to here.  **Neither is a byte problem**: the first is 620,066 bytes reduced to
-    50,256 and the second 8,172,302 reduced to 14,871 -- three orders of magnitude -- and
-    both are still cut, which is the measurement that rules out every constant factor.
-
-    **WHAT THIS REPLACES THE ENUMERATION BY, and why it is the same answer.**  The
-    library's contract is not "the largest subsets"; it is a COVER: ``st.one_of`` over
-    groups whose union is every input, each group drawn from its own intersection and then
-    FILTERED by every input's validator.  A cover is what makes it sound -- an
-    intersection of SOME of the statements admits a superset of what all of them admit,
-    and the filter removes the difference -- and the power set is only how the library
-    searches for one.
-
-    So the search is replaced and the contract is not:
-
-    * **the whole set first, exactly as the library tries it.**  Where the conjunction
-      merges, this call returns the library's own answer and nothing has changed.  That is
-      the path almost every pair takes.
-    * **otherwise one greedy pass**: take the first input that is not yet covered as an
-      accumulator, intersect every other uncovered input into it that will intersect,
-      re-scanning while any did, and emit the accumulator as a group.  Repeat on what is
-      left.  Every input lands in exactly one group, so the union is the whole set and the
-      cover condition holds by construction.
-    * **the filter is the library's, kept verbatim** -- ``all(v(obj) for v in
-      validators)`` over a validator per INPUT.  This function does not weaken what a
-      drawn value has to satisfy; it only changes which intersections are offered to the
-      generator.  That is what makes this a statement about GENERATION and about nothing
-      else, which is the same clause :meth:`Fixtures.reduced` is held to.
-
-    The greedy pass is ``O(n^2)`` intersections against ``O(2^n)``: 158 for the first node
-    above and 526 for the second, 19 inputs covered by 15 groups and 32 by 30.  Both then
-    draw a value the UNSUBSTITUTED node admits, in 0.86 s and 0.32 s.
-
-    **A cover is not a partition of the admissible space and no value is lost by taking
-    one.**  Each group's strategy is filtered by every input, so each one draws from
-    exactly the conjunction's admissible set; what differs between two covers is the
-    DISTRIBUTION the generator sees, never the set.  A greedy cover can be finer than the
-    largest-first one -- more groups, each less constrained, so more of the work falls to
-    the filter -- and where that filters everything out the draw reports ``Unsatisfiable``
-    with ``hypothesis``'s own filtered-draw count, which :func:`_why` keeps and
-    :func:`check_accepts` reports as ``strategy_error``.  A non-pass with a name, never a
-    green.
-
-    **The lifetime is ONE CHECK, which is the lifetime its two siblings have and for the
-    same reason**: nothing is patched at import time, so a caller of this module that did
-    not ask for the rule gets the library exactly as it ships.  The yielded list records
-    ``(inputs, groups, intersections)`` per call for a caller that wants to measure it.
-    """
-    cover: list[tuple[int, int, int]] = []
-    #: **ONE GROUP SET PER SITE, and the repetition it removes is the library's own
-    #: re-entry and not a second caller.**  ``from_object_schema`` calls
-    #: ``merged_as_strategies`` from INSIDE the object draw -- once per key per generated
-    #: test case -- over the schema objects its closure holds, so the greedy pass and its
-    #: ``merged`` calls were re-run for every value of every key of every instance.  The
-    #: groups are a function of those objects, which is what makes this a memo and not a
-    #: bound: nothing is skipped, and the ``st.one_of`` handed back is the one the same
-    #: call built the first time.  Keyed on the objects' IDENTITY, with the objects
-    #: themselves held in the entry so an address cannot be reused -- and identity is the
-    #: honest key here because content equality is what the caller already has
-    #: (``encode_canonical_json`` below) and it costs a full serialisation of the subtree
-    #: per call, which is the cost this removes.
-    sites: dict[tuple[Any, ...], tuple[Any, ...]] = {}
-    enumerated = _hjs_from.merged_as_strategies
-    #: The library's own per-schema entry point, under the name the module spells.  Module
-    #: scope does not mangle, so this is the global its ``allOf``/``anyOf``/``oneOf`` arms
-    #: and its ``patternProperties`` draw already resolve at call time.
-    one = _hjs_from.__dict__["__from_schema"]
-
-    def covered(
-        schemas: list[Any], *, alphabet: Any, custom_formats: Any
-    ) -> st.SearchStrategy:
-        assert schemas, "internal error: must pass at least one schema to merge"
-        if len(schemas) == 1:
-            return one(schemas[0], alphabet=alphabet, custom_formats=custom_formats)
-        site = (tuple(id(s) for s in schemas), id(alphabet), id(custom_formats))
-        held = sites.get(site)
-        if held is not None:
-            return held[0]
-        #: Keyed on the canonical encoding, which is the library's own de-duplication of
-        #: its inputs: two conjuncts spelling one statement are one input.
-        inputs = {_hjs_canon.encode_canonical_json(s): s for s in schemas}
-        intersections = 1
-        whole = _hjs_canon.merged(list(inputs.values()))
-        if whole is not None and whole != _hjs_canon.FALSEY:
-            groups = [whole]
-        else:
-            groups = []
-            left = list(inputs)
-            while left:
-                accumulated = inputs[left.pop(0)]
-                again = True
-                while again:
-                    again = False
-                    for key in list(left):
-                        intersections += 1
-                        narrower = _hjs_canon.merged([accumulated, inputs[key]])
-                        if narrower is not None and narrower != _hjs_canon.FALSEY:
-                            accumulated = narrower
-                            left.remove(key)
-                            again = True
-                groups.append(accumulated)
-        cover.append((len(inputs), len(groups), intersections))
-        #: One validator per INPUT and not per group: what a drawn value has to satisfy is
-        #: every statement, which is the library's filter unchanged.
-        validators = tuple(_hjs_canon.make_validator(s).is_valid for s in schemas)
-        answer = st.one_of(
-            [
-                one(s, alphabet=alphabet, custom_formats=custom_formats).filter(
-                    lambda obj, _v=validators: all(valid(obj) for valid in _v)
-                )
-                for s in groups
-                if s != _hjs_canon.FALSEY
-            ]
-        )
-        sites[site] = (answer, schemas, alphabet, custom_formats)
-        return answer
-
-    _hjs_from.merged_as_strategies = covered
-    try:
-        yield cover
-    finally:
-        _hjs_from.merged_as_strategies = enumerated
-        sites.clear()
-
-
-@contextmanager
-def a_strategy_is_built_once_per_node() -> Iterator[dict]:
-    """Build each node's strategy ONCE per check, however many times it is drawn from.
-
-    **THE LARGEST SINGLE COST THIS SUITE HAD LEFT, and it is one body of work run per
-    generated test case rather than per node.**  ``hypothesis_jsonschema`` builds an
-    object's strategy with an ``@st.composite``, and the composite's body calls
-    ``__from_schema`` and ``merged_as_strategies`` *inside the draw* -- once per key, per
-    instance, for every test case ``hypothesis`` generates (``_from_schema.py:671``).
-    Each of those calls is a full build: ``resolve_all_refs`` (which deep-copies),
-    ``canonicalish``, ``merged``, and ``check_schema`` against the metaschema.  The
-    argument is the SAME OBJECT every time -- the composite's closure holds it -- so the
-    answer is the same strategy and the build is pure repetition.
-
-    ``docs/plan/architecture.md`` §9 decides which of the two readings this is:
-    "Combinatorial explosion and unbounded recursion are defects of the approach ...
-    **Memoisation here is the design and not an optimisation.**"  The cost here is neither
-    combinatorial nor recursive -- it is linear in the node and repeated, which is the
-    second arm of that rule and the same shape as the per-pair grade left uncached beneath
-    a cached whole-set one.
-
-    **MEASURED, single process, warm compile and warm corpora, no budget:**
-
-    ==========================================  ==========  =========  =========
-    pair                                          before      after     builds
-    ==========================================  ==========  =========  =========
-    ``core/signal-coverage-forecast.json#``        435.2 s      9.0 s   1,119 of 7,402
-    ==========================================  ==========  =========  =========
-
-    -- the same verdict in both, down to the text of its ``strategy_error``: 6,283 of the
-    7,402 calls asked for a strategy the same call had already built.
-
-    **KEYED ON IDENTITY, and the entry HOLDS what it was keyed on.**  Content is the other
-    candidate and it is the wrong one twice over: ``encode_canonical_json`` of the subtree
-    costs a full serialisation per call -- 174 s of one 600 s pair in the sibling memo
-    below -- and ``resolve_all_refs`` REWRITES the node it is handed in place, so the
-    content of a key changes under it while the strategy stays the one that node yields.
-    Identity answers exactly the question the repetition asks, "is this the object I was
-    just handed", and the schema, the alphabet and the formats are kept in the entry so
-    nothing keyed here can be collected and no address can be reused under a key.
-
-    A strategy is immutable and drawing from one twice is what ``given`` already does, so
-    handing back the same object is handing back the same answer -- unlike
-    :func:`canonicalisation_shared_within_one_call`, whose entry must be copied because
-    the library rewrites the NODES it is given.
-
-    **The lifetime is one check, which is this module's rule for every sharing it
-    installs**: nothing is patched at import time, so a caller that did not ask for it
-    gets the library exactly as it ships, and the memo is dropped on exit including on an
-    exception.
-    """
-    memo: dict[tuple[int, int, int], tuple[Any, ...]] = {}
-    built = _hjs_from.__dict__["__from_schema"]
-
-    def once(schema: Any, *, alphabet: Any, custom_formats: Any) -> st.SearchStrategy:
-        key = (id(schema), id(alphabet), id(custom_formats))
-        held = memo.get(key)
-        if held is not None:
-            return held[0]
-        answer = built(schema, alphabet=alphabet, custom_formats=custom_formats)
-        memo[key] = (answer, schema, alphabet, custom_formats)
-        return answer
-
-    #: **THE MARK A SHARING WEARS, which is how :func:`shared_within_one_grade` knows one
-    #: is already open.**  The alternative was a module flag beside the library, and a
-    #: flag is a second copy of a fact the library already carries -- it goes stale the
-    #: first time an exit path forgets it, and this module's whole style is to read the
-    #: state off the library (``_hjs_from.merged_as_strategies``) rather than to shadow it.
-    once.__shared_within_one_grade__ = True  # type: ignore[attr-defined]
-    _hjs_from.__dict__["__from_schema"] = once
-    try:
-        yield memo
-    finally:
-        _hjs_from.__dict__["__from_schema"] = built
-        memo.clear()
-
-
-def shared_within_one_grade() -> Any:
-    """Every sharing this module installs, for the whole of ONE GRADE -- and ONCE.
-
-    A grade is one check: :func:`check_accepts`' draw opens this, and so does
-    :func:`one_instance`, which is where every DERIVED draw in this module arrives.  It is
-    a no-op at the inner of those two frames, so the sharings are installed once
-    however deep the nesting goes.
-
-    **IT IS WHERE THE THREE SHARINGS ALREADY WERE, with a fourth added and the
-    re-entrance made explicit.**  The fourth --
-    :func:`a_strategy_is_built_once_per_node` -- is the one that removes the repetition
-    the other three could not reach, and it is this function's whole reason for existing
-    as a name: the two call sites used to spell the three contexts out, so a fourth would
-    have had to be added in both places and could drift between them.  The fifth --
-    :func:`the_canonical_encoding_is_not_rebuilt_in_python` -- arrived through this name
-    and not through either call site, which is the saving that name was created for.
-
-    **NOT OPENED AT :func:`check_pair`, which is a measured decision**: that function's
-    own comment carries it -- a pair-wide lifetime is 9x the memory for 15% of the leaf
-    time on the one pair where the difference is visible, on a suite whose measured
-    ceiling is memory.
-
-    **The order is load-bearing in one place.**
-    :func:`a_strategy_is_built_once_per_node` goes on FIRST, so that
-    :func:`a_combinator_is_covered_and_never_enumerated` -- which reads ``__from_schema``
-    out of the library at its own entry -- reaches the memoised one, and the mutual
-    recursion between the two stays inside both memos.
-    :func:`the_canonical_encoding_is_not_rebuilt_in_python` is order-free: it rebinds a
-    LEAF, so nothing it changes is read at another sharing's entry.
-
-    Re-entrant at its own door, which is the one way it differs from the five it composes:
-    a nested :func:`a_combinator_is_covered_and_never_enumerated` deliberately installs a
-    second cover (``tests/test_harness_halves.py`` asserts it), because what that function
-    promises is a lifetime of one call.  What this one promises is that the INNER frame
-    joins the outer memo instead of starting a new one, and that is the saving.
-    """
-    if getattr(_hjs_from.__dict__["__from_schema"], "__shared_within_one_grade__", False):
-        return contextlib.nullcontext()
-    stack = contextlib.ExitStack()
-    stack.enter_context(a_strategy_is_built_once_per_node())
-    stack.enter_context(canonicalisation_shared_within_one_call())
-    stack.enter_context(validator_classes_shared_within_one_call())
-    stack.enter_context(the_canonical_encoding_is_not_rebuilt_in_python())
-    stack.enter_context(a_combinator_is_covered_and_never_enumerated())
-    return stack
-
-
 def format_pattern_positions(schema: Any) -> list[tuple[str, dict]]:
     """Every position where a ``format`` and a ``pattern`` meet, node and pointer.
 
@@ -2559,58 +1154,6 @@ def format_pattern_positions(schema: Any) -> list[tuple[str, dict]]:
         for pointer, node in _nodes(schema)
         if isinstance(node.get("format"), str) and isinstance(node.get("pattern"), str)
     ]
-
-
-def _drawing_this_node(instance: Any) -> None:
-    """The body :func:`undrawable_formats` draws into: the draw IS the measurement.
-
-    Named rather than a lambda because ``hypothesis`` puts this function's name in
-    ``Unsatisfiable``'s own sentence, which :func:`_why` carries into the report.
-    """
-
-
-def undrawable_formats(
-    schema: Any, *, custom_formats: Mapping[str, Any] = (), examples: int = 25
-) -> tuple[str, ...]:
-    """Of the positions :func:`format_pattern_positions` names, the ones a draw cannot reach.
-
-    **Co-occurrence is not the undrawable shape, and the measurement is the whole
-    difference.** 72 of the bundle's 73 format-beside-pattern positions draw, because
-    ``hypothesis_jsonschema``'s ``uri`` strategy emits ``https://A.COM`` and that
-    matches every one of the bundle's patterns that pins the scheme or the general host
-    shape -- 7 of its 8 distinct pairs.  The eighth pins a LITERAL host,
-    ``^https://github\\.com/`` at
-    ``core/reference-renderer.json#/properties/provenance/properties/source_repository``,
-    and no generic generator reaches a literal host: 459 of 459 draws are filtered, at
-    10, 25 and 50 examples alike.
-
-    So a cause naming every co-occurrence would admit a ``strategy_error`` from ANY
-    cause, as long as the document states the two keywords somewhere.  This draws each
-    node ALONE and keeps the ones that failed, with hypothesis's own reason per
-    position -- which is what makes :attr:`PairReport.no_instrument` conditional on a
-    measurement of the shape rather than on two keywords meeting.
-
-    **Derandomized, so the answer is a function of (node, library version)** and P7's
-    determinism holds over it.
-
-    KNOWN CEILING: a node undrawable only IN CONTEXT -- a conjunct narrowing the
-    pattern beside it -- draws here and is not named, so its pair reddens rather than
-    being admitted.  That is the safe direction and it is visible: an exit this check
-    cannot explain is a failure and not a tolerance.  The upgrade path is to draw the
-    node as the generator sees it, which needs the merged node the library builds
-    internally.
-    """
-    out: list[str] = []
-    for pointer, node in format_pattern_positions(schema):
-        try:
-            run = given(instance=strategy(node, dict(custom_formats)))(_drawing_this_node)
-            settings(max_examples=examples, phases=[Phase.generate], **_SETTINGS)(run)()
-        except Exception as e:  # any failure to draw names the position
-            out.append(
-                f"{pointer}: format {node['format']!r} beside pattern"
-                f" {node['pattern']!r} [{_why(e)}]"
-            )
-    return tuple(out)
 
 
 def validator_for(schema: dict) -> Any:
@@ -3179,72 +1722,6 @@ class LivenessResult:
 # --------------------------------------------------------------------------- #
 # the two directions
 # --------------------------------------------------------------------------- #
-_SETTINGS = {
-    "deadline": None,
-    "database": None,
-    # **What this buys and what it does NOT, measured rather than assumed.**  It fixes the
-    # SEED, so the same strategy yields the same stream; it does not make the drawn
-    # instance a function of the schema.  Over two full passes of the same 1,664 pairs at
-    # the same pinned inputs, 23 (1.4%) drew a different instance, and one identical
-    # 208-pair shard re-run differed from itself on 3 -- not on the seed, not on
-    # ``PYTHONHASHSEED`` and not on the recursion limit, but on process-global state inside
-    # ``hypothesis`` whose lifetime garbage collection governs.  ``corpus_key`` and the
-    # store behind it are what make the witness reproducible; this makes it cheap to
-    # reproduce once held.
-    # one seed per call; see above for what that does and does not fix
-    "derandomize": True,
-    "suppress_health_check": list(HealthCheck),
-}
-
-
-def check_format_strategy(
-    fmt: str,
-    strategy: st.SearchStrategy,
-    *,
-    counterexample: Any,
-    examples: int = 50,
-    format_checker: Any = None,
-) -> FormatStrategyVerdict:
-    """Grade a ``custom_formats`` entry before it is trusted to generate.
-
-    ``missing_formats`` says which formats have no strategy. It cannot say whether
-    a strategy that EXISTS is right, and a wrong one is the more dangerous of the
-    two: a strategy emitting values the format refuses makes every site using that
-    format pass vacuously, and a vacuous pass is reported by nothing. So both
-    answers are required of every entry --
-
-      * the values it produces are admitted by the format;
-      * a deliberately malformed value of the same shape is REFUSED.
-
-    The second answer is not redundant. Without it, a validator that has no checker
-    for the format (``conforms`` then answers True for every input) is
-    indistinguishable from one that genuinely admits what was generated. That case
-    is reported as ``unchecked``, which is not a pass: a format nothing checks
-    cannot be graded by checking it, and the caller is owed that fact rather than a
-    green mark.
-    """
-    fc = format_checker if format_checker is not None else jsonschema.FormatChecker()
-    v = FormatStrategyVerdict(fmt=fmt, checked=fmt in fc.checkers)
-    if not v.checked:
-        return v
-
-    def body(value: Any) -> None:
-        v.examples += 1
-        if fc.conforms(value, fmt):
-            v.accepted += 1
-        elif not v.rejected:
-            v.rejected = repr(value)[:200]
-
-    try:
-        run = given(value=strategy)(body)
-        run = settings(max_examples=examples, phases=[Phase.explicit, Phase.generate], **_SETTINGS)(
-            run
-        )
-        run()
-        v.counterexample_refused = not fc.conforms(counterexample, fmt)
-    except Exception as e:
-        v.detail = f"{type(e).__name__}: {e}"[:300]
-    return v
 
 
 class _DumpRefused(Exception):
@@ -3990,48 +2467,6 @@ def stated_patterns(node: Any) -> tuple[str, ...]:
     return tuple(out)
 
 
-@functools.lru_cache(maxsize=4096)
-def matching_a_pattern(pattern: str, examples: int = 2) -> tuple[str, ...]:
-    """Strings the pattern matches, DRAWN from the pattern rather than written.
-
-    **The one derivation in this module whose source is a KEYWORD and not an instance**,
-    and ``adcp-client-python-rwng`` is why it has to exist: an instance-derived witness is
-    a perturbation of a value the generator already produced, so where that value is
-    already inside the narrow type and stays inside it under perturbation, no instance
-    witness reaches the narrowing.  Measured at ``core/https-url.json#``, whose document is
-    ``{"type": "string", "format": "uri", "pattern": "^https://"}``: the held value is
-    ``'https://A.COM'`` and no perturbation of it leaves the narrow type.  Drawn from the
-    pattern instead, the value is ``'https://'`` -- a string the pattern matches, the
-    document admits and the alias refuses with ``url_parsing``, "empty host".  So the draw
-    reaches positions the instance cannot: the family sized by instance witnesses alone was
-    a LOWER bound.
-
-    Cached on the pattern, because the graded population states each pattern at many
-    positions and a draw per position would pay ``from_regex`` thousands of times for an
-    answer that is a function of the pattern alone.
-
-    A pattern ``from_regex`` cannot build contributes NO witness and raises nothing: the
-    screen is what makes a candidate a claim, so a derivation that produces nothing costs
-    a verdict nobody is entitled to rather than an error.
-    """
-    out: list[str] = []
-
-    @settings(
-        max_examples=examples,
-        phases=[Phase.generate],
-        **_SETTINGS,
-    )
-    @given(st.from_regex(pattern))
-    def draw(value: str) -> None:
-        out.append(value)
-
-    try:
-        draw()
-    except Exception:  # noqa: BLE001 -- a pattern nothing can draw states no witness
-        return ()
-    return tuple(dict.fromkeys(out))
-
-
 def _refusal_cause(e: BaseException) -> str:
     """What the class refused ON, read off pydantic's own error ``type``.
 
@@ -4470,14 +2905,10 @@ def check_accepts(
     schema: dict,
     accept: Callable[[Any], Any],
     *,
-    examples: int = 25,
     custom_formats: Mapping[str, Any] = (),
     dump: Callable[[Any], Any] | None = None,
     seen: list[Any] | None = None,
     ref: SchemaRef | None = None,
-    corpus: Any = None,
-    identity: Any = None,
-    draw_from: dict | Callable[[], dict | None] | None = None,
     witness: Sequence[Any] | None = None,
 ) -> AcceptsResult:
     """The accepts check: every instance the schema admits, ``accept`` admits --
@@ -4639,23 +3070,15 @@ def check_accepts(
     is red on it by name).  A pair the construction has NO value for is a different case
     and does fall through, because there is nothing to report about it yet.
     """
-    if corpus is not None and identity is None:
-        raise ValueError(
-            "a corpus needs the draw's STATIC identity: the schema handed here is "
-            "bundle.record's rendering of a document, so keying on it misses every "
-            "entry whenever the inliner moves.  Pass identity= (see "
-            "catalogue.admitted_identities) or corpus=None."
-        )
     res = AcceptsResult()
-    cf = dict(custom_formats)
-    #: The instances this check drew, in order, HANDED BACK to the caller when it
+    #: The payloads this check graded, in order, HANDED BACK to the caller when it
     #: supplies a list.  ``check_pair`` reads the first one and derives the refused
     #: payload from it, which is what keeps the liveness check from costing a second
-    #: draw -- the one saving in this module that is a reuse rather than a deletion.
+    #: construction.
     seen = [] if seen is None else seen
     validator_cls = validator_for(schema)
     #: The schema the DUMP answers to: the node with the exempt keywords struck, or
-    #: the node itself.  Computed once per call rather than per instance, and by
+    #: the node itself.  Computed once per call rather than per payload, and by
     #: IDENTITY when nothing is exempt, so the pairs with no entry are untouched.
     dump_schema = (
         schema if ref is None else dump_exemptions.struck(schema, ref.document, ref.pointer)
@@ -4670,7 +3093,7 @@ def check_accepts(
         if dump_schema is not schema and conforms(schema, back, validator_cls=validator_cls) is (
             False
         ):
-            # The strike MATTERED for this instance: the unstruck node refuses this
+            # The strike MATTERED for this payload: the unstruck node refuses this
             # dump and the struck one is about to be asked.  Recorded here rather than
             # once per call, so the field says what this pair needed and not what lies
             # inside it -- see ``AcceptsResult.dump_exempt``.
@@ -4678,7 +3101,7 @@ def check_accepts(
             res.dump_exempt = dump_exemptions.labels(ref.document, ref.pointer)
         if conforms(dump_schema, back, validator_cls=dump_validator_cls) is False:
             # The CAUSE goes first, because ``detail`` is truncated and a reason at
-            # the end of a megabyte of dumped instance is a reason nothing can read.
+            # the end of a megabyte of dumped payload is a reason nothing can read.
             broke = violated_keywords(dump_schema, back, validator_cls=dump_validator_cls)
             raise _DumpRefused(
                 f"the document refuses the dump on {', '.join(broke)}"
@@ -4686,16 +3109,13 @@ def check_accepts(
             )
         res.round_tripped += 1
 
-    #: **THE CONSTRUCTED WITNESS, SCREENED BY THE NODE, BEFORE ANY OTHER SOURCE IS ASKED**
-    #: (reading 1; the ``witness`` argument's own paragraph above).  The screen is the same
-    #: screen a ``stated`` instance gets and it is load-bearing in one direction only: a
-    #: value the node REFUSES stops the check here with the keywords named, because a
-    #: construction the document rejects is the finding and a fall-through to the store
-    #: would hide it behind the sampler's answer.
+    #: **THE CONSTRUCTED PAYLOAD, SCREENED BY THE NODE, AND THERE IS NOTHING ELSE TO
+    #: ASK.**  A payload the node REFUSES stops the check here with the keywords named,
+    #: because a construction the document rejects is the finding.
     if witness:
         refused = [
             violated_keywords(schema, one, validator_cls=validator_cls)
-            for one in witness[:examples]
+            for one in witness
             if conforms(schema, one, validator_cls=validator_cls) is False
         ]
         if refused:
@@ -4706,206 +3126,20 @@ def check_accepts(
                 f"; constructed {_dump(witness[0])}"
             )[:400]
             return res
-
-    #: The held instances, or ``None`` for a miss and for a caller that supplied no store.
-    #: Both answer "draw", and they are not the same thing to a reader: a miss is a key
-    #: this corpus has never been asked for, which is what a new or changed record
-    #: produces.
-    #:
-    #: **NOT ASKED AT ALL WHERE THE CONSTRUCTION ANSWERED**, which is what makes the
-    #: construction the grading path rather than a fourth source beside three others: a
-    #: store consulted for a pair that already has its witness is a key computed, a file
-    #: read and a verdict that could still come from somewhere else.
-    held = None
-    if corpus is not None and not witness:
-        res.corpus_key = corpus_key(identity, custom_formats=cf)
-        held = corpus.get(res.corpus_key)
-    if held is not None:
-        defect = corpus_defect(schema, held, examples, validator_cls=validator_cls)
-        if defect:
-            res.outcome = "corpus_rejected"
-            res.detail = f"{defect} (key {res.corpus_key[:16]})"[:400]
-            return res
-    #: **An entry SHORT of the obligation is a miss and not a hit**, which is the other
-    #: half of taking the count out of the key (:func:`corpus_defect`).  The entry is not
-    #: wrong -- its instances are this document's and are checked above -- it simply does
-    #: not reach this far, so the draw runs and the write below replaces it with the longer
-    #: list.  Paid once: the new entry answers every count at or below it for ever.
-    if isinstance(held, list) and len(held) < examples:
-        held = None
-
-    #: **THE STORE, THEN THE DOCUMENT'S OWN ``examples``, THEN THE DRAW** (the owner's
-    #: decision, 2026-11-04).  ``examples`` is JSON Schema's own keyword for "here is a
-    #: valid instance of this schema", so where the node states one there is nothing to
-    #: generate: the schema author has already answered the question this check asks.  It
-    #: is better evidence as well as cheaper -- a realistic payload rather than a
-    #: generated one -- and it is maintained with the schema by the people who own it,
-    #: which is why it is not the hand-written fixture §8 forbids.
-    #:
-    #: **AFTER the store and not before it**, which is :class:`Layered`'s own reading one
-    #: key space over: which source answers decides WHICH witness the suite grades, and
-    #: the committed floor is the witness every lane and every fresh checkout agrees on.
-    #: A node whose ``examples`` changed upstream would otherwise silently re-point every
-    #: verdict that depends on it; this way the floor keeps deciding and ``examples``
-    #: answers exactly the pairs the floor does not.
-    #:
-    #: **SCREENED BY THE NODE, and the screen is load-bearing**: 64 of the 115 pairs whose
-    #: node carries ``examples`` have none the node admits, because the bundle's root
-    #: ``examples`` hold a ``{"description", "data"}`` wrapper rather than an instance.
-    #: :func:`stated_instances` carries that measurement and says why the wrapper is not
-    #: unwrapped.
-    stated = None
-    if held is None and not witness:
-        found = stated_instances(schema, validator_cls=validator_cls)
-        if len(found) >= examples:
-            stated = found
+    else:
+        #: **A NODE THE CONSTRUCTION ANSWERS NOTHING FOR IS A FINDING ABOUT THE NODE**,
+        #: reported under its own name and never covered by reaching for a draw
+        #: (``adcp-client-python-hzio.5``).  Measured over the whole graded set at the row
+        #: that deleted the apparatus: **0 of 2,608 pairs**, so this branch states a
+        #: contract rather than describing a population.
+        res.outcome = "no_witness"
+        res.detail = "the construction answers no value for this node"
+        return res
 
     try:
-        if witness:
-            #: Through the SAME ``body`` every other source runs through, so ``accept``,
-            #: the dump, the exemption reading, the round-trip counter and the four
-            #: handlers below are the ones a drawing run produced.  That is what makes the
-            #: wiring a change of SOURCE and not a second instrument:
-            #: :attr:`AcceptsResult.constructed` is the only field that moves.
-            for instance in witness[:examples]:
-                res.constructed += 1
-                body(instance)
-        elif held is None and stated is not None:
-            #: Through the SAME ``body`` a draw and a replay run through, so ``accept``,
-            #: the dump, the exemption reading and every counter are the ones a drawing
-            #: run produced; only ``from_schema`` is skipped.  :attr:`AcceptsResult.stated`
-            #: is what tells a reader which of the three answered.
-            for instance in stated[:examples]:
-                res.stated += 1
-                body(instance)
-        elif held is None:
-            #: **§8's residue clause, and it has to be live during the DRAW and not
-            #: only during the build**: the library reaches ``merged_as_strategies`` from
-            #: inside an ``@st.composite`` object draw as well as from its ``allOf`` arm,
-            #: so a patch that ended with the strategy object would miss the nested call.
-            #: :func:`a_combinator_is_covered_and_never_enumerated` carries the rule, the
-            #: stacks and the measurement, and
-            #: :func:`a_strategy_is_built_once_per_node` is what makes that nested call
-            #: cost one build and not one per generated test case.
-            #:
-            #: :func:`shared_within_one_grade` and not the four blocks spelled out, because
-            #: :func:`check_pair` holds them for the whole pair and a second set here
-            #: would be a second lifetime inside the first -- which is the defect that
-            #: function's docstring measures at 509 teardowns in one grade.
-            with shared_within_one_grade():
-                #: **A CALLABLE IS CALLED HERE AND NOWHERE ELSE, which is what keeps
-                #: §8's substitution off the replayed path.**  The substitution derives
-                #: a value per instance location of the node (:meth:`Fixtures.reduced`),
-                #: and the 2,674 pairs the committed floor answers would each pay that
-                #: derivation for a draw that never happens -- so the caller hands a
-                #: thunk and it is forced on the MISS, which is the only branch that
-                #: draws.  A mapping still means what it meant.
-                drawing = draw_from() if callable(draw_from) else draw_from
-                #: **THE DOCUMENT SCREENS EVERY INSTANCE A SUBSTITUTION PRODUCED, which is
-                #: what makes §8's substitution a statement about GENERATION and nothing
-                #: else.**  The owner's measurement is the whole argument: on
-                #: ``media-buy/refine-proposals-response.json#/properties/results/items/oneOf/0``,
-                #: validating a payload against the 683,849-byte node costs 1 ms and
-                #: generating one does not terminate -- so the cost is in generation,
-                #: never in the check, and a screen on the way out costs nothing and
-                #: removes every soundness question the substitution could raise.
-                #:
-                #: With it, a pair cannot be graded on a value its own node refuses
-                #: whatever the substitution did: ``oneOf`` is not monotone branch by
-                #: branch, a ``properties`` pin can meet another statement about the same
-                #: key through a keyword the frontier guards did not foresee, and neither
-                #: can now reach a verdict.
-                #:
-                #: ``schema`` and not ``dump_schema``: the exemptions are the DUMP's and
-                #: an instance going IN is decided by the node as the document writes it.
-                drawn_from_schema = drawing is None or drawing is schema
-
-                def drawn(node: Any, *, substituted: bool) -> None:
-                    payloads = strategy(node, cf)
-                    if substituted:
-                        payloads = payloads.filter(
-                            lambda value: conforms(schema, value, validator_cls=validator_cls)
-                            is True
-                        )
-                    run = given(instance=payloads)(body)
-                    run = settings(
-                        max_examples=examples,
-                        phases=[Phase.explicit, Phase.generate],
-                        **_SETTINGS,
-                    )(run)
-                    run()
-
-                if drawn_from_schema:
-                    drawn(schema, substituted=False)
-                else:
-                    #: **A SUBSTITUTION THAT ADMITS NOTHING IS ABANDONED, AND THE
-                    #: ABANDONMENT IS REPORTED.**  §8: *"AND A REDUCTION THAT YIELDS AN
-                    #: EMPTY NODE IS A DEFECT, NEVER A LOST SAVING. ... A reduction reports
-                    #: emptiness as a failure, loudly, and a pair whose reduction came back
-                    #: empty is a defect report and not a slow pair."*
-                    #:
-                    #: **AND THE SCREEN IS OVER THE WHOLE NODE, which is the half neither
-                    #: fail-safe above can reach.**  :meth:`Fixtures._pin`'s fail-safe is
-                    #: per-LOCATION -- "an item no value survives for is left exactly as it
-                    #: stands" -- and :meth:`Fixtures.substitute` has none at all, so both
-                    #: pin instance locations INDEPENDENTLY and a document whose ``anyOf``
-                    #: or ``if`` RELATES two locations has no such independent value.  §8
-                    #: states the consequence one line earlier: *"two pins on one location
-                    #: do not narrow the node -- they empty it."*
-                    #:
-                    #: **MEASURED, and it is a wrong verdict rather than a slow draw.**
-                    #: ``core/postal-country-system.json`` states a cross-field ``anyOf``
-                    #: pairing a ``country`` with the postal systems that country admits.
-                    #: Where ``country`` is inline only ``system`` is pinned and the
-                    #: generator draws a country that agrees with it; where ``country`` is
-                    #: a ``$ref``, both are pinned independently -- ``country="AA"`` with
-                    #: ``system="cep"`` -- and no branch of the ``anyOf`` admits that pair.
-                    #: The ``.filter()`` above then turns the empty node into
-                    #: ``Unsatisfiable: 459 of 459 test cases failed a .filter()``, which
-                    #: this check used to report as ``strategy_error``: a RED PAIR
-                    #: manufactured by the instrument, over a node whose own draw passes.
-                    #: Five pairs of the patched bundle and 33 more the committed floor was
-                    #: masking (``adcp-client-python-lzzj.1``).
-                    #:
-                    #: **The retry is the UNREDUCED draw and nothing cleverer**, because
-                    #: that is the fail-safe direction this module already takes everywhere
-                    #: else: lose the saving, never place a value the document does not
-                    #: admit.  It costs what the pair cost before the rule existed -- 0.0
-                    #: to 0.2 s for four of those five, measured -- and a pair that cannot
-                    #: draw unreduced either is then reported on its own node, which is the
-                    #: verdict it is entitled to.
-                    #:
-                    #: **The counters are wound back with it**, so a partial substituted
-                    #: draw cannot leave instances in ``seen`` that the retry then counts
-                    #: twice, and ``dump_exempt`` cannot report an exemption the graded draw
-                    #: never needed.
-                    standing = (len(seen), res.examples, res.round_tripped, list(res.dump_exempt))
-                    try:
-                        drawn(drawing, substituted=True)
-                    except (
-                        HypothesisRefResolutionError,
-                        HypothesisException,
-                        RecursionError,
-                    ) as e:
-                        #: The CLOCK first, for the reason the handler below reads it: a
-                        #: cut arrives wearing hypothesis's own exception, and retrying a
-                        #: draw the budget has already stopped would charge this pair the
-                        #: whole budget twice.
-                        if budget_expired():
-                            raise
-                        res.abandoned = _why(e)
-                        del seen[standing[0]:]
-                        res.examples, res.round_tripped = standing[1], standing[2]
-                        res.dump_exempt = standing[3]
-                        drawn(schema, substituted=False)
-        else:
-            #: The FIRST ``examples`` of the held list and not all of it, which is the n <=
-            #: N reading :func:`corpus_key` argues for: the instances are offered in order,
-            #: so these are the ones a draw of ``examples`` would have produced, and
-            #: :func:`corpus_defect` has already re-offered exactly these to the document.
-            for instance in held[:examples]:
-                res.replayed += 1
-                body(instance)
+        for instance in witness:
+            res.constructed += 1
+            body(instance)
         res.outcome = "pass"
     except _DumpRefused as e:
         res.outcome = "model_dropped_a_fact"
@@ -4916,110 +3150,16 @@ def check_accepts(
         res.outcome = "model_refused_valid"
         res.detail = f"{err['type']} at {err['loc']}: {err['msg']}"
         res.counterexample = _dump(seen[-1]) if seen else ""
-    except (HypothesisRefResolutionError, HypothesisException, RecursionError) as e:
-        #: The CLOCK first, because ``hypothesis`` swallows the cut and raises its own
-        #: ``FlakyStrategyDefinition`` in its place; :func:`budget_expired` measures it.
-        if budget_expired():
-            raise OverBudget(f"the grade was cut and {type(e).__name__} arrived after") from e
-        res.outcome = "strategy_error"
-        #: ``_why`` and not the raw message: hypothesis's advice to whoever wrote the
-        #: test was pushing the filtered-draw count past the truncation, and the cut
-        #: belongs HERE rather than in the reader -- :attr:`PairReport.no_instrument`
-        #: re-split the same sentence for want of this line, which is one rule in two
-        #: places and the one that goes stale.
-        res.detail = _why(e)
     except Exception as e:  # a model that raises something other than ValidationError
-        if budget_expired():
-            raise OverBudget(f"the grade was cut and {type(e).__name__} arrived after") from e
         res.outcome = "model_error"
         res.detail = f"{type(e).__name__}: {e}"[:400]
         res.counterexample = _dump(seen[-1]) if seen else ""
-    #: Held only where the draw produced the WHOLE obligation, so a draw that errored
-    #: part-way leaves no entry and the next run draws again.  **After the handlers and
-    #: not inside the ``try``, which is what makes a FAILING pair cheap too**: an instance
-    #: that reddens the pair is the one a reader most wants back, and holding it keeps the
-    #: counterexample reproducible rather than re-derived.  ``strategy_error`` is excluded
-    #: because what it reports is that the generator produced nothing for this schema, and
-    #: an entry would then claim a draw happened.
-    #:
-    #: The count is :attr:`AcceptsResult.examples` and not ``len(seen)``, because ``seen``
-    #: is the CALLER's list and a caller may hand one that already holds something: what
-    #: this call drew is what ``body`` counted.
-    #: **A STATED INSTANCE IS NOT HELD, because it is already committed -- in the
-    #: document, in git, in the artifact every lane and CI reads.**  The floor exists so
-    #: that "every lane, every fresh checkout and CI grade the same one" (:class:`Layered`),
-    #: and an ``examples`` member satisfies that on its own: it moves only when the schema
-    #: moves, and when it does, this check re-screens it and reports an upstream defect
-    #: with the document's name.  Copying it into a store would make one fact two, give it
-    #: a second maintenance point, and let the copy outlive the statement it came from --
-    #: which is exactly the drift §8's "never hand-written" clause is about.
-    if corpus is not None and held is None and not res.stated and res.outcome != (
-        "strategy_error"
-    ):
-        #: **The whole draw and never a truncation, and NEVER SHORTER THAN WHAT IS ALREADY
-        #: HELD.**  With the count out of the key one entry answers every setting, so a run
-        #: at a LOW count must not overwrite a long entry with a short one -- that would
-        #: make the floor's reach a function of whichever setting ran last, and the next run
-        #: at the high count would draw again.  The store is asked what it holds and the
-        #: longer list wins; a tie keeps what is held, so a run that adds nothing writes
-        #: nothing.
-        #:
-        #: ``res.examples`` and not ``examples``: a draw SATURATES where the node's
-        #: admissible set is smaller than the count -- an eight-member enum yields 8
-        #: instances however many are asked for -- and the old equality held no entry at
-        #: all for such a node, so every run redrew it.  What the draw produced is what
-        #: there is to hold, and :func:`corpus_defect` reports it short only against a
-        #: request it cannot cover.
-        standing = corpus.get(res.corpus_key)
-        drawn = seen[-res.examples:] if res.examples else []
-        if drawn and len(drawn) > len(standing or []):
-            corpus.put(res.corpus_key, drawn)
     return res
 
 
 # --------------------------------------------------------------------------- #
 # section 8's accepts OBLIGATION: a widening is PROVED, not believed
 # --------------------------------------------------------------------------- #
-def records_a_cut(entry: Any) -> bool:
-    """Whether a held widening answer records a BUDGET CUT rather than a value.
-
-    **The clause the widening store was missing, and the one reading two callers share**
-    (``adcp-client-python-pjc``).  :meth:`_Draws.one` asks it before it holds anything, so
-    a cut cannot enter the store; ``tests/test_widening_corpus.py`` asks it of every entry
-    the floor and the cache already hold, so a cut cannot be promoted into the repository
-    by ``--write-corpus`` either.  One predicate and not two, because a store clause and a
-    gate that disagreed about what a cut looks like would be a gate that passes the entries
-    its own clause declines.
-
-    **Why a declaration backed by a cut is the worst entry this store can hold.**
-    ``docs/plan/final-state.md`` reading 2 is that every widening is "proved by a value",
-    and :func:`within`'s docstring already says what a budgeted pair is: "a statement about
-    the INSTRUMENT".  A cut held here makes the instrument's own statement the evidence --
-    :class:`Layered` serves it like any other entry, :func:`check_widening` reports
-    ``unproved_widening`` with "a key the patternProperties admits could not be drawn:
-    OverBudget: ...", and at the point of use that verdict is indistinguishable from a
-    measurement of the document.  Measured on
-    ``trusted-match/offer.json#``: with the cut entry in place the pair graded in 8.8 s;
-    with it removed the same pair did not finish in 600 s.  The entry was not making the
-    grade cheap, it was making an unbounded draw LOOK graded.
-
-    **Read off the REASON and not off a list of keys**, because the subject is an artifact
-    on disk and a hash is not readable: a held failure's reason is :func:`_why`'s
-    ``f"{type(e).__name__}: ..."``, so the entry carries the name of the exception that
-    ended the draw and that name is the whole question.  The needle is
-    :class:`OverBudget`'s own ``__name__`` rather than a literal, so a rename moves both
-    the clause and the gate; it is sought anywhere in the sentence rather than only at the
-    front, which catches a cut a library wrapped on the way out and the one entry in the
-    shared cache spelled ``_OverBudget:`` by a lane that had renamed the class.
-
-    A one-element entry is a VALUE whatever the value is (:class:`_Draws` -- a document can
-    admit ``null``), so only the two-element failure form can record a cut.
-    """
-    if not (isinstance(entry, list) and len(entry) == 2 and entry[0] is None):
-        return False
-    return isinstance(entry[1], str) and OverBudget.__name__ in entry[1]
-
-
 @dataclass
 class _Draws:
     """**WHERE §8's OBLIGATION HOLDS THE INSTANCES IT DRAWS**, and what it paid for them.
@@ -5137,7 +3277,12 @@ class _Draws:
     #: ``media-buy/get-media-buys-response.json`` pairs stopped being cut in
     #: ``check_accepts`` and started being cut HERE -- same library call,
     #: ``merged_as_strategies``, one check further on.
-    fixtures: "Fixtures | None" = None
+    #: **THE CONSTRUCTION, HANDED IN AND NEVER IMPORTED**, which is §9's import rule for
+    #: this module: the verifier reads nothing but its arguments, so WHERE the reading
+    #: lives is the caller's business exactly as the store's location was.
+    #: ``codegen.verify.witness.least_instance`` is the one answer and
+    #: :func:`check_widening` is what passes it (``adcp-client-python-hzio.5``).
+    least: Callable[[Sequence[Mapping[str, Any]]], Any] | None = None
     #: The pair's STATIC identity, :attr:`Pair.identity`.  Required beside a ``corpus``.
     identity: Any = None
     #: How many draws were PAID, and how many a held value answered.  Reported on
@@ -5204,30 +3349,14 @@ class _Draws:
             if isinstance(position, tuple) and len(position) == 2 and position[0] == "demand"
             else ()
         )
-        if self.corpus is None or self.identity is None:
-            answer = self._borrowed(schema, borrowed)
-            return (
-                self._draw(schema, custom_formats, demanded) if answer is None else answer
-            )
-        key = corpus_key(self.identity, custom_formats=custom_formats, position=position)
-        held = self.corpus.get(key)
-        if isinstance(held, list) and held:
-            self.replayed += 1
-            return held
+        #: **NO STORE IS CONSULTED AND NONE IS WRITTEN** (``adcp-client-python-hzio.5``).
+        #: What stood here read a widening corpus, replayed an entry under
+        #: ``corpus_key``, and wrote the answer back. The value is now CONSTRUCTED from
+        #: the node's own keywords, which costs less than the file read did -- so a store
+        #: has nothing to save and the layering that made "warm" a part-overlapping set of
+        #: states is simply gone. Cold and warm are the same run.
         answer = self._borrowed(schema, borrowed)
-        if answer is not None:
-            self.corpus.put(key, answer)
-            return answer
-        answer = self._draw(schema, custom_formats, demanded)
-        #: **A cut is not an answer, so nothing holds it** -- ``check_accepts``' own
-        #: ``res.outcome != "strategy_error"`` clause, for this key space.
-        #: :func:`records_a_cut` carries the reasoning and the measurement.  The answer is
-        #: still RETURNED, because this call's caller asked a question and the cut is the
-        #: honest answer to it for this run; what must not happen is the next run reading
-        #: it back as evidence.
-        if not records_a_cut(answer):
-            self.corpus.put(key, answer)
-        return answer
+        return self._draw(schema, custom_formats, demanded) if answer is None else answer
 
     def _borrowed(self, schema: Any, candidates: Sequence[Any]) -> list[Any] | None:
         """The first of ``candidates`` the schema admits, or ``None``.
@@ -5254,58 +3383,43 @@ class _Draws:
         custom_formats: Mapping[str, Any],
         demanded: Sequence[str] = (),
     ) -> list[Any]:
-        #: **WHAT THE DERIVED SCHEMA ITSELF STATES, ASKED BEFORE ANYTHING IS GENERATED.**
-        #: :func:`check_widening`'s value classes are RESTRICTIONS of the node
-        #: (:func:`_restricted`), so a node carrying ``examples`` carries it into every
-        #: class derived from it -- and :func:`stated_instances` screens the member against
-        #: the restriction, so a member the class refuses is simply not an answer and the
-        #: draw runs as before.  Counted as a borrow and not as a draw, because that is
-        #: what it is: a value this module did not generate.
+        """One value this derived node admits, CONSTRUCTED from its own keywords.
+
+        **NOTHING IS GENERATED HERE ANY MORE** (``adcp-client-python-hzio.5``).  What
+        stood here asked ``hypothesis_jsonschema`` for an instance of a node the check had
+        just derived -- a value class, an intermediate node, a node conjoined with a
+        demand -- and everything around it existed to make that affordable: a corpus, a
+        fixture reduction, a canonicalisation memo, a per-pair wall clock.  Measured, the
+        same obligation is answered by reading the node's own keywords, which is what §2
+        already specifies and what :func:`verify.witness.least_instance` already does.
+
+        Three sources, cheapest first, and each is the document's own statement:
+
+        * what the derived node STATES (:func:`stated_instances`) -- an ``examples`` or a
+          ``const`` the restriction carried with it;
+        * the least instance the node admits, read off the node;
+        * and nothing else.  **A node no value can be constructed for is REPORTED under
+          its own reason** -- never covered by reaching for a draw, which is the rule the
+          deletion row states and the reason this returns ``[None, why]`` rather than
+          falling through to anything.
+        """
         stated = stated_instances(schema)
         if stated:
             self.borrowed += 1
             return [stated[0]]
         self.drawn += 1
-        #: **The DERIVED schema is reduced before it is drawn from, and the value is
-        #: screened against the SCHEMA AS DERIVED.**  Same rule, same seam: the reduction
-        #: is a restriction, so a value it yields is a value this position admits, and the
-        #: screen makes that a check rather than a claim.  A reduction that places nothing,
-        #: raises, or yields a value this schema refuses loses the saving and the draw runs
-        #: exactly as it did before -- which is the fail-safe direction §8 requires.
-        if self.fixtures is not None:
-            try:
-                narrowed, placed = self.fixtures.reduced(schema, demanded)
-            except OverBudget:
-                raise
-            except Exception:  # noqa: BLE001 -- a derivation that raises loses the saving
-                narrowed, placed = schema, 0
-            if placed:
-                try:
-                    value = one_instance(narrowed, custom_formats)
-                except OverBudget:
-                    raise
-                except Exception:  # noqa: BLE001 -- fall through to the unreduced draw
-                    value = NONE
-                if value is not NONE and conforms(schema, value) is True:
-                    return [value]
-        #: **THE FALL-THROUGH, COUNTED** (``docs/plan/architecture.md`` §9: "every memo and
-        #: every claimed funnel carries a counter the gate reads").  Reaching this line
-        #: means the reduction placed nothing, or placed and then yielded no value this
-        #: schema admits -- and what follows is a draw of the node AS DERIVED, which on a
-        #: multi-megabyte conjunction is the unbounded cost ``codegen/__main__.BUDGET``
-        #: existed to cut.  It is still the fail-safe direction and it is still taken, but
-        #: it is no longer silent: ``tests_emit/corpus.py`` reads this counter.
-        self.unreduced += 1
-        try:
-            return [one_instance(schema, custom_formats)]
-        except Exception as e:  # an undrawable position is unproved
-            #: A cut that ``hypothesis`` swallowed and replaced with its own exception is
-            #: not an undrawable position; :func:`budget_expired` says which this is.
-            if budget_expired():
-                raise OverBudget(
-                    f"the widening draw was cut and {type(e).__name__} arrived after"
-                ) from e
-            return [None, _why(e)]
+        if self.least is None:
+            return [None, "no construction was supplied to this check"]
+        built = self.least([schema])
+        if not built.held:
+            return [None, f"the node states no constructible instance: {built.reason}"]
+        #: **THE DERIVED NODE SCREENS ITS OWN VALUE**, which makes the construction a
+        #: check rather than a claim: a value the node refuses is not an answer to the
+        #: question this call asked, and the reason names the keywords that refused it.
+        if conforms(schema, built.value) is not True:
+            broke = violated_keywords(schema, built.value)
+            return [None, f"the constructed value is refused on {', '.join(broke) or 'the node'}"]
+        return [built.value]
 
 
 #: **Every shape the format's own checker admits**, for the three formats section 5's
@@ -5526,7 +3640,7 @@ _MAPPING_VALUE = {
 }
 
 
-def _mapping_key(node: Any, expression: str | None) -> Any:
+def _mapping_key(node: Any, expression: str | None, least: Any = None) -> Any:
     """ONE key the mapping ``node`` admits, for a widening declared on its VALUE.
 
     §8: "A mapping value -- ``#/properties/x/additionalProperties``, and the same for
@@ -5554,13 +3668,15 @@ def _mapping_key(node: Any, expression: str | None) -> Any:
         key |= {k: v for k, v in names.items() if k != "type"}
     if set(key) == {"type"}:
         return _ALIEN_KEY
-    try:
-        return one_instance(key, {})
-    except Exception:  # an undrawable key constraint has no location
-        return None
+    #: **CONSTRUCTED FROM THE KEY'S OWN CONSTRAINT, NEVER DRAWN**
+    #: (``adcp-client-python-hzio.5``).  A key schema is 50 bytes and the draw that
+    #: stood here cost more in store I/O than it did to make; the construction reads
+    #: the same keywords and answers without a generator.
+    built = least([key]) if least is not None else None
+    return built.value if built is not None and built.held else None
 
 
-def instance_path(pointer: str, schema: Any = None) -> tuple[Any, ...] | None:
+def instance_path(pointer: str, schema: Any = None, least: Any = None) -> tuple[Any, ...] | None:
     """The INSTANCE location a schema pointer describes, or ``None`` where it has none.
 
     ``#/properties/x`` describes the value under the key ``x``; ``#/items`` describes
@@ -5588,7 +3704,7 @@ def instance_path(pointer: str, schema: Any = None) -> tuple[Any, ...] | None:
     travels with the fact (``emit.repointed``) has already re-pointed it to the referring
     ``properties`` segment, which this function does place.
     """
-    walked = _steps(pointer, schema)
+    walked = _steps(pointer, schema, least=least)
     return None if walked is None else tuple(segment for segment, _ in walked[0])
 
 
@@ -5645,7 +3761,7 @@ def _written_and_settled(node: Any, root: Any) -> tuple[Any, Any]:
 
 
 def _steps(
-    pointer: str, schema: Any, stated: Any = None
+    pointer: str, schema: Any, stated: Any = None, least: Any = None
 ) -> tuple[list[tuple[Any, Any]], Any, Any] | None:
     """Each instance segment the pointer's location is made of, with the DOCUMENT's own
     subschema for the value at it -- the node the pointer itself names, and the node at
@@ -5737,7 +3853,7 @@ def _steps(
         elif word in _MAPPING_VALUE and i + _MAPPING_VALUE[word] <= len(segments):
             spent = _MAPPING_VALUE[word]
             expression = bundle.unescape_key(segments[i + 1]) if spent == 2 else None
-            key = _mapping_key(node, expression)
+            key = _mapping_key(node, expression, least)
             if key is None:
                 return None
             written, node = _written_and_settled(
@@ -5797,6 +3913,7 @@ def _reached(
     custom_formats: Mapping[str, Any],
     draws: _Draws,
     stated: Any = None,
+    least: Any = None,
 ) -> Any:
     """``instance`` with every node on the way to ``pointer``'s location PRESENT.
 
@@ -5837,7 +3954,7 @@ def _reached(
     pointer than the path itself is two walks that can disagree about which node a segment
     names, and the caller's walk and this one must not be the two.
     """
-    walked = _steps(pointer, schema, stated)
+    walked = _steps(pointer, schema, stated, least or draws.least)
     if walked is None or not walked[0]:
         return instance
     steps = walked[0]
@@ -6157,8 +4274,8 @@ def check_widening(
     custom_formats: Mapping[str, Any] = (),
     corpus: Any = None,
     identity: Any = None,
-    fixtures: "Fixtures | None" = None,
     document: Any = None,
+    least: Callable[[Sequence[Mapping[str, Any]]], Any] | None = None,
 ) -> WideningResult:
     """Section 8's accepts OBLIGATION, one declaration at a time.
 
@@ -6239,7 +4356,7 @@ def check_widening(
         )
     res = WideningResult()
     cf = dict(custom_formats)
-    draws = _Draws(corpus=corpus, identity=identity, fixtures=fixtures)
+    draws = _Draws(least=least)
     validator_cls = validator_for(schema)
     #: The node under grade AS THE DOCUMENT STATES IT, read once per pair: a plain pointer
     #: walk of the document and not the accessor, because what every walk below needs off
@@ -6261,7 +4378,7 @@ def check_widening(
         # **The node READ THE WAY THE DOCUMENT STATES IT** (:func:`_steps`): a local
         # ``$ref`` resolved and a conjunction folded at every depth, so the declaration
         # and the obligation that proves it agree about where the fact is.
-        walked = _steps(relative, schema, stated)
+        walked = _steps(relative, schema, stated, least)
         if walked is None:
             res.unproved.append(
                 f"{one.pointer}/{one.keyword}: the pointer describes no instance "
@@ -6342,7 +4459,7 @@ def check_widening(
             refused = False
             for base in _bases(schema, path, instances, cf, demanded, draws):
                 attempt = _placed(
-                    _reached(schema, relative, base, cf, draws, stated), path, value
+                    _reached(schema, relative, base, cf, draws, stated, least), path, value
                 )
                 if attempt is None:
                     continue
@@ -6391,7 +4508,13 @@ def check_widening(
 #: ``lower.const.LITERALS`` reads ``DataType.literals``'s annotation: a copy of a
 #: library's limit goes stale at a version bump and the check then reports the wrong
 #: reason for a value it cannot draw.
-_DRAWABLE_SIZE: int = _HYPOTHESIS_BUFFER_SIZE
+#: ``hypothesis``' own buffer bound, read from the library at BUILD time and written
+#: here as the number it is. ``_padded_string`` is kept (``adcp-client-python-hzio.5``:
+#: it closes a real gap where the library refuses a length floor above its own buffer,
+#: at one declaration of the 1,054), and keeping it must not keep an import of the
+#: generator on the grading path -- so the bound travels as a literal and
+#: ``tests_emit`` is where the two are held equal.
+_DRAWABLE_SIZE: int = 8 * 1024
 
 #: Every keyword that constrains a STRING's content rather than its length, plus the
 #: whole-instance keywords a padded value could fail.  :func:`_padded_string` refuses to
@@ -6457,49 +4580,6 @@ def _padded_string(schema: Mapping[str, Any]) -> str | None:
     if isinstance(ceiling, int) and ceiling < floor:
         return None
     return "a" * floor
-
-
-def one_instance(schema: Mapping[str, Any], custom_formats: Mapping[str, Any]) -> Any:
-    """ONE value the schema admits.
-
-    ``hypothesis``'s ``example()`` is not available outside a test, so this runs the same
-    ``given`` machinery :func:`check_accepts` runs, with one example, and keeps the first
-    value.  ``derandomize`` is on in :data:`_SETTINGS`, so the value is the same on every
-    run -- which is what makes a narrowing this check reports reproducible from the report.
-
-    :func:`_padded_string` is asked FIRST and answers for one shape only: a length floor
-    the library refuses to draw at all.  Its docstring carries the reasoning and the
-    gates; everything else is ``hypothesis``'s as it always was.
-    """
-    padded = _padded_string(schema)
-    if padded is not None:
-        return padded
-    drawn: list[Any] = []
-
-    def body(instance: Any) -> None:
-        drawn.append(instance)
-
-    #: **AND THE SAME RULE REACHES EVERY DERIVED DRAW, which is the measured half of
-    #: the row rather than a tidiness.**  Two of the four pairs §8's residue names --
-    #: ``creative/sync-creatives-response.json#`` and
-    #: ``media-buy/get-media-buys-response.json#`` -- draw in 0.13 s and 0.03 s in
-    #: ``check_accepts`` and were cut in ``check_widening``, one check further on,
-    #: inside the same library call.  Every derived draw in this module arrives here:
-    #: :meth:`_Draws._draw` for a widening's proving value, :meth:`Fixtures.value` for
-    #: a frontier pin and :meth:`Fixtures._derived` for a referenced document's
-    #: fixture.  One seam, so reading 2 cannot stay blocked where reading 1 is not.
-    #:
-    #: **AND ONE LIFETIME FOR ALL OF THEM, which is :func:`shared_within_one_grade`'s whole content**:
-    #: this function is where §8's derivation spends a pair -- 509 calls on
-    #: ``media-buy/get-media-buys-response.json#`` -- so a sharing opened HERE is a
-    #: sharing thrown away 509 times, and the memo it threw away is the one the next call
-    #: rebuilds from scratch.
-    with shared_within_one_grade():
-        run = given(instance=strategy(dict(schema), dict(custom_formats)))(body)
-        settings(max_examples=1, phases=[Phase.explicit, Phase.generate], **_SETTINGS)(run)()
-    if not drawn:
-        raise HypothesisException("the strategy produced no instance")
-    return drawn[0]
 
 
 def _why(e: BaseException) -> str:
@@ -8792,7 +6872,6 @@ def check_pair(
     custom_formats: Mapping[str, Any] = (),
     corpus: Any = None,
     widening_corpus: Any = None,
-    fixtures: "Fixtures | None" = None,
     construction: Any = None,
 ) -> PairReport:
     """ONE CLASS AGAINST ONE SCHEMA, with the grade's own validator sharing open.
@@ -8813,8 +6892,7 @@ def check_pair(
             custom_formats=custom_formats,
             corpus=corpus,
             widening_corpus=widening_corpus,
-            fixtures=fixtures,
-            construction=construction,
+                construction=construction,
         )
 
 
@@ -8825,7 +6903,6 @@ def _check_pair(
     custom_formats: Mapping[str, Any] = (),
     corpus: Any = None,
     widening_corpus: Any = None,
-    fixtures: "Fixtures | None" = None,
     construction: Any = None,
 ) -> PairReport:
     """ONE CLASS AGAINST ONE SCHEMA: the whole harness, per section 6.
@@ -8901,7 +6978,13 @@ def _check_pair(
     rep = PairReport(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
     )
-    rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
+    #: **``missing_formats`` HAS NO SUBJECT WITHOUT A GENERATOR** and is left empty
+    #: (``adcp-client-python-hzio.5``).  Its whole reason is in its own comment:
+    #: *"hypothesis_jsonschema ignores a ``format`` it does not know, silently and without
+    #: a warning, which turns an unsupported format into arbitrary text and so into a
+    #: false direction-1 failure"*.  Nothing generates at grade time, so no format is
+    #: ignored by anything and no strategy is owed for one.  The field stays on the report
+    #: so the verdict table keeps its column, and it is simply never filled.
     #: The CONSTRUCTED witness, which reading 1's three checks read.  Empty where the
     #: construction had nothing for this pair, and the three checks then fall to
     #: :data:`sampled` -- see the paragraph beside ``rep.sampled``.
@@ -8961,26 +7044,12 @@ def _check_pair(
     #: Applied AFTER the reference rule and to its output, so the two savings compose
     #: instead of competing for the same pointer.
     #:
-    #: **A THUNK AND NOT A NODE, which is what keeps the cost off the replayed path.**  The
-    #: substitution derives a value per instance location, and the 2,674 pairs the
-    #: committed floor answers draw nothing at all -- so this is forced inside
-    #: ``check_accepts`` on a corpus MISS and nowhere else.  ``rep.fixtures`` and
-    #: ``rep.pinned`` are therefore 0 on a replayed pair, which says what happened: no
-    #: fixture was placed because no draw was made.
-    def draw_from() -> dict | None:
-        if fixtures is None or pair.ref is None:
-            return None
-        try:
-            substituted, rep.fixtures = fixtures.substitute(
-                drawn_from, pair.ref.document, pair.ref.pointer
-            )
-            substituted, rep.pinned = fixtures.reduced(substituted)
-        except OverBudget:
-            raise
-        except Exception:  # noqa: BLE001 -- a derivation that raises loses the saving only
-            rep.fixtures, rep.pinned = 0, 0
-            return None
-        return substituted if (rep.fixtures or rep.pinned) else None
+    #: **THE FIXTURE SUBSTITUTION IS GONE WITH THE DRAW IT EXISTED FOR**
+    #: (``adcp-client-python-hzio.5``).  ``draw_from`` stood here: it pinned a fixture at
+    #: every referring position and then reduced the node's own frontier, so that ONE
+    #: sampled draw of a multi-megabyte node was affordable.  Nothing is drawn now, so
+    #: there is nothing to make affordable; ``rep.fixtures`` and ``rep.pinned`` stay 0 and
+    #: say exactly that.
     #: **THE WITNESS, CONSTRUCTED FROM THE NODE'S OWN KEYWORDS** -- the row
     #: ``adcp-client-python-8bw4`` names, and the first clause of the fifth target: *"the
     #: three checks ARE the grading path"*.  This frame is where it belongs because this is
@@ -9062,40 +7131,33 @@ def _check_pair(
     #: So reading 1's three checks read the CONSTRUCTED value and ``admits`` reads the
     #: constructed SET; reading 2's two directions still reduce the SAMPLED instance, and
     #: that -- not this check -- is what the corpus is still here for.
-    rep.sampled = check_accepts(
+    #: **READING 1's CHECKS 1 AND 3, OVER THE CONSTRUCTED PAYLOAD, AND THERE IS NO SECOND
+    #: SOURCE** (``adcp-client-python-hzio.5``).  What stood here was a SAMPLED accepts
+    #: beside this one -- a draw fed by the corpus, by ``examples`` and by
+    #: ``hypothesis_jsonschema`` -- and ``rep.accepts`` fell back to it wherever the
+    #: construction had nothing.  Measured over the whole graded set: the construction
+    #: answers **2,608 of 2,608 pairs in 0.4 s cold**, against 604-750 s warm for the draw
+    #: and one pair that never finished at any bound.  So the fallback had nothing left to
+    #: answer and the draw is gone; ``rep.sampled`` is the same result under the name the
+    #: verdict table already reads, kept so no column of ``verdicts.tsv`` goes blank.
+    rep.accepts = check_accepts(
         drawn_from,
         pair.accept,
-        examples=accepts_examples,
         custom_formats=custom_formats,
-        seen=sampled,
+        seen=accepted,
         ref=pair.ref,
-        corpus=corpus,
-        identity=pair.identity,
-        draw_from=draw_from,
+        witness=built,
     )
-    #: Reading 1's checks 1 and 3 over the constructed witness, and ``rep.sampled`` where
-    #: there is none -- so a pair the construction cannot reach reads exactly what it read
-    #: before and no column goes blank for want of a value.
-    rep.accepts = (
-        check_accepts(
-            drawn_from,
-            pair.accept,
-            examples=accepts_examples,
-            custom_formats=custom_formats,
-            seen=accepted,
-            ref=pair.ref,
-            witness=built,
-        )
-        if built
-        else rep.sampled
-    )
+    rep.sampled = rep.accepts
+    sampled.extend(accepted)
     #: Measured only where the generator errored, because that is the only pair the
     #: measurement says anything about -- 2 of 1,079 on the emitted tree, so the
     #: isolated draws cost nothing over the population.  The node is drawn from the
     #: SAME schema the accepts check drew from, so a position the resolution inlined
     #: is screened too.
-    if rep.sampled.outcome == "strategy_error":
-        rep.accepts_undrawable = undrawable_formats(drawn_from, custom_formats=custom_formats)
+    #: ``accepts_undrawable`` named the formats a GENERATOR could not draw, and nothing
+    #: generates on this path any more, so there is no such outcome to report.  The field
+    #: stays on the report for the verdict table's sake and is simply never filled.
     #: **READING 1's SECOND CHECK, over the CONSTRUCTED value where there is one.**  §9's
     #: check 2 is "each invalidating mutation of it ... the class refuses it, at the
     #: location the mutation was made", and this is one payload rather than the mutation
@@ -9223,8 +7285,7 @@ def _check_pair(
             custom_formats=custom_formats,
             corpus=widening_corpus,
             identity=pair.identity,
-            fixtures=fixtures,
-            #: **The scope a DECLARED POINTER's ``allOf`` index is read in**, and the same
+                #: **The scope a DECLARED POINTER's ``allOf`` index is read in**, and the same
             #: object ``resolve`` above is handed for the neighbouring reason.  The
             #: obligation walks a declaration's pointer from ``drawn_from``, which is the
             #: ACCESSOR's node; at a union branch the accessor splices the enclosing node's
@@ -9233,6 +7294,10 @@ def _check_pair(
             #: names another.  :func:`check_widening`'s ``document`` and :func:`_steps`'
             #: ``stated`` carry the reading and the four pointers it reaches.
             document=pair.document,
+            #: ``adcp-client-python-hzio.5``: this check's value classes are CONSTRUCTED
+            #: from the node's own keywords, and this is the reader that does it.  Handed
+            #: in rather than imported, for ``_Draws.least``'s stated reason.
+            least=getattr(construction, "least_instance", None),
         )
     return rep
 

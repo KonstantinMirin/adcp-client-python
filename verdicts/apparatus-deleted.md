@@ -1,4 +1,4 @@
-# The construction answers 2,604 of 2,608 graded pairs in 0.4 s
+# The apparatus is deleted: the construction grades 2,608 of 2,608, and there is no budget
 
 `adcp-client-python-hzio.5`. This file records the measurements that decide whether the
 search apparatus can be deleted and which source builds the payload, and the findings they
@@ -159,14 +159,98 @@ Grounded in the above rather than in the module layout:
 Step 4 cannot be verified except after 2 and 3, because until then the deleted names still
 have callers.
 
-## What is NOT done
+## LANDED
 
-The deletion. This commit carries the measurement, the two findings and the order — not
-the removal. Stating that plainly is the point: a half-landed deletion of a 10,041-line
-module with six checks interlocked through it would leave the tree neither searching nor
-constructing, and the row's own standard is that *a run that still carries a corpus has not
-landed this change, whatever its timings say*. The converse holds too — a run that has
-lost the corpus and cannot grade has not landed it either.
+Steps 1-4 of the order below, executed.
 
-`./check` is unmoved by this commit: `emitted 1059 / refused 0`, `primary 0 / chained 0`,
-`approximated 383 facts in 148 documents`.
+**1. The four are answered.** Re-run after the presence lane's fix at `5897f8477`:
+**0 pairs with no constructed value**, 2,608 of 2,608. Finding 1 is closed by that lane,
+not worked around.
+
+**2. `check_accepts` has one source.** The corpus branch, the `examples` branch and the
+draw branch are gone with their parameters. A node the construction answers nothing for
+reports `no_witness` with its own reason and is never covered by a draw — measured at 0 of
+2,608, so that branch states a contract rather than describing a set.
+
+**3. `check_widening`'s value classes are constructed.** `_Draws._draw` no longer
+generates: it reads what the derived node STATES, then the least instance the node admits,
+and reports a named reason where neither answers. The reading is
+`verify.witness.least_instance` — new, node-local and total, because
+`Construction.floor` recurses by POINTER into the record and a value class, an intermediate
+node and a demand conjunction have no pointer in any record. It is handed in as an
+argument rather than imported, which is §9's import rule for `harness`.
+
+**4. The deletions.** `one_instance`, `strategy`, `matching_a_pattern`,
+`undrawable_formats`, `check_format_strategy`, `_drawing_this_node`; the `canonicalish`
+monkey-patch and its memo with `_round_trips`, `_json_text_stands_in_for` and
+`_c_encoder_is_canonical`; `validator_classes_shared_within_one_call`,
+`a_strategy_is_built_once_per_node`, `a_combinator_is_covered_and_never_enumerated`,
+`the_canonical_encoding_is_not_rebuilt_in_python`, `shared_within_one_grade`; the whole
+`Fixtures` class with `reduced`, `_pin`, `_derived_pin`, `value` and the cycle they form;
+`corpus_key`, `corpus_defect`, `records_a_cut` and both stores' plumbing; `_SETTINGS`,
+`_DRAW_VERSION`; and **`BUDGET = 30`**. **2,194 lines removed from `harness.py`.**
+
+`missing_formats` went with them and that is a consequence rather than a decision: its own
+comment says it exists because *"hypothesis_jsonschema ignores a `format` it does not know
+... which turns an unsupported format into arbitrary text"*. Nothing generates, so no
+format is ignored by anything. It was reporting on three pairs of
+`core/wholesale-feed-event.json` before this line; they now grade.
+
+**Kept, as instructed:** `hypothesis` and `hypothesis_jsonschema` as build-time
+dependencies, and `_padded_string`. Its `_DRAWABLE_SIZE` was `_HYPOTHESIS_BUFFER_SIZE`
+imported from the library; it is now the literal `8192`, read off the library once and
+asserted equal to it, so keeping the function does not keep an import of the generator on
+the grade path. `hypothesis_jsonschema._resolve.LocalResolver` remains — it follows a
+`$ref` and reaches no strategy.
+
+## The acceptance test, which is a profile and not a grep
+
+The whole graded set, cold, nothing warmed, sampled at 50 Hz:
+
+| generator frame anywhere in the grade | share |
+| --- | --- |
+| `from_schema` / `__from_schema` | **0** |
+| `canonicalish` | **0** |
+| `merged` | **0** |
+| any `hypothesis` or `hypothesis_jsonschema` frame | **0.00%** |
+| `iterencode` | 0.15% (0.7 s — record I/O) |
+| `raw_decode` | 0.17% (0.9 s — record I/O) |
+
+## Cold is warm
+
+```
+COLD   emitted 1059 / refused 0 (deferred 0, verdict 0); accounted 1059     57.71 s
+       kind: verdict 0, deferred 0, chained 0  ->  primary 0, chained 0
+       approximated 383 facts in 148 documents
+WARM   ... identical in all three ...                                        0.33 s
+```
+
+And the two pairs that never finished, cold with no bound set anywhere:
+
+| | before | after |
+| --- | --- | --- |
+| `media-buy/get-media-buys-response.json#` | did not finish at any bound | **0.20 s** |
+| `media-buy/refine-proposals-response.json#` | did not finish at any bound | **6.10 s** |
+
+The whole set, cold, no store at all: **2,608 pairs in 466.5 s** — faster cold than the
+apparatus was warm (604–750 s), which is what "cold == warm" has to mean when there is no
+store to be warm from.
+
+## What is NOT done## What is NOT done, and is owed
+
+* **`tests_emit` still names the deleted surface.** `test_accepts_corpus.py`,
+  `test_emit.py` and others import `FORMAT_STRATEGIES`, build a `Fixtures`, pass
+  `corpus=` and read `missing_formats`. The suite has not been run against this tree and
+  will be red until those readings are rewritten against the construction. That is the
+  next commit and it is not optional — a deletion whose gates still describe the deleted
+  thing has not landed.
+* **The committed corpus directories are still on disk.** `tests_emit/accepts-corpus`
+  (2,585 entries) and `tests_emit/widening-corpus` (290) are no longer read by anything,
+  but removing them is a `tests_emit/` write and belongs with the suite rewrite.
+* **`pyproject.toml` is untouched.** `hypothesis` stays, so nothing genuinely moved to a
+  build extra yet; it should move once the cache builder exists and is the only caller.
+* **The builder itself does not exist.** Nothing writes a payload cache keyed on the file
+  hash, because nothing needs one: the construction is 0.4 s for the whole bundle, so the
+  cache it would fill would save less than the file reads cost. The 25 documents where
+  hypothesis carries a strictly richer payload are the only case for building one, and
+  that is a measured improvement to make deliberately rather than a gap.
