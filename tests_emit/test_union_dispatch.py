@@ -22,6 +22,17 @@ exception; the second reads the document and compares it with the key the class 
 installs (``BranchDispatchMixin._branch_adapter``) and there is nothing else at runtime
 that names the key.
 
+**THERE IS A SECOND DISPATCH SOURCE AND IT IS NOT A SECOND KEY**
+(``adcp-client-python-j0fr``, the owner's correction of 2026-11-07).  Where the branches
+differ only in which keys are PRESENT, no property's value identifies the branch, and the
+base carries ``_BRANCH_PRESENCE`` -- a clause per branch -- out of which it builds
+pydantic's CALLABLE discriminator.  It is read here for the first half's reason: it IS the
+``Discriminator(...)`` the base installs.  The second half -- "no union dispatches on a
+key its document lets an instance omit" -- is about a key, and a presence dispatch names
+none, so that clause's population is the keyed bases and says nothing about these.
+Measured in the tree: 151 union bases declaring a branch list, **83 dispatching on a key's
+value, 10 on a key set, 58 on neither**.
+
 **THE DOCUMENT SIDE IS THE DOCUMENT OF RECORD** (``bundle.record``, §9), so a branch
 that is a bare ``$ref`` has its target's ``required`` where the branch sits and this file
 resolves nothing of its own.
@@ -988,6 +999,16 @@ A_VALUE_NO_SCALAR_ADMITS = {"__not_a_scalar__": True}
 #: account references.  A KEYED union landing here would be a position the discriminator
 #: names and the dispatch did not report, which is why the ceiling exists rather than a
 #: carve-out.
+#:
+#: **AND AN EMPTY DISCRIMINATOR IS NO LONGER THE WHOLE OF "KEYLESS"**
+#: (``adcp-client-python-j0fr``): a base dispatching on a KEY SET
+#: (:attr:`~adcp.types._base.BranchDispatchMixin._BRANCH_PRESENCE`) also carries an empty
+#: :attr:`~adcp.types._base.BranchDispatchMixin._BRANCH_DISCRIMINATOR`, and it is not
+#: keyless -- the branch is a function of the payload there too.  Re-measured with the 10
+#: presence bases in the tree: the cell holds **15 of the ceiling's 18 and NONE of them is
+#: a presence base**, so the sentence above still describes every member.  One landing
+#: here would be the same defect a keyed one would: a position the dispatch could have
+#: named and did not.
 CELL_CEILING = 18
 
 
@@ -1386,8 +1407,22 @@ def test_a_keyless_dispatch_refusal_names_the_position_the_document_refuses_at()
 
     The deepest positions are tried first and the search stops at the first witness per
     branch position, so the cost is bounded by the positions and not by the product.
+
+    **THE POPULATION IS THE SCREEN'S OWN GATE AND NOT HALF OF IT**
+    (``adcp-client-python-j0fr``).  :meth:`~adcp.types._base.BranchDispatchMixin._undetermined`
+    answers for a base with NEITHER dispatch -- it returns ``None`` where
+    ``_BRANCH_DISCRIMINATOR`` is set AND where :attr:`~adcp.types._base.BranchDispatchMixin._BRANCH_PRESENCE`
+    is, because a callable discriminator computes the branch from the payload's key set
+    before any branch is tried and there is no structural first match to screen.  Asked of
+    the key alone, this clause would range over the 10 presence bases the screen never
+    answers for and record their un-run checks as a position it did not have to name,
+    which is the vacuity the derivation above exists to avoid.
     """
-    bases = {n: c for n, c in _declaring_bases().items() if not c._BRANCH_DISCRIMINATOR}
+    bases = {
+        n: c
+        for n, c in _declaring_bases().items()
+        if not c._BRANCH_DISCRIMINATOR and not c._BRANCH_PRESENCE
+    }
     graded = claimed("emitted union bases with NO dispatch key", bases)
     records = _records()
     identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)

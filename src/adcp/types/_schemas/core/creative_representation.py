@@ -5,12 +5,11 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
-from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._runtime import ForbiddenGroups, Presence, Rule
 from adcp.types.constraints import CreativeRepresentationRepresentationId, StrMinLen1
 
-from .canonical_format_kind import CanonicalFormatKind
-from .creative_manifest import CreativeManifest
+from .creative_manifest import CanonicalFormatManifest, NamedFormatManifest
 
 
 class Source(AdCPBaseModel):
@@ -23,7 +22,7 @@ class Source(AdCPBaseModel):
     source_id: Annotated[str | None, Field(description='Optional immutable source-system identifier for this representation.'), OmittedNotNull] = None
 
 
-class CreativeRepresentation(CreativeManifest):
+class CreativeRepresentation(BranchDispatchMixin, AdCPBaseModel):
     """
     One equivalent trafficking representation retained within a CreativeRepresentationSet before seller binding. `representation_id` is stable within its parent revision and identifies a representation, not rotation, A/B content, build output, locale, or a seller's served execution variant.
     """
@@ -31,6 +30,13 @@ class CreativeRepresentation(CreativeManifest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('format_kind', 'representation_id', 'source')
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('CreativeRepresentationFormatId', Presence(require=(('format_id',),), forbid=(('format_kind',),))), ('CreativeRepresentationFormatKind', Presence(require=(('format_kind',),), forbid=(('format_id',),))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('format_id',), ('format_option_ref',), ('representation_selection',))),
     )
@@ -39,7 +45,30 @@ class CreativeRepresentation(CreativeManifest):
     )
     representation_id: Annotated[CreativeRepresentationRepresentationId, Field(description='Stable representation identifier, unique within the enclosing CreativeRepresentationSet revision.')]
     source: Source
-    format_kind: Annotated[CanonicalFormatKind, Field(description="Canonical 3.2 path. The canonical format name this manifest targets (e.g., `image`, `video_hosted`, `audio_vast`, `seller_rendered_stateful_display`, `coordinated_placements`). Selects the contract against which the seller validates the manifest's assets. Mutually exclusive with deprecated `format_id`.")]
+
+
+class CreativeRepresentationFormatId(CreativeRepresentation, NamedFormatManifest):
+    """
+    Deprecated 3.x compatibility branch. Manifest references a named format via the structured format_id object. New 3.2 manifests use format_kind.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/allOf/0/oneOf/0')
+
+
+class CreativeRepresentationFormatKind(CreativeRepresentation, CanonicalFormatManifest):
+    """
+    Manifest declares which canonical format it targets via `format_kind` (e.g., `image`). This 3.1+ canonical-format path was introduced by RFC #3305.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/allOf/0/oneOf/1')
+
+
+CreativeRepresentation._branch_models = (CreativeRepresentationFormatId, CreativeRepresentationFormatKind,)
+CreativeRepresentation.model_rebuild(force=True)
 
 
 __all__ = ["CreativeRepresentation"]

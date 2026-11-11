@@ -97,7 +97,15 @@ from typing import (
 )
 
 import jsonschema
-from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, TypeAdapter
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Discriminator,
+    Field,
+    GetCoreSchemaHandler,
+    Tag,
+    TypeAdapter,
+)
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic.fields import FieldInfo
 from pydantic_core import (
@@ -108,7 +116,7 @@ from pydantic_core import (
     core_schema,
 )
 
-from adcp.types._runtime import RuleBound, refuse
+from adcp.types._runtime import Presence, PresenceGroups, RuleBound, refuse, supplied
 
 #: **UPSTREAM'S OWN BASES, which ours DERIVE FROM** (`adcp-client-python-1zmw`).
 #:
@@ -2112,6 +2120,32 @@ class BranchDispatchMixin(_MixedInto):
     #: so a branch added upstream moves it.  Empty where the branches pin none, and the
     #: union is then undiscriminated: see :meth:`_branch_adapter`.
     _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    #: **THE SECOND DISPATCH CARRIER: the KEY SET per branch, where the branches differ
+    #: only in which keys are PRESENT** (``adcp-client-python-j0fr``, the owner's
+    #: correction of 2026-11-07).  Each entry pairs a branch class's own name with the
+    #: :class:`adcp.types._runtime.Presence` clause its node states, in the document's
+    #: branch order; empty at every union that dispatches on a key's VALUE.
+    #:
+    #: **IT IS A SECOND CARRIER AND NOT A WIDENING OF THE FIRST, because the two name
+    #: different kinds of thing.**  :attr:`_BRANCH_DISCRIMINATOR` is a PROPERTY name
+    #: whose ``const`` selects, and ``Field(discriminator=<name>)`` is pydantic's reading
+    #: of exactly that.  Here there is no such property: §5's "the branches differ only
+    #: in what is ``required``" case states ``required`` and a ``not`` over ``required``
+    #: and nothing else, so no field's value identifies the branch and the thing that
+    #: does is the payload's KEY SET.  Writing a key set into a field meant for a
+    #: property name would make one slot mean two things, which is the reason
+    #: :class:`adcp.types._runtime.ForbiddenGroups` is a kind beside
+    #: :class:`adcp.types._runtime.RequiredGroups` rather than a field on it.
+    #:
+    #: **The PAIRING is explicit and not positional.**  The clause could have travelled
+    #: as a tuple parallel to :attr:`_branch_models` -- and it must not, because a
+    #: DISTRIBUTING branch contributes several products to that tuple and one clause to
+    #: this one (``lower.union._products``), so the two lists are not the same length in
+    #: general and a positional read would silently pair a clause with another branch's
+    #: class.  The name is what :meth:`_branch_adapter` resolves against
+    #: :attr:`_branch_models`, and a name resolving to nothing is an error there rather
+    #: than a mis-dispatch here.
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = ()
     #: :meth:`_branch_adapter`'s memo, declared rather than only assigned, because the
     #: shipped package is under the checker (``[tool.mypy] files``) and an undeclared
     #: attribute there is an error §14 step 6 does not let an inline suppression answer.
@@ -2151,6 +2185,36 @@ class BranchDispatchMixin(_MixedInto):
         emitter (``codegen.lower.union.discriminator``) rather than reaching a plain union
         here, because a branch chosen by trying each and keeping the first that validates
         is decided by declaration order rather than by the payload.
+
+        **:attr:`_BRANCH_PRESENCE` is the same guarantee where the SELECTING THING IS A
+        KEY SET** (``adcp-client-python-j0fr``).  ``Field(discriminator=)`` names a
+        property whose ``const`` selects and there is no such property at a union whose
+        branches state ``required`` and a ``not`` over ``required`` alone, so the union
+        carries pydantic's CALLABLE discriminator instead: :meth:`_presence_tag` is a
+        total function from the payload's key set to a branch name, computed BEFORE any
+        branch is tried, so declaration order is never consulted -- which is the
+        requirement the const case meets through the key and §4's own sentence for both
+        (``docs/plan/architecture.md``: "selection must be a function of the payload, not
+        of the order the classes happen to be declared in").
+
+        **A PLAIN UNION IS NOT SOUND HERE, and that is measured rather than preferred.**
+        The two readings differ on the payload carrying BOTH keys, which the document
+        refuses: the callable refuses it with no tag at every one of the 8 nodes, while a
+        plain union's answer depends on ``additionalProperties`` -- a keyword with nothing
+        to do with the exclusivity.  Measured over the 8: ``additionalProperties: true``
+        at 6 (``core/catchment.json``, ``core/creative-asset.json``,
+        ``core/creative-manifest.json``, both ``geo_proximity`` items and
+        ``creative/list-creatives-response.json``) and ``false`` at 2 (the two
+        ``core/frequency-cap-*-constraints.json``), so a plain union's correctness would
+        be a function of that keyword at 6 of 8.
+
+        **The ANNOTATED members are what carry the tag**, which is pydantic's own
+        requirement for a callable discriminator and the reason the branch classes are
+        subscripted here rather than handed over bare: the tag function answers with a
+        name and pydantic needs that name on the member to find it.  Resolved through
+        :attr:`_branch_models` by ``__name__``, which is unique module-wide (the emitter's
+        own collision check), so :attr:`_BRANCH_PRESENCE`'s names and this base's branch
+        classes cannot come apart silently -- a name resolving to nothing raises here.
         """
         got = cls.__dict__.get("_branch_adapter_cache")
         if got is None:
@@ -2160,6 +2224,20 @@ class BranchDispatchMixin(_MixedInto):
             # -- while what is wanted here is the runtime call the subscript compiles
             # to.  ``typing``'s ``_tp_cache`` makes the two the identical object, so
             # this is the same union by identity and not merely an equal one.
+            if cls._BRANCH_PRESENCE:
+                by_name = {branch.__name__: branch for branch in cls._branch_models}
+                tagged = tuple(
+                    Annotated[by_name[name], Tag(name)]
+                    for name, _ in cls._BRANCH_PRESENCE
+                )
+                got = TypeAdapter(
+                    Annotated[
+                        Union.__getitem__(tagged),  # at runtime
+                        Discriminator(cls._presence_tag),
+                    ]
+                )
+                cls._branch_adapter_cache = got
+                return got
             union = Union.__getitem__(cls._branch_models)  # at runtime
             got = TypeAdapter(
                 Annotated[union, Field(discriminator=cls._BRANCH_DISCRIMINATOR)]
@@ -2168,6 +2246,47 @@ class BranchDispatchMixin(_MixedInto):
             )
             cls._branch_adapter_cache = got
         return got
+
+    @classmethod
+    def _presence_tag(cls, value: Any) -> str | None:
+        """Which branch the payload's KEY SET names, or ``None`` where it names none.
+
+        :attr:`_BRANCH_PRESENCE`'s dispatch, and the whole of it.  Each clause is read by
+        :meth:`adcp.types._runtime.Presence.holds` -- the same method
+        :class:`adcp.types._runtime.PresenceGroups` reads to enforce the rule this
+        emission replaces -- so the branch a payload reaches and the verdict the rule
+        would have given are one reading of one clause and cannot disagree.
+
+        **EXACTLY ONE clause, because the document's keyword is ``oneOf``.**  Zero
+        clauses holding is a payload no branch describes and two is a payload the
+        document refuses for satisfying two; both answer ``None``, which pydantic reports
+        as ``union_tag_not_found`` and :meth:`_no_branch` restates in the document's own
+        vocabulary (:meth:`_no_clause`).  Nothing is tried and discarded: this is
+        computed before any branch validates, so there is no first match and no order.
+
+        **A MODEL INSTANCE answers by its own class**, for the reason
+        :meth:`_undetermined`'s mapping screen gives: pydantic validates a base-typed
+        field from an already-constructed instance, and that instance has been through
+        this dispatch once already.  Its key set is read by
+        :func:`adcp.types._runtime.supplied` where it is NOT one of the branches -- a
+        consumer's refinement of the base, which has no tag of its own -- so a subclass
+        declared elsewhere dispatches on what it was given rather than on its name.
+
+        A value that is neither answers ``None``: the branches of a presence union are
+        object classes, so a scalar names no branch, and a refusal is the honest answer
+        rather than a guess at one.
+        """
+        if isinstance(value, Mapping):
+            keys = frozenset(value)
+        elif isinstance(value, BaseModel):
+            named = {name for name, _ in cls._BRANCH_PRESENCE}
+            if type(value).__name__ in named:
+                return type(value).__name__
+            keys = supplied(value)[0]
+        else:
+            return None
+        held = [name for name, clause in cls._BRANCH_PRESENCE if clause.holds(keys)]
+        return held[0] if len(held) == 1 else None
 
     @classmethod
     def __get_pydantic_core_schema__(cls, source: Any, handler: Any) -> Any:
@@ -2344,6 +2463,17 @@ class BranchDispatchMixin(_MixedInto):
         branch the key names and the answer is the document's own function of the
         instance; there is nothing selected by order and nothing to screen.
 
+        **AND A PRESENCE DISPATCH IS NOT KEYLESS** (:attr:`_BRANCH_PRESENCE`,
+        ``adcp-client-python-j0fr``).  The screen's whole premise is "the branch is
+        selected by a STRUCTURAL FIRST MATCH -- pydantic tries the branches in
+        declaration order and keeps the first whose CLASS admits the payload".  A
+        callable discriminator computes the branch from the payload's key set BEFORE any
+        branch is tried, so there is no first match, no declaration order, and the branch
+        the payload reaches is the one clause the document says holds -- the same clause
+        :class:`adcp.types._runtime.PresenceGroups` would have enforced as a rule.  There
+        is nothing selected by order to screen, and the screen's cost is one document
+        validation per dispatch, so it is not asked.
+
         **AND ASKED OF A MAPPING ONLY, which is measured and not a precaution.**  A
         branch of an object union is an object class, so a WIRE payload reaching one is a
         mapping -- but pydantic also validates a base-typed field from an already
@@ -2355,7 +2485,11 @@ class BranchDispatchMixin(_MixedInto):
         already been through this dispatch once, so there is nothing selected by order on
         that path either.
         """
-        if cls._BRANCH_DISCRIMINATOR or not isinstance(value, Mapping):
+        if (
+            cls._BRANCH_DISCRIMINATOR
+            or cls._BRANCH_PRESENCE
+            or not isinstance(value, Mapping)
+        ):
             return None
         answered = type(got)
         ref = answered.__dict__.get("__adcp_schema__") or getattr(
@@ -2676,16 +2810,28 @@ class BranchDispatchMixin(_MixedInto):
         an empty ``loc`` tells a caller the request is invalid and not where.  Where the
         branches agree on nothing the combinator is still the answer and the paragraph
         above is still the reason.
+
+        **A PRESENCE DISPATCH READS BOTH ARMS, and its tag error has its own sentence**
+        (:attr:`_BRANCH_PRESENCE`, :meth:`_no_clause`).  The exception above is "the key
+        alone selected the branch, so ``err`` is that branch's own report", and it holds
+        word for word of a key SET: the tag function picked one clause, pydantic
+        validated that branch alone, and ``err`` is the branch's own ``required`` or type
+        refusal.  The tag ERROR is the other half and it is not a branch's report either
+        -- it is the combinator's, about how many clauses hold -- and the document states
+        that fact in a vocabulary ``{len(branches)} branches`` does not have.
         """
         absent = (
             [k for k in cls._ROOT_REQUIRED if k not in value] if isinstance(value, Mapping) else []
         )
-        if not absent and cls._BRANCH_DISCRIMINATOR and not any(
-            e["type"] in _TAG_ERRORS for e in err.errors()
-        ):
+        tagged = any(e["type"] in _TAG_ERRORS for e in err.errors())
+        if not absent and cls._BRANCH_PRESENCE and not tagged:
+            return cls._untagged(err)
+        if not absent and cls._BRANCH_DISCRIMINATOR and not tagged:
             return err
         if absent:
             return cls._required(value, absent)
+        if cls._BRANCH_PRESENCE and tagged:
+            return cls._no_clause(value)
         agreed = cls._agreed(err)
         if agreed:
             return ValidationError.from_exception_data(
@@ -2706,6 +2852,115 @@ class BranchDispatchMixin(_MixedInto):
                     loc=cls._common_position(value, err),
                     input=value,
                 )
+            ],
+        )
+
+    @classmethod
+    def _untagged(cls, err: ValidationError) -> ValidationError:
+        """A presence branch's own report with the TAG segment taken off the front.
+
+        **A CLASS NAME IS NOT A DOCUMENT POSITION, and pydantic puts one in front of
+        every error a TAGGED union reports through** (``adcp-client-python-j0fr``).  The
+        tag of a presence dispatch is the branch class's own name
+        (:attr:`_BRANCH_PRESENCE`), so a refusal inside a branch comes back at
+        ``('NamedFormatManifest', 'format_id', 'id')`` where the document's position is
+        ``('format_id', 'id')`` -- and ``core/error.json``'s ``Error.field`` is derived
+        from the ``loc``, so the segment would reach a caller as a step of their own
+        payload that does not exist in it.
+
+        **Measured, and it is why this method exists rather than the bare re-raise the
+        const case takes.**  ``media-buy/build-creative-response.json`` holds six
+        branches each pinning ``status``, and one of them carries a
+        ``core/creative-manifest.json`` -- one of the 8 presence nodes.  With the tag left
+        on, a broken ``creative_manifest.format_id.id`` came back at
+        ``('creative_manifest', 'NamedFormatManifest', 'format_id', 'id')``; the OUTER
+        union's :meth:`_agreed` walks each arm's reported position through the payload
+        (:meth:`_present`) and that path indexes nothing, so the one arm that knew where
+        the fault was contributed NO position and the five that merely object to ``status``
+        agreed on ``('status',)``.  The refusal then named a field that is not wrong, which
+        ``tests_emit/test_union_dispatch.py::test_a_union_refusal_names_the_position_it_refuses_at``
+        reports as the hard failure it is.
+
+        **The segment is IDENTIFIED and never counted**, which is the same rule
+        ``test_union_dispatch._document_path`` states for the general case and the reason
+        it can be exact here: the tags of this union are the branch NAMES, a closed set
+        the base itself holds, so a leading segment is stripped when it IS one of them and
+        left alone otherwise.  Nothing matches on a spelling, a capital or a
+        ``tagged-union[`` prefix, and a document whose own property is spelled like one of
+        our class names loses nothing -- the tag is only ever the FIRST segment of a row
+        this union raised.
+
+        The const case keeps the bare re-raise: its tag is the discriminating key's own
+        VALUE, which the document states and which :attr:`_BRANCH_DISCRIMINATOR` names, so
+        that path is measured green as it stands and is left exactly as it is.
+        """
+        names = {name for name, _ in cls._BRANCH_PRESENCE}
+        rows = err.errors()
+        if not any(row["loc"] and row["loc"][0] in names for row in rows):
+            return err
+        return ValidationError.from_exception_data(
+            cls.__name__,
+            [
+                cls._line_error(
+                    {**row, "loc": tuple(row["loc"][1:])}
+                    if row["loc"] and row["loc"][0] in names
+                    else row
+                )
+                for row in rows
+            ],
+        )
+
+    @classmethod
+    def _no_clause(cls, value: Any) -> ValidationError:
+        """The refusal for a payload whose KEY SET names no branch, in the document's own
+        words -- which are :class:`adcp.types._runtime.PresenceGroups`' words.
+
+        **THE RULE THIS EMISSION REPLACED IS THE SENTENCE IT REPORTS WITH**, and that is
+        the whole of this method (``adcp-client-python-j0fr``).  Before the owner's
+        correction of 2026-11-07 these 8 nodes carried a ``PresenceGroups`` over the same
+        clauses, whose refusal names the keyword, the count and every clause spelled out:
+        *"2 of these clauses hold, the document admits exactly one: 'format_id' present
+        and 'format_kind' absent; 'format_kind' present and 'format_id' absent"*.  The
+        hierarchy is a better carrier for the EXCLUSIVITY -- it is structural rather than
+        a runtime check -- and it is no carrier at all for the SENTENCE, which pydantic
+        states as ``union_tag_not_found`` with an empty ``loc``.  So the kind is asked for
+        its errors here, over the clauses the base already holds, rather than a second
+        prose written beside it: one statement of the document's fact, which is what §11
+        asks of every reading that has two readers.
+
+        Both failing counts reach it and are distinguished by the count the kind itself
+        reports: **zero** clauses holding is a payload no branch describes, and **two or
+        more** is one the document refuses for satisfying two.
+
+        ``loc`` is ``()`` and is the kind's own, which is where a ``oneOf`` over key
+        presence belongs: the fault is the COMBINATION of keys and not any one of them,
+        so there is no single property to name -- the same answer :meth:`_agreed` gives a
+        required-group refusal, and the same one the rule gave at this node before.
+        Pydantic prefixes whatever path the dispatch was reached through, so a nested
+        union still tells a caller which field of theirs refused.
+
+        **The error list cannot come back empty**, which is why there is no fallback arm:
+        the kind is silent only where exactly one clause holds, and that payload got a
+        tag and never reached this method.  A value that is not a mapping at all has the
+        empty key set, and ``parse.presence_branches``' third condition -- every clause's
+        required half is exactly one NON-EMPTY group -- is what makes every clause fail
+        it, so the count is 0 and the ``oneOf`` arm states it.
+        """
+        kind = PresenceGroups(
+            tuple(clause for _, clause in cls._BRANCH_PRESENCE), cls._branch_combinator()
+        )
+        keys, values = (
+            (frozenset(value), value) if isinstance(value, Mapping) else (frozenset(), {})
+        )
+        return ValidationError.from_exception_data(
+            cls.__name__,
+            [
+                InitErrorDetails(
+                    type=PydanticCustomError(keyword, "{detail}", {"detail": detail}),
+                    loc=loc,
+                    input=value,
+                )
+                for keyword, loc, detail, _ in kind.errors(keys, values)
             ],
         )
 

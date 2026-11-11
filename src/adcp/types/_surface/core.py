@@ -537,6 +537,9 @@ from .._schemas.core.catalog_item_reference_not_found_error import (
 )
 from .._schemas.core.catalog_selection import CatalogSelection as CatalogSelection
 from .._schemas.core.catchment import Catchment as Catchment
+from .._schemas.core.catchment import CatchmentGeometry as CatchmentGeometry
+from .._schemas.core.catchment import CatchmentRadius as CatchmentRadius
+from .._schemas.core.catchment import CatchmentTransportModeTravelTime as CatchmentTransportModeTravelTime
 from .._schemas.core.collection import Collection as Collection
 from .._schemas.core.collection import RelatedCollectionsItem as CollectionRelatedCollectionsItem
 from .._schemas.core.collection_delivery_metrics import CollectionDeliveryMetrics as CollectionDeliveryMetrics
@@ -564,6 +567,8 @@ from .._schemas.core.context import ContextObject as ContextObject
 from .._schemas.core.country_code import CountryCode as CountryCode
 from .._schemas.core.creative_approval_scope import ScopedCreativeApproval as ScopedCreativeApproval
 from .._schemas.core.creative_asset import CreativeAsset as CreativeAsset
+from .._schemas.core.creative_asset import V1CreativeNamedFormatReference as V1CreativeNamedFormatReference
+from .._schemas.core.creative_asset import V2CreativeCanonicalFormatKind as V2CreativeCanonicalFormatKind
 from .._schemas.core.creative_assets import CreativeAssets as CreativeAssets
 from .._schemas.core.creative_assignment import CreativeAssignment as CreativeAssignment
 from .._schemas.core.creative_assignment import RotationMode as CreativeAssignmentRotationMode
@@ -592,7 +597,9 @@ from .._schemas.core.creative_localization_readback import TargetLocalizationRea
 from .._schemas.core.creative_localization_readback import (
     UnmatchedLocaleAction as CreativeLocalizationReadbackUnmatchedLocaleAction,
 )
+from .._schemas.core.creative_manifest import CanonicalFormatManifest as CanonicalFormatManifest
 from .._schemas.core.creative_manifest import CreativeManifest as CreativeManifest
+from .._schemas.core.creative_manifest import NamedFormatManifest as NamedFormatManifest
 from .._schemas.core.creative_operation_format_declaration import (
     CreativeOperationFormatDeclaration as CreativeOperationFormatDeclaration,
 )
@@ -600,6 +607,8 @@ from .._schemas.core.creative_policy import AcceptedVerifiersItem as CreativePol
 from .._schemas.core.creative_policy import CreativePolicy as CreativePolicy
 from .._schemas.core.creative_policy import ProvenanceRequirements as CreativePolicyProvenanceRequirements
 from .._schemas.core.creative_representation import CreativeRepresentation as CreativeRepresentation
+from .._schemas.core.creative_representation import CreativeRepresentationFormatId as CreativeRepresentationFormatId
+from .._schemas.core.creative_representation import CreativeRepresentationFormatKind as CreativeRepresentationFormatKind
 from .._schemas.core.creative_representation import Source as CreativeRepresentationSource
 from .._schemas.core.creative_representation_set import CreativeRepresentationSet as CreativeRepresentationSet
 from .._schemas.core.creative_revision_id import CreativeRevisionID as CreativeRevisionID
@@ -839,8 +848,20 @@ from .._schemas.core.frequency_cap_duration_unit import FrequencyCapDurationUnit
 from .._schemas.core.frequency_cap_impression_constraints import (
     FrequencyCapImpressionConstraints as FrequencyCapImpressionConstraints,
 )
+from .._schemas.core.frequency_cap_impression_constraints import (
+    FrequencyCapImpressionConstraintsAllowedValues as FrequencyCapImpressionConstraintsAllowedValues,
+)
+from .._schemas.core.frequency_cap_impression_constraints import (
+    FrequencyCapImpressionConstraintsMaximumMinimum as FrequencyCapImpressionConstraintsMaximumMinimum,
+)
 from .._schemas.core.frequency_cap_interval_constraints import (
     FrequencyCapIntervalConstraints as FrequencyCapIntervalConstraints,
+)
+from .._schemas.core.frequency_cap_interval_constraints import (
+    FrequencyCapIntervalConstraintsAllowedIntervals as FrequencyCapIntervalConstraintsAllowedIntervals,
+)
+from .._schemas.core.frequency_cap_interval_constraints import (
+    FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval as FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval,
 )
 from .._schemas.core.frequency_cap_requirements import FrequencyCapRequirements as FrequencyCapRequirements
 from .._schemas.core.generation_credential import GenerationCredential as GenerationCredential
@@ -1255,6 +1276,15 @@ from .._schemas.core.product_filters import KeywordsItem as ProductFiltersKeywor
 from .._schemas.core.product_filters import ObjProvidersResponseTypes as ProductFiltersTrustedMatch
 from .._schemas.core.product_filters import ObjSystemCode as ProductFiltersMetrosItem
 from .._schemas.core.product_filters import ProductFilters as ProductFilters
+from .._schemas.core.product_filters import (
+    ProductFiltersGeoProximityItemGeometry as ProductFiltersGeoProximityItemGeometry,
+)
+from .._schemas.core.product_filters import (
+    ProductFiltersGeoProximityItemLatLngRadius as ProductFiltersGeoProximityItemLatLngRadius,
+)
+from .._schemas.core.product_filters import (
+    ProductFiltersGeoProximityItemLatLngTransportModeTravelTime as ProductFiltersGeoProximityItemLatLngTransportModeTravelTime,
+)
 from .._schemas.core.product_filters import ProvidersItem as ProductFiltersTrustedMatchProvidersItem
 from .._schemas.core.product_filters import RequiredGeoTargetingItem as ProductFiltersRequiredGeoTargetingItem
 from .._schemas.core.product_filters import RequiredVendorMetricsItem as ProductFiltersRequiredVendorMetricsItem
@@ -1859,6 +1889,12 @@ from .._schemas.core.targeting import TargetingOverlay as TargetingOverlay
 from .._schemas.core.targeting import TargetingOverlayDevicePlatform as TargetingOverlayDevicePlatform
 from .._schemas.core.targeting import TargetingOverlayDeviceType as TargetingOverlayDeviceType
 from .._schemas.core.targeting import TargetingOverlayGeoProximity as TargetingOverlayGeoProximity
+from .._schemas.core.targeting import (
+    TargetingOverlayGeoProximityItemLatLngRadius as TargetingOverlayGeoProximityItemLatLngRadius,
+)
+from .._schemas.core.targeting import (
+    TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime as TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime,
+)
 from .._schemas.core.targeting import TravelTime as TargetingOverlayGeoProximityItemTravelTime
 from .._schemas.core.targeting_input import TargetingOverlayInput as TargetingOverlayInput
 from .._schemas.core.targeting_modification import RemoveTargetingSetValues as RemoveTargetingSetValues
@@ -2343,6 +2379,7 @@ __all__ = [
     'CanonicalForecastPointViewability',
     'CanonicalForecastVendorMetricValue',
     'CanonicalFormatKind',
+    'CanonicalFormatManifest',
     'CanonicalFormatOption',
     'CanonicalFormatOptionFormatKind',
     'CanonicalMeasurementTerms',
@@ -2421,6 +2458,9 @@ __all__ = [
     'CatalogRequirements',
     'CatalogSelection',
     'Catchment',
+    'CatchmentGeometry',
+    'CatchmentRadius',
+    'CatchmentTransportModeTravelTime',
     'Category',
     'ChangedFields',
     'CleanRoom',
@@ -2487,6 +2527,8 @@ __all__ = [
     'CreativePolicyAcceptedVerifiersItem',
     'CreativePolicyProvenanceRequirements',
     'CreativeRepresentation',
+    'CreativeRepresentationFormatId',
+    'CreativeRepresentationFormatKind',
     'CreativeRepresentationSet',
     'CreativeRepresentationSource',
     'CreativeRevisionID',
@@ -2668,7 +2710,11 @@ __all__ = [
     'FrequencyCapConstraints',
     'FrequencyCapDurationUnit',
     'FrequencyCapImpressionConstraints',
+    'FrequencyCapImpressionConstraintsAllowedValues',
+    'FrequencyCapImpressionConstraintsMaximumMinimum',
     'FrequencyCapIntervalConstraints',
+    'FrequencyCapIntervalConstraintsAllowedIntervals',
+    'FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval',
     'FrequencyCapRequirements',
     'FrequencyCapSuppress',
     'FrequencyCapWindow',
@@ -2859,6 +2905,7 @@ __all__ = [
     'MetroSupportSystems',
     'MissingMetric',
     'MissingMetricVendor',
+    'NamedFormatManifest',
     'NativeInFeedFormatDeclaration',
     'NegativeKeyword',
     'NonblockingImpacts',
@@ -3063,6 +3110,9 @@ __all__ = [
     'ProductExecutionRequirement',
     'ProductFilters',
     'ProductFiltersGeoProximityItem',
+    'ProductFiltersGeoProximityItemGeometry',
+    'ProductFiltersGeoProximityItemLatLngRadius',
+    'ProductFiltersGeoProximityItemLatLngTransportModeTravelTime',
     'ProductFiltersKeywordsItem',
     'ProductFiltersMetrosItem',
     'ProductFiltersRequiredGeoTargetingItem',
@@ -3456,6 +3506,8 @@ __all__ = [
     'TargetingOverlayGeoProximityItem',
     'TargetingOverlayGeoProximityItemGeometry',
     'TargetingOverlayGeoProximityItemGeometryType',
+    'TargetingOverlayGeoProximityItemLatLngRadius',
+    'TargetingOverlayGeoProximityItemLatLngTransportModeTravelTime',
     'TargetingOverlayGeoProximityItemRadius',
     'TargetingOverlayGeoProximityItemTravelTime',
     'TargetingOverlayInput',
@@ -3518,6 +3570,8 @@ __all__ = [
     'UpdateMediaBuyAsyncSubmitted',
     'UpdateMediaBuyAsyncWorking',
     'UserMatch',
+    'V1CreativeNamedFormatReference',
+    'V2CreativeCanonicalFormatKind',
     'VASTAsset',
     'VASTAssetInline',
     'VASTAssetRequirements',

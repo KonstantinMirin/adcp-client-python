@@ -409,6 +409,26 @@ class Union(Base):
     #: ``const`` pin, its ``required`` set, its title.  §6 keeps those readings at the
     #: declaration level, which is why this is the one carrier beside the parsed nodes.
     branch_raw: tuple[Any, ...] = ()
+    #: **§4's SECOND dispatch source, read by the parser because the classification is
+    #: the parser's**: one presence CLAUSE per branch -- the groups it requires and the
+    #: groups it forbids -- where the branches differ only in which keys are present and
+    #: a base plus children expresses that (``parse.presence_branches``, the owner's
+    #: correction of 2026-11-07, ``adcp-client-python-j0fr``).  Empty at every union
+    #: whose branches are shapes, which is every union of this bundle but 8.
+    #:
+    #: Aligned 1:1 with :attr:`branch_raw` and :attr:`branches` where it is non-empty,
+    #: and that alignment is what the lowering pairs a clause with a branch CLASS by.
+    #:
+    #: **A FIELD and not a second reading of :attr:`branch_raw` in the lowering**, for
+    #: §11's reason and for a measured one.  The reading is position-dependent --
+    #: ``schema.presence_clause`` asks ``keywords.declares`` at the position asked about
+    #: -- and the position this node was classified at is not recoverable from a branch
+    #: declaration alone, so a lowering re-reading the branches would have to pick one
+    #: and could pick a different one from the predicate that routed the node here.  The
+    #: same predicate's answer travels instead, which is :attr:`branches`' own
+    #: arrangement one axis over: the union knows a thing about its branches and TELLS
+    #: them rather than having it reconstructed.
+    presence: tuple[Any, ...] = ()
     #: The node's own ``required``, in the document's own order.  A field of its own and
     #: never read back out of the keyword mapping ``siblings`` was, for the reason
     #: :attr:`Base.declared` and :attr:`Base.extra` are fields too: §5's ``required``

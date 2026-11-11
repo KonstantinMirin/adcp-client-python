@@ -8125,6 +8125,25 @@ def test_a_presence_clause_keeps_its_two_halves_paired_to_its_own_branch() -> No
        document rather than written out, refuses the payload the document admits.
 
     A later row that "simplifies" the paired clauses back into two rules reddens (3).
+
+    **AND THE CLAUSES ARE READ OFF THE BASE'S DISPATCH NOW, which is the owner's
+    correction of 2026-11-07** (``adcp-client-python-j0fr``).  ``core/catchment.json`` is
+    one of the 8 presence-only ``oneOf`` nodes a base plus children expresses, so the
+    exclusivity is the HIERARCHY's and the clauses live on
+    ``BranchDispatchMixin._BRANCH_PRESENCE`` rather than in a ``PresenceGroups`` on one
+    class.  **The three assertions are unchanged and so is the design they bank**: the
+    clauses are the same :class:`adcp.types._runtime.Presence` values, one per branch,
+    with both halves paired -- and the kind they are read through is the same kind, which
+    is what ``_no_clause`` builds to state the refusal.  The 3 nodes the hierarchy cannot
+    express still carry the rule itself, graded at
+    ``tests_emit/test_a_presence_union_dispatches_on_its_key_set.py``.
+
+    This clause was ALREADY RED before that correction, and for a reason of its own:
+    ``lower_declaration`` was asked at ``Position.ROOT``, where the combinator's cell is
+    not a rule source at all, so ``declaration_rule_sources`` never put ``oneOf`` in
+    ``sources`` and the list comprehension found nothing.  Reading the clauses off the
+    class the walk actually produced is what takes the measurement off a position the
+    rule was never written at.
     """
     doc = bundle.read(BUNDLE, "core/catchment.json")
     branches = doc["oneOf"]
@@ -8136,12 +8155,25 @@ def test_a_presence_clause_keeps_its_two_halves_paired_to_its_own_branch() -> No
     assert validator.is_valid(admitted), sorted(validator.iter_errors(admitted))
     assert not validator.is_valid(refused)
 
-    # (2) the rule the walk writes for it, on the same two payloads.
-    (rule,) = [
-        r
-        for r in rules.lower_declaration(doc, keywords.Position.ROOT).rules
-        if type(r).__name__ == "PresenceGroups"
-    ]
+    # (2) the clauses the walk writes for it, in the kind that pairs their halves, on the
+    # same two payloads.  The base is the class at the node's own pointer and the clauses
+    # are its dispatch; the kind is ``PresenceGroups`` either way, which is the whole of
+    # what this clause is about.
+    from adcp.types._runtime import PresenceGroups
+
+    base = importlib.import_module("adcp.types._schemas.core.catchment").Catchment
+    assert base._BRANCH_PRESENCE, "the base states no presence clause"
+    rule = PresenceGroups(
+        tuple(clause for _, clause in base._BRANCH_PRESENCE), base._branch_combinator()
+    )
+    # **Each clause is paired to ITS OWN branch**, which is the fact the hoist destroys and
+    # the reason this file names the pairing: the clause at position i is the branch the
+    # document writes at ``/oneOf/i``, and the class it selects is that branch's class.
+    for i, (name, clause) in enumerate(base._BRANCH_PRESENCE):
+        stated = schema_parse.presence_clause(branches[i], keywords.Position.ROOT)
+        assert stated is not None, branches[i]
+        assert (clause.require, clause.forbid) == stated, (i, clause, stated)
+        assert base.__dict__["_branch_models"][i].__name__ == name
     assert rule.combinator == "oneOf", rule
     assert len(rule.clauses) == len(branches), rule
     for payload, refuses in ((admitted, False), (refused, True)):

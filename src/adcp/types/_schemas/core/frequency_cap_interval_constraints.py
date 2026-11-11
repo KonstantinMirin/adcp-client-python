@@ -5,15 +5,15 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
-from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._runtime import ForbiddenGroups, Presence, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
 from .ext import ExtensionObject
 from .frequency_cap_duration_unit import FrequencyCapDurationUnit
 
 
-class FrequencyCapIntervalConstraints(AdCPBaseModel):
+class FrequencyCapIntervalConstraints(BranchDispatchMixin, AdCPBaseModel):
     """
     Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.
     """
@@ -21,8 +21,14 @@ class FrequencyCapIntervalConstraints(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap-interval-constraints.json', pointer='#')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('unit',)
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('FrequencyCapIntervalConstraintsAllowedIntervals', Presence(require=(('allowed_intervals',),), forbid=(('minimum_interval',), ('maximum_interval',)))), ('FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval', Presence(require=(('minimum_interval', 'maximum_interval'),), forbid=(('allowed_intervals',),))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=(('allowed_intervals',),), forbid=(('minimum_interval',), ('maximum_interval',))), Presence(require=(('minimum_interval', 'maximum_interval'),), forbid=(('allowed_intervals',),))), 'oneOf'),
         UniqueItems('allowed_intervals'),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
@@ -33,6 +39,33 @@ class FrequencyCapIntervalConstraints(AdCPBaseModel):
     maximum_interval: Annotated[IntMin1 | None, OmittedNotNull] = None
     allowed_intervals: Annotated[list[IntMin1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
+
+
+class FrequencyCapIntervalConstraintsAllowedIntervals(FrequencyCapIntervalConstraints):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap-interval-constraints.json', pointer='#/oneOf/0')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('minimum_interval',), ('maximum_interval',))),
+    )
+    allowed_intervals: Annotated[list[IntMin1], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+
+
+class FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval(FrequencyCapIntervalConstraints):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap-interval-constraints.json', pointer='#/oneOf/1')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('allowed_intervals',),)),
+    )
+    maximum_interval: IntMin1
+    minimum_interval: IntMin1
+
+
+FrequencyCapIntervalConstraints._branch_models = (FrequencyCapIntervalConstraintsAllowedIntervals, FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval,)
+FrequencyCapIntervalConstraints.model_rebuild(force=True)
 
 
 __all__ = ["FrequencyCapIntervalConstraints"]

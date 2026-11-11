@@ -497,7 +497,6 @@ from .._schemas.media_buy.outcome_target import OutcomeTarget as OutcomeTarget
 from .._schemas.media_buy.package_control import PackageControl as PackageControl
 from .._schemas.media_buy.package_request import Bidding as PackageRequestBidding
 from .._schemas.media_buy.package_request import CommittedMetricsItemVendor as CommittedMetricsItemVendor
-from .._schemas.media_buy.package_request import CreativesItem as PackageRequestCreativesItem
 from .._schemas.media_buy.package_request import PackageRequest as PackageRequest
 from .._schemas.media_buy.package_update import PackageUpdate as PackageUpdate
 from .._schemas.media_buy.product_discovery_criteria import ProductDiscoveryCriteria as ProductDiscoveryCriteria
@@ -1007,7 +1006,6 @@ __all__ = [
     'PackageCountConstraints',
     'PackageRequest',
     'PackageRequestBidding',
-    'PackageRequestCreativesItem',
     'PackageUpdate',
     'PackagesItemIndicatorsItemType',
     'PerformanceStandards',

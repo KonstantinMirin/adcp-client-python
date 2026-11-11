@@ -68,11 +68,112 @@ from codegen.verify import witness
 VERDICTS = "verdicts.tsv"
 
 #: Seconds one pair of the verdict table may cost before the run gives up on it and writes
-#: ``absent`` instead.  ``harness.within`` says what forces a bound at all; what forces THIS
-#: number is the shape of the cost: a pair whose instances are held replays in 0.0 to 0.4 s,
-#: and the pairs that exceed a budget of any size are the ones that DRAW -- 133 s to over
-#: 2 h 57 m each.  There is nothing between the two, so the budget is small enough that the
-#: whole table stays obtainable and large enough that no replayed pair can reach it.
+#: ``absent`` instead.  ``harness.within`` says what forces a bound at all.
+#:
+#: **ITS OWN SENTENCE HERE WAS MEASURED FALSE, WHICH IS THE FOURTH CAP DOCSTRING IN THIS
+#: EPIC TO BE** (``adcp-client-python-auw6``).  It read: *"a pair whose instances are held
+#: replays in 0.0 to 0.4 s, and the pairs that exceed a budget of any size are the ones
+#: that DRAW -- 133 s to over 2 h 57 m each.  There is nothing between the two, so the
+#: budget is small enough that the whole table stays obtainable and large enough that no
+#: replayed pair can reach it."*  Three readings refute it, each over all 2,586 pairs this
+#: function grades, warm corpora, the committed tree:
+#:
+#: * **THERE IS NO GAP.**  p50 **0.014 s**, p90 **0.369 s**, p95 **1.324 s**, p99
+#:   **7.213 s**, with **159** pairs between 1 s and 60 s.  The cost is a continuum, so
+#:   "small enough ... and large enough" names a window that does not exist, and the
+#:   number sits inside the working population rather than outside it.
+#:
+#: * **THE CLOCK IT IS SPENT AGAINST IS NOT A FUNCTION OF THE PAIR.**  Two runs of
+#:   identical code over the identical population priced ``core/wholesale-feed-webhook.json#``
+#:   at **49.7 s and 23.6 s** -- 2.1x for one pair -- because the memos, the records and the
+#:   validator stores are process-wide and what a pair costs depends on what the process
+#:   graded before it.  The SET this bound cut was therefore **8, 4 and 2 pairs** in three
+#:   runs, diffed by NAME and not by count: ``core/wholesale-feed-event.json#/oneOf/0`` and
+#:   ``core/wholesale-feed-webhook.json#`` were cut in one run and graded in the next.  A
+#:   verdict of ``absent`` that moves with scheduling is §9's *"recorded as though
+#:   something had been learned"*.
+#:
+#: * **WHAT IT WAS BLAMED ON IS NOT WHAT IT CUTS.**  The sentence above says the cut pairs
+#:   are "the ones that DRAW", meaning ``check_accepts``.  Profiled (py-spy, 112,701 samples
+#:   at 100 Hz) over the 155 most expensive pairs: ``check_widening`` **52.6%**,
+#:   ``check_admits`` **39.5%**, ``check_accepts`` **0.7%**.  Over the whole population
+#:   ``check_admits`` is **50.1%** and ``iter_errors`` is **55.0% inclusive** --
+#:   so this bound cuts VALIDATION and the widening draw, and never the accepts draw the
+#:   committed floor already answers.  ``harness.check_accepts`` carries that attribution.
+#:
+#: **ONLY TWO PAIRS EXCEED IT IN EVERY RUN**, and they are the two that do not terminate at
+#: all: ``media-buy/get-media-buys-response.json#`` and
+#: ``media-buy/refine-proposals-response.json#`` (``adcp-client-python-l6xn``/``-x2se``,
+#: still running at 90 s and recorded at 43 minutes and 17.7 GB on one of them).  So those
+#: two are what forces a bound, and everything else the old number cut was cut by noise.
+#:
+#: **AND THE NUMBER IS NOT RAISED, WHICH IS THE WHOLE OF WHAT THE MEASUREMENT CHANGES.**
+#: The lane that took these readings proposed 120 -- above the slowest finisher (49.7 s) with
+#: the measured 2.1x variance as headroom -- and that is reverted. ``docs/plan/architecture.md``
+#: §9: *"A CHECK'S COST IS LINEAR IN THE DOCUMENT'S NODES, EACH VISITED ONCE -- AND A BUDGET
+#: IS EVIDENCE THAT ONE IS NOT."*  §14 names the forbidden forms and a RAISED CAP is one of
+#: them: it is the same limit with a larger number, and the lane's own note conceded the
+#: figure "remains a number nobody read off a document".  A bound that cuts a nondeterministic
+#: set is evidence for DELETING it, never for widening it.
+#:
+#: **SO 30 STANDS AS A KNOWN DEFECT RATHER THAN A TUNED SETTING, AND THE REPAIR IS NAMED.**
+#: Only ``l6xn``/``x2se``'s two pairs exceed any budget on every run, and what makes them slow
+#: is measured: ``iter_errors`` is 55.0% inclusive with 25.4% leaf time REBUILDING A VALIDATOR
+#: OR A ``referencing`` RESOURCE, one per subschema per instance validated.
+#: ``adcp-client-python-2i99`` shared the ROOT validator and that holds; this is the
+#: per-descent rebuild below it, heaviest at ``adcp.types._base.strict_validate`` (9.7% of the
+#: run), the one validation path with neither the quiet class, nor the idless-Resource skip,
+#: nor a held validator instance. ``adcp-client-python-l6xn`` owns the deletion.
+#:
+#: **AND THE STRUCTURAL BOUNDARY IS NOT WHAT DELETES IT, WHICH WAS PUT TO A MEASUREMENT
+#: RATHER THAN ASSUMED** (``adcp-client-python-auw6``, after the ruling at
+#: ``rebuild-plan.md`` §8).  The sentence above used to end "fix that and the two pairs
+#: finish"; the boundary is the other candidate, and the reasoning was that an instance
+#: stopping at each enclosure leaves far fewer subschemas to validate.  Implemented as an
+#: experiment -- every enclosure pinned to ``witness.Construction.floor``, the least
+#: instance that document admits, constructed and never drawn, with the subject's own
+#: members left exactly as stated -- and graded over all 2,586 pairs:
+#:
+#: * **it is verdict-neutral: 0 of 2,586 outcomes moved**, diffed by NAME;
+#: * **it is not cheaper**: 604.6 s against 701.6 s in ``check_pair``, inside the 2.1x
+#:   per-pair variance already recorded above, so neither figure is a saving;
+#: * **the set a 30 s bound cuts is IDENTICAL -- the same two pairs by NAME**, and so is
+#:   the set reaching a 60 s ceiling;
+#: * **and neither of those two finishes with NO budget at all.**  Run to a 400 s watchdog
+#:   that dumps its stacks rather than writing a verdict: both were still inside the draw.
+#:
+#: What the boundary DOES remove is real and is a different cost: the fixture derivation.
+#: ``Fixtures.reduced`` is 19.8% inclusive (223.3 s) over the graded set without it and
+#: **0.0% to 0.3% with it** on exactly the two pairs that do not finish.  It is simply not
+#: what those two are bound by, and it is not where the clock goes: the boundary bounds
+#: what the draw GENERATES, while ``check_admits`` validates against the UNFIXTURED node by
+#: design, and that is 50.1% of the run.
+#:
+#: **WHAT THEY ARE BOUND BY, PROFILED WITH THE BOUNDARY APPLIED** (py-spy, 50 Hz, one pair
+#: per process, no budget).  Both spend all of it in ``check_widening``'s draw, and the
+#: cause is the per-descent rebuild arriving through SCHEMA validation rather than instance
+#: validation -- which is why the first profile under-read it:
+#:
+#: * ``media-buy/refine-proposals-response.json#``, 424 s: ``check_widening`` 92.2%,
+#:   ``Fixtures.reduced`` 0.0%.  ``_Draws._reached`` -> ``one_instance`` -> ``from_schema``
+#:   -> ``merged`` 78.9% -> ``canonicalish`` 37.4%, and inside it
+#:   **``jsonschema``'s ``check_schema`` at 74.4% (315.8 s)** with ``descend`` 75.7% and
+#:   ``evolve`` 20.4%.  ``urllib.parse`` alone -- ``urljoin``, ``urlunsplit``, ``urlparse``,
+#:   ``_coerce_args`` -- is **67.6 s of leaf time, 16% of the pair**, re-deriving a base URI
+#:   per node.
+#: * ``media-buy/get-media-buys-response.json#``, 403 s: ``check_widening`` 100% of the
+#:   non-idle time, ``canonicalish`` 401.5 s and ``merged`` 395.5 s of it,
+#:   ``Fixtures.reduced`` 1.2 s.  ``iter_errors``/``descend`` 233 s inside the merge and
+#:   125 s of leaf time in ``json`` encode/decode -- the canonicaliser's own round-trip
+#:   copy and the memo key beside it.
+#:
+#: So ``hypothesis_jsonschema`` re-validates a multi-megabyte schema against the
+#: meta-schema on each ``merged``/``canonicalish`` call, descending it with a fresh
+#: validator and a fresh URI join per node.  **That is TWO defects and neither is this
+#: bound**: the per-descent validator-and-resource rebuild, which ``2i99`` left below the
+#: root it fixed, and the demand conjunction ``_bases``/``_reached`` hands to
+#: ``from_schema`` unbounded.  Both are owed a row; until one of them lands, this number
+#: stands as a known defect with its repair named and not as a tuned setting.
 BUDGET = 30
 
 

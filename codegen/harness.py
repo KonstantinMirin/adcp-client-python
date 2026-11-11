@@ -1147,7 +1147,7 @@ class Fixtures:
                 placements.append((position.pointer, instance))
         return fixtured(schema, placements)
 
-    def reduced(self, schema: Any, depth: int = 8) -> tuple[Any, int]:
+    def reduced(self, schema: Any) -> tuple[Any, int]:
         """``schema`` with every outermost instance location under it pinned to one value.
 
         **§8's fixture rule read off the NODE BEING GRADED**, which is the half
@@ -1185,43 +1185,128 @@ class Fixtures:
         the location's own pair would pay, recursively reduced the same way, so the cost of
         a node is the SUM over its locations and not the product.
 
+    **AND THIS METHOD IS NOT THE OWNER'S BOUNDARY, WHICH IS A MEASUREMENT AND NAMES WHAT
+        IS STILL OWED.**  ``docs/plan/rebuild-plan.md`` §8 rules that a payload is COMPLETE
+        at the subject under test and MINIMAL at every enclosure, on attribution grounds and
+        not cost ones -- so this method, which pins EVERY child location of the subject to
+        one value, narrows the subject as well as its enclosures and is the wrong reading of
+        that rule even where it is cheap.  The right one pins only at an enclosure, to
+        ``verify.witness.Construction.floor`` -- the least instance that document admits,
+        CONSTRUCTED from its keywords and never drawn.
+
+        Put to a measurement over all 2,586 graded pairs (``adcp-client-python-auw6``), and
+        the finding is that the ENCLOSURE CANNOT YET BE LOCATED, which is this method's own
+        subject arriving from the other side:
+
+        * read off the RAW document's ``$ref`` strings (:func:`referring_positions`), the
+          boundary takes the schema handed to the draw from 630,418,192 bytes to
+          **16.4%** -- ``core/mcp-webhook-payload.json#`` 44,320,211 -> 7,329 -- but it
+          leaves **1,059 of 2,586 nodes with nothing placed at all**, and names **ZERO**
+          enclosures in ``refine-proposals-response.json#/properties/results/items/oneOf/0``.
+          That is :func:`locations`' measured reason restated: ``applied_schema`` conjoins
+          the enclosing statements, so the enclosed document arrives inside a conjunct at a
+          pointer the document never spells.
+        * recognised instead by WHAT A SUBTREE ADMITS, matched against every portable
+          document's own nodes, it does reach that node -- 107 enclosures where the raw
+          reading found none -- but only **52.0%** overall, because an outer enclosure is a
+          conjunction ``applied_schema`` built and is identical to no document. It matches
+          the untouched inner copies and misses the big outer ones.
+        * the union of both is verdict-neutral (**0 of 2,586 outcomes moved**) and no
+          cheaper (604.6 s against 701.6 s, inside the 2.1x per-pair variance
+          ``codegen/__main__.BUDGET`` records), and the two pairs that do not finish still
+          do not finish with NO budget.
+
+        So the boundary is right and its READING is not settled: a record inlines a
+        cross-document reference by copying and then conjoins the copy, so neither the raw
+        ``$ref`` nor the copy's content locates it in general. Naming an enclosure inside a
+        conjunction is the open question, it belongs upstream of this method, and nothing
+        here should be taken as that rule.
+
         An item no value survives for is left exactly as it stands: the fail-safe
         direction is to lose the saving, never to place a value the document does not
         admit.
 
-        **``depth`` BOUNDS HOW MANY TIMES THE REDUCTION RE-ENTERS ITSELF, AND ITS OWN
-        SENTENCE HERE WAS WRONG TWICE.**  It read "it is a guard on an unreasonable answer
-        and not the terminator, which is the content memo", and measurement refutes both
-        halves (``merge(bounds)``, instrumented at :meth:`_pin`'s guard over all 2,586
-        pairs of ``test_emit.graded_reports``): the guard FIRES at **273 of 1,696**
-        ``_pin`` calls, re-entering to the full 8, so it is cutting rather than guarding --
-        and the content memo is not what terminates this, because a frontier one level
-        deeper has different content.  **What terminates it is the descent**: each
-        re-entry's conjunction is built from one frontier item's statements, whose own
-        frontier lies strictly inside them, so the re-entry walks a finite tree.
+        **A BOUND STOOD HERE (``depth: int = 8``, cut by :meth:`_pin`'s ``depth <= 0``
+        one frame away) AND IT IS GONE, WHICH IS A MEASUREMENT AND NOT A TIDYING**
+        (``adcp-client-python-auw6``; ``docs/plan/final-state.md`` reading 1: *"NO CHECK
+        CARRIES A BUDGET, A DEPTH LIMIT OR AN EXAMPLE COUNT.  Each of the three terminates
+        structurally."*).  Three things were measured before it was touched, over all
+        2,586 pairs the population pairs, and each is recorded here because the sentence
+        this paragraph replaced was itself the second wrong one on this bound.
 
-        **IT IS A NUMBER AND IT STAYS, WHICH IS A SCOPE AND NOT A DEFENCE**
-        (``docs/plan/final-state.md`` reading 1 condemns it in the same sentence as the
-        five bounds already deleted).  It is in ``BUDGET = 30``'s family and not in
-        ``_ARM_DEPTH``'s: when it expires the pin is :data:`NONE` and the position stands
-        exactly as the document states it, so no location, no fact and no witness is lost
-        -- what is lost is the SAVING, and the draw then pays the unreduced node in full.
-        So removing it is a question about the draw's cost, which
-        ``adcp-client-python-2i99`` (the validator rebuilt per call, the resolution never
-        amortised) and ``-5pb`` (``hypothesis_jsonschema`` enumerating the power set of a
-        composition's branches) own, and
-        ``tests_emit/test_no_cap_is_on_the_grading_path.py``'s clause 5 names it with this
-        measurement rather than catching it.
+        **1. THE RECURSION TERMINATES ON ITS OWN, which was UNVERIFIED and is now read off
+        the ANSWER.**  Instrumented over every one of the 2,586 graded nodes with the
+        content memo OFF and the draw removed -- so the descent walked is the FULL
+        recursion tree and the real one is a subset of it, because :meth:`value` returns
+        early from ``stated_instances`` on some paths and re-enters here on the rest --
+        **0 of 2,586 descents failed to terminate**, against a tripwire at 1,000
+        re-entries.  The deepest is ``compliance/comply-test-controller-request.json#`` at
+        **21 re-entries**, whose own node is 8,248,082 bytes and 43 pointer segments tall.
+
+        **2. WHAT TERMINATES IT IS THE DESCENT, and no already-followed guard is owed
+        here.**  Each re-entry's conjunction is built from ONE frontier item's statements,
+        and :func:`locations` collects only mapping VALUES inside the node it is handed and
+        follows no ``$ref`` -- a reference is a STRING in a record -- so every re-entry's
+        frontier lies strictly inside its caller's and the level is bounded by the node's
+        own HEIGHT (21 reached against a maximum of 44 over this bundle).  That is
+        :func:`locations`' own terminator, one frame out.  The ``followed`` set
+        :func:`_normalize` and :func:`_composed` received is NOT the same obligation: those
+        two FOLLOW a pointer and can arrive back at a node they have already read, so they
+        have a back edge to close; this recursion follows none, so there is none to close.
+
+        **3. REMOVING IT COSTS 3.6% OF THE REDUCTION'S CLOCK AND BUYS 256 PINNED
+        POSITIONS.**  Measured with the DRAW ON and one memo shared across the population,
+        as ``codegen/__main__.grade`` and ``test_emit.fixtures`` share one object for a
+        whole run -- this method called on every one of the 2,586 graded nodes, each node
+        bounded at 60 s so that a node reaching it is reported rather than hiding the rest:
+
+        ====================================  =============  ===========
+        over the 2,586 graded nodes               bounded 8    unbounded
+        ====================================  =============  ===========
+        seconds                                    1,846.3      1,912.4
+        derivations                                  4,495        4,515
+        pins CUT by the bound                          183            0
+        positions pinned                            33,001       33,237
+        deepest level reached                   8 (the cap)           12
+        nodes reaching the 60 s ceiling                 25           25
+        ====================================  =============  ===========
+
+        **The pinned sets are compared as SETS and not as sizes**: 256 positions gained, 20
+        lost.  The 20 are §8's own named caveat arriving one level deeper -- a pin placed
+        further in can empty a conjunction an outer pin was drawn from, so that outer pin
+        answers :data:`NONE` instead -- and they cost nothing but the saving, because an
+        item no value survives for is left exactly as the document states it.  **And the
+        ceiling set is IDENTICAL -- the same 25 nodes by NAME and not the same count of
+        them** -- which is the figure that decides this: the bound was not what kept any
+        node inside 60 s, and removing it adds no 26th.
+
+        **And the memo is what makes that affordable, not the bound.**  With the memo OFF
+        the same descent visits 1,721,076 frontier items, 656,168 of them at that one
+        compliance node; with it on, 4,515 derivations answer the whole population.  Read
+        without the draw the same two readings are 4,693 derivations against 4,787 and 224
+        pins cut -- the figures differ from the table above because a cut derivation is
+        also a memo entry not made, and both are recorded so neither looks like the other.
+        **412 of the 2,586 nodes reach past level 8**, so the bound was cutting 16% of the
+        population's descents and not a tail.
+
+        **AND THE COST IT WAS KEPT FOR IS NOT HERE.**  ``adcp-client-python-auw6``'s
+        sampling profile over the population (py-spy, 112,701 samples at 100 Hz, warm
+        corpora) attributes **10.5%** of the run to ``check_accepts`` and **0.7%** of the
+        155 most expensive pairs to it; ``from_schema``'s 296.2 s is 249.4 s under
+        ``check_widening``, reached through :meth:`_Draws._draw` -> this method ->
+        :meth:`value` -> :func:`one_instance`.  So the draw this reduction feeds is
+        ``check_widening``'s, the check with no committed floor, and a depth bound here was
+        containing 2% of its derivations while suppressing 224 of its savings.
         """
         placements = []
         for item in locations(schema):
-            answer = self._pin(item, depth)
+            answer = self._pin(item)
             if answer is NONE:
                 continue
             placements.extend((pointer, answer) for pointer in item.pointers)
         return replaced(schema, placements)
 
-    def _pin(self, item: Location, depth: int) -> Any:
+    def _pin(self, item: Location) -> Any:
         """The subschema one frontier item is replaced by, or :data:`NONE`.
 
         **Memoised on the item's CONTENT and not on a pointer**, which is the key §8's
@@ -1231,21 +1316,26 @@ class Fixtures:
         -- the three ``refine-proposals-response.json#/properties/results/items/oneOf/*``
         pairs hold the same commercial-terms subtree at three different pointers and share
         one derivation, which a pointer key cannot do.
+
+        **AND THE MEMO IS NOT WHAT TERMINATES THIS**, which is worth saying where the
+        deleted bound's own sentence said the opposite: a frontier one level deeper has
+        different content, so it is a different entry.  :meth:`reduced` carries what does
+        terminate it and the measurement that establishes it.  What the memo decides is the
+        COST -- 4,787 derivations over the population against 1,721,076 frontier items
+        without it.
         """
-        if depth <= 0:
-            return NONE
         #: The KIND is in the key, because a branch and a child location with identical
         #: content get different answers -- a reduced node and a ``{"const": v}`` -- and a
         #: key that could not tell them apart would hand one the other's.
         key = _content_key(item.nodes, kind=item.kind.encode())
         if key is not None and key in self.pins:
             return self.pins[key]
-        answer = self._derived_pin(item, depth)
+        answer = self._derived_pin(item)
         if key is not None:
             self.pins[key] = answer
         return answer
 
-    def _derived_pin(self, item: Location, depth: int) -> Any:
+    def _derived_pin(self, item: Location) -> Any:
         """The subschema one frontier item is replaced by, or :data:`NONE`.
 
         One kind since this row (:class:`Location`), so this is the pin and not a
@@ -1253,10 +1343,10 @@ class Fixtures:
         ``{"const": v}``.  :data:`NONE` where no value survives, which is the fail-safe
         direction -- the position then stands as the document states it.
         """
-        value = self.value(item.nodes, depth - 1)
+        value = self.value(item.nodes)
         return NONE if value is NONE else {"const": value}
 
-    def value(self, statements: Sequence[Mapping[str, Any]], depth: int) -> Any:
+    def value(self, statements: Sequence[Mapping[str, Any]]) -> Any:
         """One instance the CONJUNCTION of ``statements`` admits, or :data:`NONE`.
 
         Several statements about one instance location are conjoined as the document
@@ -1295,7 +1385,7 @@ class Fixtures:
             raise
         except Exception:  # noqa: BLE001 -- an unusable statement states nothing
             pass
-        narrowed, _ = self.reduced(conjunction, depth)
+        narrowed, _ = self.reduced(conjunction)
         try:
             instance = one_instance(narrowed, self.custom_formats)
         except OverBudget:
@@ -4354,10 +4444,45 @@ def check_accepts(
     supplies a ``target()``, so it had nothing to steer.
 
     **``corpus`` makes the draw DELTA-BASED, and it is the caller's OBJECT and not a path.**
-    ``from_schema`` is the overwhelming majority of this check's cost over the graded
+    ``from_schema`` was the overwhelming majority of this check's cost over the graded
     population and the suite regenerates the same instances every run from inputs every one
     of which is in git, so the instances are held content-addressed by :func:`corpus_key`
-    and replayed.  The object is anything with ``get(key)`` answering a held list or
+    and replayed.
+
+    **AND WITH THE FLOOR IN PLACE IT IS NO LONGER THIS CHECK'S COST, WHICH IS A
+    MEASUREMENT AND RETIRES THE SENTENCE ABOVE AS A PRESENT-TENSE CLAIM**
+    (``adcp-client-python-auw6``: py-spy over the population, 112,701 samples at 100 Hz,
+    warm corpora, the committed tree, 2,586 pairs).  **The figures are SHARES**, which is
+    what a sampling profile decides and all it decides: the profiled pass is 1,127 s and the
+    same pass unprofiled is 752 s, so a second of it is not a cost anybody pays.  Attributed
+    by the outermost check frame, ``check_accepts`` is **10.5% (118.7 s of 1,127 s)**, and
+    over the 155 most expensive pairs it is **0.7% (2.6 s of 353 s)**.  ``from_schema`` is still
+    expensive -- 296.2 s inclusive -- but **249.4 s of that is under ``check_widening``**
+    and 46.8 s under this check: the draw moved to the check whose floor
+    (``tests_emit/corpus.py``'s widening store) holds nothing, reached through
+    :meth:`_Draws._draw` -> :meth:`Fixtures.reduced` -> :meth:`Fixtures.value` ->
+    :func:`one_instance`.  What the population's clock actually goes on is VALIDATION:
+    ``iter_errors`` is **55.0% inclusive (620.3 s)**, 427.9 s of it under ``check_admits``,
+    and **25.4% (286.8 s) is leaf time in frames that rebuild a validator or a
+    ``referencing`` resource** -- ``jsonschema``'s ``descend``/``evolve``/
+    ``__attrs_post_init__`` and ``referencing``'s ``create_resource``/``lookup``/``pointer``
+    with ``urllib.parse.urlunsplit`` inside, one per subschema per instance validated.
+    ``adcp-client-python-2i99`` shared the ROOT validator and that holds; this is the
+    PER-DESCENT rebuild below it, which that row never reached, and the largest single
+    bucket of it is ``check_admits`` through ``adcp.types._base.strict_validate`` (109.6 s,
+    9.7% of the run) -- the emitted package's own validation path, which has neither
+    :func:`_reading`'s quiet class, nor its idless-``Resource`` skip, nor
+    :func:`validator_instances_shared_within_one_grade`'s held instance.
+
+    **SO ``examples`` IS NOT WHAT CONTAINS THIS CHECK'S COST, and its own justification is
+    void.**  It stays because it is the OBLIGATION SIZE and not a cost bound:
+    :func:`corpus_defect` reads it to decide whether a held entry reaches far enough
+    (``len(held) < examples`` is a MISS), so the committed floor's entries are 25 instances
+    long because this number says 25.  Changing it is a statement about how much of a
+    node's accepted set one pair grades, which is a different question from the one this
+    paragraph answers, and no measurement here licenses a move either way.
+
+    The object is anything with ``get(key)`` answering a held list or
     ``None`` and ``put(key, instances)`` holding one; **this module computes the key and
     reads no path, no filesystem and nothing of the vocabulary it is pointed at**, which is
     ``docs/plan/architecture.md`` §9's import rule and the reason this harness can grade

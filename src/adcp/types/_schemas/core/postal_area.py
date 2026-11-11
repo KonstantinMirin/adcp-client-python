@@ -45,6 +45,9 @@ class PostalArea(BranchDispatchMixin, AdCPBaseModel):
 
 
 class PostalAreaCountrySystemValues(PostalArea, AdCPBaseModel):
+    """
+    Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.
+    """
     model_config = ConfigDict(
         extra='forbid',
     )

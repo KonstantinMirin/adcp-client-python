@@ -50,7 +50,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from adcp.types._base import KINDS, UNDERDETERMINED, WIDENED, Approximation, SchemaRef
-from adcp.types._runtime import Rule, ValueRule
+from adcp.types._runtime import Presence, Rule, ValueRule
 
 # §2's one exception, named here because :meth:`ClassDecl.__post_init__` raises it.
 # ``codegen/refusal.py`` imports nothing of this package -- its own module docstring says
@@ -410,6 +410,23 @@ class ClassDecl:
     #: class that is not a union base, which is what tells a reader the slot is not
     #: merely empty.
     branches: tuple[TypeRef, ...] | None = None
+    #: **§4's SECOND dispatch source: the clause each branch states about key PRESENCE**
+    #: (``adcp-client-python-j0fr``, the owner's correction of 2026-11-07).  One
+    #: :class:`adcp.types._runtime.Presence` per entry of :attr:`branches`, in the same
+    #: order, where the branches differ only in which keys are REQUIRED and which they
+    #: FORBID; ``None`` at every other class, union base or not.
+    #:
+    #: **It travels PARALLEL to :attr:`branches` and not as a second TypeRef list**,
+    #: because the branch symbols are already there and are already bound by the naming
+    #: pass -- a second list of the same pointers would be a second answer to "which
+    #: classes are this base's branches" for the two to disagree through, which is the
+    #: reason :attr:`branches` and :class:`UnionInstall`'s own list are built from one
+    #: expression.  The pairing is one-to-one by construction and :meth:`__post_init__`
+    #: raises otherwise: ``parse.presence_branches`` admits a node only where every
+    #: branch states ``required`` and a ``not`` over ``required`` alone, and such a
+    #: branch is neither a ``$ref`` (so it cannot DISTRIBUTE into several products) nor
+    #: a union of its own, so one branch is exactly one class.
+    presence: tuple[Presence, ...] | None = None
 
     def __post_init__(self) -> None:
         """**A base list naming one class twice RAISES** (``architecture.md``, 2026-10-29).
@@ -451,6 +468,20 @@ class ClassDecl:
                     f"{self.ref.document if self.ref is not None else 'any document'}"
                 )
             seen.append(base.path)
+        # **AND A PRESENCE DISPATCH THAT DOES NOT PAIR WITH ITS BRANCHES RAISES**, for
+        # the same clause: ``adcp.types._base.BranchDispatchMixin._BRANCH_PRESENCE``
+        # pairs a branch SYMBOL with its clause and the renderer reads the symbol out of
+        # :attr:`branches` by index, so a length mismatch would bind a clause to another
+        # branch's class -- a mis-dispatch no document asked for and none would be
+        # reported against.  §2's division again: "a refusal is the document's and a
+        # broken invariant is ours".
+        if self.presence is not None and len(self.presence) != len(self.branches or ()):
+            raise BuildFailure(
+                f"{self.name}: {len(self.presence)} presence clauses for "
+                f"{len(self.branches or ())} branches; the two travel parallel and "
+                "section 2 makes the mismatch a broken invariant of the compiler and not "
+                f"an outcome of {self.ref.document if self.ref is not None else 'any document'}"
+            )
 
 
 @dataclass(frozen=True)

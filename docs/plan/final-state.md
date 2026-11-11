@@ -189,6 +189,16 @@ A payload offered to a union base resolves to its branch, for every payload the 
 The dispatch key is one that **determines** the branch, which requires the document to guarantee
 its presence in every instance it admits — pinning a key is not determining it.
 
+**AND WHAT DETERMINES THE BRANCH IS NOT ALWAYS A KEY'S VALUE.** Where the branches differ only in
+which keys are PRESENT, no property identifies the branch and the thing that does is the payload's
+KEY SET (`_BRANCH_PRESENCE`, the owner's correction of 2026-11-07 — `adcp-client-python-j0fr`).
+The requirement is the same one and it is the only one: **selection must be a function of the
+payload, never of the order the classes happen to be declared in.** A callable discriminator meets
+it by construction — the tag is computed before any branch is tried — and a plain `A | B` meets it
+only by accident, because its correctness at such a node turns on `additionalProperties`, a keyword
+with nothing to do with the exclusivity. So the second source is a second CARRIER and not a second
+rule: one obligation, read off whichever of the two things the document gave the branches.
+
 **AND EVERY REFUSAL NAMES WHERE.** A union is emitted as a base and one class per branch precisely
 so that a caller learns *which field* was wrong — so a refusal that reports the combinator at the
 root and discards the path has thrown away the thing the structure was built to carry. **The
@@ -294,10 +304,18 @@ below states it in full. Where §4's candidate list falls all the way to the ind
 prevent rather than an instance of the guarantee it makes — a consumer who imports it has to count
 the document's branches to learn what it is. So the class is declared, validated and dispatched to
 as a branch of its union, and it is at no public path; reading 4's placeholder rule and this
-sentence stood in contradiction for ten days while the surface published **six** such names.
-Measured on bundle 3.2: 6 classes of 3,092, over 6 modules of 4 domains, and the set is the
-compiler's own record (`emit.Emitted.positional`) rather than a list — a branch the bundle later
-titles rejoins this reading with nothing edited.
+sentence. The set is the compiler's own record (`emit.Emitted.positional`) rather than a list, so
+a branch the bundle later titles rejoins this reading with nothing edited.
+
+**AND THE TEST IS AN INDEX ANYWHERE IN THE SYMBOL, NOT AN INDEX AS ITS LAST SEGMENT**: a class
+whose public symbol contains an index-derived segment at any position is reached at no public
+path. An ancestor's index in the spelling is the same name, since a caller reading
+`PostalAreaBranch9System` must still count a document's branches to know what `Branch9` selected
+before `System` narrowed it.
+
+This reading continues to hold over every class the surface offers: a withheld class is
+importable at none of the paths, which is what a name pending an upstream title is owed, and the
+reading subtracts the withheld set from its own population.
 
 **AND AN UNTITLED INNER NODE IS EXPORTED UNDER ITS PARENT'S NAME AND ITS KEY, ALWAYS — NEVER ONLY
 WHEN THE KEY COLLIDES.** A domain carries many a `method`, a `target`, an `items`, so the key alone
@@ -520,7 +538,7 @@ each subject keeps the domain word the parent-class-plus-key rule gave it.
 bound, or declined with every subject named — so that a word in neither is the defect and a word in
 both is a module contradicting itself; by identity at the flat module, `is` and not merely
 resolvable, against the object the private module's own statement binds; by
-`from adcp.types import <Word>` resolving for every bound word, to this arm's object or to one a
+`from adcp.types import <Word>` resolving for every bound word, to this branch's object or to one a
 layer the facade asks EARLIER decides and no other; and by no domain aggregator publishing one of
 these words, which is reading 6 holding rather than this reading's work left undone.
 `tests_emit/test_the_flat_alias_surface.py` is where all four are asserted, and the rule itself is

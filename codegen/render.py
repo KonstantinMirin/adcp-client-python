@@ -1121,10 +1121,11 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
         body.append(f"__pydantic_extra__: {extra_field.type_hint} = {_field_symbol()}(init=False)")
     rule_lines, rule_imports = _rule_lines(decl.rules)
     approximation_lines = _approximation_lines(declared)
-    class_body = (*body, *_union_base_lines(decl), *rule_lines, *approximation_lines)
+    union_lines, union_imports = _union_base_lines(decl)
+    class_body = (*body, *union_lines, *rule_lines, *approximation_lines)
     for line in class_body:
         model._append_internal_template_data("class_body_lines", line)  # the generator's own channel; see the module docstring
-    out = Rendered(text=model.render().rstrip("\n"), imports=set(rule_imports))
+    out = Rendered(text=model.render().rstrip("\n"), imports=rule_imports | union_imports)
     if approximation_lines:
         out.imports.add((ir.BASE_MODULE, Approximation.__name__))
     _reported(model.imports, out.imports)
@@ -1210,8 +1211,8 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
     return out
 
 
-def _union_base_lines(decl: ir.ClassDecl) -> list[str]:
-    """§4's three facts the emitter writes onto a union BASE, plus the slot it declares.
+def _union_base_lines(decl: ir.ClassDecl) -> tuple[list[str], set[tuple[str, str]]]:
+    """§4's facts the emitter writes onto a union BASE, plus the slot it declares.
 
     ``_branch_models`` is declared EMPTY and :class:`codegen.ir.UnionInstall` fills it
     after the branches exist, because §4's third mechanic is that the class which gets
@@ -1223,21 +1224,61 @@ def _union_base_lines(decl: ir.ClassDecl) -> list[str]:
     than a transcription of the root.  ``_branch_combinator`` is a classmethod and not an
     attribute because a refusal has to name a JSON Schema keyword.
 
+    **``_BRANCH_PRESENCE`` is written only where the base HAS one** (the owner's
+    correction of 2026-11-07, ``adcp-client-python-j0fr``), and that is the one statement
+    here that is conditional.  The other three are written at every union base because
+    each has a meaningful empty value -- no root-required names, no pinned key, and a
+    combinator every union states -- while a key SET per branch has none: the mixin's
+    class-body default is the empty tuple and :meth:`~adcp.types._base.BranchDispatchMixin._branch_adapter`
+    reads it as "this union dispatches on a key's value or on nothing", so restating it
+    at the 30-odd bases that have no presence dispatch would put a line in every one of
+    them to say what their absence already says.
+
+    **The clause is paired with the branch SYMBOL here, which is the only place both are
+    in hand.**  :attr:`codegen.ir.ClassDecl.presence` travels parallel to
+    :attr:`codegen.ir.ClassDecl.branches` and the naming pass has bound the branches by
+    the time a declaration is rendered, so the ``(name, clause)`` pairs the base carries
+    are a transcription rather than a second derivation -- and :meth:`codegen.ir.ClassDecl.__post_init__`
+    has already raised on a length mismatch, so the ``zip`` cannot silently truncate.
+
     No blank line between the attributes and the method: the generator indents every body
-    line, so an empty one renders as trailing whitespace.  The method goes last of the
-    four, and a rule tuple after it, because each body entry is indented as a unit and a
-    multi-line entry after the method reads as part of neither.
+    line, so an empty one renders as trailing whitespace.  The method goes last, and a
+    rule tuple after it, because each body entry is indented as a unit and a multi-line
+    entry after the method reads as part of neither.
     """
     if decl.root_required is None:
-        return []
+        return [], set()
+    presence: list[str] = []
+    imports: set[tuple[str, str]] = set()
+    if decl.presence is not None:
+        pairs = ", ".join(
+            f"({branch.path!r}, {_rule(clause)})"
+            for branch, clause in zip(decl.branches or (), decl.presence)
+        )
+        presence = [
+            f"_BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = ({pairs},)"
+        ]
+        # **The CLAUSE's own expression and the CLAUSE's own import report**
+        # (:func:`_rule`, :func:`_named_by`): a presence clause is one of
+        # ``adcp.types._runtime``'s frozen dataclasses exactly as a rule is, so the
+        # expression comes from the same renderer the rule tuple uses and the names it
+        # spells come from the same reader.  Rendered twice two ways, a clause written
+        # as a rule and the same clause written into this line could come to disagree
+        # about a default -- which is §7's "one declaration of what a rule is" at the
+        # one seam that now has two readers of it.
+        imports = {(ir.RUNTIME_MODULE, "Presence"), ("typing", "ClassVar")}
+        imports |= {
+            (ir.RUNTIME_MODULE, name) for clause in decl.presence for name in _named_by(clause)
+        }
     return [
         "_branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()",
         f"_ROOT_REQUIRED: ClassVar[tuple[str, ...]] = {decl.root_required!r}",
         f'_BRANCH_DISCRIMINATOR: ClassVar[str] = "{decl.discriminator or ""}"',
+        *presence,
         "@classmethod",
         "def _branch_combinator(cls) -> str:",
         f'    return "{decl.combinator or ""}"',
-    ]
+    ], imports
 
 
 def root_binding(decl: ir.RootBinding, declared: Sequence[Approximation] = ()) -> Rendered:

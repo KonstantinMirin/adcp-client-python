@@ -168,6 +168,7 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
+from adcp.types._runtime import Presence
 from codegen import bundle, compiler, intersect, ir, keywords
 from codegen.keywords import Position
 from codegen.lower import approximate, composition, enum, names, objects
@@ -1506,6 +1507,55 @@ def _branch_classes(
     return [at for at, _ in products] if products else [plan.pointer]
 
 
+def _presence_clauses(
+    reading: Sequence[Any],
+    planned: Sequence[Branch],
+    distributed: Mapping[str, compiler.TargetBranches],
+    pointer: str,
+) -> tuple[Presence, ...]:
+    """The parser's presence clauses as the runtime's, one per BRANCH CLASS.
+
+    ``reading`` is :attr:`nodes.Union.presence` -- ``schema.parse.presence_clause``'s
+    ``(require, forbid)`` pair per DOCUMENT branch -- and the base carries one clause per
+    branch CLASS, which is what :attr:`codegen.ir.ClassDecl.presence` travels parallel to
+    (:func:`_branch_classes`).  Empty for every union whose branches are shapes, which is
+    where the parser answers with nothing.
+
+    **ONE CLASS PER BRANCH, and the mismatch RAISES rather than pairing by position.**
+    A branch that DISTRIBUTES contributes several classes and one clause
+    (:func:`_products`), and a branch that is itself a union contributes its own base --
+    so a zip over the two lists would bind a clause to a class the document says nothing
+    about.  Neither shape can reach here: ``parse.presence_clause`` admits a branch whose
+    whole declaration is ``required`` and a ``not`` over ``required``, and such a branch
+    is neither a ``$ref`` (so nothing distributes) nor a combinator of its own.  The
+    assertion is §2's division -- "a refusal is the document's and a broken invariant is
+    ours" -- so it is a :class:`codegen.refusal.BuildFailure` at the union's pointer and
+    never a refusal charged to the document.
+
+    The conversion is a CONSTRUCTOR call and nothing else: the parser reads both halves
+    as groups and :class:`adcp.types._runtime.Presence` holds both halves as groups, for
+    the same stated reason -- "a group is what is satisfied, and a name on its own is
+    not" -- so there is no reshaping here to get wrong.
+    """
+    if not reading:
+        return ()
+    if len(reading) != len(planned):
+        raise BuildFailure(
+            f"{pointer}: {len(reading)} presence clauses for {len(planned)} branches"
+        )
+    out: list[Presence] = []
+    for plan, (require, forbid) in zip(planned, reading):
+        classes = _branch_classes(plan, distributed)
+        if len(classes) != 1:
+            raise BuildFailure(
+                f"{plan.pointer}: a presence branch declares {len(classes)} classes "
+                f"({classes}); parse.presence_clause admits a branch stating required "
+                "and a not over required alone, which declares exactly one"
+            )
+        out.append(Presence(require=tuple(require), forbid=tuple(forbid)))
+    return tuple(out)
+
+
 def _declare_products(
     plan: Branch,
     branches: compiler.TargetBranches,
@@ -1810,7 +1860,25 @@ def lower_union(
     # key it names is present whatever a branch says about it.  It is the same list
     # ``_ROOT_REQUIRED`` carries below, read once.
     on = discriminator(planned, named, node.required)
-    overlaps = overlapping(planned, node) if not on else []
+    # **§4's SECOND dispatch source, read off the node and not derived here** (the
+    # owner's correction of 2026-11-07, ``adcp-client-python-j0fr``).
+    # :attr:`nodes.Union.presence` is ``parse.presence_branches``' answer -- the clause
+    # per branch where the branches differ only in which keys are PRESENT -- and it is
+    # the same predicate that routed this node to :func:`lower` at all, so the dispatch
+    # and the classification cannot come apart.  Empty for every union whose branches
+    # are shapes.
+    #
+    # **It is the OTHER dispatch and never a second one beside the first.**  A key whose
+    # ``const`` selects and a key SET that selects are two readings of the same
+    # obligation -- "selection is a function of the payload" -- and a union stating both
+    # would be a union whose branches pin a property AND state nothing but
+    # ``required``/``not``, which no node can be: ``parse.presence_clause`` admits a
+    # branch declaring those two keywords alone, and a branch pinning a ``const``
+    # declares ``properties``.  So :func:`discriminator` answers ``""`` wherever this is
+    # non-empty, by the document's own content, and the renderer writes both slots
+    # without either having to suppress the other.
+    reading = tuple(node.presence)
+    overlaps = overlapping(planned, node) if not on and not reading else []
     if overlaps:
         # **§4's three dispatch sources, and the refusal for a union matching none of
         # them.**  The first is a ``const`` every branch pins on one shared property
@@ -2027,6 +2095,12 @@ def lower_union(
             discriminator=on,
             combinator=kw,
             branches=branches,
+            # **``None`` and not ``()`` where there is no presence dispatch**, which is
+            # :attr:`ir.ClassDecl.presence`'s own distinction and the renderer's gate:
+            # an empty tuple would be "this base dispatches on a key set, and the set is
+            # nothing", so the line would be written at every union base to state what
+            # its absence already states.
+            presence=_presence_clauses(reading, planned, distributed, pointer) or None,
         ),
     )
     if isinstance(stated_base, Refusal):
@@ -3331,9 +3405,10 @@ def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
         # That sentence read "a branch declaring no property constrains only requiredness:
         # that is a rule on the root's class (D2, D6), not a branch class" and the cell
         # says otherwise: §5's ``oneOf``/``anyOf`` row answers a presence rule only where
-        # the union is presence-only in EVERY branch -- ``parse.presence_only``, which
-        # keeps the combinator out of the union arm entirely and sends it to
-        # ``lower/rules.py`` -- and measured over the 1,054 portable documents 0 of the 8
+        # the union is presence-only in EVERY branch AND no base plus children says what
+        # the node says -- ``parse.presence_rule``, which keeps the combinator out of the
+        # union arm entirely and sends it to ``lower/rules.py`` -- and measured over the
+        # 1,054 portable documents 0 of the 8
         # unions reaching this refusal is one.  Every one of them is MIXED, so the row
         # that decides them is the same row's other sentence: "a branch that differs in a
         # type, a bound, a format, a nested shape or its ``required`` is a branch of

@@ -5,14 +5,13 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import (
     ConditionalRequired,
     ForbiddenGroups,
     Match,
     NegatedConditional,
     Presence,
-    PresenceGroups,
     Rule,
     UniqueItems,
 )
@@ -31,7 +30,7 @@ from .representation_selection import RepresentationSelection
 from .rights_constraint import RightsConstraint
 
 
-class CreativeAsset(AdCPBaseModel):
+class CreativeAsset(BranchDispatchMixin, AdCPBaseModel):
     """
     Creative asset for upload to library — supports static assets, generative formats, and third-party snippets. Identifies which format this creative conforms to via EITHER a legacy `format_id` (structured `{agent_url, id}`) OR a 3.1+ `format_kind` (canonical format name), with optional `format_option_ref` when the target product needs disambiguation. Mutually exclusive — see the `oneOf` at the schema root.
     """
@@ -39,9 +38,15 @@ class CreativeAsset(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-asset.json', pointer='#')
+    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('creative_id', 'name', 'assets')
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('V1CreativeNamedFormatReference', Presence(require=(('format_id',),), forbid=(('format_kind',),))), ('V2CreativeCanonicalFormatKind', Presence(require=(('format_kind',),), forbid=(('format_id',),))),)
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "oneOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('capability_id',), ('capability_ref',))),
-        PresenceGroups((Presence(require=(('format_id',),), forbid=(('format_kind',),)), Presence(require=(('format_kind',),), forbid=(('format_id',),))), 'oneOf'),
         UniqueItems('industry_identifiers'),
         ConditionalRequired((Match('format_kind', True, ('coordinated_placements',)),), require=('component_assets',), forbid=()),
         NegatedConditional((Match('format_kind', True, ('coordinated_placements',)),), require=(), forbid=('component_assets',)),
@@ -66,6 +71,38 @@ class CreativeAsset(AdCPBaseModel):
     industry_identifiers: Annotated[list[IndustryIdentifier] | None, Field(description='Industry-standard or market-specific identifiers for this creative (e.g., Ad-ID, ISCI, Clearcast clock number, IDcrea). In broadcast and scheduled audio/video buying, these identifiers tie the creative to rotation instructions, clearance records, and traffic systems. A creative may have multiple identifiers when different systems reference the same asset. Add a PR to extend creative-identifier-type when another shared identifier scheme needs first-class support.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this creative. Serves as the default provenance for all manifests and assets within this creative. A manifest or asset with its own provenance replaces this object entirely (no field-level merging).'), OmittedNotNull] = None
     rights: Annotated[list[RightsConstraint] | None, Field(description='Rights constraints that MUST survive sync, package assignment, and list readback. Buyer-carried constraints and references do not authorize serving; the seller evaluates them under media_buy.rights_attestations and its adcp.attestations policy.', min_length=1), OmittedNotNull] = None
+
+
+class V1CreativeNamedFormatReference(CreativeAsset):
+    """
+    Deprecated 3.x compatibility branch using a structured named-format reference.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-asset.json', pointer='#/oneOf/0')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('format_kind',),)),
+    )
+    format_id: Annotated[FormatReferenceStructuredObject, Field(description='**DEPRECATED in 3.2.** Legacy named-format path retained for older 3.x peers. New creative assets use `format_kind` and optional `format_option_ref`.')]
+
+
+class V2CreativeCanonicalFormatKind(CreativeAsset):
+    """
+    Creative declares the portable canonical contract it targets via `format_kind` and optional `format_option_ref`.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-asset.json', pointer='#/oneOf/1')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('format_id',),)),
+    )
+    format_kind: Annotated[CanonicalFormatKind, Field(description='Canonical format name this creative targets (e.g., `image`, `video_hosted`). Mutually exclusive with deprecated `format_id`.')]
+
+
+CreativeAsset._branch_models = (V1CreativeNamedFormatReference, V2CreativeCanonicalFormatKind,)
+CreativeAsset.model_rebuild(force=True)
 
 
 __all__ = ["CreativeAsset"]

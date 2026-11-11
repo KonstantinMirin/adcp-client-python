@@ -517,6 +517,15 @@ def presence_only(node: Mapping[str, Any]) -> bool:
     shapes is a union root.  Both predicates are read off the same branches, so no
     document satisfies both and the unordered table has nothing to arbitrate.
 
+    **And a presence-only ``oneOf`` the base-plus-children emission EXPRESSES is the
+    union root too** (the owner's correction of 2026-11-07,
+    ``schema.parse.presence_branches``).  Such a node's branches differ in field
+    PRESENCE, which is the one difference a subclass carries, so its exclusivity is
+    structural rather than a rule -- and a node that was a rule HERE and a union in
+    ``parse._decide`` would carry the rule its own hierarchy already states.  So the
+    reading this name calls is ``parse.presence_rule``, which is both halves of the one
+    question.
+
     **The reading is ``schema.parse``'s and this is the name the rows call it by.**
     §11's "nothing repeats" names ``parse``'s classification as the one owner of the
     kind -- "a combinator whose every branch is ``required``-only is not a ``Union`` but
@@ -534,7 +543,7 @@ def presence_only(node: Mapping[str, Any]) -> bool:
     them, so there is no boundary to police, and D4 is what makes an unreadable one
     safe to carry rather than refuse.
     """
-    return schema.presence_only(node, Position.RULE)
+    return schema.presence_rule(node, Position.RULE)
 
 
 # --------------------------------------------------------------------------- #
@@ -679,6 +688,15 @@ def _combinator(node: Mapping[str, Any], out: Lowered) -> None:
     Only that form, which is :func:`presence_only`'s test and the step-5 boundary.  A
     combinator of shapes is a union root and this writes nothing for it -- the document
     is step 5's and the selector does not claim it.
+
+    **AND IT WRITES NOTHING AT THE 8 NODES THE BASE-PLUS-CHILDREN EMISSION CLAIMS**
+    (``schema.parse.presence_branches``, the owner's correction of 2026-11-07), which is
+    a GATE THIS FUNCTION DOES NOT RESTATE: the keyword reaches here only through the rule
+    sources, and :func:`presence_only` -- which is ``parse.presence_rule`` -- is what puts
+    it there.  So a node whose branches are child classes arrives with no ``oneOf`` key in
+    ``node`` at all and the loop below finds nothing, rather than this function asking the
+    classification a second time.  The 3 that the emission cannot express keep their
+    :class:`PresenceGroups` through exactly the same route, unchanged.
 
     **Two kinds and ONE reading of the branches**, which is §5's "A union of
     presence-only branches that also forbid" (decided 2026-10-27).  A branch is

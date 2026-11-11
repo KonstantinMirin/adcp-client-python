@@ -178,7 +178,7 @@ was expensive to obtain; construction is not expensive, so there is no corpus to
 space to version, no floor to promote and no staleness to gate. A run that holds no prior state and
 a run that holds all of it do the same work in the same time.
 
-**THE STORE WAS THE SHAPE OF A SEARCH, AND SEARCH IS WHAT IS GONE.** Sampling a composed node has
+**THE STORE WAS THE STRUCTURE OF A SEARCH, AND SEARCH IS WHAT IS GONE.** Sampling a composed node has
 two regimes and nothing between them — a value found at once, or a space the sampler cannot get
 out of — so the cost is a cliff rather than a curve, and every artifact around it (a committed
 floor, a cache above it, a key that must version the generator, a timeout that cuts the second
@@ -1354,8 +1354,10 @@ present select the kind, and the co-occurrences the semantics document decides a
 here and nowhere else — a `$ref` beside a constraining key refuses on the sibling; an `enum`
 beside `type` is an enumeration whose base the members decide; `allOf` beside `properties` is a
 composition with fields of its own; a combinator whose every branch is `required`-only is not a
-`Union` but a rule source of the enclosing object (the `presence_only` reading, read once
-here); a `type: object` beside `oneOf` is a union whose branches inherit the applied word. It
+`Union` but a rule source of the enclosing object **unless a base plus children says what the
+node says** (the `presence_rule` reading, read once here — `presence_only` is its first half and
+`presence_branches` its second, and the owner's correction of 2026-11-07 is why there are two);
+a `type: object` beside `oneOf` is a union whose branches inherit the applied word. It
 descends by the table's descent column, assigning each child its position and the applied
 word for a same-instance hop. And it validates case: `required` is a list of names,
 `properties` is a mapping of schemas, and so on, each failure a `BuildFailure` by the paragraph
@@ -1697,6 +1699,39 @@ AssetRequirementsBranch7)` has to count the document's branches to know that it 
 paragraph prescribed it. `codegen/lower/names.py`'s `A_POSITIONAL_NAME_IS_PRIVATE` is the
 implementation and `tests_emit/test_no_positional_name_is_public.py` is the gate.
 
+**THE TEST IS THE SYMBOL AND NOT ITS FINAL SEGMENT: a public name carrying an index-derived
+segment at any position is private.** An ancestor's index in the spelling is the same name — a
+caller reading `PostalAreaBranch9System` still has to count a document's branches to know what
+`Branch9` selected before `System` narrowed it.
+
+Reading 6 continues to hold over every class the surface offers: a withheld class is importable
+at none of the paths, and the reading subtracts the withheld set from its own population
+(`emit.Emitted.positional`, read by `tests_emit/test_the_domain_surface.py`). Nothing is deleted
+— the class is declared, is a branch of its union, and validates every payload its document
+admits.
+
+**THE VOCABULARY, STATED ONCE.** These words are not used in this repository's documents,
+identifiers, docstrings, comments or commit messages, because each names something that already
+has a standard word:
+
+| not | use |
+|---|---|
+| arm | **branch** — already this codebase's word (`BranchDispatchMixin`, `_branch_classes`) |
+| shape | **structure**, or name the thing: object, type, field set |
+| population | **set**, **scope**, **sample** |
+| rung | **rule**, **candidate**, **precedence level** |
+| ladder | **precedence order** |
+| fence | the specific thing: **timeout**, **quota**, **limit**, **minimum**, **suppression list**, **regression threshold**, **reduced coverage** |
+
+The last has no single replacement because each thing it covered is nameable on its own: §14
+enumerates them as a budget, a ratchet, a floor, an allowlist, a narrowed scope and a raised cap.
+
+Two carve-outs. `codegen/keywords.py`'s `Rung`/`LADDER` name §2's widening order, which is a
+different subject from §4's naming candidates and which `rebuild-plan.md` spells
+`Widening`/`WIDENING_ORDER`. And `src/adcp/` is excluded, because the files there carrying these
+words are upstream's own and are byte-identical to `4ed0bce87`, which
+`tests_emit/test_the_adapter_writer_owns_its_paths.py` grades.
+
 The walk computes no name, which is the semantics document's own
 rule that a name is an input to a lowering and is never computed inside one — read strictly,
 it is not an input either: it is assigned after.
@@ -1796,6 +1831,20 @@ so that an explosion stops being visible, and **every pair such a budget cuts is
 not run, recorded as though something had been learned.** That is the same evasion as an
 expected-failure marker, arriving as arithmetic instead of as a decorator. **The verifier carries no
 cap of any kind**, and that is a structural claim about the three checks above rather than a target.
+
+**WHICH NODES: A PAYLOAD IS COMPLETE AT THE SUBJECT AND MINIMAL AT EVERY ENCLOSURE.** An instance
+graded against a class states every member that class's own document states, in a valid and an
+invalid variant. At each enclosed document it states the minimal instance that document admits,
+and stops.
+
+The ground is attribution. Each enclosed document is graded by its own pair, so a payload that
+articulates one from inside another pair's fixture lets a defect in one document redden another
+document's row — and a red carrying the wrong subject says less than no red.
+
+The boundary is therefore structural, a function of the document, and no number expresses it: the
+subject's own members against everything below them. An instance so bounded costs what the subject
+costs, which is what makes the sentence above a property of the design rather than a target — there
+is nothing for a clock, an example count or a depth bound to contain.
 
 **THE VALID WITNESS IS CONSTRUCTED AND THE INVALID ONE IS A MUTATION OF IT.** The valid instance is
 read off the node's keywords (§2) and the invalid set is one violation per keyword the node states —
@@ -2106,7 +2155,7 @@ node reaching no outcome — is prevented by banning the only other way out.
 | --- | --- |
 | three descent tables (`bundle.nodes`, `harness._nodes`, the walk's implicit descent) | the table's `descends` column, read by `parse`, `bundle.edges`, `verify/record.py` |
 | keyword screens with a hand-written set at every lowering | admission in `parse`, from the table |
-| the kind read in `lower.decide.decide`, in the root selectors, in `union.keyword`, in `rules.presence_only` | `parse`'s classification |
+| the kind read in `lower.decide.decide`, in the root selectors, in `union.keyword`, in `rules.presence_only` | `parse`'s classification — and for the presence combinator that is `parse.presence_rule`, asked by `_decide`'s union arm, `_rule_sources`, `_borne_by_a_conjunct` and `lower.rules.presence_only` alike |
 | the annotation set, the rule-keyword set, the constraint spelling in three modules | rows of the table; `constraints.SPELLING` keeps the alias WORD per keyword, which is a naming fact and not a decision |
 | the applied type (`constrained_to_object`, `object_constrained`, `applied_type`) | `Node.applied`, set by `parse` through `applied_schema`'s rule |
 | node rewrites (key schema, extras store, multi-type members, `uniqueItems` stripped before the array row) | positions and node fields: `Mapping.key` at KEY, `Object.extras`, `MultiType.members`, `Array.distinct` |
