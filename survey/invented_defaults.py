@@ -1452,117 +1452,6 @@ def attribute(
     return out
 
 
-#: Upstream's own behavioural suite, on this branch.  ``tests/`` is THEIRS here and
-#: ``tests_emit/`` is ours, which is the same reading ``./check`` makes of which directory
-#: holds the suite.
-UPSTREAM_TESTS = ROOT / "tests"
-
-#: Upstream's own test files that grade THEIR GENERATOR rather than SDK behaviour, DECLARED in
-#: this repository because no predicate over a path separates them.  104 of their 681
-#: ``test_*.py``; the remaining 577 are the behavioural set every drop-in figure is over.
-GENERATOR_TESTS = ROOT / "survey" / "dropin" / "upstream-tests-about-their-generator.txt"
-
-
-def _constructs_without(call: ast.Call, field: str) -> bool:
-    """Does this call construct something WITHOUT naming ``field``, and with no ``**`` splat?
-
-    A ``**kwargs`` call cannot be read: the field may be in the mapping, so such a site is not
-    counted -- the figure is a FLOOR and a site this cannot decide must not inflate it.
-    """
-    if any(word.arg is None for word in call.keywords):
-        return False
-    return all(word.arg != field for word in call.keywords)
-
-
-def tests_depending_on(pairs: list[Whose], where: Path = UPSTREAM_TESTS) -> dict[str, object]:
-    """How many of upstream's own behavioural TESTS depend on a ``THEIRS`` default.
-
-    **THE FLOOR AND NOT THE TOTAL.**  A test depends on one of these defaults when it
-    constructs one of the set's classes and does NOT pass the field -- the class fills it in,
-    and a class honouring the document refuses the same call.  Counted per TEST FUNCTION, not
-    per site, because a function is what passes or fails.
-
-    Parsed with ``ast`` and never grepped, so a class named in a string or a comment is not a
-    construction.  Two screens keep it a floor: a call carrying ``**`` is skipped (the field
-    may be in the mapping), and a file on :data:`GENERATOR_TESTS` is attributed to the 104 that
-    grade upstream's generator rather than to the 577 behavioural ones -- the denominator this
-    repository already declares.
-
-    **TWO IDIOMS, because one of them is the dominant one.**  A keyword construction
-    ``X(a=1)`` is read from the call's own keywords; a ``X.model_validate({...})`` is read from
-    the dict LITERAL's own keys, where the payload is a literal at the call site.  A payload
-    built elsewhere and passed by name is not read -- the keys are not at the site -- so the
-    number stays a floor, and the two idioms are counted separately so a reader can see which
-    is carrying it.
-    """
-    by_class: dict[str, set[str]] = collections.defaultdict(set)
-    for pair in pairs:
-        if pair.whose == "THEIRS":
-            by_class[pair.upstream.rsplit(".", 1)[1]].add(pair.field)
-    declared = {
-        line.strip()
-        for line in GENERATOR_TESTS.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.startswith("#")
-    }
-    behavioural: set[tuple[str, str]] = set()
-    generator: set[tuple[str, str]] = set()
-    files: set[str] = set()
-    idioms: collections.Counter[str] = collections.Counter()
-    sites = 0
-    for path in sorted(where.rglob("*.py")):
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8"))
-        except (SyntaxError, UnicodeDecodeError):
-            continue
-        name = str(path.relative_to(ROOT))
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            if not node.name.startswith("test"):
-                continue
-            for inner in ast.walk(node):
-                if not isinstance(inner, ast.Call):
-                    continue
-                omitted = False
-                if isinstance(inner.func, ast.Name) and by_class.get(inner.func.id):
-                    omitted = any(
-                        _constructs_without(inner, field) for field in by_class[inner.func.id]
-                    )
-                    if omitted:
-                        idioms["keyword-construction"] += 1
-                elif (
-                    isinstance(inner.func, ast.Attribute)
-                    and inner.func.attr in ("model_validate", "model_validate_json")
-                    and isinstance(inner.func.value, ast.Name)
-                    and by_class.get(inner.func.value.id)
-                    and inner.args
-                    and isinstance(inner.args[0], ast.Dict)
-                ):
-                    keys = {
-                        k.value
-                        for k in inner.args[0].keys
-                        if isinstance(k, ast.Constant) and isinstance(k.value, str)
-                    }
-                    if None in inner.args[0].keys:
-                        continue  # a ``**`` splat: the field may be in the mapping
-                    omitted = any(
-                        field not in keys for field in by_class[inner.func.value.id]
-                    )
-                    if omitted:
-                        idioms["model_validate-dict-literal"] += 1
-                if omitted:
-                    sites += 1
-                    files.add(name)
-                    (generator if name in declared else behavioural).add((name, node.name))
-    return {
-        "classes_with_a_theirs_default": len(by_class),
-        "idioms": dict(idioms),
-        "sites": sites,
-        "files": sorted(files),
-        "behavioural_tests": sorted(behavioural),
-        "generator_tests": sorted(generator),
-    }
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -1582,11 +1471,6 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="write the WHOSE attribution of every pair -- OURS, THEIRS or ELSEWHERE",
-    )
-    parser.add_argument(
-        "--tests",
-        action="store_true",
-        help="count upstream's own tests that depend on a THEIRS default (needs --attribute)",
     )
     args = parser.parse_args(argv)
 
@@ -1627,7 +1511,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"-> {args.unread}")
 
-    if args.attribute or args.tests:
+    if args.attribute:
         pairs = attribute(rows, records)
         if not pairs:
             raise SystemExit("REFUSED: no pair attributed -- every figure over it is vacuous")
@@ -1650,21 +1534,6 @@ def main(argv: list[str] | None = None) -> int:
             lines += ["\t".join(str(v) for v in p) for p in sorted(pairs)]
             args.attribute.write_text("\n".join(lines) + "\n")
             print(f"-> {args.attribute}")
-        if args.tests:
-            census = tests_depending_on(pairs)
-            print()
-            print("UPSTREAM TESTS THAT DEPEND ON A *THEIRS* DEFAULT (a floor):")
-            held = census["classes_with_a_theirs_default"]
-            print(f"  {held:5d}  classes of the set carrying a THEIRS default")
-            print(f"  {census['sites']:5d}  sites omitting such a field, by idiom:")
-            for idiom, n in sorted(census["idioms"].items()):
-                print(f"      {n:5d}  {idiom}")
-            print(f"  {len(census['files']):5d}  files")
-            behav, gen = census["behavioural_tests"], census["generator_tests"]
-            print(f"  {len(behav):5d}  TEST FUNCTIONS in the 577 behavioural files")
-            print(f"  {len(gen):5d}  TEST FUNCTIONS in the 104 generator files")
-            for name in census["files"]:
-                print(f"      {name}")
     return 0
 
 

@@ -1,14 +1,15 @@
 # 0z0u / eknd — whose each of the 867 invented defaults is, and the floor it puts on the suite
 
 `adcp-client-python-0z0u` and `adcp-client-python-eknd`, the same subject from two sides.
-Branch `claude/issue-b2pm-alias-note`, cut from `ours/9.6.1` at `bfeaf7eec`. **Measurement and
-classification only** — nothing in `src/`, nothing in `codegen/`. The instrument is
+Branch `claude/issue-b2pm-alias-note`, cut from `ours/9.6.1` at `bfeaf7eec`. Nothing in
+`src/`, nothing in `codegen/`, and **nothing under upstream's `tests/` — their suite stays
+byte-identical**. The instrument is
 `survey/invented_defaults.py`, extended rather than replaced; the per-pair table is at the end
 of this file and `--attribute` writes it as a TSV anywhere a reader wants one.
 
 ```bash
-PYTHONPATH=.:src ./.venv/bin/python survey/invented_defaults.py \
-    --attribute $S/whose.tsv --tests
+PYTHONPATH=.:src ./.venv/bin/python survey/invented_defaults.py --attribute $S/whose.tsv
+PYTHONPATH=.:src ./.venv/bin/python survey/dropin/deselect.py --write --collect
 ```
 
 `--attribute` writes the per-pair table as a TSV wherever it is pointed; the 867 rows are also
@@ -31,19 +32,19 @@ The set reproduces exactly before anything is added to it: **867 pairs, digest
 **Every one of the 867 is upstream's.** Not one of them is a `default` this compiler failed to
 read, and not one of them is a `default` the document states anywhere the instance can reach.
 
-And the figure that decides target 4:
+So the drop list is derived from this and from nothing else:
 
-| of upstream's own suite | |
+| | |
 |---|---|
-| test FUNCTIONS in the **577 behavioural** files that omit a field a (b) default fills | **31** |
-| test FUNCTIONS in the **104 generator-grading** files that do the same | 41 |
-| construction sites, across 26 files | 81 |
+| tests declined, every one on a (b) pair | **72** functions / **257** collected items |
+| of them in the **577 behavioural** files | **31** |
+| of them in the **104 generator-grading** files | 41 |
+| raw denominator / graded denominator | **18,157** / **17,900** collected |
 
-**31 behavioural test functions is the hard floor this cause contributes** — and it is a
-floor, for the two reasons in §"What the floor does not count" below. `adcp-client-python-7xmt`
-put the whole unreachable set at ~2,200 without separating the causes; this cause is **31 of
-them**, not 2,200, so the invented defaults are a small part of that number and the rest is
-owed to the other causes.
+**31 behavioural test functions is the hard floor this cause contributes.**
+`adcp-client-python-7xmt` put the whole unreachable set at ~2,200 without separating the
+causes; this cause is **31 of them**, not 2,200, so the invented defaults are a small part of
+that number and the rest is owed to the other causes — which this row does not touch.
 
 ---
 
@@ -134,37 +135,90 @@ bead's note records this figure as 0 of 6,812; the tree has grown and it is now 
 
 ---
 
-## The floor on the suite, and what it does not count
+## THE DROP: 72 tests declined, and every one on a (b) pair
 
-**31 test functions in the 577 behavioural files.** Derived with `ast` over all of `tests/` —
-which on this branch IS upstream's suite — and never grepped, so a class named in a string or
-a comment is not a construction. A test depends on a (b) default when it names one of the 554
-classes carrying one and does not supply the field; the class fills it in, and a class that
-honours the document refuses the same call.
+**The rule, and nothing else qualifies:** a test is declined ONLY where it asserts on a (b)
+pair. Never because it is red, never because it is slow, never because it is hard. The input
+is the classification above and nothing else — `survey/dropin/deselect.py` reads no test
+result, no duration and no traceback. **A red test that is not on a (b) pair stays in the
+denominator, and a green one that is on one is still declined**, because the question is what
+the test GRADES, not what it currently does.
 
-Two idioms are read, counted apart so a reader can see which carries it:
-
-| idiom | sites |
+| | |
 |---|---|
-| `X(field=..., ...)` with the field absent from the keywords | 63 |
-| `X.model_validate({...})` with the key absent from a dict LITERAL at the site | 18 |
+| tests declined | **72** functions, **257** collected items |
+| of them, in the 577 **behavioural** files | **31** |
+| of them, in the 104 files that already **grade their generator** | 41 |
+| `(test, pair)` reasons, over 26 files | 214 |
 
-The 577/104 split is this repository's own declared record
-(`survey/dropin/upstream-tests-about-their-generator.txt`), so a site is attributed by that
-list and not by a judgement about what a test is really asserting.
+The two units are the same drop: a node id names a FUNCTION and pytest collects one ITEM per
+parametrised case of it. Measured, not inferred — a collect-only run matches 257 collected ids
+against these 72 prefixes.
 
-**IT IS A FLOOR, and these are the two things it does not see.** A call carrying `**` is
-skipped outright — the field may be in the mapping, and a site this cannot decide must not
-inflate the number. And a payload built elsewhere and passed by name is not read, because the
-keys are not at the call site. So 31 is a lower bound on the behavioural cost of this cause,
-and the true figure is higher by however many sites of those two kinds exist.
+Reasons by the set's own kind — 173 `const-restated`, 26 `collapsed-disjunction`, 13
+`invented-value`, 2 `contradicts` — and by idiom: 192 keyword constructions, 22
+`model_validate` dict literals.
 
-**It is also not the same number as the failures.** `eknd` records a merged-tree run reporting
-`GetCreativeDeliveryResponse.status` 29 and `GetProductsResponse.status` 6 — failures, counted
-per occurrence, against a tree where the restore had replaced subjects. This is a count of
-TEST FUNCTIONS that cannot pass against a correct implementation, derived from the documents
-and upstream's own source rather than from a run, so the two are different measurements of
-adjacent things and neither replaces the other.
+**41 of the 72 change no behavioural figure**, and the column says so rather than letting the
+drop look bigger than it is: those files are on this repository's own declared list of the 104
+that grade upstream's generator, already outside the behavioural denominator.
+
+Every row of `survey/dropin/deselected-9.6.1.tsv` carries, in one line: the node id, the
+`(model, field)` it asserts, the document and pointer that refutes the default, upstream's
+default, what the document states there, the idiom, and the kind. A reader can check any
+single row against the bundle without running anything.
+
+### What the list does not see, and it is a floor on purpose
+
+A call carrying `**` is skipped outright — the field may be in the mapping, and a site the
+reading cannot decide must not put a test on the list. A payload built in one place and
+validated in another has no keys at the call site, so it is not read either. **Both omissions
+fail in the safe direction**: a test the list misses stays in the denominator and counts
+against us.
+
+---
+
+## THE MECHANISM: generated, and upstream's suite stays byte-identical
+
+`survey/dropin/deselect.py` writes `survey/dropin/deselected-9.6.1.tsv` from the
+classification. It is not a hand-edited file and it is not an edit to upstream's tests — **we
+do not fork their suite, we decline to count it, and the reason is attached to each node id.**
+If the classification moves, the list regenerates.
+
+The runner consumes it directly:
+
+```bash
+./.venv/bin/python -m pytest tests/ \
+    $(PYTHONPATH=.:src ./.venv/bin/python survey/dropin/deselect.py --pytest-args)
+```
+
+`--pytest-args` prints one `--deselect=<node id>` per line. Nothing under `tests/` is touched
+by any mode of the generator, and `--write` only ever writes its own table.
+
+The generator REFUSES rather than writing an empty list: a classification that selected
+nothing, or one with no (b) pair, would produce a file that reads exactly like "nothing needed
+dropping", which is the one failure that would pass unnoticed.
+
+---
+
+## THE TWO NUMBERS, reported together
+
+Collected on this tree, `tests/` being upstream's own suite:
+
+| | |
+|---|---|
+| **raw** — upstream's whole suite | **18,157** collected |
+| **declined** — every one on a (b) pair | **257** items (72 functions) |
+| **graded** — the suite minus the declined set | **17,900** collected |
+
+**These are DENOMINATORS and not pass figures.** The pass half needs a full run of upstream's
+suite with the list applied, which is the drop-in lane's measurement and not this row's; this
+row supplies the list and the two denominators it is read over. Stating a pass figure here
+without that run would be exactly the invention this verdict charges upstream with.
+
+Target 4 is **"every test that grades the PROTOCOL passes"**, not "upstream's suite passes".
+The second is unachievable without reproducing their bugs: 257 collected items assert on a
+default the document refutes, and the only way to turn them green is to put the default back.
 
 ---
 
@@ -187,12 +241,116 @@ nothing because there is nothing to find.
 
 ---
 
+---
+
+## THE UPSTREAM ASK: one comment, one new issue
+
+**Checked first, as instructed.** [#1678](https://github.com/adcontextprotocol/adcp-client-python/issues/1678)
+is OPEN and its latest comment is already this subject one level finer — *"the fields arrived,
+the `required` did not"*, with 45 of their generated `*Response` classes carrying `status` as
+optional and the note that *"the model emits a `status` the caller never set"*.
+[#1684](https://github.com/adcontextprotocol/adcp-client-python/issues/1684) is CLOSED and is
+the accepted precedent for the class: `Signals.data_provider_domains_complete` defaults to
+`True` and fails the schema's own `dependencies` rule at boot.
+
+So the ask splits, and the split is the document's rather than a matter of taste:
+
+* **the envelope `status` family — 118 of the 867, 116 from one line — belongs as a COMMENT on
+  #1678.** It is that thread's current subject and this is the measurement it is missing: the
+  count of inheriting classes and the one line they inherit.
+* **the other 749 are NOT the envelope** — 624 classes, 177 fields, three further mechanisms —
+  and belong in a NEW issue, with #1684 cited as the accepted precedent.
+
+### Draft comment for #1678
+
+> **The 45 optional `status` fields are one line, and it is `ProtocolEnvelope`'s**
+>
+> Measured on the PyPI wheel `adcp 9.6.1` against its own bundle copy, by resolving each
+> generated class's defaults against the document the module header names.
+>
+> `adcp/types/domains/core/protocol_envelope.py` writes
+>
+> ```python
+> status: Annotated[TaskStatus, Field(description='... REQUIRED on every task response envelope ...')] = TaskStatus.completed
+> ```
+>
+> and **116 generated classes inherit it**. `core/protocol-envelope.json` states
+> `required: ["status"]` and an enum of nine values, with **no `default` and no `const`**. So
+> the field's own description says REQUIRED and the generated class makes it optional, with a
+> value the document does not state.
+>
+> That is why the regeneration this issue tracks will not close it on its own: composing the
+> envelope supplies the FIELD, and the default is what drops the `required`. The two halves
+> are independent, and only the first has landed.
+>
+> The consequence is the one the thread already names — `model_dump` emits a `status` the
+> caller never set — plus a second: `GetProductsResponse.model_validate({"products": []})` is
+> ACCEPTED while `jsonschema` against the wheel's own bundled document reports
+> `['allOf', 1, 'required']`. The class and the bundle it ships disagree about the same
+> payload.
+>
+> Suggested fix, in the generator rather than per class: where a property is in a
+> `required` list the conjunction reaching the node states, emit no default — whatever the
+> enum's first member is. A `const` is not a default either: it constrains a value that is
+> present and does not supply one that is absent.
+
+### Draft body for the new issue
+
+> **Title:** Generated classes default 867 required fields the schemas do not default
+>
+> **Observed (adcp 9.6.1)**
+>
+> Across the generated tree, **867 `(class, field)` pairs** carry a `default` for a property
+> the document's own conjunction **requires**, over **624 classes** and **177 fields**. A
+> default makes a required field optional, so each of those classes admits a payload the
+> bundled schema refuses — measured against the wheel's own `adcp/_schemas/3.2`.
+>
+> The pairs fall in four kinds:
+>
+> | kind | pairs | what it is |
+> |---|---|---|
+> | `const-restated` | 477 | the document pins the value with `const` and the default equals it. The VALUE is the document's; the OPTIONALITY is not |
+> | `collapsed-disjunction` | 237 | the document states `oneOf`/`anyOf` and SOME branch requires the property; one class was emitted for the whole position, so the requirement had nowhere to live and was defaulted. The class admits an instance satisfying no branch |
+> | `invented-value` | 145 | the document states neither a `default` nor a `const`, and the class both drops the requirement and pins a value the document never states |
+> | `contradicts` | 8 | the document states a `default` or `const` and the generated default is a different value |
+>
+> **The worked case**, which is the clearest:
+>
+> `media-buy/create-media-buy-response.json` is `allOf[2]` + `oneOf[3]`. `allOf[1]` declares
+> `status` and lists it in `required`, so the conjunction requires `status` for every branch;
+> only `oneOf[2]` narrows it to `const: 'submitted'`. The generated
+> `CreateMediaBuyResponse1` writes `status: Literal['completed'] = 'completed'` — a value the
+> document states nowhere for that branch, on a field it requires.
+>
+> **Expected**
+>
+> No default on a property the conjunction reaching the node lists in `required`. The check is
+> cheap and belongs in the generator: resolve the node's `allOf` chain, take the union of the
+> `required` lists, and emit no default for any name in it. A `const` is not a default: it
+> constrains a value that is present and does not supply one that is absent.
+>
+> **Precedent**
+>
+> #1684 is the same class of defect, accepted and closed:
+> `Signals.data_provider_domains_complete` defaults to `True` and fails the schema's
+> `dependencies` rule at boot. This is that bug 867 times, derived rather than found by
+> hand.
+>
+> **Why it matters beyond validation**
+>
+> Tests written against these classes encode the defect. We measured 72 of your own test
+> functions that construct one of these classes without the field and rely on the default to
+> fill it in; against any implementation that honours the schema they cannot pass. The list
+> and the per-pair derivation are available if useful.
+
+---
+
 ## What this means for the two rows
 
-For **eknd**: the named, derived set it asked for exists and is attributed. The pass figure can
-now be read as "passing except where upstream's tests require their generator's invented
-defaults", with **31 behavioural test functions** as the named size of that exception rather
-than an unquantified caveat.
+For **eknd**: the named, derived set it asked for exists, is attributed, and is now ACTED ON —
+72 tests declined with a reason each, upstream's suite untouched. The pass figure can be read
+as "every test that grades the protocol", with 18,157 and 17,900 as the two denominators and
+the 257-item difference itemised.
 
 For **0z0u**: the measurement stands unchanged and gains the attribution. No emitter change is
 owed by this row — 0 of the 867 is ours — and the one thing it does turn up on our side is the
@@ -205,6 +363,9 @@ property's admissible set and false of the object's, and **477 of the 867** are 
 ---
 
 ## The 867, named
+
+The `the document states` column is the instrument's own emitted value, quoted verbatim so
+this table and what `--attribute` writes cannot disagree.
 
 Every pair, with the document and pointer it is read at. `whose` is the attribution above;
 `kind` is the set's own; `ours` is what our emitted class at the same position does with the
