@@ -1009,6 +1009,9 @@ from .adagents import AdCPAgentsAuthorization as AdCPAgentsAuthorization
 from .adagents import AdCPAgentsAuthorizationAuthoritativeLocation as AdCPAgentsAuthorizationAuthoritativeLocation
 from .adagents import AdCPAgentsAuthorizationCommunityFormatRegistry as AdCPAgentsAuthorizationCommunityFormatRegistry
 from .adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgents as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgents,
+)
+from .adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties,
 )
 from .adagents import (
@@ -1398,6 +1401,7 @@ from .content_standards import CreateContentStandardsResponseStandardsId as Crea
 from .content_standards import GetContentStandardsRequest as GetContentStandardsRequest
 from .content_standards import GetContentStandardsResponse as GetContentStandardsResponse
 from .content_standards import GetContentStandardsResponseErrors as GetContentStandardsResponseErrors
+from .content_standards import GetContentStandardsResponseSuccess as GetContentStandardsResponseSuccess
 from .content_standards import GetMediaBuyArtifactsRequest as GetMediaBuyArtifactsRequest
 from .content_standards import GetMediaBuyArtifactsRequestTimeRange as GetMediaBuyArtifactsRequestTimeRange
 from .content_standards import GetMediaBuyArtifactsResponse as GetMediaBuyArtifactsResponse
@@ -2411,9 +2415,10 @@ from .core import PlatformSegment as PlatformSegment
 from .core import PositivePostalAreaSupport as PositivePostalAreaSupport
 from .core import PostalArea as PostalArea
 from .core import PostalAreaAUPostcode as PostalAreaAUPostcode
-from .core import PostalAreaBranch9System as PostalAreaBranch9System
 from .core import PostalAreaBRCep as PostalAreaBRCep
 from .core import PostalAreaCA as PostalAreaCA
+from .core import PostalAreaCountrySystem as PostalAreaCountrySystem
+from .core import PostalAreaCountrySystemSystem as PostalAreaCountrySystemSystem
 from .core import PostalAreaCountrySystemValues as PostalAreaCountrySystemValues
 from .core import PostalAreaFRCodePostal as PostalAreaFRCodePostal
 from .core import PostalAreaGB as PostalAreaGB
@@ -2426,10 +2431,11 @@ from .core import PostalAreaWithFusedSystem as PostalAreaWithFusedSystem
 from .core import PostalAreaZAPostalCode as PostalAreaZAPostalCode
 from .core import PostalCountrySystem as PostalCountrySystem
 from .core import PostalCountrySystemAUPostcode as PostalCountrySystemAUPostcode
-from .core import PostalCountrySystemBranch9System as PostalCountrySystemBranch9System
 from .core import PostalCountrySystemBRCep as PostalCountrySystemBRCep
 from .core import PostalCountrySystemCA as PostalCountrySystemCA
 from .core import PostalCountrySystemCASystem as PostalCountrySystemCASystem
+from .core import PostalCountrySystemCountrySystem as PostalCountrySystemCountrySystem
+from .core import PostalCountrySystemCountrySystemSystem as PostalCountrySystemCountrySystemSystem
 from .core import PostalCountrySystemFRCodePostal as PostalCountrySystemFRCodePostal
 from .core import PostalCountrySystemGB as PostalCountrySystemGB
 from .core import PostalCountrySystemGBSystem as PostalCountrySystemGBSystem
@@ -3879,9 +3885,10 @@ from .media_buy import BuildCreativeVariantSuccessKeepModeApplied as BuildCreati
 from .media_buy import BuildCreativeWorking as BuildCreativeWorking
 from .media_buy import BuyProductsInputRequired as BuyProductsInputRequired
 from .media_buy import BuyProductsRequest as BuyProductsRequest
-from .media_buy import BuyProductsRequestBranch1Account as BuyProductsRequestBranch1Account
-from .media_buy import BuyProductsRequestBranch1AccountAccountId as BuyProductsRequestBranch1AccountAccountId
-from .media_buy import BuyProductsRequestBranch1AccountBrandOperator as BuyProductsRequestBranch1AccountBrandOperator
+from .media_buy import BuyProductsRequestAccount as BuyProductsRequestAccount
+from .media_buy import BuyProductsRequestAccountAccount as BuyProductsRequestAccountAccount
+from .media_buy import BuyProductsRequestAccountAccountAccountId as BuyProductsRequestAccountAccountAccountId
+from .media_buy import BuyProductsRequestAccountAccountBrandOperator as BuyProductsRequestAccountAccountBrandOperator
 from .media_buy import BuyProductsRequestBrand as BuyProductsRequestBrand
 from .media_buy import BuyProductsRequestOpportunity as BuyProductsRequestOpportunity
 from .media_buy import BuyProductsResponse as BuyProductsResponse
@@ -3961,6 +3968,7 @@ from .media_buy import (
 from .media_buy import FailedLookup as FailedLookup
 from .media_buy import FailedReportingConsumerStatus as FailedReportingConsumerStatus
 from .media_buy import FailedReportingReceipt as FailedReportingReceipt
+from .media_buy import FieldsItemString as FieldsItemString
 from .media_buy import FlightChangeConstraints as FlightChangeConstraints
 from .media_buy import FormatOptionRefs as FormatOptionRefs
 from .media_buy import GetMediaBuyDeliveryRequest as GetMediaBuyDeliveryRequest
@@ -5002,6 +5010,7 @@ __all__ = [
     'AdCPAgentsAuthorization',
     'AdCPAgentsAuthorizationAuthoritativeLocation',
     'AdCPAgentsAuthorizationCommunityFormatRegistry',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgents',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags',
@@ -5569,9 +5578,10 @@ __all__ = [
     'BusinessEntityContactsItemRole',
     'BuyProductsInputRequired',
     'BuyProductsRequest',
-    'BuyProductsRequestBranch1Account',
-    'BuyProductsRequestBranch1AccountAccountId',
-    'BuyProductsRequestBranch1AccountBrandOperator',
+    'BuyProductsRequestAccount',
+    'BuyProductsRequestAccountAccount',
+    'BuyProductsRequestAccountAccountAccountId',
+    'BuyProductsRequestAccountAccountBrandOperator',
     'BuyProductsRequestBrand',
     'BuyProductsRequestOpportunity',
     'BuyProductsResponse',
@@ -6373,6 +6383,7 @@ __all__ = [
     'FeedbackSource',
     'FieldTruncation',
     'Fields',
+    'FieldsItemString',
     'FileTransferDestination',
     'FileTransferDirectionsItem',
     'FileTransferFormat',
@@ -6616,6 +6627,7 @@ __all__ = [
     'GetContentStandardsResponse1',
     'GetContentStandardsResponse2',
     'GetContentStandardsResponseErrors',
+    'GetContentStandardsResponseSuccess',
     'GetCreativeDeliveryRequest',
     'GetCreativeDeliveryResponse',
     'GetCreativeDeliveryResponseCreativesItem',
@@ -7348,8 +7360,9 @@ __all__ = [
     'PostalArea120',
     'PostalAreaAUPostcode',
     'PostalAreaBRCep',
-    'PostalAreaBranch9System',
     'PostalAreaCA',
+    'PostalAreaCountrySystem',
+    'PostalAreaCountrySystemSystem',
     'PostalAreaCountrySystemValues',
     'PostalAreaFRCodePostal',
     'PostalAreaGB',
@@ -7368,9 +7381,10 @@ __all__ = [
     'PostalCountrySystem3',
     'PostalCountrySystemAUPostcode',
     'PostalCountrySystemBRCep',
-    'PostalCountrySystemBranch9System',
     'PostalCountrySystemCA',
     'PostalCountrySystemCASystem',
+    'PostalCountrySystemCountrySystem',
+    'PostalCountrySystemCountrySystemSystem',
     'PostalCountrySystemFRCodePostal',
     'PostalCountrySystemGB',
     'PostalCountrySystemGBSystem',

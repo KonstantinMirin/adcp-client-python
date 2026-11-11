@@ -206,9 +206,9 @@ asserts a relation between them that does not exist:
   not of a metaphor. "Monotone", "terminates", "least" and "greatest" are the words this is made
   of, and all four are checkable.
 - **§4's branch naming is an ORDERED LIST OF CANDIDATE NAMES, resolved by FIRST FIT.** A
-  collision means the candidate did not identify the branch, so the next candidate is taken. The
-  last is the one that mints `<Base>Branch<i>`, which is a **private placeholder** and not a
-  name an application may import — §4 carries the owner's ruling of 2026-11-10.
+  collision means the candidate did not identify the branch, so the next candidate is taken.
+  **Every candidate is a fact of the branch's declaration and none is a position**; where the
+  list is exhausted the compiler refuses the document — §4 carries the order.
 
 **Position means something different in each.** In the chain,
 position means *admits at least as much*; a move along it changes what the class accepts. In the
@@ -701,30 +701,24 @@ reached first.
   carries no dependency on a sibling set**, so it is insertion-stable.
 - **Union branch**: its own `title`; else the `const`s it pins, in the document's own key order;
   else its sorted `required` set; else, where the branch is a bare `$ref`, **the TARGET's own
-  derived name**; else its **index among the branches**, `<Base>Branch<i>` — **which is a PRIVATE
-  declaration name, pending an upstream title, and never a name an application may import.**
+  derived name**; else the leading word of its `description`; else the keys its own `properties`
+  map states. **Where every candidate answers nothing the compiler REFUSES the document.**
 
- **These five are an ORDERED LIST OF CANDIDATES RESOLVED BY FIRST FIT.** A collision means the
+ **These six are an ORDERED LIST OF CANDIDATES RESOLVED BY FIRST FIT.** A collision means the
   candidate did not identify the branch, so the next is taken. Position here means *is preferred*
   and nothing more: **a name is not an acceptance fact**, so moving along this list changes nothing
   an instance can observe — which is what distinguishes it from §2's widening chain, where moving
   changes what the class admits.
 
- **THE FIFTH IS NOT A NAMING RULE AMONG EQUALS AND THIS PARAGRAPH IS THE OWNER'S DECISION OF
- 2026-11-10**, not a derivation from the four above it. **A positional name may exist privately
- and may never be public.** The class is still DECLARED — deleting it would drop a branch from the
-  union and refuse payloads the document admits, so `isinstance` through the union and validation
-  both have to go on holding — and the name is withheld from §1's export set, so no
-  `adcp.types.<domain>.<Name>`, no flat spelling and no `__all__` carries it. The ground is the
-  sentence §4 already states below ("a caller writing `isinstance(req, AssetRequirementsBranch7)`
-  has to count the document's branches to know that it means JavaScript") and `final-state.md`
-  reading 4's placeholder rule ("a name minted for want of a subject must not become a name an
-  application depends on"); the two condemned it while this list prescribed it, and the ruling
-  settles which of them is the plan. `codegen/lower/names.py`'s
-  `A_POSITIONAL_NAME_IS_PRIVATE` is the implementation and
-  `tests_emit/test_no_positional_name_is_public.py` is the gate. Measured on bundle 3.2 the
-  fifth candidate is reached by **6 of the 587** branch positions named with an index available,
-  and all six were on the public surface until the ruling landed.
+ **NO CANDIDATE IS A POSITION. `<Base>Branch<i>` IS NOT A NAME AND IS NOT EMITTED.** Every
+  candidate above is a fact of the branch's own declaration, so each is insertion-stable and each
+  says what the branch IS. An index says only where the branch sat in a list, which is the one
+  answer a caller cannot work with: `isinstance(req, AssetRequirementsBranch7)` obliges them to
+  count a document's branches to learn the branch means JavaScript. The prohibition is on the
+  SYMBOL, not on its final segment — `PostalAreaBranch9System` carries an ancestor's index and
+  requires the same count — and it holds for a private spelling as much as a public one, because
+  a module's reader and an error message both quote the declared name.
+  `tests_emit/test_no_positional_name_is_public.py` is the gate and it reads the whole symbol.
 
 **A MINTED NAME SAYS WHAT THE TYPE CONSTRAINS. A DIGEST FAILS THAT AND IS A DEFECT, and
 insertion-stability is not the test.** `StrMatching02AE7B1E` is stable — derived from the
@@ -784,18 +778,10 @@ the name is available and the index is a worse answer.
 
 A positional name is the one outcome a consumer cannot work with: a caller writing
 `isinstance(req, AssetRequirementsBranch7)` has to count the document's branches to know that it
-means JavaScript. Most of the branches that reach the index are bare `$ref`s and are what that
-candidate answers; the rest are other cases — a nested registry branch, an `allOf` case, a
-properties-only case, and a `not`-complement branch with the copy another document inlines.
-
-**AND THAT SENTENCE IS NOW THE RULE AND NOT A LAMENT** (the owner's decision, 2026-11-10, stated
-in full at the branch candidate list above): where the index is reached the class is declared
-under the positional symbol and the symbol is **withheld from §1's export set**, so no
-application can write `isinstance(req, AssetRequirementsBranch7)` at all. It is a decision about
-PUBLICATION and not about the name: the declaration stays, because dropping it would drop a branch
-from the union and refuse payloads the document admits, and the remaining candidates are the ones
-that put a public name on a branch. A branch the bundle later titles rejoins the surface with
-nothing edited.
+means JavaScript. **So no class is named from a position, and the candidate list above holds no
+position to fall to.** A branch that answers none of the six candidates says nothing about
+itself, and the compiler refuses the document rather than manufacturing an identity the bundle
+does not carry. A branch the bundle later titles is named from the title with nothing edited.
 
 Where the root's name and the target's share a leading run, the branch takes the root's name plus
 the target's distinguishing remainder, so `core/requirements/asset-requirements.json`'s branch on

@@ -429,30 +429,30 @@ class AdCPAgentsAuthorizationCommunityFormatRegistry(AdCPAgentsAuthorization):
     signal_tags: Annotated[dict[str, SignalTagsValue] | None, Field(description='Metadata for each tag referenced by signals. Provides human-readable context for signal tag values.'), OmittedNotNull] = None
 
 
-AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyIds = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds
+AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemPropertyIds = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds
 
 
-AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyTags = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags
+AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemPropertyTags = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags
 
 
-AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemInlineProperties = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties
+AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemInlineProperties = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties
 
 
-AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPublisherProperties = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties
+AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemPublisherProperties = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties
 
 
-AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalIds = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds
+AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemSignalIds = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds
 
 
-AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalTags = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags
+AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemSignalTags = AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags
 
 
-class AdCPAgentsAuthorizationCommunityFormatRegistryBranch0(AdCPAgentsAuthorizationCommunityFormatRegistry):
+class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgents(AdCPAgentsAuthorizationCommunityFormatRegistry):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/allOf/0/anyOf/0')
-    authorized_agents: Annotated[list[AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyIds | AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyTags | AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemInlineProperties | AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPublisherProperties | AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalIds | AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalTags], Field(description='Array of sales agents authorized to make inventory from this file available to buyers. Authorization can be scoped to specific properties, collections, countries, and time windows, with optional delegation metadata indicating whether the path is direct, delegated, or network-mediated. MAY be empty (`[]`) for a catalog-only community mirror — a file that publishes `formats`/`properties`/`placements` (with `catalog_etag`) for a platform that has not adopted AdCP, where there is no sales agent to authorize (see `catalog_etag`, `formats`, `superseded_by`). An empty array asserts *no sales authorization*: validators MUST NOT read it as deny-all, authorize-all, or a revocation, MUST NOT treat its presence as an error, and MUST still consume the catalog arrays.', min_length=1)]
+    authorized_agents: Annotated[list[AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemPropertyIds | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemPropertyTags | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemInlineProperties | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemPublisherProperties | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemSignalIds | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsAuthorizedAgentsItemSignalTags], Field(description='Array of sales agents authorized to make inventory from this file available to buyers. Authorization can be scoped to specific properties, collections, countries, and time windows, with optional delegation metadata indicating whether the path is direct, delegated, or network-mediated. MAY be empty (`[]`) for a catalog-only community mirror — a file that publishes `formats`/`properties`/`placements` (with `catalog_etag`) for a platform that has not adopted AdCP, where there is no sales agent to authorize (see `catalog_etag`, `formats`, `superseded_by`). An empty array asserts *no sales authorization*: validators MUST NOT read it as deny-all, authorize-all, or a revocation, MUST NOT treat its presence as an error, and MUST still consume the catalog arrays.', min_length=1)]
 
 
 class AdCPAgentsAuthorizationCommunityFormatRegistryFormats(AdCPAgentsAuthorizationCommunityFormatRegistry):
@@ -495,7 +495,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistrySignals(AdCPAgentsAuthorizat
     signals: Annotated[list[SignalDefinition], Field(description="Signal definitions published by this domain. Each entry defines a signal id within this file's publishing-domain namespace; entries do not include signal_ref objects. Signals Protocol discovery and media-buy product targeting reference these through signal_ref scope 'data_provider', with data_provider_domain set to this file's publishing domain and signal_id set to signals[].id.", min_length=1)]
 
 
-AdCPAgentsAuthorizationCommunityFormatRegistry._branch_models = (AdCPAgentsAuthorizationCommunityFormatRegistryBranch0, AdCPAgentsAuthorizationCommunityFormatRegistryFormats, AdCPAgentsAuthorizationCommunityFormatRegistryProperties, AdCPAgentsAuthorizationCommunityFormatRegistryPlacements, AdCPAgentsAuthorizationCommunityFormatRegistryCollections, AdCPAgentsAuthorizationCommunityFormatRegistrySignals,)
+AdCPAgentsAuthorizationCommunityFormatRegistry._branch_models = (AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgents, AdCPAgentsAuthorizationCommunityFormatRegistryFormats, AdCPAgentsAuthorizationCommunityFormatRegistryProperties, AdCPAgentsAuthorizationCommunityFormatRegistryPlacements, AdCPAgentsAuthorizationCommunityFormatRegistryCollections, AdCPAgentsAuthorizationCommunityFormatRegistrySignals,)
 AdCPAgentsAuthorizationCommunityFormatRegistry.model_rebuild(force=True)
 
 

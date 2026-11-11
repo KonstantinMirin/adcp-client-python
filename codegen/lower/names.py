@@ -651,8 +651,31 @@ class Branch:
     #: A pointer is ``""`` or begins with ``/`` and a name is an identifier, which is this
     #: module's own convention for telling the two apart.
     target: str | None = None
+    #: **Its own ``description``**, which §4's fifth candidate reads the leading word of.
+    #: A sentence the document wrote about THIS branch and about no other, so it is a fact
+    #: of the declaration exactly as the four above it are: a response branch described
+    #: "Success response - returns the content standards configuration" is ``Success``.
+    description: str | None = None
+    #: **The keys its own ``properties`` map states**, in the document's key order, which
+    #: §4's sixth and last candidate spells. The candidate of last resort has to be a fact
+    #: of the branch, because the alternative is its position -- and a branch declaring an
+    #: object declares the keys that object has, so a branch stating ``{properties:
+    #: {account: ...}}`` and nothing else is still saying what it is.
+    properties: tuple[str, ...] = ()
+    #: **Its own ``type``, where that is a single JSON type name** -- §4's seventh and last
+    #: candidate. A SCALAR branch declares no properties, so candidate 6 answers nothing for
+    #: it and this is the last fact of its declaration left: an inline ``{type: string,
+    #: enum: [...]}`` beside a bare ``$ref`` to the same list is distinguished by being
+    #: spelled here rather than referenced, and ``String`` is the word for that. ``None``
+    #: where the branch states no ``type`` or states a LIST of them, because a list is a
+    #: union and names no one thing.
+    scalar_type: str | None = None
     #: Its index among its union's branches, in the document's own order, where the branch
     #: is a CLASS and so needs a name of its own; ``None`` where it is a member type.
+    #:
+    #: **READ BY NO CANDIDATE.** A position is not a name (§4), so this is not a naming
+    #: fact: it is the fact that the branch is a class needing a name of its own at all,
+    #: which is what distinguishes a root union's branch from a nested union's member type.
     index: int | None = None
 
 
@@ -811,9 +834,47 @@ def branch_candidates(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, 
         remainder = _distinguishing(hop.target, parent[-1])
         if remainder:
             out.append(_suffixed(parent, remainder))
-    last = positional_chain(hop, parent)
-    if last is not None:
-        out.append(last)
+    # **Candidate 5: the LEADING WORD of the branch's own ``description``.** A sentence the
+    # document wrote about this branch and no other, so it identifies in exactly the sense
+    # candidates 1 to 4 do. The leading word and not the sentence, because a name is a word:
+    # "Success response - returns the content standards configuration" is ``Success``, which
+    # is the word fifteen of the bundle's sixteen described response branches are already
+    # named by through their pins or their required sets.
+    # **CANDIDATES 5 TO 7 ARE REACHED ONLY WHERE THE BRANCH IS A CLASS NEEDING A NAME OF ITS
+    # OWN**, which is what :attr:`Branch.index` being set means and the one thing that field
+    # is read for. A NESTED union's branch lowers to an annotation; its correct name has
+    # always been the union's own derived name, which is what an empty candidate list
+    # yields. Letting a broad candidate answer there renames a position that was never
+    # unnamed: measured, without this guard ``FailureKind`` became ``FailureKindString``,
+    # ``Language`` became ``LanguageSupportedSupportedLanguages`` and nine more good names
+    # were replaced by their own members.
+    needs_its_own = hop.index is not None
+    described = _leading_word(hop.description) if needs_its_own else None
+    if described:
+        out.append(_suffixed(parent, described))
+    # **Candidate 6, the LAST: the keys the branch's own ``properties`` map states.** A
+    # branch declaring an object declares that object's keys, so this says what the branch
+    # IS where every sharper candidate answered nothing -- a branch stating
+    # ``{properties: {country: ..., system: ...}}`` is ``CountrySystem``. It is last because
+    # it is the broadest, and it is a FACT OF THE DECLARATION, which is what every candidate
+    # must be: there is no seventh candidate and no position to fall to, so a branch
+    # answering none of the six refuses its document rather than taking an index.
+    if needs_its_own and hop.properties:
+        out.append(
+            _suffixed(parent, "".join(class_name(str(k)) for k in hop.properties))
+        )
+    # **Candidate 7, the LAST: the branch's own ``type``.** A SCALAR branch declares no
+    # properties, so candidate 6 answers nothing for it and this is what is left that is
+    # still a fact of its declaration. ``media-buy/get-products-request.json``'s
+    # ``#/properties/fields/items/anyOf/1`` is the case: ``{type: string, enum: [...]}``
+    # beside a sibling that is a bare ``$ref`` to the same field list, so the inline
+    # enumeration is ``...FieldsItemString`` -- it says the branch is the one spelled as a
+    # string here rather than referenced from elsewhere, which is the only thing that
+    # distinguishes the two. It cannot be a 17-value enum's values, for candidate 2's
+    # reason: a name is a word, and declining to choose among them is why
+    # ``identifying_pins`` reads ``const`` and not ``enum``.
+    if needs_its_own and hop.scalar_type:
+        out.append(_suffixed(parent, class_name(hop.scalar_type)))
     # A candidate spelling the same chain as the candidate above it is not a candidate to fall to: it
     # identifies the branch no better and the fall would not terminate.  Measured: a
     # branch whose title spells its own pin, and a one-branch union whose index repeats
@@ -885,6 +946,27 @@ A_POSITIONAL_NAME_IS_PRIVATE = (
     "either way (the owner's ruling, 2026-11-10; rebuild-plan section 4 and final-state "
     "reading 4 are the condemnation it acts on)"
 )
+
+
+def _leading_word(description: str | None) -> str | None:
+    """§4's fifth candidate: the leading WORD of a description, or ``None``.
+
+    A name is a word, so the sentence is cut at its first non-alphanumeric run and only the
+    first token is read: "Success response - returns the content standards configuration"
+    answers ``Success``. ``None`` where the description does not START with a word -- a
+    sentence opening on a symbol, a pointer or a bracket is prose about the branch rather
+    than a name for it, and the candidate declines rather than spelling punctuation.
+
+    A one-letter token is declined for the same reason ``_const_pin`` declines a boolean:
+    ``A`` identifies nothing a reader can act on, and the candidate below it is broader
+    rather than worse.
+    """
+    if not description:
+        return None
+    token = re.split(r"[^0-9A-Za-z]+", description.strip(), maxsplit=1)[0]
+    if len(token) < 2 or not token[0].isalpha():
+        return None
+    return class_name(token)
 
 
 def positional_chain(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:

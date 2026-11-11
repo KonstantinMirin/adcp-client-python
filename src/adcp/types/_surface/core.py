@@ -1145,6 +1145,7 @@ from .._schemas.core.postal_area import PostalArea as PostalArea
 from .._schemas.core.postal_area import PostalAreaAUPostcode as PostalAreaAUPostcode
 from .._schemas.core.postal_area import PostalAreaBRCep as PostalAreaBRCep
 from .._schemas.core.postal_area import PostalAreaCA as PostalAreaCA
+from .._schemas.core.postal_area import PostalAreaCountrySystem as PostalAreaCountrySystem
 from .._schemas.core.postal_area import PostalAreaCountrySystemValues as PostalAreaCountrySystemValues
 from .._schemas.core.postal_area import PostalAreaFRCodePostal as PostalAreaFRCodePostal
 from .._schemas.core.postal_area import PostalAreaGB as PostalAreaGB
@@ -1153,7 +1154,7 @@ from .._schemas.core.postal_area import PostalAreaPlz as PostalAreaPlz
 from .._schemas.core.postal_area import PostalAreaUS as PostalAreaUS
 from .._schemas.core.postal_area import PostalAreaWithFusedSystem as PostalAreaWithFusedSystem
 from .._schemas.core.postal_area import PostalAreaZAPostalCode as PostalAreaZAPostalCode
-from .._schemas.core.postal_area import System as PostalAreaBranch9System
+from .._schemas.core.postal_area import System as PostalAreaCountrySystemSystem
 from .._schemas.core.postal_area_support import PostalAreaSupport as PostalAreaSupport
 from .._schemas.core.postal_area_support import PostalAreaSupportValueItem as PostalAreaSupportValueItem
 from .._schemas.core.postal_country_system import CaPostalCodeSystem as PostalCountrySystemCASystem
@@ -1163,13 +1164,14 @@ from .._schemas.core.postal_country_system import PostalCountrySystem as PostalC
 from .._schemas.core.postal_country_system import PostalCountrySystemAUPostcode as PostalCountrySystemAUPostcode
 from .._schemas.core.postal_country_system import PostalCountrySystemBRCep as PostalCountrySystemBRCep
 from .._schemas.core.postal_country_system import PostalCountrySystemCA as PostalCountrySystemCA
+from .._schemas.core.postal_country_system import PostalCountrySystemCountrySystem as PostalCountrySystemCountrySystem
 from .._schemas.core.postal_country_system import PostalCountrySystemFRCodePostal as PostalCountrySystemFRCodePostal
 from .._schemas.core.postal_country_system import PostalCountrySystemGB as PostalCountrySystemGB
 from .._schemas.core.postal_country_system import PostalCountrySystemINPin as PostalCountrySystemINPin
 from .._schemas.core.postal_country_system import PostalCountrySystemPlz as PostalCountrySystemPlz
 from .._schemas.core.postal_country_system import PostalCountrySystemUS as PostalCountrySystemUS
 from .._schemas.core.postal_country_system import PostalCountrySystemZAPostalCode as PostalCountrySystemZAPostalCode
-from .._schemas.core.postal_country_system import System as PostalCountrySystemBranch9System
+from .._schemas.core.postal_country_system import System as PostalCountrySystemCountrySystemSystem
 from .._schemas.core.postal_country_system import USPostalCodeSystem as PostalCountrySystemUSSystem
 from .._schemas.core.presentation_ref import PlacementPresentationReference as PlacementPresentationReference
 from .._schemas.core.preview_provider import PublisherDesignatedPreviewProvider as PublisherDesignatedPreviewProvider
@@ -3039,8 +3041,9 @@ __all__ = [
     'PostalArea',
     'PostalAreaAUPostcode',
     'PostalAreaBRCep',
-    'PostalAreaBranch9System',
     'PostalAreaCA',
+    'PostalAreaCountrySystem',
+    'PostalAreaCountrySystemSystem',
     'PostalAreaCountrySystemValues',
     'PostalAreaFRCodePostal',
     'PostalAreaGB',
@@ -3054,9 +3057,10 @@ __all__ = [
     'PostalCountrySystem',
     'PostalCountrySystemAUPostcode',
     'PostalCountrySystemBRCep',
-    'PostalCountrySystemBranch9System',
     'PostalCountrySystemCA',
     'PostalCountrySystemCASystem',
+    'PostalCountrySystemCountrySystem',
+    'PostalCountrySystemCountrySystemSystem',
     'PostalCountrySystemFRCodePostal',
     'PostalCountrySystemGB',
     'PostalCountrySystemGBSystem',

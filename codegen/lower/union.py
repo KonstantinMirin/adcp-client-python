@@ -617,12 +617,24 @@ def _naming_facts(branch: Any, props: Any, inherits: Inherited | None = None) ->
     """
     title = branch.get("title") if isinstance(branch, Mapping) else None
     required = branch.get("required") if isinstance(branch, Mapping) else None
+    described = branch.get("description") if isinstance(branch, Mapping) else None
+    stated = branch.get("properties") if isinstance(branch, Mapping) else None
+    typed = branch.get("type") if isinstance(branch, Mapping) else None
     symbol = inherits.symbol if inherits is not None else None
     return names.Branch(
         parent="",
         title=title if isinstance(title, str) and title else None,
         pins=_const_pins(props),
         required=tuple(required) if isinstance(required, list) else (),
+        # **The sixth and seventh DECLARED facts**, which §4's last two candidates read:
+        # the branch's own ``description`` and the keys of its own ``properties`` map. Both
+        # are read off the branch's declaration and not off ``props`` -- ``props`` is the
+        # resolved property map and carries a bare ``$ref`` branch's TARGET's keys, which
+        # would name the branch after the thing it references rather than after itself, and
+        # candidate 4 already answers that branch from the target's symbol.
+        description=described if isinstance(described, str) and described else None,
+        properties=tuple(stated) if isinstance(stated, Mapping) else (),
+        scalar_type=typed if isinstance(typed, str) and typed else None,
         # **The fifth DECLARED fact: requiredness the branch states ONE LEVEL DOWN**
         # (:func:`_requires_one_of`).  Read off the top level alone the reading went silent
         # for a branch whose requiredness the document states in a nested ``anyOf``, which

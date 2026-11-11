@@ -1,50 +1,53 @@
-"""THE OWNER'S RULING OF 2026-11-10: a positional name may exist, and may never be public.
+"""A POSITION IS NOT A NAME: no ordinal is DECLARED, anywhere in the emitted tree.
 
-``codegen/lower/names.py``'s ``A_POSITIONAL_NAME_IS_PRIVATE`` is the sentence, and it is
-quoted here rather than paraphrased so that the rule the compiler states and the rule a
-failure reports against are one string.  The condemnation the ruling acts on was already
-written twice before anything enforced it:
+``<Base>Branch<i>`` and ``<Sibling><n>`` say where a thing sat in a list and nothing about
+what it is, so a caller writing ``isinstance(req, AssetRequirementsBranch7)`` has to count
+a document's branches to learn that the branch means JavaScript.  The rule is stated in
+``docs/plan/rebuild-plan.md`` section 4's branch candidate list, in
+``docs/plan/architecture.md`` section 5, and in ``docs/plan/final-state.md`` readings 4
+and 6, and all three say the same three things:
 
-* ``docs/plan/rebuild-plan.md`` section 4 -- "A positional name is the one outcome a
-  consumer cannot work with: a caller writing ``isinstance(req, AssetRequirementsBranch7)``
-  has to count the document's branches to know that it means JavaScript."
-* ``docs/plan/final-state.md`` reading 4 -- "a name minted for want of a subject must not
-  become a name an application depends on", beside "A NAME THIS RULE MINTS IS STILL
-  PENDING AN UPSTREAM TITLE".
+* **The prohibition is on the SYMBOL, never on its final segment.**
+  ``PostalAreaBranch9System`` carries an ancestor's index and demands the same count, and
+  ``BuyProductsRequestBranch1AccountAccountId`` demands it three segments early.
+* **It holds for a PRIVATE spelling as much as a public one.**  A module's reader and a
+  validation error both quote the declared name, so withholding an ordinal from
+  ``__all__`` does not stop it being the name of the thing.
+* **Where every naming candidate answers nothing the compiler REFUSES the document.**  A
+  branch stating no ``title``, no pin, no ``required``, no ``$ref`` target, no
+  ``description`` and no ``properties`` says nothing about itself; refusing is countable
+  in ``./check``'s figure, and minting an index is not.
 
-**AND THE SURFACE CARRIED SIX OF THEM WHILE THE SUITE WAS GREEN**, which is the defect
-this file is the missing half of.  ``adcp.types.core.PostalAreaBranch9``,
-``adcp.types.core.PostalCountrySystemBranch9``,
-``adcp.types.media_buy.BuyProductsRequestBranch1``,
-``adcp.types.media_buy.FieldsItemBranch1``,
-``adcp.types.content_standards.GetContentStandardsResponseBranch0`` and
-``adcp.types.adagents.AdCPAgentsAuthorizationCommunityFormatRegistryBranch0`` were each in
-two public ``__all__`` lists -- their domain's and the flat consolidation's -- and no check
-in the suite asked the question, while
-``tests_emit/test_names_collision.py`` asserted the positional spelling as the EXPECTED
-output of the name rule.
+**THE ONE ORDINAL THAT IS ADMISSIBLE IS UPSTREAM'S OWN PUBLISHED WORD, and it is admitted
+as a RECORD and not as an exception.**  Upstream's generator numbers its anonymous variant
+classes -- ``BuildCreativeResponse1``, ``Assets162``, ``Type11`` -- and an application has
+already written ``from adcp.types import BuildCreativeResponse1`` against that wheel.  A
+module-scope ``X = <symbol>`` statement RECORDS that commitment; it does not mint one.  So
+the admissible set is :meth:`codegen.emit.Emitted.upstream_words` -- the run's own record
+of the three joins ``lower/names.assign`` runs against upstream's published surface -- and
+not a list in this file.  An ordinal the compiler binds that is NOT in that record is a
+name this compiler invented, which is the defect, and no edit to this file can admit one.
 
-**WHAT IS FORBIDDEN IS PUBLISHING ONE, NEVER HAVING ONE.**  The branch is still declared
-under ``_schemas/`` and is still a branch of its union: deleting the class would drop a branch
-and refuse payloads the document admits, so ``isinstance`` through the union and validation
-both still hold.  :func:`test_a_withheld_class_is_still_declared_and_still_validates` is
-that half, and it is as much of the ruling as the ban is.
+**EVERY TEST HERE READS THE EMITTED SOURCE TEXT AND NOT THE IMPORTED NAMESPACE.**  The
+subject is which names the compiler WRITES, so a facade, an alias layer or a lazy
+``__getattr__`` must not be able to change the answer; ``ast`` over the module bodies is
+the one reading that cannot be.  And the predicate is DERIVED rather than spelled: a
+trailing digit run is an ordinal when the name without it is bound by the same module, so
+``Html5``, ``Base64`` and ``V2`` are not swept up by a pattern and are not excused by a
+word list either -- ``Html`` is not a sibling of ``Html5``, and that is the whole test.
 
-**THE SET IS THE COMPILER'S OWN RECORD AND IS ASSERTED NON-EMPTY FIRST.**
-``emit.Emitted.positional`` is written by ``names.the_positional_names`` off the walk's hop
-table and the naming pass's symbol table -- not off the emitted text, and not off a regex
-over names: a regex for ``Branch\\d+`` was measured at 467 hits over this tree of which 457
-were ALIASES onto correctly-titled classes and one was a ``StrEnum`` read as "a class with
-no subject".  A gate whose set silently emptied would pass every assertion below
-while saying nothing, and a gate founded on today's six names would go vacuous the moment
-one of them is renamed; so the first test is that the rule still finds something, and
-every other test ranges over whatever it found.
+**BOTH SPELLINGS ARE READ, which is the half its predecessor missed.**  A positionally
+named branch is a ``class`` statement and an ordinal alias is an ``X = <symbol>``
+assignment.  The earlier gate read the compiler's record of positional CLASS names only,
+and asked of them one question -- are they public -- so 395 ordinal aliases and three
+public ``Branch1``-bearing classes were emitted under a green suite.
 """
 
 from __future__ import annotations
 
 import ast
-import importlib
+import re
+from pathlib import Path
 
 import fresh
 import pytest
@@ -52,12 +55,75 @@ from compiled import compiled
 from nodeset import claimed
 
 from codegen import emit
-from codegen.lower import names
 
 #: One spelling of the bundle, re-exported from ``tests_emit/fresh.py`` for
 #: ``test_the_domain_surface.py``'s reason: a file that spells its own path can come to
 #: range over a different bundle from the compile it reads.
 BUNDLE = fresh.BUNDLE
+
+#: **EVERY TREE THE COMPILER WRITES, and not only the private one.**  The committed text and
+#: not only a fresh emit, because the subject is the SOURCE TEXT a consumer installs;
+#: :func:`test_the_fresh_emit_states_no_index_either` grades the run, and the two must agree.
+#:
+#: ``_surface/`` is here because it is the half that PUBLISHES a name: it re-exports each
+#: private symbol under the word the domain gives it and lists that word in ``__all__``.  A
+#: gate reading ``_schemas/`` alone passed while ``_surface/core.py`` published
+#: ``PostalAreaBranch9System`` and ``_surface/media_buy.py`` published three
+#: ``BuyProductsRequestBranch1...`` names, because the re-export spells the name again at a
+#: file the gate never opened.  Both trees, one rule.
+TREES = (Path("src/adcp/types/_schemas"), Path("src/adcp/types/_surface"))
+
+#: **An index ANYWHERE in the symbol**, which is the first of the rule's three clauses.
+#: Searched and not anchored, so an ancestor's index is the same finding as a leaf's.
+POSITIONAL = re.compile(r"Branch\d+")
+
+#: A trailing run of digits, with the name it would be without them.  Whether that stem is
+#: BOUND by the same module is what makes the name an ordinal, so this pattern alone
+#: decides nothing -- see :func:`_ordinals`.
+TRAILING = re.compile(r"^(?P<stem>.*[A-Za-z])(?P<index>\d+)$")
+
+
+def _bound(tree: ast.Module) -> set[str]:
+    """Every name the module binds at MODULE SCOPE: a class statement or an assignment."""
+    out: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            out.add(node.name)
+        elif isinstance(node, ast.Assign):
+            out |= {t.id for t in node.targets if isinstance(t, ast.Name)}
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            out.add(node.target.id)
+    return out
+
+
+def _ordinals(bound: set[str]) -> dict[str, str]:
+    """The ordinal names of one module -> the sibling stem that makes each one ordinal.
+
+    A name is an ordinal when stripping its trailing digits leaves a name THIS MODULE also
+    binds: ``AcceptancePolicyRequirement1`` beside ``AcceptancePolicyRequirement`` is the
+    index of a sibling, while ``Html5`` has no ``Html`` beside it and is a word the schema
+    spells.  Derived from the module's own bindings, so no name needs excusing and none
+    can be excused by editing a set here.
+    """
+    found = {}
+    for name in bound:
+        match = TRAILING.match(name)
+        if match and match.group("stem") in bound:
+            found[name] = match.group("stem")
+    return found
+
+
+@pytest.fixture(scope="module")
+def modules() -> dict[str, set[str]]:
+    """Module path -> the names it binds, over the whole emitted tree."""
+    return {
+        f"{tree.name}/{path.relative_to(tree).as_posix()}": _bound(
+            ast.parse(path.read_text())
+        )
+        for tree in TREES
+        for path in sorted(tree.rglob("*.py"))
+        if path.name != "__init__.py"
+    }
 
 
 @pytest.fixture(scope="module")
@@ -67,173 +133,113 @@ def run() -> emit.Emitted:
 
 
 @pytest.fixture(scope="module")
-def withheld(run: emit.Emitted) -> dict[str, frozenset[str]]:
-    """Module -> the positional names the ruling withheld from it, off the run's record."""
-    return {module: words for module, words in run.positional.items() if words}
+def upstream(run: emit.Emitted) -> set[str]:
+    """Every word upstream's wheel published that the run RECORDS a statement for.
 
-
-def test_the_rule_still_finds_a_positional_name_to_withhold(
-    withheld: dict[str, frozenset[str]],
-) -> None:
-    """The gate's own non-vacuity, asserted before anything is asserted about the surface.
-
-    Every other test in this file is a statement about the members of this set, so an
-    empty set makes all of them pass while grading nothing -- and the two ways it could
-    empty are both defects rather than progress: the derivation stops recognising §4's
-    last resort (``names.positional_chain`` answering ``None``, or
-    ``names.spelled_from`` no longer matching a name the collision rule lengthened), or
-    the record stops being written at all.
-
-    **Measured on bundle 3.2: 587 branch positions are named with an index available and
-    6 of them are spelled from it**, across 6 modules of 4 domains.  The assertion is
-    "at least one", not "exactly six": the count is a property of the BUNDLE, and a bundle
-    that titles one of those six branches upstream should move this figure without
-    anybody editing a test.
+    :meth:`emit.Emitted.upstream_words` is module -> word -> symbol; the admissible set is
+    the words, because the question an ordinal raises is whether the SPELLING is upstream's
+    commitment, and upstream binds its own numbered classes in their own modules.
     """
-    claimed("the names the ruling withholds", withheld)
-    assert withheld, {
-        "the positional set is EMPTY": names.A_POSITIONAL_NAME_IS_PRIVATE,
-        "so every assertion in this file is vacuous": (
-            "names.the_positional_names found nothing to withhold over the whole "
-            "set; either the derivation no longer recognises section 4's last "
-            "resort or emit stopped recording it"
+    return {word for words in run.upstream_words().values() for word in words}
+
+
+def test_the_tree_binds_names_at_all(modules: dict[str, set[str]]) -> None:
+    """The gate's own non-vacuity, asserted before any claim about the names.
+
+    Every assertion below is a statement about a set derived from these bindings, so a
+    reading that found no modules, or modules binding nothing, would pass all of them while
+    grading nothing.  ``ast`` over a tree whose path moved is exactly how that happens.
+    """
+    claimed(
+        "the emitted tree this gate reads",
+        {"modules": len(modules), "names": sum(len(b) for b in modules.values())},
+    )
+    assert len(modules) > 500, f"only {len(modules)} modules under {TREES}"
+    assert sum(len(b) for b in modules.values()) > 5_000
+
+
+def test_no_declared_name_carries_an_index(modules: dict[str, set[str]]) -> None:
+    """Clause one: ``Branch<i>`` appears in no name the tree binds, at any segment.
+
+    No exception and no carve-out, because this spelling is never upstream's word: it is
+    the one the candidate list used to fall to when every candidate about the branch
+    answered nothing, and the rule is that the compiler refuses the document instead.
+    """
+    offending = sorted(
+        f"{module}::{name}"
+        for module, bound in modules.items()
+        for name in bound
+        if POSITIONAL.search(name)
+    )
+    claimed(
+        "names the emitted tree declares",
+        {f"{module}::{name}" for module, bound in modules.items() for name in bound},
+    )
+    assert not offending, {
+        "a position is not a name": offending,
+        "the rule": (
+            "rebuild-plan section 4: no candidate is a position, and where the candidates "
+            "are exhausted the compiler refuses the document"
         ),
     }
 
 
-def test_no_positional_name_is_in_the_export_set(
-    withheld: dict[str, frozenset[str]], run: emit.Emitted
+def test_every_ordinal_alias_is_upstream_s_own_word(
+    modules: dict[str, set[str]], upstream: set[str]
 ) -> None:
-    """The ruling, over EVERY declared name of the emitted tree, on the run's own record.
+    """Clause two: an ``<Sibling><n>`` binding exists only where upstream published it.
 
-    ``emit.Emitted.surface`` is §1's export set -- the names ``_surface/<domain>.py``
-    imports and lists in ``__all__``, and through the consolidation the names
-    ``_surface/_flat.py`` does too -- so this is the ban asked of the one record both
-    artifacts are generated from.  Asked per MODULE and not over a union of names, because
-    a word is withheld from the module that declares it and §1 lets two domains hold one
-    word: a global intersection would read a legitimate word of another domain as a leak.
+    Such a binding RECORDS a commitment upstream's wheel already made, so the word has to
+    be in the run's own record of their surface.  One this compiler invented answers no
+    caller that exists and gives a reader an index where a subject belongs -- and because
+    the admissible set is the record, admitting one means teaching the compiler that
+    upstream published it, which it cannot do by itself.
     """
-    leaked = {
-        module: sorted(found)
-        for module, words in withheld.items()
-        if (found := words & frozenset(run.surface.get(module, ())))
-    }
-    assert not leaked, {
-        "a positional name is on the surface": leaked,
-        "the rule": names.A_POSITIONAL_NAME_IS_PRIVATE,
-    }
-
-
-def test_no_public_all_carries_a_positional_name(
-    withheld: dict[str, frozenset[str]], run: emit.Emitted
-) -> None:
-    """The same ruling asked of the ARTIFACT: every ``__all__`` the compiler writes.
-
-    The record above is what the surface is generated FROM; this is the text it generated,
-    parsed rather than grepped -- ``ast`` over each module the run writes beside the tree,
-    reading the literal ``__all__`` assignment ``render.domain_module`` and
-    ``render.flat_surface`` emit.  Both halves belong: a record that is right and a writer
-    that re-derives a name from somewhere else would pass the test above and ship the
-    leak, which is the kind of defect §1's "read one record" rule exists against.
-
-    The scope is every file of ``emit.Emitted.beside`` -- the domain aggregators, the
-    flat consolidation and D5's alias module -- so a fifth artifact gaining an ``__all__``
-    is covered with no edit here.
-    """
-    everything = frozenset().union(*withheld.values())
-    leaked: dict[str, list[str]] = {}
-    for path, text in sorted(run.beside.items()):
-        if not path.endswith(".py"):
-            continue
-        for node in ast.walk(ast.parse(text)):
-            if not isinstance(node, ast.Assign):
-                continue
-            if not any(
-                isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
-            ):
-                continue
-            found = sorted(
-                {
-                    element.value
-                    for element in getattr(node.value, "elts", [])
-                    if isinstance(element, ast.Constant)
-                    and isinstance(element.value, str)
-                    and element.value in everything
-                }
-            )
-            if found:
-                leaked[path] = found
-    assert not leaked, {
-        "a public __all__ carries a positional name": leaked,
-        "the rule": names.A_POSITIONAL_NAME_IS_PRIVATE,
+    invented = sorted(
+        f"{module}::{name} (sibling of {stem})"
+        for module, bound in modules.items()
+        for name, stem in _ordinals(bound).items()
+        if name not in upstream
+    )
+    claimed(
+        "ordinal aliases the tree binds",
+        {
+            f"{module}::{name}"
+            for module, bound in modules.items()
+            for name in _ordinals(bound)
+        },
+    )
+    assert not invented, {
+        "these ordinals are this compiler's own invention": invented[:40],
+        "count": len(invented),
+        "the rule": (
+            "final-state reading 4: an alias is admissible only where upstream's wheel "
+            "already ships the spelling -- the commitment is theirs and the statement "
+            "records it; a re-minted spelling answers no caller"
+        ),
     }
 
 
-def test_no_positional_name_resolves_at_a_public_module(
-    withheld: dict[str, frozenset[str]],
-) -> None:
-    """And the ruling asked of the IMPORT a consumer would write.
+def test_the_fresh_emit_states_no_index_either(run: emit.Emitted) -> None:
+    """And the FRESH emit agrees with the committed tree, which is what makes it a gate.
 
-    ``__all__`` governs ``from adcp.types.<domain> import *`` and what a type checker calls
-    a re-export; it does not govern ``from adcp.types.<domain> import <Name>``, which
-    resolves against the module's own namespace.  So a surface that dropped the name from
-    its list and kept the import statement would pass every test above and still let an
-    application depend on the placeholder -- the import is the thing the ruling is about,
-    and this is the only test here that asks it.
+    ``architecture.md`` section 2: "the subject of grading is a FRESH EMIT, never the
+    committed tree".  The tests above read the committed text because that is what a
+    consumer installs; this one reads the run, so a tree that happens to be clean while the
+    compiler still mints an index cannot hide behind it.
     """
-    assert not fresh.FAILURE, fresh.FAILURE
-    reachable: dict[str, list[str]] = {}
-    for module, words in sorted(withheld.items()):
-        domain = emit.module_domain(module)
-        public = importlib.import_module(f"adcp.types.{domain}")
-        # ACCUMULATED and never assigned: a domain is many modules, so two modules each
-        # leaking one word onto one domain would report as the second module's word alone.
-        for word in sorted(word for word in words if hasattr(public, word)):
-            reachable.setdefault(f"adcp.types.{domain}", []).append(word)
-    assert not reachable, {
-        "a positional name resolves at a public import": reachable,
-        "the rule": names.A_POSITIONAL_NAME_IS_PRIVATE,
-    }
-
-
-def test_a_withheld_class_is_still_declared_and_still_validates(
-    withheld: dict[str, frozenset[str]],
-) -> None:
-    """The other half of the ruling, which is as much of it as the ban is.
-
-    "Do not delete the branch's class -- that would drop a branch from the union and refuse payloads
-    the document admits."  So every withheld name is still a declaration of its private
-    module, and the union whose branch it is still lists it: an instance of the branch is
-    still an instance of the union, which is what makes a consumer's ``isinstance`` over
-    the dispatch true and the validation of a payload the document admits possible.
-
-    The private path is ``_schemas`` and is reached by name here deliberately: P8 makes it
-    private to an APPLICATION, and this is the compiler's own suite asserting that the
-    object the ruling withheld a public name from still exists.
-    """
-    missing: dict[str, str] = {}
-    not_a_branch: dict[str, str] = {}
-    for module, words in sorted(withheld.items()):
-        private = importlib.import_module(f"adcp.types._schemas.{module.replace('/', '.')}")
-        for word in sorted(words):
-            held = getattr(private, word, None)
-            if held is None:
-                missing[f"{module}.{word}"] = "the class the ruling withheld a name from is gone"
-                continue
-            # The union's branches, as the runtime holds them: a branch class subclasses its
-            # union base, and the base lists its branches for the dispatch.  Both directions
-            # are asserted because the ban could break either -- a class dropped from the
-            # branch list still imports, and a class that is no longer a subclass still
-            # appears in the list.
-            bases = [
-                base
-                for base in held.__mro__[1:]
-                if getattr(base, "_branch_models", None) is not None
-            ]
-            if bases and not any(held in (base._branch_models or ()) for base in bases):
-                not_a_branch[f"{module}.{word}"] = (
-                    f"is not among the branches of {bases[0].__name__}, so a payload the "
-                    "document admits would be refused"
-                )
-    assert not missing, {"a withheld class was deleted": missing}
-    assert not not_a_branch, {"a withheld class lost its place among the union's branches": not_a_branch}
+    offending = sorted(
+        f"{module}::{name}"
+        for module, text in run.files.items()
+        for name in _bound(ast.parse(text))
+        if POSITIONAL.search(name)
+    )
+    claimed(
+        "names the fresh emit declares",
+        {
+            f"{module}::{name}"
+            for module, text in run.files.items()
+            for name in _bound(ast.parse(text))
+        },
+    )
+    assert not offending, offending

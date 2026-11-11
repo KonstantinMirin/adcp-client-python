@@ -35,7 +35,7 @@ class GetContentStandardsResponse(BranchDispatchMixin, AdCPVersionEnvelope, Prot
     )
 
 
-class GetContentStandardsResponseBranch0(GetContentStandardsResponse, ContentStandards):
+class GetContentStandardsResponseSuccess(GetContentStandardsResponse, ContentStandards):
     """
     Success response - returns the content standards configuration
     """
@@ -59,11 +59,11 @@ class GetContentStandardsResponseErrors(GetContentStandardsResponse, FailedRespo
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
-GetContentStandardsResponse._branch_models = (GetContentStandardsResponseBranch0, GetContentStandardsResponseErrors,)
+GetContentStandardsResponse._branch_models = (GetContentStandardsResponseSuccess, GetContentStandardsResponseErrors,)
 GetContentStandardsResponse.model_rebuild(force=True)
 
 
-GetContentStandardsResponse1 = GetContentStandardsResponseBranch0
+GetContentStandardsResponse1 = GetContentStandardsResponseSuccess
 
 
 GetContentStandardsResponse2 = GetContentStandardsResponseErrors

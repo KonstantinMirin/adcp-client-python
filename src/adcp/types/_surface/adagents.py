@@ -26,6 +26,9 @@ from .._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistry as AdCPAgentsAuthorizationCommunityFormatRegistry,
 )
 from .._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgents as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgents,
+)
+from .._schemas.adagents import (
     AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties,
 )
 from .._schemas.adagents import (
@@ -93,6 +96,7 @@ __all__ = [
     'AdCPAgentsAuthorization',
     'AdCPAgentsAuthorizationAuthoritativeLocation',
     'AdCPAgentsAuthorizationCommunityFormatRegistry',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgents',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds',
     'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags',

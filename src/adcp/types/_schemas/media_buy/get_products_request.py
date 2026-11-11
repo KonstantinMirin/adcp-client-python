@@ -209,7 +209,7 @@ class FieldsItem(StrEnum):
     trusted_match = MemberAlias('TRUSTED_MATCH')
 
 
-class FieldsItemBranch1(StrEnum):
+class FieldsItemString(StrEnum):
     FORMAT_IDS = 'format_ids'
     format_ids = MemberAlias('FORMAT_IDS')
     OUTCOME_MEASUREMENT = 'outcome_measurement'
@@ -307,7 +307,7 @@ Action9 = RefineItemProposalAction
 Field1 = FieldsItem
 
 
-Fields = FieldsItemBranch1
+Fields = FieldsItemString
 
 
 Refine1 = ObjScopeAsk

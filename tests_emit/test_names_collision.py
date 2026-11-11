@@ -237,33 +237,36 @@ def test_section_4s_branch_rules_name_the_branch_and_not_the_path_to_it() -> Non
     assert names.branch_identity(
         names.Branch(parent="/x", required=("trigger", "input")), parent
     ) == ("MediaBuy", "TransitionsItemInputTrigger")
-    # §4's LAST resort, ``<Base>Branch<i>`` (``adcp-client-python-10l.41``), which is a
-    # PRIVATE declaration name and never a name an application may import (the owner's
-    # ruling of 2026-11-10, :data:`names.A_POSITIONAL_NAME_IS_PRIVATE`).  It is reached
-    # only here: the rules above each answered nothing, and a document that gives a branch
-    # no identity at all leaves nothing else to read -- so the class still has to be
-    # DECLARED under some name, or the union loses a branch and the model refuses a payload
-    # the document admits.  What the ruling removes is the publication, not the name.
+    # **A BRANCH WITH NO IDENTITY HAS NO NAME, AND THE INDEX IS NOT ONE.**  ``index`` says
+    # the branch is a class needing a name of its own; it is read by no candidate, so a hop
+    # carrying nothing but an index answers ``None`` and the document is refused rather
+    # than named from a position (§4: "no candidate is a position").
     placeholder = names.Branch(parent="/x", index=3)
-    assert names.branch_identity(placeholder, parent) == (
-        "MediaBuy",
-        "TransitionsItemBranch3",
+    assert names.branch_identity(placeholder, parent) is None
+    # The three candidates BELOW the identity rules answer instead where the branch states
+    # anything about itself at all -- its description's leading word, its own property
+    # keys, its own ``type`` -- each a fact of the declaration and none a position.
+    assert names.branch_identity(
+        names.Branch(parent="/x", description="Success response - the configuration", index=3),
+        parent,
+    ) == ("MediaBuy", "TransitionsItemSuccess")
+    assert names.branch_identity(
+        names.Branch(parent="/x", properties=("country", "system"), index=3), parent
+    ) == ("MediaBuy", "TransitionsItemCountrySystem")
+    assert names.branch_identity(
+        names.Branch(parent="/x", scalar_type="string", index=3), parent
+    ) == ("MediaBuy", "TransitionsItemString")
+    # And those three are reached ONLY where the branch is a class needing its own name: a
+    # NESTED union's branch lowers to an annotation and keeps the union's derived name, so
+    # a broad candidate may not rename a position that was never unnamed.
+    assert (
+        names.branch_identity(
+            names.Branch(parent="/x", properties=("country",), scalar_type="string"), parent
+        )
+        is None
     )
-    # And the name this rule derives is recognised as positional, which is the whole of
-    # how it comes to be withheld: ``the_positional_names`` asks whether a settled name is
-    # a spelling of this position's own positional chain, and
-    # ``tests_emit/test_no_positional_name_is_public.py`` is what grades the surface.
-    assert names.positional_chain(placeholder, parent) == ("MediaBuy", "TransitionsItemBranch3")
-    assert names.spelled_from(
-        names.positional_chain(placeholder, parent), "TransitionsItemBranch3"
-    )
-    assert names.spelled_from(
-        names.positional_chain(placeholder, parent), "MediaBuyTransitionsItemBranch3"
-    )
-    # And the index never OUTRANKS an identity, which is the whole of why it is kept at
-    # all: the same hop carrying a title takes the title, and carrying a pin takes the pin,
-    # and such a name is PUBLIC -- it says what it names, so the ruling has nothing to
-    # withhold.
+    # And no candidate OUTRANKS an identity: the same hop carrying a title takes the title,
+    # and carrying a pin takes the pin.
     assert names.branch_identity(
         names.Branch(parent="/x", title="Timer Transition", index=3), parent
     ) == ("TimerTransition",)
@@ -294,68 +297,60 @@ def test_section_4s_branch_rules_name_the_branch_and_not_the_path_to_it() -> Non
     assert names.branch_identity(names.Branch(parent="/x"), parent) is None
 
 
-def test_inserting_a_branch_after_an_indexed_one_moves_no_existing_name() -> None:
-    """The row's own acceptance criterion: every branch class name is a function of the
-    branch node ALONE, so adding a sibling branch renames nothing already emitted.
+def test_inserting_a_branch_anywhere_moves_no_existing_name() -> None:
+    """The row's acceptance criterion, and it now holds for insertion ANYWHERE.
 
-    :data:`names.INDEX_IS_THE_LAST_CANDIDATE` is the sentence.  A positional name is the
-    defect -- the upstream v9 SDK numbers 1,092 of its 4,360 classes and renames a
-    sibling when a branch is inserted ahead of it -- and §4 reaches for it only as the
-    last resort, where there is nothing else to read.  **AND THE NAME IT MINTS THERE IS
-    PRIVATE AND NEVER PUBLIC** (the owner's ruling of 2026-11-10,
-    :data:`names.A_POSITIONAL_NAME_IS_PRIVATE`): the class is declared, because deleting
-    it would drop a branch from the union and refuse payloads the document admits, and the name is
-    withheld from §1's export set, because a name minted for want of a subject must not
-    become a name an application depends on.
+    Every branch candidate is a fact of the branch's own DECLARATION -- its ``title``, its
+    pins, its ``required`` set, a bare ``$ref`` target's name, its ``description``'s
+    leading word, its ``properties`` keys, its ``type`` -- and none is a position.  So a
+    branch's name is a function of that branch's node alone, and a sibling inserted
+    BEFORE it, after it or between its neighbours renames nothing.
 
-    **SO WHAT THIS TEST CLAIMS IS NOT THAT THE NAME IS RIGHT, ONLY THAT IT IS STABLE.**
-    It used to assert ``AssetRequirementsBranch0`` as the expected OUTPUT of the name
-    rule, which is the claim the ruling denies; the derivation is still graded here
-    because the compiler still has to declare the class under a stable symbol, and the
-    second half -- that no such symbol may be published -- is asserted where the surface
-    is, in ``tests_emit/test_no_positional_name_is_public.py``.
+    **THAT IS STRICTLY STRONGER THAN WHAT THIS TEST USED TO CLAIM.**  While the candidate
+    list ended in ``<Base>Branch<i>`` the property held only for insertion at the END --
+    "stable under insertion only at the end" was the honest limit, because the index of
+    every later sibling moved.  With the position gone there is no limit to state: the
+    middle case is asserted below and it is the case that used to fail.
 
-    What makes the symbol safe at all is that an index is a fact of the branch's OWN
-    position: it is never derived from what the siblings state, so a branch APPENDED to
-    the combinator adds a declaration and moves none.  Insertion in the MIDDLE does move
-    the names after it, and that is the honest limit -- §4 says "stable under insertion
-    only at the end" -- so this grades the property the section claims and not a stronger
-    one.  A document that wants a stable name under reordering states a ``title``, which
-    is the first rule and is what the upstream candidate asks for.
+    The upstream v9 SDK is the worked example of the opposite -- it numbers 1,092 of its
+    4,360 classes and renames a sibling whenever a branch is inserted ahead of one.
     """
-    def hops(count: int) -> dict[str, names.Hop]:
-        """A root union of ``count`` identity-less branches, as the walk records them."""
+
+    def hops(types: list[str]) -> dict[str, names.Hop]:
+        """A root union whose branches state nothing but their own ``type``.
+
+        The weakest fact a branch can state and still be named from itself, so this
+        grades the last candidate rather than the first: a ``title`` would make the
+        stability trivial.
+        """
         table: dict[str, names.Hop] = {"": names.Root("Asset Requirements")}
-        for i in range(count):
-            table[f"/anyOf/{i}"] = names.Branch(parent="", index=i)
+        for i, kind in enumerate(types):
+            table[f"/anyOf/{i}"] = names.Branch(parent="", scalar_type=kind, index=i)
         return table
 
-    three = names.spell(_chains(hops(3)))
-    four = names.spell(_chains(hops(4)))
-    assert not isinstance(three, Refusal), three
-    assert not isinstance(four, Refusal), four
-    assert three == {
+    two = names.spell(_chains(hops(["string", "integer"])))
+    appended = names.spell(_chains(hops(["string", "integer", "boolean"])))
+    inserted = names.spell(_chains(hops(["string", "boolean", "integer"])))
+    for spelled in (two, appended, inserted):
+        assert not isinstance(spelled, Refusal), spelled
+    assert two == {
         "": "AssetRequirements",
-        "/anyOf/0": "AssetRequirementsBranch0",
-        "/anyOf/1": "AssetRequirementsBranch1",
-        "/anyOf/2": "AssetRequirementsBranch2",
-    }, three
-    # The APPENDED branch adds a declaration and moves none: the row renames nothing.
-    assert {p: n for p, n in four.items() if p in three} == three, four
-    assert four["/anyOf/3"] == "AssetRequirementsBranch3", four
-    # **AND NONE OF THE FOUR IS A NAME THE SURFACE MAY CARRY**, which is the assertion
-    # that replaces "this is the expected output": every one of them is recognised as
-    # positional off the walk's own hop table, so §1's export set holds the ROOT and
-    # nothing else of this document.
-    assert names.the_positional_names(hops(4), four) == frozenset(
-        {
-            "AssetRequirementsBranch0",
-            "AssetRequirementsBranch1",
-            "AssetRequirementsBranch2",
-            "AssetRequirementsBranch3",
-        }
-    )
-    assert "AssetRequirements" not in names.the_positional_names(hops(4), four)
+        "/anyOf/0": "AssetRequirementsString",
+        "/anyOf/1": "AssetRequirementsInteger",
+    }, two
+    # APPENDING adds a declaration and moves none, which the index already gave us.
+    assert appended["/anyOf/0"] == "AssetRequirementsString"
+    assert appended["/anyOf/1"] == "AssetRequirementsInteger"
+    assert appended["/anyOf/2"] == "AssetRequirementsBoolean"
+    # **AND INSERTING IN THE MIDDLE MOVES NOTHING EITHER**, which is the case the index
+    # could not survive: ``integer`` keeps its name at a new position, and the new sibling
+    # takes the name its own ``type`` gives it.
+    assert set(inserted.values()) == set(appended.values()), inserted
+    assert inserted["/anyOf/1"] == "AssetRequirementsBoolean", inserted
+    assert inserted["/anyOf/2"] == "AssetRequirementsInteger", inserted
+    # And every one of these names is PUBLIC, because every one says what it names: the
+    # positional set the surface used to withhold is empty by construction now.
+    assert not names.the_positional_names(hops(["string", "boolean", "integer"]), inserted)
 
 
 # --------------------------------------------------------------------------- #
@@ -883,26 +878,33 @@ def test_a_bare_ref_branch_takes_its_targets_distinguishing_name_and_not_its_ind
     assert not isinstance(unrelated, Refusal), unrelated
     assert unrelated["/oneOf/0"] == "DocOther", unrelated
 
-    # A target whose name says NOTHING the root's does not leaves the rule answering
-    # nothing, and the branch falls to its index -- the same structure §4's root-collision
-    # clause has: a rule that identifies nothing is not one to fall to.  **That is a
-    # PRIVATE declaration name and the one outcome of this candidate list a consumer never sees**
-    # (the owner's ruling of 2026-11-10, :data:`names.A_POSITIONAL_NAME_IS_PRIVATE`): the
-    # class is still declared, and the name is withheld from §1's export set.
+    # A target whose name says NOTHING the root's does not leaves the candidate answering
+    # nothing -- the same structure §4's root-collision clause has: a candidate that
+    # identifies nothing is not one to fall to.  **AND THERE IS NO INDEX BELOW IT.**  A
+    # branch that also states no description, no properties and no type has answered every
+    # candidate with nothing, so the document is REFUSED by name rather than named from its
+    # position (§4: "where the candidates are exhausted the compiler refuses the document").
     silent_target = {
         "": names.Root("Doc"),
         "/oneOf/0": names.Branch(parent="", target="Doc", index=0),
     }
     same = names.spell_the_candidates(_candidate_names(silent_target))
-    assert not isinstance(same, Refusal), same
-    assert same["/oneOf/0"] == "DocBranch0", same
-    assert names.the_positional_names(silent_target, same) == frozenset({"DocBranch0"})
-    # ... and the branch above, which the rule DID name, is public: the ban is on the
-    # name the last resort mints and not on every branch of a union.
-    assert not names.the_positional_names(
-        {"": names.Root("Doc"), "/oneOf/0": names.Branch(parent="", target="Other", index=0)},
-        unrelated,
+    assert isinstance(same, Refusal), same
+    # And a branch in that position that states ONE fact about itself is named from it
+    # instead, which is what makes the refusal above a statement about the DOCUMENT and not
+    # a hole in the rule.
+    spoken = names.spell_the_candidates(
+        _candidate_names(
+            {
+                "": names.Root("Doc"),
+                "/oneOf/0": names.Branch(
+                    parent="", target="Doc", scalar_type="string", index=0
+                ),
+            }
+        )
     )
+    assert not isinstance(spoken, Refusal), spoken
+    assert spoken["/oneOf/0"] == "DocString", spoken
 
 
 def test_the_ref_target_rung_outranks_the_index_and_nothing_else() -> None:

@@ -1714,26 +1714,29 @@ set. Content dedup is this pass: declarations whose nodes are equal are one clas
 under the first pointer in document order, and every later pointer binds its own derived name
 to it by identity.
 
-**A branch with no identity is not a refusal.** A branch with no title, no pinned `const` and no
-`required` set takes its index among the branches, `<Base>Branch<i>`, and a missing or
-non-identifier root title takes the document's own file stem. A name is not an acceptance fact, so
-a fallback name neither widens nor narrows.
+**A POSITION IS NOT A NAME. NO CLASS IS NAMED FROM ITS INDEX AMONG ITS SIBLINGS.** A name a
+caller reads must say what the thing IS; an index says only where it sat in a list, so
+`isinstance(req, AssetRequirementsBranch7)` obliges the caller to count a document's branches to
+learn that the branch means JavaScript. The prohibition is on the SYMBOL and not on its final
+segment — an ancestor's index is the same defect one segment earlier, and
+`PostalAreaBranch9System` still requires the count — and it holds wherever the name is written,
+public or private, because a private spelling is still the name a reader of the module sees and
+still the name an error message quotes. `tests_emit/test_no_positional_name_is_public.py` is the
+gate and it reads the whole symbol.
 
-**AND THAT INDEX NAMES A PRIVATE DECLARATION AND NEVER A PUBLIC ONE** — the owner's decision of
-2026-11-10, recorded here as a decision and not derived, and stated in full at
-`rebuild-plan.md` §4's branch candidate list. The class is declared under the positional symbol,
-because deleting it would drop a branch from the union and refuse payloads the document admits;
-the symbol is withheld from §1's export set, so no `adcp.types.<domain>.<Name>` and no `__all__`
-of the surface carries it. The ground is §4's own sentence — "a caller writing `isinstance(req,
-AssetRequirementsBranch7)` has to count the document's branches to know that it means JavaScript"
-— and `final-state.md` reading 4's placeholder rule, both of which condemned the name while this
-paragraph prescribed it. `codegen/lower/names.py`'s `A_POSITIONAL_NAME_IS_PRIVATE` is the
-implementation and `tests_emit/test_no_positional_name_is_public.py` is the gate.
+**A BRANCH TAKES ITS NAME FROM WHAT ITS DOCUMENT SAYS ABOUT IT, and the candidates are
+exhausted in this order:** its own `title`; the `const`s it pins, in the document's key order;
+its `required` set; the target's derived name where it is a bare `$ref`; the leading word of its
+`description`; the keys its own `properties` map states. Each is a fact of the branch's
+declaration, so each is insertion-stable: a sibling arriving tomorrow renames nothing.
 
-**THE TEST IS THE SYMBOL AND NOT ITS FINAL SEGMENT: a public name carrying an index-derived
-segment at any position is private.** An ancestor's index in the spelling is the same name — a
-caller reading `PostalAreaBranch9System` still has to count a document's branches to know what
-`Branch9` selected before `System` narrowed it.
+**WHERE EVERY CANDIDATE ANSWERS NOTHING THE COMPILER REFUSES THE DOCUMENT.** A branch stating no
+title, no pin, no requirement, no reference, no description and no property says nothing about
+itself, and the compiler has nothing to transcribe. Refusing is the honest answer and is
+countable in `./check`'s own figure; minting a position is not, because it manufactures an
+identity the document does not carry and publishes it as though the bundle had said it. A
+missing or non-identifier root title takes the document's own file stem, which is a name the
+bundle does state.
 
 Reading 6 continues to hold over every class the surface offers: a withheld class is importable
 at none of the paths, and the reading subtracts the withheld set from its own population
@@ -2272,16 +2275,13 @@ decides instead. The owner of the semantics document decides each.
    the second copy of the what does not exist to drift. The reasoning paragraphs stay hand-written
    and are the part a reader must keep honest against the cells.
 
-7. **§4 "Names", a branch with no identity.** Closed: a branch with no title, no pinned `const`
-   and no `required` set takes its index among the branches, `<Base>Branch<i>`, **as a PRIVATE
-   declaration name pending an upstream title** (the owner's decision of 2026-11-10; §7 above and
-   `rebuild-plan.md` §4 carry it in full). A name is not an acceptance fact, so the fallback
-   neither widens nor narrows and costs no approximation, and the index is a function of document
-   order, so it does not depend on which documents the run includes. What the decision adds is
-   that such a name never reaches §1's export set, so the question "closed how" has two answers
-   and not one: the class is declared, and the name is not published. The same reasoning gives a
-   missing or non-identifier root title the document's own file stem — and that one IS public,
-   because a file stem says what the document is.
+7. **§4 "Names", a branch with no identity.** Closed: **no name is derived from a position.** The
+   candidates are the branch's `title`, its pinned `const`s in document key order, its `required`
+   set, a bare `$ref` target's derived name, its `description`'s leading word, and the keys its
+   `properties` map states; where none answers, the compiler refuses the document and the refusal
+   is counted. §8 above and `rebuild-plan.md` §4 carry the order in full. A missing or
+   non-identifier root title takes the document's own file stem, because a file stem says what
+   the document is.
 
 ---
 

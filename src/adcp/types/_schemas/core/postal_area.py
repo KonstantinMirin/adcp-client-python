@@ -18,9 +18,9 @@ from .postal_country_system import (
     Country,
     GBPostalCodeSystem,
     PostalCountrySystemAUPostcode,
-    PostalCountrySystemBranch9,
     PostalCountrySystemBRCep,
     PostalCountrySystemCA,
+    PostalCountrySystemCountrySystem,
     PostalCountrySystemFRCodePostal,
     PostalCountrySystemGB,
     PostalCountrySystemINPin,
@@ -154,7 +154,7 @@ class System(StrEnum):
     custom = MemberAlias('CUSTOM')
 
 
-class PostalAreaBranch9(PostalAreaCountrySystemValues, PostalCountrySystemBranch9):
+class PostalAreaCountrySystem(PostalAreaCountrySystemValues, PostalCountrySystemCountrySystem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -163,7 +163,7 @@ class PostalAreaBranch9(PostalAreaCountrySystemValues, PostalCountrySystemBranch
     system: Annotated[System, Field(description='Country-local postal code system.')]
 
 
-PostalAreaCountrySystemValues._branch_models = (PostalAreaUS, PostalAreaGB, PostalAreaCA, PostalAreaPlz, PostalAreaFRCodePostal, PostalAreaAUPostcode, PostalAreaBRCep, PostalAreaINPin, PostalAreaZAPostalCode, PostalAreaBranch9,)
+PostalAreaCountrySystemValues._branch_models = (PostalAreaUS, PostalAreaGB, PostalAreaCA, PostalAreaPlz, PostalAreaFRCodePostal, PostalAreaAUPostcode, PostalAreaBRCep, PostalAreaINPin, PostalAreaZAPostalCode, PostalAreaCountrySystem,)
 PostalAreaCountrySystemValues.model_rebuild(force=True)
 
 

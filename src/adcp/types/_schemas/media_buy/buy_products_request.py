@@ -108,7 +108,7 @@ class BuyProductsRequestBrand(BuyProductsRequest):
     brand: Annotated[BrandKey, Field(description='Brand source required when account is ID-only. Omit when account already contains brand and operator.')]
 
 
-class BuyProductsRequestBranch1Account(BranchDispatchMixin, AdCPBaseModel):
+class BuyProductsRequestAccountAccount(BranchDispatchMixin, AdCPBaseModel):
     """
     Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.
     """
@@ -121,33 +121,33 @@ class BuyProductsRequestBranch1Account(BranchDispatchMixin, AdCPBaseModel):
         return "anyOf"
 
 
-class BuyProductsRequestBranch1AccountAccountId(BuyProductsRequestBranch1Account, CanonicalAccountReferenceAccountId):
+class BuyProductsRequestAccountAccountAccountId(BuyProductsRequestAccountAccount, CanonicalAccountReferenceAccountId):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/0')
 
 
-class BuyProductsRequestBranch1AccountBrandOperator(BuyProductsRequestBranch1Account, CanonicalAccountReferenceBrandOperator):
+class BuyProductsRequestAccountAccountBrandOperator(BuyProductsRequestAccountAccount, CanonicalAccountReferenceBrandOperator):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/1')
 
 
-BuyProductsRequestBranch1Account._branch_models = (BuyProductsRequestBranch1AccountAccountId, BuyProductsRequestBranch1AccountBrandOperator,)
-BuyProductsRequestBranch1Account.model_rebuild(force=True)
+BuyProductsRequestAccountAccount._branch_models = (BuyProductsRequestAccountAccountAccountId, BuyProductsRequestAccountAccountBrandOperator,)
+BuyProductsRequestAccountAccount.model_rebuild(force=True)
 
 
-class BuyProductsRequestBranch1(BuyProductsRequest):
+class BuyProductsRequestAccount(BuyProductsRequest):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1')
-    account: Annotated[BuyProductsRequestBranch1Account, Field(description='Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.')]
+    account: Annotated[BuyProductsRequestAccountAccount, Field(description='Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.')]
 
 
-BuyProductsRequest._branch_models = (BuyProductsRequestBrand, BuyProductsRequestBranch1,)
+BuyProductsRequest._branch_models = (BuyProductsRequestBrand, BuyProductsRequestAccount,)
 BuyProductsRequest.model_rebuild(force=True)
 
 
