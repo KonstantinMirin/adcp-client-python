@@ -2038,14 +2038,37 @@ def _with_prose(docstring: str, prose: str) -> str:
 #: URL types and none is https-only -- a name like ``HttpsUrl`` would read as an
 #: upstream export a reader cannot find.  The NAME is ``constraints.URL`` and the
 #: STATEMENT is here, because a statement is text (§7).
-URL_LINE = (
-    f'{constraint_names.URL} = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]'
+#: **THE TWO URL TYPES, DECIDED BY THE OWNER (``adcp-client-python-dza0``, 61b0de1df)**,
+#: and there is no third:
+#:
+#: * ``HostedUrl`` -- ``AnyUrl`` with a host required -- at every ``format: uri`` node.
+#: * ``AdCPUrl`` -- ``HttpUrl`` with the scheme pinned -- at every AdCP PROTOCOL
+#:   ADDRESS, which is an agent URL and a webhook URL.
+#:
+#: ``HttpUrl`` is a subclass of ``AnyUrl``, so both are a ``UrlConstraints`` refinement
+#: of one runtime type and an ``AdCPUrl`` value satisfies anything typed ``HostedUrl``.
+#: ``HttpUrl``'s ``max_length`` 2083 rides along with the first and is ACCEPTED: it
+#: renders as ``maxLength: 2083`` and that is expected output.
+#:
+#: **An address reaches ``AdCPUrl`` through a KEYWORD and nothing else** -- a node
+#: pinning ``^https://`` -- so there is no name-matching and no description-reading in
+#: this compiler.  The addresses the bundle leaves unpinned are pinned by the
+#: ``patches/`` overlay, where the site set is the overlay's data.
+URL_LINE = "\n".join(
+    [
+        f"{constraint_names.HIERARCHICAL} = Annotated[AnyUrl, "
+        "UrlConstraints(host_required=True)]",
+        "",
+        f"{constraint_names.URL} = Annotated[HttpUrl, "
+        'UrlConstraints(allowed_schemes=["https"])]',
+    ]
 )
 
 #: What :data:`URL_LINE` names.
 URL_IMPORTS = {
     ("typing", "Annotated"),
     ("pydantic", "AnyUrl"),
+    ("pydantic", "HttpUrl"),
     ("pydantic", "UrlConstraints"),
 }
 
@@ -2100,18 +2123,28 @@ Two names here are DECISIONS rather than derivations, and together they are this
 SDK's whole answer for ``format: uri``: a field's type FOLLOWS THE DOCUMENT'S OWN
 PATTERN.
 
-``AdCPUrl`` annotates a field whose document restricts the scheme to https
-(``pattern: ^https://``, 47 of the bundle's 300 ``uri`` positions).  There the type
-and the document agree.
+``AdCPUrl`` annotates a field whose document PINS the scheme to https
+(``pattern: ^https://…``).  There the type and the document agree.
 
-``HttpUrl`` -- pydantic's own, re-exported here so that both arms are named in one
-place -- annotates every other ``uri`` field whose document asserts NOTHING ELSE.
-``AdCPUrl`` everywhere was tried and
-withdrawn: ``format: uri`` is RFC 3986, so a document stating only
-``{"type": "string", "format": "uri"}`` admits ``http://``, ``urn:`` and
-``file:///`` as well, and refusing those made the SDK stricter than the spec it
-implements -- at 228 of 300 positions.  ``HttpUrl`` still refuses ``urn:`` and
-``file:``, which is a named ceiling rather than an oversight.
+``AnyUrl`` -- pydantic's own -- annotates every other ``uri`` field.  ``format: uri``
+is RFC 3986, which admits EVERY scheme, so the general form is the URL type that
+admits every scheme too.
+
+``HttpUrl`` was the general arm and it REFUSED values its own documents admit.
+``core/app-item.json``'s ``deep_link_url`` is ``{"type": "string", "format": "uri"}``
+and its description supplies the value -- "Falls back to URI scheme (e.g.,
+'acmegames://level/5') when universal links are not configured" -- which ``HttpUrl``
+refuses.  335 field positions over 121 modules were narrower than their documents.
+Calling that a named ceiling did not make it faithful; ``AnyUrl`` admits
+``acmegames://``, ``urn:``, ``mailto:``, ``file:///``, ``tel:`` and ``data:`` alike,
+and still parses, so ``.scheme``, ``.host`` and ``.path`` are there and an application
+never converts or compares strings.
+
+``HttpUrl`` is STILL re-exported from this module for a consumer who wants it -- it is
+pydantic's and the re-export is not ours to withdraw -- but no emitted field selects
+it.  There are still exactly two URL types the emitter chooses between, because
+``AdCPUrl`` is ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``: the
+general form and its https-pinned descendant.
 
 **A ``uri`` NODE THAT ASSERTS ANYTHING THE URL TYPE DOES NOT STATE KEEPS THE
 ASSERTION AND GIVES UP THE TYPE**, and a ``pattern`` is such an assertion.  No URL

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HotelItemCheckInTime, HttpUrl, StarRating
+from adcp.types.constraints import HostedUrl, HotelItemCheckInTime, StarRating
 
 from .country_code import CountryCode
 from .destination_item import ObjLatLng
@@ -46,8 +46,8 @@ class HotelItem(AdCPBaseModel):
     address: Annotated[Address | None, Field(description='Structured address for display and geocoding.'), OmittedNotNull] = None
     star_rating: Annotated[StarRating | None, Field(description='Official star rating (1–5).'), OmittedNotNull] = None
     price: Annotated[Price | None, Field(description="Nightly rate or starting price. Use period 'night' for nightly rates."), OmittedNotNull] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Primary property image URL.'), OmittedNotNull] = None
-    url: Annotated[HttpUrl | None, Field(description='Property landing page or booking URL.'), OmittedNotNull] = None
+    image_url: Annotated[HostedUrl | None, Field(description='Primary property image URL.'), OmittedNotNull] = None
+    url: Annotated[HostedUrl | None, Field(description='Property landing page or booking URL.'), OmittedNotNull] = None
     phone: Annotated[str | None, Field(description='Property phone number in E.164 format.'), OmittedNotNull] = None
     amenities: Annotated[list[str] | None, Field(description="Property amenities (e.g., 'pool', 'wifi', 'spa', 'parking', 'restaurant').", min_length=1), OmittedNotNull] = None
     check_in_time: Annotated[HotelItemCheckInTime | None, Field(description="Standard check-in time in HH:MM format (e.g., '15:00')."), OmittedNotNull] = None

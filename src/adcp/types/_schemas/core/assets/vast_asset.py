@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 
 from ...enums.vast_tracking_event import VASTTrackingEvent
 from ...enums.vast_version import VASTVersion
@@ -37,8 +37,8 @@ class VASTAsset(BranchDispatchMixin, AdCPBaseModel):
     vpaid_enabled: Annotated[bool | None, Field(description='Whether VPAID (Video Player-Ad Interface Definition) is supported'), OmittedNotNull] = None
     duration_ms: Annotated[NonNegativeInt | None, Field(description='Expected media duration in milliseconds (if known)'), OmittedNotNull] = None
     tracking_events: Annotated[list[VASTTrackingEvent] | None, Field(description='Tracking events supported by this VAST tag'), OmittedNotNull] = None
-    captions_url: Annotated[HttpUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)'), OmittedNotNull] = None
-    audio_description_url: Annotated[HttpUrl | None, Field(description='URL to audio description track for visually impaired users'), OmittedNotNull] = None
+    captions_url: Annotated[HostedUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)'), OmittedNotNull] = None
+    audio_description_url: Annotated[HostedUrl | None, Field(description='URL to audio description track for visually impaired users'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 

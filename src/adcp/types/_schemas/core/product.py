@@ -19,7 +19,7 @@ from adcp.types._runtime import (
 from adcp.types.constraints import (
     CanonicalProductCatalogMatchMatchedGtinsItem,
     FloatGt0,
-    HttpUrl,
+    HostedUrl,
     IntMin1,
     ProductCardCtaLabel,
     StrMaxLen30,
@@ -201,7 +201,7 @@ class ProvidersItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('identity_match', True, (True,)),), require=('agent_url', 'countries', 'uid_types'), forbid=()),
     )
-    agent_url: Annotated[HttpUrl, Field(description="Provider's agent URL from the registry. Canonical identifier for this TMP provider.")]
+    agent_url: Annotated[HostedUrl, Field(description="Provider's agent URL from the registry. Canonical identifier for this TMP provider.")]
     context_match: Annotated[bool | None, Field(description='Whether this provider handles context match for this product.'), OmittedNotNull] = False
     identity_match: Annotated[bool | None, Field(description='Whether this provider handles identity match for this product.'), OmittedNotNull] = False
     countries: Annotated[list[CountryCode] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves for identity match. The router uses this to select the correct regional provider based on the request's country field. Required when identity_match is true.", min_length=1), OmittedNotNull] = None

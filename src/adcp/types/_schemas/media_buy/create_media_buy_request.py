@@ -11,7 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGrou
 from adcp.types.constraints import (
     FloatMin0Max1,
     GovernanceContext,
-    HttpUrl,
+    HostedUrl,
     IoAcceptanceSignatory,
     MediaBuyName,
     StrMaxLen100,
@@ -106,7 +106,7 @@ class ArtifactWebhook(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/artifact_webhook')
-    url: Annotated[HttpUrl, Field(description='Webhook endpoint URL for artifact delivery')]
+    url: Annotated[HostedUrl, Field(description='Webhook endpoint URL for artifact delivery')]
     token: Annotated[StrMinLen16 | None, Field(description='Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.'), OmittedNotNull] = None
     authentication: Annotated[Authentication, Field(description="Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS — no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.")]
     delivery_mode: Annotated[DeliveryMode, Field(description="How artifacts are delivered. 'realtime' pushes artifacts as impressions occur. 'batched' aggregates artifacts and pushes periodically (see batch_frequency).")]

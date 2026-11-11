@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -80,8 +80,8 @@ class EducationItem(AdCPBaseModel):
     language: Annotated[str | None, Field(description="Language of instruction (e.g., 'en', 'nl', 'es')."), OmittedNotNull] = None
     modality: Annotated[Modality | None, Field(description='Delivery format.'), OmittedNotNull] = None
     location: Annotated[str | None, Field(description="Campus or instruction location (e.g., 'Amsterdam, NL'). Omit for fully online programs."), OmittedNotNull] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Program or institution image URL.'), OmittedNotNull] = None
-    url: Annotated[HttpUrl | None, Field(description='Program landing page or enrollment URL.'), OmittedNotNull] = None
+    image_url: Annotated[HostedUrl | None, Field(description='Program or institution image URL.'), OmittedNotNull] = None
+    url: Annotated[HostedUrl | None, Field(description='Program landing page or enrollment URL.'), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'stem', 'scholarship-available', 'evening-classes').", min_length=1), OmittedNotNull] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this program. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (campus/program hero), 'images_vertical' (9:16 for Stories), 'logo' (institution logo). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

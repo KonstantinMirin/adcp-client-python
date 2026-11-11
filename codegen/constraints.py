@@ -127,6 +127,80 @@ URL = "AdCPUrl"
 #: https-only arm as the whole rule.  One place names both arms.
 HTTP_URL = "HttpUrl"
 
+#: **THE GENERAL URL FORM, and it is ``AnyUrl`` because a bare ``format: uri`` is RFC
+#: 3986** (``adcp-client-python-dza0``, the owner's ruling of 2026-11-11, and
+#: ``docs/plan/rebuild-plan.md`` §4 as corrected at 53efa7cf5).
+#:
+#: It was :data:`HTTP_URL`, and that was a REFUSAL the SDK made of values its own
+#: documents admit.  ``core/app-item.json#/properties/deep_link_url`` is
+#: ``{"type": "string", "format": "uri"}`` and its own description supplies the value:
+#: *"Falls back to URI scheme (e.g., 'acmegames://level/5') when universal links are not
+#: configured."*  Measured on 2.13.5 -- ``HttpUrl`` REFUSES ``acmegames://level/5``,
+#: ``AdCPUrl`` refuses it, and ``AnyUrl`` admits it and parses it
+#: (``scheme='acmegames'``, ``host='level'``, ``path='/5'``).  Live at **335 field
+#: positions over 121 modules** before this, which is the one direction §2 forbids
+#: outright: a class narrower than its document.
+#:
+#: Pydantic's own, RE-EXPORTED like :data:`HTTP_URL` and for the same reason: the import
+#: IS the declaration, so nothing here restates what pydantic defines.
+#:
+#: **§4's "exactly two URL types and there will not be a third" holds with the same
+#: count**, because ``AdCPUrl`` is ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=
+#: ["https"])]`` -- a DESCENDANT of this one.  The general form and its https-pinned
+#: descendant are the two, and only the general form's name moved: from the one that
+#: narrows to the one that does not.
+ANY_URL = "AnyUrl"
+
+#: **THE GENERAL URL FORM: ``HostedUrl``, which is ``AnyUrl`` with a host required**
+#:
+#: **THE NAME IS THE CONSTRAINT AND NOT THE PROTOCOL, which is this module's own rule and
+#: the reason ``AdCPUri`` was withdrawn** (the owner's correction of 2026-11-11).  Every
+#: alias here is "named for the constraint it carries", and the constraint this one
+#: carries is the required HOST.  Scheme-freedom needs no name, because it is what
+#: ``format: uri`` already means.
+#:
+#: And ``AdCPUrl`` / ``AdCPUri`` differ by ONE LETTER: a reader cannot tell which is which,
+#: and a typo selects the wrong one SILENTLY -- both are a ``UrlConstraints`` refinement of
+#: one runtime type, so no checker and no validator downstream catches the swap.
+#: (``adcp-client-python-dza0``, the owner's ruling of 2026-11-11 as corrected the same
+#: day).  Ours, so the name carries our provenance for :data:`URL`'s own reason -- pydantic
+#: exports 22 URL types and none of them is this one, so a name like ``HierarchicalUrl``
+#: would read as an upstream export a reader cannot find.
+#:
+#: **IT IS NEITHER OF THE TWO THINGS TRIED BEFORE IT, and both failed in a measurable
+#: direction.**  ``HttpUrl`` REFUSED values the documents admit: ``core/app-item.json``'s
+#: ``deep_link_url`` is a bare ``format: uri`` whose own description supplies
+#: ``acmegames://level/5``, and that is a class narrower than its document at 335 field
+#: positions over 121 modules.  Bare ``AnyUrl`` went too far the other way: it admits
+#: ``data:text/plain,hi`` and ``tel:+15551234`` at a webhook-endpoint field, and it leaves
+#: ``.host`` possibly ``None``, so an application cannot rely on the parsed object it was
+#: given a URL type for.
+#:
+#: Measured on 2.13.5, both edges:
+#:
+#: =============================  ========  =============  =======
+#: value                          AnyUrl    host_required  HttpUrl
+#: =============================  ========  =============  =======
+#: ``acmegames://level/5``        admit     admit          REFUSE
+#: ``ui://si/session-abc123``     admit     admit          REFUSE
+#: ``https://hooks.acme/x``       admit     admit          admit
+#: ``data:text/plain,hi``         admit     REFUSE         REFUSE
+#: ``tel:``/``urn:``/``mailto:``  admit     REFUSE         REFUSE
+#: =============================  ========  =============  =======
+#:
+#: **AND THE NARROWING IT TAKES HAS ZERO SITES, derived over the bundle**: of the 227 bare
+#: ``format: uri`` nodes, 0 state prose naming a non-hierarchical scheme and exactly 1
+#: names a non-http hierarchical one.  So ``host_required`` refuses nothing any document
+#: states, and it admits the one thing ``HttpUrl`` wrongly refused.
+#:
+#: **IT IS A FUNCTION OF THE KEYWORD AND NOT AN ALLOWLIST.**  Every bare ``format: uri``
+#: node takes this annotation, derived from ``format: uri`` alone.  ``deep_link_url`` is
+#: what PROVED the http narrowing unsafe; it is not what the rule is keyed on, and nothing
+#: in this compiler reads a description to decide a type.
+HIERARCHICAL = "HostedUrl"
+
+
+
 #: The one pattern that restricts a ``uri`` node's SCHEME to https and says nothing
 #: else, which is the gate D5 states and the one it counts: ``^https://`` at **47
 #: of the bundle's 300 ``uri`` positions**.  Compared for EQUALITY and not by
@@ -142,20 +216,46 @@ HTTPS_ONLY = "^https://"
 def url_type(node: Mapping[str, Any]) -> str:
     """Which URL type a ``format: uri`` node selects, from the DOCUMENT (D5).
 
-    ``AdCPUrl`` where the document's own ``pattern`` is :data:`HTTPS_ONLY`, because
-    there the type and the document agree about the scheme.  ``HttpUrl`` everywhere
-    else, because ``AdCPUrl`` everywhere **narrowed the SDK below the pinned spec**:
-    ``format: uri`` is RFC 3986 and a bare ``{"type": "string", "format": "uri"}``
-    admits ``https://``, ``http://``, ``urn:`` and ``file:///`` alike, of which
-    ``AdCPUrl`` refuses three -- measured at 228 of 300 positions in 128 of 160
-    documents, and at 26 of 27 positions in documents the emitter emits today.
+    :data:`URL` where the document's own ``pattern`` PINS ``^https://``, because there the
+    type and the document agree about the scheme; :data:`HIERARCHICAL` everywhere else,
+    because ``format: uri`` is RFC 3986 and a bare ``{"type": "string", "format": "uri"}``
+    pins no scheme at all.
 
-    ``HttpUrl``'s own two ceilings are named at D5 and are accepted deliberately:
-    it still refuses ``urn:`` and ``file:``, leaving 227 of 300 positions narrower
-    than their document, and it renders ``maxLength: 2083`` and ``minLength: 1``
-    that no document states.
+    **Both are ``AnyUrl`` with ``UrlConstraints``, which is why §4's "exactly two URL types
+    and there will not be a third" holds with the same count**: the general form requires a
+    HOST and the other adds the scheme the document pinned, so one is the other's
+    descendant.  :data:`HIERARCHICAL` carries why the host is required and why bare
+    ``AnyUrl`` was not the answer.
+
+    **THE GENERAL ARM WAS ``HttpUrl`` AND THAT WAS A REFUSAL, NOT A CEILING**
+    (``adcp-client-python-dza0``).  What stood here read "``HttpUrl``'s own two ceilings
+    are named at D5 and are accepted deliberately: it still refuses ``urn:`` and
+    ``file:``, leaving 227 of 300 positions narrower than their document".  Naming a
+    refusal does not make it faithful, and the bundle states a refused value in its own
+    prose: ``core/app-item.json#/properties/deep_link_url`` says *"Falls back to URI
+    scheme (e.g., 'acmegames://level/5')"*, and ``HttpUrl`` refuses exactly that.  **335
+    field positions over 121 modules** were narrower than their documents.  ``AnyUrl``
+    admits everything RFC 3986 does and is still a parsed URL object, so the owner's
+    ruling -- every URL in the schema is a URL type, so an application never converts or
+    compares strings -- is kept by the type that does not narrow.
+
+    **AND THE SELECTOR IS THE https PREFIX, not equality with** :data:`HTTPS_ONLY`
+    (``adcp-client-python-6eez``).  The equality test was about whether the type EXPRESSES
+    the pattern well enough for the keyword to be dropped; the pattern is not dropped any
+    more -- it is chained beside the type -- so the question the equality answered is
+    gone.  What remains is the SCHEME, and a pattern pinning ``^https://`` as a prefix
+    pins the scheme whatever else it pins after it.
+
+    **ONE NODE OF THE BUNDLE PINS NO SUCH PREFIX AND SO TAKES THE GENERAL ARM**, which is
+    this function's own rule and not an exception to it: ``core/macro-bearing-url.json``
+    at ``#/anyOf/1`` states ``^https?://…``, which ADMITS ``http://``.  :data:`URL` there
+    would refuse a value the document admits, and the chained pattern would not catch it
+    because the pattern itself permits the scheme.  Measured over the 1,059 portable
+    documents: 28 ``uri`` nodes state a pattern, 27 pin the prefix and this one does not.
     """
-    return f"{MODULE}.{URL if node.get('pattern') == HTTPS_ONLY else HTTP_URL}"
+    pattern = node.get("pattern")
+    pins_https = isinstance(pattern, str) and pattern.startswith(HTTPS_ONLY)
+    return f"{MODULE}.{URL if pins_https else HIERARCHICAL}"
 
 
 def expressed_by_url_type(node: Mapping[str, Any]) -> frozenset[str]:
@@ -179,10 +279,17 @@ def expressed_by_url_type(node: Mapping[str, Any]) -> frozenset[str]:
     and the type can carry only one of them.
 
     Read by ``codegen.lower.scalars.selects_a_url_type``, the one function that decides
-    whether a ``uri`` selects its type here or takes the row's own fallback.  The
-    comparison is for EQUALITY against :data:`HTTPS_ONLY` for that constant's own stated
-    reason: a prefix test would claim ``allowed_schemes`` expresses a pattern that also
-    pins a host or forbids userinfo, which it does not.
+    whether a ``uri`` selects its type here or takes the row's own fallback.
+
+    The comparison is for EQUALITY against :data:`HTTPS_ONLY` for that constant's own
+    stated reason: a prefix test would claim ``allowed_schemes`` expresses a pattern that
+    also pins a host or forbids userinfo, which it does not.
+
+    **``adcp-client-python-6eez`` CHANGES THIS AND IS NOT LANDED HERE.**  Once the
+    document's ``pattern`` is CHAINED beside the type rather than dropped, the question
+    this function answers -- does the type state the keyword well enough for the keyword to
+    be dropped -- is gone, and the answer becomes ``{"pattern"}`` at every ``uri`` node.
+    That row is open; this function is what it moves.
     """
     return frozenset({"pattern"}) if node.get("pattern") == HTTPS_ONLY else frozenset()
 

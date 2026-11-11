@@ -24,7 +24,7 @@ from adcp.types.constraints import (
     CreativeLocalizationMaxTargetVariants,
     GetAdCPCapabilitiesResponseRequestSigningProtocolMethodsRequiredForItem,
     GovernanceAggregationWindowDays,
-    HttpUrl,
+    HostedUrl,
     IntMin0Max86400,
     IntMin1,
     IntMin2Max10,
@@ -521,7 +521,7 @@ class GetAdCPCapabilitiesResponseAccount(AdCPBaseModel):
         UniqueItems('supported_account_currency_modes'),
     )
     require_operator_auth: Annotated[bool | None, Field(description="Whether the seller requires operator-level credentials. This declares who must authenticate; it does not by itself declare whether OAuth is used, whether list_accounts is exposed, or which sync_accounts modes are supported. When true, operators authenticate independently with the seller and account-scoped calls use seller/storefront-assigned account_id values because the seller or upstream platform owns the canonical account namespace. If a credential may access more than one account, the seller MUST expose list_accounts and buyers MUST resolve an explicit account_id before the first account-scoped request. If a credential is bound to exactly one account, the seller SHOULD expose list_accounts returning that singleton; a seller MAY omit list_accounts only when it provides the same explicit account_id through another declared path or out-of-band onboarding. When false (default, buyer-declared accounts), the seller trusts the agent's identity claims and account-scoped calls use the advertiser natural key: brand + operator + optional operator_unit, fixed currency, optional buyer-selected account timezone, and sandbox. operator_unit.id is owned by the operator and is distinct from the seller's account_id. The seller normally provisions through sync_accounts, but MAY lazily provision on the first account-scoped request when billing and other required settings are unambiguous from capabilities or onboarding defaults. A lazy-provisioning seller MUST keep accepting the natural key and MUST expose list_accounts for recovery; if buyer input is needed before use, the seller MUST expose sync_accounts."), OmittedNotNull] = False
-    authorization_endpoint: Annotated[HttpUrl | None, Field(description='OAuth authorization endpoint for obtaining operator-level credentials. Present when the seller supports OAuth for operator authentication. The agent directs the operator to this URL to authenticate and obtain a bearer token. If absent and require_operator_auth is true, operators obtain credentials out-of-band (e.g., seller portal, API key).'), OmittedNotNull] = None
+    authorization_endpoint: Annotated[HostedUrl | None, Field(description='OAuth authorization endpoint for obtaining operator-level credentials. Present when the seller supports OAuth for operator authentication. The agent directs the operator to this URL to authenticate and obtain a bearer token. If absent and require_operator_auth is true, operators obtain credentials out-of-band (e.g., seller portal, API key).'), OmittedNotNull] = None
     supported_billing: Annotated[list[BillingParty], Field(description="Billing models this seller supports. operator: seller invoices the operator (agency or brand buying direct). agent: agent consolidates billing. advertiser: seller invoices the advertiser directly, even when a different operator places orders on their behalf. When the buyer calls sync_accounts, it must pass one of these values. A lazy-provisioning seller may omit sync_accounts only when billing can be resolved unambiguously from this capability or the authenticated agent's onboarding defaults.", min_length=1)]
     supported_account_currency_modes: Annotated[list[AccountCurrencyMode] | None, Field(description='Required for sellers implementing AdCP 3.2 advertiser-account provisioning, but optional in this shared 3.x response schema so existing 3.0 and 3.1 capability responses remain valid. Declares whether advertiser accounts are bound to one immutable currency (`fixed`), select currency independently per proposal or media buy (`per_media_buy`), or support both models. When only `fixed` is advertised, buyer-declared provisioning entries MUST include `currency`. When only `per_media_buy` is advertised, they MUST omit it. When both are advertised, presence of `currency` selects a fixed-currency account and omission selects per-media-buy currency. Buyers MUST treat absence as an older seller whose currency mode is not discoverable, not as support for either mode.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     timezone: Annotated[AccountTimezoneCapability | None, Field(description='Required for sellers implementing AdCP 3.2 advertiser-account provisioning, but optional in the shared 3.x response schema for compatibility. Declares whether the account timezone is seller-wide or fixed per account and whether a buyer must select it during sync_accounts provisioning. Account timezone is the default for account-scoped calendar semantics; feature-specific capability fields explicitly declare exceptions.'), OmittedNotNull] = None
@@ -821,7 +821,7 @@ class Execution(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/media_buy/properties/execution')
     trusted_match: Annotated[TrustedMatch | None, Field(description='Trusted Match Protocol (TMP) support. Presence of this object indicates the seller has TMP infrastructure deployed. Check individual products via get_products for per-product TMP capabilities.'), OmittedNotNull] = None
-    axe_integrations: Annotated[list[HttpUrl] | None, Field(description='Deprecated. Legacy AXE integrations. Use trusted_match for new integrations.'), OmittedNotNull] = None
+    axe_integrations: Annotated[list[HostedUrl] | None, Field(description='Deprecated. Legacy AXE integrations. Use trusted_match for new integrations.'), OmittedNotNull] = None
     creative_specs: Annotated[CreativeSpecs | None, Field(description='Creative specification support'), OmittedNotNull] = None
     targeting: Annotated[Targeting | None, Field(description='Targeting capabilities. If declared true/supported, buyer can use these targeting parameters and seller MUST honor them.'), OmittedNotNull] = None
 
@@ -1155,7 +1155,7 @@ class SignalActivation(AdCPBaseModel):
         UniqueItems('claim_types'),
     )
     requirement: Annotated[SignalActivationRequirement, Field(description='Whether an activate_signal activation check may omit runtime_attestations. When required, missing evidence fails an activation check. Deactivation and privacy-removal checks never require signal-quality evidence and remain available without it.')]
-    claim_types: Annotated[list[HttpUrl], Field(description='Signal-quality claim identifiers accepted for this governed action. Values are open absolute URIs and MUST be a subset of adcp.attestations.accepted_claim_types.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    claim_types: Annotated[list[HostedUrl], Field(description='Signal-quality claim identifiers accepted for this governed action. Values are open absolute URIs and MUST be a subset of adcp.attestations.accepted_claim_types.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
 class RuntimeAttestations(AdCPBaseModel):
@@ -1197,7 +1197,7 @@ class PropertyFeaturesItem(AdCPBaseModel):
     range: Annotated[PropertyFeaturesItemRange | None, Field(description='For quantitative features, the valid range'), OmittedNotNull] = None
     categories: Annotated[list[str] | None, Field(description='For categorical features, the valid values'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Human-readable description of what this feature measures'), OmittedNotNull] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description='URL to documentation explaining how this feature is calculated or measured. Helps buyers understand and compare methodologies across vendors.'), OmittedNotNull] = None
+    methodology_url: Annotated[HostedUrl | None, Field(description='URL to documentation explaining how this feature is calculated or measured. Helps buyers understand and compare methodologies across vendors.'), OmittedNotNull] = None
 
 
 CreativeFeaturesItemType = PropertyFeaturesItemType
@@ -1213,7 +1213,7 @@ class CreativeFeaturesItem(AdCPBaseModel):
     range: Annotated[CreativeFeaturesItemRange | None, Field(description='For quantitative features, the valid range'), OmittedNotNull] = None
     categories: Annotated[list[str] | None, Field(description='For categorical features, the valid values'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Human-readable description of what this feature measures'), OmittedNotNull] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description='URL to documentation explaining how this feature is calculated or measured.'), OmittedNotNull] = None
+    methodology_url: Annotated[HostedUrl | None, Field(description='URL to documentation explaining how this feature is calculated or measured.'), OmittedNotNull] = None
 
 
 class Governance(AdCPBaseModel):
@@ -1233,7 +1233,7 @@ class TransportsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/sponsored_intelligence/properties/endpoint/properties/transports/items')
     type: Annotated[ProtocolTransportType, Field(description='Protocol transport type')]
-    url: Annotated[HttpUrl, Field(description='Agent endpoint URL for this transport')]
+    url: Annotated[HostedUrl, Field(description='Agent endpoint URL for this transport')]
 
 
 class ProtocolTransportType(StrEnum):
@@ -1262,7 +1262,7 @@ class SponsoredIntelligence(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/sponsored_intelligence')
     endpoint: Annotated[Endpoint, Field(description='SI agent endpoint configuration')]
     capabilities: Annotated[SICapabilities, Field(description='Modalities, components, and commerce capabilities')]
-    brand_url: Annotated[HttpUrl | None, Field(description='URL to brand.json with colors, fonts, logos, tone'), OmittedNotNull] = None
+    brand_url: Annotated[HostedUrl | None, Field(description='URL to brand.json with colors, fonts, logos, tone'), OmittedNotNull] = None
 
 
 class Brand(AdCPBaseModel):
@@ -1493,10 +1493,10 @@ class KeyOrigins(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/identity/properties/key_origins')
-    governance_signing: Annotated[HttpUrl | None, Field(description='Origin (scheme + host) serving the governance-signing JWKS.'), OmittedNotNull] = None
-    request_signing: Annotated[HttpUrl | None, Field(description='Origin (scheme + host) serving the request-signing JWKS.'), OmittedNotNull] = None
-    webhook_signing: Annotated[HttpUrl | None, Field(description='Origin (scheme + host) serving the JWKS used for webhook delivery. Webhooks are signed with `adcp_use: "request-signing"` keys; the deprecated `adcp_use: "webhook-signing"` value remains accepted during the backward-compatibility window.'), OmittedNotNull] = None
-    tmp_signing: Annotated[HttpUrl | None, Field(description='Origin (scheme + host) serving the TMP-signing JWKS, when this operator participates in TMP.'), OmittedNotNull] = None
+    governance_signing: Annotated[HostedUrl | None, Field(description='Origin (scheme + host) serving the governance-signing JWKS.'), OmittedNotNull] = None
+    request_signing: Annotated[HostedUrl | None, Field(description='Origin (scheme + host) serving the request-signing JWKS.'), OmittedNotNull] = None
+    webhook_signing: Annotated[HostedUrl | None, Field(description='Origin (scheme + host) serving the JWKS used for webhook delivery. Webhooks are signed with `adcp_use: "request-signing"` keys; the deprecated `adcp_use: "webhook-signing"` value remains accepted during the backward-compatibility window.'), OmittedNotNull] = None
+    tmp_signing: Annotated[HostedUrl | None, Field(description='Origin (scheme + host) serving the TMP-signing JWKS, when this operator participates in TMP.'), OmittedNotNull] = None
 
 
 class CompromiseNotification(AdCPBaseModel):
@@ -1545,7 +1545,7 @@ class AccreditationsItem(AdCPBaseModel):
     accrediting_body: Annotated[str, Field(description='Accrediting organization — open string (the global landscape includes MRC, ARF, ABC, BARB, JICWEBS, AGOF, JIC bodies in many markets). Use the canonical short name where one exists.')]
     certification_id: Annotated[str | None, Field(description="Optional identifier for the certification in the accrediting body's records (when one exists; many bodies do not issue stable IDs)."), OmittedNotNull] = None
     valid_until: Annotated[date | None, Field(description="Optional ISO 8601 date when the current accreditation expires. Buyers MAY treat post-expiry data as un-accredited. Absence means the vendor does not assert an expiry — buyers SHOULD verify currency at the accrediting body's directory."), OmittedNotNull] = None
-    evidence_url: Annotated[HttpUrl | None, Field(description="Optional URL pointing at the accrediting body's public listing for this certification (the buyer's path to verify the claim independently)."), OmittedNotNull] = None
+    evidence_url: Annotated[HostedUrl | None, Field(description="Optional URL pointing at the accrediting body's public listing for this certification (the buyer's path to verify the claim independently)."), OmittedNotNull] = None
 
 
 class MetricsItem(AdCPBaseModel):
@@ -1557,11 +1557,11 @@ class MetricsItem(AdCPBaseModel):
         UniqueItems('accreditations'),
     )
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary. Combined with the agent's BrandRef, forms the canonical tuple `(vendor.domain, vendor.brand_id, metric_id)`. Each metric_id MUST be unique within a single agent's catalog.")]
-    standard_reference: Annotated[HttpUrl | None, Field(description='Optional URI pointing at the published standard this metric IMPLEMENTS (e.g., IAB Attention Measurement Guidelines, MRC Viewable Impression Measurement, GARM emissions framework). Distinct from `accreditations[]` — `standard_reference` is what the metric is built against; `accreditations[]` is third-party certification that the implementation actually conforms. Buyer agents normalizing across vendors SHOULD apply the AdCP URL canonicalization rules before comparing — vendors implementing the same standard MAY use different URL forms for the same canonical document.'), OmittedNotNull] = None
+    standard_reference: Annotated[HostedUrl | None, Field(description='Optional URI pointing at the published standard this metric IMPLEMENTS (e.g., IAB Attention Measurement Guidelines, MRC Viewable Impression Measurement, GARM emissions framework). Distinct from `accreditations[]` — `standard_reference` is what the metric is built against; `accreditations[]` is third-party certification that the implementation actually conforms. Buyer agents normalizing across vendors SHOULD apply the AdCP URL canonicalization rules before comparing — vendors implementing the same standard MAY use different URL forms for the same canonical document.'), OmittedNotNull] = None
     accreditations: Annotated[list[AccreditationsItem] | None, Field(description="Third-party accreditations this metric holds (MRC, ARF, JIC, ABC, BARB, AGOF, etc.). Distinct from `standard_reference`: a metric can implement a standard without being independently accredited. Buyers asking 'is this MRC-accredited?' SHOULD check this array, not just `standard_reference`. Each entry names the accrediting body and optionally pins a certification ID, validity date, and evidence URL.", json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     unit: Annotated[str | None, Field(description='Unit of the metric value when reported via `vendor_metric_values.value` (e.g., `score`, `seconds`, `persons`, `gCO2e`, `lift_percent`, `USD`). Buyers SHOULD render the unit alongside the value rather than computing units locally; sellers populating `vendor_metric_values.unit` MUST match this declaration when present.'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Human-readable description of what this metric measures and any relevant methodology notes. Surfaced in buyer-agent UX when explaining the metric to humans.'), OmittedNotNull] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description="URL to the vendor's full methodology documentation for this metric. Buyers SHOULD link or fetch this when human review of the methodology is in scope (compliance, RFP review, accreditation audit). Field name mirrors `governance.property_features[].methodology_url`."), OmittedNotNull] = None
+    methodology_url: Annotated[HostedUrl | None, Field(description="URL to the vendor's full methodology documentation for this metric. Buyers SHOULD link or fetch this when human review of the methodology is in scope (compliance, RFP review, accreditation audit). Field name mirrors `governance.property_features[].methodology_url`."), OmittedNotNull] = None
     methodology_version: Annotated[str | None, Field(description='Optional version identifier (semver, ISO date, or vendor-defined version string) for the methodology this metric currently implements. When present, buyer agents pin the contracted version via `committed_metrics[].methodology_version` (vendor scope) so silent vendor methodology changes are detectable; absence means the vendor does not version their methodology and buyers MUST treat any change as untracked.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

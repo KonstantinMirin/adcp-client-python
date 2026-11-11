@@ -12,7 +12,7 @@ from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
     AdCPAgentsAuthorizationFormatsItemFormatRevision,
-    HttpUrl,
+    HostedUrl,
     StrFormatEmailMinLen1MaxLen255,
     StrMinLen1MaxLen100,
     StrMinLen1MaxLen255,
@@ -95,7 +95,7 @@ class Contact(AdCPBaseModel):
     domain: Annotated[DomainName | None, Field(description='Primary domain of the entity managing this file'), OmittedNotNull] = None
     seller_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller ID from IAB Tech Lab sellers.json (if applicable)'), OmittedNotNull] = None
     tag_id: Annotated[StrMinLen1MaxLen100 | None, Field(description='TAG Certified Against Fraud ID for verification (if applicable)'), OmittedNotNull] = None
-    privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the entity's privacy policy. Used for consumer consent flows when interacting with this sales agent."), OmittedNotNull] = None
+    privacy_policy_url: Annotated[HostedUrl | None, Field(description="URL to the entity's privacy policy. Used for consumer consent flows when interacting with this sales agent."), OmittedNotNull] = None
 
 
 class Reason(StrEnum):
@@ -383,7 +383,7 @@ class PropertyFeaturesItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/property_features/items')
-    url: Annotated[HttpUrl, Field(description="The agent's API endpoint URL. Callers comparing this URL against a feature-provider registry MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
+    url: Annotated[HostedUrl, Field(description="The agent's API endpoint URL. Callers comparing this URL against a feature-provider registry MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
     name: Annotated[str, Field(description="Human-readable name of the vendor/agent (e.g., 'Scope3', 'TAG', 'OneTrust')")]
     features: Annotated[list[str], Field(description="Feature IDs this agent provides (e.g., 'carbon_score', 'tag_certified_against_fraud'). Use get_adcp_capabilities on the agent for full definitions.", min_length=1)]
     publisher_id: Annotated[str | None, Field(description='Optional publisher identifier at this agent (for lookup)'), OmittedNotNull] = None

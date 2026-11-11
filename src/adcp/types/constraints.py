@@ -27,18 +27,28 @@ Two names here are DECISIONS rather than derivations, and together they are this
 SDK's whole answer for ``format: uri``: a field's type FOLLOWS THE DOCUMENT'S OWN
 PATTERN.
 
-``AdCPUrl`` annotates a field whose document restricts the scheme to https
-(``pattern: ^https://``, 47 of the bundle's 300 ``uri`` positions).  There the type
-and the document agree.
+``AdCPUrl`` annotates a field whose document PINS the scheme to https
+(``pattern: ^https://…``).  There the type and the document agree.
 
-``HttpUrl`` -- pydantic's own, re-exported here so that both arms are named in one
-place -- annotates every other ``uri`` field whose document asserts NOTHING ELSE.
-``AdCPUrl`` everywhere was tried and
-withdrawn: ``format: uri`` is RFC 3986, so a document stating only
-``{"type": "string", "format": "uri"}`` admits ``http://``, ``urn:`` and
-``file:///`` as well, and refusing those made the SDK stricter than the spec it
-implements -- at 228 of 300 positions.  ``HttpUrl`` still refuses ``urn:`` and
-``file:``, which is a named ceiling rather than an oversight.
+``AnyUrl`` -- pydantic's own -- annotates every other ``uri`` field.  ``format: uri``
+is RFC 3986, which admits EVERY scheme, so the general form is the URL type that
+admits every scheme too.
+
+``HttpUrl`` was the general arm and it REFUSED values its own documents admit.
+``core/app-item.json``'s ``deep_link_url`` is ``{"type": "string", "format": "uri"}``
+and its description supplies the value -- "Falls back to URI scheme (e.g.,
+'acmegames://level/5') when universal links are not configured" -- which ``HttpUrl``
+refuses.  335 field positions over 121 modules were narrower than their documents.
+Calling that a named ceiling did not make it faithful; ``AnyUrl`` admits
+``acmegames://``, ``urn:``, ``mailto:``, ``file:///``, ``tel:`` and ``data:`` alike,
+and still parses, so ``.scheme``, ``.host`` and ``.path`` are there and an application
+never converts or compares strings.
+
+``HttpUrl`` is STILL re-exported from this module for a consumer who wants it -- it is
+pydantic's and the re-export is not ours to withdraw -- but no emitted field selects
+it.  There are still exactly two URL types the emitter chooses between, because
+``AdCPUrl`` is ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``: the
+general form and its https-pinned descendant.
 
 **A ``uri`` NODE THAT ASSERTS ANYTHING THE URL TYPE DOES NOT STATE KEEPS THE
 ASSERTION AND GIVES UP THE TYPE**, and a ``pattern`` is such an assertion.  No URL
@@ -70,7 +80,9 @@ K = TypeVar("K")
 T = TypeVar("T")
 V = TypeVar("V")
 
-AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
+HostedUrl = Annotated[AnyUrl, UrlConstraints(host_required=True)]
+
+AdCPUrl = Annotated[HttpUrl, UrlConstraints(allowed_schemes=["https"])]
 AcceptancePolicyProfileRegionAliases = Annotated[str, Field(pattern='^[A-Z][A-Z0-9_-]*$')]
 AcceptancePolicyRequirementId = Annotated[str, Field(pattern='^[a-z][a-z0-9_.:-]*$')]
 AcceptedGovernanceAgentsAnyOfItemAgentUrl = Annotated[str, Field(json_schema_extra={'format': 'uri'}, max_length=2048, pattern='^https://[^/?#@]+(?:/[^?#]*)?$')]

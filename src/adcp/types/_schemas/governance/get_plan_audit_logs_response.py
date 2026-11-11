@@ -11,7 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     FloatGt0,
     FloatMin0Max1,
-    HttpUrl,
+    HostedUrl,
     PlansItemEntriesItemPlanHash,
     StrMinLen1MaxLen255,
     ZipAssetDigest,
@@ -319,7 +319,7 @@ class EntriesItem(AdCPBaseModel):
     type: Annotated[EntriesItemType, Field(description='Entry type.')]
     timestamp: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp.')]
     plan_id: Annotated[str | None, Field(description='Plan this entry belongs to. Present when querying multiple plans or a portfolio.'), OmittedNotNull] = None
-    caller: Annotated[HttpUrl | None, Field(description='URL of the agent that made the request. Resolved from the credentials used on the governance callback.'), OmittedNotNull] = None
+    caller: Annotated[HostedUrl | None, Field(description='URL of the agent that made the request. Resolved from the credentials used on the governance callback.'), OmittedNotNull] = None
     tool: Annotated[str | None, Field(description='The AdCP tool (present for check entries).'), OmittedNotNull] = None
     verdict: Annotated[GovernanceDecision | None, Field(description='Governance verdict (present for check entries). Renamed from `status` in 3.1 alongside check-governance-response for vocabulary consistency.'), OmittedNotNull] = None
     check_type: Annotated[CheckType | None, Field(description='Whether the check was an intent check (orchestrator) or execution check (seller). Inferred from the fields present on the original check request. Present for check entries.'), OmittedNotNull] = None
@@ -353,7 +353,7 @@ class EntriesItem(AdCPBaseModel):
     adjustment_state: Annotated[AdjustmentState | None, OmittedNotNull] = None
     verified_amount: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     evidence: Annotated[Evidence | None, OmittedNotNull] = None
-    reviewed_by: Annotated[HttpUrl | None, OmittedNotNull] = None
+    reviewed_by: Annotated[HostedUrl | None, OmittedNotNull] = None
     reviewed_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
     review_reason: Annotated[str | None, OmittedNotNull] = None
 

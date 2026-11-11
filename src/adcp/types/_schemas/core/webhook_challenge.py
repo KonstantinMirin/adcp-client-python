@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, AgentWebhookChallengeChallenge, HttpUrl
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, AgentWebhookChallengeChallenge, HostedUrl
 
 from ..enums.notification_type import NotificationType
 from .agent_webhook_challenge import ObjModeCredentialFingerprint
@@ -28,7 +28,7 @@ class WebhookChallenge(AdCPBaseModel):
     challenge: Annotated[AgentWebhookChallengeChallenge, Field(description='Opaque, cryptographically random value that the receiver must echo in the response body. Recommended encoding: base64url without padding.')]
     account_id: Annotated[str, Field(description='Seller account identifier for the account whose notification_configs[] entry is being challenged.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Buyer-supplied subscriber identifier from the notification_configs[] entry being challenged.')]
-    seller_agent_url: Annotated[HttpUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
+    seller_agent_url: Annotated[HostedUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
     delivery_auth: Annotated[ObjModeCredentialFingerprint, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
     event_types: Annotated[list[NotificationType], Field(description='Normalized notification types requested by the subscriber at the time of the challenge. Part of the endpoint proof scope; changing event_types[] requires a fresh challenge before the new set can become active.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 

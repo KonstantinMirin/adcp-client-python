@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl, Year
+from adcp.types.constraints import HostedUrl, Year
 
 from .destination_item import ObjLatLng
 from .ext import ExtensionObject
@@ -123,8 +123,8 @@ class VehicleItem(AdCPBaseModel):
     exterior_color: Annotated[str | None, Field(description='Exterior color.'), OmittedNotNull] = None
     interior_color: Annotated[str | None, Field(description='Interior color.'), OmittedNotNull] = None
     location: Annotated[ObjLatLng | None, Field(description='Dealer or vehicle location.'), OmittedNotNull] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Primary vehicle image URL.'), OmittedNotNull] = None
-    url: Annotated[HttpUrl | None, Field(description='Vehicle listing page URL.'), OmittedNotNull] = None
+    image_url: Annotated[HostedUrl | None, Field(description='Primary vehicle image URL.'), OmittedNotNull] = None
+    url: Annotated[HostedUrl | None, Field(description='Vehicle listing page URL.'), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'low-mileage', 'one-owner', 'dealer-certified').", min_length=1), OmittedNotNull] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this vehicle. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (exterior hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

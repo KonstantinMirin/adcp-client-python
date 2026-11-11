@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, FloatMin0Max1, HttpUrl
+from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, FloatMin0Max1, HostedUrl
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -111,7 +111,7 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     methodology_documentation_required: Annotated[bool | None, OmittedNotNull] = False
     independent_attestation_required: Annotated[bool | None, OmittedNotNull] = False
     accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItemBrand | AcceptedAttestationIssuersItemAgent | AttestationOriginIssuer] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    accepted_attestation_claim_types: Annotated[list[HostedUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

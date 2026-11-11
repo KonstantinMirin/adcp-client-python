@@ -7,7 +7,7 @@ from pydantic import ConfigDict
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import HttpUrl, StrMinLen1
+from adcp.types.constraints import HostedUrl, StrMinLen1
 
 from ..enums.macro_dialect import MacroDialectFamily
 from ..enums.macro_mapping_status import MacroMappingStatus
@@ -39,7 +39,7 @@ class MacroTranslationTarget(AdCPBaseModel):
     )
     token: StrMinLen1
     dialect: MacroDialectFamily
-    dialect_namespace: Annotated[HttpUrl | None, OmittedNotNull] = None
+    dialect_namespace: Annotated[HostedUrl | None, OmittedNotNull] = None
     dialect_revision: Annotated[StrMinLen1 | None, OmittedNotNull] = None
     dialect_semantic: StrMinLen1
     mapping_status: MacroMappingStatus

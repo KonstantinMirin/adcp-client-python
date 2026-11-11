@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import HttpUrl, StrDomainName
+from adcp.types.constraints import HostedUrl, StrDomainName
 
 from ..core.domain_name import DomainName
 
@@ -67,7 +67,7 @@ class AAODirectoryAgentPublishersInverseLookupResponse(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='aao/agent-publishers.json', pointer='#')
-    agent_url: Annotated[HttpUrl, Field(description='Canonicalized echo of the agent_url that was looked up. Lowercase host, default port stripped, trailing slash on path component normalized — matches the canonicalization the SDK applies in `verify_agent_authorization`.')]
+    agent_url: Annotated[HostedUrl, Field(description='Canonicalized echo of the agent_url that was looked up. Lowercase host, default port stripped, trailing slash on path component normalized — matches the canonicalization the SDK applies in `verify_agent_authorization`.')]
     directory_indexed_at: Annotated[AwareDatetime | None, Field(description="When the directory last completed a refresh of any publisher in this result. Provenance anchor for the consumer's own cache. NULL on empty pages — there's no per-publisher anchor to report; consumers SHOULD treat a null value as 'no freshness assertion for this response' and not advance their own cache freshness.")]
     publishers: Annotated[list[PublisherEntry], Field(description='Publishers whose adagents.json authorizes this agent. Empty array is a valid response (the directory has indexed this agent but no current authorizations resolve).')]
     next_cursor: Annotated[str | None, Field(description="Opaque pagination cursor. Absent or null on the terminal page. Stable across the directory's refresh cycle for the lifetime of the cursor.")] = None

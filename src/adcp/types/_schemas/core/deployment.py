@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 
 from .activation_key import ActivationKey
 
@@ -44,7 +44,7 @@ class DeploymentAgent(Deployment):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/deployment.json', pointer='#/oneOf/1')
     type: Annotated[Literal['agent'], Field(description='Discriminator indicating this is an agent URL-based deployment')]
-    agent_url: Annotated[HttpUrl, Field(description='URL identifying the deployment agent')]
+    agent_url: Annotated[HostedUrl, Field(description='URL identifying the deployment agent')]
     account: Annotated[str | None, Field(description='Account identifier if applicable'), OmittedNotNull] = None
     is_live: Annotated[bool, Field(description='Whether signal is currently active on this deployment')]
     activation_key: Annotated[ActivationKey | None, Field(description='The key to use for targeting. Only present if is_live=true AND requester has access to this deployment.'), OmittedNotNull] = None

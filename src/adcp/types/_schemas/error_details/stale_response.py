@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import HostedUrl
 
 
 class Upstream(AdCPBaseModel):
@@ -17,7 +17,7 @@ class Upstream(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/stale-response.json', pointer='#/properties/upstream')
-    url: Annotated[HttpUrl | None, Field(description='URL of the unreachable upstream, when the upstream is HTTP-addressable. Sellers MUST omit when the upstream is an internal (non-URL) dependency.'), OmittedNotNull] = None
+    url: Annotated[HostedUrl | None, Field(description='URL of the unreachable upstream, when the upstream is HTTP-addressable. Sellers MUST omit when the upstream is an internal (non-URL) dependency.'), OmittedNotNull] = None
     name: Annotated[str | None, Field(description="Human-readable identifier for the upstream, e.g., 'creative-agent-foo' or 'inventory-service'. Used when the upstream is internal or when the URL is not informative on its own."), OmittedNotNull] = None
 
 

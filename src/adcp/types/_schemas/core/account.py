@@ -9,7 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAda
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
 from adcp.types.constraints import (
-    HttpUrl,
+    HostedUrl,
     IntMin1,
     ReportingBucketBucket,
     ReportingBucketPrefix,
@@ -53,7 +53,7 @@ class ObjUrlMessageExpiresAt(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account.json', pointer='#/properties/setup')
-    url: Annotated[HttpUrl | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds).'), OmittedNotNull] = None
+    url: Annotated[HostedUrl | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds).'), OmittedNotNull] = None
     message: Annotated[str, Field(description="Human-readable description of what's needed.")]
     expires_at: Annotated[AwareDatetime | None, Field(description='When this setup link expires.'), OmittedNotNull] = None
 

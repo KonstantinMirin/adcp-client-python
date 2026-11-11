@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HttpUrl, IntMin1
+from adcp.types.constraints import HostedUrl, IntMin1
 
 from ...enums.audio_channel_layout import AudioChannelLayout
 from ..provenance import Provenance
@@ -22,7 +22,7 @@ class AudioAsset(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/audio-asset.json', pointer='#')
     asset_type: Annotated[Literal['audio'], Field(description='Discriminator identifying this as an audio asset. See /schemas/creative/asset-types for the registry.')]
-    url: Annotated[HttpUrl, Field(description='URL to the audio asset')]
+    url: Annotated[HostedUrl, Field(description='URL to the audio asset')]
     duration_ms: Annotated[NonNegativeInt | None, Field(description='Audio duration in milliseconds'), OmittedNotNull] = None
     file_size_bytes: Annotated[IntMin1 | None, Field(description='File size in bytes'), OmittedNotNull] = None
     container_format: Annotated[str | None, Field(description='Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)'), OmittedNotNull] = None
@@ -33,7 +33,7 @@ class AudioAsset(AdCPBaseModel):
     bitrate_kbps: Annotated[IntMin1 | None, Field(description='Bitrate in kilobits per second'), OmittedNotNull] = None
     loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS'), OmittedNotNull] = None
     true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS'), OmittedNotNull] = None
-    transcript_url: Annotated[HttpUrl | None, Field(description='URL to text transcript of the audio content'), OmittedNotNull] = None
+    transcript_url: Annotated[HostedUrl | None, Field(description='URL to text transcript of the audio content'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 
 

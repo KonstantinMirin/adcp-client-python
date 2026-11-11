@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin1Max5, FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl
+from adcp.types.constraints import FloatMin1Max5, FloatMinNeg90Max90, FloatMinNeg180Max180, HostedUrl
 
 from .country_code import CountryCode
 from .ext import ExtensionObject
@@ -64,8 +64,8 @@ class DestinationItem(AdCPBaseModel):
     location: Annotated[ObjLatLng | None, Field(description='Geographic coordinates of the destination.'), OmittedNotNull] = None
     destination_type: Annotated[DestinationType | None, Field(description='Destination category.'), OmittedNotNull] = None
     price: Annotated[Price | None, Field(description='Starting price for a trip to this destination.'), OmittedNotNull] = None
-    image_url: Annotated[HttpUrl | None, Field(description='Destination hero image URL.'), OmittedNotNull] = None
-    url: Annotated[HttpUrl | None, Field(description='Destination landing page or booking URL.'), OmittedNotNull] = None
+    image_url: Annotated[HostedUrl | None, Field(description='Destination hero image URL.'), OmittedNotNull] = None
+    url: Annotated[HostedUrl | None, Field(description='Destination landing page or booking URL.'), OmittedNotNull] = None
     rating: Annotated[FloatMin1Max5 | None, Field(description='Destination rating (1–5).'), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'family', 'romantic', 'solo', 'winter-sun').", min_length=1), OmittedNotNull] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this destination. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (destination hero), 'images_vertical' (9:16 for Snap, Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1), OmittedNotNull] = None

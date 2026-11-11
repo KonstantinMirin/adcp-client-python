@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, IntMin1, StrMinLen1, ZipAssetDigest
+from adcp.types.constraints import HostedUrl, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.right_type import RightType
 from ..enums.right_use import RightUse
@@ -25,7 +25,7 @@ class RightsAgent(AdCPBaseModel):
     The agent that granted these rights
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-constraint.json', pointer='#/properties/rights_agent')
-    url: Annotated[HttpUrl, Field(description='MCP endpoint URL of the rights agent')]
+    url: Annotated[HostedUrl, Field(description='MCP endpoint URL of the rights agent')]
     id: Annotated[str, Field(description='Agent identifier')]
 
 
@@ -118,7 +118,7 @@ class RightsConstraint(AdCPBaseModel):
     restrictions: Annotated[list[StrMinLen1] | None, Field(description='Normalized enforceable content and usage restrictions issued with the grant. When present these values are part of content_digest and cannot be omitted or changed without invalidating the attestation.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     disclosure: Annotated[Disclosure | None, Field(description='Disclosure obligation issued with the grant and bound by content_digest.'), OmittedNotNull] = None
     creative_approval_required: Annotated[bool | None, Field(description='Whether each creative produced under this grant requires holder approval before distribution. This enforceable term is bound by content_digest.'), OmittedNotNull] = None
-    verification_url: Annotated[HttpUrl | None, Field(description='DEPRECATED legacy informational locator. It is not proof of grant status, a revocation source, a credential locator, or permission to make a network request. Receivers MUST NOT fetch it during rights evaluation, and HTTP status codes have no AdCP authorization meaning. Rights authorization uses attestation_refs and a verifier-of-record evaluation under evaluator-owned policy.'), OmittedNotNull] = None
+    verification_url: Annotated[HostedUrl | None, Field(description='DEPRECATED legacy informational locator. It is not proof of grant status, a revocation source, a credential locator, or permission to make a network request. Receivers MUST NOT fetch it during rights evaluation, and HTTP status codes have no AdCP authorization meaning. Rights authorization uses attestation_refs and a verifier-of-record evaluation under evaluator-owned policy.'), OmittedNotNull] = None
     content_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of UTF8(JCS(rights_constraint minus content_digest, attestation_refs, and verification_url)), formatted as sha256:<lowercase hex>. This binds all serving-relevant grant fields, including future extension fields, while deliberately excluding the legacy non-authoritative URL.'), OmittedNotNull] = None
     attestation_refs: Annotated[list[AttestationRefsItem] | None, Field(description='Alternative portable presentations of a holder-issued rights-grant credential signed by its authorized rights agent. The buyer carries references only; the serving party remains verifier-of-record. At least one reference must evaluate to verified and match rights_holder, rights_id, rights_agent, content_digest, validity, revocation state, and local policy before this constraint can contribute to serving eligibility.', json_schema_extra={'uniqueItems': True}, max_length=4, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

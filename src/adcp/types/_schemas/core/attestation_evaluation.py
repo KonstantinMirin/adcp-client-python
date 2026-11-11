@@ -11,7 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
     FloatMin0Max1,
-    HttpUrl,
+    HostedUrl,
     ReasonCodesItem,
     StrMinLen1MaxLen1024,
     ZipAssetDigest,
@@ -61,7 +61,7 @@ class ActionBinding(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('action_id',), ('action_digest',)), 'anyOf'),
     )
-    action_type: Annotated[HttpUrl, Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
+    action_type: Annotated[HostedUrl, Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
     action_id: Annotated[StrMinLen1MaxLen1024 | None, Field(description="Stable identifier of the consuming action within the domain consumer's namespace."), OmittedNotNull] = None
     action_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 digest of the domain-defined canonical action preimage.'), OmittedNotNull] = None
 
@@ -81,7 +81,7 @@ class AttestationEvaluation(AdCPBaseModel):
     )
     reference_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 of the RFC 8785 JSON Canonicalization Scheme encoding of the complete AttestationReference, including embedded_credential when present. This prevents a result for one presentation from being replayed for another.')]
     credential_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of the exact resolved or embedded credential bytes according to proof_format. REQUIRED by the normative contract when outcome is verified, expired, revoked, invalid, subject_mismatch, or digest_mismatch; omitted when no credential bytes were obtained. For dual delivery, this is the resolved credential digest; reference_digest independently binds the embedded bytes.'), OmittedNotNull] = None
-    proof_format: Annotated[HttpUrl | None, Field(description='Absolute URI identifying the credential/proof format used to interpret and hash obtained credential bytes. REQUIRED whenever credential_digest is present.'), OmittedNotNull] = None
+    proof_format: Annotated[HostedUrl | None, Field(description='Absolute URI identifying the credential/proof format used to interpret and hash obtained credential bytes. REQUIRED whenever credential_digest is present.'), OmittedNotNull] = None
     outcome: Annotated[Outcome, Field(description='Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.')]
     evaluated_at: AwareDatetime
     evaluated_by: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='Canonical agent URL of the evaluator-of-record that produced this result, even when it delegated proof checking to an accepted verifier.')]

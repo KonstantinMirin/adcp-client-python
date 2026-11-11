@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HostedUrl
 
 from .domain_name import DomainName
 
@@ -68,7 +68,7 @@ class SignalRefSignalSource(SignalRef):
         ForbiddenGroups((('data_provider_domain',), ('agent_url',), ('source',), ('id',))),
     )
     scope: Annotated[Literal['signal_source'], Field(description='Discriminator indicating the signal resolves through the issuing signal source.')]
-    signal_source_url: Annotated[HttpUrl, Field(description='URL of the signal source that issues this source-native signal.')]
+    signal_source_url: Annotated[HostedUrl, Field(description='URL of the signal source that issues this source-native signal.')]
     signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the issuing signal source's signal set.")]
 
 

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0Max1, HttpUrl
+from adcp.types.constraints import FloatMin0Max1, HostedUrl
 
 from ..core.ext import ExtensionObject
 
@@ -65,12 +65,12 @@ class Details(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/audit-observation.json', pointer='#/properties/details')
-    agent_url: Annotated[HttpUrl, Field(description='Governance agent URL that produced the observation.')]
+    agent_url: Annotated[HostedUrl, Field(description='Governance agent URL that produced the observation.')]
     feature_id: Annotated[str | None, Field(description='Feature or policy check that produced the observation.'), OmittedNotNull] = None
     claimed_value: Annotated[ClaimedValue, Field(description='Compact object of claimed provenance values that triggered the observation.')]
     observed_value: Annotated[bool | float | str | None, Field(description='Verifier observation relevant to the claim, when applicable.')] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for the observation, when applicable.'), OmittedNotNull] = None
-    substituted_for: Annotated[HttpUrl | None, Field(description='Buyer-nominated verifier URL when the seller or orchestrator used a different on-list governance agent.'), OmittedNotNull] = None
+    substituted_for: Annotated[HostedUrl | None, Field(description='Buyer-nominated verifier URL when the seller or orchestrator used a different on-list governance agent.'), OmittedNotNull] = None
 
 
 class CreativeAuditObservation(AdCPBaseModel):

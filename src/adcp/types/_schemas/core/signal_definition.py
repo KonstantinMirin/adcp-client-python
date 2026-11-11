@@ -13,7 +13,7 @@ from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
     DataSubjectRightsResponseSlaDays,
     DataSubjectRightsUpstreamSourceDomain,
-    HttpUrl,
+    HostedUrl,
     IntMin1,
     StrMaxLen500,
     StrMaxLen2000,
@@ -87,7 +87,7 @@ class Taxonomy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/taxonomy')
-    ref: Annotated[HttpUrl, Field(description='URI identifying the taxonomy or taxonomy documentation.')]
+    ref: Annotated[HostedUrl, Field(description='URI identifying the taxonomy or taxonomy documentation.')]
     version: Annotated[str | None, Field(description='Version identifier for the taxonomy when the taxonomy has versioned definitions.'), OmittedNotNull] = None
     segtax: Annotated[IntMin1 | None, Field(description='OpenRTB segtax code when the taxonomy maps to an OpenRTB segment taxonomy.'), OmittedNotNull] = None
     etag: Annotated[str | None, Field(description='Optional validator for custom taxonomy definitions so consumers can detect drift between signal publication and taxonomy resolution.'), OmittedNotNull] = None
@@ -413,7 +413,7 @@ class SignalDefinition(AdCPBaseModel):
     range: Annotated[Range | None, Field(description='For numeric signals, the valid value range'), OmittedNotNull] = None
     taxonomy: Annotated[Taxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy. Taxonomy metadata does not create a new value_type and does not change package targeting grammar: buyers still target the named signal according to value_type. When a taxonomy value is a parent node, parent/descendant expansion is seller behavior and must be declared through parent_match_behavior rather than assumed.'), OmittedNotNull] = None
     segmentation_criteria: Annotated[StrMaxLen500 | None, Field(description='Rules governing inclusion of identifiers in the segment. Aligns with IAB Data Transparency Standard audience criteria disclosure.'), OmittedNotNull] = None
-    criteria_url: Annotated[HttpUrl | None, Field(description='Optional URL to a longer-form methodology or criteria document. This is a disclosure pointer; buyers should not branch programmatically on the linked content.'), OmittedNotNull] = None
+    criteria_url: Annotated[HostedUrl | None, Field(description='Optional URL to a longer-form methodology or criteria document. This is a disclosure pointer; buyers should not branch programmatically on the linked content.'), OmittedNotNull] = None
     data_sources: Annotated[list[DataSourcesItem] | None, Field(description="Origin categories of the raw data used to compile the signal, aligned with IAB Data Transparency Standard source disclosure. Use 'panel' for respondent-panel or JIC-style audience sources. Offline and public-record sources require onboarder disclosure. Co-viewing projection and reconciliation of seller claims against a JIC or measurement vendor belong in measurement reporting/vendor metrics rather than package signal targeting.", min_length=1), OmittedNotNull] = None
     methodology: Annotated[Methodology | None, Field(description="How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block."), OmittedNotNull] = None
     audience_expansion: Annotated[bool | None, Field(description='Whether look-alike or similar-audience expansion was used to include additional identifiers. When true, modeling is required.'), OmittedNotNull] = None
