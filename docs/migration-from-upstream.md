@@ -2699,6 +2699,268 @@ measurement and re-deriving it would be a second derivation of one number.
 <!-- END GENERATED -->
 ---
 
+## §13. `Format`, and the two ways a creative says which format it is
+
+**THIS SECTION IS THE ONE AN ADOPTER WHO TOUCHES CREATIVE FORMATS HAS TO READ, and it is a
+statement about AdCP 3.2–3.3 as a data model before it is a statement about this package.**
+`adcp.types.canonical_creative` is deleted, and the word `Format` moved with it. Every line
+of code below was executed against the committed tree before it was written down; where a
+line does not work, this section says so instead of recommending it.
+
+### The settled reading, in four sentences
+
+- `format_id` is the LEGACY way of addressing a format — a structured
+  `{agent_url, id}` object and never a bare string. `format_kind` + `params` is the
+  canonical one.
+- **The conversion is ONE-WAY.** `registries/v1-canonical-mapping.json` is authoritative for
+  v1 → v2 projection ONLY; its own normative clause says v2 → v1 "MUST rely on
+  `v1_format_ref` on the v2 `ProductFormatDeclaration` — sellers assert the v1 mapping".
+  So id → kind is derivable and kind → id is NOT, unless the declaration carries the mapping.
+- **`deprecated` on `format_id` is METADATA, NOT ABSENCE.** Seven documents state one of
+  these fields as deprecated-and-present, and all seven resolve as declared fields on the
+  public class: `Product.format_ids`, `Package.format_ids`, `Placement.format_ids`,
+  `ProductFilters.format_ids`, `CreativeFilters.format_ids`, `CreativeManifest.format_id`,
+  `CreativeAsset.format_id`.
+- **A caller does not pick the addressing form by naming a class.** The payload decides and
+  the model dispatches, which is the §12 ruling applied to formats.
+
+### The word `Format`: what it was, what it is, and the one-line edit
+
+Upstream's `Format` was the hand-written canonical declaration — `format_kind` and `params`,
+required. **This package has no such class, and `adcp.types.Format` is a different subject**:
+it is `core/format.json`'s root, the v1 REGISTERED format, and the bundle marks that document
+`deprecated: true` as a whole.
+
+```python
+>>> from adcp.types import Format
+>>> Format.__adcp_schema__
+SchemaRef(document='core/format.json', pointer='#')
+>>> sorted(n for n, f in Format.model_fields.items() if f.is_required())
+['format_id', 'name']
+>>> Format.__subclasses__()
+[]
+```
+
+So an import of the word keeps resolving and **a construction of a canonical declaration
+through it does not**. The destination is `ProductFormatDeclaration`, which is the emitted
+annotation of `Product.format_options` and dispatches on `format_kind`:
+
+```python
+# BEFORE -- upstream's Format, the canonical declaration
+from adcp.types import Format
+option = Format.model_validate({
+    "format_option_id": "opt_1",
+    "format_kind": "image",
+    "params": {"sizes": [{"width": 300, "height": 250}]},
+    "v1_format_ref": [{"agent_url": "https://reference.adcp.org", "id": "display_300x250"}],
+})
+# -> ValidationError: 2 validation errors for Format
+#      format_id  Field required
+#      name       Field required
+
+# AFTER -- the document's authoring declaration, same payload, one name changed
+from adcp.types import ProductFormatDeclaration
+option = ProductFormatDeclaration.model_validate({
+    "format_option_id": "opt_1",
+    "format_kind": "image",
+    "params": {"sizes": [{"width": 300, "height": 250}]},
+    "v1_format_ref": [{"agent_url": "https://reference.adcp.org", "id": "display_300x250"}],
+})
+# -> ImageFormatDeclaration
+```
+
+`ProductFormatDeclaration` is reachable as `from adcp import ProductFormatDeclaration` and as
+`from adcp.types import ProductFormatDeclaration`; both were checked.
+
+**And `v1_format_ref` is now a DECLARED FIELD rather than private state.** On upstream's
+`Format` the seller's v1 mapping was kept in a private attribute that `model_dump` could not
+reach. On the emitted declaration it is a field and it serializes — which is what makes the
+kind → id direction answerable at all, because the registry says that direction must come
+from the declaration and not from a table:
+
+```python
+>>> option.v1_format_ref
+[FormatReferenceStructuredObject(agent_url=HttpUrl('https://reference.adcp.org/'), id='display_300x250', ...)]
+>>> "v1_format_ref" in option.model_dump(mode="json", exclude_none=True)
+True
+```
+
+### `FormatId` — the one downstream import that does not resolve, with its fix
+
+`FormatId` IS the v1 reference and the identity is exact, not a resemblance:
+
+```python
+>>> from adcp.types import FormatId
+>>> FormatId.__qualname__
+'FormatReferenceStructuredObject'
+>>> from adcp.types._schemas.creative.list_creatives_response import ListedCreativeNamedFormatReference
+>>> ListedCreativeNamedFormatReference.model_fields["format_id"].annotation is FormatId
+True
+```
+
+**But it is not on the top-level namespace**, and an application that reaches for it there
+fails at import:
+
+```python
+# BEFORE
+from adcp import FormatId
+# -> ImportError: cannot import name 'FormatId' from 'adcp'
+
+# AFTER
+from adcp.types import FormatId
+```
+
+`FormatId` is absent from `adcp.__all__` as well, so this is a missing binding and not a
+removal; the fix is the import line and nothing in the calling code changes.
+
+### THE RECOMMENDED MIGRATION: hand over the payload, let the model choose
+
+**Do not select a branch class and do not convert between the two forms.** At the nodes where
+the bundle states the XOR, this package emits a real PARENT class with real children — not a
+type alias — so `isinstance` holds against the parent for either form and the dispatch is the
+document's own `required`/`not` clauses rather than anything this SDK invented.
+
+**Five parents carry both addressing forms.** Derived by walking the emitted tree for a class
+with one child requiring `format_id` and another requiring `format_kind`, then validating a
+payload of each form through the parent:
+
+| parent (`adcp.types.<domain>`) | `format_id` → | `format_kind` → |
+|---|---|---|
+| `core.CreativeAsset` | `V1CreativeNamedFormatReference` | `V2CreativeCanonicalFormatKind` |
+| `core.CreativeManifest` | `NamedFormatManifest` | `CanonicalFormatManifest` |
+| `creative.ListCreativesResponseCreativesItem` | `ListedCreativeNamedFormatReference` | `ListedCreativeCanonicalFormatKind` |
+| `creative.sync_creatives_request.CreativesItem` | `CreativesItemFormatId` | `CreativesItemFormatKind` |
+| `core.CreativeRepresentation` | **refused — see below** | `CreativeRepresentationFormatKind` |
+
+```python
+from adcp.types.core import CreativeAsset
+
+REF = {"agent_url": "https://creative.adcontextprotocol.org", "id": "display_300x250"}
+ASSETS = {"image": {"asset_type": "image", "asset_id": "i", "url": "https://x.example/a.png"}}
+base = {"creative_id": "c1", "name": "n", "assets": ASSETS}
+
+CreativeAsset.model_validate({**base, "format_id": REF})
+# -> V1CreativeNamedFormatReference
+CreativeAsset.model_validate({**base, "format_kind": "image"})
+# -> V2CreativeCanonicalFormatKind
+CreativeAsset.model_validate({**base, "format_id": REF, "format_kind": "image"})
+# -> ValidationError: 0 of these clauses hold, the document admits exactly one:
+#    'format_id' present and 'format_kind' absent; 'format_kind' present and 'format_id' absent
+```
+
+`isinstance` holds both ways, which is why naming a child buys nothing:
+
+```python
+>>> isinstance(CreativeAsset.model_validate({**base, "format_id": REF}), CreativeAsset)
+True
+>>> isinstance(CreativeAsset.model_validate({**base, "format_kind": "image"}), CreativeAsset)
+True
+```
+
+**So the migration for a buy-side or sell-side application is: keep the payload you already
+have, hand it to the parent, and read `type(...)` if you need to know which way it was
+addressed.** That is the recommendation for anyone implementing AdCP 3.2–3.3 in any language.
+This package reproduces the document's clause; it does not add one.
+
+### One branch the document EMPTIES — do not construct it
+
+`core/creative-representation.json` is an `allOf` whose second member unconditionally
+`required: ["format_kind"]` and forbids `format_id`, while the manifest it `$ref`s at
+`allOf/0` states a `oneOf` whose first branch requires `format_id` and forbids `format_kind`.
+Conjoined, the named-format branch of a Creative Representation admits nothing.
+`CreativeRepresentationFormatId` is emitted and refuses every payload — faithfully, because
+that is the document's own answer reached by the document's own rules. The four cases, run:
+
+```python
+from adcp.types.core import CreativeRepresentation
+
+REF = {"agent_url": "https://creative.adcontextprotocol.org", "id": "display_300x250"}
+base = {"representation_id": "rep_1",
+        "source": {"system": "dam", "source_representation": "master"},
+        "assets": {"image": {"asset_type": "image", "asset_id": "i",
+                             "url": "https://x.example/a.png"}}}
+
+CreativeRepresentation.model_validate({**base, "format_kind": "image"})
+# -> CreativeRepresentationFormatKind
+CreativeRepresentation.model_validate({**base, "format_id": REF})
+# -> ValidationError: 'format_kind' is a required property
+CreativeRepresentation.model_validate({**base, "format_id": REF, "format_kind": "image"})
+# -> ValidationError: 0 of these clauses hold, the document admits exactly one: ...
+CreativeRepresentation.model_validate(base)
+# -> ValidationError: 'format_kind' is a required property
+```
+
+**A Creative Representation is addressed by `format_kind` and only by `format_kind`.** Whether
+that narrowing is intended is the bundle's question and is asked upstream as
+`adcontextprotocol/adcp#8922`; the grade is unmoved by the answer, and
+`tests_emit/test_a_branch_the_document_empties.py` is the gate.
+
+### The projection helpers: which ones execute today
+
+`src/adcp/canonical_formats/` is the shield for applications that must speak both forms, and
+**it is partly broken against the emitted types right now**. Measured, one call each:
+
+| entry point | state |
+|---|---|
+| `migrated_format_option_id(ref)` | works |
+| `find_declaration_by_kind(kind, options)` | works |
+| `upgrade_legacy_format_id(value)` | **raises** — it passes `duration_ms=None` and `pixel_ratio=None`, which `FormatReferenceStructuredObject` declares as non-nullable numbers |
+| `project_legacy_format_id(...)`, `project_v1_format_to_declaration(...)` | **raise** — they build the deleted `Format`, so `format_id`/`name` come back required |
+| `project_declaration_to_v1(...)`, `find_declaration_by_v1_format_id(...)` | **raise** `AttributeError: 'ImageFormatDeclaration' object has no attribute 'legacy_format_refs'` — that property belonged to the deleted class |
+
+Those are defects of `src/adcp/canonical_formats/`, not of the type layer, and they are not
+this section's to fix. **Until they are fixed, read the mapping off the declaration, which is
+where the registry says it lives anyway:**
+
+```python
+from adcp.types import ProductFormatDeclaration
+
+declaration = ProductFormatDeclaration.model_validate({
+    "format_kind": "image",
+    "params": {"sizes": [{"width": 300, "height": 250}]},
+    "v1_format_ref": [{"agent_url": "https://reference.adcp.org", "id": "display_300x250"}],
+})
+
+# kind -> id, the only direction that needs the seller's own assertion
+v1_ids = [ref.id for ref in (declaration.v1_format_ref or [])]
+# -> ['display_300x250'], and [] for a declaration the seller asserted no mapping on,
+#    which is the answer and not a gap to fill: the registry forbids inventing one.
+```
+
+```python
+from adcp.types import FormatId
+
+# the v1 reference itself, built from a mapping rather than with explicit Nones
+FormatId.model_validate({"agent_url": "https://creative.adcontextprotocol.org",
+                         "id": "display_300x250"})
+# -> FormatReferenceStructuredObject(agent_url=HttpUrl('https://creative.adcontextprotocol.org/'),
+#                                    id='display_300x250', ...)
+```
+
+### What changed in this repository's own example, and why
+
+`examples/v3_reference_seller/src/platform.py` was the one example that constructed a format
+the emitted types no longer admit: it built a canonical declaration and validated it through
+`Format`. Five lines moved to `ProductFormatDeclaration` — the import, two
+`list[Format]` annotations and two `Format.model_validate(...)` calls — and the comment
+claiming the v1 mapping is private state was corrected, because `v1_format_ref` is a declared
+field and does serialize. Running the patched `_product_format_options` on its own source
+returns `ImageFormatDeclaration` and `HostedVideoFormatDeclaration`, with `v1_format_ref`
+intact.
+
+That file still does not IMPORT, for four names that are not formats and are outside this
+section's scope: `CreateMediaBuySuccessResponse`, `UpdateMediaBuySuccessResponse`,
+`ProvidePerformanceFeedbackSuccessResponse` and `SyncCreativeResult`. The first two are
+upstream's words for the create/update success branch and the emitted classes are
+`CreateMediaBuySuccess` and `UpdateMediaBuySuccess`; the other two did not resolve before the
+canonical layer was deleted either.
+
+No other example needed a change. `examples/hello_seller_creative.py` addresses its manifest
+by `format_kind` and that is the live branch — `CreativeManifest` with `format_kind` validates
+as `CanonicalFormatManifest`, and with `format_id` as `NamedFormatManifest`.
+
+---
+
 ## Re-deriving this document, and the gate that keeps it true
 
 Two interpreters, because the two trees cannot be imported into one — the table at the top
