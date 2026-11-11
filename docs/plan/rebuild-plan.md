@@ -480,45 +480,59 @@ Two cases survive, and the design keeps both.
   it did. So the guard switches each admission mechanism off in turn and pins which keywords
   reappear.
 
- **THE TWO URL TYPES STAND.**
+ **THE TWO URL TYPES STAND, AND THERE ARE EXACTLY TWO.** Both are `AnyUrl` under
+  `UrlConstraints` — one general and one https-pinned descendant — and which a node takes is
+  decided by what the node is:
+
+  | type | where |
+  | --- | --- |
+  | `AdCPUrl` — `Annotated[AnyUrl, UrlConstraints(host_required=True, allowed_schemes=["https"])]` | **every AdCP protocol address: an agent URL and a webhook URL.** These are how an agent is identified and how a receiver is called back, and they are https by protocol. |
+  | `AdCPUri` — `Annotated[AnyUrl, UrlConstraints(host_required=True)]` | every other `format: uri` node. |
+
  **THE BUNDLE IS WRONG ABOUT URLs, and that is the whole premise.** It spells "a URL" many
   different ways across its `uri` positions — a bare `format: uri`, an `^https://` pattern, a
   length bound, several combinations — for what is one concept. **Where the schema states one
   concept inconsistently, the SDK states it consistently**, and consistency across the bundle is
-  what a consumer experiences. There are exactly **two** URL types and there will not be a third,
-  and both are `AnyUrl` under `UrlConstraints` — one general and one https-pinned descendant:
+  what a consumer experiences.
 
-  | | |
-  | --- | --- |
-  | `Annotated[AnyUrl, UrlConstraints(host_required=True)]` | the identity form, at every bare `format: uri` node |
-  | `AdCPUrl` — the same plus `allowed_schemes=["https"]` | the agent-facing form, where the document's own `pattern` pins `^https://` |
-
- **THE GENERAL FORM IS THE HIERARCHICAL URL, AND NEITHER `HttpUrl` NOR A BARE `AnyUrl`.** A bare
+ **NEITHER TYPE IS `HttpUrl`, AND THE GENERAL ONE IS NOT A BARE `AnyUrl` EITHER.** A bare
   `format: uri` is RFC 3986 and admits every scheme, so `HttpUrl` — which admits two — refuses
   values the document admits, and the bundle supplies one of them itself: `core/app-item.json`'s
   `deep_link_url` is `{type: string, format: uri}` and its own description says *"Falls back to
   URI scheme (e.g., `'acmegames://level/5'`) when universal links are not configured."* A bare
-  `AnyUrl` goes too far the other way — it admits `data:text/plain,hi` and `tel:+15551234` at a
-  webhook-endpoint field, and it leaves `.host` possibly `None`, which gives up the one property
-  this section exists for. `host_required` keeps the parsed object worth having: `.scheme`,
-  `.host` and `.path` are all reliable, `acmegames://level/5` parses to
-  `scheme='acmegames' host='level' path='/5'`, and the non-hierarchical URIs are refused.
+  `AnyUrl` goes too far the other way — it admits `data:text/plain,hi` and `tel:+15551234`, and
+  it leaves `.host` possibly `None`, which gives up the one property these types exist for.
+  `host_required` keeps the parsed object worth having: `.scheme`, `.host` and `.path` are all
+  reliable, `acmegames://level/5` parses to `scheme='acmegames' host='level' path='/5'`, and the
+  non-hierarchical URIs are refused. Its one narrowing has zero sites — of the bundle's bare
+  `format: uri` nodes, none names a non-hierarchical scheme and one names a non-http
+  hierarchical one.
 
- **AND ITS ONE NARROWING HAS ZERO SITES.** Derived over the bundle: of the 227 bare `format: uri`
-  nodes, **none** names a non-hierarchical scheme in its description, examples or `$comment`, and
-  **one** names a non-http hierarchical one. So the form refuses nothing any document states and
-  admits the one value `HttpUrl` wrongly refused. **The type is a function of the KEYWORD, never
-  of a description**: every bare `format: uri` node takes the same annotation, and that one node
-  is what proved the http narrowing unsafe rather than a case the rule is keyed on. Reading prose
-  to choose a type would be an allowlist of one wearing a derivation.
+ **AN AdCP ADDRESS REACHES `AdCPUrl` THROUGH THE OVERRIDE TABLE, NOT THROUGH A RULE IN THE
+  EMITTER.** The emitter's rule is one line and reads a keyword: a node whose `pattern` pins
+  `^https://` is `AdCPUrl`, every other `format: uri` node is `AdCPUri`. The bundle states that
+  pin at 8 of its 57 agent and webhook addresses, so the other 49 are an **overlay**: §3a's
+  override mechanism adds `core/https-url.json` and rewrites each site to `$ref` it, which is
+  what `patches/8525` already does for the 46 sites that stated the pattern inline. **A type is
+  therefore never chosen from a field's NAME or its description** — the emitter cannot tell an
+  agent URL from a logo URL and must not try; the overlay names the sites, in the one place this
+  document already admits a decision the bundle has not caught up with.
 
- **AND THE ONE NARROWING LEFT IS THE ONE THE DOCUMENT ITSELF STATES**, which is not a
-  narrowing at all: `AdCPUrl` is chosen only where the node pins `^https://`, so the scheme
-  restriction is the document's own and the type reproduces it. §2's rule about deliberate
-  narrowings therefore has nothing to admit here — a type selection that refuses only what its
-  document refuses needs no registry entry, and the registry is for the cases where the SDK
-  decides to refuse more. Where a URL type would refuse a scheme the node admits, the type is
-  wrong and the fix is the type.
+ **AND THE OVERLAY DECLARES THE DEFECT IT COMPENSATES FOR, so it disappears on its own.** §3a:
+  an override that is no longer needed must break the build. The defect is
+  `adcontextprotocol/adcp#8398` — the bundle requires HTTPS at these fields in prose
+  (`core/notification-config.json`: *"Sellers MUST validate URL syntax, HTTPS usage, hostname
+  normalization…"*) while its schema admits `http://`. The day upstream pins the scheme, the
+  overlay's additions are refused as already-stated and the 57 addresses reach `AdCPUrl` through
+  the keyword alone, with nothing here edited.
+
+ **NEITHER TYPE NEEDS A NARROWING ADMITTED, because neither refuses more than its document
+  does.** `AdCPUrl` is reached only where the node pins `^https://`, whether the bundle states
+  that pin or the overlay does, so the scheme restriction is the document-of-record's own and
+  the type reproduces it. `AdCPUri` refuses only non-hierarchical URIs, which no document
+  states. §2's deliberate-narrowing registry therefore has nothing to admit here; it is for the
+  cases where the SDK decides to refuse more. **Where a URL type would refuse a scheme its node
+  admits, the type is wrong and the fix is the type.**
 
  **A reading that finds code contradicting this section reports it and does not change either
   side.** A registry entry is a decision even though it is not in this document.

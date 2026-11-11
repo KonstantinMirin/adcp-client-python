@@ -907,9 +907,10 @@ approximation, not thousands. A per-site reading of the declared facts does not 
 progress.
 
 **And the near-duplicate constraint question is a different kind, not a smaller one.** A
-`format: uri` position carrying a
-`pattern` is not two rules that nearly agree — it is one rule compiled to a non-injective type,
-which is a NARROWING and already decided in the semantics document's §2. Two types differing in a
+`format: uri` position carrying a `pattern` is not two rules that nearly agree and is not a
+narrowing either: the pattern rides WITH the URL type — `maxLength` and `minLength` through
+`Field`, the `pattern` through a chained core schema — so both of the document's facts are in
+one annotation and nothing is dropped. `rebuild-plan.md` §4 decides it, in two types. Two types differing in a
 single constraint keyword are a separate question, and **the census for it does not exist**: a
 reading keyed on "same value-carrying keyword, differing constraint" is what would answer it, and
 a cruder key counts two unrelated vocabularies as a near miss. That census is owed before any rule
