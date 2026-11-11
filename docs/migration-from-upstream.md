@@ -552,11 +552,38 @@ in §7 rather than here.
 
 ### The `canonical_creative` layer — five names that share a word with a document
 
-Upstream's `adcp.types.canonical_creative` is a hand-written layer, and `adcp.Product`,
-`adcp.Package`, `adcp.CreativeManifest`, `adcp.Format` and `adcp.types.ProductFormatDeclaration`
-all resolve into it. **All five have a class of ours carrying the same word, and only three
-of the five are a rename** — the field sets below are what tells them apart, which is the
-whole reason the word is not allowed to decide.
+Upstream's `adcp.types.canonical_creative` is a hand-written layer, and in UPSTREAM's package
+`adcp.Product`, `adcp.Package`, `adcp.CreativeManifest`, `adcp.Format` and
+`adcp.types.ProductFormatDeclaration` all resolve into it. **All five have a class of ours
+carrying the same word, and only three of the five are a rename** — the field sets below are
+what tells them apart, which is the whole reason the word is not allowed to decide.
+
+**THAT LAYER IS NOT IN THIS PACKAGE** (`adcp-client-python-2f52`). It was restored here for a
+while, at upstream's own path and bytes; it is deleted, because 32 of its 36 classes subclass
+an emitted class of ours and then SUPPRESS a field the class's own document states —
+`Product.format_ids` was a class attribute holding `None`, hiding the inherited field, and
+`core/product.json` states `format_ids` with `deprecated: true` and `x-removed-in: 4.0.0`.
+`deprecated` is metadata, not absence. So in THIS package the flat words resolve to the
+documents' own classes, which is what the table below tells you to port to:
+
+| flat word | resolves here to |
+|---|---|
+| `adcp.Product` | `core/product.json`'s root — `format_ids` present |
+| `adcp.Package` | `core/package.json`'s root — `format_ids`, `format_ids_pending`, `format_ids_to_provide` present |
+| `adcp.Placement` | `core/placement.json`'s root — `format_ids` present |
+| `adcp.ProductFilters`, `adcp.CreativeFilters` | their own documents' roots — `format_ids` present |
+| `adcp.CreativeManifest`, `adcp.CreativeAsset` | their own documents' roots — `format_id` present |
+| `adcp.Format` | `core/format.json`'s root, which the bundle marks `deprecated: true` as a whole. **Read the `adcp.Format` row below before porting**: it is the v1 named-format definition and not a canonical declaration, and which subject the flat word SHOULD denote is `adcp-client-python`'s Format-union question and is not settled by this removal |
+| `adcp.types.ProductFormatDeclaration` | `core/product-format-declaration.json`'s root |
+| `adcp.MediaBuyPackage`, `adcp.DeliveryCreative`, `adcp.CreateMediaBuySuccessResponse`, `adcp.UpdateMediaBuySuccessResponse`, `adcp.CreateMediaBuyErrorResponse`, `adcp.is_canonical_format_kind`, `adcp.require_canonical_format_kind`, `adcp.CanonicalFormatKindStr` | **no longer resolve.** Each raises with the reason, recorded by name in `adcp.types._adapter.__adcp_refused__` — reading 10's "a name with no schema subject gets a migration note and never a class" |
+| `adcp.Creative` | `protocol/get-adcp-capabilities-response.json`'s inner `Creative`, bound because it is the only declaration of that word in this tree. **Identity `differs` and the row at the top of this section is the one to read**: the nearest identity of upstream's listed creative is `creative/list-creatives-response.json`'s `CreativesItem` at 0.96, which this package has and does not export |
+
+Three functions and a base class went with the file and are not re-expressed anywhere:
+`strip_legacy_creative_identity` (a dict walk that deleted `format_id`/`format_ids` keys),
+`sanitize_canonical_schema` (the same deletion over a JSON Schema), and
+`CanonicalBoundaryModel` (the base that did both on `model_dump`, `model_dump_json` and
+`model_json_schema`). A payload this package serializes now carries the fields its document
+states.
 
 | upstream | this package | agreement | the difference, field by field |
 |---|---|---|---|

@@ -1,6 +1,6 @@
 """The import-time patchers defer their rebuilds to first use (#1694).
 
-``_ergonomic``, ``_forward_compat``, ``canonical_creative`` and ``aliases``
+``_ergonomic``, ``_forward_compat`` and ``aliases``
 edit generated models' ``model_fields`` at import and then need the core
 schema re-derived. They used to call ``model_rebuild(force=True)`` on the
 spot, which walked each request or response root's whole subtree into
@@ -43,13 +43,12 @@ _PATCHED_MODELS = {
         "ListCreativesResponse",
         "GetMediaBuyDeliveryResponse",
     ],
-    "adcp.types.canonical_creative": ["CreativeManifest", "Format", "Product"],
     "adcp.types.domains.adagents": ["AdcpAgentsAuthorization"],
     "adcp.types.domains.core.format": ["CanonicalParameters"],
 }
 
 _PROBE = """
-import adcp.types._eager
+import adcp.types
 import importlib, json
 out = {}
 for module, names in SPEC.items():
@@ -176,38 +175,6 @@ def test_generated_root_models_parametrize_adcp_root_model() -> None:
         assert root.model_config.get("defer_build") is True
 
 
-def test_a_canonical_subclass_may_forward_reference_a_later_model() -> None:
-    """The removal hook's deferred rebuild tolerates an unresolved forward reference.
-
-    A subclass of a canonical model re-inherits the removed legacy identity, so
-    ``__pydantic_init_subclass__`` removes it again and used to force a rebuild
-    there -- which raised when a field named a model defined further down the
-    module, an ordinary pydantic pattern that plain ``model_rebuild()`` defers
-    (#1690). Deferring the rebuild leaves the class incomplete until the
-    caller's own ``model_rebuild()``, with the removal intact.
-    """
-    from adcp.types import PackageRequest
-    from adcp.types.canonical_creative import is_legacy_creative_identity_key
-
-    class WithForwardRef(PackageRequest):
-        later: list[Later] | None = None
-
-    class Later(BaseModel):
-        name: str
-
-    assert not WithForwardRef.__pydantic_complete__
-    WithForwardRef.model_rebuild()
-
-    assert WithForwardRef.__pydantic_complete__
-    assert "later" in WithForwardRef.model_fields
-    assert not any(is_legacy_creative_identity_key(name) for name in WithForwardRef.model_fields)
-    payload = {
-        "buyer_ref": "p",
-        "product_id": "prod",
-        "pricing_option_id": "po",
-        "later": [{"name": "n"}],
-    }
-    assert WithForwardRef.model_validate(payload).later
 
 
 _DUMP_PROBE = """

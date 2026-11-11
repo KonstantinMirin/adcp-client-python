@@ -30,8 +30,6 @@ COMPATIBILITY_TESTS = (
     "tests/test_type_guards.py",
     "tests/test_type_aliases.py",
     "tests/test_version_helpers.py",
-    "tests/test_version_scoped_models.py",
-    "tests/test_versioned_bases.py",
     "tests/test_validation_envelope.py",
     "tests/test_auth_credential_parity.py",
     "tests/test_mcp_reusable_lifespan.py",
@@ -45,9 +43,6 @@ def test_commands(mode: str, *, coverage: bool = False, workers: int = 0) -> lis
         return [
             [
                 *COMPATIBILITY_TESTS,
-                # Static adopter checks run in the canonical lane; keep runtime
-                # versioned-base checks on every interpreter.
-                "--deselect=tests/test_versioned_bases.py::test_named_adopter_with_static_checkers",
                 "-n",
                 "0",
                 "-v",

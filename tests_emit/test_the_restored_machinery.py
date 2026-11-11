@@ -93,15 +93,16 @@ def test_no_class_a_restored_module_declares_is_a_class_of_ours(module: str) -> 
     }
     #: **INVENTING A SUBJECT IS LANDING ON OUR BASE FROM NOWHERE, AND EXTENDING ONE IS
     #: NOT.**  This read ``not issubclass(o, AdCPBaseModel)``, which is the property for a
-    #: restored HELPER -- nine of the ten -- and the wrong one for a restored SUBCLASS
-    #: LAYER.  ``canonical_creative`` is the first of those: upstream's canonical boundary
-    #: is written as ``class Product(_LegacyProduct, CanonicalBoundaryModel)`` where
-    #: ``_LegacyProduct`` IS ``adcp.types.domains.core.product.Product``, so its classes are
-    #: on our base BY CONSTRUCTION and the document behind each is ours.  Measured over the
-    #: restored file: 36 classes, 32 on our base, and **0** of those 32 reach it without an
-    #: emitted ``_schemas`` class in the MRO.  So the assertion is the clause it always
-    #: meant -- a class on our base must have one of our document classes behind it -- and
-    #: a class that lands there from nowhere still fails.
+    #: restored HELPER -- every one here today -- and the wrong one for a restored SUBCLASS
+    #: LAYER.  ``canonical_creative`` WAS one: upstream's canonical boundary was written as
+    #: ``class Product(_LegacyProduct, CanonicalBoundaryModel)`` where ``_LegacyProduct`` IS
+    #: ``adcp.types.domains.core.product.Product``, so its classes were on our base BY
+    #: CONSTRUCTION and the document behind each was ours.  Measured over that file at the
+    #: time: 36 classes, 32 on our base, and **0** of those 32 reaching it without an
+    #: emitted ``_schemas`` class in the MRO -- which is why the predicate is what it is.
+    #: That file is deleted (``adcp-client-python-2f52``), and the clause it forced stays:
+    #: a class on our base must have one of our document classes behind it, and a class
+    #: that lands there from nowhere still fails.
     invented = sorted(
         n
         for n, o in mine.items()

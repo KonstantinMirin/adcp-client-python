@@ -43,12 +43,25 @@ def canonical_creatives_capability(capabilities: Any) -> bool | None:
 
 
 def _schema_evidence(value: Any) -> tuple[bool, bool]:
-    """Return ``(canonical, legacy)`` evidence found in a request-local value."""
+    """Return ``(canonical, legacy)`` evidence found in a request-local value.
 
-    canonical_model = bool(getattr(value.__class__, "__adcp_canonical_creative_model__", False))
+    **THE EVIDENCE IS THE VALUE'S OWN FIELDS AND NEVER ITS CLASS.**  This read a
+    ``__adcp_canonical_creative_model__`` marker first and took it as canonical evidence on
+    its own.  That ClassVar was declared by the ``CanonicalBoundaryModel`` base of upstream's
+    hand-written ``adcp/types/canonical_creative.py``, deleted here by
+    `adcp-client-python-2f52`, and the marker
+    was a claim about which TYPE LAYER a caller had constructed from rather than about what
+    the request says -- a class carrying it answered "canonical" for a payload stating
+    nothing, because the layer suppressed the legacy fields from its own classes.  The keys
+    below are the reading that remains, and it is the one the 3.1 matrix's own sentence
+    describes: ``format_kind``/``format_options``/``format_option_refs`` present and
+    non-empty is canonical evidence, ``format_id``/``format_ids`` present and non-empty is
+    legacy evidence, and a payload stating neither is ABSENT evidence and fails closed.
+    """
+
     if hasattr(value, "model_dump"):
         value = value.model_dump(mode="python", exclude_none=True)
-    canonical = canonical_model
+    canonical = False
     legacy = False
     if isinstance(value, Mapping):
         for key, item in value.items():

@@ -185,7 +185,6 @@ from adcp.types import (
     UpdateMediaBuyRequest,
     UpdateMediaBuyResponse,
 )
-from adcp.types.canonical_creative import strip_legacy_creative_identity
 from adcp.types.core import (
     Activity,
     ActivityType,
@@ -2281,11 +2280,18 @@ class ADCPClient:
             params = preserve_explicit_nulls(
                 request, params, task_name=task_name, version=resolve_adcp_version(None)
             )
-        if strip_legacy_creative_identity(params) != params:
-            raise ValueError(
-                "primary creative methods reject legacy format identity; use the explicit "
-                "*_legacy method"
-            )
+        # No legacy-identity screen here any more.  It read
+        # ``strip_legacy_creative_identity(params) != params`` -- the stripped value
+        # discarded -- and refused a request carrying ``format_id``/``format_ids``.  Seven
+        # documents STATE those fields (``core/product.json``, ``core/package.json``,
+        # ``core/placement.json``, ``core/product-filters.json``,
+        # ``core/creative-filters.json``, ``core/creative-manifest.json``,
+        # ``core/creative-asset.json``), each as ``deprecated: true``, and
+        # ``core/product.json``'s own text says a product MUST carry ``format_ids``,
+        # ``format_options``, or BOTH during the 3.x window.  ``deprecated`` is metadata and
+        # not absence, so a client that refuses a field its documents state is narrower than
+        # them, and the screen's whole subject -- a primary/legacy split of the model layer
+        # -- is gone with ``adcp.types.canonical_creative``.
         if self._creative_dialect(request) is CreativeDialect.CANONICAL:
             return params
         for collection in ("packages", "new_packages"):
@@ -6054,12 +6060,11 @@ class ADCPClient:
                 f"{task_name} is legacy-only; use execute_task_legacy() or the "
                 "corresponding *_legacy method"
             )
-        serialized = request.model_dump(mode="json", exclude_none=True)
-        if strip_legacy_creative_identity(serialized) != serialized:
-            raise ValueError(
-                f"{task_name} request contains legacy creative identity; generic execute_task "
-                "is canonical-only"
-            )
+        # The legacy-identity screen is gone with the strip function it was written on; see
+        # ``_prepare_creative_params`` for the documents that state the fields it refused.
+        # The task-name screen above is a different reading and stands: ``build_creative``,
+        # ``list_creative_formats`` and ``preview_creative`` are whole TASKS with no canonical
+        # request shape, which is a fact about the protocol and not about a field.
         if task_name not in _CANONICAL_EXECUTE_TASKS:
             raise ValueError(f"Unknown canonical AdCP task: {task_name}")
         method = getattr(self, task_name)
@@ -6994,8 +6999,13 @@ class ADCPClient:
             raw_body,
             preserve_legacy_identity=False,
         )
-        sanitized = strip_legacy_creative_identity(result.model_dump(mode="python"))
-        return TaskResult[AdcpAsyncResponseData].model_validate(sanitized)
+        # The parsed callback is returned as it was parsed.  This was the one TRANSFORM use
+        # of ``strip_legacy_creative_identity`` -- it walked the dumped result and deleted
+        # every ``format_id``/``format_ids`` key before revalidating -- and deleting a field
+        # the callback's own document states is the suppression this removal is about, moved
+        # from a class to a dict.  ``preserve_legacy_identity=False`` above is the dispatch's
+        # own reading and is unchanged.
+        return result
 
     async def handle_webhook_legacy(
         self,

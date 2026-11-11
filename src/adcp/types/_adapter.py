@@ -43,21 +43,6 @@ from adcp.types.brand import GetRightsSuccess as GetRightsSuccessResponse
 from adcp.types.brand import VerifyBrandClaimResponseSignedResponse as VerifyBrandClaimSignedResponse
 from adcp.types.brand import VerifyBrandClaimResponseSignedResponsePayload as VerifyBrandClaimPayload
 from adcp.types.brand import VerifyBrandClaimResponseSignedSuccessPayload as VerifyBrandClaimSignedSuccessPayload
-from adcp.types.canonical_creative import CreateMediaBuyResponse1 as CreateMediaBuyResponse1
-from adcp.types.canonical_creative import CreateMediaBuyResponse1 as CreateMediaBuySuccessResponse
-from adcp.types.canonical_creative import CreateMediaBuyResponse2 as CreateMediaBuyErrorResponse
-from adcp.types.canonical_creative import Creative as Creative
-from adcp.types.canonical_creative import CreativeFilters as CreativeFilters
-from adcp.types.canonical_creative import CreativeManifest as CreativeManifest
-from adcp.types.canonical_creative import Format as Format
-from adcp.types.canonical_creative import Package as Package
-from adcp.types.canonical_creative import PackageRequest as PackageRequest
-from adcp.types.canonical_creative import Placement as Placement
-from adcp.types.canonical_creative import Product as Product
-from adcp.types.canonical_creative import ProductFilters as ProductFilters
-from adcp.types.canonical_creative import ProductFormatDeclaration as ProductFormatDeclaration
-from adcp.types.canonical_creative import UpdateMediaBuyResponse1 as UpdateMediaBuyResponse1
-from adcp.types.canonical_creative import UpdateMediaBuyResponse1 as UpdateMediaBuySuccessResponse
 from adcp.types.constraints import CanonicalProductCatalogMatchMatchedGtinsItem as Gtin
 from adcp.types.constraints import StrMinLen1 as AcceptancePolicyProfileId
 from adcp.types.core import AccountReferenceAccountId as AccountReferenceById
@@ -70,11 +55,14 @@ from adcp.types.core import CSSAsset as CssContent
 from adcp.types.core import CatalogFieldMappingTransform as Transform
 from adcp.types.core import CountryCode as PrimaryCountry
 from adcp.types.core import CreativeAsset as LegacyCreativeAsset
+from adcp.types.core import CreativeFilters as CreativeFilters
 from adcp.types.core import CreativeFilters as LegacyCreativeFilters
+from adcp.types.core import CreativeManifest as CreativeManifest
 from adcp.types.core import CurrencyCode as PricingCurrency
 from adcp.types.core import DeploymentPlatform as PlatformDeployment
 from adcp.types.core import ErrorRecovery as Recovery
 from adcp.types.core import ErrorSource as Source
+from adcp.types.core import Format as Format
 from adcp.types.core import Format as LegacyFormat
 from adcp.types.core import FormatFormatCard as FormatCard
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatId
@@ -84,11 +72,16 @@ from adcp.types.core import ImageAsset as ImageContent
 from adcp.types.core import JavaScriptAsset as JavascriptContent
 from adcp.types.core import NotificationConfigAuthentication as NotificationAuthentication
 from adcp.types.core import Package as LegacyPackage
+from adcp.types.core import Package as Package
 from adcp.types.core import PixelTrackerAssetMethod as PixelTrackerMethod
 from adcp.types.core import Placement as LegacyPlacement
+from adcp.types.core import Placement as Placement
 from adcp.types.core import Product as LegacyProduct
+from adcp.types.core import Product as Product
 from adcp.types.core import ProductDeliveryMeasurement as DeliveryMeasurement
 from adcp.types.core import ProductFilters as LegacyProductFilters
+from adcp.types.core import ProductFilters as ProductFilters
+from adcp.types.core import ProductFormatDeclaration as ProductFormatDeclaration
 from adcp.types.core import ProductTrustedMatch as TrustedMatch
 from adcp.types.core import ReportingConsumerStatusConsumerStatus as ReportingConsumerStatusValue
 from adcp.types.core import ReportingConsumerStatusFailureCode as ReportingConsumerFailureCode
@@ -144,6 +137,7 @@ from adcp.types.media_buy import ListCreativeFormatsResponse as LegacyListCreati
 from adcp.types.media_buy import MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemStatus as MediaBuyDeliveryStatus
 from adcp.types.media_buy import PackageCountConstraints as PackageCountChangeConstraints
 from adcp.types.media_buy import PackageRequest as LegacyPackageRequest
+from adcp.types.media_buy import PackageRequest as PackageRequest
 from adcp.types.media_buy import PackageUpdate as LegacyPackageUpdate
 from adcp.types.media_buy import SyncAudiencesSuccess as SyncAudiencesSuccessResponse
 from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsSuccessResponse
@@ -153,6 +147,7 @@ from adcp.types.pricing_options import CPMPricingOption as CpmFixedRatePricingOp
 from adcp.types.pricing_options import TimeBasedPricingOptionParametersTimeUnit as TimeUnit
 from adcp.types.pricing_options import VCPMPricingOption as VcpmAuctionPricingOption
 from adcp.types.pricing_options import VCPMPricingOption as VcpmFixedRatePricingOption
+from adcp.types.protocol import GetAdCPCapabilitiesResponseCreative as Creative
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyAcceptancePolicyDiscovery as AcceptancePolicyDiscovery
 from adcp.types.protocol import SyncPrincipalRequestConfiguration as PrincipalConfiguration
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalSuccessResponse
@@ -173,9 +168,6 @@ __all__ = [
     "BuyingMode",
     "CpmAuctionPricingOption",
     "CpmFixedRatePricingOption",
-    "CreateMediaBuyErrorResponse",
-    "CreateMediaBuyResponse1",
-    "CreateMediaBuySuccessResponse",
     "Creative",
     "CreativeFilters",
     "CreativeManifest",
@@ -277,8 +269,6 @@ __all__ = [
     "TmpOffer",
     "Transform",
     "TrustedMatch",
-    "UpdateMediaBuyResponse1",
-    "UpdateMediaBuySuccessResponse",
     "UrlContent",
     "VcpmAuctionPricingOption",
     "VcpmFixedRatePricingOption",
@@ -307,15 +297,20 @@ __adcp_refused__ = {
     "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents6, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "BrandIdentity": "DOCUMENT-WE-DO-NOT-COMPILE: upstream declares it at adcp.types.domains.brand_discovery.Brand, which is DOCUMENT-WE-DO-NOT-COMPILE",
+    "CanonicalFormatKindStr": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "CatalogGroupBinding": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.requirements.catalog_field_binding.CatalogFieldBinding1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "CpmVendorPricingOption": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.vendor_pricing_option.VendorPricingOption1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "CreateMediaBuyErrorResponse": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.CreateMediaBuyResponse2, which is NO-DOCUMENT-NO-SUBJECT",
+    "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.CreateMediaBuyResponse1, which is NO-DOCUMENT-NO-SUBJECT",
     "CreditLimit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.CreditLimit, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.get_creative_delivery_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "DurationUnit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's own tree says no-such-module",
     "FormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "GroupFormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "IdentityMatchTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.trusted_match.identity_match_response.TmpxMacro, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "ImageFormatAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's expression names no arms to resolve: _format_asset_class('image')",
     "LegacyProductFormatDeclaration": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'format_kind': the bare union under it admits a different set",
+    "MediaBuyPackage": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.get_media_buys_response.Package, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalReadResult": "NO-DOCUMENT-NO-SUBJECT: arm 'PrincipalCurrentResult' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalSyncResult": "NO-DOCUMENT-NO-SUBJECT: arm 'PrincipalAppliedResult' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
     "ProviderRegistrationTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.trusted_match.provider_registration.TmpxMacro, which is DOCUMENT-NO-WORD-NO-IDENTITY",
@@ -324,10 +319,14 @@ __adcp_refused__ = {
     "RepeatableAssetGroup": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's expression names no arms to resolve: _repeatable_asset_group_class()",
     "SyncAccountsAccount": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.Account, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_audiences_request.Audience, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UpdateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.UpdateMediaBuyResponse1, which is NO-DOCUMENT-NO-SUBJECT",
     "VendorPricingOptionUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "VerifyBrandClaimsPayload": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsPayload, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "VerifyBrandClaimsSignedResponse": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsSignedResponse, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "_generated": "UNRESOLVABLE-UPSTREAM",
+    "canonical_creative": "UNRESOLVABLE-UPSTREAM",
+    "is_canonical_format_kind": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.is_canonical_format_kind, which is NO-DOCUMENT-NO-SUBJECT",
+    "require_canonical_format_kind": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.require_canonical_format_kind, which is NO-DOCUMENT-NO-SUBJECT",
     "v31": "UNRESOLVABLE-UPSTREAM",
     "validate_union": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.validation.validate_union, which is NO-DOCUMENT-NO-SUBJECT",
     "validation": "UNRESOLVABLE-UPSTREAM",

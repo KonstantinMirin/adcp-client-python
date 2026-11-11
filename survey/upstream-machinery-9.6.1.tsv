@@ -15,7 +15,7 @@ _wire	src/adcp/types/_wire.py	384	0	1	2	1	0	LIVE-RESTORE	restored	1 source impor
 aliases	src/adcp/types/aliases.py	2709	170	1	4	9	1	GENERATED-STAYS-DELETED	adapter-module	upstream's own header names the generator
 base	src/adcp/types/base.py	1031	15	3	792	20	0	LIVE-RESTORE	restored	3 source importers outside types/
 buyer	src/adcp/types/buyer.py	158	3	0	2	3	0	LIVE-TRANSITIVELY	adapter-module	no direct source importer; 2 importers inside types/
-canonical_creative	src/adcp/types/canonical_creative.py	1386	43	2	4	13	0	LIVE-RESTORE	restored	2 source importers outside types/
+canonical_creative	src/adcp/types/canonical_creative.py	1386	43	2	4	13	0	LIVE-RESTORE	absent	2 source importers outside types/
 canonical_decl	src/adcp/types/canonical_decl.py	280	7	0	0	0	0	TEST-ONLY-DELETE	absent	0 source importers, 0 test importers: a curated topic module
 capabilities	src/adcp/types/capabilities.py	292	17	2	3	2	0	LIVE-RESTORE	adapter-module	2 source importers outside types/
 coercion	src/adcp/types/coercion.py	217	0	0	1	0	0	LIVE-TRANSITIVELY	absent	no direct source importer; 1 importers inside types/

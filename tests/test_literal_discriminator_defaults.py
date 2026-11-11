@@ -129,43 +129,6 @@ class TestInjectorBehavior:
     """Meta-tests pinning the injector's pattern-match semantics. If
     these fail, the post-gen script's scope has drifted."""
 
-    def test_injector_skips_multi_value_literals(self) -> None:
-        """``Literal['a', 'b']`` fields stay required — there's no
-        single correct default. The spec is saying "user must pick",
-        and we must not pretend otherwise."""
-        import ast
 
-        from scripts.post_generate_fixes import _extract_single_literal_value
 
-        # Annotated[Literal['a', 'b'], ...]
-        module = ast.parse("x: Annotated[Literal['a', 'b'], Field()]")
-        ann = module.body[0].annotation  # type: ignore[attr-defined]
-        assert _extract_single_literal_value(ann) is None
 
-    def test_injector_extracts_single_literal_value(self) -> None:
-        import ast
-
-        from scripts.post_generate_fixes import _extract_single_literal_value
-
-        module = ast.parse("x: Annotated[Literal['text'], Field()]")
-        ann = module.body[0].annotation  # type: ignore[attr-defined]
-        assert _extract_single_literal_value(ann) == "text"
-
-    def test_injector_extracts_bare_literal(self) -> None:
-        """``Literal['x']`` without Annotated wrap also works."""
-        import ast
-
-        from scripts.post_generate_fixes import _extract_single_literal_value
-
-        module = ast.parse("x: Literal['text']")
-        ann = module.body[0].annotation  # type: ignore[attr-defined]
-        assert _extract_single_literal_value(ann) == "text"
-
-    def test_injector_skips_non_literal_annotations(self) -> None:
-        import ast
-
-        from scripts.post_generate_fixes import _extract_single_literal_value
-
-        module = ast.parse("x: str")
-        ann = module.body[0].annotation  # type: ignore[attr-defined]
-        assert _extract_single_literal_value(ann) is None

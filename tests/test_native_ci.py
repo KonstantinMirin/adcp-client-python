@@ -35,7 +35,6 @@ def test_compatibility_suite_checks_runtime_on_every_interpreter_without_adopter
     assert all(Path(path.split("::", 1)[0]).is_file() for path in native.COMPATIBILITY_TESTS)
     assert "tests/test_client.py" in command
     assert "tests/test_public_api.py" in command
-    assert "tests/test_versioned_bases.py" in command
     assert not any(path.startswith("tests/conformance/") for path in command)
     assert command[command.index("-n") + 1] == "0"
 

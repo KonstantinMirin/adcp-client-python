@@ -30,7 +30,7 @@ from pydantic import RootModel
 
 from adcp._version import ADCP_MAJOR_VERSION, get_supported_adcp_versions
 from adcp.server.helpers import valid_actions_for_status
-from adcp.types.canonical_creative import Format, strip_legacy_creative_identity
+from adcp.types import Format
 
 
 def _rfc3339_now() -> str:
@@ -214,30 +214,21 @@ def _serialize(items: list[Any]) -> list[Any]:
     return out
 
 
-def _serialize_canonical(items: list[Any]) -> list[Any]:
-    """Serialize a primary helper payload and reject legacy identity."""
+def _value(value: Any) -> Any:
+    """One item, serialized the way :func:`_serialize` does a list of them.
 
-    serialized = _serialize(items)
-    if strip_legacy_creative_identity(serialized) != serialized:
-        raise ValueError(
-            "canonical response builders reject legacy creative identity; use an explicit "
-            "legacy/raw response path"
-        )
-    return serialized
-
-
-def _canonical_value(value: Any) -> Any:
-    serialized = (
+    This was ``_canonical_value``, and the word it has lost was the legacy-identity
+    screen: it compared the payload against
+    ``adcp.types.canonical_creative.strip_legacy_creative_identity`` of itself and refused
+    a response builder whose own document STATES ``format_id``/``format_ids`` as
+    deprecated-but-present.  ``_serialize_canonical`` was that screen and nothing else on
+    top of :func:`_serialize`, so it is gone rather than renamed.
+    """
+    return (
         value.model_dump(mode="json", exclude_none=True)
         if hasattr(value, "model_dump")
         else _strip_none_values(value)
     )
-    if strip_legacy_creative_identity(serialized) != serialized:
-        raise ValueError(
-            "canonical response builders reject legacy creative identity; use an explicit "
-            "legacy/raw response path"
-        )
-    return serialized
 
 
 class _CanonicalResponse(dict[str, Any]):
@@ -446,7 +437,7 @@ def products_response(
     ``unchanged=False`` emits nothing — the spec forbids ``unchanged: false``.
     """
     _check_unchanged(unchanged, "products", products, wholesale_feed_version)
-    serialized = _serialize_canonical(products) if products is not None else None
+    serialized = _serialize(products) if products is not None else None
     resp: dict[str, Any] = {
         "status": status,
         "sandbox": sandbox,
@@ -458,7 +449,7 @@ def products_response(
     elif serialized is not None:
         resp["item_count"] = len(serialized)
     if proposals is not None:
-        resp["proposals"] = _serialize_canonical(proposals)
+        resp["proposals"] = _serialize(proposals)
     if incomplete is not None:
         resp["incomplete"] = _serialize(incomplete)
     if pagination is not None:
@@ -522,7 +513,7 @@ def media_buy_response(
 
     resp: dict[str, Any] = {
         "media_buy_id": media_buy_id,
-        "packages": _serialize_canonical(packages),
+        "packages": _serialize(packages),
         "revision": revision if revision is not None else 1,
         "sandbox": sandbox,
     }
@@ -590,7 +581,7 @@ def update_media_buy_response(
     if revision is not None:
         resp["revision"] = revision
     if affected_packages is not None:
-        resp["affected_packages"] = _serialize_canonical(affected_packages)
+        resp["affected_packages"] = _serialize(affected_packages)
     if status is not None:
         if adcp_version is None or _is_adcp_31_or_newer(adcp_version):
             resp["media_buy_status"] = status
@@ -619,7 +610,7 @@ def media_buys_response(
     """
     return _with_canonical_sources(
         {
-            "media_buys": _serialize_canonical(media_buys),
+            "media_buys": _serialize(media_buys),
             "sandbox": sandbox,
             "status": "completed",
         },
@@ -652,7 +643,7 @@ def delivery_response(
     return _with_canonical_sources(
         {
             "reporting_period": reporting_period or {"start": now, "end": now},
-            "media_buy_deliveries": _canonical_value(media_buy_deliveries),
+            "media_buy_deliveries": _value(media_buy_deliveries),
             "currency": currency,
             "sandbox": sandbox,
         },
@@ -693,7 +684,7 @@ def sync_creatives_response(
     Matches SyncCreativesResponse1 schema (field: "creatives").
     """
     return _with_canonical_sources(
-        {"creatives": _serialize_canonical(creatives), "sandbox": sandbox}, creatives
+        {"creatives": _serialize(creatives), "sandbox": sandbox}, creatives
     )
 
 
@@ -746,7 +737,7 @@ def list_creatives_response(
     count = len(filled)
     return _with_canonical_sources(
         {
-            "creatives": _serialize_canonical(filled),
+            "creatives": _serialize(filled),
             "pagination": pagination or {"total_count": count, "has_more": False},
             "query_summary": {"total_results": count, "total_matching": count, "returned": count},
             "sandbox": sandbox,
@@ -772,7 +763,7 @@ def preview_creative_response(
     """
     return {
         "response_type": "single",
-        "previews": _serialize_canonical(previews),
+        "previews": _serialize(previews),
         "expires_at": expires_at or "2099-12-31T23:59:59Z",
         "sandbox": sandbox,
     }
@@ -791,17 +782,21 @@ def build_creative_response(
     Single manifest matches BuildCreativeResponse1.
     List matches BuildCreativeResponse3 (multi-format).
     """
-    from adcp.types.canonical_creative import CreativeManifest
+    # ``core/creative-manifest.json``'s own class.  It was
+    # ``adcp.types.canonical_creative.CreativeManifest``, which subclassed this one and
+    # suppressed its ``format_id`` -- a field the document STATES, typed here as
+    # ``FormatReferenceStructuredObject | None``.
+    from adcp.types.core import CreativeManifest
 
     if isinstance(creative_manifest, list):
         validated_manifests = [CreativeManifest.model_validate(item) for item in creative_manifest]
         return {
-            "creative_manifests": _serialize_canonical(validated_manifests),
+            "creative_manifests": _serialize(validated_manifests),
             "sandbox": sandbox,
         }
     validated_manifest = CreativeManifest.model_validate(creative_manifest)
     return {
-        "creative_manifest": _canonical_value(validated_manifest),
+        "creative_manifest": _value(validated_manifest),
         "sandbox": sandbox,
     }
 

@@ -227,7 +227,7 @@ from adcp.types import (
     UpdateContentStandardsRequest,
     UpdateContentStandardsResponse,
     UpdateMediaBuyRequest,
-    UpdateMediaBuySuccessResponse,
+    UpdateMediaBuySuccess,
     UpdatePropertyListRequest,
     UpdatePropertyListResponse,
     UpdateRightsRequest,
@@ -2824,7 +2824,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         self,
         params: UpdateMediaBuyRequest,
         context: ToolContext | None = None,
-    ) -> UpdateMediaBuySuccessResponse:
+    ) -> UpdateMediaBuySuccess:
         """Wire shape carries ``media_buy_id`` + the patch fields at the
         same level on ``UpdateMediaBuyRequest``. The platform method
         signature is ``update_media_buy(media_buy_id, patch, ctx)`` —
@@ -2877,7 +2877,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             **await self._handoff_webhook_kwargs(params, tool_ctx),
         )
         self._maybe_auto_emit_sync_completion("update_media_buy", params, result)
-        return cast("UpdateMediaBuySuccessResponse", result)
+        return cast("UpdateMediaBuySuccess", result)
 
     # Partial creative admission is finalized at the managed completion seam,
     # before task persistence, completion webhooks, or the inline response.
