@@ -10,10 +10,17 @@ exec env PYTHONPATH=.:src "$(dirname "$0")/.venv/bin/python" "$0" "$@"
 """The fast loop: the three numbers in 0.06 s, or one document's report in seconds.
 
 **Why this exists.**  The full suite is the GATE, not the loop, and a lane that runs it to
-answer "did my change work" waits 40 minutes for a number it can have instantly.  Two
-caches make that true -- ``tests/compiled.py`` holds one compile per population keyed on
-the compiler's own source, and ``tests/corpus.py`` holds the accepts draw keyed on the
-record -- and this is the one command that reads them.
+answer "did my change work" waits 40 minutes for a number it can have instantly.  ONE cache
+makes that true -- ``tests_emit/compiled.py`` holds one compile per population keyed on the
+compiler's own source -- and this is the one command that reads it.
+
+What stood here named a second one: *"``tests/corpus.py`` holds the accepts draw keyed on
+the record"*.  There is no accepts DRAW to hold any more.  The verifier's three checks are
+the grading path, and ``codegen.verify.witness.Construction`` BUILDS each witness as a
+function of ``(document, pointer)`` and of nothing else -- no corpus, no cache, no budget,
+no depth cap, no example count -- so the figures below cost the same cold as warm and there
+is nothing to go stale between runs.  The suite directory is ``tests_emit`` (:data:`SUITE`
+finds whichever of the two names is present).
 
 ::
 

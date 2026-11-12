@@ -675,10 +675,17 @@ def test_the_storage_moves_no_pointer_any_reader_spells() -> None:
 
     "Every pointer any reader SPELLS keeps the spelling it has today ... a declared
     pointer that stops resolving is a defect of the hoisting rather than a consequence
-    of it."  ``harness.corpus_key`` hashes the document's raw bytes and the POINTER, so
-    a respelled pointer misses every committed corpus entry and redraws its pair at the
-    cold cost; the storage is therefore invisible to the pointer, and this is the check
-    that says so.
+    of it."  :class:`codegen.verify.witness.Construction` is keyed on
+    ``(document, pointer, stack)`` and memoises one answer per node, so a respelled
+    pointer is a DIFFERENT node to every reader above it -- its witness, its subject and
+    its verdict are all computed afresh at a position no class is stamped at.  The
+    storage is therefore invisible to the pointer, and this is the check that says so.
+
+    (What this paragraph named was ``harness.corpus_key``, which hashed the document and
+    the pointer so that a respelled pointer missed every committed corpus entry and
+    redrew its pair cold.  The corpus is deleted and the construction has no draw to
+    redraw; the constraint on the pointer is unchanged and the cost of breaking it is now
+    a wrong answer rather than a slow one.)
 
     Asked of the SchemaRef every class and alias of the tree declares, through the one
     function that resolves one -- ``_base.schema_at``, which is what ``strict_validate``
