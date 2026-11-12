@@ -942,31 +942,25 @@ def alias_layer(out: Path) -> dict[str, object]:
 # ------------------------------------------------------------------------------ 5. the probe
 
 
-def probe(out: Path, wheel: Wheel) -> dict[str, object]:
-    """The measurement probe, on no import path of the tree, with its inputs DERIVED.
-
-    ``sitecustomize.py`` activates only when ``<out>/probe`` is on ``PYTHONPATH`` with
-    ``FWVM_PROBE=1``, which only :func:`run_lines`' command does.  Its two data files:
-    ``probe_map.json`` is committed in this repository (``survey/probes/``, 2,626 rows by
-    ``survey/probes/build_map.py``'s four rules); ``gen_bind.json`` is DERIVED HERE from
-    upstream's own ``_generated.py`` by AST, because it is nothing but that file's 2,971
-    re-exports read as data, and a copy of it would be a second thing to go stale.
-    """
-    directory = out / "probe"
-    directory.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ROOT / "survey" / "probes" / "sitecustomize.py", directory / "sitecustomize.py")
-    shutil.copy2(ROOT / "survey" / "probes" / "probe_map.json", directory / "probe_map.json")
-    bind = _generated_bindings(wheel)
-    (directory / "gen_bind.json").write_text(json.dumps(bind))
-    return {
-        "probe_map.json rows (committed in this repository)": len(
-            json.loads((directory / "probe_map.json").read_text())
-        ),
-        "gen_bind.json re-exports (derived from the wheel's _generated.py)": len(bind["bind"]),
-        "gen_bind.json assignments": len(bind["assign"]),
-        "activated by": "PYTHONPATH=<out>/probe FWVM_PROBE=1",
-    }
-
+# **THERE IS NO PROBE, AND ``adcp.types._generated`` IS SERVED BY THE FILE THAT GENERATES IT.**
+# A ``sitecustomize.py`` stood here and shadowed that module with a ``MetaPathFinder``, serving
+# each name lazily from ``gen_bind.json`` -- 2,971 rows read by AST out of upstream's own
+# ``_generated.py``, so every row carried THEIR module and THEIR class name as the target. The
+# module side resolved by accident of path and the attribute side was never joined against what
+# this compiler emits, which is why ``gen.VerifyBrandClaimsRequest`` raised while our class sat
+# there as ``VerifyBrandClaimsRequestBulk`` -- the name its document's own title
+# ("Verify Brand Claims Request (Bulk)") gives it. One row of 2,971, and it took 13,822 of
+# 13,825 tests down with it, because the lookup ran in a fixture every test uses.
+#
+# Its stated purpose was to MEASURE: lazy so that "only the names the SDK and its tests actually
+# ASK for have to resolve, and the count of those is what this probe is measuring". A measuring
+# device became the mechanism, and then mistranslated.
+#
+# ``survey/adapter_surface.py`` already writes ``_generated.py`` from the join -- our names,
+# resolved by pointer -- and eager is the better failure: an absent name raises AT IMPORT and
+# names itself, instead of a table answering with a name that does not exist. ``probe_map.json``
+# stays in ``survey/probes/``; ``survey/node_keyed_aliases.py`` reads it and it is a different
+# artifact with its own committed rules.
 
 def _generated_bindings(wheel: Wheel) -> dict[str, object]:
     """Upstream's ``_generated.py`` as the alias table it is: name -> (module, name).
@@ -1048,6 +1042,75 @@ def chunks(out: Path) -> dict[str, list[str]]:
     return dict(by_chunk)
 
 
+# ------------------------------------------------------------------- 6a. the run, automated
+
+
+def provision(out: Path) -> dict[str, object]:
+    """The tree's own venv, with the tree and its sibling package installed into it.
+
+    **THE REPOSITORY IS TWO PACKAGES AND INSTALLING ONLY THE ROOT REPORTS A PLAUSIBLE
+    NUMBER.**  Measured on upstream's own tree: with only the root installed the suite
+    collects 16,480 and 15 test modules fail to import on
+    ``ModuleNotFoundError: adcp_reporting_storage``; with ``packages/adcp-reporting-storage``
+    installed it collects 21,668.  The 5,188 difference is silent -- no error names the
+    missing package at the top level -- so provisioning belongs in the build and not in a
+    reader's memory.
+    """
+    venv = out / ".venv"
+    python = str(venv / "bin" / "python")
+    siblings = [
+        path
+        for path in sorted((out / "packages").glob("*"))
+        if (path / "pyproject.toml").is_file()
+    ]
+    steps: list[list[str]] = [
+        ["uv", "venv", str(venv), "--python", "3.12"],
+        ["uv", "pip", "install", "-q", "--python", python, "-e", "."],
+    ]
+    steps += [
+        ["uv", "pip", "install", "-q", "--python", python, "-e", str(path)]
+        for path in siblings
+    ]
+    steps.append(
+        [
+            "uv", "pip", "install", "-q", "--python", python,
+            "pytest", "pytest-xdist", "pytest-asyncio", "pytest-json-report",
+        ]
+    )
+    for step in steps:
+        done = subprocess.run(  # noqa: S603
+            step, cwd=out, capture_output=True, text=True, check=False
+        )
+        if done.returncode:
+            raise SystemExit(
+                f"provisioning failed: {' '.join(step)}\n"
+                f"{done.stdout[-2000:]}{done.stderr[-2000:]}"
+            )
+    return {"venv": str(venv), "siblings installed": len(siblings)}
+
+
+def run_chunks(out: Path, junit: Path) -> dict[str, object]:
+    """Run every chunk and return what the REPORTS say, not what the terminal said.
+
+    The commands are :func:`run_lines`' own, so what runs here and what a reader runs by hand
+    are one string.  The result is read back from ``report.json`` -- pytest's own output, one
+    entry per test with its outcome and its ``longrepr`` -- because a figure scraped from
+    stdout is a figure that cannot be re-read.
+    """
+    junit.mkdir(parents=True, exist_ok=True)
+    for line in run_lines(out, out / ".venv", junit):
+        subprocess.run(line, shell=True, cwd=out, check=False)  # noqa: S602
+    total: collections.Counter = collections.Counter()
+    for found in sorted(junit.glob("*.json")):
+        try:
+            body = json.loads(found.read_text())
+        except ValueError:
+            continue
+        for key, value in (body.get("summary") or {}).items():
+            total[key] += value
+    return dict(total) or {"no report": "pytest wrote no json; read the chunk logs"}
+
+
 def run_lines(out: Path, venv: Path, junit: Path) -> list[str]:
     """The command per chunk, printed so the measurement is a command and not a procedure.
 
@@ -1061,7 +1124,7 @@ def run_lines(out: Path, venv: Path, junit: Path) -> list[str]:
     """
     return [
         f"sudo systemd-run --scope --uid=1002 --gid=1002 -p MemoryMax=20G -q -- env "
-        f"PYTHONDONTWRITEBYTECODE=1 FWVM_PROBE=1 PYTHONPATH={out}:{out}/probe "
+        f"PYTHONDONTWRITEBYTECODE=1 PYTHONPATH={out} "
         f"{venv}/bin/python -m pytest $(cat {out}/chunks/{chunk}) -q "
         "-p no:cacheprovider -p deselect "
         f"--continue-on-collection-errors -n 4 --junitxml={junit}/{chunk}.xml "
@@ -1228,7 +1291,6 @@ def build(ns: argparse.Namespace) -> int:
     report.say("5b. the declined tests, both layers, derived", deselect_the_declined(out))
     report.say("6. our types substituted, FRESH", substitute_ours(out, Path(ns.bundle)))
     report.say("7. the alias layer", alias_layer(out))
-    report.say("8. the probe", probe(out, wheel))
     report.say(
         "9. the population and the partition",
         {chunk: len(paths) for chunk, paths in sorted(chunks(out).items())}
@@ -1244,7 +1306,22 @@ def build(ns: argparse.Namespace) -> int:
     )
     print(f"\n== 10. the record\n   {out / RECORD}\n   digest {digest}")
     print(f"\n{out}\n")
-    for line in run_lines(out, Path(ns.venv or out / ".venv"), Path(ns.junit or out / "junit")):
+    junit = Path(ns.junit or out / "junit")
+    if ns.run:
+        # **THE PIPELINE IS ONE COMMAND.**  Printing the commands kept "the measurement is a
+        # command and not a procedure" true and made the procedure a reader's to remember:
+        # build, then make a venv, then install two packages, then four pytest invocations.
+        # Every step of that was performed by hand, and the one that was forgotten -- the
+        # sibling package -- cost 5,188 silently uncollected tests.  `--run` does all of it
+        # and reads the result back out of pytest's own report.
+        print("== 11. provisioning")
+        print(f"   {provision(out)}")
+        print("== 12. the run")
+        said = run_chunks(out, junit)
+        print(f"   {said}")
+        print(f"\n   reports: {junit}/*.json and {junit}/*.xml\n")
+        return 0
+    for line in run_lines(out, Path(ns.venv or out / ".venv"), junit):
         print(line)
         print()
     return 0
@@ -1263,7 +1340,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rev", default=REV, help="the git revision the wheel was built from")
     ap.add_argument("--bundle", default=str(BUNDLE), help="the bundle our types are emitted from")
     ap.add_argument("--venv", default=None, help="the interpreter the printed run commands use")
-    ap.add_argument("--junit", default=None, help="where the printed run commands write junit")
+    ap.add_argument("--junit", default=None, help="where the run writes junit and json")
+    ap.add_argument(
+        "--run",
+        action="store_true",
+        help="provision the tree's venv and RUN every chunk, instead of printing the commands",
+    )
     ap.add_argument(
         "--audit",
         default=None,
