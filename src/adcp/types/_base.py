@@ -428,32 +428,85 @@ def _omitting_null(schema: Any) -> Any:
     return schema
 
 
+def _strict_validation() -> bool:
+    """Is ``ADCP_STRICT_VALIDATION`` on -- in which case a Python ``None`` is refused too?
+
+    **Read from ``adcp.types.base``'s own switch and never from a second environment
+    read.**  That module is upstream's, kept as machinery, and it already resolves the
+    flag once at import (:data:`adcp.types.base._EXTRA_POLICY`, whose docstring is where
+    the accepted spellings are stated).  A second ``os.environ`` read here would be a
+    second answer to "is this run strict", and the two would disagree the moment one of
+    them was given a value the other does not accept.
+
+    Imported on use rather than at module scope: ``adcp.types.base`` imports this module
+    for its own bases, so a top-level import here is a cycle.
+    """
+    from adcp.types.base import _EXTRA_POLICY
+
+    return _EXTRA_POLICY == "forbid"
+
+
 def _is_absent(value: Any) -> bool:
     """:data:`OmittedNotNull`'s serialisation half: ``None`` is "the property is absent"."""
     return value is None
 
 
 class _AbsenceIsOmission:
-    """:data:`OmittedNotNull`'s validation half: an explicit JSON ``null`` is REFUSED.
+    """:data:`OmittedNotNull`'s validation half: a JSON ``null`` is REFUSED, and a Python
+    ``None`` is ABSENCE.
 
-    The field's core schema with its own null arm struck (:func:`_omitting_null`), so a
-    payload carrying ``null`` at this key is refused with the TYPE's own error --
-    ``float_type``, ``list_type``, ``model_type`` -- which is the error the document's own
-    ``type`` keyword refuses it on, and ``model_json_schema()`` publishes the type the
-    document publishes rather than an ``anyOf`` with ``null`` in it.
+    **THE CONTRACT IS SPLIT BY ROUTE, and that is this class's whole content.**  The JSON
+    side is the type with its own null arm struck (:func:`_omitting_null`), so a DOCUMENT
+    carrying ``null`` at this key is refused with the TYPE's own error -- ``float_type``,
+    ``list_type``, ``model_type`` -- which is the error the document's own ``type``
+    keyword refuses it on, and ``model_json_schema()`` publishes the type the document
+    publishes rather than an ``anyOf`` with ``null`` in it.  The PYTHON side keeps
+    ``T | None``, so ``Model(field=None)`` and ``model_validate({"field": None})`` read
+    ``None`` as this SDK's spelling of "not supplied".
 
-    **BOTH SIDES, and that is the whole of what this marker is for.**  A JSON ``null`` and
-    a Python ``None`` reach a model by two routes -- ``model_validate_json`` and
-    ``model_validate`` / ``Model(**payload)`` -- and ``docs/plan/final-state.md`` reading
-    1 is about what the CLASS accepts, not about what one of its two entry points accepts:
-    "a consumer calls ``model_validate``".  Striking the arm on the JSON side alone would
-    leave the undeclared widening in place at the entry point consumers use and would
-    make the class's accepted set a function of which of the two was called.
+    **WHAT STOOD HERE SAID "BOTH SIDES" AND THE ARGUMENT WAS WRONG.**  It read: *"Striking
+    the arm on the JSON side alone would leave the undeclared widening in place at the
+    entry point consumers use and would make the class's accepted set a function of which
+    of the two was called."*  That sentence treats ``{"cursor": None}`` and
+    ``'{"cursor": null}'`` as one payload, and they are not one value: **a JSON ``null``
+    is a document's statement and a Python ``None`` is a Python call.**  JSON has one
+    spelling for "no value" and Python has two -- an absent key and ``None`` -- so the
+    route is not an entry point to the same question, it is a different question.
 
-    Absence stays expressible, and by the spelling the document gives it: **leave the key
-    out.**  The ``= None`` default is not validated (pydantic validates a default only
-    under ``validate_default``), so an omitted property still reads back as ``None`` and
-    the annotation a consumer's type checker sees is unchanged.
+    **READING 1 SURVIVES, AND IT SURVIVES BECAUSE OF WHAT GRADES IT.**  Reading 1 is "the
+    class accepts exactly what the document accepts", and every instrument that measures
+    it offers a DOCUMENT: ``./check``, ``tests/conformance/test_schema_model_parity.py``
+    and every ``strict_validate`` grade a payload against the schema, which is the JSON
+    route, and the JSON route still refuses.  A Python dict carrying ``None`` is not a
+    document, so admitting it widens no document's accepted set.  The thing that would
+    break reading 1 is a ``null`` surviving the JSON route, and nothing here lets one.
+
+    **AND UPSTREAM STATES THE SAME CONTRACT IN THEIR OWN TESTS**, which is what settled it
+    rather than a preference: ``tests/test_no_explicit_null.py`` asserts
+    ``model_validate_json`` refuses ``null``, ``model_validate(dict)`` and
+    ``Model(**kw, field=None)`` read ``None`` as absence, ``strict_validate`` refuses both,
+    and a genuinely nullable property keeps accepting ``null``.  Their reason is the one
+    this class now carries: *"Refusing it here would break every caller who passes an
+    optional value through as ``field=maybe_none``."*  Measured on the drop-in suite, that
+    is **219 of 1,244 failures** -- and the alternative reading cost a sweep of 190 call
+    sites repairing code that was correct.
+
+    **``ADCP_STRICT_VALIDATION`` STRIKES BOTH SIDES**, which is the suite that wants to
+    catch a caller spelling absence as an explicit ``None``.  It is read from
+    ``adcp.types.base``'s own switch (:data:`adcp.types.base._EXTRA_POLICY`) and not from a
+    second environment read here: that module is upstream's, kept as machinery, and one
+    flag with two readers is how the two come to disagree about what strict means.
+
+    Absence stays expressible by the spelling the document gives it as well: **leave the
+    key out.**  The ``= None`` default is not validated (pydantic validates a default only
+    under ``validate_default``), so an omitted property reads back as ``None`` either way
+    and the annotation a consumer's type checker sees is unchanged.
+
+    **THE SERIALISATION HALF IS UNCHANGED**, and it is what keeps bead 4yhb's measurement
+    true: ``exclude_if=_is_absent`` on the ``FieldInfo`` leaves a ``None`` off the output
+    in pydantic-core, whoever drives the dump, so a plain ``model_dump()`` still writes no
+    ``null`` at a property whose document refuses one -- with no ``exclude_none`` and no
+    ``exclude_unset``.
     """
 
     __slots__ = ()
@@ -461,7 +514,12 @@ class _AbsenceIsOmission:
     def __get_pydantic_core_schema__(
         self, source: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
-        return _omitting_null(handler(source))
+        nullable = handler(source)
+        strict = _omitting_null(nullable)
+        return core_schema.json_or_python_schema(
+            json_schema=strict,
+            python_schema=strict if _strict_validation() else nullable,
+        )
 
     def __repr__(self) -> str:
         return "OmittedNotNull"
