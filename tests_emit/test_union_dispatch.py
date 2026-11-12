@@ -44,6 +44,7 @@ asked to agree -- a class wider than its document is what both rows were.
 
 from __future__ import annotations
 
+import collections
 import importlib
 import pkgutil
 import sys
@@ -57,8 +58,10 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 import adcp.types._schemas as schemas_pkg
+import constructed
 from adcp.types._base import BranchDispatchMixin, applied_schema, through_the_store
-from codegen import bundle, catalogue, harness, held
+from codegen import bundle
+from codegen.verify import witness
 from nodeset import claimed, partitions, ratchet
 
 REPO = Path(__file__).resolve().parents[1]
@@ -78,14 +81,20 @@ UNION = ("oneOf", "anyOf")
 
 
 def _records() -> dict[str, dict]:
-    """Every portable document as its document of record, read once."""
-    known = set(bundle.portable(BUNDLE))
-    out = {}
-    for document in sorted(known):
-        got = bundle.record(BUNDLE, document, known)
-        if isinstance(got, dict):
-            out[document] = got
-    return out
+    """Every portable document as its document of record -- ``tests_emit/constructed.py``'s.
+
+    **ONE derivation and not this module's own**, which is that file's own rule: the
+    construction below is keyed on ``(document, pointer, stack)`` and holds its memo on
+    the instance, so a module that rebuilt the records would hand the construction a
+    second set of equal-but-not-identical mappings and *"every memo above it stops
+    hitting"* (``codegen.verify.witness.Construction``'s reader rule, §9).  It also
+    reported two readings of one number, which ``tests/nodeset.py`` names as how a verdict
+    comes to disagree with the gate it cites.
+
+    The derivation is unchanged -- ``bundle.record`` over ``bundle.portable(BUNDLE)``,
+    keeping the documents the record answers for -- so what moves is who owns it.
+    """
+    return constructed.records()
 
 
 def _at(root: Any, pointer: str) -> Any:
@@ -344,6 +353,91 @@ def _admits(root: dict, pointer: str, payload: Any) -> str:
     return "" if not errors else errors[0].message[:160]
 
 
+def _branch_sites(base: type) -> collections.Counter[tuple[str, str]]:
+    """How many of ``base``'s branch CLASSES are stamped at each ``(document, pointer)``.
+
+    **A POSITION IS NOT ALWAYS A BRANCH IDENTITY, and the census below cannot ask its own
+    question where it is not.**  Every clause here draws a witness at a branch's own
+    ``__adcp_schema__`` and then asks what the dispatch did with it; "the branch it was
+    drawn from" presupposes that the position names ONE branch.  Measured over this tree:
+    151 bases declare 609 branch models over **552 distinct positions**, and 13 of those
+    positions carry more than one branch class -- ``core/package-format-snapshot.json``'s
+    ``#/allOf/0`` carries all SIXTEEN, because the sixteen arms the document states at
+    ``#/allOf/0/oneOf/0..15`` ("Image Format Declaration", "HTML5 Format Declaration", …)
+    are each emitted as a class stamped at their PARENT.
+
+    A witness at such a position was drawn from the shared node and from no branch in
+    particular, so exactly one of the sixteen can come back and the other fifteen would be
+    recorded as a dispatch that missed its branch.  That is not a fact about the dispatch:
+    one value cannot resolve to sixteen classes, and a clause asserting it would be
+    unsatisfiable by construction.
+
+    **AND THE STAMP IS ALREADY GRADED, WHICH IS WHY NOTHING HERE ASSERTS IT.**
+    ``tests_emit/test_one_node_is_one_declaration.py::test_one_schema_node_is_declared_by_at_most_one_class``
+    ranges over the nodes, counts class OBJECTS, and is RED on exactly these 13 pointers.
+    Re-asserting it here would be the two-derivations defect ``tests/nodeset.py`` names;
+    naming the cell and leaving the assertion where it lives is the alternative.  The 13
+    are reported in their own partition cell by every clause below.
+    """
+    counted: collections.Counter[tuple[str, str]] = collections.Counter()
+    for branch in base.__dict__["_branch_models"]:
+        ref = branch.__dict__["__adcp_schema__"]
+        counted[(ref.document, ref.pointer)] += 1
+    return counted
+
+
+def _witness_at(document: str, pointer: str) -> tuple[Any, str]:
+    """The CONSTRUCTED witness at a branch position: ``(value, "")`` or ``(None, reason)``.
+
+    **THIS IS WHAT ``./check`` READS, and that is the whole of why it is here.**  What
+    stood in its place was a lookup into ``tests_emit/accepts-corpus`` under
+    ``harness.corpus_key({document, pointer, admits})`` -- a hash addressing a hypothesis
+    DRAW held between runs.  The corpus was deleted by decision: the verifier's three
+    checks ARE the grading path now, with no corpus, no cache, no budget, no depth cap and
+    no example count, so ``cold == warm``.  The three clauses below kept calling
+    ``harness.corpus_key`` and have raised ``AttributeError`` at their first line ever
+    since -- §9's own warning arriving, *a gate that cannot run reports nothing while
+    looking like a gate*.
+
+    :meth:`codegen.verify.witness.Construction.applied` is the entry point and not
+    :meth:`~codegen.verify.witness.Construction.value`, for the reason ``applied``'s own
+    docstring states: ``value`` builds what a NODE's keywords state, ``applied`` builds
+    what the node states UNDER THE CONJUNCTION THAT REACHES IT, which is the subject
+    ``SchemaBound.strict_validate`` validates a class against.  A branch at ``#/anyOf/1``
+    of a document whose root requires keys outside the ``anyOf`` is exactly that case: the
+    downward reading's value is refused by the document at ``#`` and grades nothing, while
+    the upward one is the payload a consumer of that branch actually holds.  Measured over
+    this tree, it is the difference between 552 witnesses and 552 witnesses of which far
+    fewer survive the document's own screen.
+
+    **ONE construction and no cap**, read through ``tests_emit/constructed.py`` so that
+    this module's 552 positions hit the same memo every other reader of the tree fills.
+    The pointer travels WITH the call and no subtree is copied, which is the reader rule
+    beside §9's identity rule.
+
+    **A pointer the record does not hold is a FINDING and never a silent absence.**  A
+    floor MISS used to be a legitimate "not offered" -- a pair the store had never been
+    given -- and the partition had an ``unheld`` cell for it.  A construction does not
+    miss that way: it either builds a witness or it names a reason, and both are answers
+    about the NODE.  So the reason is carried back here and the caller records it as a
+    defect rather than as missing data.  ``witness._local`` is the ONE reading of the two
+    pointer spellings, shared with ``tests_emit/test_witness_applied.py``: a ``SchemaRef``
+    spells ``#`` and ``#/oneOf/0`` where the record's pointer space spells ``""`` and
+    ``/oneOf/0``, and two spellings of that mapping is how a grader and a construction come
+    to disagree about which node a class names.
+    """
+    local = witness._local(pointer)
+    if local is None or document not in constructed.records():
+        return None, f"{pointer} is not a pointer of a graded record"
+    try:
+        built = constructed.whole().applied(document, local)
+    except Exception as why:  # noqa: BLE001 -- a pointer the record cannot reach is a finding
+        return None, f"{type(why).__name__}: {why}"
+    if not built.held:
+        return None, built.reason or str(built.source)
+    return built.value, ""
+
+
 def _underdetermined(base: type) -> bool:
     """Does this base DECLARE that which branch an overlapping payload becomes is dropped?
 
@@ -412,15 +506,18 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     silently, which is worse than a refusal.  So this one offers a VALUE and asserts the
     TYPE that comes back.
 
-    **THE PAYLOAD IS DRAWN AND COMMITTED, AND NEITHER HALF IS A CONVENIENCE.**  It is the
-    instance the accepts corpus holds at the BRANCH's own pointer -- ``tests/accepts-corpus``,
-    the floor, read through ``harness.corpus_key`` over the branch's static identity.
-    DRAWN, so this cannot pass by hand-picking an instance that happens to resolve;
-    COMMITTED, so every lane and CI grade the same witness and the clause costs file reads
-    rather than the 677 s a redraw of the same 584 instances costs
-    (``adcp-client-python-1bj``'s second fact).  The CACHE is deliberately not read:
-    ``codegen.held``'s own rule is that a warm lane must not grade a witness the tree does
-    not carry.
+    **THE PAYLOAD IS CONSTRUCTED, AND THAT IS WHAT ``./check`` READS** (:func:`_witness_at`).
+    It is :meth:`codegen.verify.witness.Construction.applied`'s value at the BRANCH's own
+    pointer -- the node read under the conjunction that reaches it, which is the subject
+    ``SchemaBound.strict_validate`` validates that branch's class against.  DERIVED, so
+    this cannot pass by hand-picking an instance that happens to resolve; a function of
+    ``(document, pointer)`` and of nothing else, so every lane and CI grade the same
+    witness with no store to go stale and ``cold == warm``.
+
+    What stood here was a lookup into ``tests_emit/accepts-corpus`` under
+    ``harness.corpus_key``, and this clause has raised ``AttributeError`` at that line
+    since the corpus was deleted -- red for weeks while reporting nothing, which is §9's
+    own warning about a gate that cannot run.
 
     **THE VERDICT IS COMPARED BY REASON AND NOT ONLY BY OUTCOME**, which is the whole of
     why the exemption below is small enough to state.  A payload landing on another branch
@@ -446,69 +543,86 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     or more admissible branches there is no such answer and the refusal is the only thing
     that is not a guess.
 
-    **Measured on this bundle at this commit**: 141 bases naming 586 branch positions, 584
-    of which the committed floor answers for (the two it does not are
-    ``adcp-client-python-rgoo``, and ``unheld`` below is what reports them); 497 of those
-    584 the document admits at its ROOT, and the 87 it refuses are not what this reading is
-    about -- ``trusted-match/provider-registration.json`` is the instructive one, where the
-    root's ``if``/``then`` requires ``countries``, the instance drawn at ``#/anyOf/1`` is
-    admitted by that branch node and refused by the document, and the base refuses it
-    correctly.  Of the 497: 447 reach the branch they were drawn from or a branch of it, 46
-    land on a branch the document ALSO admits under a base declaring UNDERDETERMINED, and 4
-    are REFUSED by the base -- the four of 84a9, each drawn at a branch of
-    ``core/async-response-data.json``'s 42-branch ``anyOf``, each of which used to come
-    back as ``#/anyOf/0``'s ``AdCPAsyncResponseDataGetProductsResponse``, which the
-    document refuses on ``'errors' is a required property`` or ``'products' is a required
-    property``.  The document admits 17, 16, 16 and 32 branches for them, so not one has a
-    branch the document determines.
+    **Measured on this bundle at this commit, the first reading of this census since the
+    corpus was deleted**: 151 bases declaring 609 branch models over 552 distinct branch
+    positions, of which 539 name exactly one branch class and 13 carry several
+    (:func:`_branch_sites`).  The construction builds a witness at **all 539** -- 0
+    approximated, 0 unreachable, which is what ``without_a_witness`` below would report.
+    Of the 539, 472 the document admits at its ROOT, and the 67 it refuses are not what
+    this reading is about -- ``trusted-match/provider-registration.json`` is the
+    instructive one, where the root's ``if``/``then`` requires ``countries``, the value
+    built at ``#/anyOf/1`` is admitted by that branch node and refused by the document, and
+    the base refuses it correctly.  Of the 472: **430 reach the branch they were drawn from
+    or a branch of it, 42 land on a branch the document ALSO admits under a base declaring
+    UNDERDETERMINED, and 0 are refused by the base.**
+
+    That last figure is the one worth reading beside ``adcp-client-python-84a9``.  The four
+    payloads of that row were refused by the base, each drawn at a branch of
+    ``core/async-response-data.json``'s 42-branch ``anyOf``, because the corpus's draw at a
+    branch satisfied the branch node alone and the document then refused it at ``#`` on
+    ``'errors' is a required property`` or ``'products' is a required property``.  The
+    upward reading does not produce such a value: a witness built under the conjunction
+    that reaches the branch satisfies the root's own ``required`` too, so the four are
+    admitted and dispatch to their own branches, and ``refused_as_undetermined`` is empty.
+    The obligation a refusal owes is still asserted below for whenever one occurs.
 
     **AND NONE OF THOSE NUMBERS IS ASSERTED, which is deliberate and is this suite's own
     rule** (``tests/test_every_check_names_its_set.py``: a check may not pin a census as an
-    equality).  The non-vacuity defence this clause needs is real all the same, because the
-    payloads come from a committed store and a key derivation that stopped matching would
-    make every assertion here hold over an empty loop.  So it is :func:`claimed` and
-    :func:`partitions` instead: the bases are named, the branch positions the floor answers
-    for are named, and both the screen and the outcome are PARTITIONS -- every branch
-    position is offered-or-unheld, every offered payload is admitted-or-refused by the
-    document, and every graded payload reached its branch or landed elsewhere under a
-    declaration.  Measured: pointing :data:`codegen.held.COMMITTED` at a directory that is
-    not there takes this clause from green to ``empty set of nodes -- every assertion over
-    it holds vacuously``.
+    equality).  The non-vacuity defence this clause needs is real all the same, and it is
+    the LESSON of the weeks this clause spent raising ``AttributeError``: a derivation that
+    stops answering must not be able to leave the assertions holding over an empty loop.
+    So it is :func:`claimed` and :func:`partitions` instead: the bases are named, the
+    positions naming one branch are named, and both the screen and the outcome are
+    PARTITIONS -- every branch position names one branch class or several, every position
+    naming one is admitted-or-refused by the document, and every admitted payload reached
+    its branch or landed elsewhere under a declaration.  Measured: a construction that
+    answered nothing takes this clause to ``empty set of nodes -- every assertion over it
+    holds vacuously`` rather than to green.
+
+    **AND A POSITION THE CONSTRUCTION CANNOT ANSWER FOR IS ASSERTED, NOT CELLED**
+    (``without_a_witness``).  It is 0 of 539 today.  It is not a partition cell because a
+    cell that grows absorbs a regression and because "cannot build a witness here" is a
+    statement about the node with no cap behind it to excuse it -- it names the document,
+    the pointer and the construction's own reason.
     """
     bases = _declaring_bases()
     graded_bases = claimed("emitted union bases declaring a branch list", bases)
     records = _records()
-    identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
-    floor = held.Store(held.COMMITTED)
 
     positions: set[tuple[str, str]] = set()
-    offered: set[tuple[str, str]] = set()
-    unheld: set[tuple[str, str]] = set()
+    names_one_branch: set[tuple[str, str]] = set()
+    several_branch_classes_are_stamped_here: set[tuple[str, str]] = set()
     admitted: set[tuple[str, str]] = set()
     refused_by_the_document: set[tuple[str, str]] = set()
     reached_its_branch: set[tuple[str, str]] = set()
     elsewhere_the_document_also_admits: set[tuple[str, str]] = set()
     refused_as_undetermined: set[tuple[str, str]] = set()
+    without_a_witness: dict[str, tuple[str, str, str]] = {}
     wrong: dict[str, tuple[str, str, str, str]] = {}
     for name in sorted(graded_bases):
         base = bases[name]
+        stamped = _branch_sites(base)
         for branch in base.__dict__["_branch_models"]:
             ref = branch.__dict__["__adcp_schema__"]
             site = (ref.document, ref.pointer)
             positions.add(site)
-            key = harness.corpus_key(
-                {
-                    "document": ref.document,
-                    "pointer": ref.pointer,
-                    "admits": identities.get(ref.document),
-                },
-                custom_formats=harness.FORMAT_STRATEGIES,
-            )
-            payload = (floor.get(key) or [None])[0]
-            if payload is None:
-                unheld.add(site)
+            if stamped[site] > 1:
+                # The position names no ONE branch, so "the branch it was drawn from" has
+                # no referent here (:func:`_branch_sites`).
+                several_branch_classes_are_stamped_here.add(site)
                 continue
-            offered.add(site)
+            names_one_branch.add(site)
+            payload, why = _witness_at(ref.document, ref.pointer)
+            if payload is None:
+                # **NOT AN ABSENCE OF DATA.**  A floor MISS was a pair the store had never
+                # been given; a construction with no cap either builds a witness or names
+                # what it could not read, and that is a finding about the NODE.
+                without_a_witness[f"{name} <- {branch.__name__}"] = (
+                    ref.document,
+                    ref.pointer,
+                    why,
+                )
+                continue
             root = records[ref.document]
             if _admits(root, "#", payload):
                 # Not a payload the DOCUMENT admits, so not what this reading is about.
@@ -580,11 +694,20 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
                     f"{_admits(root, _answering_pointer(base, got), payload)}",
                     repr(payload)[:200],
                 )
+    assert without_a_witness == {}, without_a_witness
     assert wrong == {}, wrong
     claimed("branch positions a union base names", positions)
-    claimed("branch positions the committed accepts floor answers for", offered)
-    partitions(positions, offered=offered, unheld=unheld)
-    partitions(offered, admitted=admitted, refused_by_the_document=refused_by_the_document)
+    claimed("branch positions naming exactly one branch class", names_one_branch)
+    partitions(
+        positions,
+        names_one_branch=names_one_branch,
+        several_branch_classes_are_stamped_here=several_branch_classes_are_stamped_here,
+    )
+    partitions(
+        names_one_branch,
+        admitted=admitted,
+        refused_by_the_document=refused_by_the_document,
+    )
     claimed("branch payloads the document admits at its root", admitted)
     partitions(
         admitted,
@@ -1200,28 +1323,71 @@ def _document_path(loc: tuple[int | str, ...], payload: Any) -> tuple[int | str,
     cannot find ``pricing_option_id``.  The reading that treats the first segment as the
     label consumes every segment it is given; the other does not, and a reduction that
     accounts for the whole ``loc`` is the one that describes it.
+
+    **AND THE AMBIGUOUS LABEL IS NOT ALWAYS THE LEADING ONE, which is the clause this
+    paragraph's own first sentence always implied and the code did not have.**  The search
+    was ``for drop in (0, 1)`` -- try every segment as a document step, then try again
+    having dropped exactly one LEADING label -- and that cannot express a loc carrying a
+    leading label AND an interior one that indexes.  Measured on this tree, one position
+    reaches it: ``core/wholesale-feed-event.json#/oneOf/6`` is refused at
+
+        ``('signal.priced', 'payload', 'pricing_options', 0, 'cpm', 'pricing_option_id')``
+
+    where ``signal.priced`` is the outer tag, ``cpm`` is the inner pricing-option arm's
+    own tag, and the payload DOES carry a ``cpm`` key at ``pricing_options[0]`` (worth
+    ``0``) -- so the old reading walked into it, could not find ``pricing_option_id``
+    under a number, and returned ``('payload', 'pricing_options', 0, 'cpm')``: the wrong
+    position, reported of a dispatch that had named the right one.  **The refusal was
+    correct and the reduction was not**, which is a defect in this instrument rather than
+    in the tree it grades.
+
+    So the search is over WHICH segments are labels instead of over a count of leading
+    ones, and the two rules that pick the reading are the ones this docstring already
+    states.  **Fewest labels first**, because a segment that indexes is a document step
+    unless something forces otherwise; then **labels as EARLY as possible**, which is the
+    whole-``loc`` rule restated -- it maximises the trailing run of document steps, and a
+    pydantic error's tail is the position inside the deepest arm that a caller needs.  On
+    the vendor row that yields ``('pricing_option_id',)`` and on the wholesale row
+    ``('payload', 'pricing_options', 0, 'pricing_option_id')``, which is the fault exactly;
+    every other example above is a zero- or one-label reading and does not move.
     """
 
-    def walked(steps: tuple[int | str, ...]) -> tuple[int | str, ...]:
-        at = payload
-        out: list[int | str] = []
-        for step in steps:
-            indexes = (isinstance(at, Mapping) and step in at) or (
-                isinstance(at, (list, tuple)) and isinstance(step, int) and step < len(at)
-            )
-            if indexes:
-                out.append(step)
-                at = at[step]
-        return tuple(out)
+    def indexes(at: Any, step: int | str) -> bool:
+        return bool(
+            (isinstance(at, Mapping) and step in at)
+            or (isinstance(at, (list, tuple)) and isinstance(step, int) and step < len(at))
+        )
 
-    best: tuple[int | str, ...] = ()
-    for drop in (0, 1):
-        got = walked(loc[drop:])
-        if got and len(got) == len(loc) - drop:
+    def reduced(
+        steps: tuple[int | str, ...], at: Any, labels: int
+    ) -> tuple[int | str, ...] | None:
+        """``steps`` as document steps, spending at most ``labels`` of them on arm labels.
+
+        ``None`` where no such reading accounts for every segment.  The label branch is
+        tried FIRST so that, at a fixed budget, the labels land as early as they can; a
+        label consumes a segment of the ``loc`` and no step of the payload, which is what
+        pydantic does with an arm.
+        """
+        if not steps:
+            return ()
+        step, rest = steps[0], steps[1:]
+        if labels:
+            below = reduced(rest, at, labels - 1)
+            if below is not None:
+                return below
+        if indexes(at, step):
+            below = reduced(rest, at[step], labels)
+            if below is not None:
+                return (step, *below)
+        return None
+
+    for labels in range(len(loc) + 1):
+        got = reduced(loc, payload, labels)
+        if got is not None:
             return got
-        if len(got) > len(best):
-            best = got
-    return best
+    #: Unreachable while ``labels`` may reach ``len(loc)`` -- every segment a label is
+    #: always a reading -- and kept so that this returns a path rather than ``None``.
+    return ()
 
 
 def _locates(path: tuple[int | str, ...], fault: tuple[int | str, ...]) -> bool:
@@ -1254,13 +1420,14 @@ def test_a_union_refusal_names_the_position_it_refuses_at() -> None:
 
     **THE SET IS THE EMITTED TREE AND NOT A LIST OF UNIONS, which is the only way this
     covers a union no other test exercises.**  Every base the tree emits that declares a
-    branch list is offered a payload, and the payload is DERIVED: the committed accepts
-    floor's instance at the branch's own pointer -- the same witness
+    branch list is offered a payload, and the payload is DERIVED: the CONSTRUCTED witness
+    at the branch's own pointer (:func:`_witness_at`) -- the same witness
     :func:`test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_from`
-    grades, so neither clause can pass on a witness the other does not see -- with its
-    DEEPEST scalar position replaced by :data:`A_VALUE_NO_SCALAR_ADMITS`.  Deepest, so
-    the witness is a nested path wherever the instance has depth, which is where a repair
-    that prepends the dispatch's own position but drops the branch's inner path shows up.
+    grades, through the same memo, so neither clause can pass on a witness the other does
+    not see -- with its DEEPEST scalar position replaced by
+    :data:`A_VALUE_NO_SCALAR_ADMITS`.  Deepest, so the witness is a nested path wherever
+    the instance has depth, which is where a repair that prepends the dispatch's own
+    position but drops the branch's inner path shows up.
 
     **THE SCREEN IS THE DOCUMENT'S AND NOT THIS FILE'S.**  A perturbation the DOCUMENT
     still admits did not bite -- the position is typed ``{}`` or the branch ignores it --
@@ -1285,49 +1452,64 @@ def test_a_union_refusal_names_the_position_it_refuses_at() -> None:
 
     **NO CENSUS IS ASSERTED AS AN EQUALITY** (``tests/test_every_check_names_its_set.py``),
     so the non-vacuity defence is :func:`claimed` and :func:`partitions`: every branch
-    position is offered-or-unheld, every offered position is bitten-or-not, and every
-    bitten position is refused-or-admitted by the base.  Pointing
-    ``codegen.held.COMMITTED`` at a directory that is not there takes this clause from
-    green to ``empty set of nodes``.
+    position names one branch class or several, every position naming one has a scalar to
+    perturb or has none, every perturbable position is bitten-or-not, and every bitten
+    position is refused-or-admitted by the base.  A construction that answered nothing
+    takes this clause to ``empty set of nodes`` rather than to green, and a position it
+    cannot answer for is asserted in ``without_a_witness`` rather than celled.
+
+    **Measured on this bundle at this commit**: of 552 branch positions, 539 name one
+    branch class; all 539 build a witness; 510 have a scalar position to perturb and 29 do
+    not; 479 of those 510 the document refuses the perturbation at, and 31 it still
+    admits; of the 479, **463 named the position**, 13 are the keyless cell below and 3 are
+    bases laxer than their document (``adcp-client-python-9iee``), over 136 bases.  The
+    463rd is ``core/wholesale-feed-event.json#/oneOf/6``, which :func:`_document_path`'s
+    interior-label clause is what reads correctly.
     """
     bases = _declaring_bases()
     graded_bases = claimed("emitted union bases declaring a branch list", bases)
     records = _records()
-    identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
-    floor = held.Store(held.COMMITTED)
 
     positions: set[tuple[str, str]] = set()
-    offered: set[tuple[str, str]] = set()
-    unheld: set[tuple[str, str]] = set()
+    names_one_branch: set[tuple[str, str]] = set()
+    several_branch_classes_are_stamped_here: set[tuple[str, str]] = set()
+    has_a_scalar_position: set[tuple[str, str]] = set()
+    no_scalar_position_to_perturb: set[tuple[str, str]] = set()
     the_document_still_admits_it: set[tuple[str, str]] = set()
     bitten: set[tuple[str, str]] = set()
     the_base_admits_what_its_document_refuses: set[tuple[str, str]] = set()
     named_the_position: set[tuple[str, str]] = set()
     the_arms_share_no_position: set[tuple[str, str]] = set()
     bases_that_named_a_position: set[str] = set()
+    without_a_witness: dict[str, tuple[str, str, str]] = {}
     nameless: dict[str, tuple[str, str, str]] = {}
     for name in sorted(graded_bases):
         base = bases[name]
+        stamped = _branch_sites(base)
         for branch in base.__dict__["_branch_models"]:
             ref = branch.__dict__["__adcp_schema__"]
             site = (ref.document, ref.pointer)
             positions.add(site)
-            key = harness.corpus_key(
-                {
-                    "document": ref.document,
-                    "pointer": ref.pointer,
-                    "admits": identities.get(ref.document),
-                },
-                custom_formats=harness.FORMAT_STRATEGIES,
-            )
-            drawn = (floor.get(key) or [None])[0]
-            fault = None if drawn is None else _deepest_leaf(drawn)
-            if fault is None:
-                # No held instance, or one with no scalar position to perturb: there is
-                # no witness here and this clause says nothing about the position.
-                unheld.add(site)
+            if stamped[site] > 1:
+                several_branch_classes_are_stamped_here.add(site)
                 continue
-            offered.add(site)
+            names_one_branch.add(site)
+            drawn, why = _witness_at(ref.document, ref.pointer)
+            if drawn is None:
+                without_a_witness[f"{name} <- {branch.__name__}"] = (
+                    ref.document,
+                    ref.pointer,
+                    why,
+                )
+                continue
+            fault = _deepest_leaf(drawn)
+            if fault is None:
+                # A witness with NO scalar position: there is nothing to perturb, so this
+                # clause says nothing about the position.  Distinct from a missing witness
+                # above, which is a finding -- this is a property of the value's shape.
+                no_scalar_position_to_perturb.add(site)
+                continue
+            has_a_scalar_position.add(site)
             payload = _replaced_at(drawn, fault, A_VALUE_NO_SCALAR_ADMITS)
             root = records[ref.document]
             if not _admits(root, "#", payload):
@@ -1369,11 +1551,21 @@ def test_a_union_refusal_names_the_position_it_refuses_at() -> None:
                         f"which reduces to {paths!r}"
                     ),
                 )
+    assert without_a_witness == {}, without_a_witness
     assert nameless == {}, nameless
     claimed("branch positions a union base names", positions)
-    partitions(positions, offered=offered, unheld=unheld)
     partitions(
-        offered,
+        positions,
+        names_one_branch=names_one_branch,
+        several_branch_classes_are_stamped_here=several_branch_classes_are_stamped_here,
+    )
+    partitions(
+        names_one_branch,
+        has_a_scalar_position=has_a_scalar_position,
+        no_scalar_position_to_perturb=no_scalar_position_to_perturb,
+    )
+    partitions(
+        has_a_scalar_position,
         bitten=bitten,
         the_document_still_admits_the_perturbation=the_document_still_admits_it,
     )
@@ -1503,10 +1695,12 @@ def test_a_keyless_dispatch_refusal_names_the_position_the_document_refuses_at()
     give the same answer.  A perturbation of ``_undetermined``'s ``loc`` therefore reads
     GREEN against that row, which is the worthless-guard shape.
 
-    So the witnesses are DERIVED: every keyless base's branch position that the committed
-    floor answers for, with a scalar position replaced by one of
-    :data:`A_VALUE_A_WIDENED_CLASS_STILL_ADMITS`, keeping only the payloads where the
-    DOCUMENT refuses and the screen answers.
+    So the witnesses are DERIVED: every keyless base's branch position that names one
+    branch class, with the CONSTRUCTED witness there (:func:`_witness_at`) having a scalar
+    position replaced by one of :data:`A_VALUE_A_WIDENED_CLASS_STILL_ADMITS`, keeping only
+    the payloads where the DOCUMENT refuses and the screen answers.  Measured on this
+    bundle at this commit: 58 keyless bases, **16 branch positions reach the screen and all
+    16 name the position**.
 
     The deepest positions are tried first and the search stops at the first witness per
     branch position, so the cost is bounded by the positions and not by the product.
@@ -1528,27 +1722,28 @@ def test_a_keyless_dispatch_refusal_names_the_position_the_document_refuses_at()
     }
     graded = claimed("emitted union bases with NO dispatch key", bases)
     records = _records()
-    identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
-    floor = held.Store(held.COMMITTED)
 
     reached: set[tuple[str, str]] = set()
     named_the_position: set[tuple[str, str]] = set()
+    without_a_witness: dict[str, tuple[str, str, str]] = {}
     nameless: dict[str, tuple[str, str, str]] = {}
     for name in sorted(graded):
         base = bases[name]
+        stamped = _branch_sites(base)
         for branch in base.__dict__["_branch_models"]:
             ref = branch.__dict__["__adcp_schema__"]
             site = (ref.document, ref.pointer)
-            key = harness.corpus_key(
-                {
-                    "document": ref.document,
-                    "pointer": ref.pointer,
-                    "admits": identities.get(ref.document),
-                },
-                custom_formats=harness.FORMAT_STRATEGIES,
-            )
-            drawn = (floor.get(key) or [None])[0]
+            if stamped[site] > 1:
+                # No ONE branch at this position (:func:`_branch_sites`), so the screen's
+                # structural first match has no branch to be screened against.
+                continue
+            drawn, why = _witness_at(ref.document, ref.pointer)
             if drawn is None:
+                without_a_witness[f"{name} <- {branch.__name__}"] = (
+                    ref.document,
+                    ref.pointer,
+                    why,
+                )
                 continue
             root = records[ref.document]
             leaves = sorted(_scalar_leaves(drawn), key=lambda p: (-len(p), [str(s) for s in p]))
@@ -1582,6 +1777,7 @@ def test_a_keyless_dispatch_refusal_names_the_position_the_document_refuses_at()
                     break
                 if site in reached:
                     break
+    assert without_a_witness == {}, without_a_witness
     assert nameless == {}, nameless
     claimed("branch positions whose keyless dispatch reached the undetermined screen", reached)
     partitions(reached, named_the_position=named_the_position)

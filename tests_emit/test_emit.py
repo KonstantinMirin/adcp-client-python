@@ -67,6 +67,7 @@ from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 
 import compared
+import constructed
 import corpus
 import fresh
 import jsonschema
@@ -122,6 +123,7 @@ from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.schema import nodes
 from codegen.schema import parse as schema_parse
+from codegen.verify import witness
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -4294,21 +4296,23 @@ def _an_instance(ref: SchemaRef) -> Any:
     while the median arm is under a second -- so the two tests below are a park and not a
     cost, and the cap is what they report rather than a verdict.
 
-    **THE STORE IS THE ACCEPTS CHECK'S OWN STORE, UNDER THE ACCEPTS CHECK'S OWN KEY, AND
-    THAT IS WHY THIS IS NOT A SECOND WITNESS.**  A union branch is a GRADED PAIR: the
-    branch class carries ``__adcp_schema__``, that pair is in :func:`graded`, and reading
-    1's accepts check has already drawn an instance of exactly this node and committed it
-    to the floor under ``harness.corpus_key(identity_of(ref))``.  So there is nothing to
-    hold here that is not held, and no key that is not already keyed -- what changes is
-    that these tests grade the instance reading 1 grades instead of a fresh one.  Measured
-    over this tree: **443 of 443 arms hit the committed floor and the held instance is
-    admitted by the arm's own resolved node**, 0 misses and 0 rejections.
+    **THE WITNESS IS THE CONSTRUCTION'S, WHICH IS WHY THIS IS NOT A SECOND WITNESS.**  A
+    union branch is a GRADED PAIR: the branch class carries ``__adcp_schema__``, that pair
+    is in :func:`graded`, and reading 1's accepts check builds its witness for exactly this
+    node through :class:`codegen.verify.witness.Construction`.  So there is nothing to
+    derive here that is not derived, and no second walk -- what these tests grade is the
+    value reading 1 grades, read off the same memo, through ``tests_emit/constructed.py``.
 
-    **AND A HELD ENTRY THAT CANNOT STAND IN IS LOUD, never a silent re-draw**, which is
-    :func:`harness.corpus_defect`'s whole contract one key space over: a store answering
-    with an instance the node refuses is broken, and a fallback would hide it for as long
-    as it kept happening.  The screen is the RESOLVED node, because that is what the
-    instance is offered to below.
+    This rung used to be the committed accepts floor under
+    ``harness.corpus_key(identity_of(ref))``, measured then at **443 of 443 arms hitting
+    the floor**, 0 misses and 0 rejections.  The corpus is gone and so is that key; the
+    construction answers the same question as a function of ``(document, pointer)`` alone.
+
+    **AND A WITNESS THAT CANNOT STAND IN IS LOUD, never a silent fallback**, which was
+    ``harness.corpus_defect``'s whole contract one key space over: an answer the node
+    refuses is a defect, and a fallback would hide it for as long as it kept happening.
+    The obligation does not lapse with the mechanism, so the screen is still here and it is
+    still the RESOLVED node, because that is what the instance is offered to below.
 
     ``ref`` and not two schemas, because the identity the store is keyed on is a statement
     about the NODE and not about our rendering of it (:func:`identity_of`) -- a caller
@@ -4354,24 +4358,49 @@ def _an_instance(ref: SchemaRef) -> Any:
         schema = harness.resolve(schema, store={}, referrer=schema_at(SchemaRef(ref.document, "#")))
     except Exception:  # any resolution failure falls back to the node
         pass
-    #: **THE STORE FIRST**, under the accepts check's own key, which is what makes this the
-    #: witness reading 1 grades rather than a second one.  An identity this suite cannot
-    #: compute -- a document outside the portable set -- is a miss and not a raise: the
-    #: ladder then answers the way it answered before the store was read at all.
-    held = None
-    try:
-        held = corpus.STORE.get(
-            harness.corpus_key(identity_of(ref), custom_formats=FORMAT_STRATEGIES)
+    #: **THE CONSTRUCTION FIRST, which is what ``./check`` READS.**  What stood here was a
+    #: lookup into ``tests_emit/accepts-corpus`` under ``harness.corpus_key`` -- a hash
+    #: addressing a hypothesis DRAW held between runs.  The corpus was deleted by decision
+    #: (the verifier's three checks ARE the grading path: no corpus, no cache, no budget,
+    #: no depth cap, no example count, ``cold == warm``), and `corpus_key` with it, so this
+    #: rung raised ``AttributeError`` for every caller.
+    #:
+    #: :meth:`codegen.verify.witness.Construction.applied` is the entry point, read through
+    #: ``tests_emit/constructed.py`` so that this is the ONE construction every other
+    #: reader of the tree fills and not a second walk -- the memo is on the instance, and a
+    #: module building its own forfeits every hit above it (§9's reader rule).  ``applied``
+    #: and not ``value`` because a branch class's subject is its node read UNDER the
+    #: conjunction that reaches it, which is what ``SchemaBound.strict_validate`` validates
+    #: against and what the callers below offer the instance to.
+    #:
+    #: A pointer the record does not hold -- a document outside the portable set, a
+    #: ``SchemaRef`` naming no local fragment -- falls through rather than raising: the
+    #: ladder then answers the way it answered before any store was read at all.
+    built = None
+    local = witness._local(ref.pointer)
+    if local is not None and ref.document in constructed.records():
+        try:
+            built = constructed.whole().applied(ref.document, local)
+        except Exception:  # noqa: BLE001 -- a node this suite cannot reach has no witness
+            built = None
+    if built is not None and built.held:
+        #: Loud, never a silent fallback: the witness is re-offered to the RESOLVED node,
+        #: because that is what it is handed to below.  A construction answering with a
+        #: value the node refuses is a defect a fallback would hide for as long as it kept
+        #: happening -- which is what ``harness.corpus_defect`` did for the store, one key
+        #: space over, and the obligation does not lapse with the mechanism.
+        screen = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
+        refused = sorted(
+            {
+                error.validator
+                for error in screen(schema, format_checker=screen.FORMAT_CHECKER).iter_errors(
+                    built.value
+                )
+                if isinstance(error.validator, str)
+            }
         )
-    except Exception:  # noqa: BLE001 -- a node this suite cannot name has no entry
-        held = None
-    if isinstance(held, list) and held:
-        #: Loud, never a silent re-draw: :func:`harness.corpus_defect` re-offers the held
-        #: instance to the node, and a store answering with one the node refuses is broken
-        #: in a way a fallback would hide for as long as it kept happening.
-        defect = harness.corpus_defect(schema, held, 1)
-        assert not defect, (f"{ref.document}{ref.pointer}", defect)
-        return held[0]
+        assert not refused, (f"{ref.document}{ref.pointer}", refused, built.source)
+        return built.value
     #: **THEN THE NODE'S OWN ``examples``** -- JSON Schema's own keyword for "here is a
     #: valid instance of this schema", screened by the node (:func:`harness.stated_instances`).
     stated = harness.stated_instances(schema)
