@@ -388,9 +388,12 @@ def _branches_the_document_admits(base: type, root: dict, payload: Any) -> list[
     overlap in the DOCUMENT for these four payloads -- the document names exactly one
     admissible branch each".  Measured over the documents of record, the document admits
     17, 16, 16 and 32 of ``core/async-response-data.json``'s 42 branches for those four
-    payloads.  The defect stands -- the branch that ANSWERED is one the document refuses
-    -- and the repair 84a9's sentence implies, re-dispatching to "the document's branch",
-    does not exist.
+    payloads.  So THE DOCUMENT ADMITS THEM, which is what an ``anyOf`` over an admitting
+    branch means, and a dispatch that refused them refused what the document accepts.
+    What answers them is not "the document's branch" -- there is no such singular thing
+    where the document admits 17 -- but the FIRST in declaration order among the branches
+    this function names, which is the criterion the dispatch already applied wherever the
+    structural first match happened to land on one of them.
     """
     return [
         pointer
@@ -620,9 +623,7 @@ A_GET_PRODUCTS_RESPONSE = {
 }
 
 
-def test_a_keyless_dispatch_refuses_rather_than_answering_with_a_branch_the_document_refuses() -> (
-    None
-):
+def test_a_keyless_dispatch_answers_with_a_branch_the_document_admits() -> None:
     """``adcp-client-python-84a9``, graded by a VALUE on both sides.
 
     ``core/async-response-data.json``'s root is a 42-branch ``anyOf`` whose branches pin
@@ -633,20 +634,33 @@ def test_a_keyless_dispatch_refuses_rather_than_answering_with_a_branch_the_docu
     response, a rule ``model_validate`` does not apply -- so the branch class admits
     payloads its own node refuses and the first match reached it.
 
+    **THE DOCUMENT ADMITS THIS PAYLOAD, AND THAT SETTLES IT.**  An ``anyOf`` admits a
+    payload exactly when SOME branch admits it, so the question is never "does the branch
+    pydantic reached first admit it" -- which is a fact about declaration order.  This
+    very payload is admitted at the ROOT (asserted below) and at ``#/anyOf/18``, the
+    branch it was drawn from, so a class that refused it refused what its document
+    accepts: reading 1, and 21 failures in upstream's behavioural suite, all on this
+    document.
+
     **The four facts, each a value and not a structure.**  The document admits the payload
-    at its ROOT; the document REFUSES it at ``#/anyOf/0``; the class at ``#/anyOf/0``
-    agrees with its document, because ``strict_validate`` refuses it with THAT SAME reason
-    while ``model_validate`` admits; and the BASE therefore refuses, naming the combinator,
-    the branch that matched and the document's own sentence.
+    at its ROOT; the document REFUSES it at ``#/anyOf/0``, where the structural first
+    match lands; the class at ``#/anyOf/0`` agrees with its document, because
+    ``strict_validate`` refuses it with THAT SAME reason while ``model_validate`` admits;
+    and the BASE therefore walks on and answers with a branch whose DOCUMENT admits it.
 
     **It is not ``adcp-client-python-1bj``**, where the other root branch REFUSED the
     payload and the hop was the only admissible answer.  Here the DRAWN branch
     (``#/anyOf/18``) admits on both sides and ``#/anyOf/0`` refuses on both sides, so the
-    class is right and the dispatch was wrong.
+    class is right and the FIRST MATCH was wrong.
 
-    **And the refusal is not a closing of the base**: the control payload, the floor's own
-    instance at ``#/anyOf/0``, is admitted by the document there and still comes back as
-    that branch's class.
+    **And the walk is not a second guess**: the branch answered is required to be one
+    :func:`_branches_the_document_admits` names, which is the same criterion the dispatch
+    already applied to the 46 of 228 committed branch payloads that land on a branch other
+    than the one they were drawn from and are kept.
+
+    **The control** is the floor's own instance at ``#/anyOf/0``: a payload the document
+    admits THERE still comes back as that branch, so the walk reaches only the payloads
+    the first match got wrong.
     """
     root = _records()[ASYNC]
     module = importlib.import_module("adcp.types._schemas.core.async_response_data")
@@ -672,17 +686,106 @@ def test_a_keyless_dispatch_refuses_rather_than_answering_with_a_branch_the_docu
         at_zero.strict_validate(A_CREATE_MEDIA_BUY_FAILURE)
     assert "'errors' is a required property" in str(refused_strictly.value)
 
-    # THE DISPATCH REFUSES, and it names what it refused on.
-    with pytest.raises(ValidationError) as refused:
-        base.model_validate(A_CREATE_MEDIA_BUY_FAILURE)
-    reported = refused.value.errors()[0]
-    assert reported["type"] == "anyOf", reported
-    assert "#/anyOf/0" in reported["msg"] and "no discriminator" in reported["msg"], reported
-    assert "'errors' is a required property" in reported["msg"], reported
+    # THE DISPATCH ANSWERS, with a branch the DOCUMENT admits and never the first match.
+    admissible = _branches_the_document_admits(base, root, A_CREATE_MEDIA_BUY_FAILURE)
+    assert admissible, "the premise: the document admits this payload at some branch"
+    answered = type(base.model_validate(A_CREATE_MEDIA_BUY_FAILURE))
+    assert not _dispatched_to(at_zero, answered), (
+        "the branch the document refuses is not the answer"
+    )
+    assert _answering_pointer(base, answered) in admissible, (
+        f"answered at {_answering_pointer(base, answered)}, "
+        f"which the document does not admit; admissible: {admissible}"
+    )
+    assert _admits(root, _answering_pointer(base, answered), A_CREATE_MEDIA_BUY_FAILURE) == ""
 
     # THE CONTROL: a payload the document admits at #/anyOf/0 still resolves to it.
     assert _admits(root, "#/anyOf/0", A_GET_PRODUCTS_RESPONSE) == ""
     assert _dispatched_to(at_zero, type(base.model_validate(A_GET_PRODUCTS_RESPONSE)))
+
+
+#: Two real documents that REQUIRE, so each refuses ``{}`` with its own sentence, paired
+#: with branch classes that require nothing -- which is the shape
+#: :meth:`~adcp.types._base.BranchDispatchMixin._admitted`'s refusal arm answers: a class
+#: WIDER than its node admits a payload every branch's DOCUMENT refuses.
+A_DOCUMENT_THAT_REQUIRES = ("core/error.json", "'code' is a required property")
+A_SECOND_DOCUMENT_THAT_REQUIRES = ("core/pagination-response.json", "'has_more' is a required")
+
+
+def test_a_keyless_dispatch_refuses_where_no_branch_s_document_admits() -> None:
+    """:meth:`~adcp.types._base.BranchDispatchMixin._undetermined`, the other half.
+
+    **THE BUNDLE OFFERS NO WITNESS, AND THAT IS A MEASUREMENT AND NOT AN EXCUSE** (§9: a
+    rule nothing can break is a finding about the rule).  Asked of all 58 emitted keyless
+    bases with ``{}``, ``{"zz": 1}`` and ``{"status": "completed"}`` -- payloads chosen to
+    carry no document knowledge -- there is **no** base where a branch CLASS admits and no
+    branch's DOCUMENT does.  ``core/async-response-data.json`` cannot produce one at all:
+    ``#/anyOf/2`` resolves to ``media-buy/get-products-async-response-working.json``,
+    which admits ``{}`` and states no ``additionalProperties: false``, so that arm admits
+    every object and the 42-branch ``anyOf`` admits every object with it.
+
+    So the refusal is graded on a union built here, for the reason
+    :func:`test_the_dispatch_reading_reaches_a_union_base_a_package_root_declares` builds
+    one: what is under test is the DISPATCH and not the compiler.  Two real documents
+    supply the refusals, because a document written here would be this test's own opinion
+    about what refusing looks like.
+
+    The two facts: no branch's document admitting the payload is the document REFUSING
+    it, so the base refuses rather than answering with a type the document denies; and the
+    sentence is the document's own, at the branch the structure matched.
+    """
+    from adcp.types._base import AdCPBaseModel, SchemaRef
+
+    # The EMITTED shape, parent included: a keyless base is
+    # ``class X(BranchDispatchMixin, AdCPBaseModel)`` with ``_branch_models`` assigned
+    # after its branches exist, and that parent is what defers the build so the
+    # assignment is in place before pydantic reads it.
+    class _Base(BranchDispatchMixin, AdCPBaseModel):
+        _BRANCH_DISCRIMINATOR = ""
+
+    class _First(_Base):
+        code: str | None = None
+        message: str | None = None
+
+    class _Second(_Base):
+        has_more: bool | None = None
+
+    for cls, (document, _) in (
+        (_First, A_DOCUMENT_THAT_REQUIRES),
+        (_Second, A_SECOND_DOCUMENT_THAT_REQUIRES),
+    ):
+        cls.__adcp_schema__ = SchemaRef(document=document, pointer="#")  # type: ignore[attr-defined]
+        # WHICH TREE, which is all ``module`` is to ``_refuse_at``: these classes are
+        # declared in a test and the records they are graded against are the emitted
+        # tree's, so they name it.
+        cls.__module__ = "adcp.types._schemas.core.error"
+    _Base._branch_models = (_First, _Second)
+
+    # THE PREMISE, measured and not assumed: each class admits the payload and each
+    # document refuses it, with its own sentence.
+    assert isinstance(_First.model_validate({}), _First)
+    assert isinstance(_Second.model_validate({}), _Second)
+    for cls, (_, reason) in (
+        (_First, A_DOCUMENT_THAT_REQUIRES),
+        (_Second, A_SECOND_DOCUMENT_THAT_REQUIRES),
+    ):
+        refusal = _Base._document_refusal(cls, {})
+        assert refusal is not None, cls
+        assert reason in str(refusal), (cls, str(refusal))
+
+    # AND THE BASE REFUSES, in the combinator's vocabulary, at the branch the structure
+    # matched, quoting that document's own reason.
+    with pytest.raises(ValidationError) as refused:
+        _Base.model_validate({})
+    reported = refused.value.errors()[0]
+    assert reported["type"] == _Base._branch_combinator(), reported
+    assert "no branch's document admits this payload" in reported["msg"], reported
+    assert A_DOCUMENT_THAT_REQUIRES[0] in reported["msg"], reported
+    assert A_DOCUMENT_THAT_REQUIRES[1] in reported["msg"], reported
+
+    # THE CONTROL: the moment one branch's document admits, the base answers with it.
+    answered = _Base.model_validate({"code": "NOT_FOUND", "message": "x"})
+    assert isinstance(answered, _First), answered
 
 
 #: A union root with a dispatch key, as a module declares one: a base naming the key, two
