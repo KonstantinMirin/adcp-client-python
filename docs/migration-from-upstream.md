@@ -2959,6 +2959,191 @@ No other example needed a change. `examples/hello_seller_creative.py` addresses 
 by `format_kind` and that is the live branch — `CreativeManifest` with `format_kind` validates
 as `CanonicalFormatManifest`, and with `format_id` as `NamedFormatManifest`.
 
+## §14. The schema states choices with `oneOf`, and you do not pick the branch — pydantic does
+
+**MANY DOCUMENTS STATE A CHOICE.** A response that is either a success, an error or a
+submitted envelope. A format addressed either by its v1 `format_id` or by its v2
+`format_kind`. A pricing option that is CPM, percent-of-media, flat-fee, per-unit or custom.
+An asset that is one of 21 kinds, and then, inside one of those kinds, delivered by URL or
+inline. Sometimes the document names the deciding property in a `discriminator`; sometimes
+the branches differ only in what they `require`, and a `not` clause forbids the other
+branch's key. **Either way the choice is the DOCUMENT'S, and the emitted classes reproduce
+it rather than invent it** — so the rule below holds for anyone implementing AdCP 3.2–3.3 in
+any language, and it is not a feature of this package.
+
+* **TO PARSE: hand the payload to the UNION class** — the class at the document's own root
+  — and the correct branch is constructed for you: `ModelName.model_validate(payload)`.
+* **TO BUILD a specific branch: instantiate THAT BRANCH directly.** You need neither the
+  union nor a discriminator *decision*: the branch already is the answer. Where the document
+  lists the discriminator in `required` you still pass it — its value is the one the branch's
+  own name tells you, and the pydantic argument is not a dispatch instruction.
+* **`isinstance` against the union holds for every branch**, which is what the union class is
+  for. A branch instance IS an instance of the union, so a function annotated with the union
+  accepts every branch and `isinstance(x, Branch)` narrows it.
+
+There is no helper to learn and no special case: the same three sentences cover requests,
+responses, assets, pricing options, principal results and every other union in the bundle.
+One call on `CreateMediaBuyResponse` returns `CreateMediaBuySuccess`, `CreateMediaBuyError`
+or `CreateMediaBuyResponseSubmitted` by reading the payload; one call on
+`VendorPricingOption` returns `VendorPricingOptionCpm` or one of its four siblings by reading
+`model`; one call on `VASTAsset` returns `VASTAssetUrl` or `VASTAssetInline` by reading
+`delivery_type`; one call on `ProductFormatDeclaration` returns `ImageFormatDeclaration` or
+one of its fifteen siblings by reading `format_kind`.
+
+**This is also the single most common reason an upstream name has no counterpart here.** Of
+the 73 upstream-imported names measured one-at-a-time in `verdicts/name-mapping.md`, the
+largest group is a name for ONE BRANCH of a document whose root we emit —
+`CreateMediaBuySuccessResponse`, `CreateMediaBuySubmittedResponse`,
+`UpdateMediaBuySuccessResponse`, `UpdateMediaBuyErrorResponse`, `UrlVastAsset`,
+`InlineVastAsset`, `UrlDaastAsset`, `InlineDaastAsset`, the six `AuthorizedAgentsBy*`,
+`ListCreativesCanonicalCreative`, `VendorPricingOptionUnion`, `LegacyProductFormatDeclaration`,
+`PrincipalReadResult`, `PrincipalSyncResult` — and in every one of those cases the edit worth
+making is not a rename. **It is to stop selecting a class and hand the payload over.**
+
+### Worked example 1 — PARSE: one call, 21 branches
+
+`core/assets/asset-union.json` is a 21-arm `oneOf` with
+`discriminator: {propertyName: "asset_type"}`, and we emit its root as `AssetVariant` with
+one branch class per arm. Upstream's name for this union is `AssetInstance`. You do not
+inspect `asset_type` to decide which class to use:
+
+```python
+from adcp.types.core import AssetVariant
+
+AssetVariant.model_validate({
+    "asset_type": "image", "asset_id": "hero",
+    "url": "https://cdn.example.com/hero.png", "width": 300, "height": 250,
+})
+# -> AssetVariantImage      __adcp_schema__ pointer '#/oneOf/0'
+
+AssetVariant.model_validate(
+    {"asset_type": "display_tag", "asset_id": "tag", "snippet": "<div/>", "snippet_type": "html"}
+)
+# -> AssetVariantDisplayTag  pointer '#/oneOf/4'
+
+AssetVariant.model_validate({"asset_type": "not_registered"})
+# -> ValidationError: asset_type  is not valid under any of the 21 branches [type=oneOf]
+AssetVariant.model_validate({})
+# -> the same refusal: no branch, and no silent fallback
+```
+
+The second call is the one to read. **Upstream's `AssetInstance` is 20 arms and refuses
+`display_tag`** — their `aliases.py:361-383` omits `DisplayTagAsset`, their
+`AssetInstanceType` `Literal` omits the string, and their own `tests/test_public_api.py`
+pins the 20 as a set equality — while `core/assets/asset-union.json#/oneOf/4` is
+`display-tag-asset.json`, not deprecated, `const: "display_tag"`. That is a wire value their
+public union rejects, so the port here is one value WIDER than the name it replaces, and
+nothing you were sending stops working.
+
+### Worked example 2 — BUILD: name the branch, state the const, pass no decision
+
+`core/assets/daast-asset.json` is a 2-arm `oneOf` on `delivery_type`, reached from the asset
+union at `#/oneOf/12` as a bare `$ref`. Upstream's two names for those arms are
+`UrlDaastAsset` and `InlineDaastAsset`. To build the url arm, instantiate the url branch:
+
+```python
+from adcp.types.core import DAASTAsset, DAASTAssetUrl
+
+asset = DAASTAssetUrl(
+    asset_type="daast", delivery_type="url", url="https://daast.example.com/ad.xml"
+)
+# __adcp_schema__ = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/0')
+asset.model_dump(exclude_none=True)
+# {'asset_type': 'daast', 'delivery_type': 'url', 'url': 'https://daast.example.com/ad.xml'}
+isinstance(asset, DAASTAsset)      # True — the branch IS the union
+
+# parsing the other arm is the same one call:
+DAASTAsset.model_validate(
+    {"asset_type": "daast", "delivery_type": "inline", "content": "<DAAST/>"}
+)
+# -> DAASTAssetInline   pointer '#/oneOf/1'
+```
+
+**Both `const` discriminators are required here, and that is the document, not us.**
+`daast-asset.json` states `required: ['asset_type']` at the root and
+`required: ['delivery_type', 'url']` at `#/oneOf/0`, each with a `const` and **no
+`default`** anywhere. Upstream's generator turned those `const`s into pydantic defaults —
+477 such pairs are recorded in `survey/invented-defaults-9.6.1.tsv`, these two among them —
+so `UrlDaastAsset(url=...)` constructs there and raises here:
+
+```python
+DAASTAssetUrl(url="https://daast.example.com/ad.xml")
+# -> ValidationError: 2 validation errors
+#      asset_type     Field required
+#      delivery_type  Field required
+```
+
+The corrected call is the one above, with both discriminators written out. We do not add the
+defaults back: a class that supplies a required `const` for you admits a payload the document
+refuses, and the whole point of the branch classes is that they do not.
+
+### The upstream defect this rule is written from: `SyncCreativeResult`
+
+**A ROW IS NOT A RESPONSE, AND UPSTREAM BOUND ONE NAME TO BOTH.** Their own docstring,
+`src/adcp/types/aliases.py:735-737`:
+
+> This is the item type from `SyncCreativesSuccessResponse.creatives[]`. In TypeScript,
+> this would be: `type SyncCreativeResult = SyncCreativesSuccessResponse["creatives"][number]`
+
+Their own binding, `src/adcp/types/aliases.py:514-519`:
+
+```python
+try:
+    from adcp.types.domains.creative.sync_creatives_response import (
+        Creative as SyncCreativeResultInternal,
+    )
+except ImportError:
+    SyncCreativeResultInternal = _g.SyncCreativesResponse  # type: ignore[misc]
+```
+
+The `try` branch reaches the ROW; the `except` branch reaches the **whole response
+document**. Their own consumer uses the row — `src/adcp/server/_creative_batch.py:40`
+validates one failure entry per loop iteration with it, and their reference seller does the
+same at `examples/v3_reference_seller/src/platform.py:1782`. On the shipped 9.6.1 wheel the
+`try` wins, **so the fallback is latent rather than live, and upstream as shipped is right**;
+what is wrong is the fallback itself. It is a defect and not a harmless default, because the
+class it names has `extra='allow'`: a row's keys land as EXTRAS instead of being refused as
+unknown. Measured on that class,
+`SyncCreativesResponse1.model_validate({'creative_id': 'cr_1', 'action': 'created',
+'creatives': []})` is **accepted** and dumps
+`{'status': 'completed', 'replayed': False, 'creatives': [], 'creative_id': 'cr_1',
+'action': 'created'}` — the row's two fields retained beside an invented envelope `status`.
+**So a row validating against a response class says nothing about the row**; it says the
+response class was loose enough to take it. Silencing a missing subject into a different
+subject one level up is the shape to avoid: an unbound name is something a reader can act on,
+and a fallback to the enclosing document is not.
+
+**What the correct binding would have been.** The document states the row at a pointer of its
+own, `creative/sync-creatives-response.json#/oneOf/0/properties/creatives/items`, and this
+compiler emits a class there:
+
+```python
+from adcp.types.creative import SyncCreativesSuccessCreativesItem
+
+SyncCreativesSuccessCreativesItem.model_validate(
+    {"creative_id": "cr_1", "action": "created", "status": "approved"}
+)
+# -> the row class; __adcp_schema__ = SchemaRef(
+#      document='creative/sync-creatives-response.json',
+#      pointer='#/oneOf/0/properties/creatives/items')
+```
+
+And the response is reached through its own root, which dispatches over the `oneOf` exactly
+as example 1 does. The two are different subjects at different pointers, and the test that
+tells them apart is the one above: hand the ROW to the RESPONSE class and ours refuses it —
+
+```python
+from adcp.types.creative import SyncCreativesResponse
+
+SyncCreativesResponse.model_validate(
+    {"creative_id": "cr_1", "action": "created", "status": "approved"}
+)
+# -> ValidationError: status  is not valid under any of the 3 branches [type=oneOf]
+```
+
+`status` is the envelope's `TaskStatus` there, not the row's creative status, so `'approved'`
+is not a member and `creatives` is missing. **A binding that cannot fail that way is not a
+binding to the row.**
 ---
 
 ## Re-deriving this document, and the gate that keeps it true
