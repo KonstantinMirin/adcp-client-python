@@ -87,14 +87,61 @@ for older 3.x peers and list_creative_formats compatibility projections. New pro
 creative agents author ProductFormatDeclaration canonical contracts instead."* It is
 `$ref`-ed by 3 documents; `core/product-format-declaration.json` by 24.
 
-**A CONSUMER DOES NOT PICK THE BRANCH — PYDANTIC DOES.** A product passes the value it
-has and the union dispatches to the arm that matches. So `Format` is the union over the
-two addressing forms, not one of them, and code that hard-binds either leaf answers for
-only half the wire. `core/product.json` states the same choice at the field level with
-an `anyOf` over `required: ['format_ids']` and `required: ['format_options']`, which we
-lower to `RequiredGroups(groups=(('format_ids',), ('format_options',)), combinator='anyOf')`
-— and its own text says *"Products MUST carry `format_ids`, `format_options`, or **both**
-during the 3.x migration window."* Both is legal there.
+**A CONSUMER DOES NOT PICK THE BRANCH AT A REFERENCE POSITION — PYDANTIC DOES.** Where a
+document states the choice, the emission is a base plus one child per branch and the payload
+selects: hand it to the base and the branch it satisfies is constructed. Measured, the bundle
+states that choice at exactly **three** positions, and all three are emitted:
+
+| node | union parent | children |
+|---|---|---|
+| `core/creative-asset.json#` | `CreativeAsset` | `V1CreativeNamedFormatReference` / `V2CreativeCanonicalFormatKind` |
+| `core/creative-manifest.json#` | `CreativeManifest` | `NamedFormatManifest` / `CanonicalFormatManifest` |
+| `creative/list-creatives-response.json#/properties/creatives/items` | `CreativesItem` | `ListedCreativeNamedFormatReference` / `ListedCreativeCanonicalFormatKind` |
+
+Each is Case C — no discriminator keyword, the branch decided by `format_id` XOR `format_kind`
+presence — and `isinstance` holds against the parent.
+
+`core/product.json` states the same choice at the FIELD level with an `anyOf` over
+`required: ['format_ids']` and `required: ['format_options']`, which we lower to
+`RequiredGroups(groups=(('format_ids',), ('format_options',)), combinator='anyOf')` — and its
+own text says *"Products MUST carry `format_ids`, `format_options`, or **both** during the 3.x
+migration window."* Both is legal there.
+
+**AND THERE IS NO UNION OVER THE TWO DEFINITIONS. `Format` NAMES THE CANONICAL ONE.** This
+reverses an earlier reading in this file, which said `Format` was the union over both
+addressing forms. That was right about REFERENCE positions, where the three unions above are,
+and wrong about the two DEFINITION documents, which are not branches of one subject:
+
+* measured, **no document states a `oneOf`/`anyOf` over `core/format.json` and
+  `core/product-format-declaration.json`** — the union has no node to be emitted from;
+* no field accepts "either definition", so a value built from such a union could be handed to
+  nothing — every position takes a reference, a declaration, or an id;
+* the only code that handles both is `canonical_formats/v1_to_v2.py`, which converts one into
+  the other and so needs the distinction a parent would erase.
+
+So the names follow the documents' own words:
+
+| name | subject | the document's own statement |
+|---|---|---|
+| `adcp.types.core.Format` | the canonical declaration, `format_kind` + `params` | *"New products and creative agents author ProductFormatDeclaration canonical contracts instead"* |
+| `adcp.types.core.LegacyFormat` | the v1 named-format definition | *"**DEPRECATED in 3.2.** **Legacy named-format definition** retained for older 3.x peers"* |
+
+`LegacyFormat` is DERIVED and not an override: the document's `title` is "Format" and its
+`description` calls it a "Legacy named-format definition", and both are the document's words.
+`Format` on the canonical declaration is an ALIAS and not a class name, because that document
+is titled "Product Format Declaration" and §4 forbids minting a public name no document
+states — the alias layer is what serves a word that is not the document's, and upstream's own
+public `Format` already means this subject.
+
+**THE RENAME MUST BREAK, NOT REDIRECT.** The v1 definition is reachable only as `LegacyFormat`
+after this, so code that meant v1 raises instead of silently retargeting to v2. A public word
+that changes meaning while staying importable is the worst available outcome.
+
+**AND `format_id` IS NOT ON A REMOVAL SCHEDULE, which is why `LegacyFormat` stays fully
+supported.** Measured over the bundle: `format_ids` carries `x-removed-in: 4.0.0` at 13 sites;
+`format_id` names a removal version at NONE — 9 sites say `deprecated: true` with no target
+and **3 are not marked deprecated at all**. "Legacy" is the document's word for it, not a
+shutdown date.
 
 **THE CONVERSION IS ONE-WAY, AND THE REGISTRY SAYS SO NORMATIVELY.**
 `registries/v1-canonical-mapping.json` ("v1 → v2 Canonical Format Mapping Registry"):
