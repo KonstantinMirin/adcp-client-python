@@ -43,11 +43,34 @@ from typing import Any
 _NONE = re.compile(r"Input should be a valid \w+ \[type=\w+, input_value=None")
 _STATUS = re.compile(r"^E?\s*status\n(?:E\s+)?\s*Field required", re.M)
 
+#: **A SWALLOW DEFEATS EVERY RULE ABOVE, so the REDACTION is read instead.**  A broad
+#: ``except`` that raises a typed error hides the cause from a reader AND from this table:
+#: 17 failures reported ``SERVICE_UNAVAILABLE / transient`` for a ``GetPropertyListRequest``
+#: refused at ``pagination.cursor`` and read here as an unowned cause, because no rule can
+#: see a refusal the report does not carry.  ``adcp._redaction.refused_at`` now names the
+#: fault in the warning those paths already emit, as ``loc.path [type_code]``.
+#:
+#: The type codes below are the ones :data:`adcp.types._base.OmittedNotNull` produces for a
+#: null: it strikes the null arm, so what refuses is the TYPE's own keyword and the row
+#: reads ``string_type``/``list_type``/``model_type`` rather than anything naming null.
+#: That is why a redacted fault with one of them is the route-split cause -- stated here
+#: because it is an INFERENCE from the marker's own documented behaviour and not, like
+#: every other rule, a quotation of what the report says.
+_SWALLOWED_NULL = re.compile(
+    r"resolution failed: ValidationError: [^\n]*"
+    r"\[(?:string_type|list_type|model_type|dict_type|bool_type|int_type|float_type)\]"
+)
+
 RULES: tuple[tuple[str, str, Any], ...] = (
     (
         "presence",
         "a None where the document admits a value or the key's absence",
         lambda nid, txt: bool(_NONE.search(txt)) or "test_no_explicit_null" in nid,
+    ),
+    (
+        "presence",
+        "a swallowed refusal whose redacted fault is a struck null arm",
+        lambda nid, txt: bool(_SWALLOWED_NULL.search(txt)),
     ),
     (
         "nocanon",
