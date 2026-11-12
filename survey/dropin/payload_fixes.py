@@ -14,14 +14,27 @@ Our emitter states the field as the document does: required, from the nine-value
 to an assertion.**
 
 **WHAT MAY BE CORRECTED, AND IT IS A LINE.**  A row may exist only where the document
-*refuses* the payload, and the value it adds must be one the document *admits*:
+*refuses* the payload, the node must admit **SEVERAL** values, and the value the row adds
+must be one of them:
 
-* the document's own pin where there is one -- `media-buy/sync-reporting-receipts-response.json`
-  pins `status` to ``'completed'`` and that row's value is not a choice;
-* otherwise the value the payload's own neighbourhood states.  Every row below is a response
-  returned synchronously, in full, with no task handed off and no `task_id` minted -- several
-  are already wrapped by the suite's own ``TaskResult(status=TaskStatus.COMPLETED, ...)``,
-  which is the test saying what its scenario means.  ``'completed'`` is that reading.
+* **a pinned node is NOT a payload correction.**  Where `properties.<name>` carries a
+  ``const``, or an ``enum`` of length exactly one, the instance is choosing nothing and
+  supplying the value writes the document back into its own instances.  That omission is
+  the EMITTER's to close, on the Python route, with the JSON route still refusing it.  The
+  pair is in one bundle: `SyncReportingReceiptsResponse.status` is pinned to ``'completed'``
+  and `GetProductsResponse.status` is the whole nine-member ``TaskStatus`` -- so the
+  question is asked of the NODE and never of the property's name.  82 of the 559
+  ``Field required`` failures sit at a pinned node; see
+  ``verdicts/a-pinned-default-is-the-documents-own.md`` (bead ``adcp-client-python-rgra``).
+* **otherwise, the value the payload's own neighbourhood states.**  The ``status`` rows
+  below are responses returned synchronously, in full, with no task handed off and no
+  `task_id` minted -- several already wrapped by the suite's own
+  ``TaskResult(status=TaskStatus.COMPLETED, ...)``, which is the test saying what its
+  scenario means.  ``'completed'`` is that reading; the ``#/oneOf/1`` error arm takes
+  ``'failed'`` and ``#/oneOf/2`` takes ``'submitted'``.
+* **an `anyOf` refusal is a CHOICE OF ARM, and the payload's own shape makes it.**  Where
+  no branch admits the payload, each branch names something different as missing, so the
+  row has to say which arm the payload *means* and not which repair is smallest.
 
 No row changes an assertion, an expected value or a comparison.  Where a test's
 *expectation* disagrees with its document, that is a finding and the test is left failing;
@@ -86,6 +99,7 @@ class Construction:
     sites: int
     why: str
     keyword: str = "status"
+    verbatim: bool = False  # write `value` as source, not as a quoted string
 
 
 @dataclass(frozen=True)
@@ -105,6 +119,7 @@ class Literal:
     sites: int
     why: str
     keyword: str = "status"
+    verbatim: bool = False  # write `value` as source, not as a quoted string
 
 
 @dataclass(frozen=True)
@@ -129,6 +144,7 @@ class ViaHelper:
     sites: int
     why: str
     keyword: str = "status"
+    verbatim: bool = False
 
 
 # --------------------------------------------------------------------------------------
@@ -334,6 +350,43 @@ VIA_HELPERS: tuple[ViaHelper, ...] = (
 
 
 LITERALS: tuple[Literal, ...] = (
+    # **AN `anyOf` REFUSAL IS A CHOICE OF ARM, AND THE PAYLOAD'S OWN SHAPE MAKES IT.**
+    # `media-buy/create-media-buy-request.json` refuses this payload at the root and at all
+    # three arms, and each arm names something different as missing:
+    #
+    #   #/anyOf/0  "Explicit packages with fixed allocation"            packages.0.budget
+    #   #/anyOf/1  "Explicit packages with seller-optimized allocation" total_budget,
+    #                                                                  budget_allocation
+    #   #/anyOf/2  "Committed proposal execution"                       proposal_id,
+    #                                                                  total_budget
+    #
+    # The payload carries `packages` and no `total_budget`, no `budget_allocation` and no
+    # `proposal_id`, so arm 0 is the one it MEANS -- and arm 0's `not: {required:
+    # ['proposal_id']}` is already satisfied while arms 1 and 2 would each change what the
+    # request is. That is a semantic reading and not the smallest diff: arm 1 is the seller
+    # optimising a shared budget across packages, arm 2 is executing an agreed proposal, and
+    # this test is neither. Upstream's own comment beside the payload says so --
+    # "create-media-buy-request.json requires packages, a budget, or a proposal".
+    #
+    # `budget` is `type: number` at `media-buy/package-request.json`, "Hard lifetime spend
+    # cap for this package", with no pin -- hence `verbatim`, because "5000.0" is a string
+    # and the document refuses a string as firmly as it refused the omission.
+    Literal(
+        "tests/test_decisioning_handler.py",
+        "packages=[{",
+        "CreateMediaBuyRequest", "media-buy/create-media-buy-request.json", "#/anyOf/0",
+        "5000.0", 2,
+        "arm 0 is the arm the payload's shape names; `budget` is the only key it misses",
+        keyword="budget", verbatim=True,
+    ),
+    Literal(
+        "tests/test_decisioning_webhook_emit.py",
+        '"packages": [{',
+        "CreateMediaBuyRequest", "media-buy/create-media-buy-request.json", "#/anyOf/0",
+        "5000.0", 1,
+        "arm 0 is the arm the payload's shape names; `budget` is the only key it misses",
+        keyword="budget", verbatim=True,
+    ),
     # ``response_case`` returns (model, payload) pairs; the payload is a bare dict, so there
     # is no class name at the construction to key on.  One helper, five payloads.
     Literal(
@@ -446,6 +499,16 @@ LITERALS: tuple[Literal, ...] = (
 )
 
 
+def _rendered(row: object) -> str:
+    """The value as it goes into source: quoted, unless the row says it is written verbatim.
+
+    ``budget`` is a JSON ``number`` and ``"5000.0"`` is a string, which the document refuses
+    just as firmly as the omission did.  So the row says which, rather than the applier
+    guessing from the characters.
+    """
+    return row.value if getattr(row, "verbatim", False) else f'"{row.value}"'
+
+
 def _offsets(src: str) -> list[int]:
     """Absolute offset of the start of each 1-indexed line."""
     out, n = [0, 0], 0
@@ -495,11 +558,11 @@ def _construction_edits(src: str, row: Construction) -> list[tuple[int, str]]:
             if not isinstance(first, ast.Dict):
                 continue  # the payload is a variable -- a Literal row's job, not this one
             at = lines[first.lineno] + first.col_offset + 1  # just inside the `{`
-            edits.append((at, f'"{row.keyword}": {row.value!r}, '))
+            edits.append((at, f'"{row.keyword}": {_rendered(row)}, '))
         else:
             start = lines[func.end_lineno or func.lineno] + (func.end_col_offset or 0)
             at = src.index("(", start) + 1
-            edits.append((at, f"{row.keyword}={row.value!r}, "))
+            edits.append((at, f"{row.keyword}={_rendered(row)}, "))
     return edits
 
 
@@ -518,7 +581,7 @@ def _helper_edits(src: str, row: ViaHelper) -> list[tuple[int, str]]:
         if any(isinstance(k, ast.Constant) and k.value == row.keyword for k in data.keys):
             continue
         at = lines[data.lineno] + data.col_offset + 1
-        edits.append((at, f'"{row.keyword}": "{row.value}", '))
+        edits.append((at, f'"{row.keyword}": {_rendered(row)}, '))
     return edits
 
 
@@ -537,7 +600,7 @@ def _literal_edits(src: str, row: Literal) -> list[tuple[int, str]]:
     opens = row.anchor.index("{")
     at = src.find(row.anchor)
     while at != -1:
-        edits.append((at + opens + 1, f'"{row.keyword}": "{row.value}", '))
+        edits.append((at + opens + 1, f'"{row.keyword}": {_rendered(row)}, '))
         at = src.find(row.anchor, at + 1)
     return edits
 
