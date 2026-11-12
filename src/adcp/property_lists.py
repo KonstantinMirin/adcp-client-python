@@ -226,16 +226,23 @@ class MCPPropertyListFetcher:
                 else:
                     raise ValueError("property list exceeded max_pages")
         except Exception as exc:
-            # Upstream messages and exception chains can contain bearer credentials.
-            logger.warning("Property list resolution failed (%s)", type(exc).__name__)
-            # **AND THE FAULT, REDACTED, AT DEBUG** -- the class name alone said nothing.
+            # Upstream messages and exception chains can contain bearer credentials, so
+            # the FAULT is named and the VALUE is not (``adcp._redaction.refused_at``:
+            # each row's ``loc`` path and ``type`` code, every other field dropped).
+            #
+            # **IN THIS LINE AND NOT A SECOND ONE AT DEBUG**, which is the difference
+            # between a cause a report carries and a cause nobody sees.  pytest's default
+            # ``log_level`` is the root logger's, so a DEBUG record is never emitted and
+            # never reaches the "Captured log call" section of a failure -- the redaction
+            # would have been correct and invisible.  This warning was already being
+            # emitted and already in the report; it now says which node was refused
+            # instead of only the exception's class.
+            #
             # Measured: 17 failures reported ``SERVICE_UNAVAILABLE / transient`` for a
-            # ``GetPropertyListRequest`` refused at ``pagination.cursor``, and nothing in
-            # the report named the real cause, so ``survey.causes`` read them as an
-            # unowned one.  A broad ``except`` hides a cause from the ATTRIBUTION as well
-            # as from a reader.  ``refused_at`` takes each row's ``loc`` and ``type`` and
-            # drops every field that could carry the value.
-            logger.debug("Property list resolution refused: %s", refused_at(exc))
+            # ``GetPropertyListRequest`` refused at ``pagination.cursor`` and nothing in
+            # the report named it, so ``survey.causes`` read them as an unowned cause.  A
+            # broad ``except`` hides a cause from the ATTRIBUTION as well as from a reader.
+            logger.warning("Property list resolution failed: %s", refused_at(exc))
             raise AdcpError(
                 "SERVICE_UNAVAILABLE",
                 message="Property list resolution failed",
