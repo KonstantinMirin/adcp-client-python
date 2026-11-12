@@ -229,22 +229,31 @@ for mod in sorted(set(theirs_by_module) & set(ours_by_module)):
             branches.append((int(g.group(1)), o))
     branches.sort(key=lambda pair: pair[0])
     for t in theirs:
+        # **ONLY A TYPE GETS A TYPE ALIAS.**  The binding dump records `value` rows -- their
+        # module-level variables and constants -- and a rule that reads a name can match one:
+        # `branch-order` bound `channels_1` and `delivery_type_1`, lowercase variables, to
+        # `AdCPAudienceSync`, purely because the name ends in a digit.  That is a rule
+        # absorbing a row it does not understand, which is how a field-set key once bound
+        # upstream's `Brand` to our `GetAdCPCapabilitiesResponse`.  A `value` is not refused
+        # outright -- a constant of theirs their tests import is a real row -- but it may only
+        # be answered by its own WORD or by its own target, never by a structural rule.
+        structural = t["kind"] in ("model", "enum", "class")
         sig = (tuple(t["fields"]), tuple(t["required"]))
         pick = how = None
-        cand = by_sig.get(sig) or []
+        cand = (by_sig.get(sig) or []) if structural else []
         if len(cand) == 1:
             pick, how = cand[0]["path"], "signature"
         elif len(by_name.get(t["name"], [])) == 1:
             pick, how = by_name[t["name"]][0]["path"], "name"
         else:
-            g = re.match(r"^(.*?)(\d+)$", t["name"])
+            g = re.match(r"^(.*?)(\d+)$", t["name"]) if structural else None
             if g and branches:
                 k = int(g.group(2)) - 1  # their X1 is branch 0
                 if 0 <= k < len(branches):
                     pick, how = branches[k][1]["path"], "branch-order"
             if pick is None:
                 key = snake(t["name"])
-                hit = by_tail.get(key) or []
+                hit = (by_tail.get(key) or []) if structural else []
                 if len(hit) == 1:
                     pick, how = hit[0]["path"], "property-key"
         if pick is None:

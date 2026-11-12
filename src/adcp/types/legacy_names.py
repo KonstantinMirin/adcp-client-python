@@ -29,6 +29,8 @@ from typing import Annotated as AssetInstance
 from typing import Annotated as Assets30
 from typing import Annotated as AssignmentOperations
 from typing import Annotated as AuthorizedAgents
+from typing import Annotated as AuthorizedAgents7
+from typing import Annotated as AuthorizedAgents14
 from typing import Annotated as AuthorizedAgents21
 from typing import Annotated as AuthorizedAgents28
 from typing import Annotated as AuthorizedAgents35
@@ -49,9 +51,11 @@ from typing import Annotated as RecordedCalls
 from typing import Annotated as Refine
 from typing import Annotated as RefinementApplied
 from typing import Annotated as RequestProposalsProductId
+from typing import Annotated as Results3
 from typing import Annotated as Results8
 from typing import Annotated as Results14
 from typing import Annotated as StrictBool
+from typing import Annotated as StrictFloat
 from typing import Annotated as StrictStr
 from typing import Annotated as Targets
 from typing import Annotated as Variants
@@ -124,9 +128,6 @@ from adcp.types._schemas.account import sync_governance_request as sync_governan
 from adcp.types._schemas.account import sync_governance_response as sync_governance_response
 from adcp.types._schemas.account.get_account_financials_response import Balance as Balance
 from adcp.types._schemas.account.get_account_financials_response import Credit as Credit
-from adcp.types._schemas.account.get_account_financials_response import (
-    GetAccountFinancialsSuccess as date_range_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.account.get_account_financials_response import LastTopUp as LastTopUp
 from adcp.types._schemas.account.get_account_financials_response import Spend as Spend
 from adcp.types._schemas.account.list_account_changes_request import (
@@ -136,27 +137,6 @@ from adcp.types._schemas.account.list_account_changes_response import (
     SourceCoverageItem as SourceCoverageItem,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.account.report_usage_request import UsageItem as UsageItem
-from adcp.types._schemas.account.sync_accounts_response import (
-    SyncAccountsSuccess as account_authorization_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.account.sync_accounts_response import (
-    SyncAccountsSuccess as account_identity_change_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.account.sync_accounts_response import (
-    SyncAccountsSuccess as account_identity_change_preview_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.account.sync_accounts_response import (
-    SyncAccountsSuccess as account_scope_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.account.sync_accounts_response import (
-    SyncAccountsSuccess as billing_party_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.account.sync_accounts_response import (
-    SyncAccountsSuccess as notification_config_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.account.sync_accounts_response import (
-    SyncAccountsSuccess as reporting_delivery_config_state_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.adagents import AdcpAgentsAuthorization1 as AuthorizedAgents3
 from adcp.types._schemas.adagents import (
     AdCPAgentsAuthorizationAuthoritativeLocation as AdcpAgentsAuthorization2,  # noqa: E501 -- upstream published this spelling
@@ -177,9 +157,7 @@ from adcp.types._schemas.adagents import DisplayTagFormatDeclaration as Authoriz
 from adcp.types._schemas.adagents import HostedAudioFormatDeclaration as AuthorizedAgents10
 from adcp.types._schemas.adagents import HostedVideoFormatDeclaration as AuthorizedAgents8
 from adcp.types._schemas.adagents import HTML5FormatDeclaration as AuthorizedAgents4
-from adcp.types._schemas.adagents import ImageCarouselFormatDeclaration as AuthorizedAgents7
 from adcp.types._schemas.adagents import ImageFormatDeclaration as AuthorizedAgents1
-from adcp.types._schemas.adagents import NativeInFeedFormatDeclaration as AuthorizedAgents14
 from adcp.types._schemas.adagents import ResponsiveCreativeFormatDeclaration as AuthorizedAgents15
 from adcp.types._schemas.adagents import (
     SellerRenderedStatefulDisplayFormatDeclaration as AuthorizedAgents17,  # noqa: E501 -- upstream published this spelling
@@ -210,14 +188,8 @@ from adcp.types._schemas.brand import verify_brand_claims_request as verify_bran
 from adcp.types._schemas.brand import verify_brand_claims_response as verify_brand_claims_response
 from adcp.types._schemas.brand.acquire_rights_request import Campaign as Campaign
 from adcp.types._schemas.brand.get_brand_identity_response import Fonts as Fonts
-from adcp.types._schemas.brand.get_brand_identity_response import (
-    GetBrandIdentitySuccess as asset_content_type_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.brand.get_brand_identity_response import VoiceSynthesis as VoiceSynthesis
 from adcp.types._schemas.brand.get_rights_response import ExclusivityStatus as ExclusivityStatus
-from adcp.types._schemas.brand.get_rights_response import (
-    GetRightsSuccess as rights_pricing_option_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.brand.search_brands_response import Background as Background
 from adcp.types._schemas.brand.search_brands_response import RelationshipTrust as RelationshipTrust
 from adcp.types._schemas.brand.search_brands_response import SearchBrandResult as SearchBrandResult
@@ -267,9 +239,6 @@ from adcp.types._schemas.collection import (
 )
 from adcp.types._schemas.collection import (
     update_collection_list_response as update_collection_list_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection.base_collection_source import (
-    DistributionIDsSource as genre_taxonomy_1,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.collection.collection_list_filters import (
     IdentifiersItem as ExcludeDistributionId,  # noqa: E501 -- upstream published this spelling
@@ -371,12 +340,6 @@ from adcp.types._schemas.content_standards.get_media_buy_artifacts_request impor
 )
 from adcp.types._schemas.content_standards.get_media_buy_artifacts_response import (
     CollectionInfo as CollectionInfo,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards.get_media_buy_artifacts_response import (
-    GetMediaBuyArtifactsResponseArtifactsMediaBuyId as artifact_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards.get_media_buy_artifacts_response import (
-    GetMediaBuyArtifactsResponseArtifactsMediaBuyId as pagination_response_1,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.core import acceptance_policy_profile_ids as acceptance_policy_profile_ids
 from adcp.types._schemas.core import account_authorization as account_authorization
@@ -745,6 +708,7 @@ from adcp.types._schemas.core import principal_changed_webhook as principal_chan
 from adcp.types._schemas.core import principal_declarations as principal_declarations
 from adcp.types._schemas.core import principal_declarations_state as principal_declarations_state
 from adcp.types._schemas.core import principal_state as principal_state
+from adcp.types._schemas.core import product as product
 from adcp.types._schemas.core import product_allocation as product_allocation
 from adcp.types._schemas.core import product_allowed_action as product_allowed_action
 from adcp.types._schemas.core import (
@@ -984,13 +948,11 @@ from adcp.types._schemas.core.assets.asset_union import AssetVariantVideo as Pub
 from adcp.types._schemas.core.assets.asset_union import AssetVariantVideo as Role2
 from adcp.types._schemas.core.assets.asset_union import AssetVariantVideo as VastAsset2
 from adcp.types._schemas.core.assets.asset_union import AssetVariantZip as MacroDeclaration10
-from adcp.types._schemas.core.assets.daast_asset import DAASTAssetUrl as daast_version_1
 from adcp.types._schemas.core.assets.display_tag_asset import MarkupType as MarkupType
 from adcp.types._schemas.core.assets.published_post_asset import IdentityRef as IdentityRef
 from adcp.types._schemas.core.assets.published_post_asset import (
     ReferenceAuthorization as ReferenceAuthorization,  # noqa: E501 -- upstream published this spelling
 )
-from adcp.types._schemas.core.assets.vast_asset import VASTAssetUrl as vast_version_1
 from adcp.types._schemas.core.assets.video_asset import AudioBitDepth as AudioBitDepth
 from adcp.types._schemas.core.assets.video_asset import ChromaSubsampling as ChromaSubsampling
 from adcp.types._schemas.core.assets.video_asset import HdrFormat as HdrFormat
@@ -1099,7 +1061,6 @@ from adcp.types._schemas.core.education_item import Modality as Modality
 from adcp.types._schemas.core.error import BuyerReason as BuyerReason
 from adcp.types._schemas.core.error import DiscriminatorItem as DiscriminatorItem
 from adcp.types._schemas.core.evaluator_spec import EvalBudget as EvalBudget
-from adcp.types._schemas.core.evaluator_spec import EvaluatorSpecExemplars as feature_requirement_1
 from adcp.types._schemas.core.evaluator_spec import ObjAgentUrlFeatureId as FeatureAgent
 from adcp.types._schemas.core.evaluator_spec import RankByItem as RankByItem
 from adcp.types._schemas.core.evaluator_spec import RankByItem as RankByItem1
@@ -1225,10 +1186,6 @@ from adcp.types._schemas.core.package_signal_targeting import (
 )
 from adcp.types._schemas.core.package_signal_targeting_group import Operator as Operator
 from adcp.types._schemas.core.performance_feedback import DatetimeRange as MeasurementPeriod
-from adcp.types._schemas.core.performance_feedback import (
-    ObjScopeMetricIdQualifier as feedback_source_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.performance_feedback import ObjScopeMetricIdQualifier as metric_type_1
 from adcp.types._schemas.core.performance_feedback import PerformanceFeedback as Performance
 from adcp.types._schemas.core.performance_feedback_assertion import (
     ConfidenceInterval as ConfidenceInterval,  # noqa: E501 -- upstream published this spelling
@@ -1304,10 +1261,6 @@ from adcp.types._schemas.core.product import ProductCard as ProductCard
 from adcp.types._schemas.core.product import ProductCardDetailed as ProductCardDetailed
 from adcp.types._schemas.core.product_execution_requirement import Connection as Connection
 from adcp.types._schemas.core.product_filters import AdCPAudienceSync as SignalTargetingItem1
-from adcp.types._schemas.core.product_filters import AdCPAudienceSync as channels_1
-from adcp.types._schemas.core.product_filters import AdCPAudienceSync as delivery_type_1
-from adcp.types._schemas.core.product_filters import AdCPAudienceSync as exclusivity_1
-from adcp.types._schemas.core.product_filters import AdCPAudienceSync as match_type_1
 from adcp.types._schemas.core.product_filters import (
     RequiredGeoTargetingItem as RequiredGeoTargetingItem,  # noqa: E501 -- upstream published this spelling
 )
@@ -1400,12 +1353,6 @@ from adcp.types._schemas.core.registry_event import (
 )
 from adcp.types._schemas.core.registry_event import (
     RegistryEventPropertyCreatedProperty as RegistryEvent1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPropertyCreatedProperty as collection_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPropertyCreatedProperty as property_1,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.core.registry_event import RegistryEventPropertyMergedProperty as Payload3
 from adcp.types._schemas.core.registry_event import (
@@ -1622,12 +1569,6 @@ from adcp.types._schemas.core.wholesale_feed_event import (
     WholesaleFeedEventProductCreatedProduct as WholesaleFeedEvent1,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventProductCreatedProduct as canonical_product_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventProductCreatedProduct as product_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
     WholesaleFeedEventProductPricedProduct as WholesaleFeedEvent3,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.core.wholesale_feed_event import (
@@ -1710,31 +1651,10 @@ from adcp.types._schemas.creative.preview_creative_request import (
 )
 from adcp.types._schemas.creative.preview_creative_request import RequestType as RequestType
 from adcp.types._schemas.creative.preview_creative_response import (
-    PreviewCreativeSingleResponse as creative_quality_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.preview_creative_response import (
     PreviewCreativeSubmitted as LegacyPreviewCreativeResponse4,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.creative.preview_creative_response import (
     PreviewCreativeSubmitted as LegacyPreviewCreativeSubmittedResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.sync_creatives_request import (
-    V1CreativeNamedFormatReference as validation_mode_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.sync_creatives_response import (
-    SyncCreativesSuccess as creative_action_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.sync_creatives_response import (
-    SyncCreativesSuccess as creative_localization_readback_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.sync_creatives_response import (
-    SyncCreativesSuccess as creative_revision_id_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.sync_creatives_response import (
-    SyncCreativesSuccess as creative_status_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.sync_creatives_response import (
-    SyncCreativesSuccess as macro_resolution_result_1,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.creative.validate_input_result import ResultKind as ResultKind
 from adcp.types._schemas.enums import account_currency_mode as account_currency_mode
@@ -2003,9 +1923,6 @@ from adcp.types._schemas.error_details import (
 from adcp.types._schemas.error_details import vast_version_mismatch as vast_version_mismatch
 from adcp.types._schemas.error_details import vendor_error_codes as vendor_error_codes
 from adcp.types._schemas.error_details import version_unsupported as version_unsupported
-from adcp.types._schemas.error_details.governance_agent_not_accepted import (
-    GovernanceAgentNotAcceptedDetailsDisclosed as accepted_governance_agents_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.error_details.stale_response import OriginalError as OriginalError
 from adcp.types._schemas.error_details.stale_response import Upstream as Upstream
 from adcp.types._schemas.error_details.vast_version_mismatch import (
@@ -2024,6 +1941,7 @@ from adcp.types._schemas.formats.canonical import audio_hosted as audio_hosted
 from adcp.types._schemas.formats.canonical import audio_vast as audio_vast
 from adcp.types._schemas.formats.canonical import coordinated_placements as coordinated_placements
 from adcp.types._schemas.formats.canonical import display_tag as display_tag
+from adcp.types._schemas.formats.canonical import html5 as html5
 from adcp.types._schemas.formats.canonical import image as image
 from adcp.types._schemas.formats.canonical import image_carousel as image_carousel
 from adcp.types._schemas.formats.canonical import native_in_feed as native_in_feed
@@ -2158,9 +2076,6 @@ from adcp.types._schemas.governance.check_governance_request import (
 )
 from adcp.types._schemas.governance.check_governance_request import (
     AttestationResourceSubject as RuntimeAttestation1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.check_governance_request import (
-    AttestationResourceSubject as purchase_type_1,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.governance.check_governance_request import (
     AudienceDistribution as AudienceDistribution,  # noqa: E501 -- upstream published this spelling
@@ -2321,36 +2236,12 @@ from adcp.types._schemas.media_buy.build_creative_request import (
     SignalTargetingBinary as SignalCondition1,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.media_buy.build_creative_request import (
-    SignalTargetingBinary as creative_representation_set_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_request import (
-    SignalTargetingBinary as preview_output_format_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_request import (
-    SignalTargetingBinary as representation_destination_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_request import (
-    SignalTargetingBinary as representation_selection_strategy_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_request import (
     SignalTargetingCategorical as SignalCondition2,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.media_buy.build_creative_request import (
     SignalTargetingNumeric as SignalCondition3,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.media_buy.build_creative_request import VariantAxis as VariantAxis
-from adcp.types._schemas.media_buy.build_creative_response import (
-    BuildCreativeSuccess as creative_consumption_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_response import (
-    BuildCreativeSuccess as creative_feature_result_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_response import (
-    BuildCreativeSuccess as creative_selection_strategy_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_response import (
-    BuildCreativeSuccess as signal_targeting_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.media_buy.build_creative_response import CatalogItemRef as CatalogItemRef
 from adcp.types._schemas.media_buy.build_creative_response import Estimate as Estimate
 from adcp.types._schemas.media_buy.build_creative_response import Eval as Eval
@@ -2364,9 +2255,6 @@ from adcp.types._schemas.media_buy.create_media_buy_request import (
     ArtifactWebhook as ArtifactWebhook,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.media_buy.create_media_buy_request import BatchFrequency as BatchFrequency
-from adcp.types._schemas.media_buy.create_media_buy_request import (
-    BudgetAllocationFixed as budget_allocation_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.media_buy.create_media_buy_request import DeliveryMode as DeliveryMode
 from adcp.types._schemas.media_buy.create_media_buy_response import (
     CreateMediaBuyError as LegacyCreateMediaBuyErrorResponse,  # noqa: E501 -- upstream published this spelling
@@ -2394,9 +2282,6 @@ from adcp.types._schemas.media_buy.decline_proposals_response import (
 )
 from adcp.types._schemas.media_buy.decline_proposals_response import (
     DeclineProposalsResponseResults as Results1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.decline_proposals_response import (
-    DeclineProposalsResponseSubmitted as Results3,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.media_buy.get_media_buy_delivery_request import (
     DeliveryBreakdownControls as CatalogItem,  # noqa: E501 -- upstream published this spelling
@@ -2463,9 +2348,6 @@ from adcp.types._schemas.media_buy.list_products_response import (
 from adcp.types._schemas.media_buy.package_request import (
     ObjScopeMetricIdQualifier as CommittedMetrics1,  # noqa: E501 -- upstream published this spelling
 )
-from adcp.types._schemas.media_buy.package_request import (
-    ObjScopeMetricIdQualifier as measurement_terms_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.media_buy.package_request import PackageRequest as PublicPackageRequest
 from adcp.types._schemas.media_buy.package_update import KeywordTarget as KeywordTargetsAddItem
 from adcp.types._schemas.media_buy.package_update import NegativeKeyword as KeywordTargetsRemoveItem
@@ -2493,12 +2375,6 @@ from adcp.types._schemas.media_buy.proposal_refinement import (
 )
 from adcp.types._schemas.media_buy.refine_proposals_response import (
     RefineProposalsResponseCompleted as RefineProposalsResponse1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.refine_proposals_response import (
-    RefineProposalsResponseCompleted as commercial_terms_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.refine_proposals_response import (
-    RefineProposalsResponseCompleted as insertion_order_1,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.media_buy.refine_proposals_response import (
     RefineProposalsResponseSubmitted as Proposal2,  # noqa: E501 -- upstream published this spelling
@@ -2543,33 +2419,6 @@ from adcp.types._schemas.media_buy.request_proposals_response import (
     SourceAdcpVersion as SourceAdcpVersion,  # noqa: E501 -- upstream published this spelling
 )
 from adcp.types._schemas.media_buy.sync_audiences_request import AudienceType as AudienceType
-from adcp.types._schemas.media_buy.sync_audiences_response import (
-    SyncAudiencesSuccess as audience_status_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.sync_audiences_response import (
-    SyncAudiencesSuccess as match_id_type_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.sync_catalogs_response import (
-    SyncCatalogsSuccess as catalog_action_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.sync_catalogs_response import (
-    SyncCatalogsSuccess as catalog_item_availability_state_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.sync_catalogs_response import (
-    SyncCatalogsSuccess as catalog_item_availability_update_result_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.sync_catalogs_response import (
-    SyncCatalogsSuccess as catalog_item_status_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.sync_event_sources_response import (
-    SyncEventSourcesSuccess as action_source_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.sync_event_sources_response import (
-    SyncEventSourcesSuccess as event_source_health_1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.sync_event_sources_response import (
-    SyncEventSourcesSuccess as event_surface_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.media_buy.update_media_buy_response import (
     UpdateMediaBuyError as LegacyUpdateMediaBuyErrorResponse,  # noqa: E501 -- upstream published this spelling
 )
@@ -2812,8 +2661,8 @@ from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
 )
 from adcp.types._schemas.protocol.sync_principal_request import Configuration as Configuration
 from adcp.types._schemas.registries import v1_canonical_mapping as v1_canonical_mapping
-from adcp.types._schemas.registries.v1_canonical_mapping import V2 as V1CanonicalV2Projection
-from adcp.types._schemas.registries.v1_canonical_mapping import V2 as V2  # noqa: N814 -- upstream published this spelling
+from adcp.types._schemas.registries.v1_canonical_mapping import V2 as V1CanonicalV2Projection  # noqa: N811 -- upstream published this spelling
+from adcp.types._schemas.registries.v1_canonical_mapping import V2 as V2
 from adcp.types._schemas.registries.v1_canonical_mapping import MappingsItem as Mapping
 from adcp.types._schemas.registries.v1_canonical_mapping import Structural as Structural
 from adcp.types._schemas.registries.v1_canonical_mapping import Structural as V1CanonicalStructural
@@ -2827,9 +2676,6 @@ from adcp.types._schemas.signals import activate_signal_request as activate_sign
 from adcp.types._schemas.signals import activate_signal_response as activate_signal_response
 from adcp.types._schemas.signals import get_signals_request as get_signals_request
 from adcp.types._schemas.signals import get_signals_response as get_signals_response
-from adcp.types._schemas.signals.activate_signal_response import (
-    ActivateSignalSuccess as deployment_1,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.signals.get_signals_async_response_submitted import (
     GetSignalsSubmitted as GetSignalsSubmittedResponse,  # noqa: E501 -- upstream published this spelling
 )
@@ -3056,8 +2902,10 @@ from adcp.types.base import BeforeValidator as BeforeValidator
 from adcp.types.base import Generic as Generic
 from adcp.types.base import MessageFormatter as MessageFormatter
 from adcp.types.base import MockValSer as MockValSer
+from adcp.types.base import NoExplicitNull as NoExplicitNull
 from adcp.types.base import PydanticSerializationError as PydanticSerializationError
 from adcp.types.base import PydanticUndefined as PydanticUndefined
+from adcp.types.base import SchemaInt as SchemaInt
 from adcp.types.base import SerializationInfo as SerializationInfo
 from adcp.types.base import SerializerFunctionWrapHandler as SerializerFunctionWrapHandler
 from adcp.types.base import StrictInt as StrictInt
@@ -3077,8 +2925,8 @@ from adcp.types.capabilities import (
 from adcp.types.capabilities import CapabilitiesPreviewRoute as CapabilitiesPreviewRoute
 from adcp.types.capabilities import ExperimentalFeature as ExperimentalFeature
 from adcp.types.capabilities import Transport as Transport
-from adcp.types.constraints import T as T  # noqa: N814 -- upstream published this spelling
-from adcp.types.core import DEFAULT_MAX_RESPONSE_BYTES as DEFAULT_MAX_RESPONSE_BYTES  # noqa: N814 -- upstream published this spelling
+from adcp.types.constraints import T as T
+from adcp.types.core import DEFAULT_MAX_RESPONSE_BYTES as DEFAULT_MAX_RESPONSE_BYTES
 from adcp.types.core import Activity as Activity
 from adcp.types.core import ActivityType as ActivityType
 from adcp.types.core import AgentConfig as AgentConfig
@@ -3591,6 +3439,7 @@ __all__ = [
     "NegativeKeywords",
     "NegativeKeywordsAddItem",
     "NegativeKeywordsRemoveItem",
+    "NoExplicitNull",
     "Oauth",
     "Objective",
     "ObligationCounts",
@@ -3827,6 +3676,7 @@ __all__ = [
     "Salary",
     "Sandbox",
     "ScalarBinding",
+    "SchemaInt",
     "SchemaSerializer",
     "SchemaValidator",
     "Scheme",
@@ -3869,6 +3719,7 @@ __all__ = [
     "StatusSummary",
     "Statuses",
     "StrictBool",
+    "StrictFloat",
     "StrictInt",
     "StrictStr",
     "Structural",
@@ -4027,21 +3878,16 @@ __all__ = [
     "acceptance_policy_requirement",
     "acceptance_policy_rule",
     "accepted_governance_agents",
-    "accepted_governance_agents_1",
     "accessibility_violation",
     "account_authorization",
-    "account_authorization_1",
     "account_change",
     "account_change_recorded_webhook",
     "account_currency_mode",
     "account_identity_change",
-    "account_identity_change_1",
     "account_identity_change_preview",
-    "account_identity_change_preview_1",
     "account_moved",
     "account_ref",
     "account_scope",
-    "account_scope_1",
     "account_setup_required",
     "account_status",
     "account_status_changed_webhook",
@@ -4052,7 +3898,6 @@ __all__ = [
     "action_not_allowed",
     "action_not_allowed_reason",
     "action_source",
-    "action_source_1",
     "activate_signal_request",
     "activate_signal_response",
     "activation_key",
@@ -4076,11 +3921,9 @@ __all__ = [
     "app_item",
     "applicable_package_id",
     "artifact",
-    "artifact_1",
     "artifact_webhook_payload",
     "assessment_status",
     "asset_content_type",
-    "asset_content_type_1",
     "asset_group_vocabulary",
     "asset_requirements",
     "asset_union",
@@ -4109,7 +3952,6 @@ __all__ = [
     "audience_resolution_method",
     "audience_selector",
     "audience_status",
-    "audience_status_1",
     "audience_subject_type",
     "audience_too_small",
     "audio_asset",
@@ -4134,7 +3976,6 @@ __all__ = [
     "billing_not_permitted_for_agent",
     "billing_not_supported",
     "billing_party",
-    "billing_party_1",
     "binary_verdict",
     "bound_value",
     "brand_agent_type",
@@ -4145,7 +3986,6 @@ __all__ = [
     "brief_asset",
     "browser_family",
     "budget_allocation",
-    "budget_allocation_1",
     "budget_range",
     "budget_too_low",
     "build_creative_request",
@@ -4179,7 +4019,6 @@ __all__ = [
     "canonical_placement",
     "canonical_pricing_option",
     "canonical_product",
-    "canonical_product_1",
     "canonical_product_action",
     "canonical_projection_ref",
     "canonical_projection_slot_override",
@@ -4192,21 +4031,17 @@ __all__ = [
     "cast",
     "catalog",
     "catalog_action",
-    "catalog_action_1",
     "catalog_asset",
     "catalog_field_binding",
     "catalog_field_mapping",
     "catalog_item_availability_error",
     "catalog_item_availability_ref",
     "catalog_item_availability_state",
-    "catalog_item_availability_state_1",
     "catalog_item_availability_update",
     "catalog_item_availability_update_result",
-    "catalog_item_availability_update_result_1",
     "catalog_item_delivery_metrics",
     "catalog_item_reference_not_found_error",
     "catalog_item_status",
-    "catalog_item_status_1",
     "catalog_requirements",
     "catalog_selection",
     "catalog_type",
@@ -4214,12 +4049,10 @@ __all__ = [
     "change_term",
     "change_term_constraints",
     "channels",
-    "channels_1",
     "check_governance_request",
     "check_governance_response",
     "cloud_storage_protocol",
     "co_branding_requirement",
-    "collection_1",
     "collection_cadence",
     "collection_delivery_metrics",
     "collection_distribution",
@@ -4235,7 +4068,6 @@ __all__ = [
     "collection_selector",
     "collection_status",
     "commercial_terms",
-    "commercial_terms_1",
     "committed_metric",
     "compact_task_input_required",
     "compact_task_submitted",
@@ -4271,7 +4103,6 @@ __all__ = [
     "create_property_list_request",
     "create_property_list_response",
     "creative_action",
-    "creative_action_1",
     "creative_agent_capability",
     "creative_approval_request",
     "creative_approval_response",
@@ -4283,37 +4114,29 @@ __all__ = [
     "creative_assignment_changed_webhook",
     "creative_brief",
     "creative_consumption",
-    "creative_consumption_1",
     "creative_delivery_metrics",
     "creative_event_reason_code",
     "creative_feature_result",
-    "creative_feature_result_1",
     "creative_filters",
     "creative_identifier_type",
     "creative_item",
     "creative_locale_policy",
     "creative_localization",
     "creative_localization_readback",
-    "creative_localization_readback_1",
     "creative_manifest",
     "creative_operation_format_declaration",
     "creative_policy",
     "creative_purged_webhook",
     "creative_quality",
-    "creative_quality_1",
     "creative_rejected",
     "creative_representation",
     "creative_representation_set",
-    "creative_representation_set_1",
     "creative_representation_unresolved",
     "creative_revision_content_mismatch",
     "creative_revision_id",
-    "creative_revision_id_1",
     "creative_selection_strategy",
-    "creative_selection_strategy_1",
     "creative_sort_field",
     "creative_status",
-    "creative_status_1",
     "creative_status_changed_webhook",
     "creative_variable",
     "creative_variant",
@@ -4326,10 +4149,8 @@ __all__ = [
     "daast_tracker_constraints",
     "daast_tracking_event",
     "daast_version",
-    "daast_version_1",
     "data_provider_signal_selector",
     "date_range",
-    "date_range_1",
     "datetime",
     "datetime_range",
     "day_of_week",
@@ -4354,7 +4175,6 @@ __all__ = [
     "delivery_record",
     "delivery_status",
     "delivery_type",
-    "delivery_type_1",
     "demographic_age_range",
     "demographic_predicate",
     "demographic_reporting_capability",
@@ -4363,7 +4183,6 @@ __all__ = [
     "demographic_targeting_intent",
     "demographic_targeting_resolution",
     "deployment",
-    "deployment_1",
     "derivative_type",
     "destination",
     "destination_item",
@@ -4390,22 +4209,17 @@ __all__ = [
     "event",
     "event_custom_data",
     "event_source_health",
-    "event_source_health_1",
     "event_surface",
-    "event_surface_1",
     "event_type",
     "exclusivity",
-    "exclusivity_1",
     "execution_requirement_unmet",
     "experimental_feature_id",
     "ext",
     "extension_meta",
     "feature_check_status",
     "feature_requirement",
-    "feature_requirement_1",
     "feed_format",
     "feedback_source",
-    "feedback_source_1",
     "field_validator",
     "flat_rate_option",
     "flight_item",
@@ -4442,7 +4256,6 @@ __all__ = [
     "generated",
     "generation_credential",
     "genre_taxonomy",
-    "genre_taxonomy_1",
     "geo_breakdown_support",
     "geo_delivery_metrics",
     "geo_level",
@@ -4509,6 +4322,7 @@ __all__ = [
     "governance_phase",
     "history_entry_type",
     "hotel_item",
+    "html5",
     "html_asset",
     "html_asset_requirements",
     "http_method",
@@ -4531,7 +4345,6 @@ __all__ = [
     "indicators_changed_webhook",
     "industry_identifier",
     "insertion_order",
-    "insertion_order_1",
     "installment",
     "installment_deadlines",
     "installment_delivery_metrics",
@@ -4585,7 +4398,6 @@ __all__ = [
     "macro_resolution_failed",
     "macro_resolution_reason",
     "macro_resolution_result",
-    "macro_resolution_result_1",
     "macro_resolver",
     "macro_translation_target",
     "macro_value_context",
@@ -4594,14 +4406,11 @@ __all__ = [
     "markdown_asset_requirements",
     "markdown_flavor",
     "match_id_type",
-    "match_id_type_1",
     "match_type",
-    "match_type_1",
     "material_deadline",
     "mcp_webhook_payload",
     "measurement_readiness",
     "measurement_terms",
-    "measurement_terms_1",
     "measurement_window",
     "media_buy_action_mode",
     "media_buy_available_action",
@@ -4623,7 +4432,6 @@ __all__ = [
     "media_buy_valid_action",
     "metric_scope",
     "metric_type",
-    "metric_type_1",
     "metro_system",
     "missing_metric",
     "model_serializer",
@@ -4634,7 +4442,6 @@ __all__ = [
     "negative_keyword",
     "normalize_to_release_precision",
     "notification_config",
-    "notification_config_1",
     "notification_type",
     "offer",
     "offer_price",
@@ -4666,7 +4473,6 @@ __all__ = [
     "package_update",
     "pagination_request",
     "pagination_response",
-    "pagination_response_1",
     "payment_terms",
     "performance_baseline",
     "performance_feedback",
@@ -4702,7 +4508,6 @@ __all__ = [
     "preview_creative_request",
     "preview_creative_response",
     "preview_output_format",
-    "preview_output_format_1",
     "preview_provider",
     "preview_render",
     "preview_renderer_metadata",
@@ -4717,7 +4522,7 @@ __all__ = [
     "principal_declarations_state",
     "principal_kind",
     "principal_state",
-    "product_1",
+    "product",
     "product_allocation",
     "product_allowed_action",
     "product_audience_evidence_requirements",
@@ -4736,7 +4541,6 @@ __all__ = [
     "product_signal_targeting_option",
     "product_targeting_resolution",
     "production_quality",
-    "property_1",
     "property_delivery_metrics",
     "property_error",
     "property_feature",
@@ -4771,7 +4575,6 @@ __all__ = [
     "publisher_targeting_kv_config",
     "publisher_tmpx_config",
     "purchase_type",
-    "purchase_type_1",
     "push_notification_config",
     "rate_limited",
     "reach_aggregation",
@@ -4802,7 +4605,6 @@ __all__ = [
     "reporting_delivery_capabilities",
     "reporting_delivery_config",
     "reporting_delivery_config_state",
-    "reporting_delivery_config_state_1",
     "reporting_delivery_method",
     "reporting_delivery_offering",
     "reporting_delivery_offering_id",
@@ -4835,11 +4637,9 @@ __all__ = [
     "reporting_webhook",
     "reporting_write_destination",
     "representation_destination",
-    "representation_destination_1",
     "representation_rejection",
     "representation_selection",
     "representation_selection_strategy",
-    "representation_selection_strategy_1",
     "request_proposals_request",
     "request_proposals_response",
     "request_signing_error_code",
@@ -4858,7 +4658,6 @@ __all__ = [
     "rights_billing_period",
     "rights_constraint",
     "rights_pricing_option",
-    "rights_pricing_option_1",
     "rights_terms",
     "scan_type",
     "search_brands_request",
@@ -4897,7 +4696,6 @@ __all__ = [
     "signal_selection_group_rule",
     "signal_source",
     "signal_targeting",
-    "signal_targeting_1",
     "signal_targeting_expression",
     "signal_targeting_rules",
     "signal_value_type",
@@ -4996,7 +4794,6 @@ __all__ = [
     "validate_property_delivery_request",
     "validate_property_delivery_response",
     "validation_mode",
-    "validation_mode_1",
     "validation_result",
     "vast_asset",
     "vast_asset_requirements",
@@ -5006,7 +4803,6 @@ __all__ = [
     "vast_tracker_constraints",
     "vast_tracking_event",
     "vast_version",
-    "vast_version_1",
     "vast_version_mismatch",
     "vcpm_option",
     "vehicle_item",
@@ -6991,27 +6787,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.assets.video_asset.Field",
         "adcp.types._schemas.core.assets.webhook_asset.Field",
         "adcp.types._schemas.core.assets.zip_asset.Field",
-        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.annotations",
         "adcp.types._schemas.core.attestation_capabilities.Field",
         "adcp.types._schemas.core.attestation_evaluation.Field",
         "adcp.types._schemas.core.attestation_issuer.Field",
@@ -7772,14 +7547,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.assets.video_asset.Literal",
         "adcp.types._schemas.core.assets.webhook_asset.Literal",
         "adcp.types._schemas.core.assets.zip_asset.Literal",
-        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
         "adcp.types._schemas.core.attestation_issuer.Literal",
         "adcp.types._schemas.core.attestation_reference.Literal",
         "adcp.types._schemas.core.attestation_subject.Literal",
@@ -8023,30 +7790,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.transformer.Multiplicity",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.Multiplicity",
     ],
-    "NoExplicitNull": [
-        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.annotations",
-        "adcp.types.base.NoExplicitNull",
-    ],
     "Onboarder": [
         "adcp.types._schemas.core.signal_definition.Onboarder",
         "adcp.types._schemas.core.signal_definition_enrichment.Onboarder",
@@ -8199,16 +7942,6 @@ __adcp_ambiguous__ = {
     "Route": [
         "adcp.types._schemas.core.preview_provider.Route",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.Route",
-    ],
-    "SchemaInt": [
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.annotations",
-        "adcp.types.base.SchemaInt",
     ],
     "Scope": [
         "adcp.types._schemas.content_standards.create_content_standards_request.Scope",
@@ -8747,16 +8480,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.trusted_match.provider_registration.StrEnum",
         "enum.StrEnum",
     ],
-    "StrictFloat": [
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.annotations",
-        "typing.Annotated",
-    ],
     "Summary": [
         "adcp.types._schemas.content_standards.validate_content_delivery_response.Summary",
         "adcp.types._schemas.governance.get_plan_audit_logs_response.Summary",
@@ -8867,51 +8590,9 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_working",
         "adcp.types._schemas.media_buy.accept_proposal_async_response_working",
     ],
-    "account_1": [
-        "adcp.types._schemas.creative.sync_creatives_response.SyncCreativesSuccess",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-    ],
-    "account_ref_1": [
-        "adcp.types._schemas.account.get_account_financials_response.GetAccountFinancialsSuccess",
-        "adcp.types._schemas.account.sync_accounts_response.SyncAccountsSuccess",
-    ],
-    "activation_key_1": [
-        "adcp.types._schemas.core.deployment.DeploymentPlatform",
-        "adcp.types._schemas.core.package_signal_targeting.SignalTargetingExpressionBinary",
-    ],
-    "advertiser_industry_1": [
-        "adcp.types._schemas.media_buy.buy_products_request.CanonicalAccountReferenceAccountId",
-        "adcp.types._schemas.media_buy.create_media_buy_request.BudgetAllocationFixed",
-    ],
-    "attribution_methodology_1": [
-        "adcp.types._schemas.core.committed_metric.CommittedMetricStandard",
-        "adcp.types._schemas.core.delivery_metric_aggregate.DeliveryMetricAggregateStandard",
-        "adcp.types._schemas.core.missing_metric.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.core.package_delivery_metric_value.DeliveryMetricAggregateStandard",
-        "adcp.types._schemas.core.performance_feedback.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.core.performance_feedback_metric.PerformanceFeedbackMetricStandard",
-        "adcp.types._schemas.media_buy.package_request.ObjScopeMetricIdQualifier",
-    ],
-    "attribution_window_1": [
-        "adcp.types._schemas.core.budget_allocation.BudgetAllocationFixed",
-        "adcp.types._schemas.core.canonical_optimization_goal.CanonicalOptimizationGoalMetric",
-        "adcp.types._schemas.core.optimization_goal.OptimizationGoalMetric",
-    ],
-    "audience_evidence_requirements_1": [
-        "adcp.types._schemas.core.product_filters.AdCPAudienceSync",
-        "adcp.types._schemas.media_buy.package_request.ObjScopeMetricIdQualifier",
-    ],
     "audience_source": [
         "adcp.types._schemas.core.audience_source",
         "adcp.types._schemas.enums.audience_source",
-    ],
-    "binary_verdict_1": [
-        "adcp.types._schemas.content_standards.calibrate_content_response.CalibrateContentResponseVerdict",
-        "adcp.types._schemas.content_standards.validate_content_delivery_response.ValidateContentDeliveryResponseResultsSummary",
-    ],
-    "brand_ref_1": [
-        "adcp.types._schemas.account.sync_accounts_response.SyncAccountsSuccess",
-        "adcp.types._schemas.media_buy.sync_audiences_response.SyncAudiencesSuccess",
     ],
     "build_creative_async_response_input_required": [
         "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required",
@@ -8924,11 +8605,6 @@ __adcp_ambiguous__ = {
     "build_creative_async_response_working": [
         "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working",
         "adcp.types._schemas.media_buy.build_creative_async_response_working",
-    ],
-    "business_entity_1": [
-        "adcp.types._schemas.account.sync_accounts_response.SyncAccountsSuccess",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
     ],
     "buy_products_async_response_input_required": [
         "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_input_required",
@@ -8945,84 +8621,6 @@ __adcp_ambiguous__ = {
     "canonical_media_buy_action": [
         "adcp.types._schemas.core.canonical_media_buy_action",
         "adcp.types._schemas.enums.canonical_media_buy_action",
-    ],
-    "completion_source_1": [
-        "adcp.types._schemas.core.committed_metric.CommittedMetricStandard",
-        "adcp.types._schemas.core.delivery_metric_aggregate.DeliveryMetricAggregateStandard",
-        "adcp.types._schemas.core.missing_metric.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.core.package_delivery_metric_value.DeliveryMetricAggregateStandard",
-        "adcp.types._schemas.core.performance_feedback.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.core.performance_feedback_metric.PerformanceFeedbackMetricStandard",
-        "adcp.types._schemas.media_buy.package_request.ObjScopeMetricIdQualifier",
-    ],
-    "context_1": [
-        "adcp.types._schemas.account.get_account_financials_response.GetAccountFinancialsSuccess",
-        "adcp.types._schemas.account.list_account_changes_response.ListAccountChangesResponseCompleted",
-        "adcp.types._schemas.account.sync_accounts_response.SyncAccountsSuccess",
-        "adcp.types._schemas.account.sync_governance_response.SyncGovernanceSuccess",
-        "adcp.types._schemas.brand.acquire_rights_response.AcquireRightsAcquired",
-        "adcp.types._schemas.brand.creative_approval_response.CreativeApproved",
-        "adcp.types._schemas.brand.get_brand_identity_response.GetBrandIdentitySuccess",
-        "adcp.types._schemas.brand.get_rights_response.GetRightsSuccess",
-        "adcp.types._schemas.brand.search_brands_response.SearchBrandsSuccess",
-        "adcp.types._schemas.brand.update_rights_response.UpdateRightsSuccess",
-        "adcp.types._schemas.brand.verify_brand_claim_response.VerifyBrandClaimSuccess",
-        "adcp.types._schemas.brand.verify_brand_claims_response.VerifyBrandClaimsSuccess",
-        "adcp.types._schemas.compliance.comply_test_controller_response.ListScenariosSuccess",
-        "adcp.types._schemas.content_standards.calibrate_content_response.CalibrateContentResponseVerdict",
-        "adcp.types._schemas.content_standards.create_content_standards_response.CreateContentStandardsResponseStandardsId",
-        "adcp.types._schemas.content_standards.get_content_standards_response.GetContentStandardsResponseSuccess",
-        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.GetMediaBuyArtifactsResponseArtifactsMediaBuyId",
-        "adcp.types._schemas.content_standards.list_content_standards_response.ListContentStandardsResponseStandards",
-        "adcp.types._schemas.content_standards.update_content_standards_response.UpdateContentStandardsSuccess",
-        "adcp.types._schemas.content_standards.validate_content_delivery_response.ValidateContentDeliveryResponseResultsSummary",
-        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.annotations",
-        "adcp.types._schemas.creative.get_creative_features_response.GetCreativeFeaturesResponseSuccess",
-        "adcp.types._schemas.creative.preview_creative_response.PreviewCreativeSingleResponse",
-        "adcp.types._schemas.creative.sync_creatives_request.V1CreativeNamedFormatReference",
-        "adcp.types._schemas.creative.sync_creatives_response.SyncCreativesSuccess",
-        "adcp.types._schemas.governance.check_governance_request.AttestationResourceSubject",
-        "adcp.types._schemas.media_buy.build_creative_request.SignalTargetingBinary",
-        "adcp.types._schemas.media_buy.build_creative_response.BuildCreativeSuccess",
-        "adcp.types._schemas.media_buy.buy_products_request.CanonicalAccountReferenceAccountId",
-        "adcp.types._schemas.media_buy.control_media_buy_response.ControlApplied",
-        "adcp.types._schemas.media_buy.create_media_buy_request.BudgetAllocationFixed",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.decline_proposals_response.DeclineProposalsResponseResults",
-        "adcp.types._schemas.media_buy.get_reporting_status_response.SuccessfulLookup",
-        "adcp.types._schemas.media_buy.list_products_response.ListProductsResponseListed",
-        "adcp.types._schemas.media_buy.log_event_response.LogEventSuccess",
-        "adcp.types._schemas.media_buy.media_buy_commitment_response.CommittedMediaBuy",
-        "adcp.types._schemas.media_buy.package_request.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.media_buy.provide_performance_feedback_response.ProvidePerformanceFeedbackSuccess",
-        "adcp.types._schemas.media_buy.refine_proposals_response.RefineProposalsResponseCompleted",
-        "adcp.types._schemas.media_buy.request_proposals_request.CanonicalAccountReferenceAccountId",
-        "adcp.types._schemas.media_buy.request_proposals_response.RequestProposalsResponseProposedCompleted",
-        "adcp.types._schemas.media_buy.sync_audiences_response.SyncAudiencesSuccess",
-        "adcp.types._schemas.media_buy.sync_catalogs_response.SyncCatalogsSuccess",
-        "adcp.types._schemas.media_buy.sync_event_sources_response.SyncEventSourcesSuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-        "adcp.types._schemas.signals.activate_signal_response.ActivateSignalSuccess",
     ],
     "control_media_buy_async_response_input_required": [
         "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_input_required",
@@ -9047,11 +8645,6 @@ __adcp_ambiguous__ = {
     "create_media_buy_async_response_working": [
         "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working",
         "adcp.types._schemas.media_buy.create_media_buy_async_response_working",
-    ],
-    "creative_manifest_1": [
-        "adcp.types._schemas.creative.preview_creative_response.PreviewCreativeSingleResponse",
-        "adcp.types._schemas.media_buy.build_creative_request.SignalTargetingBinary",
-        "adcp.types._schemas.media_buy.build_creative_response.BuildCreativeSuccess",
     ],
     "date": [
         "adcp.types._schemas.account.get_account_financials_response.date",
@@ -9084,155 +8677,8 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.media_buy.decline_proposals_async_response_working",
     ],
     "error": [
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
         "adcp.types._schemas.core.error",
         "adcp.types._schemas.trusted_match.error",
-    ],
-    "error_1": [
-        "adcp.types._schemas.account.get_account_financials_response.GetAccountFinancialsSuccess",
-        "adcp.types._schemas.account.sync_accounts_response.SyncAccountsSuccess",
-        "adcp.types._schemas.brand.acquire_rights_response.AcquireRightsAcquired",
-        "adcp.types._schemas.brand.get_brand_identity_response.GetBrandIdentitySuccess",
-        "adcp.types._schemas.brand.get_rights_response.GetRightsSuccess",
-        "adcp.types._schemas.brand.update_rights_response.UpdateRightsSuccess",
-        "adcp.types._schemas.brand.verify_brand_claim_response.VerifyBrandClaimSuccess",
-        "adcp.types._schemas.brand.verify_brand_claims_response.VerifyBrandClaimsSuccess",
-        "adcp.types._schemas.content_standards.calibrate_content_response.CalibrateContentResponseVerdict",
-        "adcp.types._schemas.content_standards.get_content_standards_response.GetContentStandardsResponseSuccess",
-        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.GetMediaBuyArtifactsResponseArtifactsMediaBuyId",
-        "adcp.types._schemas.content_standards.validate_content_delivery_response.ValidateContentDeliveryResponseResultsSummary",
-        "adcp.types._schemas.creative.get_creative_features_response.GetCreativeFeaturesResponseSuccess",
-        "adcp.types._schemas.creative.preview_creative_response.PreviewCreativeSingleResponse",
-        "adcp.types._schemas.creative.sync_creatives_response.SyncCreativesSuccess",
-        "adcp.types._schemas.media_buy.build_creative_response.BuildCreativeSuccess",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.log_event_response.LogEventSuccess",
-        "adcp.types._schemas.media_buy.provide_performance_feedback_response.ProvidePerformanceFeedbackSuccess",
-        "adcp.types._schemas.media_buy.sync_audiences_response.SyncAudiencesSuccess",
-        "adcp.types._schemas.media_buy.sync_catalogs_response.SyncCatalogsSuccess",
-        "adcp.types._schemas.media_buy.sync_event_sources_response.SyncEventSourcesSuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-        "adcp.types._schemas.signals.activate_signal_response.ActivateSignalSuccess",
-    ],
-    "event_type_1": [
-        "adcp.types._schemas.core.budget_allocation.BudgetAllocationFixed",
-        "adcp.types._schemas.core.canonical_optimization_goal.CanonicalOptimizationGoalMetric",
-        "adcp.types._schemas.core.optimization_goal.OptimizationGoalMetric",
-        "adcp.types._schemas.media_buy.sync_event_sources_response.SyncEventSourcesSuccess",
-    ],
-    "ext_1": [
-        "adcp.types._schemas.account.get_account_financials_response.GetAccountFinancialsSuccess",
-        "adcp.types._schemas.account.list_account_changes_response.ListAccountChangesResponseCompleted",
-        "adcp.types._schemas.account.sync_accounts_response.SyncAccountsSuccess",
-        "adcp.types._schemas.account.sync_governance_response.SyncGovernanceSuccess",
-        "adcp.types._schemas.brand.acquire_rights_response.AcquireRightsAcquired",
-        "adcp.types._schemas.brand.creative_approval_response.CreativeApproved",
-        "adcp.types._schemas.brand.get_brand_identity_response.GetBrandIdentitySuccess",
-        "adcp.types._schemas.brand.get_rights_response.GetRightsSuccess",
-        "adcp.types._schemas.brand.search_brands_response.SearchBrandsSuccess",
-        "adcp.types._schemas.brand.update_rights_response.UpdateRightsSuccess",
-        "adcp.types._schemas.brand.verify_brand_claim_response.VerifyBrandClaimSuccess",
-        "adcp.types._schemas.brand.verify_brand_claims_response.VerifyBrandClaimsSuccess",
-        "adcp.types._schemas.compliance.comply_test_controller_response.ListScenariosSuccess",
-        "adcp.types._schemas.content_standards.calibrate_content_response.CalibrateContentResponseVerdict",
-        "adcp.types._schemas.content_standards.create_content_standards_response.CreateContentStandardsResponseStandardsId",
-        "adcp.types._schemas.content_standards.get_content_standards_response.GetContentStandardsResponseSuccess",
-        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.GetMediaBuyArtifactsResponseArtifactsMediaBuyId",
-        "adcp.types._schemas.content_standards.list_content_standards_response.ListContentStandardsResponseStandards",
-        "adcp.types._schemas.content_standards.update_content_standards_response.UpdateContentStandardsSuccess",
-        "adcp.types._schemas.content_standards.validate_content_delivery_response.ValidateContentDeliveryResponseResultsSummary",
-        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.annotations",
-        "adcp.types._schemas.core.attestation_issuer.AttestationBrandIssuer",
-        "adcp.types._schemas.core.attestation_subject.AttestationBrandSubject",
-        "adcp.types._schemas.core.audience_evidence.AttestationResourceSubject",
-        "adcp.types._schemas.core.catchment.CatchmentTransportModeTravelTime",
-        "adcp.types._schemas.core.collection_selection.SelectedCollections",
-        "adcp.types._schemas.core.creative_manifest.NamedFormatManifest",
-        "adcp.types._schemas.core.evaluator_spec.EvaluatorSpecExemplars",
-        "adcp.types._schemas.core.frequency_cap_impression_constraints.FrequencyCapImpressionConstraintsAllowedValues",
-        "adcp.types._schemas.core.frequency_cap_interval_constraints.FrequencyCapIntervalConstraintsAllowedIntervals",
-        "adcp.types._schemas.core.placement_selection.SelectedPlacements",
-        "adcp.types._schemas.core.product_audience_evidence_requirements.AttestationOriginIssuer",
-        "adcp.types._schemas.core.product_execution_requirement.EventSourceExecutionRequirement",
-        "adcp.types._schemas.core.product_filters.AdCPAudienceSync",
-        "adcp.types._schemas.core.requirements.catalog_field_binding.CatalogFieldBindingScalar",
-        "adcp.types._schemas.core.rights_attestation_evaluation.AttestationBrandIssuer",
-        "adcp.types._schemas.core.rights_constraint.AttestationBrandIssuer",
-        "adcp.types._schemas.core.signal_pricing.CpmPricing",
-        "adcp.types._schemas.core.targeting_modification.ReplaceTargetingValue",
-        "adcp.types._schemas.core.vendor_pricing_option.CpmPricing",
-        "adcp.types._schemas.creative.get_creative_features_response.GetCreativeFeaturesResponseSuccess",
-        "adcp.types._schemas.creative.preview_creative_response.PreviewCreativeSingleResponse",
-        "adcp.types._schemas.creative.sync_creatives_request.V1CreativeNamedFormatReference",
-        "adcp.types._schemas.creative.sync_creatives_response.SyncCreativesSuccess",
-        "adcp.types._schemas.governance.check_governance_request.AttestationResourceSubject",
-        "adcp.types._schemas.media_buy.acceptance_policy_requirement.AcceptancePolicyRequirementCategoryDeclaration",
-        "adcp.types._schemas.media_buy.build_creative_request.SignalTargetingBinary",
-        "adcp.types._schemas.media_buy.build_creative_response.BuildCreativeSuccess",
-        "adcp.types._schemas.media_buy.buy_products_request.CanonicalAccountReferenceAccountId",
-        "adcp.types._schemas.media_buy.control_media_buy_response.ControlApplied",
-        "adcp.types._schemas.media_buy.create_media_buy_request.BudgetAllocationFixed",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.decline_proposals_response.DeclineProposalsResponseResults",
-        "adcp.types._schemas.media_buy.get_reporting_status_response.SuccessfulLookup",
-        "adcp.types._schemas.media_buy.list_products_response.ListProductsResponseListed",
-        "adcp.types._schemas.media_buy.log_event_response.LogEventSuccess",
-        "adcp.types._schemas.media_buy.media_buy_commitment_response.CommittedMediaBuy",
-        "adcp.types._schemas.media_buy.package_request.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.media_buy.provide_performance_feedback_response.ProvidePerformanceFeedbackSuccess",
-        "adcp.types._schemas.media_buy.refine_proposals_response.RefineProposalsResponseCompleted",
-        "adcp.types._schemas.media_buy.request_proposals_response.RequestProposalsResponseProposedCompleted",
-        "adcp.types._schemas.media_buy.sync_audiences_response.SyncAudiencesSuccess",
-        "adcp.types._schemas.media_buy.sync_catalogs_response.SyncCatalogsSuccess",
-        "adcp.types._schemas.media_buy.sync_event_sources_response.SyncEventSourcesSuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-        "adcp.types._schemas.signals.activate_signal_response.ActivateSignalSuccess",
-    ],
-    "feature_check_status_1": [
-        "adcp.types._schemas.content_standards.calibrate_content_response.CalibrateContentResponseVerdict",
-        "adcp.types._schemas.content_standards.validate_content_delivery_response.ValidateContentDeliveryResponseResultsSummary",
-    ],
-    "format_id_1": [
-        "adcp.types._schemas.core.creative_asset.V1CreativeNamedFormatReference",
-        "adcp.types._schemas.core.creative_manifest.NamedFormatManifest",
-        "adcp.types._schemas.media_buy.build_creative_response.BuildCreativeSuccess",
-    ],
-    "format_option_ref_1": [
-        "adcp.types._schemas.core.creative_asset.V1CreativeNamedFormatReference",
-        "adcp.types._schemas.core.creative_manifest.NamedFormatManifest",
-        "adcp.types._schemas.error_details.vast_version_mismatch.AssetOutsideAcceptedVersionIntersection",
-    ],
-    "generation_credential_1": [
-        "adcp.types._schemas.brand.acquire_rights_response.AcquireRightsAcquired",
-        "adcp.types._schemas.brand.update_rights_response.UpdateRightsSuccess",
     ],
     "get_creative_features_async_response_submitted": [
         "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted",
@@ -9258,20 +8704,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working",
         "adcp.types._schemas.signals.get_signals_async_response_working",
     ],
-    "html5": [
-        "adcp.types._schemas.core.package_format_snapshot.HostedVideoFormatDeclaration",
-        "adcp.types._schemas.core.product_format_declaration.DisplayTagFormatDeclaration",
-        "adcp.types._schemas.formats.canonical.html5",
-    ],
-    "lift_dimension_1": [
-        "adcp.types._schemas.core.committed_metric.CommittedMetricStandard",
-        "adcp.types._schemas.core.delivery_metric_aggregate.DeliveryMetricAggregateStandard",
-        "adcp.types._schemas.core.missing_metric.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.core.package_delivery_metric_value.DeliveryMetricAggregateStandard",
-        "adcp.types._schemas.core.performance_feedback.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.core.performance_feedback_metric.PerformanceFeedbackMetricStandard",
-        "adcp.types._schemas.media_buy.package_request.ObjScopeMetricIdQualifier",
-    ],
     "list_creative_formats_request": [
         "adcp.types._schemas.creative.list_creative_formats_request",
         "adcp.types._schemas.media_buy.list_creative_formats_request",
@@ -9279,76 +8711,6 @@ __adcp_ambiguous__ = {
     "list_creative_formats_response": [
         "adcp.types._schemas.creative.list_creative_formats_response",
         "adcp.types._schemas.media_buy.list_creative_formats_response",
-    ],
-    "media_buy_available_action_1": [
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-    ],
-    "media_buy_frequency_cap_1": [
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-    ],
-    "media_buy_status_1": [
-        "adcp.types._schemas.media_buy.control_media_buy_response.ControlApplied",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.media_buy_commitment_response.CommittedMediaBuy",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-    ],
-    "media_buy_valid_action_1": [
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-    ],
-    "operator_unit_1": [
-        "adcp.types._schemas.account.sync_accounts_response.SyncAccountsSuccess",
-        "adcp.types._schemas.core.account_ref.AccountReferenceAccountId",
-        "adcp.types._schemas.core.canonical_account_ref.CanonicalAccountReferenceAccountId",
-    ],
-    "pacing_1": [
-        "adcp.types._schemas.media_buy.buy_products_request.CanonicalAccountReferenceAccountId",
-        "adcp.types._schemas.media_buy.create_media_buy_request.BudgetAllocationFixed",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.package_request.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-    ],
-    "package_1": [
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-    ],
-    "payment_terms_1": [
-        "adcp.types._schemas.account.get_account_financials_response.GetAccountFinancialsSuccess",
-        "adcp.types._schemas.account.sync_accounts_response.SyncAccountsSuccess",
-    ],
-    "planned_delivery_1": [
-        "adcp.types._schemas.governance.check_governance_request.AttestationResourceSubject",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-    ],
-    "preview_render_1": [
-        "adcp.types._schemas.creative.preview_creative_response.PreviewCreativeSingleResponse",
-        "adcp.types._schemas.media_buy.build_creative_response.BuildCreativeSuccess",
-    ],
-    "product": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.annotations",
-        "adcp.types._schemas.core.product",
-    ],
-    "provenance_1": [
-        "adcp.types._schemas.core.assets.daast_asset.DAASTAssetUrl",
-        "adcp.types._schemas.core.assets.display_tag_asset.TagURL",
-        "adcp.types._schemas.core.assets.vast_asset.VASTAssetUrl",
-        "adcp.types._schemas.core.creative_asset.V1CreativeNamedFormatReference",
-        "adcp.types._schemas.core.creative_manifest.NamedFormatManifest",
-    ],
-    "push_notification_config_1": [
-        "adcp.types._schemas.brand.acquire_rights_response.AcquireRightsAcquired",
-        "adcp.types._schemas.creative.sync_creatives_request.V1CreativeNamedFormatReference",
-        "adcp.types._schemas.media_buy.build_creative_request.SignalTargetingBinary",
-        "adcp.types._schemas.media_buy.buy_products_request.CanonicalAccountReferenceAccountId",
-        "adcp.types._schemas.media_buy.create_media_buy_request.BudgetAllocationFixed",
-        "adcp.types._schemas.media_buy.request_proposals_request.CanonicalAccountReferenceAccountId",
-    ],
-    "reach_unit_1": [
-        "adcp.types._schemas.core.budget_allocation.BudgetAllocationFixed",
-        "adcp.types._schemas.core.canonical_optimization_goal.CanonicalOptimizationGoalMetric",
-        "adcp.types._schemas.core.optimization_goal.OptimizationGoalMetric",
     ],
     "refine_proposals_async_response_input_required": [
         "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_input_required",
@@ -9362,14 +8724,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_working",
         "adcp.types._schemas.media_buy.refine_proposals_async_response_working",
     ],
-    "reporting_webhook_1": [
-        "adcp.types._schemas.media_buy.buy_products_request.CanonicalAccountReferenceAccountId",
-        "adcp.types._schemas.media_buy.create_media_buy_request.BudgetAllocationFixed",
-    ],
-    "representation_selection_1": [
-        "adcp.types._schemas.core.creative_asset.V1CreativeNamedFormatReference",
-        "adcp.types._schemas.core.creative_manifest.NamedFormatManifest",
-    ],
     "request_proposals_async_response_input_required": [
         "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_input_required",
         "adcp.types._schemas.media_buy.request_proposals_async_response_input_required",
@@ -9381,34 +8735,6 @@ __adcp_ambiguous__ = {
     "request_proposals_async_response_working": [
         "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_working",
         "adcp.types._schemas.media_buy.request_proposals_async_response_working",
-    ],
-    "right_type_1": [
-        "adcp.types._schemas.brand.get_rights_response.GetRightsSuccess",
-        "adcp.types._schemas.core.rights_constraint.AttestationBrandIssuer",
-    ],
-    "right_use_1": [
-        "adcp.types._schemas.brand.get_brand_identity_response.GetBrandIdentitySuccess",
-        "adcp.types._schemas.brand.get_rights_response.GetRightsSuccess",
-    ],
-    "rights_terms_1": [
-        "adcp.types._schemas.brand.acquire_rights_response.AcquireRightsAcquired",
-        "adcp.types._schemas.brand.update_rights_response.UpdateRightsSuccess",
-    ],
-    "signal_id_1": [
-        "adcp.types._schemas.core.audience_selector.AudienceSelectorSignalBinary",
-        "adcp.types._schemas.core.product_filters.AdCPAudienceSync",
-        "adcp.types._schemas.core.signal_targeting.SignalTargetingBinary",
-        "adcp.types._schemas.core.wholesale_feed_event.WholesaleFeedEventProductCreatedProduct",
-        "adcp.types._schemas.media_buy.build_creative_request.SignalTargetingBinary",
-    ],
-    "signal_ref_1": [
-        "adcp.types._schemas.core.audience_selector.AudienceSelectorSignalBinary",
-        "adcp.types._schemas.core.package_signal_targeting.SignalTargetingExpressionBinary",
-        "adcp.types._schemas.core.product_filters.AdCPAudienceSync",
-        "adcp.types._schemas.core.signal_targeting.SignalTargetingBinary",
-        "adcp.types._schemas.core.signal_targeting_expression.SignalTargetingExpressionBinary",
-        "adcp.types._schemas.core.wholesale_feed_event.WholesaleFeedEventProductCreatedProduct",
-        "adcp.types._schemas.media_buy.build_creative_request.SignalTargetingBinary",
     ],
     "sync_catalogs_async_response_input_required": [
         "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required",
@@ -9434,24 +8760,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working",
         "adcp.types._schemas.creative.sync_creatives_async_response_working",
     ],
-    "task_status_1": [
-        "adcp.types._schemas.creative.get_creative_features_response.GetCreativeFeaturesResponseSuccess",
-        "adcp.types._schemas.creative.preview_creative_response.PreviewCreativeSingleResponse",
-        "adcp.types._schemas.creative.sync_creatives_response.SyncCreativesSuccess",
-        "adcp.types._schemas.media_buy.build_creative_response.BuildCreativeSuccess",
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.sync_audiences_response.SyncAudiencesSuccess",
-        "adcp.types._schemas.media_buy.sync_catalogs_response.SyncCatalogsSuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
-    ],
-    "tracker_execution_contract_1": [
-        "adcp.types._schemas.core.package_format_snapshot.ImageFormatDeclaration",
-        "adcp.types._schemas.core.product_format_declaration.ImageFormatDeclaration",
-    ],
-    "transport_mode_1": [
-        "adcp.types._schemas.core.catchment.CatchmentTransportModeTravelTime",
-        "adcp.types._schemas.core.product_filters.AdCPAudienceSync",
-    ],
     "update_media_buy_async_response_input_required": [
         "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required",
         "adcp.types._schemas.media_buy.update_media_buy_async_response_input_required",
@@ -9463,18 +8771,5 @@ __adcp_ambiguous__ = {
     "update_media_buy_async_response_working": [
         "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working",
         "adcp.types._schemas.media_buy.update_media_buy_async_response_working",
-    ],
-    "viewability_standard_1": [
-        "adcp.types._schemas.core.committed_metric.CommittedMetricStandard",
-        "adcp.types._schemas.core.delivery_metric_aggregate.DeliveryMetricAggregateStandard",
-        "adcp.types._schemas.core.missing_metric.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.core.package_delivery_metric_value.DeliveryMetricAggregateStandard",
-        "adcp.types._schemas.core.performance_feedback.ObjScopeMetricIdQualifier",
-        "adcp.types._schemas.core.performance_feedback_metric.PerformanceFeedbackMetricStandard",
-        "adcp.types._schemas.media_buy.package_request.ObjScopeMetricIdQualifier",
-    ],
-    "warning_1": [
-        "adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess",
-        "adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess",
     ],
 }

@@ -114,11 +114,19 @@ def main() -> int:
             continue
         for name in sorted(set(by_target[target])):
             stmt = f"from {module} import {symbol} as {name}"
+            # The casing of a name is UPSTREAM'S and is not ours to correct: they publish
+            # lowercase words for classes and mixed-case words for constants, and an alias
+            # that renamed them would answer no caller.  So the convention rules are
+            # annotated per statement, derived from the two spellings rather than listed.
             flags = []
             if len(stmt) > 100:
                 flags.append("E501")
-            if name.isupper():
+            if name.isupper() and not symbol.isupper():
                 flags.append("N814")
+            if symbol.isupper() and not name.isupper():
+                flags.append("N811")
+            if symbol[:1].isupper() and name[:1].islower():
+                flags.append("N813")
             if flags:
                 stmt += f"  # noqa: {', '.join(flags)} -- upstream published this spelling"
             imports.append(stmt)
