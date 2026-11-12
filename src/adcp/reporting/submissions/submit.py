@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Sequence
 from math import isfinite
 from typing import Protocol, TypeVar
 
+from adcp._redaction import refused_at
 from adcp.reporting.submissions.models import (
     _VERSION,
     ReportingReceiptSubmission,
@@ -21,6 +23,9 @@ from adcp.reporting.submissions.models import (
 from adcp.reporting.submissions.store import ReportingSubmissionIntentStore
 from adcp.types import SyncReportingReceiptsRequest, SyncReportingReceiptsResponse
 from adcp.types.core import TaskResult
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 
 class ReportingReceiptSubmissionClient(Protocol):
@@ -59,7 +64,11 @@ async def _authorize(
             scope.__post_init__()
             if expected is None or scope == expected:
                 resolved = scope
-    except Exception:
+    except Exception as error:
+        # The code here is an ENUM MEMBER rather than a string literal, which is how the
+        # first pass of the swallow sweep missed this site.  An auth boundary answers
+        # UNAUTHORIZED and never why; the fault class is still safe to name.
+        logger.debug("submission scope refused: %s", refused_at(error))
         resolved = None
     if resolved is None:
         raise ReportingSubmissionError(ReportingSubmissionCode.UNAUTHORIZED)
@@ -156,7 +165,13 @@ async def submit_reporting_receipts(
             response = await asyncio.wait_for(
                 client.sync_reporting_receipts(request), timeout=timeout_seconds
             )
-        except Exception:
+        except Exception as error:
+            # **THE CODE IS RETURNED AND NOT RAISED**, which is the other gap the first
+            # sweep had: a typed code in a RESULT masks a cause exactly as a raised one
+            # does.  `TRANSPORT_UNCERTAIN` is the honest answer to a transport that did not
+            # answer, and the wrong one for a response the emission refused -- so the fault
+            # is named here and the classification is left alone.
+            logger.debug("receipt submission refused: %s", refused_at(error))
             response = None
         if response is None:
             return ReportingSubmissionResult(

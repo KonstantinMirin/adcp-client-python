@@ -62,6 +62,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import tempfile
 import threading
@@ -76,6 +77,7 @@ from typing import Any, Literal, Protocol, TypeAlias, runtime_checkable
 from pydantic import TypeAdapter, ValidationError
 
 from adcp._deferred_adapters import deferred_adapter
+from adcp._redaction import refused_at
 from adcp.reporting._settlement import settle_task
 from adcp.reporting._source_authorization import inline_publication
 from adcp.reporting.currency import (
@@ -109,6 +111,9 @@ from adcp.reporting.source import (
     source_batch_manifest_reference_v1,
     source_batch_object_set_sha256_v1,
 )
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "FileSystemStagingStore",
@@ -803,6 +808,13 @@ class InlineReportingSource:
         except asyncio.CancelledError:
             raise
         except Exception as error:
+            # **THE ELEVENTH MASKER, AND THE FIRST THAT RETURNS ITS CODE RATHER THAN
+            # RAISING IT.**  `_unclassified` answers `PROVIDER_TRANSIENT / retryable` for
+            # anything nobody classified, deliberately and for the reason it states -- but
+            # a cause that is not a provider fault reaches it too, and then the specific
+            # diagnosis the block would have produced never runs.  The classification
+            # stays; the FAULT is named, as at the ten sites before it.
+            logger.debug("reporting source refused: %s", refused_at(error))
             return ReportingSourceExecutorResult.failed(self._unclassified(error))
 
         if answer is None:

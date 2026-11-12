@@ -515,3 +515,117 @@ the owner at `c230b61ff`. **I checked that checkout as asked and it is clean** �
 empty, HEAD at `11272fdd5` — so nothing of mine is sitting there now. The cause was a write
 through a RELATIVE path resolved against an inherited working directory; every edit in this
 appendix was made through an absolute path under `/srv/ws/wt-aliasnote`.
+
+---
+---
+
+# Appendix 3 — the packaging finding, two gaps in my own sweep, and 18 of the 26
+
+## The packaging row: provisioning, and a defect worth more than the five tests
+
+The five `build-sdist-and-wheel: exit 1` failures are **provisioning**. Proven twice: the
+redacted stderr digest matches `…/.venv/bin/python: No module named build\n` exactly, and on
+`/srv/ws/dropin-now` — the one drop-in venv that HAS `build` — the same project assembly and
+the same command exit 0. `build` is absent from 8 of the 9 drop-in venvs.
+
+**Running the build anyway found what the exit code was hiding, and it is ours.**
+`codegen/emit.py` writes one `.json` beside every emitted module — the inlined document a
+class's `__adcp_schema__` names — and `adcp.types._base._document` loads it out of the
+INSTALLED tree. `[tool.setuptools.package-data]` declared `_schemas/3.x/**/*.json`, which is
+upstream's bundled schema copy at `src/adcp/_schemas/`, and never `types/_schemas/**/*.json`:
+
+| a wheel built from this tree | before | after |
+|---|---|---|
+| `adcp/types/_schemas/*.py` | 1,094 | 1,094 |
+| `adcp/types/_schemas/*.json` | **0** | **1,059** |
+
+With 0 documents, `strict_validate` — the call this package tells every consumer to make at
+every boundary — raised for **every class** in an installed wheel:
+
+```
+PaginationRequest.strict_validate({"max_results": 10})
+FileNotFoundError: core/pagination-request.json has no record in
+                   …/site-packages/adcp/types/_schemas
+```
+
+and after the one-line addition the same call from an installed wheel is ACCEPTED, while
+`Product.strict_validate({})` answers the document's own `ValidationError`. **It passed in a
+source checkout and failed in every wheel**, which is why no gate of ours saw it: `./check`
+and the suite both read the tree in place. `MANIFEST.in` is untouched and correct — its
+`prune src/adcp/_schemas` names a different path, and setuptools carries declared package
+data into the sdist, verified by counting the sdist's members.
+
+---
+
+## TWO GAPS IN MY OWN SWEEP, found by the two files below
+
+Appendix 2's predicate was the brief's: *a broad `except` that **raises** a typed error*.
+It is too narrow, and the two files in this round are both in what it missed:
+
+1. **a typed code RETURNED rather than raised.** `inline_source.py:805` answers
+   `ReportingSourceExecutorResult.failed(self._unclassified(error))` — code
+   `PROVIDER_TRANSIENT`, in a result object. A code in a RESULT masks a cause exactly as a
+   raised one does.
+2. **a code passed as an ENUM MEMBER rather than a string literal.**
+   `submissions/submit.py:62` raises `ReportingSubmissionError(ReportingSubmissionCode.UNAUTHORIZED)`;
+   the detector matched `raise X("CODE")` on a string constant and skipped it.
+
+So the sweep's 16 is a floor on a wider set, and the table gains three rows:
+
+| file:line | code | how it leaves | cause observable | verdict |
+|---|---|---|---|---|
+| `reporting/inline_source.py:805` | `PROVIDER_TRANSIENT` | **returned** in a result | no → **yes** | **FIXED** — DEBUG line |
+| `reporting/submissions/submit.py:62` | `UNAUTHORIZED` | raised, code is an **enum member** | no → **yes** | **FIXED** — DEBUG line |
+| `reporting/submissions/submit.py:159` | `TRANSPORT_UNCERTAIN` | **returned** in a result | no → **yes** | **FIXED** — DEBUG line |
+
+Eleven, twelve and thirteen. All three report through `adcp._redaction.refused_at`; no
+classification changed, no `except` narrowed, and both files fail exactly as before — 6 and
+12 — because a DEBUG line moves no outcome. The redaction gate still passes 4/4.
+
+---
+
+## And the masked cause is ONE payload family, already catalogued
+
+With the lines in place the swallowed causes are readable, and 18 of this round's 26 are the
+same thing:
+
+```
+tests/conformance/reporting/test_reporting_currency.py            (6)
+  reporting source refused: ValidationError: status [missing]
+
+tests/conformance/reporting/test_reporting_buyer_submission_uncertainty.py  (12)
+  receipt submission refused: RuntimeError                 <- the test's deliberate fault
+  receipt submission refused: ValidationError: status [missing]
+  receipt submission refused: TimeoutError                 <- the test's deliberate timeout
+```
+
+**`status [missing]` is the family already measured in `verdicts/invented-defaults.md`:**
+`core/protocol-envelope.json` states `required: ["status"]` with no `default` and no `const`,
+every task-response document `allOf`s it, and upstream's `ProtocolEnvelope` writes
+`status: TaskStatus = TaskStatus.completed` — one line inherited by 116 generated classes,
+118 of the 867 invented-default rows. Their fixtures build responses without `status` because
+their class filled it in. Ours requires it, as the document does.
+
+So by the three buckets:
+
+* **`test_reporting_currency.py`, 6 — PAYLOAD → `nocanon`.** The fixture's
+  `GetMediaBuyDeliveryResponse` omits `status`. The refusal is correct and the model is not
+  weakened. The currency check that would answer `INTEGRITY_FAILED` is unreachable because
+  the response never parsed — the same ordering as the `period_anchor` family, and the test's
+  own expectation is right about the protocol.
+* **`test_reporting_buyer_submission_uncertainty.py`, 12 — PAYLOAD → `nocanon`,** mixed with
+  two deliberate faults that are classified correctly. The test drives a transport failure
+  (right: `TRANSPORT_UNCERTAIN`), then asserts the RECOVERY call clears `pending`; the
+  recovery response omits `status`, so it is refused and `pending` stays True.
+
+**For the `nocanon` lane:** both files reach their response fixtures through the conformance
+helpers in `tests/conformance/reporting/`; the correction is the same one the `status` family
+already needs — supply `status` on every task-response fixture, which
+`core/protocol-envelope.json#` requires. Naming it here rather than writing it, because
+payload data is that lane's file.
+
+**And this is the general finding paying off twice.** Before the DEBUG lines, `survey causes`
+could not see either cause — 18 failures read as unowned residue with signatures
+(`assert (not True)`, `assert (ReportingSourceErrorV1(…)`) that name a symptom and no cause.
+A rule can be written against `status [missing]`; none can be written against `assert (not
+True)`.
