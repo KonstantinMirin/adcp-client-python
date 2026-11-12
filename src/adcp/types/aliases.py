@@ -108,6 +108,7 @@ from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesS
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
 from adcp.types.media_buy import CreateMediaBuyError as CreateMediaBuyErrorResponse
+from adcp.types.media_buy import CreateMediaBuySuccess as CreateMediaBuySuccessResponse
 from adcp.types.media_buy import GetProductsRequest as GetProductsBriefRequest
 from adcp.types.media_buy import GetProductsRequest as GetProductsRefineRequest
 from adcp.types.media_buy import GetProductsRequest as GetProductsWholesaleRequest
@@ -164,6 +165,7 @@ __all__ = [
     "CreateContentStandardsResponse1",
     "CreateContentStandardsSuccessResponse",
     "CreateMediaBuyErrorResponse",
+    "CreateMediaBuySuccessResponse",
     "Deployment",
     "Destination",
     "GetAccountFinancialsErrorResponse",
@@ -261,7 +263,6 @@ __adcp_refused__ = {
     "AuthorizedAgentsByPublisherProperties": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents4, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents6, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: their CreateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
     "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.DaastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.VastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_audiences_request.Audience, which is DOCUMENT-NO-WORD-NO-IDENTITY",

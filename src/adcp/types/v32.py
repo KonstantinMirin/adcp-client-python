@@ -8,13 +8,6 @@ the object reached here IS the object the walk emitted from the document: `isins
 across both spellings and nothing here declares a class, so reading 6's count of
 declarations does not move.
 
-The triple, read off this module's own table::
-
-    adcp.types.v32.AcceptProposalRequest is adcp.types.media_buy.AcceptProposalRequest
-
-so `from adcp.types.v32 import AcceptProposalRequest` and `from adcp.types.media_buy import AcceptProposalRequest` are two spellings of one
-object, and `isinstance` holds against either.
-
 **WHY THIS MODULE EXISTS AT UPSTREAM'S OWN PATH.**  `adcp.types.compat` is reading 10's ONE
 module for a flat spelling, and it is enough for an application that writes
 `from adcp.types import <Name>`.  It is not enough for upstream's own kept machinery, which
@@ -35,10 +28,9 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
-from adcp.types.media_buy import AcceptProposalRequest as AcceptProposalRequest
+
 
 __all__ = [
-    "AcceptProposalRequest",
 ]
 
 
@@ -48,10 +40,11 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
-    "AcceptProposalResponse": "UPSTREAM-AMBIGUOUS",
-    "BuyProductsResponse": "UPSTREAM-AMBIGUOUS",
-    "ListCreativesRequest": "UPSTREAM-AMBIGUOUS",
-    "PackageRequest": "UPSTREAM-AMBIGUOUS",
+    "AcceptProposalRequest": "MODULE-HAS-NO-BUNDLE-SUBJECT",
+    "AcceptProposalResponse": "NO-DOCUMENT-NO-SUBJECT",
+    "BuyProductsResponse": "NO-DOCUMENT-NO-SUBJECT",
+    "ListCreativesRequest": "MODULE-HAS-NO-BUNDLE-SUBJECT",
+    "PackageRequest": "MODULE-HAS-NO-BUNDLE-SUBJECT",
 }
 
 #: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where

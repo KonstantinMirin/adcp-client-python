@@ -52,6 +52,7 @@ from adcp.types.media_buy import BuildCreativeMultiSuccess as BuildCreativeRespo
 from adcp.types.media_buy import BuildCreativeResponseSubmitted as BuildCreativeResponse6
 from adcp.types.media_buy import BuildCreativeSuccess as BuildCreativeResponse1
 from adcp.types.media_buy import CreateMediaBuyError as CreateMediaBuyResponse2
+from adcp.types.media_buy import CreateMediaBuySuccess as CreateMediaBuyResponse1
 from adcp.types.media_buy import GetMediaBuyDeliveryResponse as GetMediaBuyDeliveryResponse
 from adcp.types.media_buy import GetProductsResponse as GetProductsResponse
 from adcp.types.media_buy import ListCreativeFormatsResponse as ListCreativeFormatsResponse
@@ -60,6 +61,7 @@ from adcp.types.media_buy import ProvidePerformanceFeedbackSuccess as ProvidePer
 from adcp.types.media_buy import SyncAudiencesSubmitted as SyncAudiencesResponse3
 from adcp.types.media_buy import SyncCatalogsResponseSubmitted as SyncCatalogsResponse3
 from adcp.types.media_buy import UpdateMediaBuyError as UpdateMediaBuyResponse2
+from adcp.types.media_buy import UpdateMediaBuySuccess as UpdateMediaBuyResponse1
 from adcp.types.signals import ActivateSignalError as ActivateSignalResponse2
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalResponse1
 from adcp.types.signals import GetSignalsResponse as GetSignalsResponse
@@ -70,6 +72,7 @@ __all__ = [
     "BuildCreativeResponse1",
     "BuildCreativeResponse2",
     "BuildCreativeResponse6",
+    "CreateMediaBuyResponse1",
     "CreateMediaBuyResponse2",
     "CreativeManifest",
     "Deployment1",
@@ -92,6 +95,7 @@ __all__ = [
     "SyncCreativesResponse1",
     "SyncCreativesResponse2",
     "SyncCreativesResponse3",
+    "UpdateMediaBuyResponse1",
     "UpdateMediaBuyResponse2",
 ]
 
@@ -106,8 +110,6 @@ __adcp_refused__ = {
     "AuthorizedAgents1": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgents2": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents3, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgents3": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents4, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "CreateMediaBuyResponse1": "UPSTREAM-AMBIGUOUS: their CreateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
-    "UpdateMediaBuyResponse1": "UPSTREAM-AMBIGUOUS: their UpdateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.update_media_buy_response.UpdateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
 }
 
 #: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where

@@ -725,64 +725,6 @@ def their_document(module: str) -> str | None:
     return rest
 
 
-#: The bundle a run reads, for :meth:`Join.unpinned`'s document check.  Declared here and
-#: resolved lazily because this module is imported by readers that never reach that method.
-_BUNDLE: Path | None = None
-
-
-def _bundle() -> Path:
-    global _BUNDLE
-    if _BUNDLE is None:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests_emit"))
-        import fresh  # noqa: PLC0415
-
-        _BUNDLE = fresh.BUNDLE
-    return _BUNDLE
-
-
-@functools.cache
-def document_consts(document: str, pointer: str) -> frozenset[str]:
-    """Every root property THE DOCUMENT pins a `const` on at `pointer`.
-
-    **THE DOCUMENT IS THE AUTHORITY AND UPSTREAM'S DECLARATION IS NOT**, which is what
-    :meth:`Join.unpinned` needs and what it read for instead.  Upstream's generator mints a
-    `default` the document does not state -- 867 (model, field) pairs of them, every one
-    attributed to their artifact and none to a keyword this compiler misread
-    (`verdicts/invented-defaults.md`) -- and `consts` over their declaration cannot tell such
-    a pin from one a document states.  Asking the document separates them.
-
-    Returns the property names only: whether the VALUES agree is `ordinal`'s second gate and
-    is a different question from whether the document pins the property at all.
-    """
-    try:
-        node = json.loads((_bundle() / document).read_text())
-    except (OSError, ValueError):
-        return frozenset()
-    for seg in (s for s in pointer.lstrip("#/").split("/") if s):
-        try:
-            node = node[int(seg)] if seg.isdigit() else node[seg]
-        except (KeyError, IndexError, TypeError):
-            return frozenset()
-    found: set[str] = set()
-    pending = [node]
-    while pending:
-        cur = pending.pop()
-        if not isinstance(cur, dict):
-            continue
-        props = cur.get("properties")
-        if isinstance(props, dict):
-            found |= {
-                k for k, v in props.items() if isinstance(v, dict) and "const" in v
-            }
-        # a conjunction states the same properties one level in, which is where an
-        # envelope's pins live; a $ref is followed by nobody here on purpose -- a pin the
-        # document states only in a referenced document is that document's and `ordinal`
-        # reads it there.
-        for member in cur.get("allOf") or ():
-            pending.append(member)
-    return frozenset(found)
-
-
 def consts(schema: str) -> dict[str, object]:
     """Every root property this schema pins a `const` on -- the discriminator and its kin.
 
@@ -1344,13 +1286,23 @@ class Join:
                     f"upstream declares it at {terminal.module}.{terminal.name}, which is "
                     f"{inner.get('verdict')}"
                 )
-            unpinned = self.unpinned(terminal, inner)
-            if unpinned:
-                return refuse(
-                    f"their {terminal.name} pins {unpinned} and the subject it reaches "
-                    f"({inner['target']}) pins nothing there: a name over a type that "
-                    f"accepts what the document refuses is worse than an unbound name"
-                )
+            # **NO PIN GATE HERE.  AN ALIAS IS A NAME AND A NAME CANNOT WIDEN A TYPE.**
+            # A gate stood here refusing a name where upstream pinned a property our subject
+            # did not, on the reading that "a name over a type that accepts what the document
+            # refuses is worse than an unbound name".  Our subject is faithful to its document
+            # by construction -- that is what the compiler is for -- so binding a second
+            # spelling to it cannot make it accept anything more, and the gate protected
+            # against nothing.  What it did do is withhold 132 of upstream's own test files
+            # over `status: Literal['completed'] = 'completed'`, which the document pins
+            # nowhere and which is one of the 867 invented defaults
+            # (`verdicts/invented-defaults.md`).
+            #
+            # AND THE DIAGNOSIS DOES NOT NEED THIS GATE, because validation already gives it:
+            # bind the name, run the test, and a test passing a field the document refuses
+            # fails AT VALIDATION with the keyword and the value in the message.  That is the
+            # finding, it belongs to the test, and it is one of the rows
+            # `survey/dropin/deselect.py` already declines with a reason.  A refusal here
+            # pre-empts that diagnosis and hides it behind a missing name.
             return {
                 **inner,
                 "module": mod,
@@ -1485,57 +1437,6 @@ class Join:
             f"upstream's own statement names {said} -- "
             + " ;; ".join(str(s) for s in chain)
         )
-
-    def unpinned(self, terminal: ua.Terminal, inner: dict) -> dict[str, object]:
-        """**WHAT UPSTREAM'S DECLARATION PINS THAT THE SUBJECT IT REACHES DOES NOT.**
-
-        **AND IT REFUSES ONLY WHERE THE DOCUMENT STATES THE PIN, which is the correction
-        this key needed.**  The reading it carried was measurably false and inverted its own
-        conclusion.  It said our `CreateMediaBuySuccess` "has no `status` element at all" at
-        `media_buy/create_media_buy_response.json#/oneOf/0`.  It has one: `status`, REQUIRED,
-        annotated `TaskStatus`, because the document's `allOf` reaches
-        `core/protocol-envelope.json` whose own `required` is `['status']`.  What ours does
-        not carry is upstream's `Literal['completed'] = 'completed'` -- and the document pins
-        no `const` there, so that pin is one of the 867 invented defaults
-        (`verdicts/invented-defaults.md`, every one attributed to their generator and none to
-        a keyword this compiler misread).  A DEFAULT MAKES A REQUIRED FIELD OPTIONAL, so it is
-        THEIR class that admits a payload the document refuses, not ours.
-
-        So the old reading deferred to an upstream artifact as though it were a wire fact, and
-        refused 132 of upstream's own test files over it.  :func:`document_consts` is the
-        screen: a property upstream pins that the DOCUMENT does not pin is their artifact and
-        is not a reason to withhold a name.
-
-        So this key refuses where upstream pins a property and the subject pins NOTHING
-        there, and names the property.  Asymmetric on purpose, and the asymmetry is the
-        whole reading: a DISAGREEMENT about a pinned value is what :meth:`ordinal`'s second
-        gate already catches, and this is the other half -- a pin present on one side only,
-        where that gate is silent because the intersection is empty.  Those are wire facts
-        owed by whoever owns branch lowering and they are not words to alias around.
-
-        Read off the two dumps' canonical schemas (:func:`consts`) and never off a spelling.
-        """
-        key = f"{terminal.module}.{terminal.name}"
-        their = self.theirs["declarations"].get(key)
-        if their is None or not their.get("schema"):
-            return {}
-        pinned = consts(their["schema"])
-        if not pinned:
-            return {}
-        ours: dict[str, object] = {}
-        stated: set[str] = set()
-        for target in inner.get("target") or ():
-            held = self.ours["declarations"].get(target)
-            if not held:
-                continue
-            if held.get("schema"):
-                ours.update(consts(held["schema"]))
-            ref = held.get("ref")
-            if ref and len(ref) >= 2 and ref[0]:
-                stated |= document_consts(str(ref[0]), str(ref[1] or "#"))
-        return {
-            k: v for k, v in pinned.items() if k not in ours and k in stated
-        }
 
     def _bound(self, row: dict, how: str, targets: list[str], note: str) -> dict:
         """The BOUND row :meth:`resolve`'s own `bind` writes, for a key outside its body."""
