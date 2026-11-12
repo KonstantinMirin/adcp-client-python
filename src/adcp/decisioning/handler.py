@@ -2625,8 +2625,31 @@ class PlatformHandler(ADCPHandler[ToolContext]):
                 interval,
                 unit,
             )
+            # ``status`` is stated HERE and not defaulted on the class.
+            # ``core/protocol-envelope.json`` has ``required: ['status']`` and
+            # ``media-buy/get-products-response.json`` composes it through an
+            # ``allOf``, so a timeout response without it is a document this
+            # SDK's own protocol refuses -- it would be rejected by any
+            # conforming peer, not merely by a test.  It never surfaced
+            # upstream because their generator wrote
+            # ``status: Literal['completed'] = 'completed'``, a value the
+            # document states nowhere; our emitter states the field as the
+            # document does, required from the nine of
+            # ``enums/task-status.json``.
+            #
+            # ``'completed'`` is the value this branch knows to be true: the
+            # deadline fired, the platform coroutine was cancelled, and this
+            # return is the seller's final answer for the request.  No task is
+            # handed off and no ``task_id`` is minted, so there is nothing for
+            # the buyer to poll -- the task is over.  What the seller did NOT
+            # finish is carried by ``incomplete[]``, which is the field the
+            # spec provides for exactly that, and which
+            # ``project_incomplete_response`` fills.
             return GetProductsResponse.model_validate(
-                project_incomplete_response(interval=interval, unit=unit)
+                {
+                    "status": "completed",
+                    **project_incomplete_response(interval=interval, unit=unit),
+                }
             )
         # Post-dispatch discovery guards (run on the raw result before any
         # success-shape projection). ``result`` is either a typed

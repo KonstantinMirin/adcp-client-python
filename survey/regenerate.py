@@ -796,6 +796,36 @@ def _declared_lines(path: Path) -> list[str]:
     ]
 
 
+def correct_the_payloads(out: Path) -> dict[str, object]:
+    """The payloads that contradict their own envelope, corrected from committed DATA.
+
+    **`core/protocol-envelope.json` requires `status` and every task response composes it
+    through an `allOf`**, so a payload that omits the field contradicts its document.
+    Upstream's suite is full of such payloads and green anyway, because their generator
+    wrote ``status: Literal['completed'] = 'completed'`` -- a default the document states
+    nowhere, which is exactly what this repository does not reproduce.
+
+    **THE CORRECTION IS DATA AND THE BUILD IS WHAT APPLIES IT.**  A drop-in tree is
+    disposable (§8a) and ``--audit`` reports an edited file as a fork beginning, so the
+    rows live in ``survey/dropin/payload_fixes.py``, each carrying the document and pointer
+    that justifies it and the value the document admits.  Nothing is hand-edited in the
+    tree and the tree stays regenerable.
+
+    Runs here, after the files are laid and the declined rows are written, and before the
+    substitution -- the corrections are to upstream's test payloads, not to our types.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "_dropin_payload_fixes", PAYLOAD / "payload_fixes.py"
+    )
+    fixes = importlib.util.module_from_spec(spec)
+    # Registered BEFORE exec: ``@dataclass`` resolves its own module out of
+    # ``sys.modules`` to read string annotations, and a module that is not there yet
+    # fails with an AttributeError on ``None``.
+    sys.modules[spec.name] = fixes
+    spec.loader.exec_module(fixes)
+    return fixes.apply(out)
+
+
 # ----------------------------------------------------------------------------- 4. the substitution
 
 
@@ -1120,6 +1150,32 @@ def one_run_at_a_time() -> Iterator[None]:
             handle.flush()
             fcntl.flock(handle, fcntl.LOCK_UN)
 
+def _their_test_extra(pyproject: Path) -> str | None:
+    """Which of upstream's own extras declares their test dependencies.
+
+    **A HAND-LISTED SET GOES STALE SILENTLY.**  Provisioning named four packages --
+    ``pytest``, ``pytest-xdist``, ``pytest-asyncio``, ``pytest-json-report`` -- and
+    upstream's suite imports more than that: 41 files died on ``asgi_lifespan``, 5 on
+    ``respx``, 3 on ``freezegun``, and every one of those was counted as a FAILURE rather
+    than as a missing package.  Appending three names fixes today and breaks on the next
+    bump, so the set is read out of THEIR declaration instead.
+
+    The extra is identified by what it contains, not by its name: the one that declares
+    ``pytest``.  Returns ``None`` when no extra does, which the caller reports -- a tree
+    whose test dependencies are undeclared is a finding, not something to paper over.
+    """
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # pragma: no cover - 3.10 runs this file rarely
+        return None
+    declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    extras = (declared.get("project") or {}).get("optional-dependencies") or {}
+    for name, requirements in sorted(extras.items()):
+        if any(str(req).split("[")[0].split(">")[0].split("=")[0].strip() == "pytest"
+               for req in requirements):
+            return name
+    return None
+
 
 def provision(out: Path) -> dict[str, object]:
     """The tree's own venv, with the tree and its sibling package installed into it.
@@ -1139,19 +1195,21 @@ def provision(out: Path) -> dict[str, object]:
         for path in sorted((out / "packages").glob("*"))
         if (path / "pyproject.toml").is_file()
     ]
+    extra = _their_test_extra(out / "pyproject.toml")
+    root = "." if extra is None else f".[{extra}]"
     steps: list[list[str]] = [
         ["uv", "venv", str(venv), "--python", "3.12"],
-        ["uv", "pip", "install", "-q", "--python", python, "-e", "."],
+        ["uv", "pip", "install", "-q", "--python", python, "-e", root],
     ]
     steps += [
         ["uv", "pip", "install", "-q", "--python", python, "-e", str(path)]
         for path in siblings
     ]
+    # ``pytest-json-report`` is OURS and is named here on purpose: it is the reporter this
+    # harness reads its figures out of, not a dependency upstream's suite has.  Everything
+    # their tests import comes from their own extra above.
     steps.append(
-        [
-            "uv", "pip", "install", "-q", "--python", python,
-            "pytest", "pytest-xdist", "pytest-asyncio", "pytest-json-report",
-        ]
+        ["uv", "pip", "install", "-q", "--python", python, "pytest-json-report"]
     )
     for step in steps:
         done = subprocess.run(  # noqa: S603
@@ -1162,7 +1220,11 @@ def provision(out: Path) -> dict[str, object]:
                 f"provisioning failed: {' '.join(step)}\n"
                 f"{done.stdout[-2000:]}{done.stderr[-2000:]}"
             )
-    return {"venv": str(venv), "siblings installed": len(siblings)}
+    return {
+        "venv": str(venv),
+        "siblings installed": len(siblings),
+        "their test extra": extra or "NONE DECLARED -- their suite's imports are not covered",
+    }
 
 
 def run_chunks(out: Path, junit: Path) -> dict[str, object]:
@@ -1366,6 +1428,7 @@ def build(ns: argparse.Namespace) -> int:
     report.say("4. their types and their generator removed", strip_their_types(out, ours))
     report.say("5. their generator's tests removed", drop_their_generator_tests(out))
     report.say("5b. the declined tests, both layers, derived", deselect_the_declined(out))
+    report.say("5c. the payloads that contradict the envelope", correct_the_payloads(out))
     report.say("6. our types substituted, FRESH", substitute_ours(out, Path(ns.bundle)))
     report.say("7. the alias layer", alias_layer(out))
     report.say(
