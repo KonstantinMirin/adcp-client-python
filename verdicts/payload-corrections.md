@@ -14,7 +14,38 @@ cause. Every one is over **4 chunks read** with `/proc/vmstat` at `oom_kill 75`.
 
 ## 1. The three figures, and never one alone
 
-PLACEHOLDER_FIGURES
+```
+python -m survey causes /srv/ws/dropin-status --since /srv/ws/dropin-keyless
+
+   passed   10,572 -> 11,634   (+1,062)
+   failed    1,244 ->  1,144   (-100)
+   corrections applied            48 rows over 23 files, 97 sites
+                                  (46 adding `status`, 2 adding `budget`)
+   4 chunks read                  oom_kill 75 before and after
+```
+
+**And the delta is not all mine, so here is my own subject isolated by the shared rule.**
+`survey causes` partitions by cause and names the lane that owns each, so the `nocanon`
+rows are the attributable figure:
+
+| `nocanon` cause | baseline | after | |
+|---|---|---|---|
+| `status`: the envelope requires it and the payload omits it | **216** | **32** | 184 closed |
+| the drop-in venv is missing a dependency upstream's suite imports | **58** | **6** | 52 closed |
+| a conditional the document states and the payload does not satisfy | 68 | 68 | not this lane's subject |
+
+28 of the 32 remaining are the pinned row deliberately withdrawn (§2); the `anyOf` block
+that was 18 `CreateMediaBuyRequest.?` in the baseline residue is gone from it entirely.
+
+**THE GATE, by node-id set and not by count: tests that passed before and fail now — 0.**
+
+`survey causes --since` also prints `newly failing: 70`, and the label reads as a
+regression. Checked against the same two reports: **69 of the 70 were not collected in the
+baseline at all and 1 was skipped.** They are in `test_property_list_integration.py` (23),
+`conformance/signing/test_webhook_sender_e2e.py` (14) and the other files whose imports the
+baseline venv could not satisfy — the provisioning fix making previously *invisible*
+failures visible, which is the opposite of a regression. §5 and §8 carry the note back to
+the rule's owner.
 
 ---
 
@@ -56,7 +87,7 @@ question is asked of the **node** and never of the property's name
 
 The row is gone and its 28 tests are back to failing. `_PINNED` is kept in the file as a
 **disqualification** rather than a reason — the test is written down instead of remembered.
-Measured over the 46 remaining rows, rows at a pinned node: **0**.
+Measured over the 48 rows that remain, rows at a pinned node: **0**.
 
 The values the rows do add, and what fixes each:
 
@@ -84,7 +115,10 @@ refuses the payload, and `regenerate.py` applies them at **step 5c**. The tree s
 regenerable and every correction stays readable as a row.
 
 **Three row kinds, because the payload reaches the model three ways** — and each one exists
-because the previous could not reach a site that was measured:
+because the previous could not reach a site that was measured. A row also says whether its
+value is written `verbatim`: `budget` is `type: number`, and `"5000.0"` is a string the
+document refuses as firmly as it refused the omission, so the row says which rather than the
+applier guessing from the characters.
 
 | kind | reaches | keyed on |
 |---|---|---|
@@ -100,7 +134,7 @@ exactly and stops the build on the first disagreement, because a stale correctio
 silently corrects less than it claims is the failure mode worth refusing. There is no
 allowlist and no tolerance. Every row was finally re-measured against **upstream's pristine
 tree** (`/srv/ws/wt-upbase`), not against a tree these corrections had already touched:
-**46 rows, 0 disagreeing.**
+**48 rows, 0 disagreeing.**
 
 ### Two defects of my own, both found by running it
 
@@ -197,7 +231,68 @@ generated.
 
 ---
 
-## 6. Left failing, named
+## 6. The `anyOf` refusals: 20 are payloads and 9 must not be touched
+
+`adcp-client-python-xuh7` offered 29 bare-combinator refusals as "29 more payloads". **20
+are. The other 9 are not, and correcting seven of them would delete the test.** Reproduced:
+29 failures, split exactly as the bead's table says — `CreateMediaBuyRequest` 20,
+`PostalArea` 3, and six singles.
+
+**The 20 are corrected, and the arm is a semantic choice.** `create-media-buy-request.json`
+refuses upstream's payload at the root and at all three arms, each naming something
+different. The payload carries `packages` and no `total_budget`, no `budget_allocation` and
+no `proposal_id`, so `#/anyOf/0` *"Explicit packages with fixed allocation"* is the arm it
+**means** — and that arm's `not: {required: ['proposal_id']}` is already satisfied, while arm
+1 is the seller optimising a shared budget and arm 2 is executing an agreed proposal. This
+test is neither, so the choice is not the smallest diff. Upstream's own comment beside the
+payload agrees: *"create-media-buy-request.json requires packages, a budget, or a proposal"*.
+Three sites, two rows, `budget` written `verbatim` because it is `type: number` and `"5000.0"`
+is a string the document refuses as firmly as it refused the omission.
+
+**Seven of the nine have a payload that is deliberately invalid, and the test asserts the
+refusal — often its exact wording.** Correcting the payload would remove the test's subject:
+
+| test | asserts | why it fails now |
+|---|---|---|
+| `test_postal_area_compat.py::test_native_postal_country_system_mismatches_fail_closed` ×3 | `pytest.raises(ValueError, match="postal system .* is not valid for country")` | the payload is a deliberate mismatch (DE+zip, NL+plz, US+plz); the refusal is right and says `anyOf ()` instead of naming the mismatch |
+| `…::test_targeting_overlay_rejects_mismatched_postal_pair` | `match="postal system 'plz' is not valid for country 'US'"` | same, with an exact message |
+| `test_trusted_match_validation.py::test_provider_registration_requires_identity_dimensions_when_identity_match_enabled` | `match="countries is required"` | payload deliberately omits it |
+| `test_adagents.py::test_generated_catalog_validates_nested_reference_renderer` | `match="Field required"` | the refusal is correct and the message does not contain the words the test looks for |
+
+**So for these seven the refusal is right and the message is the defect** — which is the
+bead's own conclusion about the message, applied to the tests that read it. They resolve when
+the `presence` lane lands each branch's attributed reason; no payload row is appropriate and
+none was written. `PostalArea` also overlaps `namereach`'s work in that file (4 of its 25
+failures are this cause), so it was left alone on that ground too.
+
+**One of the nine is the sharpest expectation-versus-document case in the exercise.**
+`tests/test_reporting_adjustment_evidence.py::test_generated_default_does_not_repair_a_missing_required_wire_field`:
+
+```python
+raw = adjustment()
+del raw["control_total_deltas"][0]["value_type"]
+# Generated models accept a default here; the authoritative wire schema does not.
+ReportingAdjustment.model_validate(raw)          # expected to SUCCEED
+rejected("INVALID_EVIDENCE", lambda: capture(raw))
+```
+
+`core/reporting-control-total.json` is a `oneOf` of two arms —
+`IntegerReportingControlTotal` and `DecimalReportingControlTotal` — and **both** state
+`required: ['name', 'value', 'value_type']`. So the document requires `value_type` under
+every branch and our model refuses the deletion correctly. **Upstream's own comment names the
+invented default as the thing it is relying on**, and the test's subject is that divergence.
+Restoring `value_type` would make line 257 pass and then make `rejected("INVALID_EVIDENCE", …)`
+fail, because the payload would be valid. **Left failing, named, not corrected.**
+
+The last two belong elsewhere: `MCPWebhookPayload` carries `"result": None` with the comment
+*"Working status may have no result yet"* — a None where the document admits the key's
+absence, which is `presence`; and `GetReportingStatusResponse` already states
+`"status": "completed"`, its omission being inside `adjustments[0]`, the same
+`ReportingAdjustment` family.
+
+---
+
+## 7. Left failing, named
 
 **Expectation disagrees with the document — reported, not repaired.**
 
@@ -237,7 +332,7 @@ second is coverage arriving.
 
 ---
 
-## 7. Gates
+## 8. Gates
 
 ```
 ./check     emitted 1059 / refused 0, primary 0 / chained 0,
@@ -245,7 +340,9 @@ second is coverage arriving.
 oom_kill    75 before and after every run
 chunks      4 read on every figure quoted here
 newly failing, by node-id SET (passed before, failing now)   0
+   (`--since` reports 70; 69 were not collected in the baseline and 1 was skipped)
 rows at a pinned node                                        0
+rows re-measured against upstream's pristine tree            48, 0 disagreeing
 upstream's retained tests   byte-identical in the repository; corrected only by the
                             build, from committed data, never edited in place
 ```
