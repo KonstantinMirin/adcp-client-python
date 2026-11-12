@@ -50,18 +50,26 @@ import pathlib
 TABLE = pathlib.Path(__file__).resolve().parent / "deselect.tsv"
 
 
-def _rows(table: pathlib.Path) -> dict[tuple[str, str], str]:
-    """``(path, test) -> reason``, read off the derived table."""
-    found: dict[tuple[str, str], str] = {}
+def _rows(table: pathlib.Path) -> dict[tuple[str, str], tuple[str, str]]:
+    """``(path, test) -> (layer, reason)``, read off the one derived table.
+
+    **ONE TABLE, TWO LAYERS** (``adcp-client-python-l1r3``).  ``survey/regenerate.py``
+    merges the character classifier's DELETE rows and
+    ``survey/dropin/deselect.py``'s invented-default rows into a single
+    ``deselect.tsv`` with a ``layer`` column, because a built tree used to read only the
+    first and the second declined nothing.  Each row keeps its own layer's reason text, so
+    the table stays checkable row by row.
+    """
+    found: dict[tuple[str, str], tuple[str, str]] = {}
     if not table.is_file():
         return found
     for line in table.read_text(encoding="utf-8").splitlines():
         if not line.strip() or line.startswith("#") or line.startswith("path\t"):
             continue
         parts = line.split("\t")
-        if len(parts) < 3:
+        if len(parts) < 4:
             continue
-        found[(parts[0], parts[1])] = parts[2]
+        found[(parts[0], parts[1])] = (parts[2], parts[3])
     return found
 
 
@@ -100,9 +108,13 @@ def pytest_collection_modifyitems(config, items):  # noqa: ANN001, ANN201 -- pyt
     )
     reporter = config.pluginmanager.get_plugin("terminalreporter")
     if reporter is not None:
+        by_layer: dict[str, int] = {}
+        for key in matched:
+            by_layer[table[key][0]] = by_layer.get(table[key][0], 0) + 1
+        detail = ", ".join(f"{n} {layer}" for layer, n in sorted(by_layer.items()))
         reporter.write_line(
-            f"deselect: {len(dropped)} items over {len(matched)} test functions, "
-            f"by survey/upstream_test_character.py's DELETE verdict"
+            f"deselect: {len(dropped)} items over {len(matched)} test functions"
+            + (f" ({detail})" if detail else "")
         )
         for path, name in stale[:10]:
             reporter.write_line(f"deselect: STALE ROW -- {path}::{name} matched nothing")

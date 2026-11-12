@@ -263,6 +263,60 @@ def collected(args: list[str]) -> int | None:
     return None
 
 
+def committed_rows(table: Path = TABLE) -> list[tuple[str, str, str]]:
+    """The committed list as ``(path, test, reason)``, for the one table the runner reads.
+
+    **TWO LAYERS DECLINE A TEST AND ONE TABLE HAS TO CARRY BOTH** (``adcp-client-python-l1r3``).
+    This module's subject is upstream's INVENTED DEFAULTS -- a test leaning on a default that
+    makes a required field optional -- and ``survey/upstream_test_character.py``'s subject is
+    an assertion about their REPRESENTATION.  They are different readings of different
+    evidence and neither subsumes the other, so both write rows and
+    ``survey/regenerate.py`` merges them into the single ``deselect.tsv`` the plugin reads.
+    Before that merge a built tree declined only the character classifier's rows and this
+    whole classification did nothing to any figure.
+
+    **EACH ROW KEEPS ITS OWN REASON**, which is why this returns a sentence and not a flag:
+    the merged table's ``reason`` column for one of these names the model, the field, the
+    document and the pointer that refutes the default, so a reader can check the row against
+    the bundle without running anything -- exactly what the eleven columns here are for.
+    The full eleven stay in ``deselected-9.6.1.tsv``; this is the projection the runner needs.
+
+    A node id can appear more than once here, once per (test, pair).  The reasons are joined
+    so one test is one row of the merged table and no pair is lost.
+    """
+    if not table.is_file():
+        return []
+    lines = table.read_text(encoding="utf-8").splitlines()
+    if not lines:
+        return []
+    header = lines[0].split("\t")
+    index = {name: i for i, name in enumerate(header)}
+    merged: dict[tuple[str, str], list[str]] = {}
+    for line in lines[1:]:
+        if not line.strip():
+            continue
+        cells = line.split("\t")
+        if len(cells) < len(header):
+            continue
+        node = cells[index["node_id"]]
+        path, _, rest = node.partition("::")
+        if not rest:
+            continue
+        # The FUNCTION is the last `::` segment with its parametrisation stripped -- a test
+        # inside a class carries `<file>::<Class>::<test>`, and the runner keys on the
+        # function exactly as `deselect_plugin` reads it off a nodeid.
+        test = rest.split("::")[-1]
+        why = (
+            f"{cells[index['model']]}.{cells[index['field']]} leans on upstream's default "
+            f"{cells[index['upstream_default']]}, which "
+            f"{cells[index['document']]}{cells[index['pointer']]} refutes "
+            f"(the document states {cells[index['document_states']]}); "
+            f"kind {cells[index['kind']]}, idiom {cells[index['idiom']]}"
+        )
+        merged.setdefault((path, test.split("[")[0]), []).append(why)
+    return [(path, test, " | ".join(whys)) for (path, test), whys in sorted(merged.items())]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true", help=f"write {TABLE.name}")
