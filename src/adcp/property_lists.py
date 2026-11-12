@@ -14,6 +14,7 @@ from typing import Any, Literal
 
 from pydantic import RootModel
 
+from adcp._redaction import refused_at
 from adcp.identifiers import NormalizedIdentifier, normalize_identifier
 
 logger = logging.getLogger(__name__)
@@ -227,6 +228,14 @@ class MCPPropertyListFetcher:
         except Exception as exc:
             # Upstream messages and exception chains can contain bearer credentials.
             logger.warning("Property list resolution failed (%s)", type(exc).__name__)
+            # **AND THE FAULT, REDACTED, AT DEBUG** -- the class name alone said nothing.
+            # Measured: 17 failures reported ``SERVICE_UNAVAILABLE / transient`` for a
+            # ``GetPropertyListRequest`` refused at ``pagination.cursor``, and nothing in
+            # the report named the real cause, so ``survey.causes`` read them as an
+            # unowned one.  A broad ``except`` hides a cause from the ATTRIBUTION as well
+            # as from a reader.  ``refused_at`` takes each row's ``loc`` and ``type`` and
+            # drops every field that could carry the value.
+            logger.debug("Property list resolution refused: %s", refused_at(exc))
             raise AdcpError(
                 "SERVICE_UNAVAILABLE",
                 message="Property list resolution failed",

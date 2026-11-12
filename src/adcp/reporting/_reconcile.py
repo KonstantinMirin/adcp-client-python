@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 from collections import Counter, defaultdict
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
@@ -22,6 +23,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, RootModel
 
+from adcp._redaction import refused_at
 from adcp.reporting._consumer import (
     ConsumerLoopView,
     ConsumerStatusCheckpoint,
@@ -64,6 +66,27 @@ from adcp.types.core import TaskResult
 
 if TYPE_CHECKING:
     from adcp.reporting_inspection import ReportingResourceReader
+
+
+#: Where a swallowed read failure is reported, since the EXCEPTION may not carry it.
+#:
+#: **THE FLATTENING IS THE CONTRACT AND NOT A DEFECT HERE, which is worth stating because it
+#: reads like one.**  Upstream's own
+#: ``tests/test_reporting_frozen_read_corrections.py``'s
+#: ``test_response_validation_failure_stays_remote_typed_and_redacted``
+#: asserts all four properties of it: the code is ``STATUS_READ_FAILED``, a secret in the
+#: payload is absent from ``str`` and ``repr``, and ``__context__`` and ``__cause__`` are both
+#: ``None``.  So the broad ``except`` and the raise OUTSIDE the except scope are both load
+#: bearing: narrowing the first would let a provider's own exception through, and raising
+#: inside it would chain the refused payload onto the error.
+#:
+#: **WHAT WAS WRONG IS THAT THE CAUSE WAS UNOBSERVABLE.**  For a release, a response the
+#: emission correctly refused reported "get_reporting_status could not be read" and nothing
+#: anywhere could say what had been refused -- 99 of upstream's reporting tests, every one of
+#: them expecting the specific code its own chain defect earns.  So the cause is reported
+#: HERE, where it costs the exception nothing, through the one redaction
+#: (:func:`adcp._redaction.refused_at`) that ``adcp.property_lists`` reports through too.
+_LOG = logging.getLogger(__name__)
 
 
 class ReportingStatusClient(Protocol):
@@ -430,7 +453,8 @@ async def load_reporting_ledger(
                 page_request = None
                 try:
                     page_request = GetReportingStatusRequest.model_validate(payload)
-                except Exception:
+                except Exception as error:
+                    _LOG.debug("reporting status request refused: %s", refused_at(error))
                     page_request = None
                 if page_request is None:
                     # SDK-side construction and provider failures are distinct,
@@ -442,7 +466,11 @@ async def load_reporting_ledger(
                 result = None
                 try:
                     result = await client.get_reporting_status(page_request)
-                except Exception:
+                except Exception as error:
+                    # The cause is reported and NOT retained: see ``refused_at``.  The raise
+                    # stays outside this scope so ``__context__`` is ``None``, which upstream's
+                    # own redaction test asserts.
+                    _LOG.debug("get_reporting_status refused: %s", refused_at(error))
                     result = None
                 if result is None:
                     # Leave the exception scope: do not retain a private provider
