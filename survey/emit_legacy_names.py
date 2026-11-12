@@ -90,8 +90,28 @@ def main() -> int:
 
     imports: list[str] = []
     bound: list[str] = []
+    unimportable: list[str] = []
     for target in sorted(by_target):
         module, _, symbol = target.rpartition(".")
+        # **A TARGET THAT IS NOT AN IMPORTABLE NAME IS NOT AN ALIAS.**  `points_at` is read off
+        # an object's `__module__` and `__qualname__`, and a parametrised generic answers
+        # `AdCPRootModel[Any]` -- a type expression, not a binding.  `from ... import
+        # AdCPRootModel[Any]` is a SyntaxError that takes the whole module with it, so such a
+        # target is skipped and counted rather than written.
+        if not symbol.isidentifier() or not all(
+            part.isidentifier() for part in module.split(".")
+        ):
+            unimportable.extend(by_target[target])
+            continue
+        # **AND NEVER A TARGET INSIDE THIS MODULE.**  The binding dump the table is built from
+        # is taken on a tree where this file already exists, so a word bound by the LAST run
+        # appears as one of our own bindings and can be chosen as a target -- which emits
+        # `from adcp.types.legacy_names import X as X` and raises ImportError on a partially
+        # initialised module.  It is the same defect as the "already served" check reading this
+        # module's own output, one layer along.
+        if module == "adcp.types.legacy_names":
+            unimportable.extend(by_target[target])
+            continue
         for name in sorted(set(by_target[target])):
             stmt = f"from {module} import {symbol} as {name}"
             flags = []
@@ -124,6 +144,8 @@ def main() -> int:
             lines.append("    ],")
         lines += ["}", ""]
         OUT.write_text("\n".join(lines))
+    if unimportable:
+        print(f"  target not importable: {len(set(unimportable))} (a type expression, not a name)")
     print(f"table rows            : {len(rows)}")
     print(f"  distinct words      : {len(targets)}")
     print(f"  AMBIGUOUS, declined : {ambiguous}")

@@ -51,8 +51,8 @@ import json
 import pathlib
 import re
 
-up = json.loads(pathlib.Path("/tmp/sig_up.json").read_text())
-ours = json.loads(pathlib.Path("/tmp/sig_ours.json").read_text())
+up = json.loads(pathlib.Path("/tmp/bind_up.json").read_text())
+ours = json.loads(pathlib.Path("/tmp/bind_ours.json").read_text())
 
 
 def rel(p, m):
@@ -62,10 +62,19 @@ def rel(p, m):
 
 theirs_by_module = collections.defaultdict(list)
 ours_by_module = collections.defaultdict(list)
+#: **AND EVERY BINDING OF THEIRS, not only the ones under ``domains/``.**  A name in their
+#: hand-written layer -- ``aliases``, ``_eager``, ``guards``, ``registry``, ``base`` -- has no
+#: document and so no module to pair with ours, but it is still a word their code and their
+#: tests import.  Scoped to ``domains`` the loop never saw it:
+#: ``UpdateMediaBuySuccessResponse`` is re-exported from three such modules and 298 of their
+#: tests fail on it.  A binding with no shared module path goes straight to ``_cross_tree``.
+elsewhere = []
 for p, r in up.items():
     k = rel(p, "domains")
     if k:
         theirs_by_module[k].append(r)
+    else:
+        elsewhere.append(r)
 for p, r in ours.items():
     k = rel(p, "_schemas")
     if k:
@@ -100,6 +109,13 @@ def _index(records):
         collections.defaultdict(list),
         [],
     )
+    # **AMONG OUR CANDIDATES FOR A WORD, THE DECLARED ONE IS THE SUBJECT.**  Our own surface
+    # re-exports every class several times -- `_schemas/...`, `_surface/<domain>`, `_flat` --
+    # so a by-name lookup finds three or four rows for one object and a "unique or nothing"
+    # rule answers nothing.  Measured: `UpdateMediaBuyResponse1` is the target of the
+    # re-export 298 of their tests need, and it read as ambiguous for exactly this reason.
+    # Only the row where the object was DEFINED goes in the name index; the rest are our own
+    # spellings of it and say nothing new.
     for path, row in records.items():
         fields = tuple(sorted(set(row["fields"]) - ENVELOPE))
         required = tuple(sorted(set(row["required"]) - ENVELOPE))
@@ -108,6 +124,36 @@ def _index(records):
         by_req[required].append((path, row))
         flat.append((path, row, set(fields), set(required)))
     return by_name, by_sig, by_req, flat
+
+
+def _one(candidates):
+    """The one path among our candidates for a word, or None where the word is ambiguous.
+
+    **OUR OWN SURFACE RE-EXPORTS EVERY CLASS SEVERAL TIMES** -- `_schemas/...`,
+    `_surface/<domain>`, `_flat` -- so a by-name lookup finds three or four rows for ONE
+    object and a "unique or nothing" rule answers nothing.  Measured: restricting the index to
+    declarations instead lost 2,223 rows, because many of our words are only reachable as a
+    re-export.  So every row stays in the index and the DECLARATION disambiguates: where the
+    candidates are several spellings of one object, the row that DEFINED it is the answer;
+    where they are genuinely different objects, there is no unique declaration and the word is
+    ambiguous, which is the honest verdict.
+    """
+    rows = candidates or []
+    if len(rows) == 1:
+        return rows[0][0]
+    declared = [path for path, row in rows if row.get("declared")]
+    if len(declared) == 1:
+        return declared[0]
+    # **SEVERAL ROWS THAT NAME ONE OBJECT ARE NOT AN AMBIGUITY.**  A word of ours bound by an
+    # ALIAS has `declared` false everywhere -- `UpdateMediaBuyResponse1 = UpdateMediaBuySuccess`
+    # puts the object's `__module__` at the definition, so all three of our spellings read as
+    # undeclared and the rule above cannot choose.  But `points_at` is the same object in all
+    # three, so there is nothing to choose BETWEEN: the answer is that object.  Only where the
+    # candidates point at DIFFERENT objects is the word genuinely ambiguous.
+    targets = {row.get("points_at") for _path, row in rows if row.get("points_at")}
+    if len(targets) == 1:
+        return next(iter(targets))
+    return None
 
 
 def _cross_tree(theirs):
@@ -130,9 +176,21 @@ def _cross_tree(theirs):
                        generator, confirmed from the names rather than from the fields.
     """
     name = theirs["name"]
-    hit = OUR_NAME.get(name) or []
-    if len(hit) == 1:
-        return hit[0][0], "cross-name"
+    hit = _one(OUR_NAME.get(name))
+    if hit:
+        return hit, "cross-name"
+    # **A RE-EXPORT OF THEIRS IS ANSWERED BY ITS TARGET, one hop.**  16,763 of their 21,496
+    # bindings are re-exports, and the target's own word is what the rest of this table
+    # already resolves.  `UpdateMediaBuySuccessResponse` is the measured case: not a class on
+    # their side at all, re-exported from `_eager`, `aliases` and `guards`, every one pointing
+    # at `canonical_creative.UpdateMediaBuyResponse1`.  Chasing the target's NAME -- not its
+    # module, which this branch deleted -- reaches our class, and 298 of their tests turn on it.
+    if not theirs.get("declared") and theirs.get("points_at"):
+        target = str(theirs["points_at"]).rsplit(".", 1)[-1]
+        if target != name:
+            hit = _one(OUR_NAME.get(target))
+            if hit:
+                return hit, "their-reexport"
     fields = tuple(sorted(set(theirs["fields"]) - ENVELOPE))
     required = tuple(sorted(set(theirs["required"]) - ENVELOPE))
     hit = OUR_SIG.get((fields, required)) or []
@@ -169,7 +227,7 @@ for mod in sorted(set(theirs_by_module) & set(ours_by_module)):
         g = re.search(r"#/(?:oneOf|anyOf)/(\d+)$", ptr)
         if g:
             branches.append((int(g.group(1)), o))
-    branches.sort()
+    branches.sort(key=lambda pair: pair[0])
     for t in theirs:
         sig = (tuple(t["fields"]), tuple(t["required"]))
         pick = how = None
@@ -205,7 +263,21 @@ for mod in sorted(set(theirs_by_module) & set(ours_by_module)):
             residue.append(
                 {"their": t["name"], "module": mod, "ours_in_module": [o["name"] for o in mine]}
             )
-total = sum(len(v) for k, v in theirs_by_module.items() if k in ours_by_module)
+# the hand-written layer: no document, so the module-scoped rules cannot apply
+seen = {r["their"] for r in rows}
+for r in elsewhere:
+    if r["name"] in seen:
+        continue
+    pick, how = _cross_tree(r)
+    if pick:
+        rows.append({"their": r["name"], "ours": pick, "how": how})
+        seen.add(r["name"])
+    else:
+        residue.append({"their": r["name"], "module": r["module"], "ours_in_module": []})
+
+total = sum(len(v) for k, v in theirs_by_module.items() if k in ours_by_module) + len(
+    {r["name"] for r in elsewhere}
+)
 print(f"their names in shared modules : {total}")
 print(f"  MAPPED                      : {len(rows)}  ({100 * len(rows) // total}%)")
 for h, c in collections.Counter(r["how"] for r in rows).most_common():
