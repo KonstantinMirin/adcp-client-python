@@ -412,7 +412,10 @@ async def load_reporting_ledger(
             "account_id"
         )
         prepared = (base, page_size, requested_account)
-    except Exception:
+    except Exception as error:
+        # The same reading as the two sites below: the cause is reported and never
+        # retained, and the raise stays outside this scope so nothing chains.
+        _LOG.debug("reporting status request could not be prepared: %s", refused_at(error))
         prepared = None
     if prepared is None:
         raise ReportingReconciliationError(

@@ -41,6 +41,7 @@ from zoneinfo import ZoneInfo
 
 import rfc8785
 
+from adcp._redaction import refused_at
 from adcp.reporting._settlement import cancel_and_settle
 from adcp.reporting._source_authorization import (
     bind_inline_publication,
@@ -1526,7 +1527,10 @@ class ReportingProducer:
                     raise failure("BINDING_MISMATCH")
             except _SourceAuthorizationRevokedError:
                 raise
-            except Exception:
+            except Exception as error:
+                # The swallow stays -- the binding is the seller's -- and the fault is
+                # named, so a mismatch and a defect of ours are distinguishable.
+                logger.debug("source binding refused: %s", refused_at(error))
                 raise failure("BINDING_MISMATCH") from None
 
     @asynccontextmanager

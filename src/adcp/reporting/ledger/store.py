@@ -35,6 +35,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from contextvars import ContextVar
@@ -44,6 +45,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 from uuid import uuid4
 
+from adcp._redaction import refused_at
 from adcp.reporting.canonical_json import canonical_json_utf8_v1
 from adcp.reporting.currency import (
     monetary_decimal,
@@ -76,6 +78,9 @@ from adcp.reporting.ledger.notification_models import (
     validate_scope_refinement,
 )
 from adcp.reporting.ledger.provisional import ProvisionalAcquisition, ProvisionalObservation
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from adcp.reporting.inline_source import ReportingSealStore
@@ -279,7 +284,13 @@ def decode_cursor(cursor: str) -> dict[str, Any]:
         payload = json.loads(
             base64.urlsafe_b64decode(padded.encode("ascii")), object_pairs_hook=unique_pairs
         )
-    except Exception:
+    except Exception as error:
+        # **A SWALLOW HIDES A CAUSE FROM THE ATTRIBUTION AS WELL AS FROM A READER.**  The
+        # swallow stays -- the cursor is the caller's -- and the FAULT is named.  The
+        # cursor's own bytes are never logged: ``refused_at`` answers the class name alone
+        # for a non-pydantic error, so "bad base64" and "bad JSON" are distinguishable
+        # without the value.
+        logger.debug("pagination cursor refused: %s", refused_at(error))
         payload = None
     if not isinstance(payload, dict):
         raise LedgerConflictError("INVALID_CURSOR", "the pagination cursor is not readable")

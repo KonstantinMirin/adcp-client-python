@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from adcp._redaction import refused_at
 from adcp.reporting._source_authorization import require_account_work
 from adcp.reporting._timestamp import aware_timestamp
 from adcp.reporting.canonical_json import canonical_json_utf8_v1
@@ -33,6 +35,9 @@ from adcp.reporting.source import (
     iso_duration_milliseconds_v1,
 )
 from adcp.types import ReportingDeliveryOffering
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -249,7 +254,8 @@ class ReportingProductionOffering:
             return binding
         except _SourceAuthorizationRevokedError:
             raise
-        except Exception:
+        except Exception as error:
+            logger.debug("source offering binding refused: %s", refused_at(error))
             raise failure("BINDING_MISMATCH") from None
 
     def configuration_schedule(self, configuration: ReportingConfiguration) -> dict[str, Any]:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import weakref
 from collections.abc import Mapping
 from contextvars import ContextVar
@@ -12,6 +13,7 @@ from dataclasses import dataclass, replace
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
+from adcp._redaction import refused_at
 from adcp.reporting._source_authorization import source_turn
 from adcp.reporting.ledger.delivery_models import ReportingDestinationBinding
 from adcp.reporting.ledger.models import ReportingConfiguration, ReportingDeliveryEscalation
@@ -49,6 +51,9 @@ from adcp.reporting.production.store import (
     ReportingProductionStore,
 )
 from adcp.reporting.receipts.handler import ReceiptAccountResolver
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from adcp.decisioning.registry import BuyerAgentRegistry
@@ -476,7 +481,8 @@ class ReportingProductionSupport:
             ):
                 raise failure("BINDING_MISMATCH")
             return resolved
-        except Exception:
+        except Exception as error:
+            logger.debug("resolved binding refused: %s", refused_at(error))
             raise failure("BINDING_MISMATCH") from None
 
     def _producer_keys(self) -> tuple[str, ...]:

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import logging
 from collections.abc import Callable
 from functools import wraps
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
+from adcp._redaction import refused_at
 from adcp.decisioning.context import RequestContext
 from adcp.exceptions import ADCPTaskError
 from adcp.reporting._errors import (
@@ -42,6 +44,9 @@ from adcp.types import (
     SyncReportingReceiptsRequest,
     SyncReportingStatusRequest,
 )
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from adcp.decisioning.registry import BuyerAgentRegistry
@@ -247,7 +252,11 @@ class ReportingProductionHandler(ReportingReceiptHandler):
             return ReportingDeliveryPrincipal(account, consumer)
         except (ReliableReportingConfigurationError, ReliableReportingUnavailableError):
             raise
-        except Exception:
+        except Exception as error:
+            # An auth boundary answers UNAUTHORIZED and never why, which is the right
+            # posture; the FAULT class is still safe to name, and ``refused_at`` carries no
+            # value for a non-pydantic error.
+            logger.debug("delivery principal refused: %s", refused_at(error))
             raise ReportingReceiptError("UNAUTHORIZED") from None
 
     async def get_adcp_capabilities(

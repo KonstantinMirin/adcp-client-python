@@ -12,6 +12,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import re
 import secrets
 from collections.abc import AsyncIterator, Sequence
@@ -23,6 +24,7 @@ from typing import Any, Protocol, cast
 
 from jsonschema import Draft202012Validator
 
+from adcp._redaction import refused_at
 from adcp.reporting.evidence import ReportingCanonicalDigest, ReportingControlTotalRecord
 from adcp.reporting.ledger.delivery_models import (
     ReportingDestinationBinding,
@@ -65,6 +67,9 @@ from adcp.reporting.materializer.contracts import (
     object_path,
 )
 from adcp.reporting.revision_selection import select_reporting_revision
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 _VERIFICATION_SEAL_KEY = secrets.token_bytes(32)
 
@@ -180,7 +185,12 @@ class ReportingRevisionVerifier(_ClosedValue):
         error = False
         try:
             self._runtime()
-        except Exception:
+        except Exception as raised:
+            # ``_runtime`` raises ``failure(...)`` for every verification it knows it does
+            # not support, so an exception of any OTHER kind here is a defect of OURS
+            # reported as "unsupported".  The typed code is this boundary's contract, so
+            # the fault is named rather than re-raised.
+            logger.debug("verification runtime refused: %s", refused_at(raised))
             error = True
         if error:
             raise failure("UNSUPPORTED_VERIFICATION")
@@ -774,8 +784,13 @@ class _Canonicalizer:
             valid = False
             try:
                 valid = self.validator.is_valid(value)
-            except Exception:
-                valid = False  # No schema resolver/validation diagnostics leave this boundary.
+            except Exception as raised:
+                # No schema resolver or validation diagnostic leaves this boundary, which
+                # is why the row is answered ``SOURCE_INVALID`` either way -- but a
+                # RESOLVER failure is not an invalid source, and conflating the two is the
+                # defect ``refused_at`` exists for.
+                logger.debug("source row validation refused: %s", refused_at(raised))
+                valid = False
             if not valid:
                 raise failure("SOURCE_INVALID")
             key = self.order_key(value)

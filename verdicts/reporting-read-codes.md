@@ -407,3 +407,111 @@ So the rule's verdict is right about the signature and wrong about the lane and 
 Suggested correction: rename it to the payload family and point it at `nocanon` —
 `the schedule payload omits period_anchor/period_timezone under alignment=billing_cycle`,
 which is what a reader of the table needs in order not to re-diagnose it.
+
+---
+---
+
+# Appendix 2 — the swallow sweep: every broad `except` in `src/adcp/` that raises a code
+
+**The general finding is the owner's sentence and it is what makes this sweep worth doing:**
+a broad `except` hides a cause from the ATTRIBUTION as well as from a reader. `survey causes`
+read `property_lists.py`'s 17 failures as unowned residue because no rule can see through a
+swallow, so the work landed on nobody. Two maskers were found by stumbling over their
+symptoms, 116 failures between them; a third is cheaper to find on purpose.
+
+## How the set was derived
+
+AST over every `.py` under `src/adcp/` outside the generated tree. **237** broad handlers
+(`except Exception`, `except BaseException`, bare `except`) — too many to be the subject.
+The MASKER pattern is narrower and is what the brief names: a broad handler whose cause
+reaches a **typed raise carrying a CODE**, either
+
+* inside the handler itself, or
+* through the `x = None` / `x = False` sentinel the handler sets, with the coded raise in the
+  `if x is None:` that follows — the `_reconcile` structure.
+
+The sentinel link is **confirmed per site** (the guarded `if` is matched to the name the
+handler assigns) rather than assumed, which is what takes the candidate set from 33 to the
+**16** below. A handler that swallows and returns a fallback without raising is not a masker
+and is not in the table.
+
+## The table
+
+`cause observable` means a reader can tell what was caught: a log line naming it, or a
+`__cause__`/`__context__` that retains it.
+
+| file:line | code it raises | cause observable | verdict |
+|---|---|---|---|
+| `decisioning/handler.py:1799` | `INTERNAL_ERROR` | yes — `logger.exception` | already right |
+| `decisioning/handler.py:2719` | `SERVICE_UNAVAILABLE` | yes — `logger.exception` | already right |
+| `decisioning/property_list.py:129` | `SERVICE_UNAVAILABLE` | yes — `logger.warning` | already right |
+| `property_lists.py:228` | `SERVICE_UNAVAILABLE` | yes — `refused_at` | fixed at `c230b61ff` |
+| `server/idempotency/store.py:429` | `SERVICE_UNAVAILABLE` | yes — `logger.warning` | already right |
+| `reporting/conformance.py:498` | `OBJECT_MISMATCH` | **yes — `raise … from error`** | already right; my detector flagged it and the chain makes it observable |
+| `reporting/_reconcile.py:415` | `INVALID_STATUS_REQUEST` | no → **yes** | **FIXED** — DEBUG line |
+| `reporting/ledger/store.py:282` | `INVALID_CURSOR` | no → **yes** | **FIXED** — DEBUG line |
+| `reporting/materializer/verification.py:183` | `UNSUPPORTED_VERIFICATION` | no → **yes** | **FIXED** — and it hides a bug: see below |
+| `reporting/materializer/verification.py:777` | `SOURCE_INVALID` | no → **yes** | **FIXED** — a resolver failure is not an invalid source |
+| `reporting/ledger/producer.py:1529` | `BINDING_MISMATCH` | no → **yes** | **FIXED** — DEBUG line |
+| `reporting/production/offerings.py:252` | `BINDING_MISMATCH` | no → **yes** | **FIXED** — DEBUG line |
+| `reporting/production/service.py:479` | `BINDING_MISMATCH` | no → **yes** | **FIXED** — DEBUG line |
+| `reporting/production/handler.py:250` | `UNAUTHORIZED` | no → **yes** | **FIXED** — DEBUG line |
+| `decisioning/pg/proposal_store.py:255` | `INTERNAL_ERROR` | no | **named, left** — out of this row's write scope |
+| `decisioning/pg/task_registry.py:371` | `INTERNAL_ERROR` | no | **named, left** — out of this row's write scope |
+
+**Eight fixed, and the fix is the DEBUG line and nothing else.** Every one reports through
+`adcp._redaction.refused_at` — the single helper, not a second one — so there is one reading
+of what counts as data. No `except` was narrowed, no raise moved inside a handler, no
+`__cause__` added where a test asserts its absence. `tests/test_a_swallowed_cause_is_named_and_redacted.py`
+passes 4/4 and `tests/test_reporting_frozen_read_safety.py` is **71 failed / 22 passed before
+and after**, which is the payload family and not this change.
+
+Observed at a newly-opened site, `decode_cursor("!!!not-base64!!!")`:
+
+```
+raised:     LedgerConflictError INVALID_CURSOR      <- the typed code, unchanged
+DEBUG line: pagination cursor refused: Error        <- binascii.Error, and no cursor bytes
+```
+
+## Two where the swallow is genuinely wrong, and I say so rather than widen anything
+
+These are fixed with the DEBUG line like the rest — the typed code is the boundary's contract
+— but the line is not the whole of what is wrong with them, and a reader of the table should
+know which:
+
+* **`materializer/verification.py:183`** — `__post_init__` calls `self._runtime()`, which
+  already raises `failure("UNSUPPORTED_VERIFICATION")` for every verification it knows it does
+  not support. So an exception of any OTHER kind there is **a defect of ours reported as
+  "unsupported"**: an `AttributeError` in `_runtime` and a genuinely unsupported method are
+  the same answer to a caller. The DEBUG line makes them distinguishable; making the handler
+  catch only what it means would be the real repair and it changes an exception type, which is
+  not this row's to decide.
+* **`materializer/verification.py:777`** — the comment says "No schema resolver/validation
+  diagnostics leave this boundary", which is right about the message and wrong about the
+  conflation: `validator.is_valid` RAISING is a resolver failure, not an invalid source row,
+  and both answer `SOURCE_INVALID`. The same defect as `STATUS_READ_FAILED` one package over.
+
+## The two left, with what they hide
+
+Both are `src/adcp/decisioning/pg/`, outside this row's write scope, and both hide a BUG
+rather than a payload — which is the case the brief says to name and leave:
+
+* **`proposal_store.py:255`** catches a decoder failure and raises `INTERNAL_ERROR` with a
+  message pointing the adopter at `recipe_decoder=`. The intent is good and the cause is still
+  dropped: an adopter is told WHERE to look and never WHAT failed. `refused_at(exc)` on a
+  DEBUG line would complete it, and the handler already binds `exc`.
+* **`task_registry.py:371`** catches anything from a caller-supplied `resolver(context)` and
+  raises `INTERNAL_ERROR … from None`. A resolver is adopter code, so swallowing its message
+  is defensible; the fault class is not, and nothing records it.
+
+Neither is a type question and neither is reporting's, so they are reported here rather than
+edited.
+
+## And a note on where work must happen
+
+`efa2ac8ed` in this branch's history contains only this verdict: the `_reconcile.py` edit it
+describes was written into `/srv/ws/adcp-client-python`, the shared checkout, and recovered by
+the owner at `c230b61ff`. **I checked that checkout as asked and it is clean** — `git status`
+empty, HEAD at `11272fdd5` — so nothing of mine is sitting there now. The cause was a write
+through a RELATIVE path resolved against an inherited working directory; every edit in this
+appendix was made through an absolute path under `/srv/ws/wt-aliasnote`.
