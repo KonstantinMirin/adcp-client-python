@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
@@ -62,9 +62,9 @@ class CanonicalFormatVASTVideo(CanonicalFormatBase):
     vast_versions: Annotated[list[VASTVersion] | None, Field(description='VAST versions accepted by this product format option. The asset still declares exactly one `vast_version`; compatibility requires membership in this set and the seller-wide execution set.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     vast_version: Annotated[VASTVersion | None, Field(description='Deprecated one-element alias for `vast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.'), OmittedNotNull] = None
     media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for alternative VAST MediaFile renditions. Each applicable resolved InLine linear creative needs at least one MediaFile satisfying all declared constraints.'), OmittedNotNull] = None
-    vpaid_enabled: Annotated[bool | None, Field(description='Whether VPAID interactivity is supported. When true, the VAST tag may carry VPAID JS/Flash payloads.'), OmittedNotNull] = None
+    vpaid_enabled: Annotated[StrictBool | None, Field(description='Whether VPAID interactivity is supported. When true, the VAST tag may carry VPAID JS/Flash payloads.'), OmittedNotNull] = None
     vpaid_version: Annotated[VpaidVersion | None, OmittedNotNull] = None
-    simid_supported: Annotated[bool | None, Field(description='Whether the seller accepts IAB SIMID through `<InteractiveCreativeFile apiFramework="SIMID">` on a Linear VAST creative. SIMID is not a generic VAST extension and cannot be serialized under NonLinearAds; every `ctv_ad_experience` profile therefore forbids `true`.'), OmittedNotNull] = None
+    simid_supported: Annotated[StrictBool | None, Field(description='Whether the seller accepts IAB SIMID through `<InteractiveCreativeFile apiFramework="SIMID">` on a Linear VAST creative. SIMID is not a generic VAST extension and cannot be serialized under NonLinearAds; every `ctv_ad_experience` profile therefore forbids `true`.'), OmittedNotNull] = None
     duration_ms_range: Annotated[list[NonNegativeInt] | None, Field(description='[min, max] duration in milliseconds. **Precedence**: `duration_ms_exact` takes precedence when both ship. SDKs SHOULD lint a warning when both fields ship.', max_length=2, min_length=2), OmittedNotNull] = None
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship.'), OmittedNotNull] = None
     min_width: Annotated[IntMin1 | None, Field(description='Minimum placement/player width in pixels. MediaFile rendition dimensions are declared in `media_file_requirements`.'), OmittedNotNull] = None
@@ -75,10 +75,10 @@ class CanonicalFormatVASTVideo(CanonicalFormatBase):
     ctv_ad_experience: Annotated[CTVAdExperience | None, Field(description='CTV experience this option is eligible to serve. On video_vast only `pause`, `screensaver`, `overlay`, `squeezeback`, and `in_scene` are valid (`menu` routes to native_in_feed or sponsored_placement), and `creative_type` MUST be `nonlinear`. Because VAST places `<InteractiveCreativeFile>` only under Linear `<MediaFiles>`, `simid_supported` MUST NOT be true on any of these NonLinear profiles. Per-experience floors: `overlay` and `squeezeback` require a 10s minimum duration; `in_scene` requires a 3s minimum brand-exposure duration and forbids interactivity (`vpaid_enabled` MUST NOT be true); `pause` has no duration floor and ends on viewer or device action.'), OmittedNotNull] = None
     motion_level: Annotated[CreativeMotionLevel | None, Field(description='Accepted motion class for the rendered creative (AdCOM attrs 21-23).'), OmittedNotNull] = None
     activation_methods: Annotated[list[CreativeActivationMethod] | None, Field(description='Viewer activation mechanisms this option offers. Activations are engagement events, not impressions.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
-    linear_required: Annotated[bool | None, Field(description='Whether the VAST creative must be linear (non-skippable in-stream). Superseded by `creative_type`; retained for pre-3.2 declarations.'), OmittedNotNull] = None
+    linear_required: Annotated[StrictBool | None, Field(description='Whether the VAST creative must be linear (non-skippable in-stream). Superseded by `creative_type`; retained for pre-3.2 declarations.'), OmittedNotNull] = None
     skippable_after_ms: Annotated[NonNegativeInt | None, Field(description='When skippable, the buyer-side skip threshold in milliseconds (e.g., 5000 for 5-second skippable pre-roll).'), OmittedNotNull] = None
     max_wrapper_depth: Annotated[NonNegativeInt | None, Field(description='Maximum VAST wrapper redirect depth permitted.'), OmittedNotNull] = None
-    ssl_required: Annotated[bool | None, OmittedNotNull] = None
+    ssl_required: Annotated[StrictBool | None, OmittedNotNull] = None
 
 
 CanonicalFormatVastVideo = CanonicalFormatVASTVideo

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, NotValue, Rule
@@ -100,8 +100,8 @@ class Package(AdCPBaseModel):
     optimization_goals: Annotated[list[OptimizationGoal] | None, Field(description='Optimization targets for this package. The seller optimizes delivery toward these goals in priority order. Common pattern: event goals (purchase, install) as primary targets at priority 1; metric goals (clicks, views) as secondary proxy signals at priority 2+.', min_length=1), OmittedNotNull] = None
     start_time: Annotated[Annotated[AwareDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Flight start date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's start_time. Sellers SHOULD always include the resolved value in responses, even when inherited."), OmittedNotNull] = None
     end_time: Annotated[AwareDatetime | None, Field(description="Flight end date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's end_time. Sellers SHOULD always include the resolved value in responses, even when inherited."), OmittedNotNull] = None
-    paused: Annotated[bool | None, Field(description='Whether this package is paused by the buyer. Paused packages do not deliver impressions. Defaults to false.'), OmittedNotNull] = False
-    canceled: Annotated[bool | None, Field(description='Whether this package has been canceled. Canceled packages stop delivery and cannot be reactivated. Defaults to false.'), OmittedNotNull] = False
+    paused: Annotated[StrictBool | None, Field(description='Whether this package is paused by the buyer. Paused packages do not deliver impressions. Defaults to false.'), OmittedNotNull] = False
+    canceled: Annotated[StrictBool | None, Field(description='Whether this package has been canceled. Canceled packages stop delivery and cannot be reactivated. Defaults to false.'), OmittedNotNull] = False
     cancellation: Annotated[Cancellation | None, Field(description='Cancellation metadata. Present only when canceled is true.'), OmittedNotNull] = None
     agency_estimate_number: Annotated[StrMaxLen100 | None, Field(description="Agency estimate or authorization number for this package. Echoed from the buyer's request. When present on the package, takes precedence over the media buy-level estimate number."), OmittedNotNull] = None
     creative_deadline: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp for creative upload or change deadline for this package. After this deadline, creative changes are rejected. When absent, the media buy's creative_deadline applies."), OmittedNotNull] = None

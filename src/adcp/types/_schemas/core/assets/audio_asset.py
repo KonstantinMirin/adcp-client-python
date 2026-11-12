@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, IntMin1
+from adcp.types.constraints import HostedUrl, IntMin1, SchemaIntegral
 
 from ...enums.audio_channel_layout import AudioChannelLayout
 from ..provenance import Provenance
@@ -27,12 +27,12 @@ class AudioAsset(AdCPBaseModel):
     file_size_bytes: Annotated[IntMin1 | None, Field(description='File size in bytes'), OmittedNotNull] = None
     container_format: Annotated[str | None, Field(description='Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)'), OmittedNotNull] = None
     codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, vorbis, opus, flac, ac3, eac3, etc.)'), OmittedNotNull] = None
-    sampling_rate_hz: Annotated[int | None, Field(description='Sampling rate in Hz (e.g., 44100, 48000, 96000)'), OmittedNotNull] = None
+    sampling_rate_hz: Annotated[StrictInt | None, Field(description='Sampling rate in Hz (e.g., 44100, 48000, 96000)'), OmittedNotNull, SchemaIntegral] = None
     channels: Annotated[AudioChannelLayout | None, Field(description='Channel configuration'), OmittedNotNull] = None
     bit_depth: Annotated[AudioBitDepth | None, Field(description='Bit depth'), OmittedNotNull] = None
     bitrate_kbps: Annotated[IntMin1 | None, Field(description='Bitrate in kilobits per second'), OmittedNotNull] = None
-    loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS'), OmittedNotNull] = None
-    true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS'), OmittedNotNull] = None
+    loudness_lufs: Annotated[StrictFloat | None, Field(description='Integrated loudness in LUFS'), OmittedNotNull] = None
+    true_peak_dbfs: Annotated[StrictFloat | None, Field(description='True peak level in dBFS'), OmittedNotNull] = None
     transcript_url: Annotated[HostedUrl | None, Field(description='URL to text transcript of the audio content'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
 

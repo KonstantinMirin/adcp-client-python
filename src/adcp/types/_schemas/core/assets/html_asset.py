@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
@@ -16,9 +16,9 @@ class Accessibility(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/html-asset.json', pointer='#/properties/accessibility')
     alt_text: Annotated[str | None, Field(description='Text alternative describing the creative content'), OmittedNotNull] = None
-    keyboard_navigable: Annotated[bool | None, Field(description='Whether the creative can be fully operated via keyboard'), OmittedNotNull] = None
-    motion_control: Annotated[bool | None, Field(description='Whether the creative respects prefers-reduced-motion or provides pause/stop controls'), OmittedNotNull] = None
-    screen_reader_tested: Annotated[bool | None, Field(description='Whether the creative has been tested with screen readers'), OmittedNotNull] = None
+    keyboard_navigable: Annotated[StrictBool | None, Field(description='Whether the creative can be fully operated via keyboard'), OmittedNotNull] = None
+    motion_control: Annotated[StrictBool | None, Field(description='Whether the creative respects prefers-reduced-motion or provides pause/stop controls'), OmittedNotNull] = None
+    screen_reader_tested: Annotated[StrictBool | None, Field(description='Whether the creative has been tested with screen readers'), OmittedNotNull] = None
 
 
 class HTMLAsset(AdCPBaseModel):

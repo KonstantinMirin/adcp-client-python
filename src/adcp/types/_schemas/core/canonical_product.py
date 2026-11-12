@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule, UniqueItems
@@ -87,7 +87,7 @@ class CanonicalProduct(AdCPBaseModel):
     format_options: Annotated[list[CanonicalFormatOption] | None, Field(min_length=1), OmittedNotNull] = None
     placements: Annotated[list[CanonicalProductPlacement] | None, OmittedNotNull] = None
     collections: Annotated[list[CollectionsItem] | None, Field(description='Collections available in this product, each referencing collections declared in an adagents.json by domain and explicit collection_ids. The domain-only bulk-grant selector form is for authorization scoping, not product composition. A selected-mode collection_selection names collections from this set.', min_length=1), OmittedNotNull] = None
-    collection_targeting_allowed: Annotated[bool | None, Field(description="Whether buyers can select a subset of this product's collections through targeting_overlay.collection_list or targeting_overlay.collection_selection. When false, the product is a fixed bundle (a collection_selection that exactly restates the complete bundle remains an inherent match)."), OmittedNotNull] = False
+    collection_targeting_allowed: Annotated[StrictBool | None, Field(description="Whether buyers can select a subset of this product's collections through targeting_overlay.collection_list or targeting_overlay.collection_selection. When false, the product is a fixed bundle (a collection_selection that exactly restates the complete bundle remains an inherent match)."), OmittedNotNull] = False
     delivery_type: Annotated[DeliveryType | None, OmittedNotNull] = None
     exclusivity: Annotated[Exclusivity | None, OmittedNotNull] = None
     pricing_options: Annotated[list[CanonicalPricingOption] | None, Field(min_length=1), OmittedNotNull] = None
@@ -96,7 +96,7 @@ class CanonicalProduct(AdCPBaseModel):
     measurement_terms: Annotated[CanonicalMeasurementTerms | None, Field(description='Default billing measurement and makegood terms inherited by a direct purchase unless a negotiated proposal replaces them.'), OmittedNotNull] = None
     performance_standards: Annotated[list[CanonicalPerformanceStandard] | None, Field(description='Default performance thresholds and measurement vendors inherited by a direct purchase.', min_length=1), OmittedNotNull] = None
     catalog_types: Annotated[list[CatalogType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    signal_targeting_allowed: Annotated[bool | None, OmittedNotNull] = None
+    signal_targeting_allowed: Annotated[StrictBool | None, OmittedNotNull] = None
     signal_targeting_rules: Annotated[SignalTargetingRules | None, OmittedNotNull] = None
     demographic_targeting: Annotated[DemographicTargetingCapability | None, OmittedNotNull] = None
     overlay_support: Annotated[TargetingOverlaySupport | None, Field(description='Binding product-scoped targeting dimensions the buyer may set independently on a package after discovery.'), OmittedNotNull] = None

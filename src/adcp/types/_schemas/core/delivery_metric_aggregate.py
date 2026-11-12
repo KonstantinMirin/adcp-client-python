@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NotValue, Rule
@@ -41,7 +41,7 @@ class DeliveryMetricAggregateStandard(DeliveryMetricAggregate):
     scope: Annotated[Literal['standard'], Field(description='Standard metric from the closed `available-metric.json` enum.')]
     metric_id: Annotated[Annotated[AvailableMetric, AfterValidator(NotValue(('viewability', 'viewed_seconds_percentiles', 'viewed_seconds_histogram', 'quartile_data', 'time_based_views', 'dooh_metrics')))], Field(description='Identifier for a scalar standard metric. Container tokens and structured distribution identities are committed and selected through their canonical carriers, not represented as numeric aggregate rows.')]
     qualifier: Annotated[CanonicalMetricQualifier | None, Field(description="Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) — new qualifier keys ship explicitly."), OmittedNotNull] = None
-    value: Annotated[float, Field(description='Aggregated metric value for this `(metric_id, qualifier)` partition. Heterogeneous by `metric_id` — rate metrics (`viewable_rate`, `completion_rate`) are 0.0–1.0; cost-per metrics (`cost_per_acquisition`, `cost_per_completed_view`) are currency amounts; count metrics (`impressions`, `clicks`) are non-negative integers as numbers; ratio metrics (`roas`) are non-negative numbers. Buyer agents MUST inspect `metric_id` before doing arithmetic — same dispatch convention as `committed_metrics`.')]
+    value: Annotated[StrictFloat, Field(description='Aggregated metric value for this `(metric_id, qualifier)` partition. Heterogeneous by `metric_id` — rate metrics (`viewable_rate`, `completion_rate`) are 0.0–1.0; cost-per metrics (`cost_per_acquisition`, `cost_per_completed_view`) are currency amounts; count metrics (`impressions`, `clicks`) are non-negative integers as numbers; ratio metrics (`roas`) are non-negative numbers. Buyer agents MUST inspect `metric_id` before doing arithmetic — same dispatch convention as `committed_metrics`.')]
     measurable_impressions: Annotated[NonNegativeFloat | None, Field(description='Coverage denominator for verification metrics (e.g., `viewable_rate`). Buyers compute coverage as `measurable_impressions / impressions` from the partition.'), OmittedNotNull] = None
     viewable_impressions: Annotated[NonNegativeFloat | None, Field(description='Component for `viewable_rate` (numerator).'), OmittedNotNull] = None
     impressions: Annotated[NonNegativeFloat | None, Field(description='Component for rate metrics whose denominator is total impressions (e.g., `completion_rate`, `engagement_rate`).'), OmittedNotNull] = None
@@ -61,7 +61,7 @@ class DeliveryMetricAggregateVendor(DeliveryMetricAggregate):
     vendor: Annotated[BrandReference, Field(description="Vendor that defines and computes this metric. The vendor's `brand.json` `agents[type='measurement']` is the canonical anchor; metric definitions live on `get_adcp_capabilities.measurement.metrics[]`.")]
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary.")]
     qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Optional qualifier keys disambiguating this vendor-metric row from sibling rows under the same (vendor, metric_id) — e.g., attribution_window on a vendor outcome metric. Same closed key set as the standard branch; new keys ship explicitly.'), OmittedNotNull] = None
-    value: Annotated[float, Field(description="Aggregated vendor-attested value. Unit semantics defined by the vendor — see the vendor's measurement-agent metric definition.")]
+    value: Annotated[StrictFloat, Field(description="Aggregated vendor-attested value. Unit semantics defined by the vendor — see the vendor's measurement-agent metric definition.")]
     measurable_impressions: Annotated[NonNegativeFloat | None, Field(description="Coverage denominator — vendor measurement is rarely 100% of delivery (only impressions where the vendor's SDK fired or panel matched). Buyers compute coverage as `measurable_impressions / impressions`. Same convention as `vendor_metric_value.measurable_impressions`."), OmittedNotNull] = None
 
 

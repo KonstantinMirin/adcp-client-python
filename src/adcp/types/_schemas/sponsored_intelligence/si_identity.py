@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
@@ -72,7 +72,7 @@ class SIIdentity(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-identity.json', pointer='#')
-    consent_granted: Annotated[bool, Field(description='Whether user consented to share identity')]
+    consent_granted: Annotated[StrictBool, Field(description='Whether user consented to share identity')]
     consent_timestamp: Annotated[AwareDatetime | None, Field(description='When consent was granted (ISO 8601)'), OmittedNotNull] = None
     consent_scope: Annotated[list[ConsentScopeItem] | None, Field(description='What data was consented to share'), OmittedNotNull] = None
     privacy_policy_acknowledged: Annotated[PrivacyPolicyAcknowledged | None, Field(description='Brand privacy policy acknowledgment'), OmittedNotNull] = None

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
@@ -40,7 +40,7 @@ class A2UIBoundValueLiteralNumber(A2UIBoundValue):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/bound-value.json', pointer='#/oneOf/1')
-    literalNumber: Annotated[float, Field(description='Static number value')]
+    literalNumber: Annotated[StrictFloat, Field(description='Static number value')]
 
 
 class A2UIBoundValueLiteralBoolean(A2UIBoundValue):
@@ -51,7 +51,7 @@ class A2UIBoundValueLiteralBoolean(A2UIBoundValue):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/bound-value.json', pointer='#/oneOf/2')
-    literalBoolean: Annotated[bool, Field(description='Static boolean value')]
+    literalBoolean: Annotated[StrictBool, Field(description='Static boolean value')]
 
 
 class A2UIBoundValuePath(A2UIBoundValue):

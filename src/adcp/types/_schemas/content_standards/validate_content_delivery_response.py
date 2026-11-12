@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types.constraints import SchemaIntegral
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
@@ -41,9 +42,9 @@ class Summary(AdCPBaseModel):
     Summary counts across all records
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/0/properties/summary')
-    total_records: int
-    passed_records: int
-    failed_records: int
+    total_records: Annotated[StrictInt, SchemaIntegral]
+    passed_records: Annotated[StrictInt, SchemaIntegral]
+    failed_records: Annotated[StrictInt, SchemaIntegral]
 
 
 class ResultsItem(AdCPBaseModel):

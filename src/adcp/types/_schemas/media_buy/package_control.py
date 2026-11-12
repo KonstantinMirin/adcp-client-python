@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
@@ -39,7 +39,7 @@ class PackageControl(AdCPBaseModel):
     impressions: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Replace package pacing, subordinate to media-buy pacing. In a resulting seller-optimized buy, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None
     bidding: BiddingPolicy | None = None
-    paused: Annotated[bool | None, OmittedNotNull] = None
+    paused: Annotated[StrictBool | None, OmittedNotNull] = None
     canceled: Annotated[Literal[True] | None, Field(description='Exercise an already-accepted unilateral package cancellation right. If seller agreement is required, refine the accepted proposal with change_kind amendment; cancellation proposals terminate the whole MediaBuy.'), OmittedNotNull] = None
     cancellation_reason: Annotated[StrMinLen1MaxLen500 | None, OmittedNotNull] = None
     targeting_overlay: Annotated[TargetingOverlayInput | None, Field(description='Per-dimension targeting patch. Omission preserves the current dimension, a non-null value replaces it, and null clears it. The resulting effective targeting must remain within the accepted commercial envelope and is read back without null dimensions.'), OmittedNotNull] = None

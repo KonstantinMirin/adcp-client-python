@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -45,7 +45,7 @@ class ExclusivityStatus(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/exclusivity_status')
-    available: Annotated[bool | None, Field(description='Whether exclusivity is available'), OmittedNotNull] = None
+    available: Annotated[StrictBool | None, Field(description='Whether exclusivity is available'), OmittedNotNull] = None
     existing_exclusives: Annotated[list[str] | None, Field(description="Active exclusivity commitments that may affect availability. Implementers should use vague descriptions ('exclusive commitment in this category') rather than specific deal terms to protect confidential business relationships."), OmittedNotNull] = None
 
 

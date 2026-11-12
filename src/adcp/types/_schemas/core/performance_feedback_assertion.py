@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
@@ -25,8 +25,8 @@ class ConfidenceInterval(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-feedback-assertion.json', pointer='#/properties/evidence/properties/confidence_interval')
-    lower: float
-    upper: float
+    lower: StrictFloat
+    upper: StrictFloat
     level: FloatGt0Lt1
 
 
@@ -71,7 +71,7 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
     evidence: Annotated[Evidence | None, Field(description='Small inline evidence summary used to weight the assertion without transporting the full study.'), OmittedNotNull] = None
     evidence_ref: Annotated[HostedUrl | None, Field(description='Provider-hosted evidence or result reference for parties authorized to inspect the full study.'), OmittedNotNull] = None
     as_of: Annotated[AwareDatetime | None, Field(description='When the producer computed this assertion.'), OmittedNotNull] = None
-    final: Annotated[bool | None, Field(description='Whether the producer expects this assertion to be revised as data matures.'), OmittedNotNull] = None
+    final: Annotated[StrictBool | None, Field(description='Whether the producer expects this assertion to be revised as data matures.'), OmittedNotNull] = None
     supersedes_feedback_id: Annotated[StrMinLen1 | None, Field(description='Receiver-issued feedback_id of the earlier assertion this one replaces at the same hop.'), OmittedNotNull] = None
 
 

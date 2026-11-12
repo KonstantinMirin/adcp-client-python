@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
@@ -41,8 +41,8 @@ class Range(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/range')
-    min: Annotated[float, Field(description='Minimum value')]
-    max: Annotated[float, Field(description='Maximum value')]
+    min: Annotated[StrictFloat, Field(description='Minimum value')]
+    max: Annotated[StrictFloat, Field(description='Maximum value')]
     unit: Annotated[str | None, Field(description="Unit of measurement (e.g., 'score', 'dollars', 'years')"), OmittedNotNull] = None
 
 
@@ -235,8 +235,8 @@ class Onboarder(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/onboarder')
     match_keys: Annotated[list[MatchKeysItem], Field(min_length=1)]
-    pre_onboarding_audience_expansion: Annotated[bool | None, OmittedNotNull] = None
-    pre_onboarding_device_expansion: Annotated[bool | None, OmittedNotNull] = None
+    pre_onboarding_audience_expansion: Annotated[StrictBool | None, OmittedNotNull] = None
+    pre_onboarding_device_expansion: Annotated[StrictBool | None, OmittedNotNull] = None
     pre_onboarding_precision_level: Annotated[PreOnboardingPrecisionLevel | None, OmittedNotNull] = None
 
 
@@ -309,7 +309,7 @@ class ObjTypeProviderSigned(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/modeling/properties/seed_source')
     type: SeedSourceType
-    provider_signed: Annotated[bool, Field(description="Whether the seed source carries a signed attestation under one of the provider's published signing keys. This is a forward-looking claim until the consumer can resolve and verify the provider's applicable signing keys through the AdCP signing profile; consumers MUST NOT treat this boolean alone as cryptographic proof.")]
+    provider_signed: Annotated[StrictBool, Field(description="Whether the seed source carries a signed attestation under one of the provider's published signing keys. This is a forward-looking claim until the consumer can resolve and verify the provider's applicable signing keys through the AdCP signing profile; consumers MUST NOT treat this boolean alone as cryptographic proof.")]
 
 
 class AiActRiskClass(StrEnum):
@@ -416,8 +416,8 @@ class SignalDefinition(AdCPBaseModel):
     criteria_url: Annotated[HostedUrl | None, Field(description='Optional URL to a longer-form methodology or criteria document. This is a disclosure pointer; buyers should not branch programmatically on the linked content.'), OmittedNotNull] = None
     data_sources: Annotated[list[DataSourcesItem] | None, Field(description="Origin categories of the raw data used to compile the signal, aligned with IAB Data Transparency Standard source disclosure. Use 'panel' for respondent-panel or JIC-style audience sources. Offline and public-record sources require onboarder disclosure. Co-viewing projection and reconciliation of seller claims against a JIC or measurement vendor belong in measurement reporting/vendor metrics rather than package signal targeting.", min_length=1), OmittedNotNull] = None
     methodology: Annotated[Methodology | None, Field(description="How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block."), OmittedNotNull] = None
-    audience_expansion: Annotated[bool | None, Field(description='Whether look-alike or similar-audience expansion was used to include additional identifiers. When true, modeling is required.'), OmittedNotNull] = None
-    device_expansion: Annotated[bool | None, Field(description="Whether the signal was expanded deterministically across devices of the same user, household, or business. Probabilistic cross-device expansion is modeling and should use methodology 'modeled' or the modeling block."), OmittedNotNull] = None
+    audience_expansion: Annotated[StrictBool | None, Field(description='Whether look-alike or similar-audience expansion was used to include additional identifiers. When true, modeling is required.'), OmittedNotNull] = None
+    device_expansion: Annotated[StrictBool | None, Field(description="Whether the signal was expanded deterministically across devices of the same user, household, or business. Probabilistic cross-device expansion is modeling and should use methodology 'modeled' or the modeling block."), OmittedNotNull] = None
     refresh_cadence: Annotated[RefreshCadence | None, Field(description="Cadence at which the signal definition's underlying segment membership is refreshed."), OmittedNotNull] = None
     lookback_window: Annotated[LookbackWindow | None, Field(description='Time window in which a qualifying event can occur for inclusion.'), OmittedNotNull] = None
     onboarder: Annotated[Onboarder | None, Field(description='Onboarder disclosure. Required when data_sources includes an offline_* or public_record_* source.'), OmittedNotNull] = None

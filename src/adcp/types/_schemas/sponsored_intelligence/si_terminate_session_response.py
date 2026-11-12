@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
@@ -64,7 +64,7 @@ class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResp
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#')
     session_id: Annotated[str, Field(description='Terminated session identifier')]
-    terminated: Annotated[bool, Field(description='Whether session was successfully terminated')]
+    terminated: Annotated[StrictBool, Field(description='Whether session was successfully terminated')]
     session_status: Annotated[SISessionStatus | None, Field(description="Resulting session state. 'complete' for handoff_transaction/handoff_complete, 'terminated' for user_exit/session_timeout/host_terminated."), OmittedNotNull] = None
     acp_handoff: Annotated[AcpHandoff | None, Field(description='ACP checkout handoff data. Present when reason is handoff_transaction.'), OmittedNotNull] = None
     follow_up: Annotated[FollowUp | None, Field(description='Suggested follow-up actions'), OmittedNotNull] = None

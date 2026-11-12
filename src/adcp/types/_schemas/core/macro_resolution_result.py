@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
@@ -73,7 +73,7 @@ class MacroResolutionResult(AdCPBaseModel):
     operation: MacroProcessingOperation
     performed_by: Annotated[MacroProcessingActor | None, OmittedNotNull] = None
     requested_encoding: MacroEncoding
-    required: bool
+    required: StrictBool
     unavailable_behavior: UnavailableBehavior
     status: Status
     reason: MacroResolutionReason

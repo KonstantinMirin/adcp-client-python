@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -48,12 +48,12 @@ class Budget(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    total: Annotated[float, Field(description='Total authorized budget.')]
+    total: Annotated[StrictFloat, Field(description='Total authorized budget.')]
     currency: Annotated[str, Field(description='ISO 4217 currency code.')]
     accounting_mode: Annotated[AccountingMode | None, Field(description='Controls which verified adjustments restore reusable plan headroom. gross_commitment allows verified decommitments only; verified_net_cost also allows buyer-accepted refunds and credits. Both modes retain the original commitment in anti-fragmentation history and expose economic net cost separately.'), OmittedNotNull] = 'gross_commitment'
-    per_seller_max_pct: Annotated[float | None, Field(description='Maximum percentage of budget that can go to a single seller.'), OmittedNotNull] = None
+    per_seller_max_pct: Annotated[StrictFloat | None, Field(description='Maximum percentage of budget that can go to a single seller.'), OmittedNotNull] = None
     reallocation_threshold: Annotated[NonNegativeFloat | None, Field(description='Amount above which budget reallocations require human escalation. The orchestrator can reallocate spend across sellers, channels, or purchase types up to this threshold per change without asking a human. Set equal to `total` for effectively unlimited reallocation; set to 0 to require approval for every reallocation. Separate from `plan.human_review_required`, which governs decisions affecting data subjects (targeting, creative, delivery) under GDPR Art 22 / EU AI Act Annex III. Denominated in `budget.currency`.'), OmittedNotNull] = None
-    reallocation_unlimited: Annotated[bool | None, Field(description='Set to true to allow the orchestrator to reallocate without any limit up to `total`. Mutually exclusive with `reallocation_threshold`. Use this for deliberate full-autonomy declarations rather than setting `reallocation_threshold: total` (which silently tightens when `total` changes).'), OmittedNotNull] = None
+    reallocation_unlimited: Annotated[StrictBool | None, Field(description='Set to true to allow the orchestrator to reallocate without any limit up to `total`. Mutually exclusive with `reallocation_threshold`. Use this for deliberate full-autonomy declarations rather than setting `reallocation_threshold: total` (which silently tightens when `total` changes).'), OmittedNotNull] = None
     allocations: Annotated[dict[PurchaseType, AllocationsValue] | None, Field(description='Optional budget partition across purchase types. Keys are purchase-type enum values (media_buy, rights_license, signal_activation, creative_services). When present, the governance agent validates spend against both the total and the per-type allocation. When absent, all spend counts against the single total regardless of purchase type.'), OmittedNotNull] = None
 
 
@@ -88,8 +88,8 @@ class MixTargetsValue(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/channels/properties/mix_targets/additionalProperties')
-    min_pct: Annotated[float | None, OmittedNotNull] = None
-    max_pct: Annotated[float | None, OmittedNotNull] = None
+    min_pct: Annotated[StrictFloat | None, OmittedNotNull] = None
+    max_pct: Annotated[StrictFloat | None, OmittedNotNull] = None
 
 
 class Channels(AdCPBaseModel):
@@ -113,7 +113,7 @@ class BudgetLimit(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items/properties/budget_limit')
-    amount: float
+    amount: StrictFloat
     currency: str
 
 
@@ -137,7 +137,7 @@ class TotalBudgetCap(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/portfolio/properties/total_budget_cap')
-    amount: float
+    amount: StrictFloat
     currency: str
 
 
@@ -178,7 +178,7 @@ class PlansItem(AdCPBaseModel):
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Personal data categories that must not be used for targeting in this campaign. Applies horizontally across all audience criteria. Used for EU DSA Article 26 compliance (prohibits targeting on GDPR Article 9 special categories) and similar regulations. The governance agent flags any audience targeting that references these attributes.', min_length=1), OmittedNotNull] = None
     restricted_attributes_custom: Annotated[list[str] | None, Field(description="Additional restricted attributes not covered by the restricted-attribute enum. Freeform strings for jurisdiction-specific or brand-specific restrictions beyond GDPR Article 9 categories (e.g., 'financial_status', 'immigration_status'). Governance agents use semantic matching for these.", min_length=1), OmittedNotNull] = None
     min_audience_size: Annotated[IntMin1 | None, Field(description='Minimum audience segment size. Prevents micro-targeting by ensuring segments meet a k-anonymity threshold. Applies to the estimated combined (intersection) audience when multiple criteria are used, not just individual criterion sizes. The governance agent validates this by querying published signal metadata or seller-reported segment sizes. When segment size data is unavailable, the governance agent SHOULD produce a finding with reduced confidence rather than silently passing.'), OmittedNotNull] = None
-    human_review_required: Annotated[bool | None, Field(description='When true, the governance agent MUST escalate any action on this plan for human review before execution — regardless of budget. Required by regulations that prohibit solely automated decisions affecting data subjects (GDPR Art 22, EU AI Act Annex III): credit, insurance pricing, recruitment, housing allocation. Governance agents MUST set this to true automatically when any resolved policy or policy_category has requires_human_review: true. Distinct from budget.reallocation_threshold, which only governs budget reallocation autonomy — human_review_required covers decisions affecting individuals (targeting, creative, delivery).'), OmittedNotNull] = False
+    human_review_required: Annotated[StrictBool | None, Field(description='When true, the governance agent MUST escalate any action on this plan for human review before execution — regardless of budget. Required by regulations that prohibit solely automated decisions affecting data subjects (GDPR Art 22, EU AI Act Annex III): credit, insurance pricing, recruitment, housing allocation. Governance agents MUST set this to true automatically when any resolved policy or policy_category has requires_human_review: true. Distinct from budget.reallocation_threshold, which only governs budget reallocation autonomy — human_review_required covers decisions affecting individuals (targeting, creative, delivery).'), OmittedNotNull] = False
     custom_policies: Annotated[list[PolicyEntry] | None, Field(description='Bespoke policies specific to this campaign, using the same shape as registry entries. Each policy has a policy_id, enforcement (must|should), and natural-language policy text. Governance findings reference policy_id to identify which policy triggered. For quick authoring, omit version/name/category — servers default them.'), OmittedNotNull] = None
     approved_sellers: Annotated[list[HostedUrl] | None, Field(description='List of approved seller agent URLs. null means any seller.')] = None
     delegations: Annotated[list[DelegationsItem] | None, Field(description="Agents authorized to execute against this plan. Each delegation scopes an agent's authority by budget, markets, and expiration. The governance agent validates that the requesting agent matches a delegation before approving actions."), OmittedNotNull] = None

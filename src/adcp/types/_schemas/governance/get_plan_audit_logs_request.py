@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
@@ -30,7 +30,7 @@ class GetPlanAuditLogsRequest(AdCPVersionEnvelope, AdcpRequest):
     portfolio_plan_ids: Annotated[list[str] | None, Field(description='Portfolio plan IDs. The governance agent expands each to its member_plan_ids and returns combined audit data.', min_length=1), OmittedNotNull] = None
     governance_contexts: Annotated[list[str] | None, Field(description='Filter audit entries by governance context. Returns only checks and outcomes that share these governance contexts, enabling lifecycle tracing across purchase types.', min_length=1), OmittedNotNull] = None
     purchase_types: Annotated[list[PurchaseType] | None, Field(description="Filter audit entries by purchase type. Returns only checks and outcomes matching these purchase types (e.g., ['rights_license'] to see all rights activity).", min_length=1), OmittedNotNull] = None
-    include_entries: Annotated[bool | None, Field(description='Include the full audit trail. Default: false.'), OmittedNotNull] = False
+    include_entries: Annotated[StrictBool | None, Field(description='Include the full audit trail. Default: false.'), OmittedNotNull] = False
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

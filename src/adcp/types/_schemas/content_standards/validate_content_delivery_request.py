@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
@@ -34,7 +34,7 @@ class ValidateContentDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     standards_id: Annotated[str, Field(description='Standards configuration to validate against')]
     records: Annotated[list[RecordsItem], Field(description='Delivery records to validate (max 10,000)', max_length=10000, min_length=1)]
     feature_ids: Annotated[list[str] | None, Field(description='Specific features to evaluate (defaults to all)', min_length=1), OmittedNotNull] = None
-    include_passed: Annotated[bool | None, Field(description='Include passed records in results'), OmittedNotNull] = True
+    include_passed: Annotated[StrictBool | None, Field(description='Include passed records in results'), OmittedNotNull] = True
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

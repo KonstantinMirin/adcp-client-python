@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
@@ -19,9 +19,9 @@ class CanonicalProjectionSlotOverride(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-projection-slot-override.json', pointer='#')
     asset_group_id: Annotated[str, Field(description='Asset group identifier from `asset-group-vocabulary.json` (e.g., `generation_prompt`, `creative_brief`, `image_main`, `video_main`).')]
     asset_type: Annotated[str, Field(description='Asset type — `image`, `video`, `audio`, `text`, `html`, `javascript`, `url`, `zip`, `brief`, `catalog`, `published_post`, or another canonical slot asset type.')]
-    required: Annotated[bool | None, Field(description='Whether the slot is required in the projected declaration.'), OmittedNotNull] = False
+    required: Annotated[StrictBool | None, Field(description='Whether the slot is required in the projected declaration.'), OmittedNotNull] = False
     max_chars: Annotated[IntMin1 | None, Field(description='Max character count for text slots.'), OmittedNotNull] = None
-    consumed_for_production: Annotated[bool | None, Field(description="When false, slot is for moderation/review only and is NOT consumed by the seller's renderer (e.g., a brand-safety brief that informs review but doesn't appear in the rendered ad)."), OmittedNotNull] = True
+    consumed_for_production: Annotated[StrictBool | None, Field(description="When false, slot is for moderation/review only and is NOT consumed by the seller's renderer (e.g., a brand-safety brief that informs review but doesn't appear in the rendered ad)."), OmittedNotNull] = True
 
 
 __all__ = ["CanonicalProjectionSlotOverride"]

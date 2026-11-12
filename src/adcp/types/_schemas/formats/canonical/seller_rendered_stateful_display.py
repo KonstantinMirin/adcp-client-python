@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Presence, PresenceGroups, Rule, UniqueItems
@@ -107,7 +107,7 @@ class StatesItem(AdCPBaseModel):
     motion: Annotated[Motion | None, Field(description='Whether the seller-rendered layout animates within this state (attract loops, load animations). Intra-state animation is seller-rendered; buyer canvases stay static images.', json_schema_extra={'default': 'static'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Motion).validate_python('static'))
     max_animation_s: Annotated[FloatGt0 | None, Field(description='Upper bound on intra-state animation duration. Required when `motion` is `animated`.'), OmittedNotNull] = None
     breakpoints: Annotated[list[BreakpointsItem], Field(min_length=1)]
-    close_affordance: Annotated[bool, Field(description='Whether this state visibly renders a seller-controlled close affordance. When true, rendering MUST follow IAB New Ad Portfolio close-button guidance (top-right, minimum 50×50 dp, available from state entry).')]
+    close_affordance: Annotated[StrictBool, Field(description='Whether this state visibly renders a seller-controlled close affordance. When true, rendering MUST follow IAB New Ad Portfolio close-button guidance (top-right, minimum 50×50 dp, available from state entry).')]
 
 
 class Reveal(StrEnum):
@@ -231,7 +231,7 @@ class TransitionsItem(BranchDispatchMixin, AdCPBaseModel):
     scroll_reference: Annotated[ScrollReference | None, Field(description='Reference frame for scroll percentages. Progress is `scroll_offset / max(scroll_extent - viewport_extent, 1) * 100`, measured on either the page document or the nearest seller-declared containing scroller.'), OmittedNotNull] = None
     scroll_start_percent: Annotated[FloatMin0Max100 | None, Field(description='Start of the bounded scroll interval for a `scroll_progress` transition.'), OmittedNotNull] = None
     scroll_end_percent: Annotated[FloatMin0Max100 | None, Field(description='End of the bounded scroll interval for a `scroll_progress` transition. MUST be greater than `scroll_start_percent`.'), OmittedNotNull] = None
-    preserve_playback: Annotated[bool | None, Field(description='Whether `video_main` continues without restart while the seller changes state.'), OmittedNotNull] = False
+    preserve_playback: Annotated[StrictBool | None, Field(description='Whether `video_main` continues without restart while the seller changes state.'), OmittedNotNull] = False
 
 
 class TransitionsItemTimerTransitionMode(StrEnum):
@@ -351,8 +351,8 @@ class UserControls(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/seller_rendered_stateful_display.json', pointer='#/properties/user_controls')
-    dismissible: bool
-    user_collapsible: bool
+    dismissible: StrictBool
+    user_collapsible: StrictBool
 
 
 class ContainersItem(StrEnum):
@@ -384,8 +384,8 @@ class CanonicalFormatSellerRenderedStatefulDisplay(CanonicalFormatBase):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('containers'),
     )
-    experimental: Annotated[bool | None, Field(description='Experimental in AdCP 3.2 while the creative working group gathers implementation evidence across premium web and mobile/app sellers.'), OmittedNotNull] = True
-    v1_translatable: Annotated[bool | None, Field(description='No v1 named-format equivalent can express multiple seller-rendered states and their breakpoint bindings.'), OmittedNotNull] = False
+    experimental: Annotated[StrictBool | None, Field(description='Experimental in AdCP 3.2 while the creative working group gathers implementation evidence across premium web and mobile/app sellers.'), OmittedNotNull] = True
+    v1_translatable: Annotated[StrictBool | None, Field(description='No v1 named-format equivalent can express multiple seller-rendered states and their breakpoint bindings.'), OmittedNotNull] = False
     since_version: Annotated[CanonicalFormatBaseMigrationTargetVersion | None, Field(description="AdCP MAJOR.MINOR version that introduced this canonical (e.g., '3.1', '3.2'). Lets adopters reason about minimum protocol version requirements when consuming a format declaration. Patch precision is intentionally rejected — canonicals are introduced at minor-version boundaries."), OmittedNotNull] = '3.2'
     composition_model: Annotated[CompositionModel | None, Field(description='Whether the surface composes deterministically (buyer can predict per-slot rendering — sponsored_placement, image, video) or algorithmically (surface chooses combinations or phrasing — responsive_creative, agent_placement).', json_schema_extra={'default': 'deterministic'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(CompositionModel).validate_python('deterministic'))
     supply_mode: Annotated[SupplyMode | None, Field(description='Which end of the template contract the buyer feeds. `components`: buyer supplies component slots; seller renders states (no `state_canvases`/`layered_source` assets allowed). `rendered_canvases`: buyer supplies exactly one `state_canvases` image per declared state × breakpoint pair. `layered_source`: buyer ships design source (+ optional `font_files`); seller production derives states (`production_window_business_days` applies) — transitional for sellers without executable templates.', json_schema_extra={'default': 'components'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(SupplyMode).validate_python('components'))
@@ -404,7 +404,7 @@ class CanonicalFormatSellerRenderedStatefulDisplay(CanonicalFormatBase):
     video_playback: Annotated[VideoPlayback | None, OmittedNotNull] = None
     max_initial_load_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
     max_subload_kb: Annotated[IntMin1 | None, Field(description='Ceiling on assets loaded after the window load event (IAB LEAN subload). Pairs with `max_initial_load_kb` to mirror the New Ad Portfolio initial/subload weight pair.'), OmittedNotNull] = None
-    polite_load: Annotated[bool | None, Field(description="When true, non-initial assets load only after the host page's window load event (IAB LEAN subload boundary)."), OmittedNotNull] = None
+    polite_load: Annotated[StrictBool | None, Field(description="When true, non-initial assets load only after the host page's window load event (IAB LEAN subload boundary)."), OmittedNotNull] = None
 
 
 Breakpoint = BreakpointsItem

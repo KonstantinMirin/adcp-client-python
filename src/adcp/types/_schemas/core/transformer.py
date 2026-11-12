@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AfterValidator, ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
@@ -63,9 +63,9 @@ class Multiplicity(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('variant_dimensions'),
     )
-    supports_catalog_fanout: Annotated[bool | None, Field(description='Whether this transformer accepts max_creatives.'), OmittedNotNull] = False
+    supports_catalog_fanout: Annotated[StrictBool | None, Field(description='Whether this transformer accepts max_creatives.'), OmittedNotNull] = False
     max_creatives_limit: Annotated[IntMin1 | None, Field(description='Per-transformer ceiling on max_creatives (≤ the agent ceiling).'), OmittedNotNull] = None
-    supports_variants: Annotated[bool | None, Field(description='Whether this transformer accepts max_variants > 1 / variant_axis.'), OmittedNotNull] = False
+    supports_variants: Annotated[StrictBool | None, Field(description='Whether this transformer accepts max_variants > 1 / variant_axis.'), OmittedNotNull] = False
     max_variants_limit: Annotated[IntMin1 | None, Field(description='Per-transformer ceiling on max_variants (≤ the agent ceiling).'), OmittedNotNull] = None
     variant_dimensions: Annotated[list[VariantDimensionsItem] | None, Field(description="Variant axis dimensions this transformer supports (⊆ the agent's).", json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 

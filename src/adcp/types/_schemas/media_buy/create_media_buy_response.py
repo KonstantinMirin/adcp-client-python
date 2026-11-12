@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
@@ -97,7 +97,7 @@ class CreateMediaBuySuccess(CreateMediaBuyResponse):
     packages: Annotated[list[Package], Field(description='Array of created packages with complete state information')]
     planned_delivery: Annotated[PlannedDelivery | None, Field(description="The seller's interpreted delivery parameters. Describes what the seller will actually run -- geo, channels, flight dates, frequency caps, and budget. Present when the account has governance_agents or when the seller chooses to provide delivery transparency."), OmittedNotNull] = None
     warnings: Annotated[list[Warning] | None, Field(description='Optional non-blocking observations accompanying this successful creation. The media buy was still created. Buyers SHOULD surface recognized codes operationally rather than treating this as an error; continuing conditions also appear on get_media_buys as current resource state.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, Field(description='Opaque media-buy-level correlation data echoed unchanged from the create_media_buy request. Sellers MUST echo this object verbatim when the originating request carried context, including synchronous success, error, submitted, and webhook task-status payloads. Sellers MUST NOT parse this object for business logic.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

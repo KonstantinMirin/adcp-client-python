@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
@@ -54,8 +54,8 @@ class ReportingDeliveryCapabilities(AdCPBaseModel):
     )
     supported: Literal[True]
     reliable_reporting_version: Annotated[Literal['1.0'] | None, Field(description='Explicit adoption declaration for the proper-name AdCP 3.2 Reliable Reporting contract. Presence, together with supported: true and the media_buy.reporting_delivery experimental feature gate, is the affirmative machine-readable answer. Absence denotes the earlier experimental managed-reporting shape.'), OmittedNotNull] = None
-    managed_delivery: Annotated[bool | None, Field(description='Tier flag: this seller supports managed file, dataset-share, or warehouse delivery. Offerings whose method names a delivery pattern require this tier. When false or absent, every offering is API-delivered and Core-only.'), OmittedNotNull] = False
-    reconciled_billing: Annotated[bool | None, Field(description='Tier flag: this seller supports canonical-digest verification and authenticated consumer receipts for both report materializations and post-official adjustments through receipt_task. Offerings with reconciliation_mode consumer_receipt and billing-grade canonicalization require this tier.'), OmittedNotNull] = False
+    managed_delivery: Annotated[StrictBool | None, Field(description='Tier flag: this seller supports managed file, dataset-share, or warehouse delivery. Offerings whose method names a delivery pattern require this tier. When false or absent, every offering is API-delivered and Core-only.'), OmittedNotNull] = False
+    reconciled_billing: Annotated[StrictBool | None, Field(description='Tier flag: this seller supports canonical-digest verification and authenticated consumer receipts for both report materializations and post-official adjustments through receipt_task. Offerings with reconciliation_mode consumer_receipt and billing-grade canonicalization require this tier.'), OmittedNotNull] = False
     configuration_task: Literal['sync_accounts']
     status_task: Literal['get_reporting_status']
     consumer_status_task: Annotated[Literal['sync_reporting_status'] | None, Field(description='Opt-in consumer-status loop during the published migration window, becoming required Core in the next eligible minor after that window. Buyers call this seller-hosted task to record whether each expected reporting period was received, missing, or unreadable. Buyers expose no reverse endpoint, and the status is not a billing receipt.'), OmittedNotNull] = None
@@ -71,7 +71,7 @@ class ReportingDeliveryCapabilities(AdCPBaseModel):
     operations_contact: Annotated[OperationsContact | None, Field(description='Optional non-secret human escalation path for reporting issues the protocol cannot resolve. It is display metadata for an operator, not an AdCP endpoint: agents MUST NOT dereference, probe, or send protocol traffic to these values, and they carry no authorization. Required when consumer_mismatch_escalation_seconds is advertised.'), OmittedNotNull] = None
     reliability_statistics: Annotated[list[ReportingReliabilityStatistics] | None, Field(description='Optional evidence-scoped observed performance for advertised offerings. offering_id values MUST be unique and name offerings in this capability block.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     resource_retention_days: Annotated[IntMin1 | None, Field(description='Minimum period after publication for which at least one verified exact materialization remains readable to every still-authorized intended consumer.'), OmittedNotNull] = None
-    supports_webhook_activity: Annotated[bool | None, OmittedNotNull] = False
+    supports_webhook_activity: Annotated[StrictBool | None, OmittedNotNull] = False
     authorization_revocation_seconds: Annotated[NonNegativeInt | None, Field(description="Maximum delay after caller/account authorization ends before seller-controlled transport access, provider grants, and write credentials are revoked. It cannot revoke a buyer's access to data already written into a buyer-owned destination."), OmittedNotNull] = None
 
 

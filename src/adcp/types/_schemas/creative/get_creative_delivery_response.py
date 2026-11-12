@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
@@ -60,7 +60,7 @@ class Pagination(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#/properties/pagination')
     limit: Annotated[IntMin1, Field(description='Maximum number of creatives requested')]
     offset: Annotated[NonNegativeInt, Field(description='Number of creatives skipped')]
-    has_more: Annotated[bool, Field(description='Whether more creatives are available beyond this page')]
+    has_more: Annotated[StrictBool, Field(description='Whether more creatives are available beyond this page')]
     total_count: Annotated[NonNegativeInt | None, Field(description='Total number of creatives matching the request filters. Canonical field name (matches `PaginationResponse.total_count`). Sellers SHOULD populate this and the deprecated `total` field identically until 4.0; buyers SHOULD prefer this field.'), OmittedNotNull] = None
     total: Annotated[NonNegativeInt | None, Field(description='**Deprecated** — use `total_count` instead. Retained as a legacy alias for 3.x backward compatibility; removed in AdCP 4.0. Sellers populating this field MUST also populate `total_count` with the same value.'), OmittedNotNull] = None
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
@@ -106,7 +106,7 @@ class MacroDeclaration(AdCPBaseModel):
     translation_target: Annotated[MacroTranslationTarget | None, Field(description='Required only for `translate_to_native`. The output token contract that replaces this declaration after translation.'), OmittedNotNull] = None
     location: Location
     encoding: Annotated[MacroEncoding, Field(description='Encoding for the concrete value. Translation/preservation uses `none` at depth zero.')]
-    required: Annotated[bool, Field(description='Whether terminal delivery must fail if the declared operation cannot complete.')]
+    required: Annotated[StrictBool, Field(description='Whether terminal delivery must fail if the declared operation cannot complete.')]
     unavailable_behavior: Annotated[UnavailableBehavior, Field(description='Action when the responsible actor has no value. Omission is legal only for a complete URL query-value occurrence; dialect sentinels require a cited dialect rule.')]
 
 

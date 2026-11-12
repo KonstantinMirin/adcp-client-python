@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool, StrictInt
 
 from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types.constraints import SchemaIntegral
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -51,18 +52,18 @@ class ListCreativeFormatsRequestCreativeAgent(AdCPVersionEnvelope):
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Return only these specific named-format IDs. Use canonical-format discovery in 4.0.', min_length=1), OmittedNotNull] = None
     type: Annotated[ListCreativeFormatsRequestCreativeAgentType | None, Field(description='Filter by format type (technical categories with distinct requirements)'), OmittedNotNull] = None
     asset_types: Annotated[list[AssetContentType] | None, Field(description="Filter to formats that include these asset types. For third-party tags, search for 'html' or 'javascript'. For published-post reference formats, search for 'published_post'. E.g., ['image', 'text'] returns formats with images and text, ['javascript'] returns formats accepting JavaScript tags.", min_length=1), OmittedNotNull] = None
-    max_width: Annotated[int | None, Field(description='Maximum width in pixels (inclusive). Returns formats with width <= this value. Omit for responsive/fluid formats.'), OmittedNotNull] = None
-    max_height: Annotated[int | None, Field(description='Maximum height in pixels (inclusive). Returns formats with height <= this value. Omit for responsive/fluid formats.'), OmittedNotNull] = None
-    min_width: Annotated[int | None, Field(description='Minimum width in pixels (inclusive). Returns formats with width >= this value.'), OmittedNotNull] = None
-    min_height: Annotated[int | None, Field(description='Minimum height in pixels (inclusive). Returns formats with height >= this value.'), OmittedNotNull] = None
-    is_responsive: Annotated[bool | None, Field(description='Filter for responsive formats that adapt to container size. When true, returns formats without fixed dimensions.'), OmittedNotNull] = None
+    max_width: Annotated[StrictInt | None, Field(description='Maximum width in pixels (inclusive). Returns formats with width <= this value. Omit for responsive/fluid formats.'), OmittedNotNull, SchemaIntegral] = None
+    max_height: Annotated[StrictInt | None, Field(description='Maximum height in pixels (inclusive). Returns formats with height <= this value. Omit for responsive/fluid formats.'), OmittedNotNull, SchemaIntegral] = None
+    min_width: Annotated[StrictInt | None, Field(description='Minimum width in pixels (inclusive). Returns formats with width >= this value.'), OmittedNotNull, SchemaIntegral] = None
+    min_height: Annotated[StrictInt | None, Field(description='Minimum height in pixels (inclusive). Returns formats with height >= this value.'), OmittedNotNull, SchemaIntegral] = None
+    is_responsive: Annotated[StrictBool | None, Field(description='Filter for responsive formats that adapt to container size. When true, returns formats without fixed dimensions.'), OmittedNotNull] = None
     name_search: Annotated[str | None, Field(description='Search for formats by name (case-insensitive partial match)'), OmittedNotNull] = None
     wcag_level: Annotated[WCAGLevel | None, Field(description='Filter to formats that meet at least this WCAG conformance level (A < AA < AAA)'), OmittedNotNull] = None
     disclosure_positions: Annotated[list[DisclosurePosition] | None, Field(description="Filter to formats that support all of these disclosure positions. When a format has disclosure_capabilities, match against those positions. Otherwise fall back to supported_disclosure_positions. Use to find formats compatible with a brief's compliance requirements.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     disclosure_persistence: Annotated[list[DisclosurePersistence] | None, Field(description='Filter to formats where each requested persistence mode is supported by at least one position in disclosure_capabilities. Different positions may satisfy different modes. Use to find formats compatible with jurisdiction-specific persistence requirements (e.g., continuous for EU AI Act).', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.1.** Discover build capability via `list_transformers` (filter its `output_format_ids`) instead — build capability is a property of transformers, not a relationship between formats. *Legacy:* filter to formats whose `output_format_ids` includes any of these format IDs.', min_length=1), OmittedNotNull] = None
     input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.1.** Discover build capability via `list_transformers` (filter its `input_format_ids`) instead. *Legacy:* filter to formats whose `input_format_ids` includes any of these format IDs.', min_length=1), OmittedNotNull] = None
-    include_pricing: Annotated[bool | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `list_transformers` with `include_pricing` and `account` for transformation and generation pricing. *Legacy 3.x behavior:* include `pricing_options` on each returned format. Requires `account`; when false or omitted, pricing is not computed. Agents supporting the 3.1 format-pricing surface MUST continue to honor this field through 3.x.'), OmittedNotNull] = False
+    include_pricing: Annotated[StrictBool | None, Field(description='**DEPRECATED in 3.1. Removed at 4.0.** Use `list_transformers` with `include_pricing` and `account` for transformation and generation pricing. *Legacy 3.x behavior:* include `pricing_options` on each returned format. Requires `account`; when false or omitted, pricing is not computed. Agents supporting the 3.1 format-pricing surface MUST continue to honor this field through 3.x.'), OmittedNotNull] = False
     account: Annotated[AccountReference | None, Field(description='**DEPRECATED for `list_creative_formats` in 3.1. Removed at 4.0.** Use the account-scoped `list_transformers` request instead. *Legacy 3.x behavior:* identifies the rate card used when `include_pricing` is true.'), OmittedNotNull] = None
     pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None

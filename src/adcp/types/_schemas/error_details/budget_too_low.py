@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
@@ -16,7 +16,7 @@ class BudgetTooLowDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/budget-too-low.json', pointer='#')
-    minimum_budget: Annotated[float | None, Field(description="Seller's minimum budget for this product"), OmittedNotNull] = None
+    minimum_budget: Annotated[StrictFloat | None, Field(description="Seller's minimum budget for this product"), OmittedNotNull] = None
     currency: Annotated[str | None, Field(description='ISO 4217 currency code'), OmittedNotNull] = None
 
 

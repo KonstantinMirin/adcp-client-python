@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool, StrictInt
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types.constraints import SchemaIntegral
 
 
 class Voice(AdCPBaseModel):
@@ -24,7 +25,7 @@ class Video(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/modalities/properties/video/oneOf/1')
     formats: Annotated[list[str] | None, Field(description='Supported video formats (mp4, webm, etc.)'), OmittedNotNull] = None
-    max_duration_seconds: Annotated[int | None, Field(description='Maximum video duration'), OmittedNotNull] = None
+    max_duration_seconds: Annotated[StrictInt | None, Field(description='Maximum video duration'), OmittedNotNull, SchemaIntegral] = None
 
 
 class Avatar(AdCPBaseModel):
@@ -44,10 +45,10 @@ class Modalities(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/modalities')
-    conversational: Annotated[bool | None, Field(description='Pure text exchange - the baseline modality'), OmittedNotNull] = True
-    voice: Annotated[bool | Voice | None, Field(description='Audio-based interaction using brand voice'), OmittedNotNull] = None
-    video: Annotated[bool | Video | None, Field(description='Brand video content playback'), OmittedNotNull] = None
-    avatar: Annotated[bool | Avatar | None, Field(description='Animated video presence with brand avatar'), OmittedNotNull] = None
+    conversational: Annotated[StrictBool | None, Field(description='Pure text exchange - the baseline modality'), OmittedNotNull] = True
+    voice: Annotated[StrictBool | Voice | None, Field(description='Audio-based interaction using brand voice'), OmittedNotNull] = None
+    video: Annotated[StrictBool | Video | None, Field(description='Brand video content playback'), OmittedNotNull] = None
+    avatar: Annotated[StrictBool | Avatar | None, Field(description='Animated video presence with brand avatar'), OmittedNotNull] = None
 
 
 class StandardItem(StrEnum):
@@ -85,7 +86,7 @@ class Commerce(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/commerce')
-    acp_checkout: Annotated[bool | None, Field(description='Supports ACP (Agentic Commerce Protocol) checkout handoff'), OmittedNotNull] = None
+    acp_checkout: Annotated[StrictBool | None, Field(description='Supports ACP (Agentic Commerce Protocol) checkout handoff'), OmittedNotNull] = None
 
 
 class A2ui(AdCPBaseModel):
@@ -96,7 +97,7 @@ class A2ui(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/a2ui')
-    supported: Annotated[bool | None, Field(description='Supports A2UI surface rendering'), OmittedNotNull] = False
+    supported: Annotated[StrictBool | None, Field(description='Supports A2UI surface rendering'), OmittedNotNull] = False
     catalogs: Annotated[list[str] | None, Field(description="Supported A2UI component catalogs (e.g., 'si-standard', 'standard')"), OmittedNotNull] = None
 
 
@@ -112,7 +113,7 @@ class SICapabilities(AdCPBaseModel):
     components: Annotated[Components | None, Field(description='Visual components supported'), OmittedNotNull] = None
     commerce: Annotated[Commerce | None, Field(description='Commerce capabilities'), OmittedNotNull] = None
     a2ui: Annotated[A2ui | None, Field(description='A2UI (Agent-to-UI) capabilities'), OmittedNotNull] = None
-    mcp_apps: Annotated[bool | None, Field(description='Supports MCP Apps for rendering A2UI surfaces in iframes'), OmittedNotNull] = False
+    mcp_apps: Annotated[StrictBool | None, Field(description='Supports MCP Apps for rendering A2UI surfaces in iframes'), OmittedNotNull] = False
 
 
 SiCapabilities = SICapabilities

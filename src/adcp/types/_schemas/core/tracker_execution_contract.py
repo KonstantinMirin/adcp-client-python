@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
@@ -22,7 +22,7 @@ class TrackerExecutionContract(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('honored'),
     )
-    complete: Annotated[bool, Field(description='Whether honored is the complete set. complete:true with an empty honored array explicitly supports no buyer-supplied trackers.')]
+    complete: Annotated[StrictBool, Field(description='Whether honored is the complete set. complete:true with an empty honored array explicitly supports no buyer-supplied trackers.')]
     honored: Annotated[list[TrackerExecutionSelector], Field(description='Exact tracker/event selectors the seller accepts and initiates once per manifest instance for each logical event occurrence. selector_id and structural selector identity are each unique within this array.', json_schema_extra={'uniqueItems': True})]
 
 

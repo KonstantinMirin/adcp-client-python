@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -59,7 +59,7 @@ class LogEventSuccess(LogEventResponse):
     partial_failures: Annotated[list[PartialFailuresItem] | None, Field(description='Events that failed validation'), OmittedNotNull] = None
     warnings: Annotated[list[str] | None, Field(description='Non-fatal issues (low match quality, missing recommended fields, deprecation notices)'), OmittedNotNull] = None
     match_quality: Annotated[FloatMin0Max1 | None, Field(description='Overall match quality score for the batch (0.0 = no matches, 1.0 = all matched)'), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

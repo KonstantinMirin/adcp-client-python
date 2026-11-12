@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
@@ -26,7 +26,7 @@ class ValidatePropertyDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     list_id: Annotated[str, Field(description='ID of the property list to validate against')]
     account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.'), OmittedNotNull] = None
     records: Annotated[list[DeliveryRecord], Field(description='Delivery records to validate. Each record represents impressions delivered to a property identifier.', max_length=10000, min_length=1)]
-    include_compliant: Annotated[bool | None, Field(description='Include compliant records in results (default: only return non_compliant, unmodeled, and unidentified)'), OmittedNotNull] = False
+    include_compliant: Annotated[StrictBool | None, Field(description='Include compliant records in results (default: only return non_compliant, unmodeled, and unidentified)'), OmittedNotNull] = False
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

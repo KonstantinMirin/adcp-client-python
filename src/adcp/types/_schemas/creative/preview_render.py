@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
@@ -39,8 +39,8 @@ class PreviewRenderUrlEmbedding(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/0/properties/embedding')
     recommended_sandbox: Annotated[Literal[''] | None, Field(description='Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.'), OmittedNotNull] = None
-    requires_https: Annotated[bool | None, Field(description='Whether this output requires HTTPS for secure embedding'), OmittedNotNull] = None
-    supports_fullscreen: Annotated[bool | None, Field(description='Whether this output supports fullscreen mode'), OmittedNotNull] = None
+    requires_https: Annotated[StrictBool | None, Field(description='Whether this output requires HTTPS for secure embedding'), OmittedNotNull] = None
+    supports_fullscreen: Annotated[StrictBool | None, Field(description='Whether this output supports fullscreen mode'), OmittedNotNull] = None
     csp_policy: Annotated[str | None, Field(description='Content Security Policy requirements for embedding'), OmittedNotNull] = None
 
 
@@ -70,8 +70,8 @@ class PreviewRenderHtmlEmbedding(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/1/properties/embedding')
     recommended_sandbox: Annotated[Literal[''] | None, Field(description='Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.'), OmittedNotNull] = None
-    requires_https: Annotated[bool | None, Field(description='Whether this output requires HTTPS for secure embedding'), OmittedNotNull] = None
-    supports_fullscreen: Annotated[bool | None, Field(description='Whether this output supports fullscreen mode'), OmittedNotNull] = None
+    requires_https: Annotated[StrictBool | None, Field(description='Whether this output requires HTTPS for secure embedding'), OmittedNotNull] = None
+    supports_fullscreen: Annotated[StrictBool | None, Field(description='Whether this output supports fullscreen mode'), OmittedNotNull] = None
     csp_policy: Annotated[str | None, Field(description='Content Security Policy requirements for embedding'), OmittedNotNull] = None
 
 

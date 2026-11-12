@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import PaginationMaxResults
@@ -37,7 +37,7 @@ class GetCollectionListRequest(AdCPVersionEnvelope, AdcpRequest):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/get-collection-list-request.json', pointer='#')
     list_id: Annotated[str, Field(description='ID of the collection list to retrieve')]
     account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise.'), OmittedNotNull] = None
-    resolve: Annotated[bool | None, Field(description='Whether to apply filters and return resolved collections (default: true)'), OmittedNotNull] = True
+    resolve: Annotated[StrictBool | None, Field(description='Whether to apply filters and return resolved collections (default: true)'), OmittedNotNull] = True
     pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because collection lists can contain thousands of entries.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

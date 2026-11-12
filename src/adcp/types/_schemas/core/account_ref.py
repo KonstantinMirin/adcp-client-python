@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1
@@ -45,7 +45,7 @@ class AccountReferenceBrandOperator(AccountReference):
     operator_unit: Annotated[OperatorUnit | None, Field(description='Optional operator-owned business unit, agency seat, or platform account. Only id participates in the natural account key; name is mutable display metadata.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description="Immutable ISO 4217 transaction currency when the seller's advertiser object is currency-bound. When present, this is part of the natural account key and media buys on the account MUST use it. Omit when currency is selected independently per media buy."), OmittedNotNull] = None
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable account timezone. Include it in the natural key when get_adcp_capabilities.account.timezone declares account_fixed with buyer_selected; omit it for seller_fixed or seller_assigned accounts.'), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, references the sandbox account for this brand/operator pair. Defaults to false (production account).'), OmittedNotNull] = False
+    sandbox: Annotated[StrictBool | None, Field(description='When true, references the sandbox account for this brand/operator pair. Defaults to false (production account).'), OmittedNotNull] = False
 
 
 AccountReference._branch_models = (AccountReferenceAccountId, AccountReferenceBrandOperator,)

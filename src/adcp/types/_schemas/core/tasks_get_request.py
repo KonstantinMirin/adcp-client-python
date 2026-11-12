@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 
@@ -23,8 +23,8 @@ class TasksGetRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-get-request.json', pointer='#')
     task_id: Annotated[str, Field(description='Unique identifier of the task to retrieve')]
     account: Annotated[AccountReference | None, Field(description='Account scope for the task lookup. Sellers MUST return REFERENCE_NOT_FOUND for a task_id that exists only under a different account or principal. When omitted, the seller MAY use the credential-bound singleton account, but multi-account credentials SHOULD require an explicit account.'), OmittedNotNull] = None
-    include_history: Annotated[bool | None, Field(description='Include full conversation history for this task (may increase response size)'), OmittedNotNull] = False
-    include_result: Annotated[bool | None, Field(description="Include the task's canonical terminal result payload when one exists. Defaults to false for lightweight status-only polls. When true, sellers MUST include result for completed, failed, or rejected terminal tasks when that task produced a terminal artifact; canceled tasks may have no result. The legacy singular error field remains a convenience for failed tasks but does not replace the canonical terminal result."), OmittedNotNull] = False
+    include_history: Annotated[StrictBool | None, Field(description='Include full conversation history for this task (may increase response size)'), OmittedNotNull] = False
+    include_result: Annotated[StrictBool | None, Field(description="Include the task's canonical terminal result payload when one exists. Defaults to false for lightweight status-only polls. When true, sellers MUST include result for completed, failed, or rejected terminal tasks when that task produced a terminal artifact; canceled tasks may have no result. The legacy singular error field remains a convenience for failed tasks but does not replace the canonical terminal result."), OmittedNotNull] = False
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

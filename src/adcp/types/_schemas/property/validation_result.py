@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
@@ -37,8 +37,8 @@ class Requirement(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validation-result.json', pointer='#/properties/features/items/properties/requirement')
-    min_value: Annotated[float | None, Field(description='Minimum value that was required'), OmittedNotNull] = None
-    max_value: Annotated[float | None, Field(description='Maximum value that was allowed'), OmittedNotNull] = None
+    min_value: Annotated[StrictFloat | None, Field(description='Minimum value that was required'), OmittedNotNull] = None
+    max_value: Annotated[StrictFloat | None, Field(description='Maximum value that was allowed'), OmittedNotNull] = None
     allowed_values: Annotated[list[Any] | None, Field(description='Values that would have been acceptable'), OmittedNotNull] = None
 
 

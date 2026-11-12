@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
@@ -34,7 +34,7 @@ class VASTAsset(BranchDispatchMixin, AdCPBaseModel):
     asset_type: Annotated[Literal['vast'], Field(description='Discriminator identifying this as a VAST asset. See /schemas/creative/asset-types for the registry.')]
     vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST version declared by the supplied URL response or inline document. Required by the 3.2 canonical `video_vast` and `audio_vast` manifest paths; optional only on the deprecated named-format compatibility path. Receivers MUST NOT relabel or synthesize a newer version merely because the destination accepts it.'), OmittedNotNull] = None
     macro_declarations: Annotated[list[MacroDeclaration] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1), OmittedNotNull] = None
-    vpaid_enabled: Annotated[bool | None, Field(description='Whether VPAID (Video Player-Ad Interface Definition) is supported'), OmittedNotNull] = None
+    vpaid_enabled: Annotated[StrictBool | None, Field(description='Whether VPAID (Video Player-Ad Interface Definition) is supported'), OmittedNotNull] = None
     duration_ms: Annotated[NonNegativeInt | None, Field(description='Expected media duration in milliseconds (if known)'), OmittedNotNull] = None
     tracking_events: Annotated[list[VASTTrackingEvent] | None, Field(description='Tracking events supported by this VAST tag'), OmittedNotNull] = None
     captions_url: Annotated[HostedUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)'), OmittedNotNull] = None

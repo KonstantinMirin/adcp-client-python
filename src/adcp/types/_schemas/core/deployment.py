@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
@@ -32,7 +32,7 @@ class DeploymentPlatform(Deployment):
     type: Annotated[Literal['platform'], Field(description='Discriminator indicating this is a platform-based deployment')]
     platform: Annotated[str, Field(description='Platform identifier for DSPs')]
     account: Annotated[str | None, Field(description='Account identifier if applicable'), OmittedNotNull] = None
-    is_live: Annotated[bool, Field(description='Whether signal is currently active on this deployment')]
+    is_live: Annotated[StrictBool, Field(description='Whether signal is currently active on this deployment')]
     activation_key: Annotated[ActivationKey | None, Field(description='The key to use for targeting. Only present if is_live=true AND requester has access to this deployment.'), OmittedNotNull] = None
     estimated_activation_duration_minutes: Annotated[NonNegativeFloat | None, Field(description='Estimated time to activate if not live, or to complete activation if in progress'), OmittedNotNull] = None
     deployed_at: Annotated[AwareDatetime | None, Field(description='Timestamp when activation completed (if is_live=true)'), OmittedNotNull] = None
@@ -46,7 +46,7 @@ class DeploymentAgent(Deployment):
     type: Annotated[Literal['agent'], Field(description='Discriminator indicating this is an agent URL-based deployment')]
     agent_url: Annotated[HostedUrl, Field(description='URL identifying the deployment agent')]
     account: Annotated[str | None, Field(description='Account identifier if applicable'), OmittedNotNull] = None
-    is_live: Annotated[bool, Field(description='Whether signal is currently active on this deployment')]
+    is_live: Annotated[StrictBool, Field(description='Whether signal is currently active on this deployment')]
     activation_key: Annotated[ActivationKey | None, Field(description='The key to use for targeting. Only present if is_live=true AND requester has access to this deployment.'), OmittedNotNull] = None
     estimated_activation_duration_minutes: Annotated[NonNegativeFloat | None, Field(description='Estimated time to activate if not live, or to complete activation if in progress'), OmittedNotNull] = None
     deployed_at: Annotated[AwareDatetime | None, Field(description='Timestamp when activation completed (if is_live=true)'), OmittedNotNull] = None

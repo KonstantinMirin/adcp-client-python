@@ -4,10 +4,16 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, StrictInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import AssetsItemContent, AssetsItemHeadingLevel, AssetsItemTranscript, HostedUrl
+from adcp.types.constraints import (
+    AssetsItemContent,
+    AssetsItemHeadingLevel,
+    AssetsItemTranscript,
+    HostedUrl,
+    SchemaIntegral,
+)
 
 from ..core.canonical_format_kind import CanonicalFormatKind
 from ..core.format_id import FormatReferenceStructuredObject
@@ -111,8 +117,8 @@ class AssetsItemImage(AdCPBaseModel):
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
     alt_text: Annotated[str | None, Field(description='Alt text or image description'), OmittedNotNull] = None
     caption: Annotated[str | None, Field(description='Image caption'), OmittedNotNull] = None
-    width: Annotated[int | None, Field(description='Image width in pixels'), OmittedNotNull] = None
-    height: Annotated[int | None, Field(description='Image height in pixels'), OmittedNotNull] = None
+    width: Annotated[StrictInt | None, Field(description='Image width in pixels'), OmittedNotNull, SchemaIntegral] = None
+    height: Annotated[StrictInt | None, Field(description='Image height in pixels'), OmittedNotNull, SchemaIntegral] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this image, overrides artifact-level provenance'), OmittedNotNull] = None
 
 
@@ -152,7 +158,7 @@ class AssetsItemVideo(AdCPBaseModel):
     type: Literal['video']
     url: Annotated[HostedUrl, Field(description='Video URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
-    duration_ms: Annotated[int | None, Field(description='Video duration in milliseconds'), OmittedNotNull] = None
+    duration_ms: Annotated[StrictInt | None, Field(description='Video duration in milliseconds'), OmittedNotNull, SchemaIntegral] = None
     transcript: Annotated[AssetsItemTranscript | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.'), OmittedNotNull] = None
     transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AssetsItemVideoTranscriptFormat).validate_python('text/plain'))
     transcript_source: Annotated[AssetsItemVideoTranscriptSource | None, Field(description='How the transcript was generated'), OmittedNotNull] = None
@@ -183,7 +189,7 @@ class AssetsItemAudio(AdCPBaseModel):
     type: Literal['audio']
     url: Annotated[HostedUrl, Field(description='Audio URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
-    duration_ms: Annotated[int | None, Field(description='Audio duration in milliseconds'), OmittedNotNull] = None
+    duration_ms: Annotated[StrictInt | None, Field(description='Audio duration in milliseconds'), OmittedNotNull, SchemaIntegral] = None
     transcript: Annotated[AssetsItemTranscript | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.'), OmittedNotNull] = None
     transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AssetsItemAudioTranscriptFormat).validate_python('text/plain'))
     transcript_source: Annotated[AssetsItemAudioTranscriptSource | None, Field(description='How the transcript was generated'), OmittedNotNull] = None

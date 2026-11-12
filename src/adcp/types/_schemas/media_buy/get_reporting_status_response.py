@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
@@ -61,14 +61,14 @@ class Scope(AdCPBaseModel):
     )
     period_start: AwareDatetime
     period_end: AwareDatetime
-    scope_closed: Annotated[bool, Field(description='True only when no new obligation can enter this evaluated scope.')]
+    scope_closed: Annotated[StrictBool, Field(description='True only when no new obligation can enter this evaluated scope.')]
     media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
-    all_accessible_media_buys: Annotated[bool, Field(description='True when media_buy_ids was omitted and the scope covers all caller-accessible account buys.')]
+    all_accessible_media_buys: Annotated[StrictBool, Field(description='True when media_buy_ids was omitted and the scope covers all caller-accessible account buys.')]
     delivery_config_generations: Annotated[list[DeliveryConfigGenerationsItem], Field(description='Exact independently reconciled configuration generations in the denominator.', json_schema_extra={'uniqueItems': True})]
     feed_purposes: Annotated[list[ReportingFeedPurpose], Field(json_schema_extra={'uniqueItems': True})]
     finality: Annotated[list[ReportingFinality], Field(json_schema_extra={'uniqueItems': True})]
     ledger_retained_from: Annotated[AwareDatetime, Field(description='Earliest period boundary for which anti-entropy metadata is retained for every selected configuration generation.')]
-    coverage_complete: Annotated[bool, Field(description='Whether the requested horizon is fully inside retained ledger coverage. False means health cannot prove completeness for the whole requested horizon.')]
+    coverage_complete: Annotated[StrictBool, Field(description='Whether the requested horizon is fully inside retained ledger coverage. False means health cannot prove completeness for the whole requested horizon.')]
 
 
 class ObligationCounts(AdCPBaseModel):

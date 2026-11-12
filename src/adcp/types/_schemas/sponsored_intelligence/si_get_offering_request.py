@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import ProductLimit
@@ -25,7 +25,7 @@ class SIGetOfferingRequest(AdCPVersionEnvelope, AdcpRequest):
     offering_id: Annotated[str, Field(description='Offering identifier from the catalog to get details for')]
     intent: Annotated[str | None, Field(description="Optional natural language description of user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII."), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
-    include_products: Annotated[bool | None, Field(description='Whether to include matching products in the response'), OmittedNotNull] = False
+    include_products: Annotated[StrictBool | None, Field(description='Whether to include matching products in the response'), OmittedNotNull] = False
     product_limit: Annotated[ProductLimit | None, Field(description='Maximum number of matching products to return'), OmittedNotNull] = 5
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

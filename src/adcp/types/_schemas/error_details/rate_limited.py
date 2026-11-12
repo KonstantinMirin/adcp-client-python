@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
@@ -29,9 +29,9 @@ class RateLimitedDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/rate-limited.json', pointer='#')
-    limit: Annotated[float | None, Field(description='Maximum requests allowed in the window'), OmittedNotNull] = None
-    remaining: Annotated[float | None, Field(description='Requests remaining in the current window'), OmittedNotNull] = None
-    window_seconds: Annotated[float | None, Field(description='Duration of the rate-limit window in seconds'), OmittedNotNull] = None
+    limit: Annotated[StrictFloat | None, Field(description='Maximum requests allowed in the window'), OmittedNotNull] = None
+    remaining: Annotated[StrictFloat | None, Field(description='Requests remaining in the current window'), OmittedNotNull] = None
+    window_seconds: Annotated[StrictFloat | None, Field(description='Duration of the rate-limit window in seconds'), OmittedNotNull] = None
     scope: Annotated[Scope | None, Field(description='What the limit applies to'), OmittedNotNull] = None
 
 

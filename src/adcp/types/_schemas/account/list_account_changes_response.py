@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
@@ -80,7 +80,7 @@ class ListAccountChangesResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
         return "oneOf"
     changes: Annotated[list[AccountChange] | None, Field(description='Matching changes in oldest-first total account order. Timestamps are descriptive and do not define this order.', max_length=100), OmittedNotNull] = None
     cursor: Annotated[StrMinLen1MaxLen4096 | None, Field(description='Opaque checkpoint strictly after the high-water scanned by this page. Always persist this value, including when changes is empty or has_more is false. A filtered empty page still advances past scanned nonmatching records.'), OmittedNotNull] = None
-    has_more: Annotated[bool | None, Field(description='True when more retained matching changes were available at generation time. False means caught up to seller ingestion, not necessarily to an unavailable or delayed connected source.'), OmittedNotNull] = None
+    has_more: Annotated[StrictBool | None, Field(description='True when more retained matching changes were available at generation time. False means caught up to seller ingestion, not necessarily to an unavailable or delayed connected source.'), OmittedNotNull] = None
     available_since: Annotated[AwareDatetime | None, Field(description='Oldest time for which the seller currently retains change records for this account and caller. The capability guarantees at least 90 days after adoption; pre-adoption history is not fabricated.'), OmittedNotNull] = None
     generated_at: Annotated[AwareDatetime | None, Field(description='Seller time when this page and its source-coverage watermarks were generated.'), OmittedNotNull] = None
     source_coverage: Annotated[list[SourceCoverageItem] | None, Field(description='Account-specific feed and connector coverage. Buyers use this to distinguish feed catch-up from upstream freshness. Omission means no additional connected-source coverage is declared.', max_length=50), OmittedNotNull] = None
@@ -105,7 +105,7 @@ class ListAccountChangesResponseCompleted(ListAccountChangesResponse):
     changes: Annotated[list[AccountChange], Field(description='Matching changes in oldest-first total account order. Timestamps are descriptive and do not define this order.', max_length=100)]
     cursor: Annotated[StrMinLen1MaxLen4096, Field(description='Opaque checkpoint strictly after the high-water scanned by this page. Always persist this value, including when changes is empty or has_more is false. A filtered empty page still advances past scanned nonmatching records.')]
     generated_at: Annotated[AwareDatetime, Field(description='Seller time when this page and its source-coverage watermarks were generated.')]
-    has_more: Annotated[bool, Field(description='True when more retained matching changes were available at generation time. False means caught up to seller ingestion, not necessarily to an unavailable or delayed connected source.')]
+    has_more: Annotated[StrictBool, Field(description='True when more retained matching changes were available at generation time. False means caught up to seller ingestion, not necessarily to an unavailable or delayed connected source.')]
 
 
 class ListAccountChangesResponseFailed(ListAccountChangesResponse):

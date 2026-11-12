@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, IssuerDomain, StrMaxLen500, StrMaxLen5000, StrMinLen1
@@ -76,7 +76,7 @@ class PolicyEntry(AdCPBaseModel):
     description: Annotated[StrMaxLen500 | None, Field(description='Brief summary of what this policy covers.'), OmittedNotNull] = None
     category: Annotated[PolicyCategory | None, Field(description='The nature of the obligation: regulation (legal requirement) or standard (best practice). Optional for inline bespoke policies — defaults to "standard".'), OmittedNotNull] = None
     enforcement: Annotated[PolicyEnforcementLevel, Field(description='How governance agents treat violations. Regulations are typically "must"; standards are typically "should".')]
-    requires_human_review: Annotated[bool | None, Field(description='When true, plans subject to this policy MUST set plan.human_review_required = true. Use for policies that mandate human oversight of decisions affecting data subjects — e.g., GDPR Article 22 (solely automated decisions with legal or similarly significant effects) and EU AI Act Annex III high-risk categories (credit, insurance pricing, recruitment, housing allocation). Governance agents MUST escalate any plan action whose resolved policies include requires_human_review: true. Unlike `enforcement`, this flag applies as soon as the policy is resolved — it is NOT gated by `effective_date`. Art 22 GDPR and similar foundational obligations may predate an AI-Act-specific effective date; the human-review requirement fires regardless.'), OmittedNotNull] = False
+    requires_human_review: Annotated[StrictBool | None, Field(description='When true, plans subject to this policy MUST set plan.human_review_required = true. Use for policies that mandate human oversight of decisions affecting data subjects — e.g., GDPR Article 22 (solely automated decisions with legal or similarly significant effects) and EU AI Act Annex III high-risk categories (credit, insurance pricing, recruitment, housing allocation). Governance agents MUST escalate any plan action whose resolved policies include requires_human_review: true. Unlike `enforcement`, this flag applies as soon as the policy is resolved — it is NOT gated by `effective_date`. Art 22 GDPR and similar foundational obligations may predate an AI-Act-specific effective date; the human-review requirement fires regardless.'), OmittedNotNull] = False
     jurisdictions: Annotated[list[str] | None, Field(description='ISO 3166-1 alpha-2 country codes where this policy applies. Empty array means the policy is not jurisdiction-specific.'), OmittedNotNull] = None
     region_aliases: Annotated[dict[str, list[str]] | None, Field(description='Named groups of jurisdictions for convenience (e.g., {"EU": ["AT","BE","BG",...]}). Governance agents expand aliases when matching against a plan\'s target jurisdictions.'), OmittedNotNull] = None
     policy_categories: Annotated[list[str] | None, Field(description='Regulatory categories this policy belongs to (e.g., ["children_directed", "age_restricted"]). Used for automatic matching against a campaign plan\'s declared policy_categories. A single policy can belong to multiple categories.'), OmittedNotNull] = None

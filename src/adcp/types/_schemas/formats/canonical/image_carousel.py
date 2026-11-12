@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, StrictInt, TypeAdapter
 
 from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1, MinCards
+from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1, MinCards, SchemaIntegral
 
 from ._base import CanonicalFormatBase, SlotsItem
 
@@ -32,11 +32,11 @@ class CanonicalFormatImageCarousel(CanonicalFormatBase):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/image_carousel.json', pointer='#')
-    v1_translatable: Annotated[bool | None, Field(description="Inherently new in v2 — multi-card carousels (Meta carousel, Pinterest pin collections, Snap collection ads) weren't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural."), OmittedNotNull] = False
+    v1_translatable: Annotated[StrictBool | None, Field(description="Inherently new in v2 — multi-card carousels (Meta carousel, Pinterest pin collections, Snap collection ads) weren't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural."), OmittedNotNull] = False
     slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for image_carousel. The `cards` slot's value in the manifest is an array of [card-asset](/schemas/core/assets/card-asset.json) objects; `min` / `max` constrain card count.", json_schema_extra={'default': [{'asset_group_id': 'cards', 'asset_type': 'card', 'required': True, 'min': 2, 'max': 10}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'cards', 'asset_type': 'card', 'required': True, 'min': 2, 'max': 10}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
     card_aspect_ratio: Annotated[CanonicalFormatImageAspectRatio | None, Field(description="Aspect ratio shared across all cards (e.g., '1:1', '1.91:1', '4:5')."), OmittedNotNull] = None
     min_cards: Annotated[MinCards | None, Field(description='Minimum card count (typical: 2 or 3).'), OmittedNotNull] = None
-    max_cards: Annotated[int | None, Field(description='Maximum card count (typical: 6, 10, or 35 depending on platform).'), OmittedNotNull] = None
+    max_cards: Annotated[StrictInt | None, Field(description='Maximum card count (typical: 6, 10, or 35 depending on platform).'), OmittedNotNull, SchemaIntegral] = None
     allowed_card_media_asset_types: Annotated[list[AllowedCardMediaAssetTypesItem] | None, Field(description='Asset types each card\'s `media` field may carry. Default: [\'image\']. Polymorphic carousels (Meta) allow [\'image\', \'video\']. Renamed from `allowed_card_asset_types` to disambiguate that this constrains the card\'s media payload, not the card-asset itself (which is always asset_type: "card").'), OmittedNotNull] = None
     allowed_card_asset_types: Annotated[list[AllowedCardAssetTypesItem] | None, Field(description='DEPRECATED — alias for `allowed_card_media_asset_types`. Kept for back-compat; prefer the new field name. Removed in 5.0.'), OmittedNotNull] = None
     card_image_max_file_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
@@ -45,7 +45,7 @@ class CanonicalFormatImageCarousel(CanonicalFormatBase):
     primary_text_max_chars: Annotated[IntMin1 | None, Field(description='Maximum length of the carousel-level primary text.'), OmittedNotNull] = None
     card_headline_max_chars: Annotated[IntMin1 | None, Field(description='Per-card headline character limit. Governs the `headline` field on each card-asset in the `cards` slot.'), OmittedNotNull] = None
     card_description_max_chars: Annotated[IntMin1 | None, Field(description='Per-card description character limit. Governs the `description` field on each card-asset in the `cards` slot. Distinct from `card_headline_max_chars`: description is longer body copy (typically 100-500 chars); headline is the short label (typically 25-40 chars).'), OmittedNotNull] = None
-    ssl_required: Annotated[bool | None, OmittedNotNull] = None
+    ssl_required: Annotated[StrictBool | None, OmittedNotNull] = None
 
 
 AllowedCardMediaAssetType = AllowedCardMediaAssetTypesItem

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
@@ -87,11 +87,11 @@ class SyncCatalogsSuccess(SyncCatalogsResponse):
         ForbiddenGroups((('errors',),)),
     )
     status: Annotated[Literal['completed'], Field(description='Availability and synchronous catalog results are terminal and complete.')]
-    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
+    dry_run: Annotated[StrictBool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
     catalogs: Annotated[list[CatalogsItem], Field(description="Results for each catalog processed. Items with action='failed' indicate per-catalog validation/processing failures, not operation-level failures.")]
     item_availability_updates: Annotated[list[CatalogItemAvailabilityUpdateResult] | None, Field(description='Acknowledgements for item_availability_updates. The array length MUST equal the request array length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, item_id, and action from request entry N. Buyers MUST reject the response as non-conformant if count, ordering, request_index, or echoed identity differs. Lenient-mode failures stay in their request positions. In strict mode, any per-entry failure instead produces the operation-level error branch before mutation and this array is absent.', max_length=1000, min_length=1), OmittedNotNull] = None
     item_availability_states: Annotated[list[CatalogItemAvailabilityState] | None, Field(description='Current-state results for item_availability_queries, evaluated after updates in a mixed request. The array length MUST equal the request query length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, and item_id. Buyers MUST reject any mismatch. A replayed response is historical; use a fresh query idempotency_key before treating it as current after time-dependent expiry or catalog deletion/recreation.', max_length=1000, min_length=1), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -30,10 +30,10 @@ class CanonicalFormatDAASTAudio(CanonicalFormatBase):
     daast_versions: Annotated[DaastVersions | None, Field(description="Accepted DAAST versions for this format option. A tracker execution selector's daast_versions must be a nonempty subset of this set."), OmittedNotNull] = None
     duration_ms_range: Annotated[list[NonNegativeInt] | None, Field(description='[min, max] duration in milliseconds. **Precedence**: `duration_ms_exact` takes precedence when both ship. SDKs SHOULD lint a warning when both fields ship.', max_length=2, min_length=2), OmittedNotNull] = None
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship.'), OmittedNotNull] = None
-    linear_required: Annotated[bool | None, OmittedNotNull] = None
+    linear_required: Annotated[StrictBool | None, OmittedNotNull] = None
     max_wrapper_depth: Annotated[NonNegativeInt | None, OmittedNotNull] = None
-    ssl_required: Annotated[bool | None, OmittedNotNull] = None
-    companion_image_required: Annotated[bool | None, OmittedNotNull] = None
+    ssl_required: Annotated[StrictBool | None, OmittedNotNull] = None
+    companion_image_required: Annotated[StrictBool | None, OmittedNotNull] = None
 
 
 CanonicalFormatDaastAudio = CanonicalFormatDAASTAudio

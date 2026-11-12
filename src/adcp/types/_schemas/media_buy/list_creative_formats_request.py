@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool, StrictInt
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types.constraints import SchemaIntegral
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -37,11 +38,11 @@ class ListCreativeFormatsRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Return only these specific named-format IDs (for example, from a 3.x get_products response). Use canonical-format discovery in 4.0.', min_length=1), OmittedNotNull] = None
     asset_types: Annotated[list[AssetContentType] | None, Field(description="Filter to formats that include these asset types. For third-party tags, search for 'html' or 'javascript'. For published-post reference formats, search for 'published_post'. E.g., ['image', 'text'] returns formats with images and text, ['javascript'] returns formats accepting JavaScript tags.", min_length=1), OmittedNotNull] = None
-    max_width: Annotated[int | None, Field(description='Maximum width in pixels (inclusive). Returns formats where ANY render has width <= this value. For multi-render formats, matches if at least one render fits.'), OmittedNotNull] = None
-    max_height: Annotated[int | None, Field(description='Maximum height in pixels (inclusive). Returns formats where ANY render has height <= this value. For multi-render formats, matches if at least one render fits.'), OmittedNotNull] = None
-    min_width: Annotated[int | None, Field(description='Minimum width in pixels (inclusive). Returns formats where ANY render has width >= this value.'), OmittedNotNull] = None
-    min_height: Annotated[int | None, Field(description='Minimum height in pixels (inclusive). Returns formats where ANY render has height >= this value.'), OmittedNotNull] = None
-    is_responsive: Annotated[bool | None, Field(description='Filter for responsive formats that adapt to container size. When true, returns formats without fixed dimensions.'), OmittedNotNull] = None
+    max_width: Annotated[StrictInt | None, Field(description='Maximum width in pixels (inclusive). Returns formats where ANY render has width <= this value. For multi-render formats, matches if at least one render fits.'), OmittedNotNull, SchemaIntegral] = None
+    max_height: Annotated[StrictInt | None, Field(description='Maximum height in pixels (inclusive). Returns formats where ANY render has height <= this value. For multi-render formats, matches if at least one render fits.'), OmittedNotNull, SchemaIntegral] = None
+    min_width: Annotated[StrictInt | None, Field(description='Minimum width in pixels (inclusive). Returns formats where ANY render has width >= this value.'), OmittedNotNull, SchemaIntegral] = None
+    min_height: Annotated[StrictInt | None, Field(description='Minimum height in pixels (inclusive). Returns formats where ANY render has height >= this value.'), OmittedNotNull, SchemaIntegral] = None
+    is_responsive: Annotated[StrictBool | None, Field(description='Filter for responsive formats that adapt to container size. When true, returns formats without fixed dimensions.'), OmittedNotNull] = None
     name_search: Annotated[str | None, Field(description='Search for formats by name (case-insensitive partial match)'), OmittedNotNull] = None
     publisher_domain: Annotated[DomainName | None, Field(description="Deprecated compatibility filter for older 3.x callers. A compatibility implementation MAY project publisher-origin or community-catalog declarations obtained through the registry publisher lookup, but MUST NOT synthesize a publisher catalog from seller products. New callers use `GET /api/registry/publisher?domain=...` for publisher acceptance and `get_products` for this seller's deliverability. The pattern below is a syntactic floor, not an SSRF guard."), OmittedNotNull] = None
     property_id: Annotated[PropertyID | None, Field(description="Filter to formats supported on the named property within the publisher's catalog. Resolves to a property in the publisher's `adagents.json` `properties[]`; the agent returns only `formats[]` entries whose `applies_to_property_ids` includes this property (or entries with no scope, which apply to all properties). Typically used in combination with `publisher_domain`."), OmittedNotNull] = None

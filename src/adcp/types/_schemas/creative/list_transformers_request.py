@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
@@ -51,7 +51,7 @@ class ListTransformersRequestCreativeAgent(AdCPVersionEnvelope, AdcpRequest):
     brief: Annotated[str | None, Field(description="Natural-language brief used to rank and filter transformers (and their enumerable option values when expanded) — e.g. 'warm female Spanish-language voiceover'. Curates to intent rather than returning the full set, the way get_products curates inventory."), OmittedNotNull] = None
     expand_params: Annotated[list[str] | None, Field(description="Param `field` names for which to return the FIRST page of account-scoped option VALUES inline on each transformer's `params[].options[]`. Omit to return param descriptors without enumerated values (the lean default). When a param's options are truncated, its `params[].options_cursor` is set — fetch the next page via `expand_pagination` (below).", min_length=1), OmittedNotNull] = None
     expand_pagination: Annotated[list[ExpandPaginationItem] | None, Field(description="Fetch the NEXT page of a specific param's account-scoped options, using the `options_cursor` a prior response returned for that `(transformer, param)`. Scoped per `(transformer_id, field)` so multiple params can be paged independently. Use this instead of `expand_params` once you hold a cursor.", min_length=1), OmittedNotNull] = None
-    include_pricing: Annotated[bool | None, Field(description='Include `pricing_options` on each transformer. Requires `account`.'), OmittedNotNull] = False
+    include_pricing: Annotated[StrictBool | None, Field(description='Include `pricing_options` on each transformer. Requires `account`.'), OmittedNotNull] = False
     account: Annotated[AccountReference | None, Field(description='Account reference. Transformers are account-scoped — the returned set, the enumerable option values, and (with include_pricing) the rate card are all resolved for this credential.'), OmittedNotNull] = None
     pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None

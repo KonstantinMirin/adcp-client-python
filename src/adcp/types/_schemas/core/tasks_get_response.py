@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max100, IntMin1
@@ -86,7 +86,7 @@ class TasksGetResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
     updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
     completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)'), OmittedNotNull] = None
-    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration'), OmittedNotNull] = None
+    has_webhook: Annotated[StrictBool | None, Field(description='Whether this task has webhook configuration'), OmittedNotNull] = None
     progress: Annotated[Progress | None, Field(description='Progress information for long-running tasks'), OmittedNotNull] = None
     error: Annotated[ObjCodeMessageDetails | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.'), OmittedNotNull] = None
     history: Annotated[list[ObjTimestampTypeData] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)'), OmittedNotNull] = None

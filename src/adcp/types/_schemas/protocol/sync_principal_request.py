@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
@@ -70,7 +70,7 @@ class SyncPrincipalRequest(AdCPVersionEnvelope, AdcpRequest):
     expected_configuration_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional optimistic-concurrency fence returned by a previous successful sync. When present and stale, the seller rejects the whole request without mutation. Compare only for equality.'), OmittedNotNull] = None
     expected_principal_kind: Annotated[PrincipalKind | None, Field(description='Optional assertion fence, not identity input: the caller states which party kind it believes it is authenticating as. When present and different from the seller-resolved principal_kind, the seller rejects the whole request with CONFLICT before mutation. The field never influences resolution.'), OmittedNotNull] = None
     configuration: Annotated[Configuration, Field(description='Sections to replace atomically. At least one section is required. A present array is complete desired state for that section; [] clears it; omission leaves it unchanged.')]
-    dry_run: Annotated[bool | None, Field(description='Validate the proposed replacements and report the would-be action without persisting them, issuing durable identifiers or grants, or sending endpoint proof challenges.'), OmittedNotNull] = False
+    dry_run: Annotated[StrictBool | None, Field(description='Validate the proposed replacements and report the would-be action without persisting them, issuing durable identifiers or grants, or sending endpoint proof challenges.'), OmittedNotNull] = False
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

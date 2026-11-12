@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -88,7 +88,7 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
     end_time: AwareDatetime
     pacing: Annotated[Pacing | None, Field(description='Aggregate media-buy pacing. In seller-optimized allocation, a seller declaring media_buy.features.seller_optimized_budget MUST accept omission and `even`; it MAY reject `asap` or `front_loaded` with UNSUPPORTED_FEATURE (error.field `pacing`) before any provider mutation and MUST NOT silently coerce them to `even`. Fixed-allocation semantics are unchanged.'), OmittedNotNull] = None
     bidding: Annotated[BiddingPolicy | None, OmittedNotNull] = None
-    paused: Annotated[bool | None, OmittedNotNull] = False
+    paused: Annotated[StrictBool | None, OmittedNotNull] = False
     purchase_order_ref: Annotated[StrMinLen1MaxLen255 | None, OmittedNotNull] = None
     agency_estimate_number: Annotated[StrMaxLen100 | None, OmittedNotNull] = None
     invoice_recipient: Annotated[BusinessEntity | None, Field(description='Authorized per-buy billing entity override.'), OmittedNotNull] = None

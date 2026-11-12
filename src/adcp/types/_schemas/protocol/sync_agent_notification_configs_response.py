@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
@@ -39,7 +39,7 @@ class SyncAgentNotificationConfigsResponse(AdCPVersionEnvelope, ProtocolEnvelope
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-agent-notification-configs-response.json', pointer='#')
-    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run and no persisted subscriber set changed.'), OmittedNotNull] = None
+    dry_run: Annotated[StrictBool | None, Field(description='Whether this was a dry run and no persisted subscriber set changed.'), OmittedNotNull] = None
     action: Annotated[Action, Field(description="Outcome for the caller-scoped replacement. `updated`: a new subscriber set was persisted for this caller. `unchanged`: the submitted set matched this caller's current set. `cleared`: the submitted empty array removed all subscribers owned by this caller. `failed`: validation, authorization, or endpoint proof failed; the prior caller-scoped set remains unchanged and `errors[]` explains why.")]
     notification_configs: Annotated[list[AgentNotificationConfig] | None, Field(description='Current persisted agent-level notification subscribers owned by the authenticated caller after the request. Entries are keyed by `subscriber_id`; `authentication.credentials` is omitted on every entry because credentials are write-only. Present on successful actions and MAY be present on `failed` responses to show the unchanged prior caller-scoped set.', max_length=16), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Operation-level errors and warnings. Present when action is `failed`, and MAY include non-fatal warnings on successful responses.'), OmittedNotNull] = None

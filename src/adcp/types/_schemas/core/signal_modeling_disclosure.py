@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
@@ -51,7 +51,7 @@ class SignalModelingDisclosure(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('required', True, (True,)),), require=('jurisdictions',), forbid=()),
     )
-    required: Annotated[bool, Field(description="The provider's claim that a modeling or AI-use disclosure is required for this signal in at least one applicable jurisdiction. This is a declared compliance signal, not a protocol-level legal determination.")]
+    required: Annotated[StrictBool, Field(description="The provider's claim that a modeling or AI-use disclosure is required for this signal in at least one applicable jurisdiction. This is a declared compliance signal, not a protocol-level legal determination.")]
     jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where a modeling or AI-use disclosure applies.', min_length=1), OmittedNotNull] = None
     notes: Annotated[StrMaxLen2000 | None, Field(description='Optional provider notes on how the disclosure should be interpreted. Informational only; buyers should not branch programmatically on this text.'), OmittedNotNull] = None
 

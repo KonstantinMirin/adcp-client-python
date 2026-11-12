@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
@@ -20,7 +20,7 @@ class CreativeFeatureResult(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/creative-feature-result.json', pointer='#')
     feature_id: Annotated[str, Field(description="The feature that was evaluated (e.g., 'auto_redirect', 'brand_consistency'). Features prefixed with 'registry:' reference standardized policies from the shared policy registry (e.g., 'registry:eu_ai_act_article_50'). Unprefixed feature IDs are agent-defined.")]
-    value: Annotated[bool | float | str, Field(description='The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.')]
+    value: Annotated[StrictBool | StrictFloat | str, Field(description='The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.')]
     unit: Annotated[str | None, Field(description="Unit of measurement for quantitative values (e.g., 'percentage', 'score')"), OmittedNotNull] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for this value (0-1)'), OmittedNotNull] = None
     measured_at: Annotated[AwareDatetime | None, Field(description='When this feature was evaluated'), OmittedNotNull] = None

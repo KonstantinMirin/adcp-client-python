@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
@@ -183,7 +183,7 @@ class Disclosure(AdCPBaseModel):
     Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/disclosure')
-    required: Annotated[bool, Field(description="The declaring party's claim that AI disclosure is required for this content under applicable regulations. This is a declared signal carried through the supply chain — useful as a routing and audit input — not a regulatory determination made by the protocol. Receiving parties remain responsible for their own jurisdictional analysis and should not treat `required: false` as compliance cover.")]
+    required: Annotated[StrictBool, Field(description="The declaring party's claim that AI disclosure is required for this content under applicable regulations. This is a declared signal carried through the supply chain — useful as a routing and audit input — not a regulatory determination made by the protocol. Receiving parties remain responsible for their own jurisdictional analysis and should not treat `required: false` as compliance cover.")]
     jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where disclosure obligations apply', min_length=1), OmittedNotNull] = None
 
 
@@ -216,7 +216,7 @@ class Provenance(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#')
     digital_source_type: Annotated[DigitalSourceType | None, Field(description='IPTC-aligned classification of AI involvement in producing this content'), OmittedNotNull] = None
-    synthetic_depiction: Annotated[bool | None, Field(description='Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.'), OmittedNotNull] = None
+    synthetic_depiction: Annotated[StrictBool | None, Field(description='Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.'), OmittedNotNull] = None
     ai_tool: Annotated[AiTool | None, Field(description='AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.'), OmittedNotNull] = None
     human_oversight: Annotated[HumanOversight | None, Field(description='Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` — the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.'), OmittedNotNull] = None
     declared_by: Annotated[DeclaredBy | None, Field(description='Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.'), OmittedNotNull] = None

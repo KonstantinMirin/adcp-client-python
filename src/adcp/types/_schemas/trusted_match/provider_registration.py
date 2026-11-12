@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
@@ -55,8 +55,8 @@ class TMPProviderRegistration(BranchDispatchMixin, AdCPBaseModel):
     )
     provider_id: Annotated[ContextMatchResponseRouterPublisherSignalsByProvider, Field(description="Stable identifier for this provider registration. Used in logs, metrics, cache keys, as the key in `signals_by_provider` on Context Match responses and `targeting_kv_mapping` in publisher configuration, and as the key in `tmpx_providers` on Identity Match responses and `tmpx_macro_mapping` in publisher configuration. Publishers assign this — it is not the provider's agent_url. Charset is constrained to a safe alphanumeric/underscore set so the value can appear in operational surfaces (logs, metrics, dashboards) without quoting. See publisher-targeting-kv-config.json and publisher-tmpx-config.json.")]
     endpoint: Annotated[HostedUrl, Field(description='Base URL the router calls. The router appends /context for Context Match and /identity for Identity Match. MUST be HTTPS in production, validated against the canonical reserved IPv4 and IPv6 ranges, with the TCP connection pinned to the validated IP (DNS re-resolution alone is insufficient against rebinding). Publishers comparing two provider registrations for the same `endpoint` MUST canonicalize both per the AdCP URL canonicalization rules; two registrations differing only in case, default port, or path-slash collapsing are the same provider. See docs/trusted-match/specification#provider-registration-security, docs/building/by-layer/L1/security#webhook-url-validation-ssrf, and docs/reference/url-canonicalization.')]
-    context_match: Annotated[bool | None, Field(description='Provider handles Context Match requests (POST /context).'), OmittedNotNull] = None
-    identity_match: Annotated[bool | None, Field(description='Provider handles Identity Match requests (POST /identity).'), OmittedNotNull] = None
+    context_match: Annotated[StrictBool | None, Field(description='Provider handles Context Match requests (POST /context).'), OmittedNotNull] = None
+    identity_match: Annotated[StrictBool | None, Field(description='Provider handles Identity Match requests (POST /identity).'), OmittedNotNull] = None
     countries: Annotated[list[CountryCode] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves. The router filters Identity Match providers by the request's country field. MUST be present and non-empty when identity_match is true.", min_length=1), OmittedNotNull] = None
     uid_types: Annotated[list[UIDType] | None, Field(description="Identity types this provider can resolve. The router selects Identity Match providers whose uid_types overlaps with any uid_type in the request's identities array. MUST be present and non-empty when identity_match is true.", min_length=1), OmittedNotNull] = None
     properties: Annotated[list[StrFormatUuid] | None, Field(description='Property RIDs (UUID v7) this provider serves. When present, the router only sends requests from these properties to this provider. When absent, the provider serves all properties.', min_length=1), OmittedNotNull] = None

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
@@ -30,7 +30,7 @@ class CatalogRequirements(AdCPBaseModel):
         UniqueItems('field_bindings'),
     )
     catalog_type: Annotated[CatalogType, Field(description='The catalog type this requirement applies to')]
-    required: Annotated[bool | None, Field(description='Whether this catalog type must be present. When true, creatives using this format must reference a synced catalog of this type.'), OmittedNotNull] = True
+    required: Annotated[StrictBool | None, Field(description='Whether this catalog type must be present. When true, creatives using this format must reference a synced catalog of this type.'), OmittedNotNull] = True
     min_items: Annotated[IntMin1 | None, Field(description='Minimum number of items the catalog must contain for this format to render properly (e.g., a carousel might require at least 3 products)'), OmittedNotNull] = None
     max_items: Annotated[IntMin1 | None, Field(description='Maximum number of items the format can render. Items beyond this limit are ignored. Useful for fixed-slot layouts (e.g., a 3-product card) or feed-size constraints.'), OmittedNotNull] = None
     required_fields: Annotated[list[str] | None, Field(description="Fields that must be present and non-empty on every item in the catalog. Field names are catalog-type-specific (e.g., 'title', 'price', 'image_url' for product catalogs; 'store_id', 'quantity' for inventory feeds).", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None

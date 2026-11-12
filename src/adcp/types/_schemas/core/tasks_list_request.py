@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
@@ -39,7 +39,7 @@ class Filters(AdCPBaseModel):
     updated_before: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated before this date (ISO 8601)'), OmittedNotNull] = None
     task_ids: Annotated[list[str] | None, Field(description='Filter by specific task IDs', max_length=100, min_length=1), OmittedNotNull] = None
     context_contains: Annotated[str | None, Field(description='Filter tasks where context contains this text (searches media_buy_id, signal_id, etc.)'), OmittedNotNull] = None
-    has_webhook: Annotated[bool | None, Field(description='Filter tasks that have webhook configuration when true'), OmittedNotNull] = None
+    has_webhook: Annotated[StrictBool | None, Field(description='Filter tasks that have webhook configuration when true'), OmittedNotNull] = None
 
 
 class SortField(StrEnum):
@@ -82,7 +82,7 @@ class TasksListRequest(AdCPVersionEnvelope):
     filters: Annotated[Filters | None, Field(description='Filter criteria for querying tasks'), OmittedNotNull] = None
     sort: Annotated[Sort | None, Field(description='Sorting parameters'), OmittedNotNull] = None
     pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
-    include_history: Annotated[bool | None, Field(description='Include full conversation history for each task (may significantly increase response size)'), OmittedNotNull] = False
+    include_history: Annotated[StrictBool | None, Field(description='Include full conversation history for each task (may significantly increase response size)'), OmittedNotNull] = False
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
@@ -51,7 +51,7 @@ class AudiencesItem(AdCPBaseModel):
     add: Annotated[list[AudienceMember] | None, Field(description='Members to add to this audience. Hashed before sending — normalize emails to lowercase+trim, phones to E.164.', min_length=1), OmittedNotNull] = None
     remove: Annotated[list[AudienceMember] | None, Field(description='Members to remove from this audience. If the same identifier appears in both add and remove in a single request, remove takes precedence.', min_length=1), OmittedNotNull] = None
     source: Annotated[AudienceSource | None, Field(description='External source reference: the seller ingests membership from a shared dataset or vendor-distributed segment instead of inline member deltas. Mutually exclusive with add/remove — an audience is either buyer-pushed or externally sourced, and transport is fixed at creation: a cross-transport upsert (member deltas against a sourced audience, or source against a pushed one) is rejected with CONFLICT (error.field: audience_id); convert by delete-and-recreate. Only send source kinds whose activation pattern the seller declared via audience_activation (undeclared kinds are rejected with UNSUPPORTED_FEATURE). Experimental — see the media_buy.audience_activation feature.'), OmittedNotNull] = None
-    delete: Annotated[bool | None, Field(description='When true, delete this audience from the account entirely. All other fields on this audience object are ignored. Use this to delete a specific audience without affecting others.'), OmittedNotNull] = None
+    delete: Annotated[StrictBool | None, Field(description='When true, delete this audience from the account entirely. All other fields on this audience object are ignored. Use this to delete a specific audience without affecting others.'), OmittedNotNull] = None
     consent_basis: Annotated[ConsentBasis | None, Field(description='GDPR lawful basis for processing this audience list. Informational — not validated by the protocol, but required by some sellers operating in regulated markets (e.g. EU). When omitted, the buyer asserts they have a lawful basis appropriate to their jurisdiction.'), OmittedNotNull] = None
 
 
@@ -69,7 +69,7 @@ class SyncAudiencesRequest(AdCPVersionEnvelope, AdcpRequest):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. `audience_id` gives resource-level dedup per audience, but the sync envelope emits audit events and may trigger downstream refreshes — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls (when `audiences` is omitted). MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     account: Annotated[AccountReference, Field(description='Account to manage audiences for.')]
     audiences: Annotated[list[AudiencesItem] | None, Field(description='Audiences to sync (create or update). When omitted, the call is discovery-only and returns all existing audiences on the account without modification.', min_length=1), OmittedNotNull] = None
-    delete_missing: Annotated[bool | None, Field(description='When true, buyer-managed audiences on the account not included in this sync will be removed. Does not affect seller-managed audiences. Do not combine with an omitted audiences array or all buyer-managed audiences will be deleted.'), OmittedNotNull] = False
+    delete_missing: Annotated[StrictBool | None, Field(description='When true, buyer-managed audiences on the account not included in this sync will be removed. Does not affect seller-managed audiences. Do not combine with an omitted audiences array or all buyer-managed audiences will be deleted.'), OmittedNotNull] = False
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

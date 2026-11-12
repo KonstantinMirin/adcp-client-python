@@ -92,6 +92,80 @@ MISSING = object()
 #: root alias writes and the rule imports a class reports all read these two.
 BASE_MODULE = "adcp.types._base"
 RUNTIME_MODULE = "adcp.types._runtime"
+CONSTRAINTS_MODULE = "adcp.types.constraints"
+
+#: **THE CARRIER FOR EACH SCALAR ``type`` WORD, so the class admits exactly the JSON
+#: types the keyword names and no other.**  Keyed by the builtin the model layer would
+#: otherwise write, because that is the form every arrival takes: the bare word's hint
+#: (``lower/scalars.py``) and a constrained alias's inner type
+#: (``constraints.SCALAR_PATH``) both reach the renderer as a :class:`TypeRef` whose
+#: ``path`` is one of these three, so one table over the builtins catches both.
+#:
+#: A JSON Schema ``type`` is a set of JSON TYPES and nothing else, and pydantic's default
+#: is lax coercion -- which made every numeric and boolean property in the tree wider than
+#: its document.  Measured against ``jsonschema``'s own ``Draft7Validator``, which is the
+#: oracle ``tests/conformance/test_schema_model_parity.py`` grades us by:
+#:
+#: =========  ======================================  =======================================
+#: word       the document admits                      the document refuses
+#: =========  ======================================  =======================================
+#: integer    ``1``, ``0``, ``1.0``                     ``1.5``, ``True``, ``False``, ``"1"``
+#: number     ``1``, ``0``, ``1.0``, ``1.5``            ``True``, ``False``, ``"1"``
+#: boolean    ``true``, ``false``                       ``0``, ``1``, ``1.0``, ``"1"``
+#: =========  ======================================  =======================================
+#:
+#: and each carrier measured against the same values (``tests_emit/test_scalar_strictness.py``
+#: is the gate, one case per row):
+#:
+#: * ``integer`` -> :data:`SCHEMA_INT`.  ``StrictInt`` alone REFUSES ``1.0``, which
+#:   draft-07 admits -- "integer" there is a number with a zero fractional part, not
+#:   Python's ``int`` -- so a bare strict int would be an OVER-refusal, the one direction
+#:   the parity measurement has no rows in.  The narrowing to an ``int`` rides as the
+#:   trailing marker :data:`SCHEMA_INTEGRAL` (``render.DataModelField._marked``), because
+#:   a validator INSIDE the annotation takes the field's ``minimum``/``maximum`` out of the
+#:   published schema and leaves ``ge``/``le`` in their place -- measured on pydantic
+#:   2.13.5, and the reason the marker trails ``Field(...)`` rather than wrapping the hint.
+#: * ``number`` -> ``StrictFloat``.  Strict float ADMITS an ``int`` and normalises it to
+#:   ``float``, which is what the lax ``float`` here already did, so this narrows the
+#:   accepted set and moves no value that was already accepted.  ``StrictInt |
+#:   StrictFloat`` was the other candidate and is NOT taken: it preserves the int, and it
+#:   publishes ``anyOf: [integer, number]`` where the document states ``number``.
+#: * ``boolean`` -> ``StrictBool``.  Exact on its own.
+#:
+#: ``string`` is absent, and that absence is measured too: pydantic's lax ``str`` refuses
+#: every non-string, so ``{"type": "string"}`` is already exact and a fourth entry would
+#: narrow nothing.
+#: The values are PYDANTIC's own names, because the hint is what the renderer writes and
+#: the integer's second half -- :data:`SCHEMA_INTEGRAL` -- trails the ``Field(...)``
+#: rather than wrapping the hint.  ``adcp.types.constraints`` binds :data:`SCHEMA_INT` as
+#: the two halves together, for a consumer annotating an integer of their own.
+STRICT_SCALAR: Mapping[str, str] = {
+    "int": "StrictInt",
+    "float": "StrictFloat",
+    "bool": "StrictBool",
+}
+
+#: :data:`STRICT_SCALAR`'s integer carrier, named on its own because two readers need it
+#: apart from the table: the renderer writes the hint as ``StrictInt`` and appends
+#: :data:`SCHEMA_INTEGRAL` after ``Field(...)``, so the alias in ``adcp.types.constraints``
+#: that this name binds is the BARE form and the constrained form is composed around it.
+SCHEMA_INT = "SchemaInt"
+
+#: The trailing marker that narrows a float with a zero fractional part to an ``int``, so
+#: ``1.0`` reaches an ``integer`` field the way draft-07 reads it.  A ``BeforeValidator``
+#: declared in ``adcp.types.constraints`` beside the carriers.
+SCHEMA_INTEGRAL = "SchemaIntegral"
+
+#: The strict spelling of the hint for an ``integer``, which is what the renderer writes
+#: when it appends :data:`SCHEMA_INTEGRAL`: the marker carries the narrowing and the hint
+#: carries the type, so the two halves of the carrier are never written as one name where
+#: a ``Field(...)`` has to sit between them.
+STRICT_INT = "StrictInt"
+
+#: The builtin an ``integer`` node's decided type carries, which is the key
+#: :data:`STRICT_SCALAR` is read by and the predicate the renderer's trailing marker asks
+#: (``render.DataModelField.integral``).  One spelling, because two readers ask it.
+INTEGER_PATH = "int"
 
 #: **The one field a ``RootModel`` has**, which is pydantic's name and not ours.  Named
 #: here for the reason the two module paths above are: two readers spell it and a second

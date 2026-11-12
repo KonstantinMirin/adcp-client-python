@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import IntEnum, StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, IntMin1
+from adcp.types.constraints import HostedUrl, IntMin1, SchemaIntegral
 
 from ...enums.audio_channel_layout import AudioChannelLayout
 from ...enums.frame_rate_type import FrameRateType
@@ -103,17 +103,17 @@ class VideoAsset(AdCPBaseModel):
     hdr_format: Annotated[HdrFormat | None, Field(description="HDR format if applicable, or 'sdr' for standard dynamic range"), OmittedNotNull] = None
     chroma_subsampling: Annotated[ChromaSubsampling | None, Field(description='Chroma subsampling format'), OmittedNotNull] = None
     video_bit_depth: Annotated[VideoBitDepth | None, Field(description='Video bit depth'), OmittedNotNull] = None
-    gop_interval_seconds: Annotated[float | None, Field(description='GOP/keyframe interval in seconds'), OmittedNotNull] = None
+    gop_interval_seconds: Annotated[StrictFloat | None, Field(description='GOP/keyframe interval in seconds'), OmittedNotNull] = None
     gop_type: Annotated[GOPType | None, OmittedNotNull] = None
     moov_atom_position: Annotated[MoovAtomPosition | None, OmittedNotNull] = None
-    has_audio: Annotated[bool | None, Field(description='Whether the video contains an audio track'), OmittedNotNull] = None
+    has_audio: Annotated[StrictBool | None, Field(description='Whether the video contains an audio track'), OmittedNotNull] = None
     audio_codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)'), OmittedNotNull] = None
-    audio_sampling_rate_hz: Annotated[int | None, Field(description='Audio sampling rate in Hz (e.g., 44100, 48000)'), OmittedNotNull] = None
+    audio_sampling_rate_hz: Annotated[StrictInt | None, Field(description='Audio sampling rate in Hz (e.g., 44100, 48000)'), OmittedNotNull, SchemaIntegral] = None
     audio_channels: Annotated[AudioChannelLayout | None, Field(description='Audio channel configuration'), OmittedNotNull] = None
     audio_bit_depth: Annotated[AudioBitDepth | None, Field(description='Audio bit depth'), OmittedNotNull] = None
     audio_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Audio bitrate in kilobits per second'), OmittedNotNull] = None
-    audio_loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS'), OmittedNotNull] = None
-    audio_true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS'), OmittedNotNull] = None
+    audio_loudness_lufs: Annotated[StrictFloat | None, Field(description='Integrated loudness in LUFS'), OmittedNotNull] = None
+    audio_true_peak_dbfs: Annotated[StrictFloat | None, Field(description='True peak level in dBFS'), OmittedNotNull] = None
     captions_url: Annotated[HostedUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)'), OmittedNotNull] = None
     transcript_url: Annotated[HostedUrl | None, Field(description='URL to text transcript of the video content'), OmittedNotNull] = None
     audio_description_url: Annotated[HostedUrl | None, Field(description='URL to audio description track for visually impaired users'), OmittedNotNull] = None

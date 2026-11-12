@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1
@@ -45,7 +45,7 @@ class CanonicalAccountReferenceBrandOperator(CanonicalAccountReference):
     operator_unit: Annotated[OperatorUnit | None, Field(description='Optional operator-owned business unit, agency seat, or platform account. Only id participates in identity; name is mutable display metadata.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description='Immutable ISO 4217 transaction currency when the advertiser object is currency-bound. When present, this is part of the natural key and all media buys on the account use it. Omit for per-media-buy currency selection.'), OmittedNotNull] = None
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable account timezone. Include it in the natural key only for buyer-selected account_fixed provisioning.'), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, OmittedNotNull] = False
+    sandbox: Annotated[StrictBool | None, OmittedNotNull] = False
 
 
 CanonicalAccountReference._branch_models = (CanonicalAccountReferenceAccountId, CanonicalAccountReferenceBrandOperator,)

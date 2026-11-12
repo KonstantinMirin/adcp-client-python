@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
@@ -34,16 +34,16 @@ class CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement(CanonicalFormatBa
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/agent_placement.json', pointer='#')
-    experimental: Annotated[bool | None, Field(description="Marked experimental at 3.1 GA: the canonical's tracking model (mention-level impression + attribution, postback shape, cross-surface dedup) is intentionally underspecified for 3.1. Adopters claiming `agent_placement` ship private tracking integrations; buyer agents MUST treat attribution as adapter-defined until the 3.2 tracking-macro spec lands. Promotion to non-experimental gated on the 3.2 tracking-contract spec."), OmittedNotNull] = True
-    v1_translatable: Annotated[bool | None, Field(description="Inherently new in v2 — AI-surface sponsored mentions weren't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural."), OmittedNotNull] = False
+    experimental: Annotated[StrictBool | None, Field(description="Marked experimental at 3.1 GA: the canonical's tracking model (mention-level impression + attribution, postback shape, cross-surface dedup) is intentionally underspecified for 3.1. Adopters claiming `agent_placement` ship private tracking integrations; buyer agents MUST treat attribution as adapter-defined until the 3.2 tracking-macro spec lands. Promotion to non-experimental gated on the 3.2 tracking-contract spec."), OmittedNotNull] = True
+    v1_translatable: Annotated[StrictBool | None, Field(description="Inherently new in v2 — AI-surface sponsored mentions weren't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural."), OmittedNotNull] = False
     slots: Annotated[list[SlotsItem] | None, Field(description="agent_placement has minimal buyer-shipped slots — the surface composes the rendered output from brand context (resolved via the manifest's top-level `brand` BrandRef) plus optional offering_ref and landing_page_url assets. None of these assets are rendered verbatim by the buyer; the agent chooses how to use them.", json_schema_extra={'default': [{'asset_group_id': 'offering_ref', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'offering_ref', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]))
     output_modality: Annotated[OutputModality | None, Field(description='How the surface presents the mention. `text` = inline text (chat, search snippet). `audio` = TTS-synthesized voice. `card` = structured card with optional image + text.'), OmittedNotNull] = None
     max_mention_length_chars: Annotated[IntMin1 | None, Field(description='For text output: maximum length of the surface-composed mention text.'), OmittedNotNull] = None
     max_mention_duration_ms: Annotated[IntMin1 | None, Field(description='For audio output: maximum duration of the spoken mention in milliseconds.'), OmittedNotNull] = None
-    supports_offering_reference: Annotated[bool | None, Field(description='Whether the product accepts an offering reference (specific product/service to promote within the mention) in addition to brand context.'), OmittedNotNull] = None
-    supports_landing_page_url: Annotated[bool | None, Field(description='Whether the surface attaches a landing page URL to the mention (citation, learn-more link).'), OmittedNotNull] = None
+    supports_offering_reference: Annotated[StrictBool | None, Field(description='Whether the product accepts an offering reference (specific product/service to promote within the mention) in addition to brand context.'), OmittedNotNull] = None
+    supports_landing_page_url: Annotated[StrictBool | None, Field(description='Whether the surface attaches a landing page URL to the mention (citation, learn-more link).'), OmittedNotNull] = None
     tone_constraints: Annotated[list[str] | None, Field(description="**Advisory only.** Buyer-declared brand-voice preferences the surface SHOULD honor (e.g., ['formal', 'no_superlatives']). LLM/agentic surfaces have no protocol-level mechanism to verify enforcement — adopters that need hard guarantees should rely on brand.json voice declarations and post-mention review rather than this field. Future revisions may tie this to a structured tone vocabulary; for now treat as free-text guidance."), OmittedNotNull] = None
-    disclosure_required: Annotated[bool | None, Field(description='Whether the surface must include an explicit sponsorship disclosure label.'), OmittedNotNull] = None
+    disclosure_required: Annotated[StrictBool | None, Field(description='Whether the surface must include an explicit sponsorship disclosure label.'), OmittedNotNull] = None
 
 
 CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement = CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement

@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Distinct, Rule, UniqueItems
@@ -55,17 +55,17 @@ class PostalAreaSupport(AdCPBaseModel):
     BR: Annotated[list[Literal['cep']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     IN: Annotated[list[Literal['pin']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ZA: Annotated[list[Literal['postal_code']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    us_zip: Annotated[bool | None, OmittedNotNull] = None
-    us_zip_plus_four: Annotated[bool | None, OmittedNotNull] = None
-    gb_outward: Annotated[bool | None, OmittedNotNull] = None
-    gb_full: Annotated[bool | None, OmittedNotNull] = None
-    ca_fsa: Annotated[bool | None, OmittedNotNull] = None
-    ca_full: Annotated[bool | None, OmittedNotNull] = None
-    de_plz: Annotated[bool | None, OmittedNotNull] = None
-    fr_code_postal: Annotated[bool | None, OmittedNotNull] = None
-    au_postcode: Annotated[bool | None, OmittedNotNull] = None
-    ch_plz: Annotated[bool | None, OmittedNotNull] = None
-    at_plz: Annotated[bool | None, OmittedNotNull] = None
+    us_zip: Annotated[StrictBool | None, OmittedNotNull] = None
+    us_zip_plus_four: Annotated[StrictBool | None, OmittedNotNull] = None
+    gb_outward: Annotated[StrictBool | None, OmittedNotNull] = None
+    gb_full: Annotated[StrictBool | None, OmittedNotNull] = None
+    ca_fsa: Annotated[StrictBool | None, OmittedNotNull] = None
+    ca_full: Annotated[StrictBool | None, OmittedNotNull] = None
+    de_plz: Annotated[StrictBool | None, OmittedNotNull] = None
+    fr_code_postal: Annotated[StrictBool | None, OmittedNotNull] = None
+    au_postcode: Annotated[StrictBool | None, OmittedNotNull] = None
+    ch_plz: Annotated[StrictBool | None, OmittedNotNull] = None
+    at_plz: Annotated[StrictBool | None, OmittedNotNull] = None
 
 
 PostalAreaSupportAdditionalPropertyEnum = PostalAreaSupportValueItem

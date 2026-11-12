@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
@@ -14,6 +14,7 @@ from adcp.types.constraints import (
     GeoForecastDimensionCode,
     HostedUrl,
     IntMin1Max99,
+    SchemaIntegral,
     StrMaxLen100,
     StrMaxLen500,
 )
@@ -107,7 +108,7 @@ class ContextSignals(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-request.json', pointer='#/properties/context_signals')
     topics: Annotated[list[str] | None, Field(description="Content topic identifiers. Use IAB Content Taxonomy 3.0 IDs (e.g., '632' for Food & Drink) when taxonomy_id is 7, or bounded human-readable category labels (e.g., 'cooking.pasta') for custom taxonomies. For non-public content attributable to a single user or session, publishers MUST use standardized taxonomy identifiers or bounded custom category labels; custom topic strings MUST NOT reproduce distinctive verbatim phrasing and MUST NOT include PII or uniquely identifying details.", max_length=50), OmittedNotNull] = None
     taxonomy_source: Annotated[str | None, Field(description="Organization that defines the topic taxonomy. Use 'iab' for IAB Content Taxonomy. Publishers may use other values for custom taxonomies."), OmittedNotNull] = 'iab'
-    taxonomy_id: Annotated[int | None, Field(description='Taxonomy version within the source. For IAB, follows the AdCOM cattax enum: 7 = Content Taxonomy 3.0. Default: 7.'), OmittedNotNull] = 7
+    taxonomy_id: Annotated[StrictInt | None, Field(description='Taxonomy version within the source. For IAB, follows the AdCOM cattax enum: 7 = Content Taxonomy 3.0. Default: 7.'), OmittedNotNull, SchemaIntegral] = 7
     sentiment: Annotated[Sentiment | None, Field(description='Content sentiment classification.'), OmittedNotNull] = None
     keywords: Annotated[list[StrMaxLen100] | None, Field(description="Content keywords produced by the publisher's classifier. For non-public content attributable to a single user or session, keywords MUST be policy-filtered, MUST NOT reproduce distinctive verbatim phrasing, and MUST NOT include PII or uniquely identifying details. Publishers SHOULD prefer bounded category labels.", max_length=50), OmittedNotNull] = None
     language: Annotated[ContextSignalsLanguage | None, Field(description="Content language in ISO 639-1 format (e.g., 'en', 'ja', 'de')."), OmittedNotNull] = None

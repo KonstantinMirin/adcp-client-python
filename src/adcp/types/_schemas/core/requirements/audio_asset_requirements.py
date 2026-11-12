@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1
@@ -41,9 +41,9 @@ class AudioAssetRequirements(AdCPBaseModel):
     channels: Annotated[list[AudioChannels] | None, Field(description='Accepted audio channel configurations'), OmittedNotNull] = None
     min_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Minimum audio bitrate in kilobits per second'), OmittedNotNull] = None
     max_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Maximum audio bitrate in kilobits per second'), OmittedNotNull] = None
-    loudness_lufs: Annotated[float | None, Field(description='Target integrated loudness in LUFS. LKFS is the equivalent unit name under ITU-R BS.1770; values expressed in LUFS and LKFS are directly comparable without conversion.'), OmittedNotNull] = None
+    loudness_lufs: Annotated[StrictFloat | None, Field(description='Target integrated loudness in LUFS. LKFS is the equivalent unit name under ITU-R BS.1770; values expressed in LUFS and LKFS are directly comparable without conversion.'), OmittedNotNull] = None
     loudness_tolerance_db: Annotated[NonNegativeFloat | None, Field(description='Acceptable deviation from the loudness_lufs target in dB.'), OmittedNotNull] = None
-    true_peak_dbfs: Annotated[float | None, Field(description='Maximum true-peak level in dBFS.'), OmittedNotNull] = None
+    true_peak_dbfs: Annotated[StrictFloat | None, Field(description='Maximum true-peak level in dBFS.'), OmittedNotNull] = None
 
 
 Format = FormatsItem

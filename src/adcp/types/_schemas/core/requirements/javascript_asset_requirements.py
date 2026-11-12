@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatHostname
@@ -32,8 +32,8 @@ class JavaScriptAssetRequirements(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/javascript-asset-requirements.json', pointer='#')
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes for the JavaScript asset'), OmittedNotNull] = None
     module_type: Annotated[ModuleType | None, Field(description="Required JavaScript module format. 'script' = classic script, 'module' = ES modules, 'iife' = immediately invoked function expression"), OmittedNotNull] = None
-    strict_mode_required: Annotated[bool | None, Field(description='Whether the JavaScript must use strict mode'), OmittedNotNull] = None
-    external_resources_allowed: Annotated[bool | None, Field(description='Whether the JavaScript can load external resources dynamically'), OmittedNotNull] = None
+    strict_mode_required: Annotated[StrictBool | None, Field(description='Whether the JavaScript must use strict mode'), OmittedNotNull] = None
+    external_resources_allowed: Annotated[StrictBool | None, Field(description='Whether the JavaScript can load external resources dynamically'), OmittedNotNull] = None
     allowed_external_domains: Annotated[list[StrFormatHostname] | None, Field(description='List of domains the JavaScript may reference for external resources. Only applicable when external_resources_allowed is true.'), OmittedNotNull] = None
 
 

@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, IntMin1
+from adcp.types.constraints import HostedUrl, IntMin1, SchemaIntegral
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -34,7 +34,7 @@ class PropertyList(AdCPBaseModel):
     cache_duration_hours: Annotated[IntMin1 | None, Field(description='Recommended cache duration for resolved list. Consumers should re-fetch after this period.'), OmittedNotNull] = 24
     created_at: Annotated[AwareDatetime | None, Field(description='When the list was created'), OmittedNotNull] = None
     updated_at: Annotated[AwareDatetime | None, Field(description='When the list was last modified'), OmittedNotNull] = None
-    property_count: Annotated[int | None, Field(description='Number of properties in the resolved list (at time of last resolution)'), OmittedNotNull] = None
+    property_count: Annotated[StrictInt | None, Field(description='Number of properties in the resolved list (at time of last resolution)'), OmittedNotNull, SchemaIntegral] = None
     pricing_options: Annotated[list[VendorPricingOption] | None, Field(description='Pricing options for this property list. Present when the requesting account has a billing relationship with the list provider. The buyer passes the selected pricing_option_id in report_usage.', min_length=1), OmittedNotNull] = None
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
@@ -54,8 +54,8 @@ class Age(AdCPBaseModel):
     reporting_modes: Annotated[list[ReportingModesItem], Field(description='Ways this product can produce age rows. exact_predicates accepts requested canonical age predicates within the declared bounds. enumerated_intervals reports only the exact intervals declared in intervals; buyers may aggregate adjacent complete intervals but MUST NOT treat a wider or narrower interval as the requested audience.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     min_reportable_age: Annotated[IntMin0Max150 | None, Field(description='Lowest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.'), OmittedNotNull] = None
     max_reportable_age: Annotated[IntMin0Max150 | None, Field(description='Highest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.'), OmittedNotNull] = None
-    supports_unbounded_min: Annotated[bool | None, Field(description='Whether exact_predicates accepts a canonical age predicate with min omitted. Required when that mode is declared.'), OmittedNotNull] = None
-    supports_unbounded_max: Annotated[bool | None, Field(description='Whether exact_predicates accepts a canonical age predicate with max omitted. Required when that mode is declared.'), OmittedNotNull] = None
+    supports_unbounded_min: Annotated[StrictBool | None, Field(description='Whether exact_predicates accepts a canonical age predicate with min omitted. Required when that mode is declared.'), OmittedNotNull] = None
+    supports_unbounded_max: Annotated[StrictBool | None, Field(description='Whether exact_predicates accepts a canonical age predicate with max omitted. Required when that mode is declared.'), OmittedNotNull] = None
     intervals: Annotated[list[IntervalsItem] | None, Field(description='Fixed reportable age intervals for enumerated_intervals. Bounds are authoritative capability data, not a protocol-wide bucket taxonomy. Optional native labels identify the measurement-system code returned with the interval.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
@@ -77,7 +77,7 @@ class DemographicReportingCapability(AdCPBaseModel):
     )
     age: Annotated[Age | None, Field(description='Machine-comparable age ranges this product can report.'), OmittedNotNull] = None
     demographic_systems: Annotated[list[DemographicSystem] | None, Field(description='Measurement-system notations this product may return. A code remains opaque unless its capability interval and response row also carry a canonical age predicate.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    may_suppress_small_cells: Annotated[bool, Field(description='Whether privacy, policy, or measurement thresholds may suppress otherwise reportable demographic rows. When true, buyers must inspect by_demographic_suppressed before testing whether rows reconcile to package totals.')]
+    may_suppress_small_cells: Annotated[StrictBool, Field(description='Whether privacy, policy, or measurement thresholds may suppress otherwise reportable demographic rows. When true, buyers must inspect by_demographic_suppressed before testing whether rows reconcile to package totals.')]
 
 
 Interval = IntervalsItem

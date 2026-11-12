@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
@@ -62,8 +62,8 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     criteria_url: Annotated[HostedUrl | None, OmittedNotNull] = None
     data_sources: Annotated[list[DataSourcesItem] | None, Field(min_length=1), OmittedNotNull] = None
     methodology: Annotated[Methodology | None, OmittedNotNull] = None
-    audience_expansion: Annotated[bool | None, OmittedNotNull] = None
-    device_expansion: Annotated[bool | None, OmittedNotNull] = None
+    audience_expansion: Annotated[StrictBool | None, OmittedNotNull] = None
+    device_expansion: Annotated[StrictBool | None, OmittedNotNull] = None
     refresh_cadence: Annotated[RefreshCadence | None, OmittedNotNull] = None
     lookback_window: Annotated[LookbackWindow | None, OmittedNotNull] = None
     onboarder: Annotated[Onboarder | None, OmittedNotNull] = None

@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types.constraints import SchemaIntegral
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
@@ -75,10 +76,10 @@ class CollectionInfo(AdCPBaseModel):
     Information about artifact collection for this media buy. Sampling is configured at buy creation time — this reports what was actually collected.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0/properties/collection_info')
-    total_deliveries: Annotated[int | None, Field(description='Total deliveries in the requested time range'), OmittedNotNull] = None
-    total_collected: Annotated[int | None, Field(description="Total artifacts collected (per the buy's sampling configuration)"), OmittedNotNull] = None
-    returned_count: Annotated[int | None, Field(description='Number of artifacts in this response (may be less than total_collected due to pagination or filters)'), OmittedNotNull] = None
-    effective_rate: Annotated[float | None, Field(description='Actual collection rate achieved (total_collected / total_deliveries)'), OmittedNotNull] = None
+    total_deliveries: Annotated[StrictInt | None, Field(description='Total deliveries in the requested time range'), OmittedNotNull, SchemaIntegral] = None
+    total_collected: Annotated[StrictInt | None, Field(description="Total artifacts collected (per the buy's sampling configuration)"), OmittedNotNull, SchemaIntegral] = None
+    returned_count: Annotated[StrictInt | None, Field(description='Number of artifacts in this response (may be less than total_collected due to pagination or filters)'), OmittedNotNull, SchemaIntegral] = None
+    effective_rate: Annotated[StrictFloat | None, Field(description='Actual collection rate achieved (total_collected / total_deliveries)'), OmittedNotNull] = None
 
 
 class GetMediaBuyArtifactsResponseArtifactsMediaBuyId(GetMediaBuyArtifactsResponse):

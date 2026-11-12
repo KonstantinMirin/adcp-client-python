@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
@@ -100,7 +100,7 @@ class DisclosureObligation(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/disclosure_obligation')
-    required: Annotated[bool, Field(description='Whether the declaring party requires disclosure for this sponsored context.')]
+    required: Annotated[StrictBool, Field(description='Whether the declaring party requires disclosure for this sponsored context.')]
     label_text: Annotated[str | None, Field(description='Disclosure label text the host should render when disclosure is required.'), OmittedNotNull] = None
     timing: Annotated[Timing | None, Field(description="When the disclosure must be presented relative to the sponsored context's influence."), OmittedNotNull] = None
     proximity: Annotated[Proximity | None, Field(description='Where the disclosure should appear relative to the affected output.'), OmittedNotNull] = None

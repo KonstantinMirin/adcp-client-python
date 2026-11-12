@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
@@ -34,8 +34,8 @@ class CanonicalFormatVASTAudio(CanonicalFormatBase):
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, the resolved audio creative duration must equal this value. Takes precedence over duration_ms_range.'), OmittedNotNull] = None
     skippable_after_ms: Annotated[NonNegativeInt | None, Field(description='When skippable, the buyer-side skip threshold in milliseconds.'), OmittedNotNull] = None
     max_wrapper_depth: Annotated[NonNegativeInt | None, Field(description='Maximum VAST wrapper redirect depth permitted.'), OmittedNotNull] = None
-    ssl_required: Annotated[bool | None, OmittedNotNull] = None
-    companion_image_required: Annotated[bool | None, Field(description='Whether the resolved VAST audio ad must include a companion creative.'), OmittedNotNull] = None
+    ssl_required: Annotated[StrictBool | None, OmittedNotNull] = None
+    companion_image_required: Annotated[StrictBool | None, Field(description='Whether the resolved VAST audio ad must include a companion creative.'), OmittedNotNull] = None
 
 
 CanonicalFormatVastAudio = CanonicalFormatVASTAudio

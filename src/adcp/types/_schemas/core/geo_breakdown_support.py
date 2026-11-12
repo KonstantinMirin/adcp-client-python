@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
@@ -19,9 +19,9 @@ class GeographicBreakdownSupport(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-breakdown-support.json', pointer='#')
-    country: Annotated[bool | None, Field(description='Supports country-level geo breakdown (ISO 3166-1 alpha-2)'), OmittedNotNull] = None
-    region: Annotated[bool | None, Field(description='Supports region/state-level geo breakdown (ISO 3166-2)'), OmittedNotNull] = None
-    metro: Annotated[dict[MetroAreaSystem, bool] | None, Field(description='Metro area breakdown support. Keys are metro-system enum values; true means supported.'), OmittedNotNull] = None
+    country: Annotated[StrictBool | None, Field(description='Supports country-level geo breakdown (ISO 3166-1 alpha-2)'), OmittedNotNull] = None
+    region: Annotated[StrictBool | None, Field(description='Supports region/state-level geo breakdown (ISO 3166-2)'), OmittedNotNull] = None
+    metro: Annotated[dict[MetroAreaSystem, StrictBool] | None, Field(description='Metro area breakdown support. Keys are metro-system enum values; true means supported.'), OmittedNotNull] = None
     postal_area: Annotated[PostalAreaSupport | None, Field(description='Postal area breakdown support. Prefer the native country-keyed map where each ISO 3166-1 alpha-2 country lists supported country-local postal systems. Deprecated legacy country-fused postal-system boolean maps remain accepted for compatibility.'), OmittedNotNull] = None
 
 

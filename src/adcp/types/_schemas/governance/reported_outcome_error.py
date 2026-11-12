@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
@@ -19,7 +19,7 @@ from adcp.types.constraints import (
 
 from ..core.error import Recovery
 
-BoundedScalar = bool | float | StrMaxLen4000 | None
+BoundedScalar = StrictBool | StrictFloat | StrMaxLen4000 | None
 
 
 BoundedValueLevel3 = BoundedScalar | ListMaxItems32[BoundedScalar] | DictMaxProperties32[str, BoundedScalar]

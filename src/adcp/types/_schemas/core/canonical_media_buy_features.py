@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 
@@ -18,17 +18,17 @@ class CanonicalMediaBuyFeatures(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-features.json', pointer='#')
-    __pydantic_extra__: dict[str, bool] = Field(init=False)
+    __pydantic_extra__: dict[str, StrictBool] = Field(init=False)
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/canonical-media-buy-features.json', pointer='#', keyword='additionalProperties', kind='WIDENED', rung='CONTAINER', fact={'type': 'boolean'}, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
     )
-    property_filtering: Annotated[bool | None, OmittedNotNull] = None
-    catalog_management: Annotated[bool | None, OmittedNotNull] = None
-    reporting_commitment_snapshots: Annotated[bool | None, Field(description='Seller preserves the accepted per-purchase reporting contract and exposes it on proposal and MediaBuy readback.'), OmittedNotNull] = None
-    seller_optimized_budget: Annotated[bool | None, Field(description='Core seller-optimized shared-budget contract: shared total_budget, seller allocation across packages, media-buy pacing, and allocation echo.'), OmittedNotNull] = None
-    seller_optimized_package_budgets: Annotated[bool | None, Field(description='Package budget caps inside seller-optimized buys; implies seller_optimized_budget.'), OmittedNotNull] = None
-    seller_optimized_min_spend_targets: Annotated[bool | None, Field(description='Package minimum-spend targets inside seller-optimized buys; implies seller_optimized_budget.'), OmittedNotNull] = None
-    seller_optimized_package_pacing: Annotated[bool | None, Field(description='Package pacing inside seller-optimized buys; implies seller_optimized_budget.'), OmittedNotNull] = None
+    property_filtering: Annotated[StrictBool | None, OmittedNotNull] = None
+    catalog_management: Annotated[StrictBool | None, OmittedNotNull] = None
+    reporting_commitment_snapshots: Annotated[StrictBool | None, Field(description='Seller preserves the accepted per-purchase reporting contract and exposes it on proposal and MediaBuy readback.'), OmittedNotNull] = None
+    seller_optimized_budget: Annotated[StrictBool | None, Field(description='Core seller-optimized shared-budget contract: shared total_budget, seller allocation across packages, media-buy pacing, and allocation echo.'), OmittedNotNull] = None
+    seller_optimized_package_budgets: Annotated[StrictBool | None, Field(description='Package budget caps inside seller-optimized buys; implies seller_optimized_budget.'), OmittedNotNull] = None
+    seller_optimized_min_spend_targets: Annotated[StrictBool | None, Field(description='Package minimum-spend targets inside seller-optimized buys; implies seller_optimized_budget.'), OmittedNotNull] = None
+    seller_optimized_package_pacing: Annotated[StrictBool | None, Field(description='Package pacing inside seller-optimized buys; implies seller_optimized_budget.'), OmittedNotNull] = None
     bidding_policy: Annotated[BiddingPolicyCapability | None, OmittedNotNull] = None
 
 

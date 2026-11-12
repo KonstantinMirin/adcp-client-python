@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types.constraints import SchemaIntegral
 
 from ..core.ext import ExtensionObject
 from ..core.idempotency_key import IdempotencyKey
@@ -19,9 +20,9 @@ class ChangeSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/collection-list-changed-webhook.json', pointer='#/properties/change_summary')
-    collections_added: Annotated[int | None, Field(description='Number of collections added since last resolution'), OmittedNotNull] = None
-    collections_removed: Annotated[int | None, Field(description='Number of collections removed since last resolution'), OmittedNotNull] = None
-    total_collections: Annotated[int | None, Field(description='Total collections in the resolved list'), OmittedNotNull] = None
+    collections_added: Annotated[StrictInt | None, Field(description='Number of collections added since last resolution'), OmittedNotNull, SchemaIntegral] = None
+    collections_removed: Annotated[StrictInt | None, Field(description='Number of collections removed since last resolution'), OmittedNotNull, SchemaIntegral] = None
+    total_collections: Annotated[StrictInt | None, Field(description='Total collections in the resolved list'), OmittedNotNull, SchemaIntegral] = None
 
 
 class CollectionListChangedWebhook(AdCPBaseModel):

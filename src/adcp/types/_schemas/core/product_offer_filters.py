@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
@@ -104,12 +104,12 @@ class ProductOfferFilters(AdCPBaseModel):
     )
     delivery_type: Annotated[DeliveryType | None, OmittedNotNull] = None
     exclusivity: Annotated[Exclusivity | None, OmittedNotNull] = None
-    is_fixed_price: Annotated[bool | None, Field(description='Filter fixed-price versus auction offers. Contingent pricing matches neither value.'), OmittedNotNull] = None
+    is_fixed_price: Annotated[StrictBool | None, Field(description='Filter fixed-price versus auction offers. Contingent pricing matches neither value.'), OmittedNotNull] = None
     pricing_structures: Annotated[list[PricingStructure] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     pricing_currencies: Annotated[list[CurrencyCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     format_option_refs: Annotated[list[FormatOptionReference] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    standard_formats_only: Annotated[bool | None, OmittedNotNull] = None
+    standard_formats_only: Annotated[StrictBool | None, OmittedNotNull] = None
     min_exposures: Annotated[IntMin1 | None, OmittedNotNull] = None
     start_date: Annotated[date | None, Field(description='Fixed-flight availability filter: with end_date, declares the exact flight the buyer intends to run. Returned products MUST be able to serve that flight, and pricing and forecasts are scoped to it. Mutually exclusive with availability_horizon.'), OmittedNotNull] = None
     end_date: Annotated[date | None, Field(description='Fixed-flight availability filter end. See start_date. Mutually exclusive with availability_horizon.'), OmittedNotNull] = None

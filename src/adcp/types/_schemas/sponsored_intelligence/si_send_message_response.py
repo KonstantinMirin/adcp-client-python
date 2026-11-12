@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
@@ -48,7 +48,7 @@ class IntentPrice(AdCPBaseModel):
     Price information
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/handoff/properties/intent/properties/price')
-    amount: Annotated[float | None, OmittedNotNull] = None
+    amount: Annotated[StrictFloat | None, OmittedNotNull] = None
     currency: Annotated[str | None, OmittedNotNull] = None
 
 

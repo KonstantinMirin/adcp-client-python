@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
@@ -83,7 +83,7 @@ class TasksItem(AdCPBaseModel):
     created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
     updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
     completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)'), OmittedNotNull] = None
-    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration'), OmittedNotNull] = None
+    has_webhook: Annotated[StrictBool | None, Field(description='Whether this task has webhook configuration'), OmittedNotNull] = None
 
 
 class TasksListResponse(AdCPVersionEnvelope, ProtocolEnvelope):

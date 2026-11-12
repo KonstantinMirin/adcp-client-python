@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
@@ -22,7 +22,7 @@ class MarkdownAsset(AdCPBaseModel):
     content: Annotated[str, Field(description='Markdown content following CommonMark spec with optional GitHub Flavored Markdown extensions')]
     language: Annotated[str | None, Field(description='Optional language claim for this markdown. In a materialized creative localization variant, localized-creative-asset.json requires this value to use /schemas/core/locale-tag.json and conformance requires exact equality with the enclosing variant locale. General non-localized assets retain the legacy unconstrained string for compatibility.'), OmittedNotNull] = None
     markdown_flavor: Annotated[MarkdownFlavor | None, Field(description='Markdown flavor used. CommonMark for strict compatibility, GFM for tables/task lists/strikethrough.', json_schema_extra={'default': 'commonmark'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(MarkdownFlavor).validate_python('commonmark'))
-    allow_raw_html: Annotated[bool | None, Field(description='Whether raw HTML blocks are allowed in the markdown. False recommended for security.'), OmittedNotNull] = False
+    allow_raw_html: Annotated[StrictBool | None, Field(description='Whether raw HTML blocks are allowed in the markdown. False recommended for security.'), OmittedNotNull] = False
 
 
 __all__ = ["MarkdownAsset"]

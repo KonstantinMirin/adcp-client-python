@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
@@ -33,7 +33,7 @@ class DeadlinePolicy(AdCPBaseModel):
     booking_lead_days: Annotated[NonNegativeInt | None, Field(description='Days before scheduled_at by which the placement must be booked'), OmittedNotNull] = None
     cancellation_lead_days: Annotated[NonNegativeInt | None, Field(description='Days before scheduled_at by which cancellation is penalty-free'), OmittedNotNull] = None
     material_stages: Annotated[list[MaterialStagesItem] | None, Field(description='Default material submission stages. Items MUST be in chronological order (earliest due first). Agents compute due_at as: installment.scheduled_at minus lead_days.', min_length=1), OmittedNotNull] = None
-    business_days_only: Annotated[bool | None, Field(description='When true, lead_days counts business days (Mon-Fri) rather than calendar days. Defaults to false.'), OmittedNotNull] = False
+    business_days_only: Annotated[StrictBool | None, Field(description='When true, lead_days counts business days (Mon-Fri) rather than calendar days. Defaults to false.'), OmittedNotNull] = False
 
 
 MaterialStage = MaterialStagesItem

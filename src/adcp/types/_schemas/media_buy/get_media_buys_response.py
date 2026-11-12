@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule, UniqueItems
@@ -228,8 +228,8 @@ class PackagesItem(IndicatorBearingResourceState):
     targeting_resolution: Annotated[PackageTargetingResolution | None, Field(description='Execution details for accepted package targeting. Sellers MUST include targeting_resolution.demographics whenever demographic targeting was requested or applied; its applied predicate and execution fields report the effective booked state.'), OmittedNotNull] = None
     start_time: Annotated[AwareDatetime | None, Field(description='ISO 8601 flight start time for this package. Use to determine whether the package is within its scheduled flight before interpreting delivery status.'), OmittedNotNull] = None
     end_time: Annotated[AwareDatetime | None, Field(description='ISO 8601 flight end time for this package'), OmittedNotNull] = None
-    paused: Annotated[bool | None, Field(description='Whether this package is currently paused by the buyer'), OmittedNotNull] = None
-    canceled: Annotated[bool | None, Field(description='Whether this package has been canceled. Canceled packages stop delivery and cannot be reactivated.'), OmittedNotNull] = None
+    paused: Annotated[StrictBool | None, Field(description='Whether this package is currently paused by the buyer'), OmittedNotNull] = None
+    canceled: Annotated[StrictBool | None, Field(description='Whether this package has been canceled. Canceled packages stop delivery and cannot be reactivated.'), OmittedNotNull] = None
     cancellation: Annotated[ObjCanceledAtCanceledByReason | None, Field(description='Cancellation metadata. Present only when canceled is true.'), OmittedNotNull] = None
     creative_deadline: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp for creative upload or change deadline for this package. After this deadline, creative changes are rejected. When absent, the media buy's creative_deadline applies."), OmittedNotNull] = None
     context: Annotated[ContextObject | None, Field(description='Opaque package-level correlation data echoed unchanged from the create_media_buy package request. Sellers MUST include persisted package context on read surfaces when the package was created through AdCP with context, so buyers can reconcile seller-assigned package_id values with their own line items; this is the legacy-safe fallback when an older seller did not echo product_id on the create response. Sellers MAY omit context for packages created outside AdCP or created without context. Sellers MUST NOT parse this object for business logic.'), OmittedNotNull] = None
@@ -352,7 +352,7 @@ class GetMediaBuysResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     media_buys: Annotated[list[MediaBuysItem], Field(description='Array of media buys with status, creative approval state, and optional delivery snapshots')]
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors. A read may return media_buys plus nonfatal resource-state errors. If a pinned place target becomes unexecutable, sellers MUST include PLACE_TARGET_UNAVAILABLE with recovery=correctable, field pointing to the exact media_buys[N].packages[M].targeting_overlay.geo_places[_exclude][A].values[V] response path, and details containing media_buy_id, package_id, system, system_version, country, place_type, and value. The persisted target remains echoed until an intentional update replaces it.'), OmittedNotNull] = None
     pagination: Annotated[PaginationResponse | None, Field(description='Pagination metadata for the media_buys array.'), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

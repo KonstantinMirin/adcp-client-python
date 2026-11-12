@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
@@ -30,7 +30,7 @@ class CPMPricingOption(AdCPBaseModel):
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     fixed_price: Annotated[NonNegativeFloat | None, Field(description='Fixed price per unit. If present, this is fixed pricing. If absent, auction-based.'), OmittedNotNull] = None
     floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.'), OmittedNotNull] = None
-    max_bid: Annotated[bool | None, Field(description='DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.'), OmittedNotNull] = False
+    max_bid: Annotated[StrictBool | None, Field(description='DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.'), OmittedNotNull] = False
     price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding'), OmittedNotNull] = None
     min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency'), OmittedNotNull] = None
     price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.'), OmittedNotNull] = None

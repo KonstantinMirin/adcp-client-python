@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, RequiredGroups, Rule, UniqueItems
@@ -60,8 +60,8 @@ class ProvidersItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/trusted_match/properties/providers/items')
     agent_url: Annotated[HostedUrl, Field(description="Provider's agent URL from the registry.")]
-    context_match: Annotated[bool | None, Field(description='When true, require this provider to support context match.'), OmittedNotNull] = None
-    identity_match: Annotated[bool | None, Field(description='When true, require this provider to support identity match.'), OmittedNotNull] = None
+    context_match: Annotated[StrictBool | None, Field(description='When true, require this provider to support context match.'), OmittedNotNull] = None
+    identity_match: Annotated[StrictBool | None, Field(description='When true, require this provider to support identity match.'), OmittedNotNull] = None
 
 
 class ObjProvidersResponseTypes(AdCPBaseModel):
@@ -327,13 +327,13 @@ class ProductFilters(AdCPBaseModel):
     )
     delivery_type: Annotated[DeliveryType | None, OmittedNotNull] = None
     exclusivity: Annotated[Exclusivity | None, Field(description="Filter by exclusivity level. Returns products matching the specified exclusivity (e.g., 'exclusive' returns only sole-sponsorship products)."), OmittedNotNull] = None
-    is_fixed_price: Annotated[bool | None, Field(description='Legacy filter for fixed versus auction pricing availability. true returns options with fixed_price; false returns auction options whose price is established through bid_price. Contingent options such as revenue_share match neither value and MUST be omitted whenever this filter is present. Use pricing_structures to discover contingent pricing. Products with both fixed and auction options match both true and false, but sellers MUST return only entries matching the requested structure.'), OmittedNotNull] = None
+    is_fixed_price: Annotated[StrictBool | None, Field(description='Legacy filter for fixed versus auction pricing availability. true returns options with fixed_price; false returns auction options whose price is established through bid_price. Contingent options such as revenue_share match neither value and MUST be omitted whenever this filter is present. Use pricing_structures to discover contingent pricing. Products with both fixed and auction options match both true and false, but sellers MUST return only entries matching the requested structure.'), OmittedNotNull] = None
     pricing_structures: Annotated[list[PricingStructure] | None, Field(description='Filter by how the payable price is determined. fixed selects options with fixed_price, auction selects options established through bid_price, and contingent selects options calculated from a measured business outcome after delivery (currently revenue_share). Products match when at least one pricing option has a requested structure. Sellers MUST return only matching pricing_options entries. When combined with is_fixed_price, both filters apply and the returned entries must satisfy both.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     pricing_currencies: Annotated[list[CurrencyCode] | None, Field(description='Filter by currencies the buyer can use for the media product transaction, using ISO 4217 currency codes. Products match when they offer at least one product-level pricing_options entry in one of the requested currencies and any seller-applied or otherwise mandatory product-scoped signal charges are satisfiable in one of those currencies or have no incremental price. Mandatory custom signal pricing without currency is not satisfiable for this filter unless the seller can truthfully treat it as having no incremental price. Sellers MUST return only product pricing_options entries whose currency is in this list so buyers can select deterministically from discovery. This filter does not require pruning optional signal or vendor add-on pricing; buyers should avoid optional add-ons priced only in unsupported currencies.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Filter by legacy named-format references. Use `format_kinds` or `format_option_refs`.', min_length=1), OmittedNotNull] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(description='Filter to products accepting any of these canonical format kinds.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     format_option_refs: Annotated[list[FormatOptionReference] | None, Field(description='Filter to products accepting any of these exact publisher- or product-scoped canonical format options.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    standard_formats_only: Annotated[bool | None, Field(description='Only return products accepting IAB standard formats'), OmittedNotNull] = None
+    standard_formats_only: Annotated[StrictBool | None, Field(description='Only return products accepting IAB standard formats'), OmittedNotNull] = None
     min_exposures: Annotated[IntMin1 | None, Field(description='Minimum exposures/impressions needed for measurement validity'), OmittedNotNull] = None
     start_date: Annotated[date | None, Field(description='Campaign start date (ISO 8601 date format: YYYY-MM-DD) for availability checks'), OmittedNotNull] = None
     end_date: Annotated[date | None, Field(description='Campaign end date (ISO 8601 date format: YYYY-MM-DD) for availability checks'), OmittedNotNull] = None

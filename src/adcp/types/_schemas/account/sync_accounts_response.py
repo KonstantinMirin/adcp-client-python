@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
@@ -102,7 +102,7 @@ class AccountsItem(AdCPBaseModel):
     credit_limit: Annotated[CreditLimit | None, OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description="Per-account errors. Required and non-empty when action is 'failed'; absent otherwise.", min_length=1), OmittedNotNull] = None
     warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this account'), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='Whether this is a sandbox account, echoed from the request. Only present for buyer-declared accounts.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='Whether this is a sandbox account, echoed from the request. Only present for buyer-declared accounts.'), OmittedNotNull] = None
     notification_configs: Annotated[list[NotificationConfig] | None, Field(description="Applied notification subscribers for this account after declarative replacement and activation-proof checks. Present on `created`, `updated`, and `unchanged` results when the buyer included `notification_configs` in the request or any persisted entries exist on the account. Entries are keyed by account-scoped `subscriber_id`; re-sending an existing `subscriber_id` replaces that subscriber's config rather than creating a duplicate. Only configs that the seller has persisted are echoed. `authentication.credentials` is omitted on every entry (write-only).", max_length=16), OmittedNotNull] = None
     reporting_delivery_configs: Annotated[list[ReportingDeliveryConfigurationState] | None, Field(description='Resolved caller-owned durable reporting delivery configurations after declarative replacement. Each item echoes desired state and reports validation/setup state plus the seller-issued destination_ref when resolved. A setup action may direct an authenticated user to complete a provider grant or Open Sharing activation, but MUST NOT carry credentials or a bearer URL.', max_length=16), OmittedNotNull] = None
     authorization: Annotated[AccountAuthorization | None, Field(description="Optional. The caller's scope grant against this account after the sync operation. Vendor agents of any type (media-buy, signals, governance, creative, brand) that support scope introspection SHOULD populate this so callers can preempt RBAC errors rather than discovering scope by trial and error. Media-buy sales agents claiming the `attestation_verifier` standard scope MUST populate it. Present on `created`, `updated`, and `unchanged` results; omitted on `failed` results (where the account did not reach a usable state). Absence means the vendor agent does not advertise introspectable scope — callers MUST NOT infer access from absence."), OmittedNotNull] = None
@@ -122,7 +122,7 @@ class SyncAccountsSuccess(SyncAccountsResponse):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dry_run': {'const': True}}, 'required': ['dry_run']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
+    dry_run: Annotated[StrictBool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
     accounts: Annotated[list[AccountsItem], Field(description='Results for each account processed')]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl
+from adcp.types.constraints import HostedUrl, SchemaIntegral
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -24,16 +24,16 @@ class Summary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#/properties/summary')
-    total_records: Annotated[int, Field(description='Total number of records validated')]
-    total_impressions: Annotated[int, Field(description='Total impressions across all records')]
-    compliant_records: Annotated[int, Field(description='Number of records with compliant status')]
-    compliant_impressions: Annotated[int, Field(description='Impressions from compliant records')]
-    non_compliant_records: Annotated[int, Field(description='Number of records with non_compliant status')]
-    non_compliant_impressions: Annotated[int, Field(description='Impressions from non_compliant records')]
-    not_covered_records: Annotated[int, Field(description='Number of records where identifier was recognized but no data available')]
-    not_covered_impressions: Annotated[int, Field(description='Impressions from not_covered records')]
-    unidentified_records: Annotated[int, Field(description='Number of records where identifier type was not resolvable')]
-    unidentified_impressions: Annotated[int, Field(description='Impressions from unidentified records')]
+    total_records: Annotated[StrictInt, Field(description='Total number of records validated'), SchemaIntegral]
+    total_impressions: Annotated[StrictInt, Field(description='Total impressions across all records'), SchemaIntegral]
+    compliant_records: Annotated[StrictInt, Field(description='Number of records with compliant status'), SchemaIntegral]
+    compliant_impressions: Annotated[StrictInt, Field(description='Impressions from compliant records'), SchemaIntegral]
+    non_compliant_records: Annotated[StrictInt, Field(description='Number of records with non_compliant status'), SchemaIntegral]
+    non_compliant_impressions: Annotated[StrictInt, Field(description='Impressions from non_compliant records'), SchemaIntegral]
+    not_covered_records: Annotated[StrictInt, Field(description='Number of records where identifier was recognized but no data available'), SchemaIntegral]
+    not_covered_impressions: Annotated[StrictInt, Field(description='Impressions from not_covered records'), SchemaIntegral]
+    unidentified_records: Annotated[StrictInt, Field(description='Number of records where identifier type was not resolvable'), SchemaIntegral]
+    unidentified_impressions: Annotated[StrictInt, Field(description='Impressions from unidentified records'), SchemaIntegral]
 
 
 class Aggregate(AdCPBaseModel):
@@ -44,7 +44,7 @@ class Aggregate(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#/properties/aggregate')
-    score: Annotated[float | None, Field(description='Numeric score (0-100 scale typical, but agent-defined)'), OmittedNotNull] = None
+    score: Annotated[StrictFloat | None, Field(description='Numeric score (0-100 scale typical, but agent-defined)'), OmittedNotNull] = None
     grade: Annotated[str | None, Field(description="Letter grade or category (e.g., 'A+', 'B-', 'Gold', 'Compliant')"), OmittedNotNull] = None
     label: Annotated[str | None, Field(description="Human-readable summary (e.g., '85% compliant', 'High quality')"), OmittedNotNull] = None
     methodology_url: Annotated[HostedUrl | None, Field(description='URL explaining how this aggregate was calculated'), OmittedNotNull] = None
@@ -58,14 +58,14 @@ class AuthorizationSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#/properties/authorization_summary')
-    records_checked: Annotated[int, Field(description='Number of records with sales_agent_url provided')]
-    impressions_checked: Annotated[int, Field(description='Total impressions from records with sales_agent_url')]
-    authorized_records: Annotated[int, Field(description='Number of records where sales agent was authorized')]
-    authorized_impressions: Annotated[int, Field(description='Impressions from authorized records')]
-    unauthorized_records: Annotated[int, Field(description='Number of records where sales agent was NOT authorized')]
-    unauthorized_impressions: Annotated[int, Field(description='Impressions from unauthorized records')]
-    unknown_records: Annotated[int, Field(description='Number of records where authorization could not be determined (adagents.json unavailable)')]
-    unknown_impressions: Annotated[int, Field(description='Impressions from records where authorization could not be determined')]
+    records_checked: Annotated[StrictInt, Field(description='Number of records with sales_agent_url provided'), SchemaIntegral]
+    impressions_checked: Annotated[StrictInt, Field(description='Total impressions from records with sales_agent_url'), SchemaIntegral]
+    authorized_records: Annotated[StrictInt, Field(description='Number of records where sales agent was authorized'), SchemaIntegral]
+    authorized_impressions: Annotated[StrictInt, Field(description='Impressions from authorized records'), SchemaIntegral]
+    unauthorized_records: Annotated[StrictInt, Field(description='Number of records where sales agent was NOT authorized'), SchemaIntegral]
+    unauthorized_impressions: Annotated[StrictInt, Field(description='Impressions from unauthorized records'), SchemaIntegral]
+    unknown_records: Annotated[StrictInt, Field(description='Number of records where authorization could not be determined (adagents.json unavailable)'), SchemaIntegral]
+    unknown_impressions: Annotated[StrictInt, Field(description='Impressions from records where authorization could not be determined'), SchemaIntegral]
 
 
 class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -76,7 +76,7 @@ class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, Ad
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#')
-    compliant: Annotated[bool | None, Field(description='Overall compliance flag for the submitted delivery — true when every record is compliant, false when any record is non_compliant. Derived from summary.non_compliant_records === 0 but surfaced at the root as a convenience signal for buyers. Agents MAY omit this field when the response represents a partial validation (e.g., when include_compliant is false and results only contains non_compliant records); consumers SHOULD fall back to summary counts if compliant is absent.'), OmittedNotNull] = None
+    compliant: Annotated[StrictBool | None, Field(description='Overall compliance flag for the submitted delivery — true when every record is compliant, false when any record is non_compliant. Derived from summary.non_compliant_records === 0 but surfaced at the root as a convenience signal for buyers. Agents MAY omit this field when the response represents a partial validation (e.g., when include_compliant is false and results only contains non_compliant records); consumers SHOULD fall back to summary counts if compliant is absent.'), OmittedNotNull] = None
     list_id: Annotated[str, Field(description='ID of the property list validated against')]
     summary: Annotated[Summary, Field(description='Aggregate validation statistics')]
     aggregate: Annotated[Aggregate | None, Field(description='Optional aggregate measurements computed by the governance agent. Format and meaning are agent-specific.'), OmittedNotNull] = None

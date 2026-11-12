@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
@@ -60,8 +60,8 @@ class AudienceEvidenceRequirements(AdCPBaseModel):
     accepted_resolution_methods: Annotated[list[AudienceResolutionMethod] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     minimum_confidence: Annotated[FloatMin0Max1 | None, OmittedNotNull] = None
     maximum_age: Annotated[MaximumAge | None, Field(description='Maximum age at evaluation time measured from last_updated. Campaign-relative duration is not valid for evidence age.'), OmittedNotNull] = None
-    methodology_documentation_required: Annotated[bool | None, Field(description='Whether an admissible item must carry methodology_url.'), OmittedNotNull] = False
-    independent_attestation_required: Annotated[bool | None, Field(description="Whether an admissible item must have at least one exact reference/evaluation pair whose outcome is verified, whose reference is published in the evidence, and whose claim type and issuer match the buyer's accepted lists as well as the seller's issuer and resolver policy. Setting true requires accepted_attestation_issuers."), OmittedNotNull] = False
+    methodology_documentation_required: Annotated[StrictBool | None, Field(description='Whether an admissible item must carry methodology_url.'), OmittedNotNull] = False
+    independent_attestation_required: Annotated[StrictBool | None, Field(description="Whether an admissible item must have at least one exact reference/evaluation pair whose outcome is verified, whose reference is published in the evidence, and whose claim type and issuer match the buyer's accepted lists as well as the seller's issuer and resolver policy. Setting true requires accepted_attestation_issuers."), OmittedNotNull] = False
     accepted_attestation_issuers: Annotated[list[AttestationIssuer] | None, Field(description="Buyer allowlist for independent attestation issuers. An exact reference/evaluation pair satisfies the requirement only when reference.issuer matches an entry here. This list narrows and never broadens the seller's accepted issuer policy.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     accepted_attestation_claim_types: Annotated[list[HostedUrl] | None, Field(description='Optional acceptable claim types when attestation is used. Buyer-supplied claim types further constrain but never broaden seller policy.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

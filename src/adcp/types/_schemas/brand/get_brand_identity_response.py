@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
@@ -14,6 +14,7 @@ from adcp.types.constraints import (
     DictMinProperties1MaxProperties1,
     HostedUrl,
     NonEmptyList,
+    SchemaIntegral,
     StrMaxLen100,
     StrMinLen1,
 )
@@ -70,8 +71,8 @@ class LogosItem(AdCPBaseModel):
     variant: Annotated[LogoVariant | None, Field(description='Logo variant type'), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description='Additional semantic tags'), OmittedNotNull] = None
     usage: Annotated[str | None, Field(description='When to use this logo variant'), OmittedNotNull] = None
-    width: Annotated[int | None, Field(description='Width in pixels'), OmittedNotNull] = None
-    height: Annotated[int | None, Field(description='Height in pixels'), OmittedNotNull] = None
+    width: Annotated[StrictInt | None, Field(description='Width in pixels'), OmittedNotNull, SchemaIntegral] = None
+    height: Annotated[StrictInt | None, Field(description='Height in pixels'), OmittedNotNull, SchemaIntegral] = None
 
 
 class Colors(AdCPBaseModel):
@@ -158,10 +159,10 @@ class AssetsItem(AdCPBaseModel):
     tags: Annotated[list[str] | None, Field(description='Tags for discovery'), OmittedNotNull] = None
     name: Annotated[str | None, Field(description='Human-readable name'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Asset description or usage notes'), OmittedNotNull] = None
-    width: Annotated[int | None, Field(description='Image/video width in pixels'), OmittedNotNull] = None
-    height: Annotated[int | None, Field(description='Image/video height in pixels'), OmittedNotNull] = None
-    duration_seconds: Annotated[float | None, Field(description='Video/audio duration in seconds'), OmittedNotNull] = None
-    file_size_bytes: Annotated[int | None, Field(description='File size in bytes'), OmittedNotNull] = None
+    width: Annotated[StrictInt | None, Field(description='Image/video width in pixels'), OmittedNotNull, SchemaIntegral] = None
+    height: Annotated[StrictInt | None, Field(description='Image/video height in pixels'), OmittedNotNull, SchemaIntegral] = None
+    duration_seconds: Annotated[StrictFloat | None, Field(description='Video/audio duration in seconds'), OmittedNotNull] = None
+    file_size_bytes: Annotated[StrictInt | None, Field(description='File size in bytes'), OmittedNotNull, SchemaIntegral] = None
     format: Annotated[str | None, Field(description="File format (e.g., 'jpg', 'mp4')"), OmittedNotNull] = None
 
 

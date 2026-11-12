@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
 from adcp.types.constraints import StrMinLen1, Version
@@ -32,7 +32,7 @@ class PreviewRendererMetadata(AdCPBaseModel):
     version: Annotated[Version, Field(description='Exact semantic version of the renderer implementation.')]
     export: Annotated[StrMinLen1, Field(description='Renderer export or entry-point name used for this render.')]
     rendering_origin: Annotated[RenderingOrigin, Field(description='Informational implementation origin copied from the selected route. It does not grant authority.')]
-    tracking_suppressed: Annotated[bool, Field(description='True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.')]
+    tracking_suppressed: Annotated[StrictBool, Field(description='True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.')]
 
 
 __all__ = ["PreviewRendererMetadata"]

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, StrMinLen1
@@ -46,7 +46,7 @@ class PolicyCategoryDefinition(AdCPBaseModel):
     facets: Annotated[list[FacetsItem] | None, Field(description='Registry-defined distinctions within the category that materially affect policy applicability or seller acceptance. Facets refine a category without creating a new top-level policy category.', min_length=1), OmittedNotNull] = None
     regulatory_frameworks: Annotated[list[RegulatoryFrameworksItem] | None, Field(description='Key regulations and standards grouped under this category. Governance agents use this to resolve specific policies from the registry.'), OmittedNotNull] = None
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description="Restricted attribute categories that regulations in this category prohibit for targeting. Governance agents enforce these when the category is active on a plan — if a plan declares policy_categories: ['fair_housing'], the governance agent restricts targeting on these attributes."), OmittedNotNull] = None
-    requires_human_review: Annotated[bool | None, Field(description='When true, any plan declaring this category MUST set plan.human_review_required = true. Use for regulatory regimes that mandate human oversight under GDPR Art 22 or EU AI Act Annex III — fair_housing, fair_lending, fair_employment, pharmaceutical_advertising, and similar high-risk categories. Category-level setting applies to all policies and plans referencing it; policies can override on policy-entry.requires_human_review. Effective immediately regardless of individual policy `effective_date` fields.'), OmittedNotNull] = False
+    requires_human_review: Annotated[StrictBool | None, Field(description='When true, any plan declaring this category MUST set plan.human_review_required = true. Use for regulatory regimes that mandate human oversight under GDPR Art 22 or EU AI Act Annex III — fair_housing, fair_lending, fair_employment, pharmaceutical_advertising, and similar high-risk categories. Category-level setting applies to all policies and plans referencing it; policies can override on policy-entry.requires_human_review. Effective immediately regardless of individual policy `effective_date` fields.'), OmittedNotNull] = False
     industries: Annotated[list[str] | None, Field(description="Industries where this category commonly applies (e.g., 'pharmaceutical' for age_restricted). Governance agents MAY suggest relevant categories when a plan's brand industry matches but no policy_categories are declared."), OmittedNotNull] = None
     guidance: Annotated[str | None, Field(description='Implementation notes for governance agents. Edge cases, disambiguation, and common pitfalls.'), OmittedNotNull] = None
     related_categories: Annotated[list[str] | None, Field(description="Categories that frequently co-occur (e.g., 'children_directed' often appears with 'age_restricted')."), OmittedNotNull] = None

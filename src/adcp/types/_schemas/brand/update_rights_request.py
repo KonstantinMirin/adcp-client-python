@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.constraints import GovernanceContext, IntMin1
@@ -32,7 +32,7 @@ class UpdateRightsRequest(AdCPVersionEnvelope, AdcpRequest):
     end_date: Annotated[date | None, Field(description='New end date for the rights grant (must be >= current end_date). Extending the grant may re-issue generation credentials with updated expiration.'), OmittedNotNull] = None
     impression_cap: Annotated[IntMin1 | None, Field(description='New impression cap for the grant. Must be >= impressions already delivered.'), OmittedNotNull] = None
     pricing_option_id: Annotated[str | None, Field(description="Switch to a different pricing option from the original get_rights offering. The new option must be compatible with the existing grant's uses and countries."), OmittedNotNull] = None
-    paused: Annotated[bool | None, Field(description='Pause or resume the rights grant. When paused, generation credentials are suspended and creative delivery should stop. When resumed, credentials are re-activated.'), OmittedNotNull] = None
+    paused: Annotated[StrictBool | None, Field(description='Pause or resume the rights grant. When paused, generation credentials are suspended and creative delivery should stop. When resumed, credentials are re-activated.'), OmittedNotNull] = None
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Webhook for async update notifications if the update requires approval'), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated idempotency key for safe retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: Annotated[ContextObject | None, OmittedNotNull] = None

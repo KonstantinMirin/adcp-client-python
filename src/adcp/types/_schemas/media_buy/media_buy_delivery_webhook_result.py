@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1, StrMaxLen50, StrMinLen1
@@ -100,8 +100,8 @@ class ByPackageItem(DeliveryMetrics):
     rate: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description="ISO 4217 currency code for this package's spend and currency-denominated pricing rate. The rate for revenue_share is a dimensionless commission fraction, but attributed monetary values still use this currency. When the enclosing media_buy_deliveries[].currency is present, this value MUST equal it. For AdCP-authored buys both values MUST equal the media-buy currency. A different package currency is permitted only for a legacy or externally created mixed-currency buy whose row currency and row-level monetary totals are omitted. When both row and deprecated response-wide currency are absent, a package with monetary values MUST include this field. AdCP does not perform currency conversion."), OmittedNotNull] = None
     delivery_status: Annotated[DeliveryStatus | None, Field(description="System-reported operational state of this package. Reflects actual delivery state independent of buyer pause control. 'not_delivering' means zero impressions were recorded for the entire reporting_period while the package was in-flight. Sellers SHOULD only report 'not_delivering' once the package's data is_final for the period — a provisional (is_final: false) zero may still be measurement catching up, not genuine non-delivery."), OmittedNotNull] = None
-    paused: Annotated[bool | None, OmittedNotNull] = None
-    is_final: Annotated[bool | None, OmittedNotNull] = None
+    paused: Annotated[StrictBool | None, OmittedNotNull] = None
+    is_final: Annotated[StrictBool | None, OmittedNotNull] = None
     finalized_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
     measurement_window: Annotated[StrMaxLen50 | None, OmittedNotNull] = None
     supersedes_window: Annotated[StrMaxLen50 | None, OmittedNotNull] = None
@@ -121,8 +121,8 @@ class MediaBuyDeliveriesItem(AdCPBaseModel):
     currency: Annotated[CurrencyCode | None, Field(description="ISO 4217 denomination for monetary values in this media-buy delivery row, including totals, package spend, and currency-denominated package rates. Sellers SHOULD populate this field whenever all monetary values in the row share one currency. For AdCP-authored buys it MUST equal the media-buy currency, and every by_package[].currency MUST equal it. For a legacy or externally created mixed-currency buy, omit this field and all monetary or money-derived values from row totals; report those values only at package level with each package's own currency. AdCP does not perform currency conversion."), OmittedNotNull] = None
     status: Annotated[Status, Field(description="Current media buy lifecycle or reporting status. This is distinct from the webhook envelope's top-level task status.")]
     expected_availability: Annotated[AwareDatetime | None, Field(description='When delayed data is expected to be available. Present when status is reporting_delayed.'), OmittedNotNull] = None
-    is_adjusted: Annotated[bool | None, Field(description='Indicates this row contains updated data for a previously reported period.'), OmittedNotNull] = None
-    is_final: Annotated[bool | None, Field(description="Whether this row's delivery data is final for the reporting period."), OmittedNotNull] = None
+    is_adjusted: Annotated[StrictBool | None, Field(description='Indicates this row contains updated data for a previously reported period.'), OmittedNotNull] = None
+    is_final: Annotated[StrictBool | None, Field(description="Whether this row's delivery data is final for the reporting period."), OmittedNotNull] = None
     finalized_at: Annotated[AwareDatetime | None, Field(description='Timestamp when this row became final. Present only when is_final is true.'), OmittedNotNull] = None
     pricing_model: Annotated[PricingModel | None, OmittedNotNull] = None
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan. Authoritative for seller-optimized buys.'), OmittedNotNull] = None
@@ -142,7 +142,7 @@ class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
         Approximation(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#/properties/media_buy_deliveries/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['currency']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     notification_type: Annotated[MediaBuyDeliveryWebhookResultNotificationType, Field(description='Type of delivery-report notification: scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = corrected data for the same window, window_update = a wider measurement window supersedes a prior window.')]
-    partial_data: Annotated[bool | None, Field(description='Indicates if any media buys in this webhook have missing or delayed data.'), OmittedNotNull] = None
+    partial_data: Annotated[StrictBool | None, Field(description='Indicates if any media buys in this webhook have missing or delayed data.'), OmittedNotNull] = None
     unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status when partial_data is true.'), OmittedNotNull] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number for this reporting webhook stream.'), OmittedNotNull] = None
     next_expected_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for the next expected notification. Omitted on final notifications.'), OmittedNotNull] = None
@@ -151,7 +151,7 @@ class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
     attribution_window: Annotated[AttributionWindow | None, Field(description='Attribution methodology and lookback windows used for conversion metrics in this report.'), OmittedNotNull] = None
     media_buy_deliveries: Annotated[list[MediaBuyDeliveriesItem], Field(description='Delivery rows for one or more media buys included in this notification.')]
     errors: Annotated[list[Error] | None, Field(description='Task-specific delivery errors or warnings.'), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

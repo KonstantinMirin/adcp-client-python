@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, StrictFloat, TypeAdapter
 
 from adcp.types._base import Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
@@ -99,9 +99,9 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     min_bitrate_kbps: Annotated[IntMin1 | None, OmittedNotNull] = None
     max_bitrate_kbps: Annotated[IntMin1 | None, OmittedNotNull] = None
     max_file_size_mb: Annotated[IntMin1 | None, Field(description='Maximum file size, where 1 MB is exactly 1,000,000 bytes.'), OmittedNotNull] = None
-    frame_rates: Annotated[list[float] | None, OmittedNotNull] = None
+    frame_rates: Annotated[list[StrictFloat] | None, OmittedNotNull] = None
     captions: Annotated[Captions | None, OmittedNotNull] = None
-    om_sdk_required: Annotated[bool | None, OmittedNotNull] = None
+    om_sdk_required: Annotated[StrictBool | None, OmittedNotNull] = None
     headline_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
     primary_text_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
     brand_name_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None

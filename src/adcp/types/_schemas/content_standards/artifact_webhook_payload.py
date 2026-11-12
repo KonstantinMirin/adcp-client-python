@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types.constraints import SchemaIntegral
 
 from ..core.ext import ExtensionObject
 from ..core.idempotency_key import IdempotencyKey
@@ -25,9 +26,9 @@ class Pagination(AdCPBaseModel):
     Pagination info when batching large artifact sets
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact-webhook-payload.json', pointer='#/properties/pagination')
-    total_artifacts: Annotated[int | None, Field(description='Total artifacts in the delivery period'), OmittedNotNull] = None
-    batch_number: Annotated[int | None, Field(description='Current batch number (1-indexed)'), OmittedNotNull] = None
-    total_batches: Annotated[int | None, Field(description='Total batches for this delivery period'), OmittedNotNull] = None
+    total_artifacts: Annotated[StrictInt | None, Field(description='Total artifacts in the delivery period'), OmittedNotNull, SchemaIntegral] = None
+    batch_number: Annotated[StrictInt | None, Field(description='Current batch number (1-indexed)'), OmittedNotNull, SchemaIntegral] = None
+    total_batches: Annotated[StrictInt | None, Field(description='Total batches for this delivery period'), OmittedNotNull, SchemaIntegral] = None
 
 
 class ArtifactWebhookPayload(AdCPBaseModel):

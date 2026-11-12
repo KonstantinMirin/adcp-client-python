@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatUuid
@@ -35,7 +35,7 @@ class RegistryFeedResponse(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-feed-response.json', pointer='#')
     events: list[RegistryEvent]
     cursor: Annotated[StrFormatUuid | None, Field(description='Pass this value as cursor on the next request to continue polling. Null only when the feed has no events and no prior cursor.')]
-    has_more: Annotated[bool, Field(description='True when more events are immediately available after cursor.')]
+    has_more: Annotated[StrictBool, Field(description='True when more events are immediately available after cursor.')]
     freshness: Annotated[Freshness, Field(description='Consumer-visible feed freshness metadata for the requested type filter.')]
 
 

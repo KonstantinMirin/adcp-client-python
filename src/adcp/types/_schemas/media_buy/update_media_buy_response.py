@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
@@ -85,7 +85,7 @@ class UpdateMediaBuySuccess(UpdateMediaBuyResponse):
     valid_actions: Annotated[list[MediaBuyValidAction] | None, Field(description='Flat-vocabulary actions the buyer can perform after this update. Saves a round-trip to get_media_buys. Deprecated in favor of `available_actions[]`, which carries mode, optional SLA, and in 3.2 an optional change_term_id. Sellers SHOULD populate both during the 3.x deprecation window; consumers MUST prefer `available_actions[]` when both are present. Removed in 4.0.'), OmittedNotNull] = None
     available_actions: Annotated[list[MediaBuyAvailableAction] | None, Field(description='Structured per-buy resolution of actions available after this update. Authoritative — see `get-media-buys-response.json` for full semantics.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     warnings: Annotated[list[Warning] | None, Field(description='Optional non-blocking observations accompanying this successful update. The requested update was still applied. Continuing conditions also appear on get_media_buys as current resource state.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, Field(description='Opaque operation-level correlation data echoed unchanged from the update_media_buy request. Sellers MUST echo this object verbatim when the originating request carried context, including synchronous success, error, submitted, and webhook task-status payloads. Sellers MUST NOT parse this object for business logic.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

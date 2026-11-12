@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, RequiredGroups, Rule
@@ -112,7 +112,7 @@ class EventSourcesItem(AdCPBaseModel):
     event_type: EventType
     custom_event_name: Annotated[StrMinLen1 | None, OmittedNotNull] = None
     value_field: Annotated[StrMinLen1 | None, OmittedNotNull] = None
-    value_factor: Annotated[float | None, OmittedNotNull] = 1
+    value_factor: Annotated[StrictFloat | None, OmittedNotNull] = 1
 
 
 class CanonicalOptimizationGoalEventTarget(AdCPBaseModel):

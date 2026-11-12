@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatHostname
@@ -47,7 +47,7 @@ class URLAssetRequirements(AdCPBaseModel):
     protocols: Annotated[list[ProtocolsItem] | None, Field(description='Allowed URL protocols. HTTPS is recommended for all ad URLs.'), OmittedNotNull] = None
     allowed_domains: Annotated[list[StrFormatHostname] | None, Field(description='List of allowed domains for the URL'), OmittedNotNull] = None
     max_length: Annotated[IntMin1 | None, Field(description='Maximum URL length in characters'), OmittedNotNull] = None
-    macro_support: Annotated[bool | None, Field(description="Coarse slot gate for macro-bearing URLs. `false` is a hard prohibition on macro tokens. `true` permits tokens but does not prove any dialect semantic, resolver, context, or encoding capability; exact support comes from the selected format option's macro_resolution_capabilities."), OmittedNotNull] = None
+    macro_support: Annotated[StrictBool | None, Field(description="Coarse slot gate for macro-bearing URLs. `false` is a hard prohibition on macro tokens. `true` permits tokens but does not prove any dialect semantic, resolver, context, or encoding capability; exact support comes from the selected format option's macro_resolution_capabilities."), OmittedNotNull] = None
 
 
 UrlAssetRequirements = URLAssetRequirements

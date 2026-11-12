@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
@@ -47,7 +47,7 @@ class Installment(AdCPBaseModel):
     scheduled_at: Annotated[AwareDatetime | None, Field(description='When the installment airs or publishes (ISO 8601)'), OmittedNotNull] = None
     status: Annotated[InstallmentStatus | None, Field(description='Lifecycle status of the installment'), OmittedNotNull] = None
     duration_seconds: Annotated[NonNegativeInt | None, Field(description='Expected duration of the installment in seconds'), OmittedNotNull] = None
-    flexible_end: Annotated[bool | None, Field(description='Whether the end time is approximate (live events, sports)'), OmittedNotNull] = None
+    flexible_end: Annotated[StrictBool | None, Field(description='Whether the end time is approximate (live events, sports)'), OmittedNotNull] = None
     valid_until: Annotated[AwareDatetime | None, Field(description='When this installment data expires and should be re-queried. Agents should re-query before committing budget to products with tentative installments.'), OmittedNotNull] = None
     content_rating: Annotated[ContentRating | None, Field(description="Installment-specific content rating. Overrides the collection's baseline content_rating when present."), OmittedNotNull] = None
     topics: Annotated[list[str] | None, Field(description="Content topics for this installment. Uses the same taxonomy as the collection's genre_taxonomy when present. Enables installment-level brand safety evaluation beyond content_rating."), OmittedNotNull] = None

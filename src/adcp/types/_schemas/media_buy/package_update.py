@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, NotValue, Rule
@@ -46,7 +46,7 @@ class PackageUpdate(AdCPBaseModel):
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Replace this package's hard daily cap; null removes it. Numeric changes apply immediately with current-day package spend counted. A cap below that spend pauses the package for the day; the aggregate cap remains independently binding.")] = None
     start_time: Annotated[Annotated[AwareDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Updated flight start date/time for this package in ISO 8601 format. Must fall within the media buy's date range."), OmittedNotNull] = None
     end_time: Annotated[AwareDatetime | None, Field(description="Updated flight end date/time for this package in ISO 8601 format. Must fall within the media buy's date range."), OmittedNotNull] = None
-    paused: Annotated[bool | None, Field(description='Pause/resume specific package (true = paused, false = active)'), OmittedNotNull] = None
+    paused: Annotated[StrictBool | None, Field(description='Pause/resume specific package (true = paused, false = active)'), OmittedNotNull] = None
     canceled: Annotated[Literal[True] | None, Field(description='Cancel this specific package. Cancellation is irreversible — canceled packages stop delivery and cannot be reactivated. When true, package cancellation takes precedence over sibling fields on this package: the seller applies only canceled and cancellation_reason for this package and SHOULD return a structured warning naming ignored sibling fields. Root fields and other package updates still participate in the same atomic update when root canceled is absent. Sellers MAY reject with NOT_CANCELLABLE.'), OmittedNotNull] = None
     cancellation_reason: Annotated[StrMaxLen500 | None, Field(description='Reason for canceling this package.'), OmittedNotNull] = None
     catalogs: Annotated[list[Catalog] | None, Field(description='Replace the catalogs this package promotes. Uses replacement semantics — the provided array replaces the current list. Omit to leave catalogs unchanged.', min_length=1), OmittedNotNull] = None

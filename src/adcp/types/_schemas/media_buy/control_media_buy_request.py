@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
@@ -46,7 +46,7 @@ class ControlMediaBuyRequest(AdCPVersionEnvelope, AdcpRequest):
     media_buy_id: StrMinLen1
     revision: Annotated[IntMin1, Field(description='Required optimistic-concurrency revision from the latest MediaBuy snapshot.')]
     name: Annotated[MediaBuyName | None, Field(description='Replace the human-readable MediaBuy name as revision-checked operational metadata. This display label is not an identifier, financial reference, or change to the accepted commercial terms.'), OmittedNotNull] = None
-    paused: Annotated[bool | None, OmittedNotNull] = None
+    paused: Annotated[StrictBool | None, OmittedNotNull] = None
     canceled: Annotated[Literal[True] | None, Field(description='Exercise an already-accepted unilateral cancellation right. A cancellation requiring seller agreement is requested by refining the accepted proposal.'), OmittedNotNull] = None
     cancellation_reason: Annotated[StrMinLen1MaxLen500 | None, OmittedNotNull] = None
     total_budget: Annotated[Money | None, OmittedNotNull] = None

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
@@ -22,7 +22,7 @@ class DeleteCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRe
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/delete-collection-list-response.json', pointer='#')
-    deleted: Annotated[bool, Field(description='Whether the list was successfully deleted')]
+    deleted: Annotated[StrictBool, Field(description='Whether the list was successfully deleted')]
     list_id: Annotated[str, Field(description='ID of the deleted list')]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

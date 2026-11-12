@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, StrictFloat, TypeAdapter
 
 from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatGt0, IntMin1
@@ -78,12 +78,12 @@ class CanonicalFormatHostedAudio(CanonicalFormatBase):
     min_bitrate_kbps: Annotated[IntMin1 | None, OmittedNotNull] = None
     max_bitrate_kbps: Annotated[IntMin1 | None, OmittedNotNull] = None
     max_file_size_mb: Annotated[FloatGt0 | None, Field(description='Maximum hosted audio file size in decimal megabytes. Agents that proxy or cache media SHOULD advertise their effective transport ceiling here.'), OmittedNotNull] = None
-    loudness_lufs: Annotated[float | None, Field(description='Required integrated loudness in LUFS (typical: -16 for streaming/podcast, -23 for broadcast). Negative values.'), OmittedNotNull] = None
+    loudness_lufs: Annotated[StrictFloat | None, Field(description='Required integrated loudness in LUFS (typical: -16 for streaming/podcast, -23 for broadcast). Negative values.'), OmittedNotNull] = None
     loudness_tolerance_db: Annotated[NonNegativeFloat | None, Field(description='Permitted deviation from loudness_lufs in dB.'), OmittedNotNull] = None
-    true_peak_dbfs: Annotated[float | None, Field(description='Maximum true-peak level in dBFS (typical: -2).'), OmittedNotNull] = None
+    true_peak_dbfs: Annotated[StrictFloat | None, Field(description='Maximum true-peak level in dBFS (typical: -2).'), OmittedNotNull] = None
     asset_source: Annotated[AssetSource | None, Field(description="Where the rendered audio bytes come from. Single shared enum across canonicals (see `image.json#asset_source` for the full semantics). `publisher_host_recorded`: the publisher's host records the audio (podcast host-read pattern); buyer must use the publisher's build_creative capability. `publisher_owned_reference` is valid only when the product accepts a reference asset whose publisher-owned source resolves to playable audio. `publisher_host_recorded` remains the normal audio-specific host-read value.", json_schema_extra={'default': 'buyer_uploaded'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AssetSource).validate_python('buyer_uploaded'))
     buyer_asset_acceptance: Annotated[BuyerAssetAcceptance | None, Field(description="Whether the product accepts buyer-uploaded audio. When `rejected`, the buyer cannot ship an audio asset directly — they must use build_creative (or sync_creatives with brief inputs) so the seller produces the audio. Combined with `asset_source`, lets a product declare 'I produce audio from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`).", json_schema_extra={'default': 'accepted'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(BuyerAssetAcceptance).validate_python('accepted'))
-    companion_image_required: Annotated[bool | None, OmittedNotNull] = None
+    companion_image_required: Annotated[StrictBool | None, OmittedNotNull] = None
     companion_image_aspect_ratio: Annotated[str | None, OmittedNotNull] = None
     companion_image_max_file_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
     brand_name_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None

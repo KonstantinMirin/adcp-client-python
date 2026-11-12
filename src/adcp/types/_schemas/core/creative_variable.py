@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 
@@ -45,7 +45,7 @@ class CreativeVariable(AdCPBaseModel):
     name: Annotated[str, Field(description='Human-readable variable name')]
     variable_type: Annotated[VariableType, Field(description='Data type of the variable. Each type represents a semantic content slot: text (headlines, body copy), image/video/audio (media URLs), url (clickthrough or tracking URLs), number (prices, counts), boolean (conditional flags like show_discount or is_raining), color (hex color values), date (ISO 8601 date-time for countdowns and offer expirations).')]
     default_value: Annotated[str | None, Field(description='Default value used when no dynamic value is provided at serve time. All types are string-encoded: text/image/video/audio/url as literal strings, number as decimal (e.g., "42.99"), boolean as "true"/"false", color as "#RRGGBB", date as ISO 8601 (e.g., "2026-12-25T00:00:00Z").'), OmittedNotNull] = None
-    required: Annotated[bool | None, Field(description='Whether this variable must have a value for the creative to serve'), OmittedNotNull] = False
+    required: Annotated[StrictBool | None, Field(description='Whether this variable must have a value for the creative to serve'), OmittedNotNull] = False
 
 
 __all__ = ["CreativeVariable"]

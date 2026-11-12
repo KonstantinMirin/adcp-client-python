@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import NotValue, Rule, UniqueItems
@@ -36,10 +36,10 @@ class AgentNotificationConfigState(AdCPBaseModel):
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     url: HostedUrl
     event_types: Annotated[list[Annotated[NotificationType, AfterValidator(NotValue(('scheduled', 'final', 'delayed', 'adjusted', 'window_update', 'impairment')))]], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    all_authorized_accounts: Annotated[bool | None, Field(description='Echoed scope acknowledgment for account-anchored event types.'), OmittedNotNull] = None
-    include_future_event_types: Annotated[bool | None, Field(description='Echoed from the desired configuration when set.'), OmittedNotNull] = None
+    all_authorized_accounts: Annotated[StrictBool | None, Field(description='Echoed scope acknowledgment for account-anchored event types.'), OmittedNotNull] = None
+    include_future_event_types: Annotated[StrictBool | None, Field(description='Echoed from the desired configuration when set.'), OmittedNotNull] = None
     authentication: Annotated[Authentication | None, OmittedNotNull] = None
-    active: Annotated[bool | None, OmittedNotNull] = True
+    active: Annotated[StrictBool | None, OmittedNotNull] = True
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

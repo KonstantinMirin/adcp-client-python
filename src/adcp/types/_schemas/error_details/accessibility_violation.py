@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
@@ -58,7 +58,7 @@ class AccessibilityViolationDetails(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/accessibility-violation.json', pointer='#')
     violations: Annotated[list[ViolationsItem], Field(description='Accessibility requirements the creative or its assets failed. This is distinct from error.issues, which carries JSON Schema validator failures.', max_length=4, min_length=1)]
-    truncated: Annotated[bool | None, Field(description='True when the producer omitted additional violations or remediation text to keep the complete serialized error within the 4096-byte transport safety limit. Omission means false.'), OmittedNotNull] = None
+    truncated: Annotated[StrictBool | None, Field(description='True when the producer omitted additional violations or remediation text to keep the complete serialized error within the 4096-byte transport safety limit. Omission means false.'), OmittedNotNull] = None
 
 
 Violation = ViolationsItem

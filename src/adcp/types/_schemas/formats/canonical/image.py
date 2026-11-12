@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
@@ -89,7 +89,7 @@ class CanonicalFormatImage(CanonicalFormatBase):
     aspect_ratio: Annotated[CanonicalFormatImageAspectRatio | None, Field(description="Optional aspect ratio constraint (e.g., '1.91:1', '1:1'). When provided alongside `width`/`height`, must agree. When used with `sizes[]` or responsive ranges, narrows accepted entries to those matching the aspect ratio."), OmittedNotNull] = None
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes.'), OmittedNotNull] = None
     image_formats: Annotated[list[ImageFormatsItem] | None, Field(description='Permitted image file formats.'), OmittedNotNull] = None
-    ssl_required: Annotated[bool | None, Field(description='Whether the image and its trackers must be served over HTTPS.'), OmittedNotNull] = None
+    ssl_required: Annotated[StrictBool | None, Field(description='Whether the image and its trackers must be served over HTTPS.'), OmittedNotNull] = None
     headline_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
     body_text_max_chars: Annotated[IntMin1 | None, OmittedNotNull] = None
     cta_values: Annotated[list[str] | None, Field(description="Permitted CTA values for this product (e.g., ['LEARN_MORE', 'SHOP_NOW'])."), OmittedNotNull] = None

@@ -4,7 +4,16 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import (
+    AwareDatetime,
+    ConfigDict,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    StrictBool,
+    StrictFloat,
+    StrictInt,
+)
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
@@ -13,6 +22,7 @@ from adcp.types.constraints import (
     FloatMin0Max1,
     HostedUrl,
     PlansItemEntriesItemPlanHash,
+    SchemaIntegral,
     StrMinLen1MaxLen255,
     ZipAssetDigest,
 )
@@ -68,18 +78,18 @@ class Budget(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/budget')
-    authorized: Annotated[float | None, Field(description='Total authorized budget from the plan.'), OmittedNotNull] = None
+    authorized: Annotated[StrictFloat | None, Field(description='Total authorized budget from the plan.'), OmittedNotNull] = None
     accounting_mode: Annotated[AccountingMode | None, OmittedNotNull] = None
-    committed: Annotated[float | None, Field(description='Legacy 3.x alias for net_committed after verified headroom-restoring adjustments.'), OmittedNotNull] = None
-    gross_committed: Annotated[float | None, Field(description='Total authoritative commitment recorded from completed outcomes before adjustments.'), OmittedNotNull] = None
-    adjustments_reported: Annotated[float | None, Field(description='Sum of all append-only adjustment amounts, including audit-only refunds, credits, and makegoods.'), OmittedNotNull] = None
-    adjustments_verified: Annotated[float | None, Field(description='Sum of buyer-accepted economic reductions in plan currency; accepted makegoods contribute zero.'), OmittedNotNull] = None
-    net_cost: Annotated[float | None, Field(description='Gross commitment minus verified economic reductions, independent of whether accounting_mode restores headroom.'), OmittedNotNull] = None
-    headroom_restored: Annotated[float | None, Field(description='Sum of verified adjustments eligible to restore reusable headroom under accounting_mode.'), OmittedNotNull] = None
-    net_committed: Annotated[float | None, Field(description='Current plan obligation after verified headroom-restoring adjustments.'), OmittedNotNull] = None
-    ledger_committed: Annotated[float | None, Field(description='Current amount charged against plan headroom under accounting_mode.'), OmittedNotNull] = None
-    remaining: Annotated[float | None, Field(description='Authorized minus committed.'), OmittedNotNull] = None
-    utilization_pct: Annotated[float | None, Field(description='Committed as a percentage of authorized.'), OmittedNotNull] = None
+    committed: Annotated[StrictFloat | None, Field(description='Legacy 3.x alias for net_committed after verified headroom-restoring adjustments.'), OmittedNotNull] = None
+    gross_committed: Annotated[StrictFloat | None, Field(description='Total authoritative commitment recorded from completed outcomes before adjustments.'), OmittedNotNull] = None
+    adjustments_reported: Annotated[StrictFloat | None, Field(description='Sum of all append-only adjustment amounts, including audit-only refunds, credits, and makegoods.'), OmittedNotNull] = None
+    adjustments_verified: Annotated[StrictFloat | None, Field(description='Sum of buyer-accepted economic reductions in plan currency; accepted makegoods contribute zero.'), OmittedNotNull] = None
+    net_cost: Annotated[StrictFloat | None, Field(description='Gross commitment minus verified economic reductions, independent of whether accounting_mode restores headroom.'), OmittedNotNull] = None
+    headroom_restored: Annotated[StrictFloat | None, Field(description='Sum of verified adjustments eligible to restore reusable headroom under accounting_mode.'), OmittedNotNull] = None
+    net_committed: Annotated[StrictFloat | None, Field(description='Current plan obligation after verified headroom-restoring adjustments.'), OmittedNotNull] = None
+    ledger_committed: Annotated[StrictFloat | None, Field(description='Current amount charged against plan headroom under accounting_mode.'), OmittedNotNull] = None
+    remaining: Annotated[StrictFloat | None, Field(description='Authorized minus committed.'), OmittedNotNull] = None
+    utilization_pct: Annotated[StrictFloat | None, Field(description='Committed as a percentage of authorized.'), OmittedNotNull] = None
 
 
 class ChannelAllocationValue(AdCPBaseModel):
@@ -87,8 +97,8 @@ class ChannelAllocationValue(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/channel_allocation/additionalProperties')
-    committed: Annotated[float | None, Field(description='Budget committed to this channel.'), OmittedNotNull] = None
-    pct: Annotated[float | None, Field(description="Channel's share of the authorized total budget."), OmittedNotNull] = None
+    committed: Annotated[StrictFloat | None, Field(description='Budget committed to this channel.'), OmittedNotNull] = None
+    pct: Annotated[StrictFloat | None, Field(description="Channel's share of the authorized total budget."), OmittedNotNull] = None
 
 
 class Statuses(AdCPBaseModel):
@@ -99,10 +109,10 @@ class Statuses(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/summary/properties/statuses')
-    approved: Annotated[int | None, OmittedNotNull] = None
-    denied: Annotated[int | None, OmittedNotNull] = None
-    conditions: Annotated[int | None, OmittedNotNull] = None
-    human_reviewed: Annotated[int | None, Field(description='Supplementary count of checks that went through internal human review. These checks are also counted in approved or denied.'), OmittedNotNull] = None
+    approved: Annotated[StrictInt | None, OmittedNotNull, SchemaIntegral] = None
+    denied: Annotated[StrictInt | None, OmittedNotNull, SchemaIntegral] = None
+    conditions: Annotated[StrictInt | None, OmittedNotNull, SchemaIntegral] = None
+    human_reviewed: Annotated[StrictInt | None, Field(description='Supplementary count of checks that went through internal human review. These checks are also counted in approved or denied.'), OmittedNotNull, SchemaIntegral] = None
 
 
 class EscalationsItem(AdCPBaseModel):
@@ -166,12 +176,12 @@ class Summary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/summary')
-    checks_performed: Annotated[int | None, Field(description='Total governance checks performed.'), OmittedNotNull] = None
-    outcomes_reported: Annotated[int | None, Field(description='Total outcomes reported.'), OmittedNotNull] = None
-    adjustments_reported: Annotated[int | None, Field(description='Total append-only adjustment records reported.'), OmittedNotNull] = None
-    adjustments_verified: Annotated[int | None, Field(description='Count of adjustment records accepted by the plan owner, including makegoods.'), OmittedNotNull] = None
+    checks_performed: Annotated[StrictInt | None, Field(description='Total governance checks performed.'), OmittedNotNull, SchemaIntegral] = None
+    outcomes_reported: Annotated[StrictInt | None, Field(description='Total outcomes reported.'), OmittedNotNull, SchemaIntegral] = None
+    adjustments_reported: Annotated[StrictInt | None, Field(description='Total append-only adjustment records reported.'), OmittedNotNull, SchemaIntegral] = None
+    adjustments_verified: Annotated[StrictInt | None, Field(description='Count of adjustment records accepted by the plan owner, including makegoods.'), OmittedNotNull, SchemaIntegral] = None
     statuses: Annotated[Statuses | None, Field(description='Count of each governance check status.'), OmittedNotNull] = None
-    findings_count: Annotated[int | None, Field(description='Total findings across all checks and outcomes.'), OmittedNotNull] = None
+    findings_count: Annotated[StrictInt | None, Field(description='Total findings across all checks and outcomes.'), OmittedNotNull, SchemaIntegral] = None
     escalations: Annotated[list[EscalationsItem] | None, Field(description='All escalations and their resolutions.'), OmittedNotNull] = None
     drift_metrics: Annotated[DriftMetrics | None, Field(description='Aggregate governance metrics for detecting oversight drift. A declining escalation rate may indicate well-calibrated governance or eroding human oversight -- surfacing the trend lets the organization make that judgment.'), OmittedNotNull] = None
 
@@ -240,7 +250,7 @@ class Delivery(AdCPBaseModel):
     reporting_period: Annotated[ObjStartEnd | None, Field(description='Start and end timestamps for the reporting window.'), OmittedNotNull] = None
     cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Buyer-attributed cumulative spend for the governed action.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, OmittedNotNull] = None
-    period_closed: Annotated[bool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement.'), OmittedNotNull] = False
+    period_closed: Annotated[StrictBool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement.'), OmittedNotNull] = False
     impressions: Annotated[NonNegativeInt | None, OmittedNotNull] = None
 
 
@@ -338,7 +348,7 @@ class EntriesItem(AdCPBaseModel):
     headroom_restored: Annotated[NonNegativeFloat | None, Field(description='Current-obligation headroom restored by this adjustment. Zero for audit-only types.'), OmittedNotNull] = None
     reason: Annotated[str | None, Field(description='Seller-supplied adjustment reason.'), OmittedNotNull] = None
     effective_at: Annotated[AwareDatetime | None, Field(description="When the seller's adjustment became effective."), OmittedNotNull] = None
-    committed_budget: Annotated[float | None, Field(description='Governance-authorized budget reserved (present for completed outcome entries).'), OmittedNotNull] = None
+    committed_budget: Annotated[StrictFloat | None, Field(description='Governance-authorized budget reserved (present for completed outcome entries).'), OmittedNotNull] = None
     reported_committed_budget: Annotated[NonNegativeFloat | None, Field(description='Caller-reported seller amount retained for reconciliation. Never ledger authority.'), OmittedNotNull] = None
     seller_reference: Annotated[str | None, Field(description='Seller resource identifier retained on an outcome entry.'), OmittedNotNull] = None
     delivery: Annotated[Delivery | None, Field(description='Buyer-attributed observation retained as audit evidence on a delivery outcome. It never overwrites the seller statement.'), OmittedNotNull] = None
@@ -391,19 +401,19 @@ class GovernedActionsItem(AdCPBaseModel):
     governance_context: Annotated[str, Field(description="Governance context correlating this action's lifecycle.")]
     purchase_type: Annotated[PurchaseType, Field(description='Type of financial commitment.')]
     status: Annotated[GovernedActionsItemStatus, Field(description='Action status.')]
-    committed: Annotated[float, Field(description='Gross authoritative commitment recorded for this action.')]
-    adjustments_reported: Annotated[float | None, Field(description='Sum of all append-only adjustment amounts for this action.'), OmittedNotNull] = None
-    adjustments_verified: Annotated[float | None, Field(description='Buyer-accepted economic reductions for this action.'), OmittedNotNull] = None
-    net_cost: Annotated[float | None, Field(description='Gross action commitment minus verified economic reductions.'), OmittedNotNull] = None
-    headroom_restored: Annotated[float | None, Field(description='Verified adjustments eligible to restore headroom under the plan accounting mode.'), OmittedNotNull] = None
-    net_committed: Annotated[float | None, Field(description='Current ledger obligation for this action after restored headroom.'), OmittedNotNull] = None
+    committed: Annotated[StrictFloat, Field(description='Gross authoritative commitment recorded for this action.')]
+    adjustments_reported: Annotated[StrictFloat | None, Field(description='Sum of all append-only adjustment amounts for this action.'), OmittedNotNull] = None
+    adjustments_verified: Annotated[StrictFloat | None, Field(description='Buyer-accepted economic reductions for this action.'), OmittedNotNull] = None
+    net_cost: Annotated[StrictFloat | None, Field(description='Gross action commitment minus verified economic reductions.'), OmittedNotNull] = None
+    headroom_restored: Annotated[StrictFloat | None, Field(description='Verified adjustments eligible to restore headroom under the plan accounting mode.'), OmittedNotNull] = None
+    net_committed: Annotated[StrictFloat | None, Field(description='Current ledger obligation for this action after restored headroom.'), OmittedNotNull] = None
     seller_reported_spend: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     buyer_observed_spend: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     delivery_reporting_period: Annotated[ObjStartEnd | None, Field(description='Current seller statement period summarized for this governed action.'), OmittedNotNull] = None
     conservative_exposure: Annotated[NonNegativeFloat | None, Field(description='Greater of seller-reported and buyer-observed spend while evidence is unresolved.'), OmittedNotNull] = None
     delivery_reconciliation_status: Annotated[GovernedActionsItemDeliveryReconciliationStatus | None, OmittedNotNull] = None
     delivery_period_state: Annotated[GovernedActionsItemDeliveryPeriodState | None, Field(description='Whether the current governance reporting period remains actionable. Closure is not final billing.'), OmittedNotNull] = None
-    check_count: Annotated[int, Field(description='Number of governance checks performed for this action.')]
+    check_count: Annotated[StrictInt, Field(description='Number of governance checks performed for this action.'), SchemaIntegral]
     seller_reference: Annotated[str | None, Field(description="The seller's identifier for the resource (e.g., media_buy_id, rights_grant_id). Present when reported via report_plan_outcome."), OmittedNotNull] = None
 
 
@@ -413,7 +423,7 @@ class PlansItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items')
     plan_id: Annotated[str, Field(description='Plan identifier.')]
-    plan_version: Annotated[int, Field(description='Current plan version.')]
+    plan_version: Annotated[StrictInt, Field(description='Current plan version.'), SchemaIntegral]
     status: Annotated[PlansItemStatus, Field(description='Plan lifecycle status.')]
     budget: Annotated[Budget, Field(description='Budget state.')]
     channel_allocation: Annotated[dict[str, ChannelAllocationValue] | None, Field(description='Current channel mix. Keyed by channel ID.'), OmittedNotNull] = None

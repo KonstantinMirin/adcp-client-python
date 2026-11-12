@@ -230,6 +230,20 @@ def _data_type(decided: ir.TypeRef) -> Any:
         )
     if decided.path == "None":
         return _TYPES.data_type(type="None")
+    if decided.path in ir.STRICT_SCALAR:
+        # **§5's ``type`` row, at the ONE place a decided type becomes a hint.**  A scalar
+        # word arrives here as the builtin the row names -- from a node's own ``type``
+        # (``lower/scalars.py``), from a constrained alias's inner type
+        # (``constraints.SCALAR_PATH``), from a list's element and from a mapping's value
+        # -- so one substitution over the three builtins reaches every position a keyword
+        # states, and no caller has to remember to ask.  ``ir.STRICT_SCALAR`` carries what
+        # each word admits and why the carrier is the carrier; the integer's narrowing
+        # rides on the trailing marker (:attr:`DataModelField.integral`), because a
+        # validator written into the hint takes the field's bound out of the published
+        # schema.
+        return _TYPES.get_data_type_from_full_path(
+            f"pydantic.{ir.STRICT_SCALAR[decided.path]}", is_custom_type=False
+        )
     if decided.local:
         return _TYPES.data_type(
             reference=Reference(
@@ -514,23 +528,50 @@ class _OptionalMember(DataModelField):
     #: :func:`_field`, which is the one place the decision is made.
     omits_null: bool = False
 
+    #: **Whether this position's own type is a bare ``integer``**, read at :func:`_field`
+    #: off the decided type for ``omits_null``'s reason -- one place decides.
+    #:
+    #: ``{"type": "integer"}`` in draft-07 is a number with a zero fractional part, so the
+    #: document admits ``1.0`` and a strict ``int`` alone refuses it
+    #: (:data:`codegen.ir.STRICT_SCALAR`).  :data:`codegen.ir.SCHEMA_INTEGRAL` narrows it,
+    #: and it has to arrive AFTER ``Field(...)``: measured on pydantic 2.13.5, a validator
+    #: inside the hint takes ``minimum``/``maximum`` out of ``model_json_schema()`` and
+    #: leaves ``ge``/``le`` in their place, which would move the published schema of every
+    #: bounded integer in the tree.  The trailing block is the one slot where a marker sits
+    #: after the call, which is why the narrowing rides here and not on the hint.
+    integral: bool = False
+
     def _marked(self, field_call: str) -> str:
-        """``Annotated[<hint>, <Field(...)>, OmittedNotNull]``, with the middle optional.
+        """``Annotated[<hint>, <Field(...)>, OmittedNotNull, SchemaIntegral]``, with
+        everything after the hint optional.
 
         ``Field(...)`` is absent for a field that states no description, no alias and no
         constraint, and the marker then stands alone beside the hint -- which is what makes
         the ``Annotated`` appear on a field the layer would have rendered bare.
+
+        The two markers are independent and both can be true of one field: an optional
+        integer property states both a presence rule and a type, and the order here is the
+        order pydantic reads them in -- the narrowing last, so it sees the value the
+        document sent.
         """
-        parts = [part for part in (field_call, OMITTED_NOT_NULL[1]) if part]
+        parts = [
+            part
+            for part, carried in (
+                (field_call, bool(field_call)),
+                (OMITTED_NOT_NULL[1], self.omits_null),
+                (ir.SCHEMA_INTEGRAL, self.integral),
+            )
+            if carried
+        ]
         return f"Annotated[{self.type_hint}, {', '.join(parts)}]"
 
-    #: **Whether this field renders the marker at all**, which is the one predicate both
-    #: writers below ask: a ``ClassVar`` has no presence question (the layer renders no
+    #: **Whether this field renders a trailing marker at all**, which is the one predicate
+    #: both writers below ask: a ``ClassVar`` has no presence question (the layer renders no
     #: ``| None`` for one either), and a field the layer renders un-annotated still takes
     #: the marker, which is why this does not read ``use_annotated`` alone.
     @property
     def _marks(self) -> bool:
-        return self.omits_null and not self.is_class_var and self.use_annotated
+        return (self.omits_null or self.integral) and not self.is_class_var and self.use_annotated
 
     @property
     def annotated(self) -> str | None:
@@ -580,8 +621,22 @@ class _OptionalMember(DataModelField):
         if not self._marks:
             return reported
         annotated = _TYPES.get_data_type_from_full_path("typing.Annotated", is_custom_type=False)
-        wanted = (Import(from_=OMITTED_NOT_NULL[0], import_=OMITTED_NOT_NULL[1]),
-                  *annotated.all_imports)
+        wanted = (
+            *(
+                (Import(from_=OMITTED_NOT_NULL[0], import_=OMITTED_NOT_NULL[1]),)
+                if self.omits_null
+                else ()
+            ),
+            # The narrowing marker is ours and lives beside the carriers it belongs to
+            # (``render.STRICT_LINE``), so the module imports it from the same place it
+            # imports a constrained alias from.
+            *(
+                (Import(from_=ir.CONSTRAINTS_MODULE, import_=ir.SCHEMA_INTEGRAL),)
+                if self.integral
+                else ()
+            ),
+            *annotated.all_imports,
+        )
         return (*reported, *(imp for imp in wanted if imp not in reported))
 
 
@@ -693,6 +748,12 @@ def _field(decided: ir.Field) -> DataModelField:
         # and every ``null`` it ever took.  The reading is wrong only in the direction
         # that loses a refusal, which is that function's own argument.
         omits_null=not decided.required and not ir.admits_null(decided.type),
+        # **§5's ``type`` row for ``integer``, asked of the position's OWN type.**  A node
+        # whose type is the bare builtin takes the narrowing here; a node whose type is a
+        # constrained ALIAS takes it on the alias's own line instead -- `alias()` renders
+        # that line through this same function, so the marker is written exactly once per
+        # position and a field referencing the alias inherits it.
+        integral=decided.type.path == ir.INTEGER_PATH,
         **kwargs,
     )
 
@@ -2064,6 +2125,45 @@ URL_LINE = "\n".join(
     ]
 )
 
+#: **THE SCALAR CARRIERS, declared whatever a run met, for :data:`URL_LINE`'s own
+#: reason**: :data:`codegen.ir.STRICT_SCALAR` is a DECISION about what a ``type`` keyword
+#: admits, every scalar field in the tree points at one of these, and a consumer
+#: annotating an integer of their own imports the name from here.
+#:
+#: Two names for one word, because a ``Field(...)`` has to sit between the halves.
+#: ``SchemaInt`` is the bare integer -- the hint a node with no constraint takes -- and
+#: ``SchemaIntegral`` is the trailing marker a CONSTRAINED integer takes after its
+#: ``Field(...)``, which is the only ordering that keeps ``minimum``/``maximum`` in the
+#: published schema (:data:`codegen.ir.STRICT_SCALAR` carries the measurement).  The
+#: narrowing function is upstream's own ``as_json_schema_integer``, restored in
+#: ``adcp.types._scalar`` and already stating draft-07's reading of ``integer`` -- so this
+#: declares no second copy of it.
+#:
+#: ``StrictFloat`` and ``StrictBool`` are pydantic's and are RE-EXPORTED rather than
+#: rebound (:data:`STRICT_REEXPORTS`), for the reason ``HttpUrl`` is: the module names
+#: every carrier the emitter chooses between, and a consumer reading one that declared
+#: only the integer would read the strictness as an integer rule.
+STRICT_LINE = "\n".join(
+    [
+        f"{ir.SCHEMA_INTEGRAL} = BeforeValidator(as_json_schema_integer)",
+        "",
+        f"{ir.SCHEMA_INT} = Annotated[StrictInt, {ir.SCHEMA_INTEGRAL}]",
+    ]
+)
+
+#: What :data:`STRICT_LINE` names.
+STRICT_IMPORTS = {
+    ("typing", "Annotated"),
+    ("pydantic", "BeforeValidator"),
+    ("pydantic", ir.STRICT_INT),
+    ("adcp.types._scalar", "as_json_schema_integer"),
+}
+
+#: The two carriers that are pydantic's own, re-exported the way ``HttpUrl`` is: no
+#: assignment, so nothing here restates what pydantic defines, and ``X as X`` is PEP
+#: 484's explicit re-export so ``F401`` reads it as the declaration it is.
+STRICT_REEXPORTS = {("pydantic", "StrictFloat"), ("pydantic", "StrictBool")}
+
 #: What :data:`URL_LINE` names.
 URL_IMPORTS = {
     ("typing", "Annotated"),
@@ -2457,12 +2557,22 @@ def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
     grouping.  The copy had drifted by one blank line, which is one ``I001``.
     """
     declared, variables = constraint_names.declarations(shapes)
-    imports: set[tuple[str, str]] = set(URL_IMPORTS)
-    lines: list[str] = [URL_LINE]
+    imports: set[tuple[str, str]] = set(URL_IMPORTS) | set(STRICT_IMPORTS)
+    lines: list[str] = [STRICT_LINE, "", URL_LINE]
     for name in sorted(declared):
         rendered = alias(declared[name])
         lines.append(rendered.text)
-        imports |= {i for i in rendered.imports if i != (ir.BASE_MODULE, "SchemaRef")}
+        # The ``SchemaRef`` drop is this module having no document; the SECOND drop is this
+        # module being the one that DECLARES the scalar carriers -- an integer alias here
+        # reports ``SchemaIntegral`` exactly as an alias in an emitted module does, and
+        # importing it from the module that defines it is a self-import.  Dropped by the
+        # module's own path rather than by the name, so a carrier added beside it is
+        # covered without a second line here.
+        imports |= {
+            i
+            for i in rendered.imports
+            if i != (ir.BASE_MODULE, "SchemaRef") and i[0] != ir.CONSTRAINTS_MODULE
+        }
     if variables:
         imports.add(("typing", "TypeVar"))
         lines = [f'{p} = TypeVar("{p}")' for p in variables] + ["", *lines]
@@ -2472,7 +2582,7 @@ def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
             BESIDE_HEADER,
             CONSTRAINTS_DOCSTRING,
             "",
-            *_import_section(imports, body, URL_REEXPORTS),
+            *_import_section(imports, body, URL_REEXPORTS | STRICT_REEXPORTS),
             body,
         ]
     )

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import Field
+from pydantic import Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
@@ -40,14 +40,14 @@ class CreativeOperationFormatDeclaration(AdCPBaseModel):
     format_option_id: Annotated[str | None, Field(description='Stable publisher- or product-declaration identity that this creative operation can satisfy. When publisher_domain is present, this field is required.'), OmittedNotNull] = None
     publisher_domain: Annotated[DomainName | None, Field(description='Publisher namespace for format_option_id when this operation claims compatibility with a publisher declaration.'), OmittedNotNull] = None
     macro_resolution_capabilities: Annotated[list[MacroProcessingCapability] | None, Field(description='Creative-route processing capabilities for exact macro dialect identities, semantics, operations, actors, contexts, and encodings. These capabilities describe build, validation, or preview processing and do not grant seller production authority.', min_length=1), OmittedNotNull] = None
-    technical_requirements_complete: Annotated[bool | None, OmittedNotNull] = None
+    technical_requirements_complete: Annotated[StrictBool | None, OmittedNotNull] = None
     display_name: Annotated[str | None, OmittedNotNull] = None
     sample_render_url: Annotated[HTTPSURL | None, OmittedNotNull] = None
     applies_to_channels: Annotated[list[MediaChannel] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     seller_preference: Annotated[SellerPreference | None, OmittedNotNull] = None
     locale_policy: Annotated[CreativeLocalePolicy | None, OmittedNotNull] = None
-    canonical_formats_only: Annotated[bool | None, OmittedNotNull] = False
-    experimental: Annotated[bool | None, OmittedNotNull] = False
+    canonical_formats_only: Annotated[StrictBool | None, OmittedNotNull] = False
+    experimental: Annotated[StrictBool | None, OmittedNotNull] = False
     format_shape: Annotated[str | None, OmittedNotNull] = None
     v1_format_ref: Annotated[list[FormatReferenceStructuredObject] | None, Field(min_length=1), OmittedNotNull] = None
     format_schema: Annotated[PlatformExtensionReference | None, OmittedNotNull] = None

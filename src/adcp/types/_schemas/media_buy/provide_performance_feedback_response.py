@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule
@@ -66,7 +66,7 @@ class ProvidePerformanceFeedbackSuccess(ProvidePerformanceFeedbackResponse):
     status_reason: Annotated[StrMaxLen500 | None, Field(description='Human-readable explanation when application_status is not_applied. May also explain material qualifications on accepted feedback.'), OmittedNotNull] = None
     received_at: Annotated[AwareDatetime | None, Field(description='When the receiving orchestrator gateway or seller stored the assertion.'), OmittedNotNull] = None
     applied_at: Annotated[AwareDatetime | None, Field(description='When the seller incorporated the assertion into its optimization inputs. Present only when application_status is applied.'), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

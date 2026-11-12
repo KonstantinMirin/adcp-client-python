@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule
@@ -203,7 +203,7 @@ class OohMetrics(AdCPBaseModel):
     posting_period_start: Annotated[date | None, Field(description='First in-charge date of the posting period this row covers'), OmittedNotNull] = None
     posting_period_end: Annotated[date | None, Field(description='Last date of the posting period this row covers'), OmittedNotNull] = None
     average_posted_date: Annotated[date | None, Field(description="Average actual posting date across the row's units — the date the display term runs from under OAAA Bulletin §2.2 / Poster §3.2(a) when materials were timely. Read with materials_timely to know whether that rule was in force."), OmittedNotNull] = None
-    materials_timely: Annotated[bool | None, Field(description="Seller's assertion that the buyer delivered acceptable materials by the contractual deadline, which determines whether the §2.2 posting-completion rule (term runs from average posting date) applied. An assertion about the buyer's delivery, not a derived value — it is not recomputable from postings[] evidence, and is the one field in this block that isn't checkable against it."), OmittedNotNull] = None
+    materials_timely: Annotated[StrictBool | None, Field(description="Seller's assertion that the buyer delivered acceptable materials by the contractual deadline, which determines whether the §2.2 posting-completion rule (term runs from average posting date) applied. An assertion about the buyer's delivery, not a derived value — it is not recomputable from postings[] evidence, and is the one field in this block that isn't checkable against it."), OmittedNotNull] = None
     share_of_voice_contracted: Annotated[FloatMin0Max1 | None, Field(description='Contracted share of voice where the buy is rotation-based (e.g., rotary bulletin programs) rather than an exclusive face, on a 0.0-1.0 scale. Share is time-weighted: the sum of contracted display durations divided by the full rotation duration. On equal-duration rotations this equals the slot-count ratio.'), OmittedNotNull] = None
     illuminated_hours: Annotated[OohMetricsIlluminatedHours | None, Field(description='Contracted daily illumination hours for the panels in this row. Determines the measured day-part basis (12/18/24-hour impressions) and the illumination-credit remedy when unmet.'), OmittedNotNull] = None
     estimated_impressions: Annotated[NonNegativeInt | None, Field(description="Modeled audience impressions for the panels and period in this row. This is the channel's delivery number — there is no event-counted alternative. The methodology tier MUST be declared in estimation_basis; provider identity is declared in the row-level measurement_source; the billing vendor is declared in measurement_terms.billing_measurement. The row's top-level impressions SHOULD carry the same value so cross-channel aggregation works without channel-specific logic."), OmittedNotNull] = None

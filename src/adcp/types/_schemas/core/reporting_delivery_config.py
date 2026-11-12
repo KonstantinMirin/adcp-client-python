@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
@@ -77,7 +77,7 @@ class ReportingDeliveryConfiguration(AdCPBaseModel):
     delivery_config_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Caller-selected stable identifier, unique within the authenticated caller and account.')]
     delivery_config_version: Annotated[IntMin1, Field(description='Caller-selected immutable semantic generation. Increment when feed/profile/scope/finality/schedule/method/destination changes; lifecycle fields may change in place.')]
     offering_id: Annotated[ReportingCanonicalizationContractGoldenVectorsAdditionalItemName, Field(description='Atomic reporting offering advertised by the seller that binds feed, profile, schedule, finality, and delivery support.')]
-    active: Annotated[bool, Field(description='Whether new reporting obligations should use this configuration. Inactive configurations remain visible for historical resolution.')]
+    active: Annotated[StrictBool, Field(description='Whether new reporting obligations should use this configuration. Inactive configurations remain visible for historical resolution.')]
     feed_purpose: ReportingFeedPurpose
     report_definition_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Exact immutable semantic definition selected from the offering. This makes the expected obligation identity independently derivable and prevents attribution, timezone, source-mapping, or restatement-policy drift behind a profile label.')]
     reporting_profile: Annotated[ReportingCanonicalizationContractGoldenVectorsAdditionalItemName, Field(description='Versioned semantic profile for the aggregate report, such as media_buy_delivery_v1. It MUST match the selected offering.')]

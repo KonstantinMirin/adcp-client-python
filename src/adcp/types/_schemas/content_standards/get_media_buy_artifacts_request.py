@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
@@ -32,7 +32,7 @@ class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope, AdcpRequest):
     account: Annotated[AccountReference | None, Field(description='Filter artifacts to a specific account. When omitted, returns artifacts across all accessible accounts.'), OmittedNotNull] = None
     media_buy_id: Annotated[str, Field(description='Media buy to get artifacts from')]
     package_ids: Annotated[list[str] | None, Field(description='Filter to specific packages within the media buy', min_length=1), OmittedNotNull] = None
-    failures_only: Annotated[bool | None, Field(description="When true, only return artifacts where the seller's local model returned local_verdict: 'fail'. Useful for auditing false positives. Not useful when the seller does not run a local evaluation model (all verdicts are 'unevaluated')."), OmittedNotNull] = False
+    failures_only: Annotated[StrictBool | None, Field(description="When true, only return artifacts where the seller's local model returned local_verdict: 'fail'. Useful for auditing false positives. Not useful when the seller does not run a local evaluation model (all verdicts are 'unevaluated')."), OmittedNotNull] = False
     time_range: Annotated[TimeRange | None, Field(description='Filter to specific time period'), OmittedNotNull] = None
     pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None

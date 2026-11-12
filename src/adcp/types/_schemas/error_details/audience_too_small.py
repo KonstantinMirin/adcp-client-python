@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 
@@ -16,8 +16,8 @@ class AudienceTooSmallDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/audience-too-small.json', pointer='#')
-    minimum_size: Annotated[float | None, Field(description='Minimum audience size required'), OmittedNotNull] = None
-    current_size: Annotated[float | None, Field(description='Current audience size'), OmittedNotNull] = None
+    minimum_size: Annotated[StrictFloat | None, Field(description='Minimum audience size required'), OmittedNotNull] = None
+    current_size: Annotated[StrictFloat | None, Field(description='Current audience size'), OmittedNotNull] = None
 
 
 __all__ = ["AudienceTooSmallDetails"]

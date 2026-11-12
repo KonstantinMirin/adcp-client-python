@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
@@ -62,12 +62,12 @@ class CanonicalFormatDisplayTag(CanonicalFormatBase):
     max_height: Annotated[IntMin1 | None, Field(description='Maximum accepted height for responsive third-party tags. Pair with `min_height`.'), OmittedNotNull] = None
     supported_tag_types: Annotated[list[SupportedTagTypesItem] | None, Field(description='Deprecated ambiguous mechanism list. Use `supported_delivery_types`; markup subtype lives on the `display_tag` asset.'), OmittedNotNull] = None
     supported_delivery_types: Annotated[list[SupportedDeliveryTypesItem] | None, Field(description='Closed set of delivery types this format option can traffic. `paired_redirect` means one atomic ad-request/click-through pair (Internal Redirect semantics), never independently matchable URL slots.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    ssl_required: Annotated[bool | None, Field(description='Whether the tag URL must be HTTPS.'), OmittedNotNull] = None
+    ssl_required: Annotated[StrictBool | None, Field(description='Whether the tag URL must be HTTPS.'), OmittedNotNull] = None
     max_redirect_depth: Annotated[NonNegativeInt | None, Field(description='Maximum redirect chain depth permitted.'), OmittedNotNull] = None
     max_response_time_ms: Annotated[IntMin1 | None, Field(description='Maximum tag-server response time in milliseconds.'), OmittedNotNull] = None
-    backup_image_required: Annotated[bool | None, Field(description='Whether a backup image must accompany the tag for environments that cannot render the third-party tag.'), OmittedNotNull] = None
+    backup_image_required: Annotated[StrictBool | None, Field(description='Whether a backup image must accompany the tag for environments that cannot render the third-party tag.'), OmittedNotNull] = None
     backup_image_max_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
-    om_sdk_required: Annotated[bool | None, Field(description="Whether the buyer's tag must integrate IAB Open Measurement SDK for viewability."), OmittedNotNull] = None
+    om_sdk_required: Annotated[StrictBool | None, Field(description="Whether the buyer's tag must integrate IAB Open Measurement SDK for viewability."), OmittedNotNull] = None
 
 
 Size = SizesItem

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
@@ -35,7 +35,7 @@ class DAASTAsset(BranchDispatchMixin, AdCPBaseModel):
     daast_version: Annotated[DAASTVersion | None, Field(description='DAAST specification version'), OmittedNotNull] = None
     duration_ms: Annotated[NonNegativeInt | None, Field(description='Expected audio duration in milliseconds (if known)'), OmittedNotNull] = None
     tracking_events: Annotated[list[DAASTTrackingEvent] | None, Field(description='Tracking events supported by this DAAST tag'), OmittedNotNull] = None
-    companion_ads: Annotated[bool | None, Field(description='Whether companion display ads are included'), OmittedNotNull] = None
+    companion_ads: Annotated[StrictBool | None, Field(description='Whether companion display ads are included'), OmittedNotNull] = None
     transcript_url: Annotated[HostedUrl | None, Field(description='URL to text transcript of the audio content'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance'), OmittedNotNull] = None
     macro_declarations: Annotated[list[MacroDeclaration] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1), OmittedNotNull] = None

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Distinct, Presence, PresenceGroups, PropertyCount, Rule
@@ -23,8 +23,8 @@ class Range(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    min: Annotated[float | None, OmittedNotNull] = None
-    max: Annotated[float | None, OmittedNotNull] = None
+    min: Annotated[StrictFloat | None, OmittedNotNull] = None
+    max: Annotated[StrictFloat | None, OmittedNotNull] = None
 
 
 class Taxonomy(AdCPBaseModel):
@@ -55,7 +55,7 @@ class AudienceCharacteristic(AdCPBaseModel):
         Approximation(document='core/audience-characteristic.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dimension': {'const': 'age'}}, 'required': ['dimension']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     dimension: Annotated[Literal['age'] | AdCPUrl, Field(description='Canonical dimension name or HTTPS URI. AdCP 3.2 defines `age`; other values remain provider- or taxonomy-scoped.')]
-    value: Annotated[str | float | bool | Annotated[NonEmptyList[str | float | bool], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())] | None, Field(description='Scalar or set value for the dimension.'), OmittedNotNull] = None
+    value: Annotated[str | StrictFloat | StrictBool | Annotated[NonEmptyList[str | StrictFloat | StrictBool], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())] | None, Field(description='Scalar or set value for the dimension.'), OmittedNotNull] = None
     range: Annotated[Range | None, Field(description='Inclusive numeric interval. For dimension `age`, values are completed years and MUST be non-negative integers, and min MUST be less than or equal to max. JSON Schema enforces the age value and bound types; implementations enforce the relational min <= max constraint.'), OmittedNotNull] = None
     taxonomy: Annotated[Taxonomy | None, Field(description='External system that defines the dimension or value. Taxonomy metadata is descriptive and does not create exact demographic targeting semantics.'), OmittedNotNull] = None
     label: Annotated[str | None, Field(description='Human-readable display label; never the comparison key.'), OmittedNotNull] = None

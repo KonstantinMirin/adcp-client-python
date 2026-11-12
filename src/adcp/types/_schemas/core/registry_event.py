@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
@@ -429,7 +429,7 @@ class AgentProfilePayload(AdCPBaseModel):
     delivery_types: Annotated[StringArray | None, OmittedNotNull] = None
     property_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     publisher_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
-    has_tmp: Annotated[bool | None, OmittedNotNull] = None
+    has_tmp: Annotated[StrictBool | None, OmittedNotNull] = None
     updated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
 
@@ -753,17 +753,17 @@ class AuthorizationPayload(AdCPBaseModel):
     collections: Annotated[list[CollectionSelector] | None, Field(description='Collection constraints from authorized_agents[*].collections. When set, the event does NOT authorize the property unqualified — consumers building a local authorization index MUST scope the grant to these selectors and fail closed when a query carries no collection scope. A selector without collection_ids is a bulk grant for all collections declared at that publisher_domain.', min_length=1), OmittedNotNull] = None
     countries: Annotated[Countries | None, OmittedNotNull] = None
     delegation_type: Annotated[DelegationType | None, OmittedNotNull] = None
-    exclusive: Annotated[bool | None, OmittedNotNull] = None
+    exclusive: Annotated[StrictBool | None, OmittedNotNull] = None
     signing_keys: Annotated[list[AgentSigningKey] | None, Field(description='Publisher-attested signing keys copied from adagents.json when the registry has them. Advisory in feed events; verifiers MUST re-fetch the authoritative publisher artifact before treating keys as a trust anchor.', min_length=1), OmittedNotNull] = None
     effective_from: Annotated[AwareDatetime | None, OmittedNotNull] = None
     effective_until: Annotated[AwareDatetime | None, OmittedNotNull] = None
     evidence: Annotated[Evidence | None, OmittedNotNull] = None
-    disputed: Annotated[bool | None, OmittedNotNull] = None
+    disputed: Annotated[StrictBool | None, OmittedNotNull] = None
     created_by: str | None = None
     expires_at: AwareDatetime | None = None
     created_at: AwareDatetime | None = None
     updated_at: AwareDatetime | None = None
-    override_applied: Annotated[bool | None, OmittedNotNull] = None
+    override_applied: Annotated[StrictBool | None, OmittedNotNull] = None
     override_reason: str | None = None
 
 

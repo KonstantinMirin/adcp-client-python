@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0Max100
+from adcp.types.constraints import FloatMin0Max100, SchemaIntegral
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -22,8 +22,8 @@ class GetProductsWorking(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-async-response-working.json', pointer='#')
     percentage: Annotated[FloatMin0Max100 | None, Field(description='Progress percentage of the search operation'), OmittedNotNull] = None
     current_step: Annotated[str | None, Field(description="Current step in the search process (e.g., 'searching_inventory', 'validating_availability')"), OmittedNotNull] = None
-    total_steps: Annotated[int | None, Field(description='Total number of steps in the search process'), OmittedNotNull] = None
-    step_number: Annotated[int | None, Field(description='Current step number (1-indexed)'), OmittedNotNull] = None
+    total_steps: Annotated[StrictInt | None, Field(description='Total number of steps in the search process'), OmittedNotNull, SchemaIntegral] = None
+    step_number: Annotated[StrictInt | None, Field(description='Current step number (1-indexed)'), OmittedNotNull, SchemaIntegral] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

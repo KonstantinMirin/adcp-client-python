@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
@@ -74,7 +74,7 @@ class Consent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/identity-match-request.json', pointer='#/properties/consent')
-    gdpr: Annotated[bool | None, Field(description='Whether GDPR applies to this request.'), OmittedNotNull] = None
+    gdpr: Annotated[StrictBool | None, Field(description='Whether GDPR applies to this request.'), OmittedNotNull] = None
     tcf_consent: Annotated[str | None, Field(description='IAB TCF v2.2 consent string. Present when gdpr is true.'), OmittedNotNull] = None
     gpp: Annotated[str | None, Field(description='IAB Global Privacy Platform string.'), OmittedNotNull] = None
     us_privacy: Annotated[str | None, Field(description='US Privacy string (CCPA). Deprecated in favor of GPP but still widely used.'), OmittedNotNull] = None

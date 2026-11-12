@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
@@ -24,8 +24,8 @@ class ObjMinMax(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-listing.json', pointer='#/properties/range')
-    min: Annotated[float, Field(description='Minimum value, inclusive.')]
-    max: Annotated[float, Field(description='Maximum value, inclusive.')]
+    min: Annotated[StrictFloat, Field(description='Minimum value, inclusive.')]
+    max: Annotated[StrictFloat, Field(description='Maximum value, inclusive.')]
 
 
 class SignalListing(AdCPBaseModel):

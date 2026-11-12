@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
@@ -219,7 +219,7 @@ class IdentifierMatchProofsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/identifier_match_proofs/items')
     identifier_value_sha256: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem, Field(description='Echo of one digest from `params.identifier_value_digests` so the runner can pair this proof with the identifier it queried.')]
-    found: Annotated[bool, Field(description='True if any string token in the recorded payload hashes to the queried digest. False otherwise.')]
+    found: Annotated[StrictBool, Field(description='True if any string token in the recorded payload hashes to the queried digest. False otherwise.')]
 
 
 class RecordedCallsItem(BranchDispatchMixin, AdCPBaseModel):
@@ -303,7 +303,7 @@ class UpstreamTrafficSuccess(ComplyTestControllerResponse):
     success: Literal[True]
     recorded_calls: Annotated[list[RecordedCallsItem], Field(description="Outbound HTTP calls caused by the requesting principal in the requested window, ordered by `timestamp` ascending. Cross-caller calls MUST NOT appear here. Each item declares its `attestation_mode`: `raw` items carry the full `payload`; `digest` items carry `payload_digest_sha256` + `payload_length` + optional `identifier_match_proofs[]` instead, for adopters who can't return raw payloads under their privacy/data-residency policy.")]
     total_count: Annotated[NonNegativeInt, Field(description='Total calls in the requested window before any pagination — `recorded_calls.length` may be smaller when `params.limit` truncated the response.')]
-    truncated: Annotated[bool | None, Field(description='True when `total_count > recorded_calls.length`. Runners MAY raise the `limit` and re-query, but storyboards SHOULD declare assertions that fit within the default 100-call window — a truncated response is a signal that the storyboard step is causing more upstream activity than expected.'), OmittedNotNull] = None
+    truncated: Annotated[StrictBool | None, Field(description='True when `total_count > recorded_calls.length`. Runners MAY raise the `limit` and re-query, but storyboards SHOULD declare assertions that fit within the default 100-call window — a truncated response is a signal that the storyboard step is causing more upstream activity than expected.'), OmittedNotNull] = None
     since_timestamp: Annotated[AwareDatetime, Field(description="Echo of the `since_timestamp` the runner requested (or the session-start timestamp the adopter substituted when the runner omitted it). Informational — the runner SHOULD use its own clock-bracket of when it issued the AdCP step request, not this echo, when attributing recorded_calls to a specific step. The controller is part of the adopter's claimed conformance; the echo is not adversarially trustworthy.")]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

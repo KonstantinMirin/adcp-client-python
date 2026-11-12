@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
@@ -21,6 +21,7 @@ from adcp.types.constraints import (
     IntMin100Max900,
     NonEmptyList,
     PropertyRegion,
+    SchemaIntegral,
     StrFormatEmailMaxLen255,
     StrMaxLen100,
     StrMaxLen500,
@@ -337,8 +338,8 @@ class Logo(AdCPBaseModel):
     tags: Annotated[list[str] | None, Field(description='Additional semantic tags for custom categorization beyond the standard orientation, background, and variant fields'), OmittedNotNull] = None
     slots: Annotated[list[LogoSlot] | None, Field(description='Canonical renderer slots where this logo is appropriate. Consumers SHOULD prefer this over inferring from tags or usage prose when selecting a logo for a specific UI surface.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     usage: Annotated[str | None, Field(description="Human-readable description of when to use this logo variant (e.g., 'Primary logo for use on light backgrounds')"), OmittedNotNull] = None
-    width: Annotated[int | None, Field(description='Width in pixels'), OmittedNotNull] = None
-    height: Annotated[int | None, Field(description='Height in pixels'), OmittedNotNull] = None
+    width: Annotated[StrictInt | None, Field(description='Width in pixels'), OmittedNotNull, SchemaIntegral] = None
+    height: Annotated[StrictInt | None, Field(description='Height in pixels'), OmittedNotNull, SchemaIntegral] = None
 
 
 ColorValue = BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue]
@@ -460,10 +461,10 @@ class Asset(AdCPBaseModel):
     tags: Annotated[list[str] | None, Field(description="Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')"), OmittedNotNull] = None
     name: Annotated[LocalizedScalar | None, Field(description='Human-readable name, either a legacy plain string or localized values.'), OmittedNotNull] = None
     description: Annotated[LocalizedScalar | None, Field(description='Asset description or usage notes, either a legacy plain string or localized values.'), OmittedNotNull] = None
-    width: Annotated[int | None, Field(description='Image/video width in pixels'), OmittedNotNull] = None
-    height: Annotated[int | None, Field(description='Image/video height in pixels'), OmittedNotNull] = None
-    duration_seconds: Annotated[float | None, Field(description='Video/audio duration in seconds'), OmittedNotNull] = None
-    file_size_bytes: Annotated[int | None, Field(description='File size in bytes'), OmittedNotNull] = None
+    width: Annotated[StrictInt | None, Field(description='Image/video width in pixels'), OmittedNotNull, SchemaIntegral] = None
+    height: Annotated[StrictInt | None, Field(description='Image/video height in pixels'), OmittedNotNull, SchemaIntegral] = None
+    duration_seconds: Annotated[StrictFloat | None, Field(description='Video/audio duration in seconds'), OmittedNotNull] = None
+    file_size_bytes: Annotated[StrictInt | None, Field(description='File size in bytes'), OmittedNotNull, SchemaIntegral] = None
     format: Annotated[str | None, Field(description="File format (e.g., 'jpg', 'mp4', 'mp3')"), OmittedNotNull] = None
     metadata: Annotated[dict[str, Any] | None, Field(description='Additional asset-specific metadata'), OmittedNotNull] = None
 
@@ -514,7 +515,7 @@ class BrandDiscoveryProperty(AdCPBaseModel):
     identifier: Annotated[StrMinLen1, Field(description='Property identifier - domain for websites, bundle ID for apps')]
     store: Annotated[Store | None, Field(description='App store for mobile/CTV apps'), OmittedNotNull] = None
     region: Annotated[PropertyRegion | None, Field(description="ISO 3166-1 alpha-2 country code or 'global'"), OmittedNotNull] = None
-    primary: Annotated[bool | None, Field(description='Whether this is the primary property for the brand'), OmittedNotNull] = False
+    primary: Annotated[StrictBool | None, Field(description='Whether this is the primary property for the brand'), OmittedNotNull] = False
     relationship: Annotated[Relationship | None, Field(description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.", json_schema_extra={'default': 'owned'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Relationship).validate_python('owned'))
 
 
@@ -548,7 +549,7 @@ class DisclaimersItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/disclaimers/items')
     text: str
     context: Annotated[str | None, OmittedNotNull] = None
-    required: Annotated[bool | None, OmittedNotNull] = True
+    required: Annotated[StrictBool | None, OmittedNotNull] = True
 
 
 class Status(StrEnum):
@@ -813,8 +814,8 @@ class BrandShapesUsage(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand_shapes/properties/usage')
-    max_per_layout: Annotated[int | None, Field(description='Maximum distinct shapes per layout'), OmittedNotNull] = None
-    overlap_allowed: Annotated[bool | None, Field(description='Whether shapes may overlap'), OmittedNotNull] = None
+    max_per_layout: Annotated[StrictInt | None, Field(description='Maximum distinct shapes per layout'), OmittedNotNull, SchemaIntegral] = None
+    overlap_allowed: Annotated[StrictBool | None, Field(description='Whether shapes may overlap'), OmittedNotNull] = None
 
 
 class BrandShapes(AdCPBaseModel):
@@ -868,7 +869,7 @@ class IconographyUsage(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/iconography/properties/usage')
-    max_per_frame: Annotated[int | None, Field(description='Maximum icons per creative frame'), OmittedNotNull] = None
+    max_per_frame: Annotated[StrictInt | None, Field(description='Maximum icons per creative frame'), OmittedNotNull, SchemaIntegral] = None
     size_ratio: Annotated[str | None, Field(description="Icon-to-layout size ratio (e.g., '1:8')"), OmittedNotNull] = None
 
 
@@ -1104,7 +1105,7 @@ class GraphicElement(AdCPBaseModel):
     description: Annotated[str | None, Field(description='How the element is used in layouts'), OmittedNotNull] = None
     orientation: Annotated[Orientation | None, Field(description='Preferred orientation when used in layouts'), OmittedNotNull] = None
     colors: Annotated[list[HexColor] | None, Field(description='Colors this element may appear in'), OmittedNotNull] = None
-    max_per_layout: Annotated[int | None, Field(description='Maximum instances per layout'), OmittedNotNull] = None
+    max_per_layout: Annotated[StrictInt | None, Field(description='Maximum instances per layout'), OmittedNotNull, SchemaIntegral] = None
 
 
 class TransitionStyle(StrEnum):
@@ -1180,7 +1181,7 @@ class MotionGuidelines(AdCPBaseModel):
     easing: Annotated[str | None, Field(description="Default easing function (e.g., 'ease-in-out', 'spring', 'linear')"), OmittedNotNull] = None
     text_entrance: Annotated[TextEntrance | None, Field(description='How text enters the frame'), OmittedNotNull] = None
     pacing: Annotated[MotionGuidelinesPacing | None, Field(description='Overall editing rhythm'), OmittedNotNull] = None
-    kinetic_typography: Annotated[bool | None, Field(description='Whether animated/kinetic typography is allowed'), OmittedNotNull] = None
+    kinetic_typography: Annotated[StrictBool | None, Field(description='Whether animated/kinetic typography is allowed'), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description='Additional motion style descriptors'), OmittedNotNull] = None
 
 

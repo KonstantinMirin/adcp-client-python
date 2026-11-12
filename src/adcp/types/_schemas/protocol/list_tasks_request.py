@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpRequest
@@ -28,7 +28,7 @@ class ListTasksRequest(AdCPVersionEnvelope, AdcpRequest):
     filters: Annotated[Filters | None, Field(description='Filter criteria for querying tasks'), OmittedNotNull] = None
     sort: Annotated[Sort | None, Field(description='Sorting parameters'), OmittedNotNull] = None
     pagination: Annotated[PaginationRequest | None, OmittedNotNull] = None
-    include_history: Annotated[bool | None, Field(description='Include full conversation history for each task (may significantly increase response size)'), OmittedNotNull] = False
+    include_history: Annotated[StrictBool | None, Field(description='Include full conversation history for each task (may significantly increase response size)'), OmittedNotNull] = False
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

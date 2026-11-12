@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMaxLen50, StrMaxLen500
@@ -21,7 +21,7 @@ class MeasurementWindow(AdCPBaseModel):
     description: Annotated[StrMaxLen500 | None, Field(description='Human-readable description of what this window measures'), OmittedNotNull] = None
     duration_days: Annotated[NonNegativeInt, Field(description='Number of days of accumulation included in this window before processing begins. For broadcast, this is DVR accumulation (0 = live only, 3 = live + 3 days DVR, 7 = live + 7 days DVR). For channels without an accumulation period (DOOH tentative→final, digital IVT filtering), this is 0 — maturation is entirely vendor processing time captured in expected_availability_days.')]
     expected_availability_days: Annotated[NonNegativeInt | None, Field(description="Expected number of days after delivery before this window's data is available from the measurement vendor. Captures accumulation time plus vendor processing time. Examples: broadcast C7 from VideoAmp ~22 days (7-day accumulation + ~15-day processing); DOOH tentative plays same-day; DOOH final (post-IVT/fraud-check) ~1 day; digital post-SIVT ~2–3 days."), OmittedNotNull] = None
-    is_guarantee_basis: Annotated[bool | None, Field(description="Whether this window is the basis for delivery guarantees, reconciliation, and invoicing. A product typically has one guarantee basis window (e.g., C7 for most US broadcast, post-IVT final for DOOH). Buyers reconcile against the guarantee basis window's final numbers."), OmittedNotNull] = None
+    is_guarantee_basis: Annotated[StrictBool | None, Field(description="Whether this window is the basis for delivery guarantees, reconciliation, and invoicing. A product typically has one guarantee basis window (e.g., C7 for most US broadcast, post-IVT final for DOOH). Buyers reconcile against the guarantee basis window's final numbers."), OmittedNotNull] = None
 
 
 __all__ = ["MeasurementWindow"]

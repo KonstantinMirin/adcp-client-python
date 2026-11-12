@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
@@ -53,16 +53,16 @@ class CanonicalFormatHTML5Banner(CanonicalFormatBase):
     max_height: Annotated[IntMin1 | None, Field(description='Maximum accepted height for responsive HTML5 banners. Pair with `min_height`.'), OmittedNotNull] = None
     max_initial_load_kb: Annotated[IntMin1 | None, Field(description='Maximum initial-load file size (zip + above-the-fold assets) in kilobytes. IAB display standards: 200 KB for fixed sizes, 100 KB for mobile.'), OmittedNotNull] = None
     max_polite_load_kb: Annotated[IntMin1 | None, Field(description='Maximum polite-load file size after host-initiated subload, in kilobytes. IAB display standards: 500 KB for fixed sizes.'), OmittedNotNull] = None
-    host_initiated_subload: Annotated[bool | None, Field(description='Whether the host page must initiate the polite-load phase. IAB-compliant banners require true.'), OmittedNotNull] = None
+    host_initiated_subload: Annotated[StrictBool | None, Field(description='Whether the host page must initiate the polite-load phase. IAB-compliant banners require true.'), OmittedNotNull] = None
     max_animation_duration_ms: Annotated[NonNegativeInt | None, Field(description='Maximum total animation duration in milliseconds. IAB standard: 30000 (30 seconds).'), OmittedNotNull] = None
     max_cpu_load_percent: Annotated[IntMin1Max100 | None, Field(description='Maximum CPU load percentage during render.'), OmittedNotNull] = None
-    mraid_required: Annotated[bool | None, Field(description='Whether MRAID compatibility is required (mobile in-app).'), OmittedNotNull] = None
+    mraid_required: Annotated[StrictBool | None, Field(description='Whether MRAID compatibility is required (mobile in-app).'), OmittedNotNull] = None
     mraid_version: Annotated[MraidVersion | None, Field(description='Required MRAID version when mraid_required is true.'), OmittedNotNull] = None
-    om_sdk_required: Annotated[bool | None, Field(description='Whether IAB Open Measurement SDK integration is required.'), OmittedNotNull] = None
+    om_sdk_required: Annotated[StrictBool | None, Field(description='Whether IAB Open Measurement SDK integration is required.'), OmittedNotNull] = None
     clicktag_macro: Annotated[Literal['clickTag', 'clickTAG'] | None, Field(description='Name of the click-tag macro the bundle must use.'), OmittedNotNull] = None
-    backup_image_required: Annotated[bool | None, Field(description='Whether a backup image must accompany the zip for non-HTML5 environments.'), OmittedNotNull] = None
+    backup_image_required: Annotated[StrictBool | None, Field(description='Whether a backup image must accompany the zip for non-HTML5 environments.'), OmittedNotNull] = None
     backup_image_max_size_kb: Annotated[IntMin1 | None, Field(description='Maximum backup image file size in kilobytes.'), OmittedNotNull] = None
-    ssl_required: Annotated[bool | None, OmittedNotNull] = None
+    ssl_required: Annotated[StrictBool | None, OmittedNotNull] = None
 
 
 CanonicalFormatHtml5Banner = CanonicalFormatHTML5Banner

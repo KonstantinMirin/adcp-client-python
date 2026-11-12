@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
@@ -47,25 +47,25 @@ class CanonicalReportingCapabilities(AdCPBaseModel):
     available_reporting_frequencies: Annotated[list[ReportingFrequency], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     expected_delay_minutes: NonNegativeInt
     timezone: Annotated[str, Field(description='Explicit reporting-period timezone for this product. It may equal Account.timezone or differ when the upstream platform reports on a separate boundary.')]
-    supports_webhooks: bool
+    supports_webhooks: StrictBool
     reporting_delivery_offering_ids: Annotated[list[ReportingDeliveryOfferingID] | None, Field(description='Product-scoped subset of get_adcp_capabilities.media_buy.reporting_delivery.offerings[].offering_id that packages using this product can satisfy. This binds seller-wide managed-delivery offerings to product/package eligibility. An empty array explicitly declares no managed offering; absence means product-level applicability is unknown and MUST NOT be inferred from the seller-wide list. Account, seat, credential, or provider constraints may narrow support further during sync_accounts validation.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     available_metrics: Annotated[list[AvailableMetric], Field(json_schema_extra={'uniqueItems': True})]
     vendor_metrics: Annotated[list[VendorMetricsItem] | None, OmittedNotNull] = None
-    supports_creative_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_format_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_keyword_breakdown: Annotated[bool | None, OmittedNotNull] = None
+    supports_creative_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_format_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_keyword_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
     supports_geo_breakdown: Annotated[GeographicBreakdownSupport | None, OmittedNotNull] = None
-    supports_device_type_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_device_platform_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_audience_breakdown: Annotated[bool | None, OmittedNotNull] = None
+    supports_device_type_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_device_platform_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_audience_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
     supports_demographic_breakdown: Annotated[DemographicReportingCapability | None, OmittedNotNull] = None
-    supports_placement_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_property_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_collection_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_installment_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_collection_property_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_installment_property_breakdown: Annotated[bool | None, OmittedNotNull] = None
-    supports_placement_property_breakdown: Annotated[bool | None, OmittedNotNull] = None
+    supports_placement_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_property_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_collection_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_installment_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_collection_property_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_installment_property_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
+    supports_placement_property_breakdown: Annotated[StrictBool | None, OmittedNotNull] = None
     supports_spot_breakdown: Annotated[SpotReportingCapability | None, OmittedNotNull] = None
     date_range_support: DateRangeSupport
     windowed_pull_granularities: Annotated[list[ReportingFrequency] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None

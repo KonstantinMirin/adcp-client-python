@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import GovernanceContext, IntMin1, MediaBuyName, StrMaxLen500, StrMinLen1
@@ -44,7 +44,7 @@ class UpdateMediaBuyRequest(AdCPVersionEnvelope, AdcpRequest):
     media_buy_id: Annotated[str, Field(description="Seller's ID of the media buy to update")]
     name: Annotated[MediaBuyName | None, Field(description='Replacement human-readable name for this media buy, used for trafficking UI display and operational communication. Sellers that cannot update name mid-flight SHOULD echo the prior unchanged value in the success response rather than silently dropping the field. This display label is not an identifier or financial reference.'), OmittedNotNull] = None
     revision: Annotated[IntMin1 | None, Field(description="Expected current revision for optimistic concurrency. Optional for backward compatibility. When provided, sellers MUST reject the update with CONFLICT if the media buy's current revision does not match, and MUST enforce that comparison atomically with the write. Obtain from get_media_buys or the most recent create/update response."), OmittedNotNull] = None
-    paused: Annotated[bool | None, Field(description='Pause/resume the entire media buy (true = paused, false = active)'), OmittedNotNull] = None
+    paused: Annotated[StrictBool | None, Field(description='Pause/resume the entire media buy (true = paused, false = active)'), OmittedNotNull] = None
     canceled: Annotated[Literal[True] | None, Field(description='Cancel the entire media buy. Cancellation is irreversible — canceled media buys cannot be reactivated. Sellers MAY reject with NOT_CANCELLABLE if the media buy cannot be canceled in its current state.'), OmittedNotNull] = None
     cancellation_reason: Annotated[StrMaxLen500 | None, Field(description='Reason for cancellation. Sellers SHOULD store this and return it in subsequent get_media_buys responses.'), OmittedNotNull] = None
     start_time: Annotated[StartTiming | None, OmittedNotNull] = None

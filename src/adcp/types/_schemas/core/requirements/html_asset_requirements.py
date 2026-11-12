@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatHostname
@@ -34,7 +34,7 @@ class HTMLAssetRequirements(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/html-asset-requirements.json', pointer='#')
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes for the HTML asset'), OmittedNotNull] = None
     sandbox: Annotated[Sandbox | None, Field(description="Sandbox environment the HTML must be compatible with. 'none' = direct DOM access, 'iframe' = standard iframe isolation, 'safeframe' = IAB SafeFrame container, 'fencedframe' = Privacy Sandbox fenced frame", json_schema_extra={'default': 'none'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Sandbox).validate_python('none'))
-    external_resources_allowed: Annotated[bool | None, Field(description='Whether the HTML creative can load external resources (scripts, images, fonts, etc.). When false, all resources must be inlined or bundled.'), OmittedNotNull] = None
+    external_resources_allowed: Annotated[StrictBool | None, Field(description='Whether the HTML creative can load external resources (scripts, images, fonts, etc.). When false, all resources must be inlined or bundled.'), OmittedNotNull] = None
     allowed_external_domains: Annotated[list[StrFormatHostname] | None, Field(description='List of domains the HTML creative may reference for external resources. Only applicable when external_resources_allowed is true.'), OmittedNotNull] = None
 
 

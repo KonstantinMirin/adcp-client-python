@@ -5,10 +5,10 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, StrictInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import StrMinLen1
+from adcp.types.constraints import SchemaIntegral, StrMinLen1
 
 from ..core.canonical_format_kind import CanonicalFormatKind
 
@@ -20,8 +20,8 @@ class V1PatternFormatIdGlob(AdCPBaseModel):
 
 class Dimensions(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf/1/properties/structural/properties/dimensions')
-    width: Annotated[int | None, OmittedNotNull] = None
-    height: Annotated[int | None, OmittedNotNull] = None
+    width: Annotated[StrictInt | None, OmittedNotNull, SchemaIntegral] = None
+    height: Annotated[StrictInt | None, OmittedNotNull, SchemaIntegral] = None
 
 
 class Structural(AdCPBaseModel):
@@ -77,7 +77,7 @@ class MappingsItem(AdCPBaseModel):
     )
     v1_pattern: Annotated[V1PatternFormatIdGlob | V1PatternStructural, Field(description='Match pattern. Carries either format_id_glob OR structural, not both.')]
     v2: V2
-    deprecated: Annotated[bool | None, Field(description='When true, this mapping is retained for backward-compatibility but should not be used for new mappings. SDKs SHOULD emit lint warnings when matching a deprecated entry.'), OmittedNotNull] = False
+    deprecated: Annotated[StrictBool | None, Field(description='When true, this mapping is retained for backward-compatibility but should not be used for new mappings. SDKs SHOULD emit lint warnings when matching a deprecated entry.'), OmittedNotNull] = False
     notes: Annotated[str | None, Field(description='Optional human-readable explanation, examples, or rationale.'), OmittedNotNull] = None
 
 

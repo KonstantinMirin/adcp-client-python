@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Presence, Rule, UniqueItems
@@ -93,7 +93,7 @@ class AgeRestriction(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting.json', pointer='#/properties/age_restriction')
     min: Annotated[AgeRestrictionMin, Field(description='Minimum age required')]
-    verification_required: Annotated[bool | None, Field(description='Whether verified age (not inferred) is required for compliance'), OmittedNotNull] = False
+    verification_required: Annotated[StrictBool | None, Field(description='Whether verified age (not inferred) is required for compliance'), OmittedNotNull] = False
     accepted_methods: Annotated[list[AgeVerificationMethod] | None, Field(description='Accepted verification methods. If omitted, any method the platform supports is acceptable.', min_length=1), OmittedNotNull] = None
 
 

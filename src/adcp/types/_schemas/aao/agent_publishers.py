@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
@@ -54,7 +54,7 @@ class PublisherEntry(AdCPBaseModel):
     properties_authorized: Annotated[NonNegativeInt, Field(description="Count of properties under THIS `publisher_domain` only that the agent's selectors resolve to. Never a network-wide count. The directory computes this by applying the publisher's `adagents.json` selector predicates against the publisher's own properties (federated) OR against the parent file's inline properties carrying matching `publisher_domain` (inline, per adcp#4825 resolution rule).")]
     properties_total: Annotated[NonNegativeInt, Field(description="Count of properties under THIS `publisher_domain` only — total inventory the publisher's file declares. Never a network-wide count. On managed-network-shape parent files (per adcp#4825 inline resolution), this is the count of inline `properties[]` entries whose `publisher_domain` field matches this row's domain.")]
     property_ids: Annotated[list[str] | None, Field(description="Canonical list of `property_id`s under THIS `publisher_domain` that the agent's selectors resolve to. Present iff the request included `?include=properties`; absent otherwise. The set is the same population `properties_authorized` counts, surfaced as IDs so consumers can run full set-diff against a federated fetch (count-equality is not set-equality — a publisher rotating N properties leaves the count unchanged but the set entirely different). Per-publisher scope; never network-wide. Order is unspecified; consumers should treat as a set."), OmittedNotNull] = None
-    signing_keys_pinned: Annotated[bool | None, Field(description="Whether the publisher's adagents.json entry for this agent pins `signing_keys[]`. When true, the agent's signed responses MUST verify against the pinned key set regardless of the agent's own JWKS. Operators should treat true as a signal that their published JWKS must match the publisher's pin."), OmittedNotNull] = None
+    signing_keys_pinned: Annotated[StrictBool | None, Field(description="Whether the publisher's adagents.json entry for this agent pins `signing_keys[]`. When true, the agent's signed responses MUST verify against the pinned key set regardless of the agent's own JWKS. Operators should treat true as a signal that their published JWKS must match the publisher's pin."), OmittedNotNull] = None
     status: Annotated[Status, Field(description="Lifecycle state for this publisher → agent edge. v1: `authorized` (selector resolves to ≥ 1 property under this publisher) and `revoked` (this publisher_domain newly appears in a parent file's `revoked_publisher_domains[]`; emitted as a tombstone on the next sync after revocation lands, then dropped). Future states (`unbound`, `pending`) deferred — the directory does not have the crawler state to emit them honestly.")]
     last_verified_at: Annotated[AwareDatetime, Field(description="When the directory last fetched and validated this publisher's adagents.json. Distinct from the envelope's `directory_indexed_at` — `last_verified_at` is per-publisher freshness, the envelope value is the most recent refresh in the result set.")]
 

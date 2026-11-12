@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictInt
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl
+from adcp.types.constraints import HostedUrl, SchemaIntegral
 
 from .destination_item import ObjLatLng
 from .ext import ExtensionObject
@@ -88,7 +88,7 @@ class RealEstateItem(AdCPBaseModel):
     image_url: Annotated[HostedUrl | None, Field(description='Primary property image URL.'), OmittedNotNull] = None
     url: Annotated[HostedUrl | None, Field(description='Listing page URL.'), OmittedNotNull] = None
     neighborhood: Annotated[str | None, Field(description='Neighborhood or area name.'), OmittedNotNull] = None
-    year_built: Annotated[int | None, Field(description='Year the property was built.'), OmittedNotNull] = None
+    year_built: Annotated[StrictInt | None, Field(description='Year the property was built.'), OmittedNotNull, SchemaIntegral] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'garden', 'parking', 'renovated', 'waterfront').", min_length=1), OmittedNotNull] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this property listing. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (exterior/interior hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

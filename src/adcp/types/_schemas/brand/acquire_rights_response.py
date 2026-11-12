@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -46,7 +46,7 @@ class Disclosure(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/acquire-rights-response.json', pointer='#/oneOf/0/properties/disclosure')
-    required: Annotated[bool, Field(description='Whether disclosure is required')]
+    required: Annotated[StrictBool, Field(description='Whether disclosure is required')]
     text: Annotated[str | None, Field(description='Disclosure text to include with the creative'), OmittedNotNull] = None
 
 

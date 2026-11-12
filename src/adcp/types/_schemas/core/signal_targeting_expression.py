@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
@@ -63,8 +63,8 @@ class SignalTargetingExpressionNumeric(SignalTargetingExpression):
     )
     signal_ref: Annotated[SignalRef, Field(description='Named signal being targeted.')]
     value_type: Annotated[Literal['numeric'], Field(description='Discriminator for numeric signals.')]
-    min_value: Annotated[float | None, Field(description="Minimum value, inclusive. Omit for no minimum. Should be within the signal definition's range when declared."), OmittedNotNull] = None
-    max_value: Annotated[float | None, Field(description="Maximum value, inclusive. Omit for no maximum. Should be within the signal definition's range when declared."), OmittedNotNull] = None
+    min_value: Annotated[StrictFloat | None, Field(description="Minimum value, inclusive. Omit for no minimum. Should be within the signal definition's range when declared."), OmittedNotNull] = None
+    max_value: Annotated[StrictFloat | None, Field(description="Maximum value, inclusive. Omit for no maximum. Should be within the signal definition's range when declared."), OmittedNotNull] = None
 
 
 SignalTargetingExpression._branch_models = (SignalTargetingExpressionBinary, SignalTargetingExpressionCategorical, SignalTargetingExpressionNumeric,)

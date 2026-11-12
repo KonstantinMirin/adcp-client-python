@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types.constraints import SchemaIntegral
 
 from ..core.ext import ExtensionObject
 from ..core.idempotency_key import IdempotencyKey
@@ -19,9 +20,9 @@ class ChangeSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-list-changed-webhook.json', pointer='#/properties/change_summary')
-    properties_added: Annotated[int | None, Field(description='Number of properties added since last resolution'), OmittedNotNull] = None
-    properties_removed: Annotated[int | None, Field(description='Number of properties removed since last resolution'), OmittedNotNull] = None
-    total_properties: Annotated[int | None, Field(description='Total properties in the resolved list'), OmittedNotNull] = None
+    properties_added: Annotated[StrictInt | None, Field(description='Number of properties added since last resolution'), OmittedNotNull, SchemaIntegral] = None
+    properties_removed: Annotated[StrictInt | None, Field(description='Number of properties removed since last resolution'), OmittedNotNull, SchemaIntegral] = None
+    total_properties: Annotated[StrictInt | None, Field(description='Total properties in the resolved list'), OmittedNotNull, SchemaIntegral] = None
 
 
 class PropertyListChangedWebhook(AdCPBaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
@@ -42,14 +42,14 @@ class CreativeFilters(AdCPBaseModel):
     updated_before: Annotated[AwareDatetime | None, Field(description='Filter creatives last updated before this date (ISO 8601)'), OmittedNotNull] = None
     assigned_to_packages: Annotated[list[str] | None, Field(description='Filter creatives assigned to any of these packages. Sales-agent-specific — standalone creative agents SHOULD ignore this filter.', min_length=1), OmittedNotNull] = None
     media_buy_ids: Annotated[list[str] | None, Field(description='Filter creatives assigned to any of these media buys. Sales-agent-specific — standalone creative agents SHOULD ignore this filter.', min_length=1), OmittedNotNull] = None
-    unassigned: Annotated[bool | None, Field(description='Filter for unassigned creatives when true, assigned creatives when false. Sales-agent-specific — standalone creative agents SHOULD ignore this filter.'), OmittedNotNull] = None
-    has_served: Annotated[bool | None, Field(description='When true, return only creatives that have served at least one impression. When false, return only creatives that have never served.'), OmittedNotNull] = None
+    unassigned: Annotated[StrictBool | None, Field(description='Filter for unassigned creatives when true, assigned creatives when false. Sales-agent-specific — standalone creative agents SHOULD ignore this filter.'), OmittedNotNull] = None
+    has_served: Annotated[StrictBool | None, Field(description='When true, return only creatives that have served at least one impression. When false, return only creatives that have never served.'), OmittedNotNull] = None
     indicator_types: Annotated[list[IndicatorType] | None, Field(description='Return creatives with at least one package assignment carrying any requested current indicator type. Values within this field use OR logic; this field composes with other filters using AND logic. Sales-agent-specific: sellers support this filter only when media_buy.relationship_notifications.projection_tasks includes list_creatives. Other agents SHOULD ignore it and apply remaining filters. Buyers needing exact results MUST verify capability support and paginate the outer result set; assignment_projection: matching bounds nested rows.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     concept_ids: Annotated[list[str] | None, Field(description='Filter by creative concept IDs. Concepts group related creatives across sizes and formats (e.g., Flashtalking concepts, Celtra campaign folders, CM360 creative groups).', min_length=1), OmittedNotNull] = None
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Filter legacy named-format creatives. Use `format_kinds` for canonical libraries.', min_length=1), OmittedNotNull] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(description='Filter by canonical format kinds. Returns creatives matching any supplied kind.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     asset_types: Annotated[list[AssetContentType] | None, Field(description="Filter by asset types present on direct object values in the creative's top-level `assets` map. A creative matches when any directly assigned object has an `asset_type` in this array (OR within this field); this filter is conjunctive with every other active filter (AND across fields). Do not inspect array-valued slots or recurse into nested asset fields such as `cards[].media`; broader traversal is deferred. Agents that do not implement this filter MUST ignore it and apply the remaining filters rather than reject the request. Exact asset-type values use the shared AssetContentType vocabulary; `published_post` selects existing-published-post reference creatives without relying on publisher-specific format IDs.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    has_variables: Annotated[bool | None, Field(description='When true, return only creatives with dynamic variables (DCO). When false, return only static creatives.'), OmittedNotNull] = None
+    has_variables: Annotated[StrictBool | None, Field(description='When true, return only creatives with dynamic variables (DCO). When false, return only static creatives.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, Field(description='Vendor-namespaced extension parameters for seller- or platform-specific creative filter criteria not covered by standard fields. Keys MUST be namespaced under a vendor or platform key (e.g., ext.gam, ext.platform_x). Sellers MUST treat all values as untrusted buyer input; avoid unbounded logging or labels, and do not interpolate values into caller-visible error strings, LLM prompts, SQL queries, or system commands without sanitization. Persistent use of an extension key across multiple buyers is a signal to propose standardization.'), OmittedNotNull] = None
 
 

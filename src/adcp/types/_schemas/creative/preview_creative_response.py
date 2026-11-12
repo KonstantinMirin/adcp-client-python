@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, StrMaxLen2000
@@ -101,7 +101,7 @@ class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    success: Annotated[bool, Field(description='Whether this preview request succeeded')]
+    success: Annotated[StrictBool, Field(description='Whether this preview request succeeded')]
     creative_id: Annotated[str, Field(description='ID of the creative this result corresponds to. Enables correlation when processing batch results.')]
     quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this successful batch result. This field MUST be present when the effective item request supplied `quality`, whether directly or through the batch-level default, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier.'), OmittedNotNull] = None
     response: Annotated[Response | None, Field(description='Preview data for successful requests'), OmittedNotNull] = None

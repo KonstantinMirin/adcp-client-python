@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types.constraints import SchemaIntegral
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -73,7 +74,7 @@ class PlansItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-response.json', pointer='#/properties/plans/items')
     plan_id: Annotated[str, Field(description='Plan identifier.')]
     status: Annotated[PlansItemStatus, Field(description="Sync result status. 'active' means sync succeeded; 'error' means sync failed.")]
-    version: Annotated[int, Field(description='Plan version (increments on each sync).')]
+    version: Annotated[StrictInt, Field(description='Plan version (increments on each sync).'), SchemaIntegral]
     categories: Annotated[list[CategoriesItem] | None, Field(description='Validation categories active for this plan.'), OmittedNotNull] = None
     resolved_policies: Annotated[list[ResolvedPoliciesItem] | None, Field(description='Policies the governance agent will enforce for this plan. Includes explicitly referenced policies from the brand compliance configuration and auto-applied policies matched by jurisdiction or policy category. Present when the governance agent supports policy resolution.'), OmittedNotNull] = None
 

@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -54,7 +54,7 @@ class Credit(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/credit')
     credit_limit: Annotated[NonNegativeFloat, Field(description='Maximum outstanding balance allowed')]
-    available_credit: Annotated[float, Field(description='Remaining credit available (credit_limit minus outstanding balance)')]
+    available_credit: Annotated[StrictFloat, Field(description='Remaining credit available (credit_limit minus outstanding balance)')]
     utilization_percent: Annotated[FloatMin0Max100 | None, Field(description='Credit utilization as a percentage (0-100)'), OmittedNotNull] = None
 
 

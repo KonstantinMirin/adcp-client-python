@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, IntMin1
+from adcp.types.constraints import HostedUrl, IntMin1, SchemaIntegral
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -33,7 +33,7 @@ class CollectionList(AdCPBaseModel):
     cache_duration_hours: Annotated[IntMin1 | None, Field(description='Recommended cache duration for resolved list. Consumers should re-fetch after this period. Defaults to 168 (one week) because collection metadata changes less frequently than property metadata.'), OmittedNotNull] = 168
     created_at: Annotated[AwareDatetime | None, Field(description='When the list was created'), OmittedNotNull] = None
     updated_at: Annotated[AwareDatetime | None, Field(description='When the list was last modified'), OmittedNotNull] = None
-    collection_count: Annotated[int | None, Field(description='Number of collections in the resolved list (at time of last resolution)'), OmittedNotNull] = None
+    collection_count: Annotated[StrictInt | None, Field(description='Number of collections in the resolved list (at time of last resolution)'), OmittedNotNull, SchemaIntegral] = None
 
 
 __all__ = ["CollectionList"]

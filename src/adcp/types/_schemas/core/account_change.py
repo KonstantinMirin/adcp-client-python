@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
@@ -108,7 +108,7 @@ class Repair(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-change.json', pointer='#/properties/repair')
     task: Annotated[Task, Field(description='Allowlisted authoritative read task. This is a repair hint, never an instruction to dispatch dynamically. The buyer constructs and validates the request locally from the authenticated feed account and resource identity.')]
-    available: Annotated[bool | None, Field(description='False when deletion or compelled erasure makes the resource unavailable on the repair read.'), OmittedNotNull] = True
+    available: Annotated[StrictBool | None, Field(description='False when deletion or compelled erasure makes the resource unavailable on the repair read.'), OmittedNotNull] = True
     unavailable_reason: Annotated[UnavailableReason | None, OmittedNotNull] = None
 
 
@@ -158,7 +158,7 @@ class AccountChange(AdCPBaseModel):
     resource: Annotated[Resource, Field(description='Stable identity of the changed resource. Resource types are open for forward compatibility. account_id is always present; resource_id identifies the changed entity and parent_ids supplies any IDs needed to disambiguate nested resources.')]
     action: Annotated[ListAccountChangesRequestResourceTypesItem, Field(description='Material change action. Standard values are created, discovered, updated, status_changed, linked, unlinked, deleted, and purged. Future standard or vendor-namespaced values are allowed; receivers MUST treat unknown values as generic invalidations.')]
     origin: Annotated[Origin, Field(description='Server-derived origin classification. The seller MUST NOT trust caller-supplied origin or actor claims.')]
-    resource_revision: Annotated[int | str | None, Field(description='Post-change revision exposed by the repair read, when that resource family defines one.'), OmittedNotNull] = None
+    resource_revision: Annotated[StrictInt | str | None, Field(description='Post-change revision exposed by the repair read, when that resource family defines one.'), OmittedNotNull] = None
     changed_paths: Annotated[list[AccountChangeChangedPathsItem] | None, Field(description='Bounded set of RFC 6901 JSON Pointers naming material fields that changed. Values are intentionally omitted.', json_schema_extra={'uniqueItems': True}, max_length=64), OmittedNotNull] = None
     repair: Annotated[Repair, Field(description='Authoritative AdCP read the receiver uses to reconcile current state. The buyer constructs safe request arguments from the structured resource identity. A deleted or legally purged resource may instead declare unavailable with a categorical reason.')]
     actor: Annotated[Actor | None, Field(description='Optional privacy-safe actor classification. Sellers MUST omit direct personal identifiers unless the authenticated caller is authorized for them.'), OmittedNotNull] = None
