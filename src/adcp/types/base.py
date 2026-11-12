@@ -253,8 +253,25 @@ def _pluralize(count: int, singular: str, plural: str | None = None) -> str:
 
 
 # Registry of human-readable message formatters for response types.
-# Key is the class name, value is a callable that takes the instance and returns a message.
+# Key is UPSTREAM'S published class name -- the word this module was written
+# against -- and the value is a callable that takes the instance and returns a
+# message. The word is kept as the key because it is the only thing a formatter
+# written here can state about its own target; what resolves it to a class is
+# the alias table, below.
 _RESPONSE_MESSAGE_REGISTRY: dict[str, MessageFormatter] = {}
+
+#: The same formatters, keyed by SUBJECT instead of by spelling: the
+#: :class:`~adcp.types._base.SchemaRef` of the class each of upstream's words
+#: resolves to. ``None`` until :func:`_subject_message_registry` builds it.
+_SUBJECT_MESSAGE_REGISTRY: dict[Any, MessageFormatter] | None = None
+
+#: Words of upstream's that resolved to no class of ours carrying a subject.
+#: **A NON-EMPTY ENTRY HERE IS A FINDING, not a gap to paper over**: it is
+#: either a formatter for a type we do not emit, or a word the alias table
+#: DECLINED as ambiguous (``legacy_names.__adcp_ambiguous__``), and both want
+#: reading rather than a hand-written row. Empty on this trunk: all 19 of
+#: upstream's words resolve, and each to a distinct document and pointer.
+_WORDS_WITH_NO_SUBJECT: tuple[str, ...] = ()
 
 
 def _register_response_message(cls_name: str) -> Callable[[MessageFormatter], MessageFormatter]:
@@ -265,6 +282,75 @@ def _register_response_message(cls_name: str) -> Callable[[MessageFormatter], Me
         return func
 
     return decorator
+
+
+def _subject_message_registry() -> dict[Any, MessageFormatter]:
+    """:data:`_RESPONSE_MESSAGE_REGISTRY` re-keyed on the SUBJECT, built once.
+
+    **A NAME IS A SPELLING; A SUBJECT IS THE IDENTITY, AND THE RELATION BETWEEN
+    THE TWO IS N:1.** Upstream emits a class per POSITION and names it from
+    there -- ``CreateMediaBuyResponse1`` is "the first arm of that document's
+    ``oneOf``" -- while this repository emits one class per SUBJECT and names it
+    from the subject's own document, arriving at ``CreateMediaBuySuccess``. So a
+    registry keyed on ``__class__.__name__`` asks for one of upstream's
+    spellings and is answered by an object of ours that has a different one, and
+    every formatter misses: ``tests/test_response_str.py`` read
+    ``"CreateMediaBuySuccess response"`` where the document's own subject has a
+    message registered for it.
+
+    **THE RELATION IS ALREADY HELD AND IS NOT RE-DERIVED HERE.**
+    ``survey/name_table.py`` resolved every one of upstream's published words to
+    the class of ours denoting the same subject by rule, and
+    ``survey/emit_legacy_names.py`` emitted those rows as the alias layer that
+    ``adcp.types`` consults. Asking the public surface for upstream's word is
+    therefore asking the table, and it costs no second list: a word this module
+    registers that the table repoints on the next schema bump follows the table
+    rather than going stale in silence. A hand-written map from our names to
+    formatters is the thing the table exists to replace.
+
+    Keyed on ``__adcp_schema__`` -- document plus JSON pointer -- rather than on
+    the resolved class's ``__name__``, because our generated names are
+    generator-derived too and a numbered one can renumber on a schema bump,
+    whereas the document and pointer ARE the subject. Any class denoting that
+    subject is then answered, whatever either side spells it.
+    """
+    global _SUBJECT_MESSAGE_REGISTRY, _WORDS_WITH_NO_SUBJECT
+    if _SUBJECT_MESSAGE_REGISTRY is not None:
+        return _SUBJECT_MESSAGE_REGISTRY
+
+    import importlib
+
+    # The PUBLIC facade, deferred to first use: this module is what the whole
+    # generated tree derives from, so a module-level import of the surface is a
+    # cycle. ``adcp.types._generated`` is the forbidden namespace
+    # (``tests/test_import_layering.py``) and is not what is asked here --
+    # ``adcp.types`` consults ``compat``, the flat table, ``_adapter``,
+    # ``_restored`` and ``legacy_names`` in order, which is the alias table
+    # whole.
+    surface = importlib.import_module("adcp.types")
+
+    index: dict[Any, MessageFormatter] = {}
+    without: list[str] = []
+    for word, formatter in _RESPONSE_MESSAGE_REGISTRY.items():
+        ours = getattr(surface, word, None)
+        # ``isinstance(ours, type)``: a row of the table may point at an
+        # ``Annotated[...]`` union rather than a class, and a type expression
+        # states no subject.
+        subject = getattr(ours, "__adcp_schema__", None) if isinstance(ours, type) else None
+        if subject is None:
+            without.append(word)
+            continue
+        index.setdefault(subject, formatter)
+
+    # **AN INDEX BUILT BEFORE THE SURFACE EXISTS IS NOT CACHED.** ``model_summary``
+    # can be reached while ``adcp.types`` is itself mid-import, in which case
+    # ``import_module`` hands back the half-initialised module and every word
+    # reads as unresolved. Caching that would make the miss permanent, so the
+    # build is only kept once the surface has answered for something.
+    if index:
+        _SUBJECT_MESSAGE_REGISTRY = index
+        _WORDS_WITH_NO_SUBJECT = tuple(without)
+    return index
 
 
 # Response message formatters
@@ -806,9 +892,26 @@ class AdCPBaseModel(BaseModel):
         Returns a standardized human-readable message suitable for MCP tool
         results, A2A task communications, and REST API responses.
 
-        For types without a registered formatter, returns a generic message
-        with the class name.
+        **THE FORMATTER IS FOUND BY SUBJECT AND NOT BY SPELLING.** The registry's
+        keys are upstream's published class names and the object answering here
+        is ours, named from its own document, so the subject is asked first:
+        :func:`_subject_message_registry` resolves each of upstream's words
+        through the alias table once and keys the formatters on
+        ``__adcp_schema__``. The class-name lookup is kept behind it for an
+        object that states no subject -- one of upstream's own hand-written
+        classes, or a model built outside the generated tree -- which is the
+        behaviour this module shipped with.
+
+        For types without a registered formatter, returns a generic message with
+        the class name. **That fallback is CORRECT and is not a miss**: a type
+        with no formatter registered for it has no message to give, and the
+        generic form is what upstream answers.
         """
+        subject = getattr(self, "__adcp_schema__", None)
+        if subject is not None:
+            formatter = _subject_message_registry().get(subject)
+            if formatter:
+                return formatter(self)
         formatter = _RESPONSE_MESSAGE_REGISTRY.get(self.__class__.__name__)
         if formatter:
             return formatter(self)
