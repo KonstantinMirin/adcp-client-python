@@ -1714,7 +1714,7 @@ def _refuses_a_null(root: dict, declarations: tuple[Any, ...]) -> bool:
 
 
 @pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
-def test_every_optional_field_refuses_an_explicit_null_where_its_document_refuses_one(
+def test_a_null_is_refused_and_a_none_is_absence_at_every_optional_field(
     row: Graded,
 ) -> None:
     """**Reading 1 at an OPTIONAL property, which is the clause the tree had no check for**
@@ -1855,14 +1855,28 @@ def test_every_optional_field_refuses_an_explicit_null_where_its_document_refuse
         )
         if dispatches:
             continue
+        published = model.model_json_schema().get("properties", {}) or {}
         #: **The BEHAVIOUR and not the marker**, which is the half a reading of the
-        #: emitted text cannot make: the payload is offered to ``model_validate``, the
-        #: entry point a consumer calls, and the error at this key must be the TYPE's own
-        #: and never ``missing`` -- a class whose other required keys are absent raises
+        #: emitted text cannot make: the error at this key must be the TYPE's own and
+        #: never ``missing`` -- a class whose other required keys are absent raises
         #: anyway, and reading that as the refusal would make this clause green on a model
         #: that admits the null and complains about something else.
+        #:
+        #: **OFFERED AS JSON, BECAUSE THE CLAIM IS THE DOCUMENT'S.**  The payload went to
+        #: ``model_validate`` on a DICT, and that is the Python route -- which
+        #: :class:`adcp.types._base._AbsenceIsOmission` now reads as ABSENCE, on upstream's
+        #: own contract and ours: a JSON ``null`` is a document's statement and a Python
+        #: ``None`` is a Python call, and Python spells absence two ways where JSON spells
+        #: it one.  Reading 1 is "the class accepts exactly what the DOCUMENT accepts", so
+        #: the witness for it has to BE a document, and ``model_validate_json`` is this
+        #: project's spelling of that.  Measured: offered as a dict this clause reported
+        #: 1,186 failures after the split and every one of them was the split working.
+        #:
+        #: ``ADCP_STRICT_VALIDATION`` would refuse both routes, and this clause
+        #: deliberately does NOT set it: a check that needed the strict flag would be
+        #: grading a configuration rather than the default a consumer gets.
         with pytest.raises(ValidationError) as caught:
-            model.model_validate({wire: None})
+            model.model_validate_json(json.dumps({wire: None}))
         #: **The loc PREFIX, because a union-typed field reports one error per ARM**:
         #: pydantic's loc for ``locator: A | B | None`` is ``('locator', 'A')``, not
         #: ``('locator',)``, so an exact match read a real refusal as none.  The prefix is
@@ -1872,8 +1886,56 @@ def test_every_optional_field_refuses_an_explicit_null_where_its_document_refuse
         at = [e for e in caught.value.errors() if tuple(e["loc"][:1]) in ((name,), (wire,))]
         assert at and all(e["type"] != "missing" for e in at), (
             f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: "
-            f"model_validate refused nothing at {wire!r}: {caught.value.errors()[:3]}"
+            f"model_validate_json refused nothing at {wire!r}: {caught.value.errors()[:3]}"
         )
+        #: **FACT 2: THE PYTHON ROUTE READS IT AS ABSENCE**, and the assertion is the
+        #: EQUALITY with an omitted key rather than ``is None`` -- "absence" is a claim
+        #: about sameness, and ``is None`` would also pass on a field that had quietly
+        #: become nullable.  This is upstream's ``test_a_python_none_still_spells_absence``
+        #: read at every position of the census instead of at one.
+        #: ``model_construct`` and not ``model_validate``: the clause is about ONE key, and
+        #: a validated payload would have to carry every required key of whatever class
+        #: this position sits on -- measured, that turned 165 findings into 875 reports
+        #: about missing siblings.  The Python route's own verdict on the ``None`` is
+        #: asserted once, on a constructible witness, in
+        #: ``tests_emit/test_a_none_is_absence_and_a_null_is_not.py``.
+        supplied = model.model_construct(**{name: None})
+        omitted = model.model_construct()
+        #: **AND THE EQUALITY HOLDS ONLY WHERE THE DOCUMENT STATES NO DEFAULT, which is a
+        #: MEASURED distinction and not a weakening.**  At a property the document gives a
+        #: ``default``, an omitted key reads back THAT DEFAULT and a Python ``None`` reads
+        #: back ``None`` -- measured at 165 of the census's positions, e.g.
+        #: ``trusted-match/offer-price.json#`` whose ``currency`` defaults to ``'USD'``.
+        #: So "a None is absence" is a claim about the WIRE and not about the attribute:
+        #: fact 3 below is what carries it, and it holds at every position of the census
+        #: including these 165 -- the ``None`` is left off the dump, so a round-trip
+        #: restores the default and no document's accepted set moves.  Asserting the
+        #: attribute equality here regardless would be asserting something false.
+        if model.model_fields[name].get_default(call_default_factory=False) is None:
+            assert getattr(supplied, name) == getattr(omitted, name), (
+                f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: a Python "
+                "None does not read the same as an omitted key"
+            )
+        #: **FACT 3: AND IT DOES NOT REACH THE WIRE**, which is what makes fact 2 safe
+        #: rather than a widening -- a ``None`` that round-tripped to a ``null`` WOULD be
+        #: one.  A plain dump, no ``exclude_none`` and no ``exclude_unset``.
+        #: **FACT 3 IS ASSERTED AT EVERY POSITION, defaulted or not**, because it is the
+        #: one that decides whether the split is a widening.
+        reached = supplied.model_dump(mode="json")
+        assert wire not in reached, (
+            f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: a Python None "
+            f"round-trips to an explicit null at {wire!r}, which IS a widening"
+        )
+        #: **FACT 4: THE PUBLISHED SCHEMA STATES NO NULL ARM.**  Pydantic renders from the
+        #: ``json_schema`` side of the ``json_or_python`` schema, so this holds for free --
+        #: which is exactly why it is asserted: it holds for free until someone reorders
+        #: the two sides, and this rendering is what a consumer's codegen reads.
+        node = published.get(wire, published.get(name))
+        if node is not None:
+            assert "null" not in json.dumps(node.get("anyOf", node.get("type", ""))), (
+                f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: the "
+                f"published schema states a null arm the document does not"
+            )
     #: Reported and not asserted empty, for the reason the arm above gives: a key the
     #: comparand does not name is answered there, by the one thing the document's silence
     #: decides -- the field may not refuse a value on no authority.
