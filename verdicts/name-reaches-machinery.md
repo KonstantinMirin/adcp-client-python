@@ -434,3 +434,15 @@ does not run upstream's patchers. So repairing this unblocks three imports nobod
 Recorded because it is the same defect as Cause 1 one layer along, and because it is the
 mechanism behind FINDING 3a's second option: any attempt to revive `_forward_compat` hits
 `NotificationType` next.
+
+---
+
+## What FINDING 3a turned into
+
+`_forward_compat` dying on the `canonical_creative` withdrawal is not one module's import
+error: it is a whole layer of upstream's behaviour absent from every run graded so far.
+Measured separately, with an instrument, in **`verdicts/the-dead-patch-layer.md`** — 19
+classes, 3 fields added, 19 altered, 4 of 5 patchers not loading, up to 396 failures in
+reach — and with the finding that reframes it: `canonical_creative`'s facades do not widen,
+they **delete `format_id`/`format_ids` from nine public classes across seven documents this
+repository has ruled must keep them. The withdrawal was correct.**
