@@ -46,9 +46,8 @@ of one hop.
 **AND THE FIFTH WENT WITH ``adcp-client-python-auw6``: ``Fixtures.reduced``'s ``depth: int
 = 8``, the one clause 5 could only NAME.**  Its counter was handed on by ``_derived_pin``
 and cut by ``_pin`` one frame away, so the "guard read in the function that hands the
-counter on" rule could not reach it; clause 3 reaches it, and all four frames of the cycle
-are in :data:`UNBOUNDED` now.  Three measurements took it, each over all 2,586 pairs of the
-population and each recorded at ``harness.Fixtures.reduced``:
+counter on" rule could not reach it; clause 3 reaches it.  Three measurements took it, each
+over all 2,586 pairs of the population and each recorded at ``harness.Fixtures.reduced``:
 
 * **it terminates on its own**, which had never been checked -- 0 of 2,586 descents failed
   to terminate with the content memo OFF and the draw removed, against a tripwire at 1,000
@@ -70,6 +69,23 @@ profile over the population -- p50 **0.014 s**, p90 **0.369 s**, p95 **1.324 s**
 -- the distribution is a continuum and the gap the number was chosen inside does not exist.
 ``codegen/__main__.BUDGET`` carries that reading and what it actually cuts.
 
+**AND THE FIFTH BOUND'S WHOLE MECHANISM IS GONE NOW, WHICH MOVED THIS FILE'S SUBJECT.**
+``harness.Fixtures`` no longer exists: :class:`codegen.verify.witness.Construction`
+replaced the fixture sampler outright, and ``harness.check_pair``'s ``construction=`` is the
+seam the three checks derive every witness through.  So the two clauses that read
+``Fixtures.reduced`` are deleted -- a gate over a deleted mechanism tests a different thing
+-- and the four frames of its cycle have left :data:`UNBOUNDED`, which is what clause 3's
+own ``missing`` assertion had been going red about.
+
+**That redness was the file telling the truth and nobody reading it.**  The list is asserted
+to be a list of LIVE functions precisely so a rename reddens here rather than silently
+emptying the population; it did, and because it died at its first assertion it never got as
+far as saying the thing that matters -- that the grading path had moved to a module this
+file did not read.  Clause 3 now reads BOTH: :data:`UNBOUNDED` over ``harness.py`` and every
+function of :data:`WITNESS_MODULE`.  Measured at this commit: 10 named harness readings and
+**89 verifier functions**, 0 of the 99 carrying a ``depth`` parameter or a ``_DEPTH``
+constant.  The 89 had no gate at all.
+
 **THE CLAUSES, and each is read off the ANSWER or off the SOURCE, never off a second copy
 of the walk.**  A test that re-implemented the descent to measure its depth would be the
 divergence ``docs/plan/architecture.md`` §11 forbids; so clause 1 reads the returned
@@ -90,6 +106,7 @@ from fresh import BUNDLE
 from nodeset import claimed
 
 from codegen import bundle, harness
+from codegen.verify import witness
 
 MODULE = pathlib.Path(harness.__file__)
 
@@ -111,16 +128,36 @@ UNBOUNDED = (
     "_violating",
     "_normalize",
     "_composed",
-    #: The fifth, and the one clause 5 could never catch: ``Fixtures.reduced``'s
-    #: ``depth: int = 8``, handed on by ``_derived_pin`` as ``depth - 1`` and cut by
-    #: ``_pin``'s ``depth <= 0`` ONE FRAME AWAY -- so the counter and its guard were in
-    #: different functions and clause 5 reads them in the same one.  All four frames of
-    #: the cycle are named, because the parameter can come back in any of them.
-    "reduced",
-    "_pin",
-    "_derived_pin",
-    "value",
+    #: **THE FIFTH IS GONE WITH ITS MECHANISM, and that is why four names left this list.**
+    #: ``Fixtures.reduced``'s ``depth: int = 8`` was handed on by ``_derived_pin`` and cut
+    #: by ``_pin`` one frame away, so all four frames of that cycle were named here.
+    #: ``harness.Fixtures`` no longer exists -- :class:`codegen.verify.witness.Construction`
+    #: replaced the fixture sampler outright -- so ``reduced``, ``_pin``, ``_derived_pin``
+    #: and ``value`` were four names in this tuple matching no function of
+    #: ``harness.py``, and clause 3's own ``missing`` assertion was the thing going red.
+    #: It was RIGHT to go red: the list is asserted to be a list of live functions
+    #: precisely so a rename reddens here instead of silently emptying the population.
+    #: What it could not say is where those four readings WENT, which is
+    #: :data:`WITNESS_MODULE` below.
 )
+
+#: **THE GRADING PATH MOVED, AND THIS IS THE HALF THAT WAS UNGUARDED.**
+#: ``codegen/verify/witness.py`` is where the three checks now derive every witness
+#: (``harness.check_pair``'s ``construction=`` seam), so a cap reintroduced there is a cap
+#: on the grading path and clause 3 ranged over ``harness.py`` ALONE. The target this file
+#: gates -- *"NO CHECK CARRIES A BUDGET, A DEPTH LIMIT OR AN EXAMPLE COUNT. Each of the
+#: three terminates structurally"* -- has therefore been unguarded for the module that does
+#: the work ever since the fixture sampler was replaced.
+WITNESS_MODULE = pathlib.Path(witness.__file__)
+
+#: And this half is read over EVERY function of that module rather than over a named list,
+#: which is a deliberate difference from :data:`UNBOUNDED` and not an inconsistency.
+#: ``harness.py`` needs a list because most of its functions do not descend a document at
+#: all. The verifier's whole content is that descent -- §9: *"the verifier reads nothing but
+#: its arguments"* -- so "every function of it" is both the honest population and the one a
+#: rename cannot empty. Measured at this commit: **0 of its functions declare a parameter
+#: spelled ``depth`` and 0 read a constant whose name ends ``_DEPTH``**, so the target holds
+#: on the live path; what was missing was a clause that would notice if it stopped holding.
 
 #: The one document whose fixture walk reaches deepest, and the reading is its own: 196
 #: positions at its root, the deepest at 32 pointer segments.  **A NAMED DOCUMENT and not
@@ -242,19 +279,21 @@ def test_no_reading_of_the_grading_path_declares_a_depth_parameter() -> None:
     parameter spelled ``depth``, and no reference to a module constant whose name ends in
     ``_DEPTH``.  Both halves are needed -- the bounds that stood here were one of each: a
     ``depth: int = 0`` parameter on four functions and a module constant read by two.
+
+    **AND IT READS BOTH MODULES OF THE GRADING PATH, which is the hole this clause had.**
+    It ranged over ``codegen/harness.py`` alone, named four functions of a class that no
+    longer exists (``harness.Fixtures``, replaced by
+    :class:`codegen.verify.witness.Construction`), and so went red on its own ``missing``
+    assertion while saying nothing whatever about the module the three checks now derive
+    every witness in.  :data:`WITNESS_MODULE` is that module and it is read over EVERY
+    function of itself; :data:`UNBOUNDED` stays a named list for ``harness.py``, and the
+    two cells are reported apart so a reintroduction says WHICH module it came back in.
     """
-    tree = ast.parse(MODULE.read_text())
-    functions = {
-        node.name: node
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
-    missing = [name for name in UNBOUNDED if name not in functions]
-    assert not missing, f"{missing} is named here and is not a function of {MODULE.name}"
     carried: dict[str, list[str]] = {}
-    for name in UNBOUNDED:
-        node = functions[name]
-        args = node.args
+
+    def reading(node: ast.AST) -> list[str]:
+        """``node``'s own ``depth`` parameters and the ``_DEPTH`` constants it closes on."""
+        args = node.args  # type: ignore[attr-defined]
         parameters = [
             a.arg for a in (*args.posonlyargs, *args.args, *args.kwonlyargs) if a.arg == "depth"
         ]
@@ -265,8 +304,31 @@ def test_no_reading_of_the_grading_path_declares_a_depth_parameter() -> None:
                 if isinstance(inner, ast.Name) and inner.id.endswith("_DEPTH")
             }
         )
-        if parameters or constants:
-            carried[name] = [*parameters, *constants]
+        return [*parameters, *constants]
+
+    def functions_of(module: pathlib.Path) -> dict[str, ast.AST]:
+        return {
+            node.name: node
+            for node in ast.walk(ast.parse(module.read_text()))
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+
+    # -- the named half: harness.py's descending readings ------------------- #
+    harness_functions = functions_of(MODULE)
+    missing = [name for name in UNBOUNDED if name not in harness_functions]
+    assert not missing, f"{missing} is named here and is not a function of {MODULE.name}"
+    for name in claimed(f"{MODULE.name} readings asserted to carry no depth", UNBOUNDED):
+        if found := reading(harness_functions[name]):
+            carried[f"{MODULE.name}::{name}"] = found
+
+    # -- the whole half: every function of the verifier ---------------------- #
+    witness_functions = functions_of(WITNESS_MODULE)
+    for name in claimed(
+        f"{WITNESS_MODULE.name} functions asserted to carry no depth", witness_functions
+    ):
+        if found := reading(witness_functions[name]):
+            carried[f"{WITNESS_MODULE.name}::{name}"] = found
+
     assert not carried, carried
 
 
@@ -415,119 +477,6 @@ def test_a_self_referential_pointer_chain_settles_on_the_pointer() -> None:
         assert harness._normalize(branch["definitions"]["A"], branch) == {}
     finally:
         sys.setrecursionlimit(limit)
-
-
-#: A frontier nest deeper than the ``depth: int = 8`` that stood on ``Fixtures.reduced``.
-#: **Constructed and not drawn from the bundle, for :data:`PAST_EVERY_BOUND`'s reason**: the
-#: bundle's own deepest reduction is 21 levels, so a document of it DOES exhibit the
-#: truncation -- but which one does is a property of the bundle, and the clause is a
-#: statement about the READING.  Twelve is past 8 and small enough that the twelve draws it
-#: costs are a test and not a grading pass.
-PAST_THE_PIN_BOUND = 12
-
-
-def _nested_frontier(levels: int) -> dict:
-    """A node whose frontier re-enters itself exactly ``levels`` times.
-
-    One ``properties`` entry per level, so ``locations`` returns exactly one item at each
-    and the re-entry count is a number the INPUT states.  The innermost statement is
-    drawable, so every level's pin has a value to find and a missing pin is the bound and
-    never an undrawable leaf.
-    """
-    node: dict = {"type": "string", "maxLength": 3}
-    for _ in range(levels):
-        node = {"type": "object", "properties": {"k": node}, "required": ["k"]}
-    return node
-
-
-def _fixtures_with_no_store() -> harness.Fixtures:
-    """``Fixtures`` reading nothing: the reduction under test consults no document.
-
-    The frontier is read off the NODE (``locations``), so the three readers are never
-    called -- and passing stubs rather than the suite's own makes that an assertion about
-    this clause's input instead of an inherited one.
-    """
-    return harness.Fixtures(
-        read=lambda document: {},
-        node=lambda document, pointer: {},
-        identity=lambda document, pointer: {},
-        documents=frozenset(),
-    )
-
-
-def test_the_fixture_reduction_derives_a_pin_past_the_bound_it_carried() -> None:
-    """**Read off the ANSWER**: twelve derivations for a twelve-level frontier is a set
-    ``Fixtures.reduced(depth=8)`` could not produce.
-
-    ``_pin``'s guard was ``depth <= 0`` over a counter seeded at 8, and it returned
-    :data:`NONE` BEFORE the memo was consulted -- so a frontier item past the eighth level
-    was never keyed at all.  The reading is therefore the memo's own contents, which is the
-    derivation set and not a hop count: ``Fixtures.pins`` holds one entry per frontier item
-    the reduction actually derived a value for.
-
-    **Proved red against the bound as it stood** rather than argued: re-entered with the
-    deleted guard restored, the same input yields **8** entries and no entry for the
-    innermost statement, against **12** and an entry here.  What the missing four cost is
-    what ``harness.Fixtures.reduced`` measures over the bundle -- 224 positions left
-    standing unreduced, each one a subtree the draw then pays in full.
-    """
-    fixtures = _fixtures_with_no_store()
-    reduced, placed = fixtures.reduced(_nested_frontier(PAST_THE_PIN_BOUND))
-    assert placed == 1, reduced
-    #: One derivation per level the INPUT states, which is the number a repetition is
-    #: allowed to stop at (clause 5's own rule) and the one a bound at 8 cannot reach.
-    #:
-    #: **A FLOOR AND NOT AN EQUALITY**, which is ``nodeset.ratchet``'s own rule and the
-    #: shape ``test_every_check_names_its_set`` holds this file to: the obligation is that
-    #: the derivation set REACHES the input's own depth, and an equality on it would also
-    #: fail if the reduction ever derived more -- which is not a defect and is not what
-    #: this clause is about.  Measured here: 12 with the bound gone, 8 with it restored.
-    assert len(fixtures.pins) >= PAST_THE_PIN_BOUND, sorted(fixtures.pins)
-    deepest = harness._content_key(({"type": "string", "maxLength": 3},), kind=b"const")
-    assert deepest in fixtures.pins, (
-        "the innermost statement of a 12-level frontier was never keyed, which is what a "
-        "guard returning NONE in front of the memo does"
-    )
-    assert fixtures.pins[deepest] == {"const": ""}, fixtures.pins[deepest]
-
-
-def test_the_fixture_reduction_closes_on_a_reference_it_does_not_follow() -> None:
-    """**The terminator, exercised**: the recursion ends on running out of a finite tree,
-    and a ``$ref`` back to the root does not re-enter it.
-
-    With the counter gone this is the only thing standing between the reduction and a hang,
-    so it is put to the shape that could close a cycle rather than assumed from the one the
-    bundle happens to hold.  ``locations`` descends into mapping VALUES and follows no
-    ``$ref`` -- a reference is a STRING in a record -- so ``{"$ref": "#"}`` is a frontier
-    item whose conjunction states nothing drawable, the pin answers :data:`NONE`, and the
-    position is left EXACTLY as the document writes it.  That is the fail-safe direction the
-    method already takes for an item no value survives for.
-
-    This is why no ``followed`` set is owed here and :func:`_normalize`'s and
-    :func:`_composed`'s is not a precedent: those two RESOLVE a pointer and can arrive back
-    at a node they have already read, so they have a back edge to close.  This recursion
-    never leaves the node it was handed, so there is none.
-
-    The recursion limit is lowered for the call so that a reduction which did NOT close
-    fails as a ``RecursionError`` in this test instead of taking the interpreter down --
-    ``test_the_fixture_walk_closes_a_reference_cycle_on_the_pointer``'s own device.
-    """
-    fixtures = _fixtures_with_no_store()
-    node = {
-        "type": "object",
-        "properties": {"self": {"$ref": "#"}, "leaf": {"type": "integer"}},
-    }
-    limit = sys.getrecursionlimit()
-    sys.setrecursionlimit(400)
-    try:
-        reduced, placed = fixtures.reduced(node)
-    finally:
-        sys.setrecursionlimit(limit)
-    assert placed == 1, reduced
-    #: The drawable sibling IS pinned and the reference is not, which is the whole answer:
-    #: the walk reached both, derived the one it could and left the other standing.
-    assert reduced["properties"]["leaf"] == {"const": 0}, reduced
-    assert reduced["properties"]["self"] == {"$ref": "#"}, reduced
 
 
 # --------------------------------------------------------------------------- #
