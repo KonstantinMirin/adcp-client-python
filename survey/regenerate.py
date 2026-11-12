@@ -70,13 +70,17 @@ import argparse
 import ast
 import base64
 import collections
+import contextlib
+import fcntl
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -1068,6 +1072,55 @@ def chunks(out: Path) -> dict[str, list[str]]:
 # ------------------------------------------------------------------- 6a. the run, automated
 
 
+#: **ONE RUN AT A TIME, ACROSS EVERY WORKTREE ON THE MACHINE**, which is why the path is
+#: outside any of them.  A run is four ``pytest -n auto`` invocations over 13,818 tests
+#: with two packages installed, and several lanes measure at once by design.  Measured with
+#: three concurrent: load average 47, 92 of 125 GiB resident, swap exhausted and
+#: ``/proc/vmstat`` at ``oom_kill 75`` -- so a chunk's workers are killed, its report is
+#: never written, and ``survey.causes`` reads the surviving chunks as if they were the
+#: population.  That is the shape of defect that let a DEAD run be reported as "still
+#: running" for an hour: the failure is silent and looks like progress.
+#:
+#: **IT QUEUES, IT DOES NOT REFUSE.**  A lock that failed would make a lane's measurement a
+#: function of who else happened to be measuring, and the answer to "two lanes want the
+#: same machine" is that the second one waits.  The wait is ANNOUNCED, because a queued run
+#: and a hung one look identical from outside and one of them is fine.
+RUN_LOCK = Path("/srv/ws/.adcp-dropin-run.lock")
+
+
+@contextlib.contextmanager
+def one_run_at_a_time() -> Iterator[None]:
+    """Hold :data:`RUN_LOCK` for the provision-and-run phase, waiting if another run has it.
+
+    Only that phase: the BUILD is cheap and parallel-safe (it writes into its own ``--out``),
+    so serialising it too would make every lane wait on work that costs nothing shared.
+    """
+    RUN_LOCK.parent.mkdir(parents=True, exist_ok=True)
+    with open(RUN_LOCK, "a+") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.seek(0)
+            holder = handle.read().strip() or "another run"
+            print(f"\n== waiting for the machine: {holder} holds {RUN_LOCK}")
+            print("   (queued, not hung -- three concurrent runs exhaust 125 GiB and the")
+            print("    OOM killer takes a chunk's workers, leaving a report nobody wrote)")
+            waited = time.monotonic()
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            print(f"== the machine is ours after {time.monotonic() - waited:.0f} s\n")
+        handle.seek(0)
+        handle.truncate()
+        handle.write(f"pid {os.getpid()} in {Path.cwd()}\n")
+        handle.flush()
+        try:
+            yield
+        finally:
+            handle.seek(0)
+            handle.truncate()
+            handle.flush()
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
 def provision(out: Path) -> dict[str, object]:
     """The tree's own venv, with the tree and its sibling package installed into it.
 
@@ -1338,10 +1391,11 @@ def build(ns: argparse.Namespace) -> int:
         # Every step of that was performed by hand, and the one that was forgotten -- the
         # sibling package -- cost 5,188 silently uncollected tests.  `--run` does all of it
         # and reads the result back out of pytest's own report.
-        print("== 11. provisioning")
-        print(f"   {provision(out)}")
-        print("== 12. the run")
-        said = run_chunks(out, junit)
+        with one_run_at_a_time():
+            print("== 11. provisioning")
+            print(f"   {provision(out)}")
+            print("== 12. the run")
+            said = run_chunks(out, junit)
         print(f"   {said}")
         print(f"\n   reports: {junit}/*.json and {junit}/*.xml\n")
         return 0
