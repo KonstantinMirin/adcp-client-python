@@ -253,3 +253,142 @@ correctly. **Suggested rule:** drop the `or "test_postal_area" in nid` clause an
 the signature match; the 4 then fall to the residue, where they can be read.
 
 ---
+
+## Cause 3 — `ReportingWebhook.operation_id`. THE PREMISE IS WRONG, AND THERE IS NO ISSUE TO FILE.
+
+**31 failures claimed by the rule; 17 name both `ReportingWebhook` and `operation_id`,
+25 of the 36 in `tests/test_reporting_webhook_operation_id.py` fail.**
+
+The brief's reading was: *"our class is right and their class carries a field its document
+does not state"*, with instructions to write it up, leave the tests failing, and draft an
+upstream issue. The first half of the measurement confirms the document. **The second
+half overturns the conclusion.**
+
+### Step 1 — the document, and it is the same one
+
+| | |
+|---|---|
+| document | `core/reporting-webhook.json`, title `"Reporting Webhook"` |
+| properties | `url`, `token`, `authentication`, `reporting_frequency`, `requested_metrics` — **five** |
+| required | `authentication`, `reporting_frequency`, `url` — **three** |
+| `operation_id` | **absent** |
+| `additionalProperties` | **`true`** |
+
+Upstream's class is at `adcp/types/domains/core/reporting_webhook.py`, and their generator
+derives that module path from the document path, so the pairing is
+`core/reporting-webhook.json` → `domains/core/reporting_webhook.py`. There is **exactly
+one** `class ReportingWebhook` in the whole wheel (`grep -rn "class ReportingWebhook"`
+over `types/domains/`), so **this is not a naming collision.**
+
+Nor is it a bundle-version difference. Upstream's wheel ships its own schemas, and
+`operation_id` is absent from `core/reporting-webhook.json` in **all four** of them —
+`3.0`, `3.1`, `3.1.15`, `3.2` — each with the same five properties and same three
+required, identical to our pin.
+
+### Step 2 — but the field is NOT in their generated class, and NOT invented
+
+Upstream's generated source declares exactly the document's five fields. `operation_id`
+is installed at import by `adcp/types/_forward_compat.py:505`:
+
+```python
+# 3.2.x permits additional registration fields but does not declare this ID.
+# Keep the extension outside generated code so a schema refresh cannot drop
+# it again. AdCP 3.3 adds the same optional field with the same constraints
+# (adcp#7895); once a bundle declares it, this guard makes the patch a no-op.
+if "operation_id" not in ReportingWebhook.model_fields:
+    ...
+```
+
+So the field is:
+
+* **document-legal** — `additionalProperties: true`; the schema *permits* it;
+* **optional and `NoExplicitNull`** — the class is not narrower than its document and
+  admits every document-valid payload;
+* **declared, versioned and self-retiring** — it names its forward spec (AdCP 3.3,
+  `adcp#7895`) and the guard makes the patch a no-op once a bundle declares the field;
+* **deliberately kept out of generated code**, in their words, "so a schema refresh
+  cannot drop it again".
+
+### The conclusion, corrected
+
+**There is no upstream issue to file, and I have not drafted one.** The brief's branch 3
+("if it is the same document, write the finding up and LEAVE THE TESTS FAILING — a test
+whose EXPECTATION contradicts its document is a finding") does not trigger, because the
+expectation does **not** contradict its document: a document with
+`additionalProperties: true` does not forbid the property, and upstream has not claimed
+it is a spec field. Filing it would report a deliberate, documented extension as an
+invented field.
+
+The tests are LEFT FAILING — but as a gap on our side, not an upstream defect, and not
+because a test is wrong.
+
+### FINDING 3a — the real cause: the drop-in never RUNS upstream's `_forward_compat`
+
+Measured in the drop-in tree:
+
+```
+adcp.types._forward_compat  → ModuleNotFoundError: No module named 'adcp.types.canonical_creative'
+adcp.types._ergonomic       → ImportError: cannot import name 'NotificationType' from
+                              'adcp.types._schemas.media_buy.get_media_buy_delivery_response'
+adcp.types._eager           → (same NotificationType)
+```
+
+`_forward_compat.py` is present in the tree — kept as machinery — and **dies at module
+scope on line 63**, importing `adcp.types.canonical_creative`. That is *exactly* the one
+module `survey/regenerate._withdrawn_by_this_repository()` names: this repository carried
+upstream's `canonical_creative.py` and deliberately deleted it, so `strip_their_types`
+unlinks upstream's copy too.
+
+The harness already knows a withdrawal breaks importers —
+`_carry_the_patch_a_withdrawal_needs` replaces upstream's `src/adcp/client.py` and
+`src/adcp/server/responses.py` with ours for this reason — but it **explicitly skips
+`types/`**:
+
+```python
+if (package / "types") in path.parents or not imports_withdrawn(path):
+    continue
+```
+
+with the stated reason "so the substitution does not creep from `types/` into upstream's
+SDK". The consequence is that upstream's whole import-time patch layer is dead in the
+drop-in, and `ReportingWebhook.operation_id` is one of its patches. `canonical_creative`
+is named in **29** failures.
+
+Not repairable inside my write scope (`survey/regenerate.py` is not in it), and it is a
+POLICY question before it is a code one, so it is stated rather than guessed at:
+
+1. **Carry the extension ourselves** — an optional `operation_id` on our
+   `ReportingWebhook`, document-legal under `additionalProperties: true`, with upstream's
+   constraints (`^[A-Za-z0-9_.:-]{1,255}$`, `NoExplicitNull`) and upstream's own
+   retirement condition. This is what closes the 25 tests. It is **not** a field added to
+   a generated class in the prohibited sense — the document admits it — but it is still a
+   widening and wants the owner's word.
+2. **Make the withdrawal's repair reach `types/`** — give `_forward_compat` a path that
+   does not import `canonical_creative`. This revives patches beyond `operation_id` and
+   changes more than one lane's numbers.
+3. **Leave it** — accept that the drop-in does not grade upstream's opt-in extensions,
+   and record these 25 as attributable to the withdrawal rather than to our types.
+
+### FINDING 3b — `NotificationType` is Cause 1's architecture at the MODULE layer
+
+`_ergonomic` and `_eager` die on a different name, and it is the same N:1 relation:
+
+| | |
+|---|---|
+| upstream's import | `adcp.types.domains.media_buy.get_media_buy_delivery_response.NotificationType` |
+| their emission | an inline enum per POSITION, in the delivery-response module |
+| our emission | one class per SUBJECT: `enums/notification-type.json` → `adcp.types._schemas.enums.notification_type.NotificationType` |
+
+`_dropin`'s module layer redirects `domains/...` to our `_schemas/...` module, and that
+module does not bind the word — so the module-path access raises even though
+**`adcp.types.NotificationType` resolves fine** through the flat surface (measured; it is
+*not* in `__adcp_ambiguous__`). The redirected module is handed back unwrapped, so there
+is no fallback from a module path to the flat surface.
+
+**Measured consequence: ~0 test movement.** Nothing in upstream's suite imports
+`_ergonomic`, `_forward_compat` or `_eager` (0 failures name any of the three) — their
+tests reach types through `adcp.types`, which in the drop-in is OUR facade, and our facade
+does not run upstream's patchers. So repairing this unblocks three imports nobody makes.
+Recorded because it is the same defect as Cause 1 one layer along, and because it is the
+mechanism behind FINDING 3a's second option: any attempt to revive `_forward_compat` hits
+`NotificationType` next.
