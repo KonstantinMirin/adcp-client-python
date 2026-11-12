@@ -31,6 +31,11 @@ the same suite and the claim needs no trust.
 **THE FOUR THINGS §8a REQUIRES, in the order this file does them:**
 
 1. :func:`verify_wheel` -- start from upstream's real wheel, and say how it was verified.
+1b. :func:`lay_our_machinery` -- our ``src/adcp/`` over the wheel's, except ``types/``,
+   with the differing modules NAMED.  What is graded is the package this repository ships
+   and not a chimera of their machinery and our types: a lane's nine repairs to
+   ``webhooks.py`` and ``feed_mirror.py`` moved the suite by zero tests while the tree
+   executed upstream's copies of both.
 2. :func:`strip_their_types` -- delete their types and their generator; KEEP their
    machinery.  The split is not a list: their 1,088 ``domains/**`` modules and 8
    ``versioned_bases/`` go, their 40 hand-written package-root modules stay.
@@ -357,6 +362,59 @@ def lay_upstream(out: Path, rev: Revision, wheel: Wheel) -> dict[str, int]:
         shutil.copy2(src, dst)
         laid += 1
     return {"from the wheel": laid, "tracked by the revision only": rev.rev_only}
+
+
+def lay_our_machinery(out: Path) -> dict[str, object]:
+    """**OUR ``src/adcp/`` OVER THE WHEEL'S, EXCEPT ``types/``, AND THE DIFFERENCE REPORTED.**
+
+    **THE SUBSET WAS THE DEFECT, ONE LEVEL UP FROM WHERE IT WAS FOUND.**
+    :func:`_copy_ours_beside` already carries the argument -- "any predicate over it is a
+    selection and a selection is what went wrong" -- and it is stated there about our
+    ``types/`` directory.  The same predicate was applied to the PACKAGE: the tree laid
+    upstream's whole ``src/adcp/`` from the wheel and substituted only ``types/``, so
+    every other module a run executed was THEIRS.  Measured: a lane repaired nine
+    construction sites in ``webhooks.py``, ``feed_mirror.py``, ``canonical_formats/`` and
+    ``server/principal.py``, and the suite moved by ZERO tests -- the tracebacks still
+    cited ``webhooks.py:272``, a line its source no longer had, because the file the run
+    executed was upstream's.  177 failures were unverifiable and 5 lanes were grading a
+    tree nobody ships.
+
+    **WHAT THE OLD SHAPE WAS FOR, AND WHY REPORTING BEATS EXCLUDING.**
+    :func:`lay_upstream` states it: "the machinery is the wheel's must be true BY
+    CONSTRUCTION and not by a comparison a reader has to go and find".  That was sound
+    while the only thing this repository changed was the type layer -- the behavioural
+    difference was then attributable to the types alone.  It stops being sound the moment
+    a defect is found in code we SHIP: ``core/protocol-envelope.json`` requires ``status``
+    and ``src/adcp/decisioning/dispatch.py`` emitted a task response without one, which
+    any conforming peer refuses.  A tree that excludes our repair of that cannot observe
+    it.  So the attribution is kept by MEASUREMENT instead -- every module laid here is
+    counted, and the ones whose bytes DIFFER from the wheel's are named -- and the
+    exclusion is gone.
+
+    ``types/`` is not laid here because the pipeline's later steps own it:
+    :func:`strip_their_types` moves their colliding modules aside and
+    :func:`substitute_ours` emits ours fresh, both of which assume upstream's layout is
+    what they are handed.
+    """
+    package = out / "src" / DIST
+    mine = ROOT / "src" / DIST
+    laid: list[str] = []
+    differing: list[str] = []
+    for src in sorted(mine.rglob("*.py")):
+        rel = src.relative_to(mine)
+        if rel.parts[0] == "types" or "__pycache__" in rel.parts:
+            continue
+        dst = package / rel
+        if dst.is_file() and dst.read_bytes() != src.read_bytes():
+            differing.append(str(rel))
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        laid.append(str(rel))
+    return {
+        "modules of ours laid over the wheel's": len(laid),
+        "whose bytes DIFFER from the wheel's": len(differing),
+        "differing": differing,
+    }
 
 
 def strip_their_types(out: Path, ours: frozenset[str]) -> dict[str, object]:
@@ -1248,6 +1306,7 @@ def build(ns: argparse.Namespace) -> int:
     rev = verify_revision(ns.rev, wheel)
     report.say("2. the revision it was built from, by byte agreement", rev.say)
     report.say("3. the tree laid out", lay_upstream(out, rev, wheel))
+    report.say("3b. our machinery laid over theirs, except types/", lay_our_machinery(out))
     ours = frozenset(
         p.stem for p in (ROOT / "src" / DIST / "types").glob("*.py") if not p.name.startswith("_")
     )
