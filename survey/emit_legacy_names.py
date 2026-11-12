@@ -21,6 +21,9 @@ from __future__ import annotations
 import collections
 import json
 import pathlib
+import sys
+
+import name_table
 
 TABLE = pathlib.Path("survey/name-table-9.6.1.json")
 OUT = pathlib.Path("src/adcp/types/legacy_names.py")
@@ -43,12 +46,41 @@ same object, which is why ``isinstance`` holds across all of them.
 EVERY ROW WAS RESOLVED BY A RULE AND NEVER BY EYE -- ``survey/name_table.py`` carries the nine
 and the count each decided. None of them compares two class definitions side by side, which is
 what ``docs/plan/final-state.md`` reading 10 forbids.
+
+**ONE ROW IS ASSERTED AND NOT DERIVED, AND IT IS MARKED.** A row whose comment reads ``the
+subject this word now denotes`` is a binding of a WORD'S TARGET: not "upstream's name,
+renamed", but upstream's word bound to the subject the owner says that word denotes.
+``survey/name_table.ASSERTED`` is the one place such a binding is stated, with its reason.
+
+It is not a redirect. ``Format`` denoted ``core/format.json``'s v1 named-format definition
+here before; it denotes the canonical ``format_kind`` + ``params`` declaration now, which is
+what upstream's own runtime means by the word. Code that said ``Format`` and meant v1 receives
+the canonical declaration and is REFUSED at validation by the document's own schema, loudly, at
+the first value that distinguishes the two subjects. ``docs/migration-from-upstream.md`` says
+why and what to import instead -- the v1 definition is ``LegacyFormat``.
 """'''
 
 
 def main() -> int:
     table = json.loads(TABLE.read_text())
-    rows = table["rows"]
+    #: **THE ASSERTED BINDINGS, OVERLAID BEFORE ANYTHING IS RENDERED**
+    #: (``survey/name_table.ASSERTED``, ``adcp-client-python-8wd8``).  This module still
+    #: holds no rule: ``name_table`` is where the nine derivations and the one asserted
+    #: table both live, and ``applied`` is the one way the assertion reaches a rendering.
+    #:
+    #: **A WORD'S TARGET IS A DIFFERENT KIND OF ROW FROM A DERIVATION, which is why it is
+    #: declared rather than computed.**  The nine rules are facts about two trees -- a
+    #: shared module path, a field set, a branch index, a shared word.  ``Format`` is
+    #: neither: ``cross-name`` used to resolve it by finding the one class of ours
+    #: carrying that word, and after ``codegen/overrides.py`` renamed that class
+    #: ``LegacyFormat`` no class of ours carries it, so there is nothing to find.  The
+    #: word has not gone away; its SUBJECT moved, and only a decision says where to.
+    rows, moved = name_table.applied(table["rows"])
+    for their, was, now in moved:
+        print(
+            f"asserted {their}: {was or '(no derived row)'} -> {now}",
+            file=sys.stderr,
+        )
 
     # **THE "ALREADY SERVED" QUESTION MUST NOT SEE THIS MODULE'S OWN PREVIOUS OUTPUT.**  The
     # facade consults `legacy_names` last, so importing `adcp.types` with a populated
@@ -57,7 +89,6 @@ def main() -> int:
     # 1,817 words read as served that way.  So the file is reduced to a stub BEFORE the
     # surface is imported, and the question is asked of the layers below it only.
     import importlib
-    import sys
 
     OUT.write_text('"""Placeholder; rewritten below."""\n')
     sys.path.insert(0, "src")
@@ -72,6 +103,9 @@ def main() -> int:
     # answer with whichever row the sort happened to put last, which is the defect
     # `adcp.types.__init__` records as "core.Status meaning one of fourteen things".
     targets: dict[str, set[str]] = collections.defaultdict(set)
+    #: Which words were ASSERTED rather than derived, so the statement can say so.  Read
+    #: off the row's own ``how`` and not off ``name_table.ASSERTED`` again: one reading.
+    said = {row["their"] for row in rows if row.get("how") == "asserted"}
     for row in rows:
         targets[row["their"]].add(row["ours"])
 
@@ -129,6 +163,17 @@ def main() -> int:
                 flags.append("N813")
             if flags:
                 stmt += f"  # noqa: {', '.join(flags)} -- upstream published this spelling"
+            #: **AN ASSERTED ROW SAYS SO IN THE FILE** (``adcp-client-python-8wd8``).  Every
+            #: other statement here is a derivation a rule reached; this one is a decision,
+            #: and a reader has to be able to tell them apart without going to the table.
+            #: The wording is deliberate -- not "renamed", which would describe a redirect,
+            #: but the subject the word now DENOTES.
+            if name in said:
+                stmt += (
+                    ""
+                    if "# noqa" in stmt
+                    else "  #"
+                ) + f"  {name}: the subject this word now denotes (name_table.ASSERTED)"
             imports.append(stmt)
             bound.append(name)
 

@@ -206,12 +206,133 @@ def _cross_tree(theirs):
     return None, None
 
 
+# --------------------------------------------------------------------------- #
+# the ASSERTED bindings: a WORD'S TARGET, declared because it cannot be derived
+# --------------------------------------------------------------------------- #
+#: **A WORD'S TARGET IS A DIFFERENT KIND OF ROW FROM THE NINE RULES ABOVE, and it is
+#: stated here rather than derived** (``adcp-client-python-8wd8``).  Every rule above is a
+#: FACT about two trees -- a shared module path, a field set, a branch index, a shared
+#: word -- and none of them is a decision.  This table is a decision, and it is the one
+#: place in this file where a binding is asserted, so a reader looking for "where did we
+#: choose" has exactly one list to read.
+#:
+#: **WHY IT CANNOT BE DERIVED.** ``cross-name`` resolved upstream's ``Format`` by finding
+#: the one class of ours carrying that word, which was ``core/format.json``'s v1
+#: named-format definition. After ``codegen/overrides.py`` renamed that class
+#: ``LegacyFormat``, no class of ours carries the word at all -- so the derivation has
+#: nothing to find and the row would become residue. The word has not gone away; its
+#: SUBJECT has moved, and nothing in either tree's structure says where to.
+#:
+#: **WHAT THE OWNER RULED, which is what this table records**: *we should say format and
+#: mean this format kind thing, that's a given; we should say legacy format and mean this
+#: thing with id*. So upstream's word ``Format`` denotes the canonical declaration --
+#: which is also what upstream's own runtime says (``_eager.py:939``,
+#: ``Format = _canonical_creative.Format``, required pair ``format_kind`` + ``params``) --
+#: and ``LegacyFormat`` denotes the v1 definition.
+#:
+#: **AND THIS IS NOT A REDIRECT, which is the one place two rules meet.**
+#: ``codegen/overrides.py`` requires that the rename BREAK rather than redirect, and it
+#: does: code that said ``Format`` and meant the v1 definition now receives the CANONICAL
+#: declaration, which refuses a ``format_id`` payload at validation against the document's
+#: own schema. It breaks loudly at the first value that distinguishes the two subjects.
+#: What is forbidden is a SILENT redirect -- the v1 class still answering to the word under
+#: a new spelling -- and that is exactly what is not happening here.
+#:
+#: An ``__adcp_ambiguous__`` decline is the other defensible answer and it is worse: the
+#: owner named the word's new meaning, so declining the word would withhold an answer we
+#: have.
+#:
+#: Each entry states the module path of OURS it binds to, so this table is checked the way
+#: every row is -- the path has to exist in the dump, or ``ASSERTED`` names a class that
+#: does not.
+ASSERTED: dict[str, dict[str, str]] = {
+    "Format": {
+        "ours": "adcp.types._schemas.core.product_format_declaration.ProductFormatDeclaration",
+        "why": (
+            "the owner's ruling: 'we should say format and mean this format kind thing'. "
+            "Upstream's own runtime agrees -- _eager.py:939 binds Format to the canonical "
+            "declaration whose required pair is format_kind + params. Our class for that "
+            "subject is titled 'Product Format Declaration', so no derivation can reach it "
+            "from the word."
+        ),
+    },
+    "LegacyFormat": {
+        "ours": "adcp.types._schemas.core.format.LegacyFormat",
+        "why": (
+            "the owner's ruling: 'we should say legacy format and mean this thing with "
+            "id'. core/format.json names itself a 'Legacy named-format definition' and "
+            "codegen/overrides.py takes that word, so this row follows the override "
+            "rather than deriving a second answer."
+        ),
+    },
+}
+
+
+def asserted(name, paths):
+    """The ASSERTED binding for one of their names, or ``None``.
+
+    ``paths`` is every module path of ours the dump holds, so an entry naming a class that
+    does not exist is a FAILURE here rather than a silent miss -- the same discipline
+    ``codegen/overrides.py`` applies to its quotations, applied to a path.
+    """
+    held = ASSERTED.get(name)
+    if held is None:
+        return None
+    if held["ours"] not in paths:
+        raise SystemExit(
+            f"ASSERTED['{name}'] names {held['ours']}, which no class of ours carries. "
+            "An asserted binding that cannot be resolved is a stale assertion, not a miss."
+        )
+    return held["ours"]
+
+
+def applied(rows):
+    """``rows`` with every ASSERTED binding overlaid, and the count of what moved.
+
+    **THE OVERLAY EXISTS BECAUSE THE DERIVED TABLE IS A COMMITTED ARTIFACT OF ANOTHER
+    RUN.**  This file re-derives every row from two dumps of the two trees, and a dump
+    taken before a rename describes a tree that no longer exists -- so re-deriving the
+    whole table to move two rows would move every row that the newer dump happens to
+    answer differently.  The assertions are therefore applied to the table as it stands,
+    which changes exactly the rows this decision is about and nothing else.
+
+    A consumer calls this; it does not hold the decision.  :data:`ASSERTED` is the one
+    place a binding is asserted and this is the one way it reaches a rendering.
+    """
+    out, moved = [], []
+    for row in rows:
+        held = ASSERTED.get(row["their"])
+        if held is None or row["ours"] == held["ours"]:
+            out.append(row)
+            continue
+        moved.append((row["their"], row["ours"], held["ours"]))
+        out.append({"their": row["their"], "ours": held["ours"], "how": "asserted"})
+    #: An assertion for a word the table does not carry at all is ADDED, because the word
+    #: exists on their side whether or not a derivation reached it: ``LegacyFormat`` is a
+    #: word upstream publishes and no rule of ours can now resolve it.
+    have = {row["their"] for row in out}
+    for name, held in ASSERTED.items():
+        if name not in have:
+            moved.append((name, None, held["ours"]))
+            out.append({"their": name, "ours": held["ours"], "how": "asserted"})
+    return out, moved
+
+
 rows, residue = [], []
 OUR_NAME, OUR_SIG, OUR_REQ, OUR_FLAT = _index(ours)
+#: Every module path of ours, so an ASSERTED entry naming a class that does not exist
+#: fails loudly rather than resolving to nothing.
+OUR_PATHS = frozenset(ours)
 for mod in sorted(set(theirs_by_module) & set(ours_by_module)):
     theirs, mine = theirs_by_module[mod], ours_by_module[mod]
     if len(mine) == 1:
         for t in theirs:
+            #: The assertion first, so a declared binding is never shadowed by a
+            #: derivation that happens to reach a different subject.
+            said = asserted(t["name"], OUR_PATHS)
+            if said is not None:
+                rows.append({"their": t["name"], "ours": said, "how": "asserted"})
+                continue
             rows.append({"their": t["name"], "ours": mine[0]["path"], "how": "collapse"})
         continue
     by_sig = collections.defaultdict(list)
@@ -240,6 +361,10 @@ for mod in sorted(set(theirs_by_module) & set(ours_by_module)):
         structural = t["kind"] in ("model", "enum", "class")
         sig = (tuple(t["fields"]), tuple(t["required"]))
         pick = how = None
+        said = asserted(t["name"], OUR_PATHS)
+        if said is not None:
+            rows.append({"their": t["name"], "ours": said, "how": "asserted"})
+            continue
         cand = (by_sig.get(sig) or []) if structural else []
         if len(cand) == 1:
             pick, how = cand[0]["path"], "signature"
@@ -276,6 +401,15 @@ for mod in sorted(set(theirs_by_module) & set(ours_by_module)):
 seen = {r["their"] for r in rows}
 for r in elsewhere:
     if r["name"] in seen:
+        continue
+    #: The assertion reaches the cross-tree path too: a word upstream publishes from its
+    #: hand-written layer has no shared module, and ``Format`` is exactly such a word on
+    #: their side (``_eager.py``), so an assertion consulted only in the module loop would
+    #: never be read for it.
+    said = asserted(r["name"], OUR_PATHS)
+    if said is not None:
+        rows.append({"their": r["name"], "ours": said, "how": "asserted"})
+        seen.add(r["name"])
         continue
     pick, how = _cross_tree(r)
     if pick:
