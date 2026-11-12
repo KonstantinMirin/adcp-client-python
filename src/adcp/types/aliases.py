@@ -35,8 +35,6 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
-from adcp.types import GetContentStandardsResponse1 as GetContentStandardsResponse1
-from adcp.types import GetContentStandardsResponse1 as GetContentStandardsSuccessResponse
 from adcp.types.account import GetAccountFinancialsError as GetAccountFinancialsErrorResponse
 from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsResponse1
 from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsSuccessResponse
@@ -61,6 +59,8 @@ from adcp.types.content_standards import CreateContentStandardsResponseErrors as
 from adcp.types.content_standards import CreateContentStandardsResponseStandardsId as CreateContentStandardsResponse1
 from adcp.types.content_standards import CreateContentStandardsResponseStandardsId as CreateContentStandardsSuccessResponse
 from adcp.types.content_standards import GetContentStandardsResponseErrors as GetContentStandardsErrorResponse
+from adcp.types.content_standards import GetContentStandardsResponseSuccess as GetContentStandardsResponse1
+from adcp.types.content_standards import GetContentStandardsResponseSuccess as GetContentStandardsSuccessResponse
 from adcp.types.content_standards import GetMediaBuyArtifactsResponseArtifactsMediaBuyId as GetMediaBuyArtifactsResponse1
 from adcp.types.content_standards import GetMediaBuyArtifactsResponseArtifactsMediaBuyId as GetMediaBuyArtifactsSuccessResponse
 from adcp.types.content_standards import GetMediaBuyArtifactsResponseErrors as GetMediaBuyArtifactsErrorResponse
@@ -262,7 +262,6 @@ __adcp_refused__ = {
     "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents6, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: their CreateMediaBuyResponse1 pins {'status': 'completed'} and the subject it reaches (['adcp.types._schemas.media_buy.create_media_buy_response.CreateMediaBuySuccess']) pins nothing there: a name over a type that accepts what the document refuses is worse than an unbound name",
-    "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.get_creative_delivery_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineDaastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.DaastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "InlineVastAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.assets.asset_union.VastAsset2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_audiences_request.Audience, which is DOCUMENT-NO-WORD-NO-IDENTITY",
