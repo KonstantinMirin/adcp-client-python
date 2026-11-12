@@ -3,6 +3,48 @@
 **The lane:** `namereach`. `survey causes` attributes **72** of the baseline's 1,244
 failures to it, over three causes: 19 + 22 + 31.
 
+## The figures, from `survey causes --since` and not from a count assembled by hand
+
+```
+PYTHONPATH=.:src python -m survey causes /srv/ws/dropin-namereach --since /srv/ws/dropin-keyless
+```
+
+`chunks read: 4` on both sides, so neither number is over a fraction of the suite.
+
+| | |
+|---|---|
+| passed before | **10,572** |
+| passed after | **10,614** |
+| delta | **+42** |
+| **newly failing** | **0** |
+
+**+42 is NOT all this lane's, and the attribution matters.** The baseline tree predates a
+rebase that brought in other lanes' work, so the per-cause table is the honest reading:
+
+| cause | lane | before | after | delta | whose |
+|---|---|---|---|---|---|
+| `model_summary` keyed on `__class__.__name__` | namereach | 19 | **1** | **−18** | **this lane** |
+| the asset union read as a structure | aliasnote | 28 | 2 | −26 | aliasnote, arrived in the rebase |
+| `Format`: the v1 definition answering | drawcost | 129 | 130 | +1 | drawcost |
+| `operation_id` | namereach | 31 | 31 | 0 | write-up only, by design |
+| a word resolving at no module | namereach | 22 | 22 | 0 | write-up only, by design |
+| residue | — | 212 | 213 | +1 | |
+
+−18 − 26 + 1 + 1 = −42. **So this lane's movement is exactly −18**, and the single
+remaining failure in its first cause is the `_generated.py` row documented as FINDING 1a
+(`tests/test_response_str.py` reads 31 passed / 1 failed, the one being
+`TestBuildCreativeResponseMessage::test_error`).
+
+The other two causes are unmoved on purpose: both are measurements, and neither admits a
+change inside this lane's write scope. `tests/test_postal_area_compat.py` holds at 21
+failed / 10 passed and `tests/test_reporting_webhook_operation_id.py` at 25 failed / 11
+passed.
+
+`./check` is UNMOVED on all three figures: `emitted 1059 / refused 0`,
+`primary 0 / chained 0`, `approximated 383 facts in 148 documents`. `make lint` reads
+**255** and `make typecheck` **4,118 errors in 694 files** both before and after — verified
+by swapping `base.py` for trunk's and re-running, so these files add none.
+
 Each cause below carries the document and the pointer it rests on. Two of the three
 turned out to be something other than what the brief premised, and both corrections are
 stated where they arise rather than buried: **cause 2 is one member of an 81-word class
