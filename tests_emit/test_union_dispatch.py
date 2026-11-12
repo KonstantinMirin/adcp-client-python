@@ -1153,9 +1153,16 @@ def test_the_submitted_arm_requires_what_its_target_requires() -> None:
 #: by §4's own ancestor axis, and what this row asserts about the two sites is
 #: untouched.  The symbol is still read off the module rather than derived here, so a
 #: future move reddens at this pin rather than silently grading another class.
+#: **AND THIS PIN DID ITS JOB, which is why it is updated and not derived.**  The ordinal
+#: name ``BuyProductsRequestBranch1Account`` became illegal (``Branch\d+`` is not a name),
+#: so this entry reddened with ``module … has no attribute``.  Confirmed before moving it:
+#: the class at that document and pointer is ``BuyProductsRequestAccountAccount`` -- same
+#: ``__adcp_schema__``, and exactly parallel to the sibling entry's
+#: ``RequestProposalsRequestAccountAccount``, which never moved.  That is the pin working
+#: as its own comment describes: a rename reddens here and a human says it is one subject.
 ACCOUNT_RESTATEMENTS = (
     ("media-buy/buy-products-request.json", "#/anyOf/1/properties/account",
-     "adcp.types._schemas.media_buy.buy_products_request", "BuyProductsRequestBranch1Account"),
+     "adcp.types._schemas.media_buy.buy_products_request", "BuyProductsRequestAccountAccount"),
     ("media-buy/request-proposals-request.json", "#/anyOf/1/properties/account",
      "adcp.types._schemas.media_buy.request_proposals_request",
      "RequestProposalsRequestAccountAccount"),
