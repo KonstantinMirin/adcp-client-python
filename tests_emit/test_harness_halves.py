@@ -29,15 +29,15 @@ pair of classes over one document: these are three, differing in one axis each.
 from __future__ import annotations
 
 import json
-import time
 from typing import Any
 
 import jsonschema
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from adcp.types._base import _refuse  # the production schema half
+from adcp.types._base import SchemaRef, _refuse  # the production schema half
 from codegen import harness
+from codegen.verify import witness
 
 #: One object document that demands both of its keys and admits no others, so each
 #: perturbation below has exactly one thing to break.
@@ -47,6 +47,23 @@ DOC: dict[str, Any] = {
     "properties": {"a": {"type": "string"}, "b": {"type": "integer"}},
     "additionalProperties": False,
 }
+
+#: **WHAT ``examples=N`` BECAME, and it is a different kind of argument.**
+#: ``check_accepts`` took ``examples: int`` and DREW that many instances; it now takes
+#: ``witness: Sequence[Any]`` and is handed them, because
+#: :class:`codegen.verify.witness.Construction` constructs the witness and the check grades
+#: it -- *"no corpus, no cache, no budget, no depth cap, no example count"*.  A count is a
+#: knob that can turn a check off; a witness list is the thing being graded.
+#:
+#: Handed ``witness=None`` the check returns ``no_witness`` at once and never calls
+#: ``accept`` at all, which is why every clause below that needed the callee to be REACHED
+#: had to be re-pointed rather than left: an ``examples=`` call grades nothing now.
+#: Three instances, so a clause that counts has something to count.
+A_WITNESS: tuple[dict[str, Any], ...] = (
+    {"a": "x", "b": 1},
+    {"a": "y", "b": 2},
+    {"a": "z", "b": 3},
+)
 
 
 class Faithful(BaseModel):
@@ -209,9 +226,12 @@ def test_the_dump_half_catches_a_class_that_loses_a_key_the_document_demands() -
     ``DropsB`` accepts every instance ``Faithful`` accepts -- it IS ``Faithful`` plus a
     renderer -- so the acceptance half of the draw and the liveness check both pass it.
     The dump is what separates them.
+
+    The instances are HANDED here (:data:`A_WITNESS`) rather than drawn; the dump half is
+    unchanged and is what this clause is about.
     """
-    assert harness.check_accepts(DOC, accept_of(Faithful), examples=10).outcome == "pass"
-    lossy = harness.check_accepts(DOC, accept_of(DropsB), examples=10)
+    assert harness.check_accepts(DOC, accept_of(Faithful), witness=A_WITNESS).outcome == "pass"
+    lossy = harness.check_accepts(DOC, accept_of(DropsB), witness=A_WITNESS)
     assert lossy.outcome == "model_dropped_a_fact", lossy.detail
     # The CAUSE comes first, because ``detail`` is truncated and a reason behind a
     # megabyte of dumped instance is a reason nothing can read.
@@ -223,12 +243,16 @@ def test_a_round_tripped_instance_is_counted_and_an_unreported_one_is_not() -> N
     """The denominator the pair's verdict reads, and it counts dumps rather than draws.
 
     ``PairReport.graded_instances`` is this number, and ``PairReport.outcome`` turns a
-    zero into a refusal: a pair that drew ten instances and dumped none back out to
-    something the document admits was graded by nothing.
+    zero into a refusal: a pair handed instances that dumped none back out to something
+    the document admits was graded by nothing.
+
+    **It counts dumps rather than DRAWS, and now there are no draws to confuse it with** --
+    the denominator is the witness it was handed, so ``examples`` and ``round_tripped``
+    being equal says every instance offered survived the round trip.
     """
-    passing = harness.check_accepts(DOC, accept_of(Faithful), examples=7)
-    assert passing.examples == 7
-    assert passing.round_tripped == 7
+    passing = harness.check_accepts(DOC, accept_of(Faithful), witness=A_WITNESS)
+    assert passing.examples == len(A_WITNESS)
+    assert passing.round_tripped == len(A_WITNESS)
 
 
 # --------------------------------------------------------------------------- #
@@ -269,46 +293,11 @@ def test_a_round_tripped_instance_is_counted_and_an_unreported_one_is_not() -> N
 #: How long a non-terminating draw body spins before it gives up and FAILS.  Far wider than
 #: any budget here, so a budget that does not cut is a loud red rather than a hung suite:
 #: the failsafe is the test's own patience and never the instrument.
-_FAILSAFE_SECONDS = 120.0
-
-
-def _an_entry_point_that_does_not_finish():
-    """An ``accept`` that spins in ORDINARY PYTHON until something cuts it.
-
-    **A draw with no termination of its own, which is what the old fixture only claimed to
-    be.**  The spin is pure Python, so the alarm lands between bytecodes in a frame this
-    file owns and propagates immediately -- and it is reached through the real
-    ``check_accepts``, the real ``hypothesis`` ``given`` machinery and the real draw, so the
-    end-to-end path is the one under test.  There is nothing here for load to finish early:
-    a loop that does not stop cannot be beaten to the exit.
-    """
-
-    def accept(payload: Any) -> Any:
-        until = time.monotonic() + _FAILSAFE_SECONDS
-        while time.monotonic() < until:
-            pass
-        raise AssertionError(
-            f"the entry point spun for {_FAILSAFE_SECONDS} s and nothing cut it, so the "
-            "budget did not bound the draw"
-        )
-
-    return accept
-
-
 def _an_entry_point_that_raises(what: BaseException):
     def accept(payload: Any) -> Any:
         raise what
 
     return accept
-
-
-def _raising(what: BaseException):
-    """A stand-in for any callable on the path to the draw, raising ``what`` when reached."""
-
-    def instead(*args: Any, **kwargs: Any) -> Any:
-        raise what
-
-    return instead
 
 
 def test_a_budget_cut_reaches_the_caller_as_itself_and_never_as_a_verdict() -> None:
@@ -329,13 +318,14 @@ def test_a_budget_cut_reaches_the_caller_as_itself_and_never_as_a_verdict() -> N
     an injected raise fails exactly as a timed one did, because what was wrong was
     ``OverBudget`` being an ``Exception``.
 
-    **Both ENDS of the handler chain, because the chain is what the property is about.**
-    ``check_accepts`` has four handlers between the caller and the draw -- ``_DumpRefused``,
-    ``ValidationError``, the ``hypothesis`` family, and the broad ``Exception`` -- and
-    ``hypothesis`` has its own between the body and the strategy.  The entry-point injection
-    is raised INSIDE the drawn body, so it crosses every one of them; the strategy-build
-    injection never reaches a draw at all, so it crosses the outermost only.  Either alone
-    would pass over a defect in the other.
+    **THE CHAIN IS WHAT THE PROPERTY IS ABOUT, and only one end of it still exists.**
+    ``check_accepts`` has four handlers between the caller and ``accept`` --
+    ``_DumpRefused``, ``ValidationError``, the ``hypothesis`` family, and the broad
+    ``Exception`` -- and the entry-point injection is raised INSIDE the body, so it crosses
+    every one of them.  There was a second injection at the STRATEGY BUILD, which crossed
+    the outermost handler alone; ``harness.strategy`` does not exist, because the witness is
+    constructed and no strategy is built, so that half had no subject and is gone.  What is
+    kept is the half that crosses the whole chain, which is the stronger of the two.
 
     Both halves of the original reading are kept: the cut arrives as a cut, and no enclosing
     ``except Exception`` sees it.
@@ -363,507 +353,37 @@ def test_a_budget_cut_reaches_the_caller_as_itself_and_never_as_a_verdict() -> N
             f"a budget cut injected at {where} was turned into a verdict: {verdict}"
         )
 
-    # Inside the drawn body: through hypothesis and all four of check_accepts' handlers.
+    # Inside the body, where ``accept`` runs: through all four of check_accepts' handlers.
     reaches_the_caller(
         "the entry point",
-        lambda: harness.check_accepts(DOC, _an_entry_point_that_raises(cut), examples=1),
-    )
-
-    # At the strategy build, which is the first thing check_accepts does inside its try --
-    # so the cut crosses the outermost handler without a draw happening at all.
-    built = harness.strategy
-    harness.strategy = _raising(cut)
-    try:
-        reaches_the_caller(
-            "the strategy build",
-            lambda: harness.check_accepts(DOC, lambda payload: payload, examples=1),
-        )
-    finally:
-        harness.strategy = built
-
-
-def test_the_real_alarm_cuts_a_draw_that_cannot_END_and_the_cut_is_still_a_cut() -> None:
-    """The END-TO-END path, with the real ``SIGALRM`` -- and it is not the check above.
-
-    The property is already established without a clock; this one exists so the wiring that
-    delivers a cut in production is covered too: :func:`harness.within`'s repeating
-    ``setitimer``, its handler, the restore on the way out, and ``OverBudget`` crossing the
-    same handler chain when a TIMER rather than a test raises it.
-
-    **The draw cannot end on its own, which is the whole of why this does not flake.**  The
-    entry point spins in ordinary Python, so there is no ``Unsatisfiable``, no buffer
-    overrun and no early return for load to bring forward -- the only thing that can end
-    this call is the alarm.  Measured at 30 of 30 under 48-way CPU load, propagating in
-    2.01 s every time, against the 2-in-30 of the fixture this replaces.
-
-    The budget is small ON PURPOSE and the failsafe is what makes that safe: a budget that
-    fails to cut costs ``_FAILSAFE_SECONDS`` and then reddens, rather than hanging.  Nothing
-    here is a margin against contention -- see this section's note.
-    """
-    swallowed: Exception | None = None
-    started = time.monotonic()
-    with pytest.raises(harness.OverBudget):
-        try:
-            with harness.within(2):
-                harness.check_accepts(DOC, _an_entry_point_that_does_not_finish(), examples=1)
-        except Exception as e:  # the handler under judgement
-            swallowed = e
-    assert swallowed is None, (
-        f"a budget cut was caught by an `except Exception` and would have been reported as "
-        f"a verdict about the document: {type(swallowed).__name__}: {swallowed}"
-    )
-    assert time.monotonic() - started < _FAILSAFE_SECONDS, (
-        "the alarm did not cut the draw; the entry point's own failsafe did"
+        lambda: harness.check_accepts(DOC, _an_entry_point_that_raises(cut), witness=A_WITNESS),
     )
 
 
-def test_an_exception_raised_after_a_swallowed_cut_is_a_cut_and_not_a_verdict() -> None:
-    """The door ``OverBudget``'s TYPE cannot close, and what came through it.
-
-    Making a cut a ``BaseException`` stops an enclosing ``except Exception`` from reading
-    the cut ITSELF as a verdict.  It does nothing when a frame between the alarm and the
-    handler swallows the cut and raises its OWN exception in its place -- and
-    ``hypothesis`` does that: the first cut lands inside a draw, ``hypothesis`` re-runs the
-    strategy to see whether the failure reproduces, the second run diverges because the
-    first was interrupted, and ``FlakyStrategyDefinition`` -- an ordinary ``Exception`` in
-    the ``HypothesisException`` family -- is what reaches ``check_accepts``.
-
-    **Measured, not supposed.**  Over all 2,793 graded pairs at a 20 s budget, single
-    process: 2 pairs reported ``accepts:strategy_error``, both at 20.2 s against the 20 s
-    budget, both with ``FlakyStrategyDefinition: Inconsistent data generation!`` as the
-    whole of their detail -- ``core/signal-coverage-forecast.json#`` and
-    ``media-buy/media-buy-commitment-response.json#/oneOf/0``.  Two facts about this
-    process's clock, in the column that means the generator produced nothing for the
-    schema.
-
-    **The REAL alarm, and the swallow is the entry point's rather than a race.**  The entry
-    point waits for the cut and catches it exactly as ``hypothesis``'s own
-    ``except BaseException`` frames do, then raises a ``HypothesisException`` -- the
-    sequence end to end, with the failsafe of this section making a budget that never
-    fires cost ``_FAILSAFE_SECONDS`` and redden rather than hang.  It fails on the old code
-    for the reason the figures above record and not for a timing reason.
-    """
-    from hypothesis.errors import FlakyStrategyDefinition
-
-    swallowed_the_cut = [False]
-
-    def entry_point(payload: Any) -> Any:
-        until = time.monotonic() + _FAILSAFE_SECONDS
-        while not swallowed_the_cut[0] and time.monotonic() < until:
-            try:
-                time.sleep(0.05)
-            except harness.OverBudget:
-                swallowed_the_cut[0] = True
-        raise FlakyStrategyDefinition("Inconsistent data generation!")
-
-    verdict: Any = None
-    started = time.monotonic()
-    with pytest.raises(harness.OverBudget):
-        with harness.within(1):
-            verdict = harness.check_accepts(DOC, entry_point, examples=1)
-    assert swallowed_the_cut[0], "the fixture never reached the swallow it is about"
-    assert verdict is None, (
-        f"an exception raised after the cut was swallowed became a verdict about the "
-        f"document: {verdict}"
-    )
-    assert time.monotonic() - started < _FAILSAFE_SECONDS, (
-        "the alarm did not cut the draw; the entry point's own failsafe did"
-    )
-
-
-def test_a_grade_with_no_budget_reports_the_verdict_it_always_did() -> None:
-    """The other side of :func:`harness.budget_expired`, so the clause is not a mute.
-
-    A caller grading with no :func:`harness.within` around it -- every direct caller in
-    this file -- must still get ``strategy_error`` for a generator that errors, because
-    there is no clock for the exception to be an artefact of.  Without this the clause
-    above could be satisfied by reporting every error as a cut.
-    """
-    from hypothesis.errors import FlakyStrategyDefinition
-
-    def entry_point(payload: Any) -> Any:
-        raise FlakyStrategyDefinition("Inconsistent data generation!")
-
-    res = harness.check_accepts(DOC, entry_point, examples=1)
-    assert res.outcome == "strategy_error", (
-        f"with no budget active the generator's own error is still the verdict, "
-        f"not a cut: {res.outcome}"
-    )
-
-
-# --------------------------------------------------------------------------- #
-# the canonicalisation sharing, whose whole correctness is its lifetime
-# --------------------------------------------------------------------------- #
-def test_the_sharing_is_installed_for_one_call_and_restored_even_on_a_raise() -> None:
-    """What separates this from the process-global memo section 6 deleted.
-
-    The memo's defect was that it was unbounded, process-global and retained for the life
-    of the process -- roughly 340 entries per pair across 1,055 pairs and ten workers,
-    which pushed a run into a kernel kill.  The only thing keeping this from being that
-    is its LIFETIME, so the lifetime is what is asserted, in both exits.
-    """
-    import hypothesis_jsonschema._canonicalise as canon  # the patched name
-
-    before = canon.canonicalish
-    with harness.canonicalisation_shared_within_one_call() as memo:
-        assert canon.canonicalish is not before
-        canon.canonicalish({"type": "string"})
-        canon.canonicalish({"type": "string"})
-        assert len(memo) == 1, "two identical calls, one entry"
-    assert canon.canonicalish is before
-
-    with pytest.raises(RuntimeError):
-        with harness.canonicalisation_shared_within_one_call():
-            raise RuntimeError("the body raised")
-    assert canon.canonicalish is before, "a raise must not leave the library patched"
-
-
-def test_a_hit_hands_back_a_copy_because_the_library_mutates_what_it_is_given() -> None:
-    """The one thing a naive memo gets wrong, and it corrupts every later call.
-
-    ``hypothesis_jsonschema`` mutates the nodes it is handed, so returning the held
-    object would let one call's rewrite reach the next one's.  Graded by mutating the
-    first result and asking for the same key again.
-    """
-    import hypothesis_jsonschema._canonicalise as canon  # the patched name
-
-    with harness.canonicalisation_shared_within_one_call():
-        first = canon.canonicalish({"type": "string", "minLength": 2})
-        first["__scribbled_on__"] = True
-        second = canon.canonicalish({"type": "string", "minLength": 2})
-    assert "__scribbled_on__" not in second
-
-
-# --------------------------------------------------------------------------- #
-# §8's residue clause: a combinator is COVERED, never ENUMERATED
-# --------------------------------------------------------------------------- #
-#: **A CONJUNCTION THE LIBRARY CANNOT MERGE WHOLE**, which is the shape §8 prices at 2^n,
-#: written by hand so the property is a property of the rule and not of one bundle.
-#: ``hypothesis_jsonschema``'s ``merged`` declines a conjunct holding an ``anyOf`` -- "due
-#: to product-like explosion in worst case", its own comment -- and ``canonicalish``
-#: rewrites an ``if``/``then`` into exactly that, so a discriminated dispatch is the
-#: bundle's own spelling of this shape (``compliance/comply-test-controller-request.json#``
-#: is thirty of them).  The whole-conjunction merge therefore fails, the ``allOf``
-#: survives into ``__from_schema``, and ``merged_as_strategies`` walks
-#: ``itertools.combinations`` of 25 inputs.
+#: **``test_a_grade_with_no_budget_reports_the_verdict_it_always_did`` STOOD HERE AND ITS
+#: SUBJECT IS GONE.**  It asserted that a ``FlakyStrategyDefinition`` raised with no
+#: :func:`harness.within` active still reports ``strategy_error`` rather than a cut, and it
+#: existed so that :func:`harness.budget_expired` was not a mute -- the clause above could
+#: otherwise be satisfied by reporting every error as a cut.
 #:
-#: 4,968 bytes.  **Measured: the library cannot BUILD the strategy for it inside 120 s**;
-#: with the cover the build is 0.52 s and the draw 0.23 s.  So this document is a control
-#: for "no constant factor reaches it" as well as a fixture.
-A_DISPATCH_CONJUNCTION: dict[str, Any] = {
-    "type": "object",
-    "properties": {"kind": {"type": "string"}, "payload": {"type": "object"}},
-    "required": ["kind"],
-    "allOf": [
-        {
-            "if": {"properties": {"kind": {"const": f"k{i}"}}, "required": ["kind"]},
-            "then": {
-                "required": ["payload"],
-                "properties": {
-                    "payload": {
-                        "required": [f"f{i}"],
-                        "properties": {f"f{i}": {"type": "integer"}},
-                    }
-                },
-            },
-        }
-        for i in range(24)
-    ],
-}
-
-
-def test_a_conjunction_is_covered_in_quadratic_intersections_and_never_in_a_power_set() -> None:
-    """§8: "a combinator root is not graded by drawing the power set of its branches".
-
-    The claim is about the SEARCH and not about the answer, so what is asserted is the
-    number of intersections the build pays and the fact that every input is in the cover.
-    A timing assertion is deliberately absent -- ``adcp-client-python-82m.34`` records what
-    a test that drives a real ``SIGALRM`` costs under contention -- and it is not needed:
-    an intersection count below ``n * n`` on a node whose power set is ``2 ** n`` is the
-    whole of the rule, and it is deterministic.
-    """
-    with harness.a_combinator_is_covered_and_never_enumerated() as cover:
-        harness.strategy(dict(A_DISPATCH_CONJUNCTION), {})
-    assert cover, "the root's conjunction never reached merged_as_strategies"
-    inputs, groups, intersections = cover[0]
-    assert inputs > len(A_DISPATCH_CONJUNCTION["allOf"]), (
-        f"the node's own keywords are an input beside its conjuncts: {inputs}"
-    )
-    assert intersections <= inputs * inputs, (
-        f"{intersections} intersections for {inputs} inputs is not a quadratic search"
-    )
-    assert intersections < 2**inputs, (
-        f"{intersections} against a power set of {2**inputs}"
-    )
-    assert groups <= inputs, f"a cover cannot hold more groups than it has inputs: {groups}"
-
-
-def test_every_value_the_cover_draws_is_one_the_WHOLE_conjunction_admits() -> None:
-    """The soundness half, and it is the document that says so.
-
-    A cover is a set of groups whose union is every input, each drawn from its own
-    intersection -- a SUPERSET of what the conjunction admits -- and then filtered by every
-    input's own validator.  So the saving is a statement about which intersections the
-    generator is offered and about nothing else, which is the same clause
-    ``Fixtures.reduced`` is held to.  Graded by asking the unreduced document.
-    """
-    with harness.a_combinator_is_covered_and_never_enumerated():
-        value = harness.one_instance(A_DISPATCH_CONJUNCTION, {})
-    assert harness.conforms(A_DISPATCH_CONJUNCTION, value) is True, (
-        f"the cover drew {value!r}, which its own document refuses"
-    )
-
-
-def test_a_conjunction_that_MERGES_gets_the_library_s_own_answer_and_one_group() -> None:
-    """The path almost every pair takes is unchanged, which is why nothing else moved.
-
-    The library's first iteration is the whole input set, and where that intersects it
-    stops there -- ``combined`` then supersets every later group.  This rule tries the
-    same thing first, so a mergeable conjunction is answered by one group and the only
-    intersection paid is that one.
-    """
-    merges = {
-        "allOf": [
-            {"type": "object", "properties": {"a": {"type": "string"}}, "required": ["a"]},
-            {"required": ["b"], "properties": {"b": {"type": "integer"}}},
-        ]
-    }
-    with harness.a_combinator_is_covered_and_never_enumerated() as cover:
-        harness.strategy(dict(merges), {})
-    for inputs, groups, intersections in cover:
-        assert groups == 1, f"{inputs} mergeable inputs became {groups} groups"
-        assert intersections == 1, f"a whole-set merge is one intersection, not {intersections}"
-
-
-def test_the_cover_is_installed_for_one_call_and_restored_even_on_a_raise() -> None:
-    """The lifetime, which is the only thing separating this from patching the library.
-
-    ``canonicalisation_shared_within_one_call``'s own rule: nothing is patched at import
-    time, so a caller of this module that did not ask for the rule gets the library exactly
-    as it ships.  Both exits are asserted, and the nested case too -- ``one_instance``
-    enters this inside a caller that may already have.
-    """
-    import hypothesis_jsonschema._from_schema as library  # the patched name
-
-    before = library.merged_as_strategies
-    with harness.a_combinator_is_covered_and_never_enumerated():
-        assert library.merged_as_strategies is not before
-        inner = library.merged_as_strategies
-        with harness.a_combinator_is_covered_and_never_enumerated():
-            assert library.merged_as_strategies is not inner
-        assert library.merged_as_strategies is inner, "a nested exit restored the wrong one"
-    assert library.merged_as_strategies is before
-
-    with pytest.raises(RuntimeError):
-        with harness.a_combinator_is_covered_and_never_enumerated():
-            raise RuntimeError("the body raised")
-    assert library.merged_as_strategies is before, (
-        "a raise must not leave the library patched"
-    )
-
-
-# --------------------------------------------------------------------------- #
-# §9: the canonical encoding is the SAME TEXT, rendered by the C encoder
-# --------------------------------------------------------------------------- #
-#: **Every value the substitution has to answer for, and the three it must DECLINE.**
-#: ``the_canonical_encoding_is_not_rebuilt_in_python`` takes ``json``'s C encoder wherever
-#: its text is the library's own, and the library's own differs in exactly one place --
-#: ``CanonicalisingJsonEncoder._floatstr`` writes an integer-valued float as an integer --
-#: so what has to be graded is that the texts AGREE on everything plain and that anything a
-#: ``float`` can reach, at a value or at a KEY, goes to the library.  The last three rows
-#: are the declines, and each is a value whose C text is NOT the canonical one or whose type
-#: this walk refuses to reason about.
-A_CANONICAL_ENCODING: list[Any] = [
-    {},
-    [],
-    None,
-    True,
-    False,
-    0,
-    -1,
-    "x",
-    {"a": 1, "b": [1, "x", None, True, False], "c": {"d": {}}},
-    {"type": ["string", "null"], "minLength": 0, "enum": ["a", "b"]},
-    {"a": [[[[{"b": [1, 2, 3]}]]]]},
-    {"": {"": {"": 1}}},
-    1.0,
-    {"multipleOf": 1.0},
-    {"maximum": 2.5},
-    {"a": 1e30},
-    {"a": -0.0},
-    {1: "x"},
-    {"a": (1, 2)},
-]
-
-
-@pytest.mark.parametrize("value", A_CANONICAL_ENCODING, ids=lambda v: repr(v)[:40])
-def test_the_c_encoder_substitution_renders_the_librarys_own_text(value: Any) -> None:
-    """One text, two encoders -- and the substitution is only admissible if they are equal.
-
-    This is the whole claim ``adcp-client-python-pcqy``'s repair rests on, so it is graded
-    as an EQUALITY against the library's own function and not as a property of the
-    predicate: a value the predicate sends to the C encoder must come back with the text
-    ``encode_canonical_json`` would have produced, and a value it declines must come back
-    with that text too, because the decline IS a call to the library.
-    """
-    import hypothesis_jsonschema._encode as library
-
-    shipped = library.encode_canonical_json
-    with harness.the_canonical_encoding_is_not_rebuilt_in_python() as canonical:
-        assert canonical(value) == shipped(value)
-
-
-def test_a_float_is_never_rendered_by_the_c_encoder() -> None:
-    """The predicate's own claim, stated over the one difference between the encoders.
-
-    ``1.0`` is written ``1`` by the library and ``1.0`` by the C encoder, so a value
-    holding a float MUST be declined.  Graded by the predicate rather than by the texts,
-    because the texts being equal is what the test above asserts and this one asserts WHY.
-    """
-    assert harness._c_encoder_is_canonical({"a": 1, "b": ["x", None, True]})
-    assert not harness._c_encoder_is_canonical({"a": 1.0})
-    assert not harness._c_encoder_is_canonical({"a": [{"b": 2.5}]})
-    assert not harness._c_encoder_is_canonical({1.0: "x"})
-    assert not harness._c_encoder_is_canonical({"a": (1, 2)}), "a tuple is not a list here"
-
-
-def test_every_namespace_the_library_resolves_the_canonical_encoder_through_is_rebound() -> None:
-    """**The set, read off the library's own import lines rather than maintained by hand.**
-
-    ``encode_canonical_json`` is defined in ``_encode`` and imported BY NAME elsewhere, so
-    a module that imports it and is missing from
-    ``harness._CANONICAL_ENCODING_SITES`` keeps the pure-Python encoder with nothing red to
-    say so.  This reads the library's source for the modules that bind the name and asserts
-    the tuple covers them.
-    """
-    import pathlib
-
-    import hypothesis_jsonschema
-
-    root = pathlib.Path(hypothesis_jsonschema.__file__).parent
-    binds = {
-        path.stem
-        for path in root.glob("*.py")
-        if "encode_canonical_json" in path.read_text()
-    }
-    rebound = {site.__name__.rsplit(".", 1)[-1] for site in harness._CANONICAL_ENCODING_SITES}
-    assert binds <= rebound, f"these modules bind the name and are not rebound: {binds - rebound}"
-
-
-def test_the_canonical_encoding_is_installed_for_one_call_and_restored_even_on_a_raise() -> None:
-    """The lifetime, which is the one thing separating this from patching the library."""
-    import hypothesis_jsonschema._canonicalise as canon
-    import hypothesis_jsonschema._encode as enc
-    import hypothesis_jsonschema._from_schema as frm
-
-    before = (enc.encode_canonical_json, canon.encode_canonical_json, frm.encode_canonical_json)
-    assert len(set(map(id, before))) == 1, "the three names are one function before the sharing"
-    with harness.the_canonical_encoding_is_not_rebuilt_in_python():
-        assert enc.encode_canonical_json is not before[0]
-        assert canon.encode_canonical_json is enc.encode_canonical_json
-        assert frm.encode_canonical_json is enc.encode_canonical_json
-    assert (enc.encode_canonical_json, canon.encode_canonical_json,
-            frm.encode_canonical_json) == before
-
-    with pytest.raises(RuntimeError), harness.the_canonical_encoding_is_not_rebuilt_in_python():
-        raise RuntimeError("the body raised")
-    assert enc.encode_canonical_json is before[0], (
-        "a raise must not leave the library patched"
-    )
-
-
-def test_the_grade_installs_the_canonical_encoding_with_the_other_sharings() -> None:
-    """``shared_within_one_grade`` is the one door, so the fifth sharing arrives there.
-
-    Asserted against the library's own name rather than by counting the contexts: what the
-    caller needs is that a draw opened through this function renders canonical text through
-    the C encoder, and the name is where that is visible.
-    """
-    import hypothesis_jsonschema._encode as enc
-
-    before = enc.encode_canonical_json
-    with harness.shared_within_one_grade():
-        assert enc.encode_canonical_json is not before, (
-            "a grade must install the canonical encoding"
-        )
-    assert enc.encode_canonical_json is before
-
-
-# --------------------------------------------------------------------------- #
-# the memo's copy clause, decided off the value and not by a second rendering
-# --------------------------------------------------------------------------- #
-@pytest.mark.parametrize(
-    "value",
-    [
-        {"a": 1},
-        {"a": [1, 2, {"b": None}]},
-        {"a": 2.5},
-        {"a": float("inf")},
-        {"a": -0.0},
-        {},
-        [],
-        {"a": True},
-        {1: "x"},
-        {"a": (1, 2)},
-        {"a": float("nan")},
-        {"a": {1.5: "x"}},
-    ],
-    ids=lambda v: repr(v)[:30],
-)
-def test_round_trips_answers_what_reading_the_text_back_would_answer(value: Any) -> None:
-    """The predicate against the ``json.loads(blob) == value`` it replaced, value by value.
-
-    ``_round_trips`` stopped parsing its own output (``adcp-client-python-pcqy``), so the
-    obligation is that the cheaper answer is the SAME answer.  The control is the old
-    expression, written out here, so the two are compared rather than one of them trusted.
-    """
-    try:
-        blob = json.dumps(value)
-        read_back_is_equal = json.loads(blob) == value
-    except (TypeError, ValueError):
-        blob, read_back_is_equal = None, False
-
-    answer = harness._round_trips(value)
-    assert (answer is not None) == read_back_is_equal
-    if answer is not None:
-        assert answer == blob
+#: Both halves of that have left.  ``check_accepts`` now carries THREE handlers --
+#: ``_DumpRefused``, ``ValidationError`` and the broad ``Exception`` -- and the
+#: ``hypothesis``-family handler that produced ``strategy_error`` is not among them,
+#: because no strategy is built: the witness is constructed and handed in.  So the verdict
+#: for that input is ``model_error``, which is the honest answer and not a regression --
+#: there is no generator for the error to be attributed to.  And
+#: :func:`harness.budget_expired` has **no caller anywhere in the tree**; its only
+#: remaining references are a comment in ``harness.py`` and the docstring that stood here.
+#:
+#: The clause the budget still OWES is the one above, and it is live:
+#: :class:`harness.OverBudget` is a ``BaseException`` precisely so the broad ``except
+#: Exception`` does not convert a cut into a verdict about a document, and that handler is
+#: still there.  See ``verdicts/gates-read-the-witness.md`` on removing the rest.
 
 
 # --------------------------------------------------------------------------- #
 # the DOCUMENT's own statement of a valid instance: `examples`
 # --------------------------------------------------------------------------- #
-def test_the_node_s_own_examples_answer_the_accepts_check_and_are_counted_apart() -> None:
-    """**The store, then ``examples``, then the draw** -- and the third state is visible.
-
-    ``examples`` is JSON Schema's own keyword for "here is a valid instance of this
-    schema", so where a node states one there is nothing to generate.  §8 already requires
-    the source to be reportable -- "a store that answers and a borrow that answers are
-    different facts about coverage" -- so what is asserted is the counter as well as the
-    pass: a reader of a green pair has to be able to tell which of the three answered.
-    """
-    document = {
-        "type": "object",
-        "required": ["a"],
-        "properties": {"a": {"type": "string"}},
-        "additionalProperties": False,
-        "examples": [{"a": "a realistic value"}],
-    }
-
-    taken: list[Any] = []
-
-    def entry_point(payload: Any) -> Any:
-        taken.append(payload)
-        return payload
-
-    res = harness.check_accepts(document, entry_point, examples=1)
-    assert res.outcome == "pass", res.detail
-    assert res.stated == 1, "the node states an instance and the draw was not needed"
-    assert res.replayed == 0 and res.examples == 1
-    assert taken == [{"a": "a realistic value"}], (
-        f"the instance the class saw is not the one the document states: {taken}"
-    )
-
-
 def test_an_examples_member_its_own_node_REFUSES_is_not_an_instance() -> None:
     """The screen, which is the whole of the rule and is not a formality.
 
@@ -894,39 +414,6 @@ def test_an_examples_member_its_own_node_REFUSES_is_not_an_instance() -> None:
     assert harness.stated_instances(mixed) == [{"a": "good"}], (
         "the screen kept a member the node refuses, or dropped one it admits"
     )
-
-
-def test_a_stated_instance_is_not_copied_into_the_store() -> None:
-    """It is already committed -- in the document, in git, in the artifact CI reads.
-
-    The floor exists so every lane grades the same witness; an ``examples`` member
-    satisfies that on its own and moves only when the schema moves.  Copying it would make
-    one fact two and let the copy outlive the statement it came from, which is the drift
-    §8's "never hand-written" clause is about.
-    """
-
-    class _Store:
-        def __init__(self) -> None:
-            self.written: dict[str, Any] = {}
-
-        def get(self, key: str) -> Any:
-            return None
-
-        def put(self, key: str, instances: Any) -> None:
-            self.written[key] = instances
-
-    store = _Store()
-    document = {
-        "type": "object",
-        "required": ["a"],
-        "properties": {"a": {"type": "string"}},
-        "examples": [{"a": "stated"}],
-    }
-    res = harness.check_accepts(
-        document, lambda v: v, examples=1, corpus=store, identity={"d": "x"}
-    )
-    assert res.outcome == "pass" and res.stated == 1
-    assert store.written == {}, f"a stated instance was held: {store.written}"
 
 
 # --------------------------------------------------------------------------- #
@@ -1008,84 +495,6 @@ def test_a_definitions_section_stays_in_the_pin_key_because_nothing_resolves_it(
     assert harness._content_key([one]) != harness._content_key([other]), (
         "two nodes storing different subtrees under one pointer share a pin bucket"
     )
-
-
-def test_a_substitution_that_admits_nothing_is_abandoned_and_the_abandonment_is_REPORTED(
-) -> None:
-    """§8: "A reduction reports emptiness as a failure, loudly."
-
-    **The defect this grades is a WRONG VERDICT and not a slow draw**, which is why the
-    assertion is on ``outcome`` and on ``abandoned`` together.  The substituted node admits
-    nothing the graded node admits, so the screen in ``check_accepts`` rejects every draw
-    and ``hypothesis`` raises -- and that used to be reported as ``strategy_error``, a red
-    pair manufactured by the instrument over a node whose own draw passes in milliseconds.
-    Measured on the patched bundle: five such pairs, and 33 more the committed floor was
-    masking.
-
-    So the draw is abandoned back to the pair's own node, and the abandonment is LOUD: a
-    silent fallback would pay the unreduced draw the rule exists to avoid while reading as
-    a pair that is inherently large, which is exactly what §8 forbids.
-    """
-    assert harness.conforms(_CROSS_FIELD, {"country": "BR", "system": "cep"}) is True
-    assert harness.conforms(_CROSS_FIELD, {"country": "AA", "system": "cep"}) is False, (
-        "the planted substitution is not empty, so this test grades nothing"
-    )
-
-    taken: list[Any] = []
-
-    def entry_point(payload: Any) -> Any:
-        taken.append(payload)
-        return payload
-
-    res = harness.check_accepts(
-        _CROSS_FIELD, entry_point, examples=1, draw_from=lambda: _PINNED_APART
-    )
-    assert res.outcome == "pass", (res.outcome, res.detail)
-    assert res.abandoned, (
-        "the empty substitution was used silently: a reduction that yields an empty node "
-        "is a defect and §8 requires it reported, not absorbed into the verdict"
-    )
-    assert res.examples == 1 and len(taken) == 1, (taken, res.examples)
-    assert harness.conforms(_CROSS_FIELD, taken[0]) is True, taken
-
-
-def test_a_substitution_the_node_ADMITS_is_used_and_nothing_is_reported() -> None:
-    """The control, and it is what makes the clause above a screen rather than a disabling.
-
-    A substitution that answers is still the draw: every instance comes from the pinned
-    node, the node's own screen passes it, and ``abandoned`` stays empty -- so a reader
-    cannot confuse "the saving was taken" with "the saving was lost".
-    """
-    pinned: dict[str, Any] = {
-        **_CROSS_FIELD,
-        "properties": {"country": {"const": "US"}, "system": {"const": "zip"}},
-    }
-    taken: list[Any] = []
-
-    res = harness.check_accepts(
-        _CROSS_FIELD, lambda v: taken.append(v) or v, examples=1, draw_from=lambda: pinned
-    )
-    assert res.outcome == "pass", (res.outcome, res.detail)
-    assert res.abandoned == "", res.abandoned
-    assert taken == [{"country": "US", "system": "zip"}], taken
-
-
-_CROSS_FIELD: dict[str, Any] = {
-    "type": "object",
-    "required": ["country", "system"],
-    "properties": {"country": {"type": "string"}, "system": {"type": "string"}},
-    "anyOf": [
-        {"properties": {"country": {"const": "BR"}, "system": {"const": "cep"}}},
-        {"properties": {"country": {"const": "US"}, "system": {"const": "zip"}}},
-    ],
-    "additionalProperties": False,
-}
-
-
-_PINNED_APART: dict[str, Any] = {
-    **_CROSS_FIELD,
-    "properties": {"country": {"const": "AA"}, "system": {"const": "cep"}},
-}
 
 
 # --------------------------------------------------------------------------- #
@@ -1256,7 +665,20 @@ def test_the_grade_opens_the_validator_sharing_for_every_pair_it_checks() -> Non
 
     Read off the SHARING and not off a count: a pair graded with no sharing open would
     report every ask as ``unshared``, which is exactly the shape the row repairs.
+
+    **AND THE PAIR MUST BE GIVEN A CONSTRUCTION, or the grade asks for no validator at
+    all.**  This clause measured ``reused == 0`` and read as a defect in the sharing.  It
+    is not one: handed no ``construction=``, ``check_accepts`` returns ``no_witness``
+    before it validates anything and the admits check reports *"no construction was
+    supplied, so there is no witness set"*, so a pair graded without one does almost
+    nothing and shares nothing because nothing was asked.  The sharing is live; what had
+    gone stale was the FIXTURE, which still described a grade that drew its own instances.
+
+    A one-document construction rather than the bundle's, because what is under test is the
+    lifetime of the memo and not any document's content -- and a clause that needed the
+    whole bundle warmed would be measuring ``tests_emit/constructed.py``.
     """
+    document = "one.json"
     schema = {"type": "object", "required": ["a"], "properties": {"a": {"type": "string"}}}
 
     class One(BaseModel):
@@ -1264,7 +686,14 @@ def test_the_grade_opens_the_validator_sharing_for_every_pair_it_checks() -> Non
 
     harness.VALIDATOR_COUNTERS.clear()
     harness.check_pair(
-        harness.Pair(name="shared", schema=schema, model=One, accept=One.model_validate)
+        harness.Pair(
+            name="shared",
+            schema=schema,
+            model=One,
+            accept=One.model_validate,
+            ref=SchemaRef(document, "#"),
+        ),
+        construction=witness.Construction({document: schema}),
     )
     assert harness.VALIDATOR_COUNTERS["reused"] > 0, dict(harness.VALIDATOR_COUNTERS)
     assert harness._VALIDATORS is None, "check_pair left its memo open"
