@@ -2733,6 +2733,108 @@ class BranchDispatchMixin(_MixedInto):
                     agreed.append({**row, "loc": below})
         return agreed
 
+    #: How many branch reasons a refusal carries before it says how many it dropped.
+    #:
+    #: **A CAP WITH THE COUNT SAID, because a silent truncation reads as "that was all of
+    #: it".**  ``MCPWebhookPayload`` has 46 branches and several rows each, and 46 arms'
+    #: worth of reasons is a wall rather than a message -- which is the same thing
+    #: :meth:`_agreed`'s intersection reading is for at that class.  Four is the branch
+    #: count of the widest union this is the answer for in practice (3 at
+    #: ``CreateMediaBuyRequest``, 2 at ``PostalArea``), so it truncates nothing the
+    #: measured population needs and bounds the 46-branch case.
+    _BRANCH_REASONS: ClassVar[int] = 4
+
+    @classmethod
+    def _each_branchs_reason(cls, err: ValidationError) -> list[InitErrorDetails]:
+        """Each branch's OWN reason, attributed to the branch its DOCUMENT names.
+
+        **Reached only where :meth:`_agreed` answered nothing**, which is the case that
+        method's reading does not cover: an ``anyOf`` refuses when every branch refuses, so
+        the intersection IS the document's refusal -- and where the branches share no
+        position the intersection is empty and there is still a whole truth to tell.  It is
+        not a guess between alternatives: *no branch admits, and here is what each one
+        wanted*.  Pydantic's native ``anyOf`` reports exactly this; the collapse was ours.
+
+        **THE SIGNATURE OF THE DEFECT WAS THAT A MORE COMPLETE PAYLOAD GOT A WORSE ERROR.**
+        Measured on ``media-buy/create-media-buy-request.json``: a payload also missing
+        ``idempotency_key``, ``brand``, ``start_time`` and ``end_time`` reported FOUR
+        useful rows, because those four are required by all three branches and the
+        intersection is non-empty.  Supply them and the message collapsed to the bare
+        combinator row.
+
+        **THE ATTRIBUTION IS THE DOCUMENT'S POINTER AND THE CLASS'S NAME**, so a reader can
+        go to the node -- ``#/anyOf/1 (ExplicitPackagesWithSellerOptimizedAllocation)``.
+        The arm is matched to its branch by the CLASS NAME pydantic puts in the label
+        (``function-after[_enforce_adcp_rules(), <Branch>]``), not by position: a report
+        that labels one arm twice would otherwise shift every attribution after it.  An arm
+        this cannot resolve keeps its rows with no prefix rather than being dropped, because
+        a reason with no branch name is still a reason.
+
+        **AND THE ``loc`` IS THE BRANCH'S OWN, below the arm label.**  That is what makes
+        ``core/error.json``'s ``Error.field`` derivable again, which is the half
+        ``adcp-client-python-jgsf`` says a good sentence does not substitute for -- and the
+        bare row had neither.
+        """
+        named: dict[str, tuple[str, str]] = {}
+        for branch in cls._branch_models:
+            ref = branch.__dict__.get("__adcp_schema__")
+            named[branch.__name__] = (
+                ref.pointer if ref is not None else "", branch.__name__
+            )
+        arms: dict[Any, list[ErrorDetails]] = {}
+        for row in err.errors():
+            if not row["loc"]:
+                return []
+            arms.setdefault(row["loc"][0], []).append(row)
+        if len(arms) < 2:
+            return []
+        out: list[InitErrorDetails] = []
+        shown = 0
+        dropped_arms = 0
+        dropped_rows = 0
+        for label, rows in arms.items():
+            if shown >= cls._BRANCH_REASONS:
+                dropped_arms += 1
+                dropped_rows += len(rows)
+                continue
+            where = next(
+                (named[name] for name in named if name and name in str(label)), None
+            )
+            shown += 1
+            for row in rows:
+                below = tuple(row["loc"][1:])
+                detail = row["msg"]
+                if where is not None:
+                    detail = f"{where[0]} ({where[1]}): {detail}"
+                out.append(
+                    InitErrorDetails(
+                        type=PydanticCustomError(
+                            cls._branch_combinator(), "{detail}", {"detail": detail}
+                        ),
+                        loc=below,
+                        input=row["input"],
+                    )
+                )
+        if dropped_arms:
+            out.append(
+                InitErrorDetails(
+                    type=PydanticCustomError(
+                        cls._branch_combinator(),
+                        "{detail}",
+                        {
+                            "detail": (
+                                f"and {dropped_arms} more of this union's "
+                                f"{len(cls._branch_models)} branches refused, with "
+                                f"{dropped_rows} further reasons not shown"
+                            )
+                        },
+                    ),
+                    loc=(),
+                    input=None,
+                )
+            )
+        return out
+
     @classmethod
     def _present(cls, value: Any, loc: Sequence[int | str]) -> bool:
         """Does ``value`` actually HAVE the position ``loc`` names?
@@ -2946,6 +3048,15 @@ class BranchDispatchMixin(_MixedInto):
             return ValidationError.from_exception_data(
                 cls.__name__, [cls._line_error(row) for row in agreed]
             )
+        #: **AN EMPTY INTERSECTION IS NOT AN EMPTY ANSWER** (``adcp-client-python-xuh7``).
+        #: :meth:`_agreed` is right that the branches' INTERSECTION is the document's own
+        #: refusal, and it answers ``[]`` where the branches share no position -- three
+        #: disjoint reasons intersect to nothing.  Falling straight through to the bare
+        #: combinator row there emitted ``anyOf () is not valid under any of the 3
+        #: branches``: no keyword, no position, no sentence, at **29 refusals**.
+        per_branch = cls._each_branchs_reason(err)
+        if per_branch:
+            return ValidationError.from_exception_data(cls.__name__, per_branch)
         return ValidationError.from_exception_data(
             cls.__name__,
             [
