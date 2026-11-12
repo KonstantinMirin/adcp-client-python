@@ -141,8 +141,51 @@ def _our_kind(document: str) -> str | None:
     return kind
 
 
+#: The words this layer is CURRENTLY asking the flat surface for.  Not a depth bound and not
+#: a list of names to skip: membership means "a frame below this one is already resolving
+#: exactly this word through exactly this surface", which is the only condition under which
+#: asking again cannot produce a new answer.
+_IN_FLIGHT: set[str] = set()
+
+
 def _from_flat(attr: str) -> object:
-    return getattr(importlib.import_module(_FLAT), attr)
+    """The flat surface's answer for ``attr``, asked at most once per word in flight.
+
+    **TWO RESOLVERS CALL EACH OTHER AND NEITHER OWNS THE RECURSION** (`adcp-client-python-tlpl`).
+    This layer's `_resolver` falls through to the flat surface, and the flat surface's own
+    `__getattr__` -- the one :func:`install` wraps -- falls through to the alias modules,
+    which are served by this layer.  So a word that neither can answer alone is passed back
+    and forth:
+
+        _dropin._resolver.__getattr__  ->  adcp.types.__getattr__
+          ->  _dropin._resolver.__getattr__  ->  _from_flat  ->  (the same word again)
+
+    MEASURED in the substituted tree: `src/adcp/types/aliases.py` carried
+    `from adcp.types import GetContentStandardsResponse1`, the import recursed without bound,
+    and **102 of the 177 files that failed collection were this one cycle** -- most of the
+    9,987 of upstream's items that never reached a junit at all.
+
+    **A GUARD IS A SET OF WHAT IS IN FLIGHT, which is what mutual recursion needs.**  A depth
+    counter would answer "how far have we gone" when the question is "are we asking something
+    we are already asking"; an allowlist of names would be a record of the one instance met so
+    far.  The condition here is exact and local: if `attr` is already being resolved through
+    this surface by a frame below, this frame cannot learn anything the one below it will not,
+    so it declines and lets the caller fall through to its own next source and, failing that,
+    to its own informative `AttributeError`.  `_resolver`'s message is the one a reader wants
+    -- it names the word and points at the alias surface's row -- and the guard does not
+    replace it.
+
+    One word may still be resolved through the flat surface many times over a run; the set
+    holds only what is on the stack, and a word is removed as its frame returns.  Imports
+    hold the import lock, so the surrounding resolution is single-threaded by construction.
+    """
+    if attr in _IN_FLIGHT:
+        raise AttributeError(attr)
+    _IN_FLIGHT.add(attr)
+    try:
+        return getattr(importlib.import_module(_FLAT), attr)
+    finally:
+        _IN_FLIGHT.discard(attr)
 
 
 def _resolver(fullname: str, document: str | None) -> Callable[[str], object]:

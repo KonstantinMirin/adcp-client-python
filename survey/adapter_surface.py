@@ -180,6 +180,8 @@ import ast
 import collections
 import importlib
 import importlib.util
+import functools
+import subprocess
 import json
 import re
 import sys
@@ -523,6 +525,58 @@ def corpus(src: Path, suite: Path | None = None) -> list[Path]:
     return out
 
 
+def _as_upstream_wrote_it(path: Path) -> str:
+    """The file's text as UPSTREAM wrote it at the pin, or ours where they have no such file.
+
+    **THE DEMAND IS UPSTREAM'S AND THE CORPUS WAS READING OURS** (`adcp-client-python-tlpl`).
+    This instrument answers "what does upstream's KEPT code ask of our surface", and the
+    substituted tree runs upstream's `src/adcp/**` -- their `client.py`, their
+    `decisioning/handler.py`, their `server/responses.py`.  The corpus walked OUR working
+    tree, so every repair this project has made to one of those files deleted the demand that
+    file makes, and the writer never saw it.
+
+    MEASURED: 37 `(module, name)` pairs upstream's own `src/adcp/**` asks of `adcp.types` at
+    module scope do not resolve on our surface, and the corpus could see none of them.  One
+    of them is `UpdateMediaBuySuccessResponse`, imported at module scope by their
+    `decisioning/handler.py` line 230 -- our copy was patched to name the emitted arm by
+    `adcp-client-python-2f52`, so the pair left the census, so the alias layer bound nothing,
+    so in the substituted tree `adcp.decisioning` did not import and **132 of upstream's test
+    files failed at collection**.  Exactly the failure `upstream_files` was corrected for one
+    directory along.
+
+    The rev is the machinery classification's own, as everywhere else here, and a path
+    upstream does not carry falls back to ours -- `adcp/core.py` is ours alone and is read as
+    ours.  Nothing is written: this is a read of their blob.
+    """
+    rel = path.resolve().relative_to(HERE.parent).as_posix()
+    blob = _upstream_blob(rel)
+    return blob if blob is not None else path.read_text()
+
+
+@functools.lru_cache(maxsize=1)
+def _upstream_tree() -> dict[str, str]:
+    """Every path upstream carries at the pin, to its blob name.  One ``git ls-tree``."""
+    found: dict[str, str] = {}
+    for line in um.git("ls-tree", "-r", um.rows()[0], "--", "src/").splitlines():
+        meta, _, path = line.partition("\t")
+        parts = meta.split()
+        if len(parts) == 3 and parts[1] == "blob":
+            found[path] = parts[2]
+    return found
+
+
+def _upstream_blob(rel: str) -> str | None:
+    """Upstream's own text for ``rel``, or ``None`` where their revision has no such file."""
+    sha = _upstream_tree().get(rel)
+    if sha is None:
+        return None
+    return subprocess.run(
+        ["git", "-C", str(HERE.parent), "cat-file", "blob", sha],
+        capture_output=True,
+        check=True,
+    ).stdout.decode("utf-8", errors="replace")
+
+
 def census(src: Path, suite: Path | None = None) -> dict:
     """Every module-scope `(module, name)` import from `adcp.types*`, with its resolution.
 
@@ -540,7 +594,7 @@ def census(src: Path, suite: Path | None = None) -> dict:
         #: spans two roots.
         anchor = src if src in path.parents else HERE.parent
         try:
-            tree = ast.parse(path.read_text())
+            tree = ast.parse(_as_upstream_wrote_it(path))
         except SyntaxError:
             continue
         here = path.relative_to(anchor).with_suffix("").parts

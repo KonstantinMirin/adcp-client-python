@@ -303,7 +303,6 @@ __adcp_refused__ = {
     "CreateMediaBuyErrorResponse": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.CreateMediaBuyResponse2, which is NO-DOCUMENT-NO-SUBJECT",
     "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.CreateMediaBuyResponse1, which is NO-DOCUMENT-NO-SUBJECT",
     "CreditLimit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.CreditLimit, which is DOCUMENT-NO-WORD-NO-IDENTITY",
-    "DeliveryCreative": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.creative.get_creative_delivery_response.Creative, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "DurationUnit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's own tree says no-such-module",
     "FormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "GroupFormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
