@@ -126,6 +126,7 @@ from codegen import (
     structure,
 )
 from codegen import constraints as constraints_module
+from codegen import overrides
 from codegen import mirror as compat_mirror
 from codegen.compiler import (
     Module,
@@ -760,6 +761,7 @@ def lower_document(
     value_lists: Mapping[tuple[object, ...], ValuesImport | str] | None = None,
     objects: Mapping[str, Target] | None = None,
     constrained: Mapping[object, str] | None = None,
+    name_overrides: Mapping[str, overrides.Override] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -898,7 +900,19 @@ def lower_document(
     # stays here because it is a check on the DOCUMENT and the refusal is the document's
     # -- and because every derived name is a concatenation onto this one, so the proof
     # that a nested name is an identifier rests on it (``compiler.local_reference``).
-    mod.hops[""] = lower_names.Root(title)
+    #: **§3's NAME OVERRIDE, read HERE because this is the frame that knows the
+    #: document** (``codegen/overrides.py``, ``adcp-client-python-8wd8``).  §3's rule is
+    #: that an override declares the defect it compensates for and FAILS when the defect
+    #: is gone, and ``overrides.load`` is where that failure happens: an entry whose
+    #: quoted words are no longer in the document raises rather than renaming a subject
+    #: whose document stopped saying why.  So the table is read against the bundle on
+    #: every run and not trusted from a previous one.
+    #: HANDED IN and never read from a path here, which is §9's seam: this function
+    #: takes data and the frame that knows where the bundle is (:func:`decidable`) is what
+    #: loads the table -- so ``overrides.load``'s failure, the one that fires when a
+    #: quoted sentence has changed, happens once per run at a frame that can report it.
+    overridden = (name_overrides or {}).get("#")
+    mod.hops[""] = lower_names.Root(title, overridden.name if overridden else "")
     #: **§3a's catalogue, the layer above L3 -- a REPEATED DOCUMENT -- asked at the ONE
     #: position the walk's per-node entry does not own.**  ``compiler.lower_node`` asks
     #: ``mod.objects`` of every pointer it is handed, and the ROOT is not one of them: §5
@@ -1626,6 +1640,7 @@ def decidable(
         value_lists,
         objects,
         constrained,
+        overrides.for_document(bundle_dir, document),
     )
     if isinstance(outcome, Refusal):
         return outcome

@@ -12,7 +12,7 @@ from adcp.types.envelopes import AdcpResponse
 from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
-from ..core.format import Format
+from ..core.format import LegacyFormat
 from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -39,7 +39,7 @@ class ListCreativeFormatsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-creative-formats-response.json', pointer='#')
-    formats: Annotated[list[Format], Field(description="Deprecated named-format definitions projected for older 3.x callers. This list is neither the publisher acceptance catalog nor the seller's canonical product deliverability contract.")]
+    formats: Annotated[list[LegacyFormat], Field(description="Deprecated named-format definitions projected for older 3.x callers. This list is neither the publisher acceptance catalog nor the seller's canonical product deliverability contract.")]
     source: Annotated[Source | None, Field(description='Deprecated compatibility provenance. `publisher` means publisher-origin catalog; `aao_mirror` means community catalog; `agent_derived` is retained only to parse historical 3.x responses and MUST NOT be produced by a new 3.2 implementation because seller products are not publisher authority.'), OmittedNotNull] = None
     creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(description="Deprecated recursive discovery projection retained for historical 3.x responses. New buyers query the registry's canonical creative capability index and confirm candidates with get_adcp_capabilities; they do not recursively walk agent-provided lists."), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings (e.g., format availability issues)'), OmittedNotNull] = None

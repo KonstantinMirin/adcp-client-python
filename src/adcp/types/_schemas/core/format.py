@@ -586,7 +586,7 @@ class FormatCardDetailed(AdCPBaseModel):
     manifest: Annotated[dict[str, Any], Field(description='Asset manifest for rendering the detailed card, structure defined by the format')]
 
 
-class Format(AdCPBaseModel):
+class LegacyFormat(AdCPBaseModel):
     """
     **DEPRECATED in 3.2.** Legacy named-format definition retained for older 3.x peers and list_creative_formats compatibility projections. New products and creative agents author ProductFormatDeclaration canonical contracts instead.
     """
@@ -772,4 +772,4 @@ UnknownFormatAsset = BaseIndividualAsset
 UnknownGroupAsset = BaseGroupAsset
 
 
-__all__ = ["BaseGroupAsset", "BaseIndividualAsset", "Format"]
+__all__ = ["BaseGroupAsset", "BaseIndividualAsset", "LegacyFormat"]

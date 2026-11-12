@@ -11,7 +11,7 @@ from adcp.types.constraints import HostedUrl
 from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
-from ..core.format import Format
+from ..core.format import LegacyFormat
 from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -33,7 +33,7 @@ class ListCreativeFormatsResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnve
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creative-formats-response.json', pointer='#')
-    formats: Annotated[list[Format], Field(description='Deprecated named-format definitions projected for older 3.x callers. Canonical creative capabilities are declared by get_adcp_capabilities creative.supported_formats[].')]
+    formats: Annotated[list[LegacyFormat], Field(description='Deprecated named-format definitions projected for older 3.x callers. Canonical creative capabilities are declared by get_adcp_capabilities creative.supported_formats[].')]
     creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(description='Deprecated recursive discovery projection retained only for historical 3.x responses. New buyers use registry reverse lookup and direct get_adcp_capabilities confirmation.'), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings'), OmittedNotNull] = None
     pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None

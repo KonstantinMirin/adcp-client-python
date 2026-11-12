@@ -2060,19 +2060,9 @@ from .core import ForecastPointViewabilityViewableRate as ForecastPointViewabili
 from .core import ForecastRange as ForecastRange
 from .core import ForecastRateRange as ForecastRateRange
 from .core import ForecastVendorMetricValue as ForecastVendorMetricValue
-from .core import Format as Format
-from .core import FormatAccessibility as FormatAccessibility
-from .core import FormatBaseGroupAsset as FormatBaseGroupAsset
-from .core import FormatBaseIndividualAsset as FormatBaseIndividualAsset
-from .core import FormatDisclosureCapabilitiesItem as FormatDisclosureCapabilitiesItem
-from .core import FormatFormatCard as FormatFormatCard
-from .core import FormatFormatCardDetailed as FormatFormatCardDetailed
 from .core import FormatOptionReference as FormatOptionReference
 from .core import FormatOptionsItemFormatOptionId as FormatOptionsItemFormatOptionId
 from .core import FormatReferenceStructuredObject as FormatReferenceStructuredObject
-from .core import FormatRendersItem as FormatRendersItem
-from .core import FormatRendersItemDimensions as FormatRendersItemDimensions
-from .core import FormatRendersItemDimensionsResponsive as FormatRendersItemDimensionsResponsive
 from .core import FrequencyCap as FrequencyCap
 from .core import FrequencyCapConstraints as FrequencyCapConstraints
 from .core import FrequencyCapDurationUnit as FrequencyCapDurationUnit
@@ -2226,6 +2216,16 @@ from .core import KeywordSupport as KeywordSupport
 from .core import KeywordSupportSupportedMatchTypes as KeywordSupportSupportedMatchTypes
 from .core import KeywordTarget as KeywordTarget
 from .core import LanguageTag as LanguageTag
+from .core import LegacyFormat as LegacyFormat
+from .core import LegacyFormatAccessibility as LegacyFormatAccessibility
+from .core import LegacyFormatBaseGroupAsset as LegacyFormatBaseGroupAsset
+from .core import LegacyFormatBaseIndividualAsset as LegacyFormatBaseIndividualAsset
+from .core import LegacyFormatDisclosureCapabilitiesItem as LegacyFormatDisclosureCapabilitiesItem
+from .core import LegacyFormatFormatCard as LegacyFormatFormatCard
+from .core import LegacyFormatFormatCardDetailed as LegacyFormatFormatCardDetailed
+from .core import LegacyFormatRendersItem as LegacyFormatRendersItem
+from .core import LegacyFormatRendersItemDimensions as LegacyFormatRendersItemDimensions
+from .core import LegacyFormatRendersItemDimensionsResponsive as LegacyFormatRendersItemDimensionsResponsive
 from .core import LimitedSeries as LimitedSeries
 from .core import LocalizedCreativeAsset as LocalizedCreativeAsset
 from .core import LookbackWindow as LookbackWindow
@@ -6416,13 +6416,6 @@ __all__ = [
     'ForecastRateRange',
     'ForecastVendorMetricValue',
     'ForecastableMetric',
-    'Format',
-    'FormatAccessibility',
-    'FormatBaseGroupAsset',
-    'FormatBaseIndividualAsset',
-    'FormatDisclosureCapabilitiesItem',
-    'FormatFormatCard',
-    'FormatFormatCardDetailed',
     'FormatIDParameter',
     'FormatIdParameter',
     'FormatOptionReference',
@@ -6431,9 +6424,6 @@ __all__ = [
     'FormatOptions',
     'FormatOptionsItemFormatOptionId',
     'FormatReferenceStructuredObject',
-    'FormatRendersItem',
-    'FormatRendersItemDimensions',
-    'FormatRendersItemDimensionsResponsive',
     'FormatsItemAgentPlacement',
     'FormatsItemAudioDaast',
     'FormatsItemAudioHosted',
@@ -6949,6 +6939,16 @@ __all__ = [
     'LandingPageRequirement',
     'Language',
     'LanguageTag',
+    'LegacyFormat',
+    'LegacyFormatAccessibility',
+    'LegacyFormatBaseGroupAsset',
+    'LegacyFormatBaseIndividualAsset',
+    'LegacyFormatDisclosureCapabilitiesItem',
+    'LegacyFormatFormatCard',
+    'LegacyFormatFormatCardDetailed',
+    'LegacyFormatRendersItem',
+    'LegacyFormatRendersItemDimensions',
+    'LegacyFormatRendersItemDimensionsResponsive',
     'LifecycleTool',
     'LiftDimension',
     'Limitation',

@@ -3198,3 +3198,77 @@ bundle document behind it where there is one, and the nearest identities of ours
 agreement number — plus the corpus path and its file and fence counts, so a figure can be
 checked against the corpus it came from. Every figure in this document is a field of that
 file.
+
+## `Format` and `LegacyFormat` are two different subjects
+
+**This is the one place a word of ours changes meaning, and it changes by BREAKING rather
+than by redirecting.** If your code imported `Format` from this SDK before this change, it
+got the v1 named-format definition. It now gets the v2 canonical declaration, and the v1
+subject answers to `LegacyFormat`.
+
+| name | subject | addressed by |
+|---|---|---|
+| `adcp.types.core.Format` | the canonical format declaration — **this is the new way** | `format_kind` + `params` |
+| `adcp.types.core.LegacyFormat` | the v1 named-format definition | `format_id`, a structured `{agent_url, id}` |
+
+### Why the word moved
+
+The documents give one word to two subjects. `core/format.json` is *titled* "Format" and
+its own description says:
+
+> **DEPRECATED in 3.2.** **Legacy named-format definition** retained for older 3.x peers
+> and `list_creative_formats` compatibility projections. New products and creative agents
+> author ProductFormatDeclaration canonical contracts instead.
+
+So the deprecated definition held the word the canonical declaration needs, and the
+document names itself in the same breath. `LegacyFormat` is the document's own phrase for
+its own subject, recorded as an entry in `codegen/overrides.py` that quotes that sentence
+and **fails the build if upstream ever stops saying it**.
+
+### Why it had to break
+
+A public word that changes meaning while staying importable is the worst outcome
+available: code written against the old `Format` would keep importing, keep type-checking,
+and quietly mean something else. So after this change the v1 subject is reachable under no
+other word. Code that meant v1 raises `ImportError` or `AttributeError`, which is the
+point — you find out at the import and not in production.
+
+### Migrating
+
+* **You meant the v1 named-format definition** — `format_id`, a reference to a format some
+  agent publishes. Import `LegacyFormat`. It is unchanged in what it admits, and it is
+  fully supported: measured over the bundle, `format_ids` carries `x-removed-in: 4.0.0` at
+  13 sites but `format_id` names a removal version at **none**. "Legacy" is the document's
+  word for it, not a shutdown date.
+* **You meant a format declaration you author** — `format_kind` plus `params`. That is
+  `Format` now, and it was already reachable as `ProductFormatDeclaration`, which still
+  works and is the name the document states.
+* **You meant "either of the two"** — there is no such type and deliberately so. No
+  document states a union over the two definitions, no field accepts either-definition,
+  and the only code that handles both is the conversion, which needs the distinction a
+  parent type would erase.
+
+### The conversion is ONE-WAY
+
+`registries/v1-canonical-mapping.json` is normative and says so: the registry is
+authoritative for **v1 → v2 projection only**, and v2 → v1 must rely on `v1_format_ref` on
+the v2 declaration, which the *seller* asserts.
+
+* **id → kind is derivable.** `adcp.canonical_formats.v1_to_v2` does it from the
+  AAO-published registry.
+* **kind → id is NOT derivable** from the kind alone. `adcp.canonical_formats.v2_to_v1`
+  answers only where the declaration itself carries `v1_format_ref`; without it there is
+  no answer, and manufacturing one would be inventing a format identity.
+
+So never normalise a `format_kind` back to a `format_id`. If you need a v1 id, read
+`v1_format_ref` and handle its absence.
+
+### Two re-exports keep the v1 type under its new name, and that is faithful
+
+`creative/list_creative_formats_response` and `media_buy/list_creative_formats_response`
+both `$ref` `core/format.json` and mention `format_kind` zero times, so both re-export
+`LegacyFormat`. That is what those documents say, per `core/format.json`'s own
+"`list_creative_formats` compatibility projections" clause. The gap it leaves — a
+`list_creative_formats` response that cannot carry a canonical declaration — is upstream's
+and is asked at [adcontextprotocol/adcp#8962](https://github.com/adcontextprotocol/adcp/issues/8962).
+It is not papered over here.

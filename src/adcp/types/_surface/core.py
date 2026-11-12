@@ -774,15 +774,14 @@ from .._schemas.core.forecast_point_dimensions import ForecastPointDimensions as
 from .._schemas.core.forecast_range import ForecastRange as ForecastRange
 from .._schemas.core.forecast_rate_range import ForecastRateRange as ForecastRateRange
 from .._schemas.core.forecast_vendor_metric_value import ForecastVendorMetricValue as ForecastVendorMetricValue
-from .._schemas.core.format import Accessibility as FormatAccessibility
+from .._schemas.core.format import Accessibility as LegacyFormatAccessibility
 from .._schemas.core.format import AssetsItemIndividual as AssetsItemIndividual
-from .._schemas.core.format import BaseGroupAsset as FormatBaseGroupAsset
-from .._schemas.core.format import BaseIndividualAsset as FormatBaseIndividualAsset
-from .._schemas.core.format import Dimensions as FormatRendersItemDimensions
-from .._schemas.core.format import DisclosureCapabilitiesItem as FormatDisclosureCapabilitiesItem
-from .._schemas.core.format import Format as Format
-from .._schemas.core.format import FormatCard as FormatFormatCard
-from .._schemas.core.format import FormatCardDetailed as FormatFormatCardDetailed
+from .._schemas.core.format import BaseGroupAsset as LegacyFormatBaseGroupAsset
+from .._schemas.core.format import BaseIndividualAsset as LegacyFormatBaseIndividualAsset
+from .._schemas.core.format import Dimensions as LegacyFormatRendersItemDimensions
+from .._schemas.core.format import DisclosureCapabilitiesItem as LegacyFormatDisclosureCapabilitiesItem
+from .._schemas.core.format import FormatCard as LegacyFormatFormatCard
+from .._schemas.core.format import FormatCardDetailed as LegacyFormatFormatCardDetailed
 from .._schemas.core.format import GroupAudioAsset as GroupAudioAsset
 from .._schemas.core.format import GroupBriefAsset as GroupBriefAsset
 from .._schemas.core.format import GroupCardAsset as GroupCardAsset
@@ -825,11 +824,12 @@ from .._schemas.core.format import IndividualVastTrackerAsset as IndividualVastT
 from .._schemas.core.format import IndividualVideoAsset as IndividualVideoAsset
 from .._schemas.core.format import IndividualWebhookAsset as IndividualWebhookAsset
 from .._schemas.core.format import IndividualZipAsset as IndividualZipAsset
-from .._schemas.core.format import RendersItem as FormatRendersItem
+from .._schemas.core.format import LegacyFormat as LegacyFormat
+from .._schemas.core.format import RendersItem as LegacyFormatRendersItem
 from .._schemas.core.format import RendersItemDimensions as RendersItemDimensions
 from .._schemas.core.format import RendersItemParametersFromFormatId as RendersItemParametersFromFormatId
 from .._schemas.core.format import RepeatableGroupAsset as RepeatableGroupAsset
-from .._schemas.core.format import Responsive as FormatRendersItemDimensionsResponsive
+from .._schemas.core.format import Responsive as LegacyFormatRendersItemDimensionsResponsive
 from .._schemas.core.format import SelectionMode as RepeatableGroupAssetSelectionMode
 from .._schemas.core.format_id import FormatReferenceStructuredObject as FormatReferenceStructuredObject
 from .._schemas.core.format_option_ref import FormatOptionReference as FormatOptionReference
@@ -2695,19 +2695,9 @@ __all__ = [
     'ForecastRange',
     'ForecastRateRange',
     'ForecastVendorMetricValue',
-    'Format',
-    'FormatAccessibility',
-    'FormatBaseGroupAsset',
-    'FormatBaseIndividualAsset',
-    'FormatDisclosureCapabilitiesItem',
-    'FormatFormatCard',
-    'FormatFormatCardDetailed',
     'FormatOptionReference',
     'FormatOptionsItemFormatOptionId',
     'FormatReferenceStructuredObject',
-    'FormatRendersItem',
-    'FormatRendersItemDimensions',
-    'FormatRendersItemDimensionsResponsive',
     'FrequencyCap',
     'FrequencyCapConstraints',
     'FrequencyCapDurationUnit',
@@ -2859,6 +2849,16 @@ __all__ = [
     'KeywordSupportSupportedMatchTypes',
     'KeywordTarget',
     'LanguageTag',
+    'LegacyFormat',
+    'LegacyFormatAccessibility',
+    'LegacyFormatBaseGroupAsset',
+    'LegacyFormatBaseIndividualAsset',
+    'LegacyFormatDisclosureCapabilitiesItem',
+    'LegacyFormatFormatCard',
+    'LegacyFormatFormatCardDetailed',
+    'LegacyFormatRendersItem',
+    'LegacyFormatRendersItemDimensions',
+    'LegacyFormatRendersItemDimensionsResponsive',
     'LimitedSeries',
     'LocalizedCreativeAsset',
     'LookbackWindow',

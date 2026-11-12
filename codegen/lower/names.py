@@ -523,9 +523,26 @@ def entry_key(pointer: str) -> str:
 @dataclass(frozen=True)
 class Root:
     """The document ROOT: ``pascal_case(title)``, and the OUTERMOST segment of every
-    name derived below it (:func:`segments`)."""
+    name derived below it (:func:`segments`).
+
+    **``overridden`` IS §3's NAME OVERRIDE, and it is a HOP FIELD so that §4's derivation
+    stays one function** (``codegen/overrides.py``, ``adcp-client-python-8wd8``).  The
+    override is keyed on ``(document, pointer)`` and a module is one document, so the
+    frame that knows which document this is -- ``emit.lower_document`` -- is the frame
+    that records it, exactly as it records the title. Nothing here reads a table, no
+    lowering can rename another document's class, and :func:`segments` still answers from
+    the hop alone.
+
+    Empty for every document with no entry, which is 1,058 of the 1,059: the field is the
+    exception's carrier and not a second naming path.
+    """
 
     title: str
+    #: The name §3's table gives this root, or ``""`` for the overwhelming majority that
+    #: have none.  It REPLACES ``pascal_case(title)`` and nothing else -- every name
+    #: derived BELOW the root concatenates onto whatever this segment is, so an override
+    #: at the root moves the whole subtree's names with it and that is the intent.
+    overridden: str = ""
 
 
 @dataclass(frozen=True)
@@ -1330,7 +1347,12 @@ def segments(
     if isinstance(hop, Unnamed):
         return ()
     if isinstance(hop, Root):
-        return (class_name(hop.title),)
+        #: §3's override where the table gives one, and ``pascal_case(title)`` otherwise.
+        #: The override is the document's own word for its own subject
+        #: (``codegen.overrides``, whose loader refuses an entry that is not a quotation),
+        #: so this is still §4's rule "the name is the document's" -- applied to the
+        #: sentence that names the subject where the title names a different one.
+        return (hop.overridden or class_name(hop.title),)
     if isinstance(hop, Entry):
         root = segments("", hops, seen | {pointer})
         if isinstance(root, Refusal):
@@ -2219,6 +2241,14 @@ def the_published_spellings(
         return {}
     ours = symbols.get("") or root
     theirs = upstream_class_name(hop.title)
+    #: **AN OVERRIDDEN ROOT BINDS NO UPSTREAM WORD HERE** (``adcp-client-python-8wd8``).
+    #: This function serves upstream's spelling of the name §4 derived; where §3's table
+    #: has MOVED the subject off that word, binding it back is the one outcome the
+    #: override exists to prevent -- the v1 subject importable as ``Format`` again, under
+    #: a word that now means the canonical declaration. The alias layer is what serves the
+    #: freed word, pointed at the right subject.
+    if hop.overridden:
+        return {}
     if not ours or theirs is None or theirs in occupied or ours != class_name(hop.title):
         return {}
     return {theirs: ours}
