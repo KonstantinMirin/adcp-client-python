@@ -2,33 +2,60 @@
 
 from collections.abc import Mapping
 from functools import cache
-from typing import Any, get_args
+from typing import Any, Literal, get_args, get_origin
 
-from pydantic import RootModel
+
+def discriminator_values(union: type) -> frozenset[str]:
+    """Every value the discriminator takes across one union's emitted branches.
+
+    **READS THE DECLARATION, NEVER A TYPE EXPRESSION'S LAYOUT.** This compiler states a
+    discriminated union as a BASE CLASS plus one child per branch: ``_BRANCH_DISCRIMINATOR``
+    names the keyword the document discriminates on and ``_branch_models`` is the registry of
+    branches, each pinning its own value as a ``Literal`` on that field. So the set of values
+    the union routes is a question the base can be ASKED, and the answer is derived from the
+    branches that exist rather than from where they sit inside a nested annotation.
+
+    The reading it replaces was ``get_args(X)[0]`` -- the first argument of an
+    ``Annotated[Union[...], Field(discriminator=...)]``, which is upstream's generator's
+    layout and not a fact any document states. Against a base class ``get_args`` answers
+    ``()``, so the subscript raised ``IndexError`` and took 26 tests with it. A type
+    expression's argument order is a property of whoever wrote the expression; a branch
+    registry is a property of the document.
+
+    Raises ``AttributeError`` where ``union`` is not a dispatching base. **There is no
+    fallback and there must not be**: a silent default is how the dead derivation went
+    unnoticed through a whole release, and an empty answer here would make every key-name
+    inference below quietly stop working while every caller kept returning a value.
+    """
+    keyword: str = union._BRANCH_DISCRIMINATOR  # type: ignore[attr-defined]
+    if not keyword:
+        raise AttributeError(f"{union.__name__} declares no _BRANCH_DISCRIMINATOR to read")
+    values: set[str] = set()
+    for branch in union._branch_models:  # type: ignore[attr-defined]
+        field = branch.model_fields.get(keyword)
+        if field is None:
+            continue
+        annotation = field.annotation
+        # The branch pins its own value, which is a ``Literal`` of one member at every
+        # branch of this bundle; a branch that pins nothing contributes nothing rather
+        # than contributing the field's type.
+        if get_origin(annotation) is Literal:
+            values.update(str(member) for member in get_args(annotation))
+    return frozenset(values)
 
 
 @cache
 def _known_asset_types() -> frozenset[str]:
     """Every ``asset_type`` the pinned schema's canonical asset union routes.
 
-    Derived from the generated ``AssetVariant`` arms rather than listed here,
-    so a schema bump that adds an asset type (as 3.2 added ``display_tag``)
-    extends key-name inference in the same regeneration. Imported on first use:
-    the generated asset graph is not needed to import the legacy helpers.
+    Derived from the emitted ``AssetVariant`` branches rather than listed here, so a schema
+    bump that adds an asset type (as 3.2 added ``display_tag``) extends key-name inference in
+    the same regeneration. Imported on first use: the generated asset graph is not needed to
+    import the legacy helpers.
     """
-    from adcp.types.domains.core.assets.asset_union import AssetVariant
+    from adcp.types.core import AssetVariant
 
-    union = get_args(AssetVariant)[0]
-    types: set[str] = set()
-    for arm in get_args(union):
-        # A multi-shape asset (``vast``, ``display_tag``, ...) is a RootModel
-        # over per-shape classes that share one ``asset_type`` literal.
-        shapes = (
-            get_args(arm.model_fields["root"].annotation) if issubclass(arm, RootModel) else (arm,)
-        )
-        for shape in shapes:
-            types.update(get_args(shape.model_fields["asset_type"].annotation))
-    return frozenset(types)
+    return discriminator_values(AssetVariant)
 
 
 def infer_asset_type(asset_key: str, asset: Mapping[str, Any]) -> str | None:
