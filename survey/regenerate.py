@@ -962,41 +962,6 @@ def alias_layer(out: Path) -> dict[str, object]:
 # stays in ``survey/probes/``; ``survey/node_keyed_aliases.py`` reads it and it is a different
 # artifact with its own committed rules.
 
-def _generated_bindings(wheel: Wheel) -> dict[str, object]:
-    """Upstream's ``_generated.py`` as the alias table it is: name -> (module, name).
-
-    Their file is ``from <document module> import <Name>`` statements and ten assignments and
-    nothing else.  Eager, ONE absent name takes the whole module and ``aliases.py`` with it,
-    because ``aliases.py`` imports it at module scope; read as data and resolved on demand,
-    only the names their SDK and their tests actually ask for have to resolve -- and the count
-    of those is what the drop-in is measuring.
-    """
-    tree = ast.parse((wheel.package / "types" / "_generated.py").read_text(encoding="utf-8"))
-    bind: dict[str, list[str]] = {}
-    assign: dict[str, str] = {}
-    exported: list[str] = []
-    for node in tree.body:
-        if isinstance(node, ast.ImportFrom) and node.module:
-            for alias in node.names:
-                bind[alias.asname or alias.name] = [node.module, alias.name]
-        elif isinstance(node, ast.Assign) and isinstance(node.value, ast.Name):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    assign[target.id] = node.value.id
-        elif isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
-        ):
-            exported = [
-                element.value
-                for element in getattr(node.value, "elts", [])
-                if isinstance(element, ast.Constant) and isinstance(element.value, str)
-            ]
-    return {"bind": bind, "assign": assign, "all": exported}
-
-
-# ------------------------------------------------------------------- 6. the population & run
-
-
 def population(out: Path) -> list[str]:
     """Upstream's behavioural files: every ``test_*.py`` their revision carries, less the 104.
 
