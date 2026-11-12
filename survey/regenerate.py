@@ -1049,13 +1049,23 @@ def chunks(out: Path) -> dict[str, list[str]]:
 
 
 def run_lines(out: Path, venv: Path, junit: Path) -> list[str]:
-    """The command per chunk, printed so the measurement is a command and not a procedure."""
+    """The command per chunk, printed so the measurement is a command and not a procedure.
+
+    **BOTH REPORT FORMATS, BECAUSE THE TREE TAKES ITS PYTEST CONFIGURATION FROM UPSTREAM'S
+    ``pyproject.toml`` AND THAT FILE CONFIGURES NEITHER.**  Our own `pyproject.toml` sets them
+    in `addopts`, so a bare `pytest` here writes both; the drop-in cannot inherit that, so the
+    flags belong on the command the build prints rather than on whatever a reader remembers to
+    type.  ``--junitxml`` was already here.  ``--json-report`` is the one that carries a
+    ``longrepr`` per test, which is what enumerating a failure needs without running the suite
+    a second time.
+    """
     return [
         f"sudo systemd-run --scope --uid=1002 --gid=1002 -p MemoryMax=20G -q -- env "
         f"PYTHONDONTWRITEBYTECODE=1 FWVM_PROBE=1 PYTHONPATH={out}:{out}/probe "
         f"{venv}/bin/python -m pytest $(cat {out}/chunks/{chunk}) -q "
         "-p no:cacheprovider -p deselect "
-        f"--continue-on-collection-errors -n 4 --junitxml={junit}/{chunk}.xml"
+        f"--continue-on-collection-errors -n 4 --junitxml={junit}/{chunk}.xml "
+        f"--json-report --json-report-file={junit}/{chunk}.json"
         for chunk in ("chunk-00", "chunk-01", "chunk-02", "chunk-r159")
     ]
 

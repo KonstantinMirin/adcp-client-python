@@ -162,6 +162,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.8,<4",
+    "pytest-json-report>=1.5",
     "freezegun==1.5.5",  # isolated deferred-schema compatibility regressions
     "mypy==1.20.2",
     "pyright==1.1.414",  # real imported-base adopter regressions
@@ -445,8 +446,17 @@ markers = [
     "integration: Integration tests that hit real endpoints (may be slow/flaky)",
     "slow: Tests that take significant time to run",
 ]
-# By default, skip integration tests for fast local development
-addopts = "-m 'not integration'"
+# By default, skip integration tests for fast local development -- AND ALWAYS WRITE THE RUN
+# AS AN ARTIFACT. A run whose result is only on a terminal has to be taken on trust or
+# performed again, and that is how every pass-count in this project came to be re-derived
+# instead of read: neither this file nor upstream's configured a report, so the output lived
+# in /tmp or inside a drop-in tree that §8a deletes and rebuilds. pytest writes both formats
+# itself; nothing here parses anything.
+#   test-results/junit.xml   the standard interchange format, for CI and for any reader
+#   test-results/report.json pytest-json-report's own output: one entry per test with its
+#                            outcome, its duration and its longrepr, which is what a reader
+#                            needs to enumerate what went wrong without running it again
+addopts = "-m 'not integration' --junitxml=test-results/junit.xml --json-report --json-report-file=test-results/report.json"
 
 [tool.coverage.run]
 source = ["src/adcp"]
