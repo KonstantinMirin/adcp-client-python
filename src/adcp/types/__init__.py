@@ -253,6 +253,20 @@ def __getattr__(name: str) -> object:
         return getattr(_flat_module(), name)
     except AttributeError:
         pass
+    # **AND LAST, UPSTREAM'S PUBLISHED WORD FOR A CLASS OUR WALK NAMES DIFFERENTLY.**
+    # ``adcp.types.legacy_names`` is ``survey/emit_legacy_names.py``'s output: upstream's
+    # 9.6.1 wheel published a word, our compiler names the same subject from its document and
+    # arrives at another, and the module binds theirs to ours. Every row is resolved by the
+    # pointer both sides carry, else the field-and-required signature, else the probe in
+    # ``survey/name-decisions-9.6.1.json`` -- never by spelling.
+    #
+    # CONSULTED LAST, after every layer above, so no name any of them decided is overridden.
+    # It declares no class and changes no accepted set: an alias is a second spelling of one
+    # object, which is why it can be reached last and still be correct.
+    try:
+        return getattr(_legacy_names_module(), name)
+    except AttributeError:
+        pass
 
     # **AND A SUBMODULE OF OURS IS THE IMPORT SYSTEM'S OWN THIRD STEP, which a lazy facade
     # is the one kind of package that has to perform for itself.**  ``from M import N``
@@ -299,7 +313,19 @@ def _alias_module():
 #: The submodules :func:`__getattr__` must NOT answer, so the import system goes on to
 #: import them.  All three are compatibility layers of this package and each is reached by
 #: ``import_module`` below rather than by an attribute.
-_NOT_ROUTED = ("compat", "_adapter", "_restored")
+_NOT_ROUTED = ("compat", "_adapter", "_restored", "legacy_names")
+
+
+def _legacy_names_module():
+    """``adcp.types.legacy_names``, reached lazily like every other layer of the facade.
+
+    Imported on first miss rather than at module scope, for :func:`_restored_module`'s reason:
+    ``import adcp.types`` stays cheap, and a word served by any layer above never pays for
+    this one.
+    """
+    import importlib
+
+    return importlib.import_module("adcp.types.legacy_names")
 
 
 def _restored_module():
