@@ -211,4 +211,5 @@ print(f"  MAPPED                      : {len(rows)}  ({100 * len(rows) // total}
 for h, c in collections.Counter(r["how"] for r in rows).most_common():
     print(f"      {h:14s} {c}")
 print(f"  residue for agents          : {len(residue)}")
-pathlib.Path("/tmp/nto1b.json").write_text(json.dumps({"rows": rows, "residue": residue}, indent=1))
+pathlib.Path("survey/name-table-9.6.1.json").write_text(json.dumps({"rows": rows, "residue":
+residue}, indent=1))
