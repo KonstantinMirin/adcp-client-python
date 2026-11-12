@@ -107,6 +107,30 @@ class Literal:
     keyword: str = "status"
 
 
+@dataclass(frozen=True)
+class ViaHelper:
+    """A payload passed as the SECOND argument to a helper that takes ``(type, data)``.
+
+    ``tests/conftest.py``'s ``validate_union(tp, data)`` is upstream's own way of
+    validating against a union alias, and the payload reaches the model through it.  There
+    is no ``Cls.model_validate`` to key on and the call spans several lines, so neither a
+    :class:`Construction` nor an anchored :class:`Literal` reaches it: the row names the
+    helper and the type it is handed, and the applier corrects every payload passed that
+    way in that file.
+    """
+
+    path: str
+    helper: str
+    spelling: str
+    model: str
+    document: str
+    pointer: str
+    value: str
+    sites: int
+    why: str
+    keyword: str = "status"
+
+
 # --------------------------------------------------------------------------------------
 # The rows.  Grouped by the file they correct; every one carries its document and pointer.
 # --------------------------------------------------------------------------------------
@@ -122,6 +146,11 @@ CONSTRUCTIONS: tuple[Construction, ...] = (
         "tests/test_simple_api.py", "LegacyPreviewCreativeResponse1", "",
         "PreviewCreativeSingleResponse", "creative/preview-creative-response.json",
         "#/oneOf/0", "completed", 1, _SYNC,
+    ),
+    Construction(
+        "tests/test_server_framework.py", "DeletePropertyListResponse", "",
+        "DeletePropertyListResponse", "property/delete-property-list-response.json", "#",
+        "completed", 1, _SYNC,
     ),
     # **THE ONE ROW THAT CAME BACK OUT, AND IT IS A RULE AND NOT AN EXCEPTION.**
     # ``tests/conformance/reporting/_buyer_submission_support.py`` built a
@@ -285,6 +314,25 @@ CONSTRUCTIONS: tuple[Construction, ...] = (
 )
 
 
+VIA_HELPERS: tuple[ViaHelper, ...] = (
+    # **SIX SITES, TWO ROWS, AND FOUR OF THEM WERE MASKED TWICE OVER.**  The file's first
+    # payload is refused before the reader reaches the rest, so each round of corrections
+    # reveals the next -- these came out of the run that followed the second round, not
+    # from guessing ahead of it.  Both documents require `status` through the envelope's
+    # allOf; the account rows are returned synchronously and in full.
+    ViaHelper(
+        "tests/test_account_lifecycle.py", "validate_union", "SyncAccountsResponse",
+        "SyncAccountsResponse", "account/sync-accounts-response.json", "#",
+        "completed", 3, _SYNC,
+    ),
+    ViaHelper(
+        "tests/test_account_lifecycle.py", "validate_union", "ListAccountsResponse",
+        "ListAccountsResponse", "account/list-accounts-response.json", "#",
+        "completed", 3, _SYNC,
+    ),
+)
+
+
 LITERALS: tuple[Literal, ...] = (
     # ``response_case`` returns (model, payload) pairs; the payload is a bare dict, so there
     # is no class name at the construction to key on.  One helper, five payloads.
@@ -388,18 +436,6 @@ LITERALS: tuple[Literal, ...] = (
     # the reader ever reached them, so the junit named only the earlier site.  Correcting
     # the first one is what made these visible -- the same cause, one layer down, derived
     # from the run that followed the first round rather than guessed at ahead of it.
-    Literal(
-        "tests/test_account_lifecycle.py",
-        'validate_union(SyncAccountsResponse, {"accounts": rows})',
-        "SyncAccountsResponse", "account/sync-accounts-response.json", "#",
-        "completed", 1, _SYNC,
-    ),
-    Literal(
-        "tests/test_account_lifecycle.py",
-        'validate_union(ListAccountsResponse, {"accounts": []})',
-        "ListAccountsResponse", "account/list-accounts-response.json", "#",
-        "completed", 1, _SYNC,
-    ),
     # ``validate_union`` takes the payload as an argument, so the dict is the anchor.
     Literal(
         "tests/test_server_framework.py",
@@ -467,6 +503,25 @@ def _construction_edits(src: str, row: Construction) -> list[tuple[int, str]]:
     return edits
 
 
+def _helper_edits(src: str, row: ViaHelper) -> list[tuple[int, str]]:
+    """(offset, text) insertions into the dict handed to ``helper(Cls, {...})``."""
+    lines = _offsets(src)
+    edits: list[tuple[int, str]] = []
+    for node in ast.walk(ast.parse(src)):
+        if not isinstance(node, ast.Call) or getattr(node.func, "id", None) != row.helper:
+            continue
+        if len(node.args) < 2 or getattr(node.args[0], "id", None) != row.spelling:
+            continue
+        data = node.args[1]
+        if not isinstance(data, ast.Dict):
+            continue
+        if any(isinstance(k, ast.Constant) and k.value == row.keyword for k in data.keys):
+            continue
+        at = lines[data.lineno] + data.col_offset + 1
+        edits.append((at, f'"{row.keyword}": "{row.value}", '))
+    return edits
+
+
 def _literal_edits(src: str, row: Literal) -> list[tuple[int, str]]:
     """(offset, text) insertions just inside the payload's OWN opening brace.
 
@@ -496,16 +551,17 @@ def apply(tree: Path) -> dict[str, object]:
     """
     rows: list[tuple[str, str, str, str, str, str, int]] = []
     by_path: dict[str, list[tuple[int, str]]] = {}
-    for row in (*CONSTRUCTIONS, *LITERALS):
+    for row in (*CONSTRUCTIONS, *VIA_HELPERS, *LITERALS):
         path = tree / row.path
         if not path.is_file():
             raise SystemExit(f"payload_fixes: {row.path} is not in the laid tree")
         src = path.read_text()
-        edits = (
-            _literal_edits(src, row)
-            if isinstance(row, Literal)
-            else _construction_edits(src, row)
-        )
+        if isinstance(row, Literal):
+            edits = _literal_edits(src, row)
+        elif isinstance(row, ViaHelper):
+            edits = _helper_edits(src, row)
+        else:
+            edits = _construction_edits(src, row)
         if len(edits) != row.sites:
             raise SystemExit(
                 f"payload_fixes: {row.path} :: {row.model} -- the row claims {row.sites} "
