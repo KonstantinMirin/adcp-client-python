@@ -22,6 +22,25 @@ route it takes to the subject — never by whether it passes:
     ``fwvm``'s rule carried forward and widened to the annotation object and the import
     system.
 
+    **AND IT IS EVERY ASSERTION OF THE FUNCTION, NOT THE FIRST ONE THAT MATCHES.**  The
+    owner's rule decides the edge: *"a test is DELETE only where there is NO behaviour
+    behind the assertion at all ... where you cannot tell, it is BEHAVIOUR and it must pass
+    -- the burden is on declining a test, never on keeping one."*  A function that asserts
+    an export inventory AND a wire envelope has behaviour behind it, so declining it hides
+    the envelope obligation; the earlier reading took the FIRST matching assertion and
+    ``break``-ed, which decided 120 functions on one claim out of several -- the most
+    extreme a 21-assertion function decided by ``assert 'SalesPlatform' in dx.__all__``.
+    Measured: that reading put 147 functions in DELETE and this one puts 27, and 26 of the
+    120 it releases assert on a payload the document admits or refuses.
+
+    **THE COST IS NAMED RATHER THAN HIDDEN**: 38 of the released functions assert
+    ``module.X is X`` and 21 assert a NAME's membership in a collection -- export-surface
+    claims this table does not cover, so they are kept and some of them may not pass.  They
+    are NOT tokenised here, because ``module.X is X`` is the property reading 10 makes of an
+    alias ("an alias is a NAME and never a second type, so ``isinstance`` holds across every
+    spelling"), which this package's own surface asserts of itself -- deleting the construct
+    would decline a test our own design says should pass.
+
 ``PORT``
     The assertion is behavioural and the ROUTE is a spelling of their implementation —
     ``adcp.types.domains.**`` (their generated layout), ``adcp.types._generated`` (their
@@ -36,9 +55,16 @@ route it takes to the subject — never by whether it passes:
     ``adcp.reporting``.  These are the tests whose verdict is about the ARTIFACT, and a
     failure among them is ours until proved otherwise.
 
-**THE TOKENS ARE READ INSIDE ASSERTIONS ONLY, which is what keeps the rule honest.**  A
-test may import ``model_fields`` to build a fixture and then assert on a wire envelope;
-that is behaviour reached awkwardly, not an implementation assertion.  ``fwvm`` already
+**THE TOKENS ARE READ INSIDE ASSERTIONS ONLY, AND INSIDE THE CLAIM AND NEVER THE MESSAGE,
+which is what keeps the rule honest.**  A test may import ``model_fields`` to build a
+fixture and then assert on a wire envelope; that is behaviour reached awkwardly, not an
+implementation assertion.  The same holds one level in: an ``assert`` carries a claim and a
+failure MESSAGE, the message is prose a human wrote to say why the claim failed, and reading
+it decides a verdict on text that asserts nothing.  :func:`_assertion_text` reads
+``Assert.test`` for exactly that reason; measured on upstream 9.6.1, **12 functions carry an
+implementation token ONLY in a message** and three of them are behavioural -- two Postgres
+lease-ordering tests whose claim is ``not any(isinstance(result, BaseException) ...)`` and
+one import-cost budget whose claim is ``peak < IMPORT_RSS_BUDGET_MIB``.  ``fwvm`` already
 measured the converse trap and kept 12 tests a cruder rule would have taken, because
 ``model_fields_set`` mirrors a WIRE fact — whether the key was present on the payload —
 so it is excluded from the table by name.
@@ -83,6 +109,41 @@ IMPLEMENTATION_TOKENS: tuple[tuple[str, str], ...] = (
     ("__pydantic_", "asserts pydantic's private machinery"),
     ("inspect.getsource", "asserts the TEXT of a generated module"),
     ("inspect.signature", "asserts a generated signature rather than a value"),
+    # **THE EMITTED SCHEMA'S PROPERTY INVENTORY**, which is `model_fields` reached through
+    # pydantic's JSON Schema export instead of through the field table.  The subscript is part
+    # of the token on purpose: `model_json_schema()['required']` is a REQUIREDNESS claim and a
+    # payload omitting the name is a value the document admits or refuses, so that spelling is
+    # behaviour and is deliberately not matched here.
+    (
+        "model_json_schema()['properties']",
+        "asserts the emitted schema's property INVENTORY -- `model_fields` reached through "
+        "the JSON Schema export",
+    ),
+    (
+        'model_json_schema()["properties"]',
+        "asserts the emitted schema's property INVENTORY -- `model_fields` reached through "
+        "the JSON Schema export",
+    ),
+    # **THE WHOLE EMITTED SCHEMA, COMPARED**.  An equality against a canonical document is a
+    # claim about every key the generator wrote, the ordering of its `anyOf` members included;
+    # no payload is admitted or refused by it.  The `==` is part of the token so a subscripted
+    # read of one key is not swept in with it.
+    (
+        "model_json_schema() ==",
+        "asserts the WHOLE emitted schema against a canonical -- the generator's own output "
+        "text, with no payload behind it",
+    ),
+    # **GENERATED SOURCE TEXT, asserted as a string**.  `model_config = ConfigDict` cannot
+    # appear in a claim except as a fragment of PYTHON SOURCE, so a test asserting it is in a
+    # value is asserting the text of a generated module -- which is what `inspect.getsource`
+    # is already deleted for, written without the call.  `.model_config[` and
+    # `.model_config.get(` are the CONFIG VALUE and are not matched: ours carries that config
+    # too, so such a test can pass and the burden is on declining it.
+    (
+        "model_config = ConfigDict",
+        "asserts the TEXT of a generated module, as a source fragment rather than through "
+        "inspect.getsource",
+    ),
 )
 
 #: ``model_fields_set`` mirrors a WIRE fact — whether the key was present on the payload —
@@ -265,6 +326,19 @@ def _routes(bound: dict[str, str], fn: ast.AST) -> list[str]:
     return sorted(used)
 
 
+
+def _implementation(claim: str) -> tuple[str, str] | None:
+    """The token that makes this ONE claim an implementation assertion, or ``None``.
+
+    The ``«wire»`` substitution is :data:`WIRE_NOT_IMPLEMENTATION` applied before the table is
+    read, so ``model_fields_set`` cannot be matched by the ``model_fields`` rows that would
+    otherwise contain it.
+    """
+    stripped = claim
+    for keep in WIRE_NOT_IMPLEMENTATION:
+        stripped = stripped.replace(keep, "«wire»")
+    return next((token for token in IMPLEMENTATION_TOKENS if token[0] in stripped), None)
+
 def classify(path: pathlib.Path) -> list[dict]:
     """One row per test function in one file."""
     try:
@@ -276,14 +350,10 @@ def classify(path: pathlib.Path) -> list[dict]:
     for fn in _tests(tree):
         asserts = _assertion_text(fn)
         verdict, why, quoted = "BEHAVIOUR", "", ""
-        for claim, whole in asserts:
-            stripped = claim
-            for keep in WIRE_NOT_IMPLEMENTATION:
-                stripped = stripped.replace(keep, "«wire»")
-            hit = next((t for t in IMPLEMENTATION_TOKENS if t[0] in stripped), None)
-            if hit is not None:
-                verdict, why, quoted = "DELETE", hit[1], whole[:220]
-                break
+        hits = [_implementation(claim) for claim, _ in asserts]
+        if asserts and all(hit is not None for hit in hits):
+            first = next(i for i, hit in enumerate(hits) if hit is not None)
+            verdict, why, quoted = "DELETE", hits[first][1], asserts[first][1][:220]
         routes = _routes(bound, fn) + _routes(_their_bindings(fn), fn)
         if verdict == "BEHAVIOUR" and routes:
             verdict, why = "PORT", "behaviour reached through " + ", ".join(routes[:3])
@@ -296,6 +366,10 @@ def classify(path: pathlib.Path) -> list[dict]:
                 "assertion": quoted,
                 "routes": routes,
                 "assertions": len(asserts),
+                #: How many of this function's claims carry an implementation token.  Written
+                #: down because the rule turns on ALL of them and a reader checking a verdict
+                #: needs to see the split rather than re-derive it.
+                "implementation_assertions": sum(1 for hit in hits if hit is not None),
             }
         )
     return rows
