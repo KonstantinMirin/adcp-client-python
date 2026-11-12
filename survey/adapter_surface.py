@@ -178,12 +178,12 @@ from __future__ import annotations
 import argparse
 import ast
 import collections
+import functools
 import importlib
 import importlib.util
-import functools
-import subprocess
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -723,6 +723,64 @@ def their_document(module: str) -> str | None:
     if head in PROJECTIONS and tail:
         rest = tail
     return rest
+
+
+#: The bundle a run reads, for :meth:`Join.unpinned`'s document check.  Declared here and
+#: resolved lazily because this module is imported by readers that never reach that method.
+_BUNDLE: Path | None = None
+
+
+def _bundle() -> Path:
+    global _BUNDLE
+    if _BUNDLE is None:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests_emit"))
+        import fresh  # noqa: PLC0415
+
+        _BUNDLE = fresh.BUNDLE
+    return _BUNDLE
+
+
+@functools.cache
+def document_consts(document: str, pointer: str) -> frozenset[str]:
+    """Every root property THE DOCUMENT pins a `const` on at `pointer`.
+
+    **THE DOCUMENT IS THE AUTHORITY AND UPSTREAM'S DECLARATION IS NOT**, which is what
+    :meth:`Join.unpinned` needs and what it read for instead.  Upstream's generator mints a
+    `default` the document does not state -- 867 (model, field) pairs of them, every one
+    attributed to their artifact and none to a keyword this compiler misread
+    (`verdicts/invented-defaults.md`) -- and `consts` over their declaration cannot tell such
+    a pin from one a document states.  Asking the document separates them.
+
+    Returns the property names only: whether the VALUES agree is `ordinal`'s second gate and
+    is a different question from whether the document pins the property at all.
+    """
+    try:
+        node = json.loads((_bundle() / document).read_text())
+    except (OSError, ValueError):
+        return frozenset()
+    for seg in (s for s in pointer.lstrip("#/").split("/") if s):
+        try:
+            node = node[int(seg)] if seg.isdigit() else node[seg]
+        except (KeyError, IndexError, TypeError):
+            return frozenset()
+    found: set[str] = set()
+    pending = [node]
+    while pending:
+        cur = pending.pop()
+        if not isinstance(cur, dict):
+            continue
+        props = cur.get("properties")
+        if isinstance(props, dict):
+            found |= {
+                k for k, v in props.items() if isinstance(v, dict) and "const" in v
+            }
+        # a conjunction states the same properties one level in, which is where an
+        # envelope's pins live; a $ref is followed by nobody here on purpose -- a pin the
+        # document states only in a referenced document is that document's and `ordinal`
+        # reads it there.
+        for member in cur.get("allOf") or ():
+            pending.append(member)
+    return frozenset(found)
 
 
 def consts(schema: str) -> dict[str, object]:
@@ -1431,14 +1489,22 @@ class Join:
     def unpinned(self, terminal: ua.Terminal, inner: dict) -> dict[str, object]:
         """**WHAT UPSTREAM'S DECLARATION PINS THAT THE SUBJECT IT REACHES DOES NOT.**
 
-        The middle term of a composition is where this key can do real harm, and the
-        structural lane measured the case: upstream's
-        `media_buy/create_media_buy_response.json` arm `CreateMediaBuyResponse1` pins
-        `status` to `'completed'`, and the subject `document+ordinal` reaches for it --
-        our `CreateMediaBuySuccess` -- has no `status` element at all.  25 of their 26
-        elements agree.  Publishing their `CreateMediaBuySuccessResponse` over that subject
-        would mint a NAME over a type that accepts payloads the document refuses, which is
-        worse than leaving the name unbound.
+        **AND IT REFUSES ONLY WHERE THE DOCUMENT STATES THE PIN, which is the correction
+        this key needed.**  The reading it carried was measurably false and inverted its own
+        conclusion.  It said our `CreateMediaBuySuccess` "has no `status` element at all" at
+        `media_buy/create_media_buy_response.json#/oneOf/0`.  It has one: `status`, REQUIRED,
+        annotated `TaskStatus`, because the document's `allOf` reaches
+        `core/protocol-envelope.json` whose own `required` is `['status']`.  What ours does
+        not carry is upstream's `Literal['completed'] = 'completed'` -- and the document pins
+        no `const` there, so that pin is one of the 867 invented defaults
+        (`verdicts/invented-defaults.md`, every one attributed to their generator and none to
+        a keyword this compiler misread).  A DEFAULT MAKES A REQUIRED FIELD OPTIONAL, so it is
+        THEIR class that admits a payload the document refuses, not ours.
+
+        So the old reading deferred to an upstream artifact as though it were a wire fact, and
+        refused 132 of upstream's own test files over it.  :func:`document_consts` is the
+        screen: a property upstream pins that the DOCUMENT does not pin is their artifact and
+        is not a reason to withhold a name.
 
         So this key refuses where upstream pins a property and the subject pins NOTHING
         there, and names the property.  Asymmetric on purpose, and the asymmetry is the
@@ -1457,11 +1523,19 @@ class Join:
         if not pinned:
             return {}
         ours: dict[str, object] = {}
+        stated: set[str] = set()
         for target in inner.get("target") or ():
             held = self.ours["declarations"].get(target)
-            if held and held.get("schema"):
+            if not held:
+                continue
+            if held.get("schema"):
                 ours.update(consts(held["schema"]))
-        return {k: v for k, v in pinned.items() if k not in ours}
+            ref = held.get("ref")
+            if ref and len(ref) >= 2 and ref[0]:
+                stated |= document_consts(str(ref[0]), str(ref[1] or "#"))
+        return {
+            k: v for k, v in pinned.items() if k not in ours and k in stated
+        }
 
     def _bound(self, row: dict, how: str, targets: list[str], note: str) -> dict:
         """The BOUND row :meth:`resolve`'s own `bind` writes, for a key outside its body."""
