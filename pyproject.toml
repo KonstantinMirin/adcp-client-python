@@ -261,6 +261,16 @@ adcp = [
     # must carry them. Removed with the rest of _preview/ at rc.2.
     "reporting/_preview/schemas/**/*.json",
     "reporting/_preview/schemas/UPSTREAM_COMMIT",
+    # **THE DOCUMENTS OF RECORD, BESIDE THE CLASSES THEY GRADE.**  ``codegen/emit.py``
+    # writes one ``.json`` next to every emitted module -- the inlined document a class's
+    # ``__adcp_schema__`` names -- and ``adcp.types._base._document`` loads it out of the
+    # INSTALLED tree, not from the repository.  Without this line the wheel shipped 1,094
+    # emitted modules and 0 of the 1,059 documents, so ``strict_validate`` -- the call this
+    # package tells every consumer to make -- raised ``FileNotFoundError`` for every class
+    # in an installed wheel while passing in a source checkout.  Measured on
+    # ``PaginationRequest``: "core/pagination-request.json has no record in
+    # .../site-packages/adcp/types/_schemas".
+    "types/_schemas/**/*.json",
     # AdCP JSON schemas, mirrored from ``schemas/cache/`` by
     # ``scripts/bundle_schemas.py`` so the wheel ships them for
     # ``adcp.validation.schema_loader``.
