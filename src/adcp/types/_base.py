@@ -2404,81 +2404,76 @@ class BranchDispatchMixin(_MixedInto):
             got = cls._branch_adapter().validate_python(value)
         except ValidationError as err:
             raise cls._no_branch(value, err) from None
-        undetermined = cls._undetermined(got, value)
-        if undetermined is not None:
-            raise undetermined
-        return got
+        return cls._admitted(got, value)
 
     @classmethod
-    def _undetermined(cls, got: Any, value: Any) -> ValidationError | None:
-        """**A KEYLESS DISPATCH MAY NOT ANSWER WITH A BRANCH ITS DOCUMENT REFUSES.**
+    def _admitted(cls, got: Any, value: Any) -> Any:
+        """**THE BRANCH THE DOCUMENT ADMITS -- WHICH AN ``anyOf`` DECIDES AND DECLARATION
+        ORDER DOES NOT.**
 
         ``adcp-client-python-84a9``, and the owner's ruling of 2026-11-06: *"if the
         discriminator is empty, I believe that's a schema error"*.  Where
         :attr:`_BRANCH_DISCRIMINATOR` is empty there is no key the document guarantees,
-        so the branch is selected by a STRUCTURAL FIRST MATCH -- pydantic tries the
-        branches in declaration order and keeps the first whose CLASS admits the payload.
-        A branch class may be WIDER than its node (reading 2's declared widenings), so
-        the first class that admits can be a branch the DOCUMENT refuses, and the caller
-        is then handed an object of a type the document says the payload is not.  **A
-        caller receiving the wrong type silently is worse than an error**, so this
-        refuses.
+        so pydantic selects by a STRUCTURAL FIRST MATCH -- it tries the branches in
+        declaration order and keeps the first whose CLASS admits the payload.  A branch
+        class may be WIDER than its node (reading 2's declared widenings), so the first
+        class that admits can be a branch the DOCUMENT refuses, and the caller would be
+        handed an object of a type the document says the payload is not.
 
-        **Measured on this bundle, over the 228 committed branch payloads of the keyless
-        bases**: 177 reach the branch they were drawn from and the document admits every
-        one of them at the answering branch, 46 reach another branch the document ALSO
-        admits, 1 the base already refuses -- and **4 reach**
-        ``core/async-response-data.json#/anyOf/0``, which the document refuses on
-        ``'errors' is a required property`` (three) or ``'products' is a required
-        property`` (one).  Those 4 are the whole of what this screen changes: it refuses
-        nothing that reached its own branch and nothing the document admits where it
-        landed.
+        **WHAT THE DOCUMENT IS ASKED IS "ANY BRANCH", NEVER "THE ONE PYDANTIC REACHED
+        FIRST".**  An ``anyOf`` admits a payload exactly when SOME branch admits it, so a
+        first match landing on a non-admitting branch is a fact about declaration order
+        and not about the payload.  Measured on ``core/async-response-data.json`` (46
+        branches), with the production screen :func:`_refuse_at` as the instrument:
 
-        **IT DOES NOT TRY ANOTHER BRANCH, and that is measured rather than preferred.**
-        84a9 records that "the document names exactly one admissible branch each" for
-        those four, and over the documents of record that is REFUTED: the document admits
-        17, 16, 16 and 32 of the 42 branches for those payloads.  So there is no branch
-        the document determines, "another branch" would be a second guess, and the only
-        answer that is not a guess is a refusal.  Where exactly one branch IS admissible
-        the first match already finds it -- 167 of the 177 above.
+            {"status": "completed", "message": …, "timestamp": …}   admitted at 15 of 46
+            {"errors": [{"code": "NOT_FOUND", …}]}                  admitted at 15 of 46
+            {"reason": "APPROVAL_REQUIRED"}                         admitted at 14 of 46
 
-        **The REASON is the document's, at the branch's own pointer**, read by the
-        production schema half (:func:`_refuse_at`) and not by a second reading written
-        here, so the sentence a caller gets is the sentence ``strict_validate`` on that
-        very class gives.  ``None`` where nothing is wrong, so the cost on the common
-        path is one document validation and no exception.
+        The document ADMITS all three.  Refusing them refuses what the document accepts,
+        which ``docs/plan/final-state.md`` reading 1 forbids -- and it was the second
+        largest cause in upstream's behavioural suite at 21 failures, every one of them
+        this document and two of its branches.
 
-        **AND THE POSITION IS THE DOCUMENT'S TOO** (``adcp-client-python-jgsf``).  The
-        message here is an asset -- it names the branch, the absent discriminator and the
-        document's own sentence -- and that is exactly why it was allowed to carry
-        ``loc=()`` for as long as it did.  **A good sentence is not a location.**  A
-        caller handed "no branch is determined" with an empty ``loc`` is no better off
-        than one handed a type error with an empty ``loc``: ``core/error.json``'s
-        ``Error.field`` is derived from the ``loc`` and is empty either way.  The
-        document half already reports the pointer it refuses at
-        (``_refuse``'s ``tuple(e.absolute_path)``), so the refusal is raised AT it and
-        the sentence is unchanged.
+        So the walk continues: the branches are tried IN DECLARATION ORDER and the first
+        whose DOCUMENT admits the payload is the answer.  That is not a second guess, and
+        the reason is that the first match already rests on the same criterion -- of the
+        228 committed branch payloads of the keyless bases, 46 reach a branch OTHER than
+        the one they were drawn from and are KEPT because the document admits them there.
+        "First in declaration order among the branches the document admits" was already
+        the rule in force for those 46; applying it when the FIRST match is not among
+        them is that same rule and not a new one.  A branch whose document admits the
+        payload but whose class refuses it is skipped, which is reading 2's narrowing
+        reporting itself.
+
+        **AND THE REFUSAL SURVIVES WHERE IT IS THE ONLY TRUE ANSWER**
+        (:meth:`_undetermined`): no branch's document admitting the payload is the
+        document refusing it, and that is reported rather than answered with a type the
+        document denies.
+
+        **THE COMMON PATH COSTS WHAT IT COST.**  One document validation where the first
+        match is admissible -- 223 of the 228 -- and the walk runs only on the path that
+        previously raised.
 
         **Asked of a KEYLESS base only.**  With a key, pydantic validates against the one
         branch the key names and the answer is the document's own function of the
-        instance; there is nothing selected by order and nothing to screen.
+        instance; there is nothing selected by order and nothing to re-select.
 
         **AND A PRESENCE DISPATCH IS NOT KEYLESS** (:attr:`_BRANCH_PRESENCE`,
-        ``adcp-client-python-j0fr``).  The screen's whole premise is "the branch is
-        selected by a STRUCTURAL FIRST MATCH -- pydantic tries the branches in
-        declaration order and keeps the first whose CLASS admits the payload".  A
-        callable discriminator computes the branch from the payload's key set BEFORE any
-        branch is tried, so there is no first match, no declaration order, and the branch
-        the payload reaches is the one clause the document says holds -- the same clause
+        ``adcp-client-python-j0fr``).  The premise here is "the branch is selected by a
+        STRUCTURAL FIRST MATCH -- pydantic tries the branches in declaration order and
+        keeps the first whose CLASS admits the payload".  A callable discriminator
+        computes the branch from the payload's key set BEFORE any branch is tried, so
+        there is no first match, no declaration order, and the branch the payload reaches
+        is the one clause the document says holds -- the same clause
         :class:`adcp.types._runtime.PresenceGroups` would have enforced as a rule.  There
-        is nothing selected by order to screen, and the screen's cost is one document
-        validation per dispatch, so it is not asked.
+        is nothing selected by order, so the document is not asked.
 
         **AND ASKED OF A MAPPING ONLY, which is measured and not a precaution.**  A
         branch of an object union is an object class, so a WIRE payload reaching one is a
         mapping -- but pydantic also validates a base-typed field from an already
         constructed MODEL INSTANCE, and the document half grades JSON.  Without this
-        screen ``tests/test_emit.py::test_a_union_base_instance_and_a_branch_each_serialise_as_what_they_are``
+        guard ``tests/test_emit.py::test_a_union_base_instance_and_a_branch_each_serialise_as_what_they_are``
         refused ``A2UIBoundValueLiteralString(literalString='')`` with
         ``is not of type 'object'`` -- the schema's verdict about a Python object, which is
         a statement about the instrument and not about the payload.  An instance has
@@ -2490,40 +2485,96 @@ class BranchDispatchMixin(_MixedInto):
             or cls._BRANCH_PRESENCE
             or not isinstance(value, Mapping)
         ):
-            return None
+            return got
         answered = type(got)
-        ref = answered.__dict__.get("__adcp_schema__") or getattr(
-            answered, "__adcp_schema__", None
+        refused = cls._document_refusal(answered, value)
+        if refused is None:
+            return got
+        for branch in cls._branch_models:
+            if branch is answered or cls._document_refusal(branch, value) is not None:
+                continue
+            try:
+                return branch.model_validate(value)
+            except ValidationError:
+                # The document admits the payload HERE and the class does not: reading
+                # 2's declared narrowing, reporting itself.  The next admissible branch
+                # is asked, and if none answers, the sentence a caller gets is the
+                # document's refusal at the branch the STRUCTURE matched -- not this one,
+                # which is about a branch the payload was never selected into.
+                continue
+        raise cls._undetermined(answered, value, refused)
+
+    @classmethod
+    def _document_refusal(cls, branch: type, value: Any) -> ValidationError | None:
+        """The branch's DOCUMENT asked about ``value``: its refusal, or ``None``.
+
+        **The REASON is the document's, at the branch's own pointer**, read by the
+        production schema half (:func:`_refuse_at`) and not by a second reading written
+        here, so the sentence a caller gets is the sentence ``strict_validate`` on that
+        very class gives.  ``None`` both where the document admits the payload and where
+        the branch names no document -- a branch with no ``__adcp_schema__`` states
+        nothing to ask, and a refusal written here would be this method's own opinion.
+        """
+        ref = branch.__dict__.get("__adcp_schema__") or getattr(
+            branch, "__adcp_schema__", None
         )
         if ref is None:
             return None
         try:
-            _refuse_at(ref, value, answered.__name__, module=answered.__module__)
+            _refuse_at(ref, value, branch.__name__, module=branch.__module__)
         except ValidationError as err:
-            why = err.errors()[0]
-            return ValidationError.from_exception_data(
-                cls.__name__,
-                [
-                    InitErrorDetails(
-                        type=PydanticCustomError(
-                            cls._branch_combinator(),
-                            "{detail}",
-                            {
-                                "detail": (
-                                    f"this union states no discriminator its document "
-                                    f"guarantees, so the branch is selected by structure; "
-                                    f"the branch that matched is {ref.document}"
-                                    f"{ref.pointer} ({answered.__name__}), which the "
-                                    f"document refuses: {why['msg']}"
-                                )
-                            },
-                        ),
-                        loc=tuple(why["loc"]),
-                        input=value,
-                    )
-                ],
-            )
+            return err
         return None
+
+    @classmethod
+    def _undetermined(
+        cls, answered: type, value: Any, refused: ValidationError
+    ) -> ValidationError:
+        """**NO BRANCH'S DOCUMENT ADMITS THE PAYLOAD**, reported at the document's pointer.
+
+        Reached only when :meth:`_admitted`'s walk found no admissible branch, so the
+        document refuses the payload at every one of them -- which is an ``anyOf``
+        refusing it.  The sentence names the branch the STRUCTURE matched, because that is
+        the branch a caller would otherwise have been handed, and quotes the document's
+        own refusal there.
+
+        **AND THE POSITION IS THE DOCUMENT'S TOO** (``adcp-client-python-jgsf``).  The
+        message is an asset -- it names the branch, the absent discriminator and the
+        document's own sentence -- and that is exactly why it was allowed to carry
+        ``loc=()`` for as long as it did.  **A good sentence is not a location.**  A
+        caller handed "no branch is determined" with an empty ``loc`` is no better off
+        than one handed a type error with an empty ``loc``: ``core/error.json``'s
+        ``Error.field`` is derived from the ``loc`` and is empty either way.  The
+        document half already reports the pointer it refuses at
+        (``_refuse``'s ``tuple(e.absolute_path)``), so the refusal is raised AT it.
+        """
+        ref = answered.__dict__.get("__adcp_schema__") or getattr(
+            answered, "__adcp_schema__", None
+        )
+        why = refused.errors()[0]
+        where = f"{ref.document}{ref.pointer} " if ref is not None else ""
+        return ValidationError.from_exception_data(
+            cls.__name__,
+            [
+                InitErrorDetails(
+                    type=PydanticCustomError(
+                        cls._branch_combinator(),
+                        "{detail}",
+                        {
+                            "detail": (
+                                f"this union states no discriminator its document "
+                                f"guarantees, so the branch is selected by structure, and "
+                                f"no branch's document admits this payload; the branch "
+                                f"that matched is {where}({answered.__name__}), which the "
+                                f"document refuses: {why['msg']}"
+                            )
+                        },
+                    ),
+                    loc=tuple(why["loc"]),
+                    input=value,
+                )
+            ],
+        )
 
     @classmethod
     def _required(cls, value: Any, absent: Sequence[str]) -> ValidationError:
