@@ -186,3 +186,45 @@ reported rather than done. With the payload corrected the question does not aris
 is **not** a masker: it has no `except` at all. It calls
 `client.get_reporting_status(...)` unguarded and raises only on `not result.success or
 response is None`. Left unchanged.
+
+
+---
+
+## The three figures, measured together
+
+**1. `./check` — unmoved, all three** (run after cause 1 landed, 217 s cold):
+
+```
+emitted 1059 / refused 0 (deferred 0, verdict 0); accounted 1059
+kind: verdict 0, deferred 0, chained 0  ->  primary 0, chained 0
+approximated 383 facts in 148 documents
+```
+
+**2. `make lint` and `make typecheck-all` — red on trunk, and UNMOVED by this change.**
+Reported rather than claimed green, because they are not: `lint` is **255 errors** and
+`typecheck-all` is **4,118 errors in 694 files** both before and after, measured by stashing
+the change and re-running. The bulk is `src/adcp/types/legacy_names.py` and other lanes'
+files. My own two source files are clean under `ruff` and contribute 0 of the 4,118.
+`make test` was not run to completion: the repository suite is long and the figure that
+matters for this row is the drop-in one below; `tests/test_legacy_asset_helpers_derivation.py`
+passes 5/5 and `tests/test_reporting_frozen_read_safety.py` is 71 failed / 22 passed both
+before and after, which is the payload defect and not this change.
+
+**3. The drop-in suite** —
+`survey regenerate --wheel $SP --out /srv/ws/dropin-reporting --run`, digest
+`b9b14e1da126cc758646382cddec5dd05b9ecacf91876d76575ec830389427b5`:
+
+| | before | after |
+|---|---|---|
+| passed | 10,551 | **10,575** |
+| failed | 1,253 | **1,229** |
+| skipped / errored / xfailed | 2,001 / 12 / 1 | 2,001 / 12 / 1 |
+| collected | 13,818 | 13,818 |
+
+**+24 passed, −24 failed.** Cause 1's `IndexError` set goes **26 → 0**; 24 of those 26 now
+pass and 2 fail on a different cause further along, which is why the net is 24 and not 26.
+
+**`STATUS_READ_FAILED` assertions remaining: 65**, unchanged — and that is the correct
+outcome of this row. They are blocked on the payload correction named above, which is data
+this row may not write. The `== 'STATUS_READ_FAILED'` count is 65 of the 101 failures
+mentioning the code; the rest mention it in a traceback rather than an assertion.
