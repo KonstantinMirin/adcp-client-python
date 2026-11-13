@@ -235,3 +235,177 @@ three figures above come from `./check` and from `pytest` over `tests_emit/`, wh
 `survey causes` does not grade. Not rebased onto `274021e6d`/`f53fcb447`: every figure here
 is measured against the stated trunk `11272fdd5`, and moving the base mid-verification
 would move the three numbers this file is asked to report unmoved.
+
+---
+
+# Round 2 — the 57 more dead gates, and what they were hiding
+
+Trunk `18857f167`, rebased before measuring. The two modules named as P0 went
+**57 failed / 36 passed → 38 passed, 0 failed.**
+
+## The split
+
+| | deleted | re-pointed |
+|---|---|---|
+| `test_harness_halves.py` | 18 | 5 |
+| `test_no_cap_is_on_the_grading_path.py` | 2 | 1 |
+
+**Deleted — 20, each over a mechanism that no longer exists:**
+
+| mechanism | gone because | gates |
+|---|---|---|
+| the combinator COVER (`a_combinator_is_covered_and_never_enumerated`, `harness.strategy`) | §8's power-set replacement for a hypothesis draw; no draw | 4 |
+| the CANONICAL ENCODING (`the_canonical_encoding_is_not_rebuilt_in_python`, `_c_encoder_is_canonical`, `_CANONICAL_ENCODING_SITES`) | existed to make the corpus KEY reproducible | 5 |
+| the memo's copy clause (`_round_trips`) | same | 1 (×12 params) |
+| the CANONICALISATION memo (`canonicalisation_shared_within_one_call`) | a within-one-call memo over `canonicalish` | 2 |
+| the STORE, and the document's-own-`examples` rung | `check_accepts` climbs no ladder; the caller hands it the witness | 2 |
+| §8's fixture SUBSTITUTION (`draw_from=`, `harness.Fixtures`) | replaced by `Construction` | 2 |
+| a budget cut landing inside the draw | handed `witness=None` the check returns `no_witness` before calling `accept` at all | 2 |
+| `harness.Fixtures.reduced`'s `depth: int = 8` | the sampler is gone | 2 |
+
+**Re-pointed — 6, each over a mechanism that is live.** What they say now:
+
+1. **the DUMP half** — `examples=N` became `witness: Sequence[Any]`, which is a different
+   *kind* of argument: a count is a knob that can turn a check off, a witness list is the
+   thing being graded. `DropsB` is still caught, still on `required`, still with
+   `round_tripped == 0`.
+2. **the round-trip count** — `examples == round_tripped == 3` over a handed witness. It
+   counts dumps rather than draws, and now there are no draws to confuse it with.
+3. **`OverBudget` crossing the handler chain** — injected through `accept`, it crosses all
+   three of `check_accepts`' handlers as itself and is never converted to a verdict. The
+   second injection point (the strategy build) is deleted; the surviving half is the
+   stronger of the two.
+4. **the validator sharing** — this measured `reused == 0` and read as a defect in the
+   sharing. **It is not one.** A pair graded with no `construction=` does almost nothing:
+   accepts returns `no_witness` and admits reports *"no construction was supplied, so there
+   is no witness set"*, so nothing asks for a validator and nothing is shared. The FIXTURE
+   was stale; it now supplies a one-document `Construction` and `reused > 0`.
+5. **the no-cap gate, clause 3** — see below. This is the one that matters.
+
+## Finding 6 — the no-cap gate read one module, and the grading path is in two
+
+`test_no_cap_is_on_the_grading_path.py` gates one of the five standing targets. It was red
+on its own first assertion:
+
+```
+AssertionError: ['reduced', '_pin', '_derived_pin', 'value'] is named here
+and is not a function of harness.py
+```
+
+Those four are the frames of `harness.Fixtures.reduced`'s `depth: int = 8` — the fifth
+bound the file removed. `harness.Fixtures` no longer exists.
+
+**That redness was the file telling the truth and nobody reading it.** `UNBOUNDED` is
+asserted to be a list of LIVE functions precisely so a rename reddens here instead of
+silently emptying the population, and it did exactly that. What it could not say, because
+it died at line one, is the thing that matters: **clause 3 ranged over
+`codegen/harness.py` alone, while the three checks now derive every witness in
+`codegen/verify/witness.py`.** The target has been unguarded for the module that does the
+work ever since the sampler was replaced.
+
+Clause 3 now reads both — `UNBOUNDED` over `harness.py`, and **every function** of the
+verifier, since §9's *"the verifier reads nothing but its arguments"* makes that descent
+its whole content and "every function" is the population a rename cannot empty.
+
+**And the target holds on the live path.** Measured: **10 named harness readings + 89
+verifier functions, and 0 of the 99** declares a parameter spelled `depth` or reads a
+constant ending `_DEPTH`. The 89 had no gate at all.
+
+## Finding 7 — the PRIMARY grading pass is dead, and this is the biggest thing here
+
+`tests_emit/test_emit.py::graded_report` is the pass that `test_every_class_passes_all_three_checks`
+reads over 2,584 pairs. It raises for **every** pair:
+
+```
+File "tests_emit/test_emit.py", line 1488, in graded_report
+    fixtures=fixtures(),
+AttributeError: module 'codegen.harness' has no attribute 'Fixtures'
+```
+
+Doubly dead: `harness.Fixtures` is gone, **and** `check_pair` no longer takes `fixtures=`
+at all. What replaced it is `construction=`, and without one `check_pair` reports
+`admits_absent = "no construction was supplied, so there is no witness set"` — the first
+check is `unrun` for every pair.
+
+Measured with the repair applied by hand (`construction=constructed.whole()`), on the four
+pairs the old docstrings named as most expensive:
+
+| pair | was (cold, with the draw) | now |
+|---|---|---|
+| `media-buy/get-media-buy-delivery-response.json#` | 2,356.66 s | **0.192 s** |
+| `media-buy/refine-proposals-response.json#` | did not finish | **8.149 s** |
+| `media-buy/get-media-buys-response.json#` | did not finish | **0.262 s** |
+| `core/macro-declaration.json#` | 151.51 s | **7.034 s** |
+
+**I have not landed that repair**, and the reason is in the verdicts it produces: three of
+those four report `admits=model_refused_admitted` and one reports
+`accepts=witness_refused`. Reviving the pass flips the primary census, and reporting a
+census I have not read would be the thing this project's own standard forbids. It wants
+one lane of its own: re-point `graded_report` at `construction=`, then read all 2,584 rows
+and report the outcome table. **That is the next lane, and it is worth more than anything
+in this one.**
+
+## Finding 8 — the budget is dormant and now has no live caller at all
+
+`harness.within`, `OverBudget`, `budget_expired` and `_BUDGET_RETRY` are fully implemented.
+The standing target says **no budget**. Three measurements:
+
+* **its justification is gone.** `within`'s own docstring grounds it in *"a draw over a
+  multi-megabyte node has no bound of its own -- measured at 2 h 57 m and 32 GB of RSS on
+  one 44 MB node"*. There is no draw.
+* **it is dormant.** Worst of the four pairs above: **8.149 s against `PAIR_BUDGET = 300`.**
+* **it has no live caller.** Its one call site is `test_emit.graded_report`, which raises
+  `AttributeError` before reaching it (Finding 7). And `harness.budget_expired` has **no
+  caller anywhere in the tree** — its only remaining references are a comment in
+  `harness.py` and the docstring of the clause deleted for it.
+
+Also dead and declared: `check_pair` and `_check_pair` still take `accepts_examples`,
+forwarded one hop and read nowhere. That is *"a knob whose setting can turn a check off"*
+in the words of the rule the no-cap gate cites — dead text today, but the standing target
+says it should not be declared. **I did not add a clause for it**: the removal is a
+`harness.py` change, which is not in this lane's scope, and a new red gate naming
+someone else's file is a worse way to say this than a sentence here.
+
+## Finding 9 — item 3, proved and acted on
+
+| | result |
+|---|---|
+| files importing `tests_emit/corpus.py` | **2** — `test_emit.py`, `test_immaterial_presence.py` |
+| attribute accesses on the module | **4**, all of them `corpus=`/`widening_corpus=` kwargs to a harness call |
+| `.get` / `.put` on either store, in either file | **0** |
+| `_check_pair`'s use of its `corpus` parameter | the name does not appear in its body |
+| attribute reads of `_Draws.corpus` in `harness.py` | **0** |
+
+So the imports are dead text and the directories are dead bytes.
+
+**Deleted:** `tests_emit/accepts-corpus/` — **2,585 tracked files, 470,663 bytes** — and
+`--write-corpus` from `conftest.py`, which has no invoker anywhere and whose only consumer
+was deleted in round 1.
+
+**Kept, with the one-line decision stated:** `tests_emit/corpus.py` (176 lines, 10,519
+bytes) needs two lines removed from `test_immaterial_presence.py` — `import corpus` (65)
+and `corpus=corpus.STORE` (327) — which is not in this lane's scope. That call cannot
+execute anyway: it passes `examples=`, `corpus=` and `identity=` to `check_accepts`, which
+takes none of them. **The last reference to the store is inside a call that always raises.**
+
+**Kept, out of scope:** `tests_emit/widening-corpus/` — 290 tracked files, 878,671 bytes,
+reached only through the same dead `_Draws.corpus`.
+
+## Finding 10 — the disease is in a third module
+
+`tests_emit/test_immaterial_presence.py::test_each_form_refuses_a_payload_its_document_refuses_and_admits_one_it_admits`
+fails with `TypeError: check_accepts() got an unexpected keyword argument 'examples'` —
+the identical rot, in a module neither round's scope covers. Verified pre-existing: it
+fails the same way with `accepts-corpus/` restored, so it is not a consequence of the
+deletion.
+
+## Changes wanted outside this lane
+
+* **`tests_emit/test_emit.py`** — Finding 7, and it is the next lane: `graded_report` →
+  `construction=`, then read the 2,584-row census.
+* **`codegen/harness.py`** — Finding 8: remove `within`, `OverBudget`, `budget_expired`,
+  `_BUDGET_RETRY`, the `accepts_examples` parameter, the `corpus`/`widening_corpus`
+  parameters and `_Draws.corpus`. All dead, all declared.
+* **`tests_emit/test_immaterial_presence.py`** — Findings 9 and 10: three dead kwargs, and
+  the two lines that free `corpus.py`.
+* **`codegen/ir.py` / `codegen/render.py`** (`distinct`) — round 1's Finding 1, dispatched.
