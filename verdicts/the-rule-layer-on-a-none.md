@@ -60,12 +60,28 @@ require=('format_option_id',))` — `core/product-format-declaration.json#/allOf
 `NegatedConditional` for `#/allOf/2/else`, which forbids `format_shape` at a non-custom
 kind.
 
-**The document asks for absence and absence is what it now gets.**
-`format_shape`'s own description: *"REQUIRED when `format_kind: "custom"`; otherwise MUST
-be absent."* The payload is a Python call passing `format_shape=None`; the marker reads
-that as absence; the model's dump carries no `format_shape`; and that dump is admitted by
-the document. Before the change the model REFUSED a payload whose own serialisation it
-accepts — one class answering two ways about one value.
+**The document asks for absence and absence is what it now gets.** Asked through the
+production screen rather than by hand, which is `docs/reading-a-document.md` rule 1 —
+requiredness is a conjunction, so `#/allOf/2/else` read alone is not the document's answer:
+
+```python
+_refuse_at(SchemaRef(document='core/product-format-declaration.json', pointer='#'),
+           payload, 'X', module=ProductFormatDeclaration.__module__)
+```
+
+| payload | the document's answer |
+|---|---|
+| `{format_kind, params}` — the key ABSENT | **ADMITS** |
+| `+ format_shape: null` | REFUSES: `not` @ `()` **and** `type` @ `('format_shape',)` |
+| `+ tracker_execution_contract: null` | REFUSES: `required` @ `()` **and** `type` @ `('tracker…',)` |
+| `+ format_shape: "roadblock"` | REFUSES: `not` @ `()` |
+| **our own dump of the model built from the Python `None`** | **ADMITS** (rule 8) |
+
+So the document refuses an explicit `null` for TWO independent reasons, one of them the
+property's own type — which is what the marker encodes — and it admits the absence our
+model dumps. `format_shape`'s own description says as much: *"REQUIRED when `format_kind:
+"custom"`; otherwise MUST be absent."* Before the change the model REFUSED a payload whose
+own serialisation it accepts — one class answering two ways about one value.
 
 `test_every_root_rule_rejects_with_its_schema_keyword`'s method is where the two readings
 meet: it takes the oracle from `validator.iter_errors(payload)` — a **JSON-Schema**
