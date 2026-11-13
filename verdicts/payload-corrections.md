@@ -52,6 +52,40 @@ cannot have regressed, and the split above is the honest reading.
 the payload rows: 39 of those newly-collected tests fail, and they are failures the suite
 could not previously see rather than failures this branch caused.
 
+### Fourth round, and the row is now fully accounted
+
+Re-read on the banked baseline, 30 more correctable sites were still in this lane's row;
+51 rows now, and `nocanon status` reads **42**, every one of which this lane may not touch:
+
+```
+nocanon status      258 (trunk baseline) -> 72 -> 42
+  28   the pinned row deliberately WITHDRAWN (§2); the emitter closes it, bead rgra
+  13   OURS, in files this lane's write scope excludes --
+       server/principal.py:487/:471/:374 (9), decisioning/refine.py:238 (3),
+       client.py:2006 (1, and it is a `raise`, not a construction)
+   1   the JSON vector whose correction would put a test's assertion in question (§7)
+  ---
+   0   payload sites this lane may correct and has not
+```
+
+**One row covered 28 tests on its own.** `test_feed_mirror.py`'s client stub funnels every
+caller's body through a single dict before validating it, so the correction goes there
+rather than into 28 callers — and *before* the `**body` splat, so a caller stating its own
+`status` still wins. The `TaskResult(status=TaskStatus.COMPLETED, …)` on the next line is
+the stub saying what its scenario means.
+
+**And one site is inside a `pytest.raises` and still qualified.**
+`test_trusted_match_validation.py` asserts a *pattern* refusal
+(`match="String should match pattern"`) on a payload that also omits `status`; the omission
+pre-empts the refusal the test asserts, so supplying what the document requires lets the
+asserted refusal be the one that happens. The row is justified by the document either way
+— which is the test that keeps this distinct from editing an assertion.
+
+**`nocanon`'s other row moved the way `presence`'s did into mine:** *a conditional the
+document states and the payload does not satisfy* went 69 → 75, because payloads that used
+to stop at the missing `status` now get further and fail on a conditional. Same tests,
+further along.
+
 ### My own subject, isolated by the shared cause rule
 
 | `nocanon` cause | baseline | after | |

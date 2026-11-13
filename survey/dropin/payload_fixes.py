@@ -152,6 +152,21 @@ class ViaHelper:
 # --------------------------------------------------------------------------------------
 
 CONSTRUCTIONS: tuple[Construction, ...] = (
+    # -- fourth round: the row's own remainder, read off the run on the banked baseline ----
+    Construction(
+        "tests/test_preview_html.py", "LegacyPreviewCreativeResponse1", "",
+        "PreviewCreativeSingleResponse", "creative/preview-creative-response.json",
+        "#/oneOf/0", "completed", 5, _SYNC,
+    ),
+    # Both sites qualify, including the one inside a `pytest.raises`: that test asserts a
+    # PATTERN refusal (`match="String should match pattern"`) and the missing `status`
+    # pre-empts it, so supplying what the document requires lets the asserted refusal be
+    # the one that happens.  The row is justified by the document either way.
+    Construction(
+        "tests/test_trusted_match_validation.py", "IdentityMatchResponse", "model_validate",
+        "IdentityMatchResponseRouterPublisher", "trusted-match/identity-match-response.json",
+        "#", "completed", 2, _SYNC,
+    ),
     # -- second round: revealed by correcting the payload that was refused first ---------
     Construction(
         "tests/test_server_framework.py", "ListPropertyListsResponse", "",
@@ -350,6 +365,17 @@ VIA_HELPERS: tuple[ViaHelper, ...] = (
 
 
 LITERALS: tuple[Literal, ...] = (
+    # **ONE CHOKE POINT, 28 TESTS.**  `test_feed_mirror.py`'s client stub funnels every
+    # caller's body through one dict before validating it, so the correction goes there
+    # rather than into 28 callers -- and it goes BEFORE the `**body` splat, so a caller
+    # that states its own `status` still wins.  The `TaskResult(status=TaskStatus.COMPLETED,
+    # ...)` wrapped around the very next line is the stub saying what its scenario means.
+    Literal(
+        "tests/test_feed_mirror.py",
+        'body = {"cache_scope": "public", **body}',
+        "GetProductsResponse", "media-buy/get-products-response.json", "#",
+        "completed", 2, _SYNC_WRAPPED,
+    ),
     # **AN `anyOf` REFUSAL IS A CHOICE OF ARM, AND THE PAYLOAD'S OWN SHAPE MAKES IT.**
     # `media-buy/create-media-buy-request.json` refuses this payload at the root and at all
     # three arms, and each arm names something different as missing:
