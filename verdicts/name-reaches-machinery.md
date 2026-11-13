@@ -3,37 +3,70 @@
 **The lane:** `namereach`. `survey causes` attributes **72** of the baseline's 1,244
 failures to it, over three causes: 19 + 22 + 31.
 
-## The figures, from `survey causes --since` and not from a count assembled by hand
+## The figures. **CORRECTED: the first baseline was another lane's artifact.**
+
+### What was reported, and why it was not a comparison
+
+The first measurement here was `--since /srv/ws/dropin-keyless`, and `dropin-keyless` is
+the **keyless-dispatch lane's** output directory. `survey causes --since` now reads the
+commit each run recorded and says so:
 
 ```
-PYTHONPATH=.:src python -m survey causes /srv/ws/dropin-namereach --since /srv/ws/dropin-keyless
+   graded 6d6c29586bea -> f7b2e64d0d7d
+   !! NOT AN ANCESTOR.  These two runs graded divergent trees, so
+      every figure below is the difference between TWO changes.
 ```
 
-`chunks read: 4` on both sides, so neither number is over a fraction of the suite.
+It reported **+42**, and that number is the difference between this lane's change and
+whatever the keyless tree was missing. **It is withdrawn.**
 
-| | |
-|---|---|
-| passed before | **10,572** |
-| passed after | **10,614** |
-| delta | **+42** |
-| **newly failing** | **0** |
+The reading that survives is the per-cause one, which is why it was used for the
+attribution in the first place — but one line of that attribution was also wrong, and in
+the same direction. It said the asset-union cause went `28 → 2` and credited the
+difference to the aliasnote lane "arriving in the rebase". On a proper baseline that cause
+was **already at 2**. So the extra 24 was not another lane's fix landing between the two
+artifacts; it was work **present in this lane's base and absent from the keyless tree** —
+the mirror image of reading another lane's absent work as a regression. Right bottom line,
+wrong mechanism, and the mechanism is the part that generalises.
 
-**+42 is NOT all this lane's, and the attribution matters.** The baseline tree predates a
-rebase that brought in other lanes' work, so the per-cause table is the honest reading:
+### The correct comparison: a run of this lane's own merge-base
 
-| cause | lane | before | after | delta | whose |
-|---|---|---|---|---|---|
-| `model_summary` keyed on `__class__.__name__` | namereach | 19 | **1** | **−18** | **this lane** |
-| the asset union read as a structure | aliasnote | 28 | 2 | −26 | aliasnote, arrived in the rebase |
-| `Format`: the v1 definition answering | drawcost | 129 | 130 | +1 | drawcost |
-| `operation_id` | namereach | 31 | 31 | 0 | write-up only, by design |
-| a word resolving at no module | namereach | 22 | 22 | 0 | write-up only, by design |
-| residue | — | 212 | 213 | +1 | |
+`dropin-strict-base` graded `f53fcb4476b9` — exactly the trunk commit this work branched
+from, and an ancestor of trunk. It isolates this lane's single commit:
 
-−18 − 26 + 1 + 1 = −42. **So this lane's movement is exactly −18**, and the single
-remaining failure in its first cause is the `_generated.py` row documented as FINDING 1a
-(`tests/test_response_str.py` reads 31 passed / 1 failed, the one being
-`TestBuildCreativeResponseMessage::test_error`).
+```
+PYTHONPATH=.:src python -m survey causes /srv/ws/dropin-namereach --since /srv/ws/dropin-strict-base
+```
+
+```
+   graded f53fcb4476b9 -> f7b2e64d0d7d          (no warning: ancestral)
+   passed 10596 -> 10614  (+18)
+   failed 1220 -> 1202  (-18)
+   REGRESSED (ran before, passed before, fails now): 0
+   newly collected and failing (never ran before): 0
+   FIXED (ran before, failed before, passes now): 18
+   no longer collected (was failing, absent now): 0
+```
+
+`chunks read: 4` on both sides. **+18, and all four quadrants of the split are clean.** The
+per-cause table on the same ancestral pair:
+
+| cause | lane | f53fcb447 | f7b2e64d0 | delta |
+|---|---|---|---|---|
+| `model_summary` keyed on `__class__.__name__` | namereach | 19 | **1** | **−18** |
+| `operation_id` | namereach | 31 | 31 | 0 — write-up only, by design |
+| a word resolving at no module | namereach | 22 | 22 | 0 — write-up only, by design |
+| the asset union read as a structure | aliasnote | 2 | 2 | 0 — already in this base |
+| owned, over 6 lanes | — | 1,007 | 989 | −18 |
+
+So this lane's movement is **exactly −18**, measured directly rather than derived by
+subtraction, and the single remaining failure in its first cause is the `_generated.py` row
+documented as FINDING 1a (`tests/test_response_str.py` reads 31 passed / 1 failed, the one
+being `TestBuildCreativeResponseMessage::test_error`).
+
+**Both artifacts above collect 13,818.** The provisioning fix has since taken trunk to
+**15,285** — 1,468 more tests actually running — so every per-cause count in this file is
+on the smaller population and the two open causes below want re-reading on the larger one.
 
 The other two causes are unmoved on purpose: both are measurements, and neither admits a
 change inside this lane's write scope. `tests/test_postal_area_compat.py` holds at 21
