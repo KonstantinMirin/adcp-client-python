@@ -347,9 +347,17 @@ def lay_upstream(out: Path, rev: Revision, wheel: Wheel) -> dict[str, int]:
     because "the machinery is the wheel's" must be true by construction and not by a
     comparison a reader has to go and find.
     """
+    # **EVERYTHING BUT THE VENV.**  The tree is disposable and is rebuilt from the
+    # revision every time -- but ``.venv`` is not part of the tree, it is the INTERPRETER
+    # the tree is graded with, and rebuilding it cost 7.9 of the 15.3 minutes of a measured
+    # run.  :func:`provision` decides whether it is still valid, from the declarations'
+    # bytes; this only stops it being deleted before that question can be asked.
     if out.exists():
-        shutil.rmtree(out)
-    out.mkdir(parents=True)
+        for found in sorted(out.iterdir()):
+            if found.name == ".venv":
+                continue
+            shutil.rmtree(found) if found.is_dir() else found.unlink()
+    out.mkdir(parents=True, exist_ok=True)
     archive = subprocess.Popen(
         ["git", "-C", str(ROOT), "archive", "--format=tar", rev.sha],
         stdout=subprocess.PIPE,
@@ -1190,6 +1198,29 @@ def provision(out: Path) -> dict[str, object]:
     """
     venv = out / ".venv"
     python = str(venv / "bin" / "python")
+    # **A VENV IS REUSED WHEN NOTHING IT INSTALLS HAS CHANGED.**  Measured on
+    # /srv/ws/dropin-trunk2: the first chunk began testing 7.9 minutes after the manifest
+    # was written, and its own pytest duration was 1.3 minutes -- so provisioning was HALF
+    # the wall clock of the whole run, repeated per run, building the same venv.
+    #
+    # The key is the declarations, not the source: `uv pip install -e` is an EDITABLE
+    # install, so a changed module needs no reinstall -- only a changed `pyproject.toml`
+    # (ours or a sibling's) does.  So the stamp is those files' bytes, and a run whose
+    # declarations match the stamp skips every step below.  A stale stamp cannot cause a
+    # silent wrong answer: it would have to match while a declaration differed.
+    stamp = venv / ".adcp-provisioned"
+    declarations = sorted(
+        [out / "pyproject.toml", *(out / "packages").glob("*/pyproject.toml")]
+    )
+    want = hashlib.sha256(
+        b"".join(p.read_bytes() for p in declarations if p.is_file())
+    ).hexdigest()
+    if stamp.is_file() and stamp.read_text().strip() == want and Path(python).exists():
+        return {
+            "venv": str(venv),
+            "reused": True,
+            "declarations unchanged": [str(p.relative_to(out)) for p in declarations],
+        }
     siblings = [
         path
         for path in sorted((out / "packages").glob("*"))
@@ -1198,7 +1229,9 @@ def provision(out: Path) -> dict[str, object]:
     extra = _their_test_extra(out / "pyproject.toml")
     root = "." if extra is None else f".[{extra}]"
     steps: list[list[str]] = [
-        ["uv", "venv", str(venv), "--python", "3.12"],
+        # ``--clear`` because the venv is no longer deleted with the tree: a
+        # re-provision REPLACES it, and without the flag uv refuses.
+        ["uv", "venv", str(venv), "--python", "3.12", "--clear"],
         ["uv", "pip", "install", "-q", "--python", python, "-e", root],
     ]
     steps += [
@@ -1220,8 +1253,10 @@ def provision(out: Path) -> dict[str, object]:
                 f"provisioning failed: {' '.join(step)}\n"
                 f"{done.stdout[-2000:]}{done.stderr[-2000:]}"
             )
+    stamp.write_text(want)
     return {
         "venv": str(venv),
+        "reused": False,
         "siblings installed": len(siblings),
         "their test extra": extra or "NONE DECLARED -- their suite's imports are not covered",
     }
@@ -1236,8 +1271,22 @@ def run_chunks(out: Path, junit: Path) -> dict[str, object]:
     stdout is a figure that cannot be re-read.
     """
     junit.mkdir(parents=True, exist_ok=True)
-    for line in run_lines(out, out / ".venv", junit):
-        subprocess.run(line, shell=True, cwd=out, check=False)  # noqa: S602
+    # **THE CHUNKS ARE A PARTITION, SO THEY RUN AT ONCE.**  Sequentially they cost the SUM
+    # of their durations; concurrently they cost the LONGEST.  Measured on
+    # /srv/ws/dropin-trunk2: 1.3 + 1.5 + 2.4 + 1.9 = 7.1 min sequential against a 2.4 min
+    # longest chunk -- 4.7 minutes of every run spent waiting for work that could have
+    # been running.  They share nothing: `chunks()` partitions the behavioural files, each
+    # writes its own report, and each already runs `-n 4` internally.
+    #
+    # The memory ceiling is the reason this is not simply `-n 16` over one invocation: each
+    # chunk is capped at 20 GiB by its own `systemd-run --scope`, and four of those is the
+    # budget this machine has (three concurrent RUNS exhausted it -- see RUN_LOCK).
+    started = [
+        subprocess.Popen(line, shell=True, cwd=out)  # noqa: S602
+        for line in run_lines(out, out / ".venv", junit)
+    ]
+    for running in started:
+        running.wait()
     total: collections.Counter = collections.Counter()
     for found in sorted(junit.glob("*.json")):
         try:
