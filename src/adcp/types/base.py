@@ -709,13 +709,41 @@ def inherit_field(source: type[BaseModel], name: str, *, required: bool = False)
 
 
 def is_no_explicit_null(field: FieldInfo) -> bool:
-    """Whether ``field`` carries :data:`NoExplicitNull`.
+    """Whether ``field`` carries the no-explicit-null marker -- EITHER SPELLING OF IT.
 
     Identity, not equality: the marker is merged into the field, so what the
     field keeps is its ``exclude_if`` (and, in ``metadata``, its validation
     half). A redeclaration that copies the generated ``FieldInfo`` keeps both.
+
+    **TWO IDENTITIES BECAUSE THERE ARE TWO NAMES FOR ONE MARKER, and this predicate is
+    the one place that has to know it.**  This module is upstream's and declares
+    :data:`NoExplicitNull`; the EMITTER writes
+    :data:`adcp.types._base.OmittedNotNull`, and since the route split the two are the
+    same marker in substance -- a JSON ``null`` refused, a Python ``None`` read as
+    absence, a ``None`` left off the dump, and no null arm published.  What differs is
+    the ``exclude_if`` FUNCTION OBJECT each carries, and identity is what this predicate
+    compares.
+
+    **Measured: asked of an emitted field, this answered False for every one of them.**
+    ``PaginationRequest.model_fields["cursor"]`` carries the marker --
+    ``adcp.types._base.omits_null`` says so -- and this said it did not, because it was
+    asking for the other spelling's object.  That is 42 failures in upstream's own
+    ``tests/test_no_explicit_null.py``, every one of the shape
+    ``assert False where False = is_no_explicit_null(FieldInfo(...))``: the CONTRACT those
+    tests exist to assert holds at all 27,701 census positions, and the question "is the
+    marker present" was the only thing failing.
+
+    So the answer is a membership test over both, and neither is privileged: a field
+    upstream's own restored code annotates carries theirs, and every emitted field carries
+    ours.  A predicate that recognised one would be right about half the tree and silent
+    about the other half -- and SILENT is what it was.
+
+    ``adcp.types._base`` is imported on use and not at module scope: that module imports
+    this one for its own bases, so a top-level import here is a cycle.
     """
-    return field.exclude_if is NoExplicitNull.exclude_if
+    from adcp.types._base import OmittedNotNull
+
+    return field.exclude_if in (NoExplicitNull.exclude_if, OmittedNotNull.exclude_if)
 
 
 def _keep_opaque_nulls(
