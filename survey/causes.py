@@ -338,16 +338,21 @@ def main(argv: list[str] | None = None) -> int:
         # tests/conformance/signing/ -- which were not its regressions at all but the
         # absence of the OTHER lane's route split from its own tree.  A run records the
         # commit it graded; if the previous one is not an ancestor of this one, the
-        # difference is the difference between two changes and is attributable to neither.
+        # headline deltas may be the difference between two changes.  The split that
+        # follows is computed from NODEIDS and is unaffected, which is why the warning
+        # points at it rather than at itself: a rebase also trips this check, and a
+        # warning that cried wolf about every landed branch would stop being read.
         then, here = _graded(pathlib.Path(ns.since)), _graded(out)
         if then and here and then != here:
             print(f"   graded {then[:12]} -> {here[:12]}")
             ancestor = _is_ancestor(then, here)
             if ancestor is False:
-                print("   !! NOT AN ANCESTOR.  These two runs graded divergent trees, so")
-                print("      every figure below is the difference between TWO changes.")
-                print("      Re-run the baseline from this run's own merge-base, or")
-                print("      compare against a run of trunk.")
+                print("   !! NOT AN ANCESTOR, so the two HEADLINE deltas may be the")
+                print("      difference between two changes rather than one.  Note that a")
+                print("      REBASE rewrites a commit, so a lane's own base run reads this")
+                print("      way once its branch has landed -- which is not divergence.")
+                print("      The REGRESSED/FIXED split below is computed from nodeids and")
+                print("      is authoritative either way; read it, not the deltas.")
             elif ancestor is None:
                 print("      (git could not say whether one precedes the other)")
 
