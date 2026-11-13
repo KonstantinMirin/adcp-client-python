@@ -26,6 +26,17 @@ through this file with nothing edited and no name listed.
 * and a genuinely nullable property is UNAFFECTED --
   :func:`test_a_genuinely_nullable_property_still_accepts_a_null`, which is the clause that
   keeps the other five from being a licence to strike every null in the tree.
+
+**AND THE RULE LAYER AGREES WITH BOTH, which is the half the type layer cannot grade.**
+A document's rules are about which KEYS a payload supplied, and the key set every one of
+them reads is :func:`adcp.types._runtime.supplied`'s.  So a ``None`` the type layer admits
+as absence and the serialiser drops must also be ABSENT to a ``required``, a
+``not``/``required`` or a ``dependencies`` -- otherwise one class answers two ways about one
+payload and its own dump is valid where the model it came from was not.  Two clauses, one
+per direction, and the split between them is the MARKER:
+
+* :func:`test_the_rule_layer_reads_a_marked_none_as_absence`;
+* :func:`test_the_rule_layer_reads_a_nullable_none_as_a_value`.
 """
 
 from __future__ import annotations
@@ -243,3 +254,131 @@ def test_a_genuinely_nullable_property_still_accepts_a_null() -> None:
         f"{model.__name__}.{key} publishes a null arm AND carries the marker, so the two "
         "readings of 'does this document admit null' disagree"
     )
+
+
+def _rule_named_fields() -> dict[tuple[str, str], Any]:
+    """Every emitted field a bound RULE names, read off the rules rather than listed.
+
+    The population is derived twice over: ``bound_rules`` for which classes carry a
+    document rule at all, and each rule's own attributes for which property names it
+    states.  A rule kind that gains an attribute naming a property widens this census
+    with nothing edited; one that is deleted narrows it.
+    """
+    from adcp.types._runtime import bound_rules
+
+    import adcp.types._generated as generated
+
+    named_by: tuple[str, ...] = (
+        "trigger",
+        "key",
+        "requires",
+        "groups",
+        "require",
+        "forbid",
+        "names",
+        "properties",
+    )
+    out: dict[tuple[str, str], Any] = {}
+    seen: set[int] = set()
+    for name in dir(generated):
+        if name.startswith("_"):
+            continue
+        obj = getattr(generated, name, None)
+        fields = getattr(obj, "model_fields", None)
+        if not isinstance(fields, dict) or id(obj) in seen:
+            continue
+        seen.add(id(obj))
+        try:
+            rules = bound_rules(obj)
+        except Exception:  # pragma: no cover - a class whose rules will not bind
+            continue
+        if not rules:
+            continue
+        stated: set[str] = set()
+        for rule in rules:
+            for attribute in named_by:
+                value = getattr(rule, attribute, None)
+                if isinstance(value, str):
+                    stated.add(value)
+                elif isinstance(value, (list, tuple, frozenset, set)):
+                    for item in value:
+                        if isinstance(item, str):
+                            stated.add(item)
+                        elif isinstance(item, (list, tuple, frozenset, set)):
+                            stated.update(x for x in item if isinstance(x, str))
+        for key in stated:
+            if key in fields:
+                out[(obj.__name__, key)] = obj
+    return out
+
+
+def _reads_as_present(model: Any, key: str) -> bool:
+    """Whether ``supplied`` -- the one key set every rule kind reads -- counts ``key``.
+
+    ``model_construct`` and never ``model_validate``, for the census reason: the question
+    is what the READER makes of a ``None`` at this property, and a payload that also has
+    to satisfy the class's other required keys answers a different question.
+    """
+    from adcp.types._runtime import supplied
+
+    field = type(model).model_fields[key]
+    return (field.alias or key) in supplied(model)[0]
+
+
+def test_the_rule_layer_reads_a_marked_none_as_absence() -> None:
+    """**A ``None`` AT A MARKED PROPERTY IS NOT A KEY THE PAYLOAD SUPPLIED.**
+
+    The refuter this was measured on is one class answering two ways about one payload:
+    ``core/wholesale-feed-webhook.json#/allOf/0/else/not`` states that a non-product event
+    does not carry a product view, and ``src/adcp/webhook_sender.py`` passes
+    ``product_payload_view=None`` for a ``signal.*`` event.  The key-absent dict is
+    admitted by that very class; the ``None`` was refused; and the dump of the refused
+    model IS the admitted dict.
+
+    Graded over every rule-named marked field rather than over that one, because
+    :func:`adcp.types._runtime.supplied` is the only reader and a second reading of
+    presence is exactly where the next one of these would hide.
+    """
+    population = _rule_named_fields()
+    marked = {
+        (cls_name, key): obj
+        for (cls_name, key), obj in population.items()
+        if omits_null(obj.model_fields[key])
+    }
+    claimed("rule-named fields carrying the marker", marked)
+    assert marked, population and "no bound rule names a marked property"
+    counted = [
+        (cls_name, key)
+        for (cls_name, key), obj in marked.items()
+        if _reads_as_present(obj.model_construct(**{key: None}), key)
+    ]
+    assert not counted, counted
+
+
+def test_the_rule_layer_reads_a_nullable_none_as_a_value() -> None:
+    """**THE CLAUSE THAT BOUNDS THE ONE ABOVE: a nullable ``None`` IS a supplied key.**
+
+    Where the DOCUMENT admits ``null`` the emitter writes no marker
+    (``codegen.ir.admits_null`` is the one reader that decides which), and there a ``None``
+    is a value the document states -- so a rule about that property still fires on it.  The
+    test is the MARKER and never ``value is None``: the two cases are the same Python
+    object, and only the document tells them apart.
+
+    Without this clause the one above would read the same on a reader that had dropped
+    every ``None`` from every key set, which would make a ``required`` unsatisfiable by a
+    value its own document accepts.
+    """
+    population = _rule_named_fields()
+    nullable = {
+        (cls_name, key): obj
+        for (cls_name, key), obj in population.items()
+        if not omits_null(obj.model_fields[key])
+    }
+    claimed("rule-named fields whose document admits null", nullable)
+    assert nullable, "no bound rule names a nullable property, so this bounds nothing"
+    dropped = [
+        (cls_name, key)
+        for (cls_name, key), obj in nullable.items()
+        if not _reads_as_present(obj.model_construct(**{key: None}), key)
+    ]
+    assert not dropped, dropped
