@@ -23,8 +23,8 @@ import json
 import pathlib
 import sys
 
-import bootstrap
 import name_table
+import read_our_tree
 
 TABLE = pathlib.Path("survey/name-table-9.6.1.json")
 OUT = pathlib.Path("src/adcp/types/legacy_names.py")
@@ -91,13 +91,12 @@ def main() -> int:
     # surface is imported, and the question is asked of the layers below it only.
     import importlib
 
-    #: **THE ONE-FILE STUB IS NOW A CALL TO THE SET** (``survey/bootstrap.py``,
-    #: ``adcp-client-python-8wd8``).  This site had the repair first and had it right: the
-    #: already-served check read its OWN previous output and reported 1,802 of 1,817 words
-    #: as redundant.  What it could not know is that the cycle has five members, not one --
-    #: measured, ``_restored.py`` is the one whose absence still broke
-    #: ``adapter_surface.py`` phase 3 after this file and ``_adapter.py`` were stubbed.
-    OUT.write_text(bootstrap.STUB)
+    #: **NOTHING IS STUBBED, BECAUSE NOTHING IS IMPORTED** (``survey/read_our_tree.py``;
+    #: the owner's reading, which supersedes the stubbing this line used to do).  The
+    #: already-served question is "what names does the surface already bind", and asking
+    #: it by importing made the answer depend on the facade's resolution order -- which is
+    #: the thing being generated.  Read from the SOURCE it is a function of the text, so
+    #: there is no cycle to break and no placeholder to write.
     sys.path.insert(0, "src")
     surface = importlib.import_module("adcp.types")
 
