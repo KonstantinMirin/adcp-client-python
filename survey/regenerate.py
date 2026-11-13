@@ -1432,6 +1432,19 @@ def build(ns: argparse.Namespace) -> int:
         # Nothing of ours is laid, stripped or substituted: the tree is the revision plus
         # the wheel's bytes and that is all.  The run is still locked and chunked the same
         # way, so the two populations are partitioned identically and subtractable.
+        # The two steps the RUN needs and the substitution does not: the deselect plugin
+        # (which finds nothing to decline here, correctly -- a decline is a statement about
+        # OUR emission) and the chunk partition, which must be the SAME partition so the two
+        # runs' reports are subtractable.  Skipping them is what made the first attempt write
+        # no report at all: `cat chunks/chunk-00` found nothing and `-p deselect` named a
+        # plugin that was never written.
+        report.say("4. their generator's tests removed", drop_their_generator_tests(out))
+        report.say("5. the declined tests, both layers, derived", deselect_the_declined(out))
+        report.say(
+            "6. the population and the partition",
+            {chunk: len(paths) for chunk, paths in sorted(chunks(out).items())}
+            | {"behavioural files": len(population(out))},
+        )
         print(f"\n== upstream's own tree, nothing of ours in it\n   {out}\n")
         junit = Path(ns.junit or out / "junit")
         with one_run_at_a_time():
