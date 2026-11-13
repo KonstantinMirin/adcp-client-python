@@ -209,13 +209,23 @@ def _sites(txt: str) -> tuple[str, str]:
 def read(
     out: pathlib.Path,
 ) -> tuple[collections.Counter, list[tuple[str, str]], set[str]]:
-    """``(outcomes, failures, every nodeid)`` from every ``junit/chunk-*.json`` under ``out``.
+    """``(outcomes, failures, nodeids that PASSED)`` from every ``junit/chunk-*.json``.
 
-    **THE THIRD VALUE IS WHAT MAKES A REGRESSION DISTINGUISHABLE FROM AN ARRIVAL.**  A
-    nodeid absent from a previous run did not regress in this one, however red it is; it
-    was not there.  Without the full set, ``now - was`` reads a newly COLLECTED failure as
-    a regression, which is how a provisioning fix worth 1,468 more collected tests was
+    **THE THIRD VALUE IS THE SET THAT PASSED, AND IT TOOK TWO CORRECTIONS TO GET THERE.**
+    A regression is a test that RAN and PASSED before and fails now; everything else in
+    ``now - was`` is something weaker.
+
+    First correction: a nodeid absent from a previous run did not regress, however red it
+    is -- it was not there.  Without any set, ``now - was`` read a newly COLLECTED failure
+    as a regression, which is how a provisioning fix worth 1,468 more collected tests was
     reported as "+887 passed, 221 newly failing".
+
+    Second correction: the set may not be EVERY nodeid, because a SKIPPED test appeared in
+    the report and so read as "ran before".  Measured: a trunk run reported exactly one
+    regression, ``test_v3_reference_seller_passes_with_no_warnings``, which had been
+    SKIPPED in the baseline -- the provisioning fix is what made it run, and a test that
+    runs for the first time and fails is not a regression.  One phantom regression is
+    worse than none, because it is the one a reader will chase.
 
     A run writes one report per chunk and the chunks partition the population, so the four
     are read together and never one as a sample.  A missing or unparsable file is REPORTED
@@ -225,7 +235,7 @@ def read(
     """
     outcomes: collections.Counter = collections.Counter()
     failures: list[tuple[str, str]] = []
-    every: set[str] = set()
+    passed: set[str] = set()
     reports = sorted((out / "junit").glob("chunk-*.json"))
     if not reports:
         raise SystemExit(f"no chunk reports under {out / 'junit'}; was the run given --run?")
@@ -236,11 +246,12 @@ def read(
             raise SystemExit(f"{report} is not a readable report: {why}") from None
         for test in tests:
             outcomes[test["outcome"]] += 1
-            every.add(test["nodeid"])
+            if test["outcome"] in ("passed", "xpassed"):
+                passed.add(test["nodeid"])
             if test["outcome"] in ("failed", "error"):
                 failures.append((test["nodeid"], _longrepr(test)))
     outcomes["chunks read"] = len(reports)
-    return outcomes, failures, every
+    return outcomes, failures, passed
 
 
 def classify(
@@ -287,7 +298,7 @@ def main(argv: list[str] | None = None) -> int:
     ns = parser.parse_args(argv)
 
     out = pathlib.Path(ns.out)
-    outcomes, failures, seen = read(out)
+    outcomes, failures, passed_now = read(out)
     counts, by_owner, residue = classify(failures)
 
     print(f"== {out}")
@@ -327,7 +338,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"   {n:4d}  {name}")
 
     if ns.since:
-        was_outcomes, was_failures, was_seen = read(pathlib.Path(ns.since))
+        was_outcomes, was_failures, was_passed = read(pathlib.Path(ns.since))
         was = {nodeid for nodeid, _ in was_failures}
         now = {nodeid for nodeid, _ in failures}
         print(f"\n== against {ns.since}")
@@ -385,22 +396,25 @@ def main(argv: list[str] | None = None) -> int:
         # **A REGRESSION IS A TEST THAT RAN BEFORE AND PASSED.**  Everything else in
         # ``now - was`` is a test the previous run never saw, and calling it a regression
         # is the instrument inventing one.
-        regressed = sorted(n for n in now - was if n in was_seen)
-        arrived = sorted(n for n in now - was if n not in was_seen)
-        fixed = sorted(n for n in was - now if n in seen)
-        gone = sorted(n for n in was - now if n not in seen)
+        regressed = sorted(n for n in now - was if n in was_passed)
+        arrived = sorted(n for n in now - was if n not in was_passed)
+        fixed = sorted(n for n in was - now if n in passed_now)
+        gone = sorted(n for n in was - now if n not in passed_now)
         print(f"   REGRESSED (ran before, passed before, fails now): {len(regressed)}")
         for nodeid in regressed[:14]:
             print(f"      {nodeid}")
         if len(regressed) > 14:
             print(f"      … and {len(regressed) - 14} more")
-        print(f"   newly collected and failing (never ran before): {len(arrived)}")
+        print(
+            "   fails now, did NOT pass before (newly collected, or skipped then):"
+            f" {len(arrived)}"
+        )
         for nodeid in arrived[:6]:
             print(f"      {nodeid}")
         if len(arrived) > 6:
             print(f"      … and {len(arrived) - 6} more")
-        print(f"   FIXED (ran before, failed before, passes now): {len(fixed)}")
-        print(f"   no longer collected (was failing, absent now): {len(gone)}")
+        print(f"   FIXED (failed before, passes now): {len(fixed)}")
+        print(f"   failed before, not passing now either (absent, or skipped): {len(gone)}")
         for nodeid in gone[:6]:
             print(f"      {nodeid}")
     return 0
