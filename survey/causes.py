@@ -34,6 +34,7 @@ import collections
 import json
 import pathlib
 import re
+import subprocess
 from typing import Any
 
 #: The ordered rules.  ``(owner, cause, predicate)`` over one failure's whole longrepr and
@@ -147,6 +148,33 @@ RULES: tuple[tuple[str, str, Any], ...] = (
 _WORKER = re.compile(r"\[gw\d+\] \w+ -- Python [\d.]+ [^\s\[]+")
 
 
+def _graded(out: pathlib.Path) -> str | None:
+    """The commit of THIS repository the run graded, from its own manifest.
+
+    ``survey.regenerate`` already records it as ``this repository: {head, dirty}``, and
+    reading it here is what lets a comparison say whether it is a comparison at all.
+    """
+    try:
+        record = json.loads((out / "REGENERATED.json").read_text())
+    except (OSError, ValueError):
+        return None
+    repo = record.get("this repository") or {}
+    head = repo.get("head")
+    return f"{head}{'+dirty' if repo.get('dirty') else ''}" if head else None
+
+
+def _is_ancestor(older: str, newer: str) -> bool | None:
+    """Is ``older`` an ancestor of ``newer``?  ``None`` where git cannot say."""
+    try:
+        done = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", older.split("+")[0], newer.split("+")[0]],
+            capture_output=True,
+        )
+    except OSError:
+        return None
+    return done.returncode == 0 if done.returncode in (0, 1) else None
+
+
 def _longrepr(test: dict) -> str:
     return _WORKER.sub(
         "",
@@ -178,8 +206,16 @@ def _sites(txt: str) -> tuple[str, str]:
     )
 
 
-def read(out: pathlib.Path) -> tuple[collections.Counter, list[tuple[str, str]]]:
-    """``(outcomes, failures)`` from every ``junit/chunk-*.json`` under ``out``.
+def read(
+    out: pathlib.Path,
+) -> tuple[collections.Counter, list[tuple[str, str]], set[str]]:
+    """``(outcomes, failures, every nodeid)`` from every ``junit/chunk-*.json`` under ``out``.
+
+    **THE THIRD VALUE IS WHAT MAKES A REGRESSION DISTINGUISHABLE FROM AN ARRIVAL.**  A
+    nodeid absent from a previous run did not regress in this one, however red it is; it
+    was not there.  Without the full set, ``now - was`` reads a newly COLLECTED failure as
+    a regression, which is how a provisioning fix worth 1,468 more collected tests was
+    reported as "+887 passed, 221 newly failing".
 
     A run writes one report per chunk and the chunks partition the population, so the four
     are read together and never one as a sample.  A missing or unparsable file is REPORTED
@@ -189,6 +225,7 @@ def read(out: pathlib.Path) -> tuple[collections.Counter, list[tuple[str, str]]]
     """
     outcomes: collections.Counter = collections.Counter()
     failures: list[tuple[str, str]] = []
+    every: set[str] = set()
     reports = sorted((out / "junit").glob("chunk-*.json"))
     if not reports:
         raise SystemExit(f"no chunk reports under {out / 'junit'}; was the run given --run?")
@@ -199,10 +236,11 @@ def read(out: pathlib.Path) -> tuple[collections.Counter, list[tuple[str, str]]]
             raise SystemExit(f"{report} is not a readable report: {why}") from None
         for test in tests:
             outcomes[test["outcome"]] += 1
+            every.add(test["nodeid"])
             if test["outcome"] in ("failed", "error"):
                 failures.append((test["nodeid"], _longrepr(test)))
     outcomes["chunks read"] = len(reports)
-    return outcomes, failures
+    return outcomes, failures, every
 
 
 def classify(
@@ -249,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
     ns = parser.parse_args(argv)
 
     out = pathlib.Path(ns.out)
-    outcomes, failures = read(out)
+    outcomes, failures, seen = read(out)
     counts, by_owner, residue = classify(failures)
 
     print(f"== {out}")
@@ -289,10 +327,48 @@ def main(argv: list[str] | None = None) -> int:
         print(f"   {n:4d}  {name}")
 
     if ns.since:
-        was_outcomes, was_failures = read(pathlib.Path(ns.since))
+        was_outcomes, was_failures, was_seen = read(pathlib.Path(ns.since))
         was = {nodeid for nodeid, _ in was_failures}
         now = {nodeid for nodeid, _ in failures}
         print(f"\n== against {ns.since}")
+
+        # **AND THE TWO RUNS MUST HAVE GRADED THE SAME LINE OF WORK, which is the second
+        # thing to get wrong and the harder one to see.**  Measured: a lane compared its
+        # branch against another lane's artifact and read 152 REGRESSIONS, every one in
+        # tests/conformance/signing/ -- which were not its regressions at all but the
+        # absence of the OTHER lane's route split from its own tree.  A run records the
+        # commit it graded; if the previous one is not an ancestor of this one, the
+        # difference is the difference between two changes and is attributable to neither.
+        then, here = _graded(pathlib.Path(ns.since)), _graded(out)
+        if then and here and then != here:
+            print(f"   graded {then[:12]} -> {here[:12]}")
+            ancestor = _is_ancestor(then, here)
+            if ancestor is False:
+                print("   !! NOT AN ANCESTOR.  These two runs graded divergent trees, so")
+                print("      every figure below is the difference between TWO changes.")
+                print("      Re-run the baseline from this run's own merge-base, or")
+                print("      compare against a run of trunk.")
+            elif ancestor is None:
+                print("      (git could not say whether one precedes the other)")
+
+        # **THE POPULATIONS MUST MATCH OR THE DIFFERENCE IS NOT ATTRIBUTABLE**, and that is
+        # the first thing printed because it is the first thing to get wrong.  Measured: a
+        # provisioning fix that installed three missing dev dependencies took the collected
+        # count from 13,817 to 15,285, and the 1,468 newly COLLECTED tests include 221 that
+        # fail -- which the old reading printed as "newly failing: 221" beside "+887
+        # passed", reading as a large gain with a large regression when it was neither.
+        # And two runs built from DIFFERENT TREES cannot be subtracted at all: a lane
+        # comparing its branch against another lane's artifact attributes its own change
+        # the difference between two other changes.
+        was_total = sum(was_outcomes[k] for k in ("passed", "failed", "error", "skipped"))
+        total = sum(outcomes[k] for k in ("passed", "failed", "error", "skipped"))
+        if was_total != total:
+            print(f"   !! COLLECTED {was_total} -> {total} ({total - was_total:+d}).")
+            print("      The populations differ, so passed/failed are NOT subtractable:")
+            print("      a test that did not run before cannot have regressed, and one")
+            print("      that no longer runs did not start passing.  The split below is")
+            print("      the only honest reading of a run against a different population.")
+
         was_red = was_outcomes["failed"] + was_outcomes["error"]
         red = outcomes["failed"] + outcomes["error"]
         print(
@@ -300,10 +376,28 @@ def main(argv: list[str] | None = None) -> int:
             f"  ({outcomes['passed'] - was_outcomes['passed']:+d})"
         )
         print(f"   failed {was_red} -> {red}  ({red - was_red:+d})")
-        print(f"   newly failing: {len(now - was)}")
-        for nodeid in sorted(now - was)[:12]:
+
+        # **A REGRESSION IS A TEST THAT RAN BEFORE AND PASSED.**  Everything else in
+        # ``now - was`` is a test the previous run never saw, and calling it a regression
+        # is the instrument inventing one.
+        regressed = sorted(n for n in now - was if n in was_seen)
+        arrived = sorted(n for n in now - was if n not in was_seen)
+        fixed = sorted(n for n in was - now if n in seen)
+        gone = sorted(n for n in was - now if n not in seen)
+        print(f"   REGRESSED (ran before, passed before, fails now): {len(regressed)}")
+        for nodeid in regressed[:14]:
             print(f"      {nodeid}")
-        print(f"   newly passing: {len(was - now)}")
+        if len(regressed) > 14:
+            print(f"      … and {len(regressed) - 14} more")
+        print(f"   newly collected and failing (never ran before): {len(arrived)}")
+        for nodeid in arrived[:6]:
+            print(f"      {nodeid}")
+        if len(arrived) > 6:
+            print(f"      … and {len(arrived) - 6} more")
+        print(f"   FIXED (ran before, failed before, passes now): {len(fixed)}")
+        print(f"   no longer collected (was failing, absent now): {len(gone)}")
+        for nodeid in gone[:6]:
+            print(f"      {nodeid}")
     return 0
 
 
