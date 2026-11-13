@@ -846,7 +846,47 @@ def supplied(model: BaseModel) -> tuple[frozenset[str], Mapping[str, Any]]:
     by its alias, because the alias is the document's property name and the only
     accepted spelling (``emit.field_name``); a name that is no field at all is an extra
     and is already the document's own.
+
+    **AND A ``None`` AT AN ``OmittedNotNull`` PROPERTY IS ABSENT, NOT PRESENT** -- which
+    is the rule layer's half of the route split (the owner's ruling: *"for None we just
+    serialize them as non-existent without null"*).
+
+    **THE THREE HALVES DISAGREED AND TWO OF THEM WERE RIGHT.**  The TYPE layer reads a
+    Python ``None`` at such a property as absence (``_base._AbsenceIsOmission``); the
+    SERIALISER drops it from the dump (``_base.OmittedNotNull``'s ``exclude_if``); and
+    this function counted it as a PRESENT KEY, so a document rule about key PRESENCE
+    fired on a value that means absence and the class refused a payload its own dump
+    would be valid for.
+
+    Measured, with the refuter being the same class:
+    ``core/wholesale-feed-webhook.json#/allOf/0/else/not`` states that a non-product
+    event does not carry a product view, and ``src/adcp/webhook_sender.py`` passes
+    ``product_payload_view=None`` for a ``signal.*`` event.  Read as present, the
+    ``else``/``not``/``required`` fired and the payload was refused -- while **the
+    key-absent dict is admitted by that very class**.  Three failures:
+    ``tests/test_notification_preparation.py`` twice and
+    ``tests/test_wholesale_feed_webhook_sender.py`` once.
+
+    **ONE READER COVERS EVERY RULE, which is why the fix is here and not in nine places.**
+    ``Dependencies``, ``PropertyCount``, ``ForbiddenGroups``, ``RequiredGroups``,
+    ``Presence``/``PresenceGroups``, ``Match``, ``ConditionalRequired`` and
+    ``NegatedConditional`` all ask ``name in keys``, and every one of them is handed the
+    key set from here -- :meth:`RuleBound._enforce_adcp_rules` for a model, and
+    :func:`_presence_of` for a nested value.  A second reading of presence is where the
+    next one of these would hide, so there is one.
+
+    **THE OTHER DIRECTION IS SCOPED BY THE MARKER AND NOT BY THE VALUE.**  A property
+    whose document ADMITS ``null`` carries no marker (``codegen.ir.admits_null`` is the
+    one reader that decides which), and there a ``None`` is a VALUE the document states --
+    so it stays present and a rule about it still fires.  The test is the marker and never
+    ``value is None``, because the two cases are the same Python object and only the
+    document tells them apart.
+
+    An EXTRA keeps its ``None`` too: it has no field, so no marker, and the ``None``
+    came from the payload rather than from this SDK's spelling of absence.
     """
+    from adcp.types._base import omits_null
+
     fields = type(model).model_fields
     out: dict[str, Any] = {}
     for name in model.__pydantic_fields_set__:
@@ -854,7 +894,10 @@ def supplied(model: BaseModel) -> tuple[frozenset[str], Mapping[str, Any]]:
         if declared is None:
             out[name] = (model.__pydantic_extra__ or {}).get(name)
             continue
-        out[declared.alias or name] = getattr(model, name)
+        value = getattr(model, name)
+        if value is None and omits_null(declared):
+            continue
+        out[declared.alias or name] = value
     return frozenset(out), out
 
 
