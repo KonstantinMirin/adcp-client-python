@@ -56,9 +56,17 @@ def _where(obj: object) -> str | None:
 
 def dump() -> dict[str, dict]:
     out: dict[str, dict] = {}
-    root = importlib.import_module("adcp.types")
+    #: **``_schemas`` AND NEVER THE FACADE** (the owner's reading, measured: with
+    #: ``legacy_names``, ``_adapter`` and ``compat`` reduced to docstrings,
+    #: ``import adcp.types._schemas`` is OK and a generated module still resolves, so
+    #: ``_schemas`` has NO dependency on the alias layer).  ``adcp.types`` is the FACADE
+    #: whose whole job is to resolve a name THROUGH that layer, so importing it during
+    #: generation asks the layer we are about to write what it currently says -- which is
+    #: the circular reasoning, and is what made this module report 1,802 of 1,817 words
+    #: redundant.  Reflection is the right tool; the facade is the wrong object.
+    root = importlib.import_module("adcp.types._schemas")
     modules = [root]
-    for found in pkgutil.walk_packages(root.__path__, "adcp.types."):
+    for found in pkgutil.walk_packages(root.__path__, "adcp.types._schemas."):
         try:
             modules.append(importlib.import_module(found.name))
         except Exception:  # noqa: BLE001 -- an unimportable module is another row's finding

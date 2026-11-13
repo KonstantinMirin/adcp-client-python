@@ -98,7 +98,13 @@ def main() -> int:
     #: the thing being generated.  Read from the SOURCE it is a function of the text, so
     #: there is no cycle to break and no placeholder to write.
     sys.path.insert(0, "src")
-    surface = importlib.import_module("adcp.types")
+    #: **THE DECLARED TREE AND NEVER THE FACADE.**  The question becomes "does a class of
+    #: ours already BIND this word", which is better than the one the facade answered:
+    #: asking the facade read this module's own previous output.  The layers above
+    #: ``_schemas`` -- ``compat``, ``__adcp_flat_only__``, ``_adapter`` -- are TEXT this
+    #: repository holds, so ``read_our_tree`` takes their ``__all__`` by AST where they are
+    #: wanted in the answer.  They are never imported.
+    surface = importlib.import_module("adcp.types._schemas")
 
     # **GROUP BY THEIR NAME FIRST, because the N:1 RUNS BOTH WAYS.**  Several of their names
     # denote one subject of ours -- that is the fan-out this module exists to serve.  But the

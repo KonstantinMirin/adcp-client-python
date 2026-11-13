@@ -246,7 +246,15 @@ def dump_ours(out_path: Path) -> None:
     import pkgutil
 
     ss.RELAX.update(dict.fromkeys(RELAX, True))
-    root = importlib.import_module("adcp.types")
+    #: **``_schemas`` AND NEVER THE FACADE** (the owner's reading, measured: with
+    #: ``legacy_names``, ``_adapter`` and ``compat`` reduced to docstrings,
+    #: ``import adcp.types._schemas`` is OK and a generated module still resolves, so
+    #: ``_schemas`` has NO dependency on the alias layer).  ``adcp.types`` is the FACADE
+    #: whose whole job is to resolve a name THROUGH that layer, so importing it during
+    #: generation asks the layer we are about to write what it currently says -- which is
+    #: the circular reasoning, and is what made this module report 1,802 of 1,817 words
+    #: redundant.  Reflection is the right tool; the facade is the wrong object.
+    root = importlib.import_module("adcp.types._schemas")
     gen = importlib.import_module(OUR_GEN)
     modules = [m.name for m in pkgutil.walk_packages(gen.__path__, OUR_GEN + ".")]
     public = [
