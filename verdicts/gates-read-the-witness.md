@@ -409,3 +409,26 @@ deletion.
 * **`tests_emit/test_immaterial_presence.py`** — Findings 9 and 10: three dead kwargs, and
   the two lines that free `corpus.py`.
 * **`codegen/ir.py` / `codegen/render.py`** (`distinct`) — round 1's Finding 1, dispatched.
+
+## Round 2, re-measured after rebasing onto `480e6ed58`
+
+| | figure |
+|---|---|
+| `emitted 1059 / refused 0` (deferred 0, verdict 0); accounted 1059 | unmoved |
+| `primary 0 / chained 0` | unmoved |
+| `approximated 383 facts in 148 documents` | unmoved |
+| `./check` wall time | cold **1 m 16.396 s**, warm **5.049 s** (the compile store, not the grading) |
+| `tests_emit` collects | **9,442, 0 errors** (trunk's 9,492 less the 50 tests deleted here) |
+| `test_harness_halves.py` + `test_no_cap_is_on_the_grading_path.py` | **38 passed, 0 failed** (from 57 failed / 36 passed) |
+| `test_union_dispatch.py` | **15 passed, 0 failed** |
+
+Round 1's Finding 3 — `test_a_restated_required_key_is_required_of_the_class[...BuyProductsRequestBranch1Account]`
+— is **fixed on trunk** and that module is now wholly green, so the stamping subject it
+shared with Finding 1 has moved in `distinct`'s hands.
+
+**On the `--since` corrections.** Neither applies to any figure in this file. This lane has
+never run the drop-in behavioural suite, quotes no `--since` comparison, names no
+`newly failing` set, and read no other lane's output directory. Every comparison here is
+this branch against its own base, and `git merge-base --is-ancestor 18857f167
+origin/ours/9.6.1` confirms that base is an ancestor of trunk — the same-line-of-work
+condition the instrument now checks, satisfied by construction rather than by luck.
