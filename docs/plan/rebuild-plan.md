@@ -225,6 +225,38 @@ and an upstream attribution are all about it. **Upstream's WHEEL** is the Python
 ships, which is what `final-state.md` reading 10 is stated over. A sentence about one of them says
 which.
 
+### THE DECISIONS, INDEXED — READ THIS BEFORE CALLING ANYTHING A DEFECT
+
+**WHY AN INDEX AND NOT A REGISTER.** A separate register of decisions would be findable while it
+held three rows and unfindable at a hundred, which is the problem it was meant to solve. These are
+decisions about *how a keyword compiles*, so they belong beside the compiling; what was missing is
+a way to find one in 2,660 lines. This table is that way, and it is the first thing to read when a
+check reports something that looks wrong.
+
+**THE COST OF NOT HAVING IT, measured.** The first full `./verify` reported 1,907 of 2,608 pairs
+not passing, and **1,239 of those were decisions on this list** — 1,021 the `None`-as-absence rule
+and 218 `AdCPUrl`'s accepted cap. Both were reported to the owner as defects, and the cap was twice
+asserted to be a decision he had never taken while the sentence making it sat in this file. A
+decision nobody can find is a decision that gets rediscovered as a bug.
+
+| the decision | where it is stated | what a consumer sees |
+| --- | --- | --- |
+| **A Python `None` is ABSENCE; a JSON `null` is a value.** | [§2 `None` is absence and `null` is a value](#none-is-absence-and-null-is-a-value) | `Model(field=None)` and `model_validate({"field": None})` read as *not supplied*; `model_validate_json('{"field":null}')` is refused; the dump omits the key. |
+| **There are exactly two URL types, and `AdCPUrl`'s 2,083-character cap is ACCEPTED.** | [§2 The two URL types](#the-two-url-types-and-the-cap-that-comes-with-them) | an AdCP address is `https`-only and capped at 2,083 characters; every other `format: uri` node is `AnyUrl` with a host required; both normalise the host and give an empty path a `/`. |
+| **`extra` follows the schema and nothing else.** | [§2 `extra` follows the schema](#extra-follows-the-schema-and-nothing-else) | `additionalProperties: false` → `forbid`; `true` → `allow`, so an undeclared key round-trips. An application narrowing this is the application's decision. |
+| **Constraints bind to the type, not the field.** | [§2 Constraints bind to the type](#constraints-bind-to-the-type-not-the-field) | a constraint appears as a named annotation reused across every node that states it. |
+| **A keyword we cannot express WIDENS the annotation, and the widening is DECLARED.** | [§2 A keyword we cannot express widens](#a-keyword-we-cannot-express-widens-the-annotation) | the class admits a value the document refuses; `strict_validate` still refuses it, and `__adcp_approximations__` says which keyword was dropped. |
+| **A narrowing taken on purpose is DECLARED as `NARROWED`.** | [§2 A keyword we cannot express widens](#a-keyword-we-cannot-express-widens-the-annotation), and `adcp.types._base.NARROWED` | the class refuses a value the document admits; the declaration names the decision, and an undeclared narrowing is a defect. |
+| **A required property the document PINS to one value may default to it.** | `verdicts/a-pinned-default-is-the-documents-own.md` | `ImageAsset(url=…, width=…, height=…)` supplies `asset_type="image"` itself, because `const` states it. A multi-member `enum` gets no default. |
+| **`deprecated` is metadata, not absence.** | `CLAUDE.md` → Formats | a field the document marks deprecated is still on the class, because the document still states it. |
+| **`Format` names the canonical declaration; `LegacyFormat` names the v1 definition.** | `CLAUDE.md` → Formats | code that said `Format` and meant the v1 breaks at validation rather than silently retargeting. |
+| **One class per SUBJECT, not per position.** | [§4 What becomes what](#what-becomes-what) | several of upstream's names resolve to one class of ours, and `isinstance` holds across all of them. |
+| **A positional index is a declared placeholder, not a name.** | [§4](#a-positional-index-is-a-declared-placeholder-not-a-name--and-not-a-licence-either) | no public name carries `Branch<N>`. |
+
+**THREE OF THESE ARE NOT STATED IN THIS FILE, and that is a defect of the index rather than of the
+decision**: the pinned default lives in a verdict, and the two format rules live in `CLAUDE.md`.
+They are cited here so the table is complete, and moving them in is owed.
+
 ### Where the `oneOf` entailment is derived
 
 §5's `type` row says an enclosing `oneOf` applies a type word it does not state. **The derivation
@@ -405,6 +437,46 @@ redeclaration that changes the TYPE is a build failure.
 *Why intersection.* `allOf` means every conjunct holds. A union of their constraints would accept
 payloads a conjunct refuses, making the model looser than its document.
 
+### `None` is absence and `null` is a value
+
+**A JSON SCHEMA PROPERTY OUTSIDE `required` WHOSE TYPE DOES NOT ADMIT `null` PERMITS EXACTLY ONE
+WAY OF NOT SUPPLYING IT — LEAVING IT OUT.** `T | None = None` is still the right Python surface for
+that: the attribute reads as `None` when the property was omitted. What the bare annotation got
+wrong was the INPUT, because pydantic reads `| None` as a type that also admits an explicit `null`,
+so the model half admitted a value the document refuses at every optional non-nullable property in
+the tree, undeclared.
+
+**SO THE TWO ROUTES ARE SPLIT, and upstream states the same contract in its own tests.**
+`adcp.types._base.OmittedNotNull` carries it, and the four halves are:
+
+| route | `None` / `null` |
+| --- | --- |
+| `Model(field=None)` and `model_validate({"field": None})` — the PYTHON route | **absence.** The attribute reads `None`, identical to an omitted key. |
+| `model_validate_json('{"field": null}')` — the JSON route | **refused**, with the TYPE's own error (`string_type`, `list_type`, `model_type`) — the error the document's own `type` keyword refuses it on. |
+| `strict_validate` — the DOCUMENT'S screen | **refused** either way, because that entry point grades a payload against the schema. |
+| `model_dump()` — plain, no `exclude_none` | the key is **absent**. A `None` is never written, so a round trip cannot invent a `null`. |
+
+`ADCP_STRICT_VALIDATION` makes the Python route refuse as well, for a suite that wants to catch a
+caller spelling absence as an explicit `None`.
+
+**WHY A PYTHON `None` IS NOT A JSON `null`, which is the whole of the reading.** A JSON document
+carrying `null` is a payload the document refuses, and it is refused. A Python `None` is the
+language's only spelling of "not supplied" — there is no second one — so refusing it would mean no
+caller could express absence except by building a dict and deleting keys. The accepted set over
+DOCUMENTS does not move, which is what reading 1 claims and what `./check` and
+`tests/conformance/test_schema_model_parity.py` measure.
+
+**IT IS A WIDENING AND IT IS DECLARED.** The Python route admits a value the document's `type`
+refuses, so every property carrying the marker owes a `WIDENED` declaration naming `type` — 1,021
+pairs reported it as *undeclared* before the declaration existed, which is what an agreed decision
+with no record looks like from the verifier's side.
+
+**AND THE RULE LAYER MUST AGREE WITH THE TYPE LAYER.** `supplied()` — what the conditional rules
+(`RequiredGroups`, `ForbiddenGroups`, `ConditionalRequired`, `NegatedConditional`, `dependencies`)
+ask to decide whether a key is present — must read `None` as ABSENT too. Counting it as present is
+how a class came to refuse a payload its own dump would be valid for, at
+`core/wholesale-feed-webhook.json#/allOf/0/else/not`.
+
 ### `extra` follows the schema, and nothing else
 
 `additionalProperties: false` → `forbid`. `true` → `allow`. A typed `additionalProperties` →
@@ -479,6 +551,8 @@ Two cases survive, and the design keeps both.
   Removing a keyword from an admission set moves no per-pair verdict: every pair grades exactly as
   it did. So the guard switches each admission mechanism off in turn and pins which keywords
   reappear.
+
+#### The two URL types, and the cap that comes with them
 
  **THE TWO URL TYPES STAND, AND THERE ARE EXACTLY TWO.** `HttpUrl` is a subclass of `AnyUrl`,
   so both are a `UrlConstraints` refinement of one runtime type, and which a node takes is

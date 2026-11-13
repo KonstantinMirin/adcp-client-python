@@ -1,5 +1,24 @@
 # Python SDK Development Learnings
 
+## BEFORE CALLING ANYTHING A DEFECT, READ THE DECISION INDEX
+
+[`docs/plan/rebuild-plan.md` §2 → **THE DECISIONS, INDEXED**](docs/plan/rebuild-plan.md) — one
+table, one line per decision, with where it is stated and what a consumer sees. **Read it first
+whenever a check reports something that looks wrong.** A decision nobody can find is a decision
+that gets rediscovered as a bug, and then argued about.
+
+**THE COST OF SKIPPING IT, measured on 2026-11-13.** The first full `./verify` reported 1,907 of
+2,608 pairs not passing, and **1,239 of those were decisions already taken** — 1,021 the
+`None`-is-absence rule and 218 `AdCPUrl`'s accepted 2,083-character cap. All 1,239 were reported
+to the owner as defects. The cap was asserted TWICE to be something he had never agreed to, while
+`rebuild-plan.md` said **"`AdCPUrl` IS `HttpUrl`, AND ITS 2,083-CHARACTER CAP IS ACCEPTED"** in
+bold capitals, in a file quoted from earlier in the same conversation.
+
+So the order is: **the index, then the document, then the code.** If the index does not settle it,
+the decision may genuinely be unmade — and then it is a question for the owner, not a defect to
+file. And if a check reports a decision as a failure, the defect is the missing DECLARATION
+(`WIDENED`, `NARROWED`, `UNDERDETERMINED`), never the decision.
+
 ## READ THE DOCUMENT THE WAY [docs/reading-a-document.md](docs/reading-a-document.md) SAYS
 
 Eleven rules for answering "what does the schema actually say here", each with the command
