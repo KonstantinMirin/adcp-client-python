@@ -30,10 +30,13 @@ when the derivation has deliberately moved.  The generated half of
 grids of sections 5, 6 and 7 are generated from ``codegen/keywords.py`` by
 ``tests/test_keywords.py``, which asserts the committed document equals what the table
 generates, and ``--write-grids`` writes the marked regions and nothing else, so a cell
-change costs one flag rather than a hand edit nobody can verify.  The accepts corpus is
-the other (``docs/plan/architecture.md``, "The drawn corpus is COMMITTED", 2026-10-30):
-``--write-corpus`` promotes the shared cache into ``tests/accepts-corpus``, and the
-paragraph on it below says why it promotes rather than draws.
+change costs one flag rather than a hand edit nobody can verify.
+
+The accepts corpus WAS the other ("The drawn corpus is COMMITTED", 2026-10-30), promoted
+by a ``--write-corpus`` flag declared here.  Both are gone: the witness is CONSTRUCTED
+from ``(document, pointer)`` now, so there is no draw to hold between runs and no
+artifact to promote.  The paragraph below that flag's old position carries the proof that
+nothing read the store.
 
 Here rather than in the test module because pytest collects options from a plugin or a
 root ``conftest``, and a test module declaring one is not read in time.
@@ -160,35 +163,22 @@ def pytest_addoption(parser) -> None:
         help="rewrite the generated grids of docs/plan/rebuild-plan.md from "
         "codegen/keywords.py (tests/test_keywords.py owns the regions)",
     )
-    #: The SECOND affordance of that shape, and the shape is the point: a derived
-    #: artifact in the tree, an equality that grades it, and ONE flag that rewrites it
-    #: when the derivation has deliberately moved.  ``docs/plan/architecture.md`` ("The
-    #: drawn corpus is COMMITTED", 2026-10-30) puts the accepts corpus in the tree; the
-    #: gate is
-    #: ``tests/test_accepts_corpus.py::test_every_graded_pair_has_a_committed_entry_under_the_current_key``
-    #: and it reddens on a bundle bump or a generator bump landing without a redraw.
+    #: **``--write-corpus`` STOOD HERE AND HAS NOTHING LEFT TO PROMOTE.**  It copied the
+    #: shared accepts-corpus cache into the committed floor at ``tests_emit/accepts-corpus``,
+    #: and its gate was
+    #: ``test_accepts_corpus.py::test_every_graded_pair_has_a_committed_entry_under_the_current_key``,
+    #: which is deleted with the corpus.  The floor directory is deleted too: measured by
+    #: AST rather than grep, no importer of ``tests_emit/corpus.py`` calls ``.get`` or
+    #: ``.put`` on either store, ``_check_pair`` ignores its ``corpus`` parameter outright,
+    #: and the ``widening_corpus`` it does forward reaches ``_Draws.corpus``, a field with
+    #: **0** attribute reads anywhere in ``codegen/harness.py``.
     #:
-    #: **IT PROMOTES AND IT DOES NOT DRAW**, which is what keeps the redraw affordable:
-    #: a full cold draw of this population is hours of one process and minutes of ten,
-    #: so the redraw is a normal parallel suite run -- which fills the shared cache --
-    #: and this flag then copies what the cache holds into the committed floor.  The two
-    #: steps, in order:
-    #:
-    #:     ./.venv/bin/python -m pytest tests/test_emit.py -k every_class_passes
-    #:     ./.venv/bin/python -m pytest tests/test_accepts_corpus.py -n 0 --write-corpus \
-    #:         -k every_graded_pair_has_a_committed_entry
-    #:
-    #: ``-n 0`` because this writes, and ten workers each promoting the same keys would
-    #: be ten processes racing on one directory for no gain.  The write is still atomic
-    #: per entry (``corpus.Store.put``), so the race would be safe rather than useful.
-    parser.addoption(
-        "--write-corpus",
-        action="store_true",
-        default=False,
-        help="promote the shared accepts-corpus cache into the committed floor at "
-        "tests/accepts-corpus (tests/test_accepts_corpus.py owns the gate); draws "
-        "nothing -- run the suite first to fill the cache",
-    )
+    #: The affordance's SHAPE is not what went -- a derived artifact in the tree, an
+    #: equality that grades it, and one flag that rewrites it when the derivation has
+    #: deliberately moved.  ``--write-grids`` above is still exactly that.  What went is
+    #: the artifact: :class:`codegen.verify.witness.Construction` derives each witness
+    #: from ``(document, pointer)`` and nothing else, so there is no draw to hold between
+    #: runs and nothing a flag could promote.
 
 
 def refusal_from(outcome: object) -> Refusal:

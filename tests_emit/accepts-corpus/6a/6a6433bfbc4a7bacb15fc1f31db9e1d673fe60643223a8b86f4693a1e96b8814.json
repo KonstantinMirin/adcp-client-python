@@ -1,1 +1,0 @@
-[{"from_state_id": "a", "input": "scroll", "scroll_reference": "document_progress", "scroll_threshold_percent": 0.0, "to_state_id": "a", "transition_id": "a", "transition_mode": "instant", "trigger": "scroll_threshold"}]

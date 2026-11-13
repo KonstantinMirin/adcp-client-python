@@ -1,1 +1,0 @@
-[{"account": {"account_id": "0"}, "adjustment_receipts": [{"adjusts_reporting_revision_id": "0", "observed_adjustment_sha256": "0000000000000000000000000000000000000000000000000000000000000000", "observed_at": "2000-01-01T00:00:00Z", "reporting_adjustment_id": "0", "reporting_receipt_id": "0000000000000000", "status": "accepted"}], "idempotency_key": "0000000000000000"}]

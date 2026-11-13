@@ -1,1 +1,0 @@
-[{"evidence": {"basis": "reporting_ledger", "generated_at": "2000-01-01T00:00:00Z"}, "measurement_period": {"end": "2000-01-01T00:00:00Z", "start": "2000-01-01T00:00:00Z"}, "obligations_due": 1, "obligations_on_time": 0, "offering_id": "0", "official_revisions_adjusted": 0, "official_revisions_published": 0, "publication_latency_seconds": {"p50": 0, "p95": 0}}]

@@ -1,1 +1,0 @@
-[{"account_id": "", "fired_at": "2000-01-01T00:00:00Z", "idempotency_key": "0000000000000000", "notification_id": "0", "notification_type": "account.status_changed", "observed_at": "2000-01-01T00:00:00Z", "previous_status": "active", "reason_code": "other", "status": "active", "subscriber_id": "0"}]

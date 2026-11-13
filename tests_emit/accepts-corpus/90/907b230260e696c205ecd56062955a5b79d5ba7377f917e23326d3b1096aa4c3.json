@@ -1,1 +1,0 @@
-[{"event_type": "account.change_recorded", "read_task": "list_account_changes", "registration_task": "sync_accounts", "resource_types": ["a"], "retention_days": 90, "supported": true}]

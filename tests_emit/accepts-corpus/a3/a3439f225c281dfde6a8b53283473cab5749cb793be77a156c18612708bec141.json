@@ -1,1 +1,0 @@
-[{"destination_modes": ["existing"], "orchestration": "consumer_managed", "pattern": "dataset_share", "transport": "kcv00mtd", "access_mode": "gud", "provider": {"domain": "qb-vp6txsy5563qsi.z"}, "reader_compatibility": []}]

@@ -1,1 +1,0 @@
-[{"created_at": "2000-01-01T00:00:00Z", "entity_id": "", "entity_type": "signal", "event_id": "e3e70682-c209-4cac-629f-6fbed82c07cd", "event_type": "signal.removed", "payload": {"applies_to": {"scope": "account"}, "signal_agent_segment_id": ""}}]

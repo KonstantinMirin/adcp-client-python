@@ -1,1 +1,0 @@
-[{"optimistic_concurrency": false, "read_task": "get_principal", "supported": true, "supported_sections": ["declarations"], "sync_task": "sync_principal"}]

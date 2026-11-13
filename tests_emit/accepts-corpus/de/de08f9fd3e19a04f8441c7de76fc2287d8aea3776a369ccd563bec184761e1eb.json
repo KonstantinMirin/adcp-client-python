@@ -1,1 +1,0 @@
-[{"catalog": {"current_version": "0", "resolver": {"auth": "none", "protocol": "adcp_geo_place_resolver_v1", "url": "https://A.COM"}, "supported_versions": ["0"]}, "countries": {"AA": ["city"]}}]

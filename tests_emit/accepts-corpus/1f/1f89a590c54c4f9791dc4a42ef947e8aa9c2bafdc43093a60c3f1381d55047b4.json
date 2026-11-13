@@ -1,1 +1,0 @@
-[{"deployments": [{"agent_url": "https://A.COM", "is_live": false, "type": "agent"}], "description": "0", "name": "0", "signal_agent_segment_id": "0", "signal_id": {"agent_url": "https://A.COM", "id": "0", "source": "agent"}, "signal_type": "owned"}]

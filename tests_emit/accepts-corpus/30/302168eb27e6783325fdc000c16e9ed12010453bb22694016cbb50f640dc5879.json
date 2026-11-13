@@ -1,1 +1,0 @@
-[{"agent_url": "https://A.COM", "aud": "aao-verification", "exp": 0, "iat": 0, "iss": "https://aao.org", "jti": "0", "role": "brand", "sub": "https://A.COM", "verification_modes": ["live"], "verified_specialisms": [""]}]

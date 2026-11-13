@@ -1,1 +1,0 @@
-[{"accepted_formats": ["csv"], "accepted_verification_profiles": ["native_commit"], "active": false, "destination_id": "0", "location": "0", "pattern": "file_transfer", "provider": {"domain": "0.0"}, "transport": "a"}]

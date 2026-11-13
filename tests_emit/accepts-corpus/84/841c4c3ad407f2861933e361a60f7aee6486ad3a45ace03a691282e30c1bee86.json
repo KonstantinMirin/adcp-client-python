@@ -1,1 +1,0 @@
-[{"fixed": {"modes": ["roas"], "roas_strengths": ["target"], "supported_combinations": [{"cost_per_strengths": ["cap", "target"], "kind": "max_bid_with_cost_per"}]}}]

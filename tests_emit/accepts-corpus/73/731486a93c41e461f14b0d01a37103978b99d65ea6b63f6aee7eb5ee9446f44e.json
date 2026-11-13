@@ -1,1 +1,0 @@
-[{"account_id": "0", "action": "0", "change_id": "0", "fired_at": "2000-01-01T00:00:00Z", "idempotency_key": "0000000000000000", "notification_id": "0", "notification_type": "account.change_recorded", "recorded_at": "2000-01-01T00:00:00Z", "resource": {"resource_id": "0", "type": "a"}, "subscriber_id": "0"}]

@@ -1,1 +1,0 @@
-[{"impairment_id": "", "observed_at": "2000-01-01T00:00:00Z", "package_ids": [""], "reason_code": "ttl_expired", "resource_id": "", "resource_type": "audience", "transition": {"to": "rejected"}}]

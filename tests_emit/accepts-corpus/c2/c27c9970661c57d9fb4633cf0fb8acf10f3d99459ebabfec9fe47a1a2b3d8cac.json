@@ -1,1 +1,0 @@
-[{"account_id": "", "creative_id": "", "fired_at": "2000-01-01T00:00:00Z", "idempotency_key": "0000000000000000", "initiator": "seller", "notification_id": "0", "notification_type": "creative.purged", "purge_kind": "hard", "purged_at": "2000-01-01T00:00:00Z", "reason_code": "content_drift", "subscriber_id": "0"}]

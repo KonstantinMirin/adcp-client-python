@@ -1,1 +1,0 @@
-[{"asset_type": "vast_tracker", "execution_actor": "seller", "firing_paths": ["client"], "selector_id": "0", "target": "linear", "vast_event": "mute", "vast_versions": ["2.0"]}]
