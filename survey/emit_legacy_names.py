@@ -23,6 +23,7 @@ import json
 import pathlib
 import sys
 
+import bootstrap
 import name_table
 
 TABLE = pathlib.Path("survey/name-table-9.6.1.json")
@@ -90,7 +91,13 @@ def main() -> int:
     # surface is imported, and the question is asked of the layers below it only.
     import importlib
 
-    OUT.write_text('"""Placeholder; rewritten below."""\n')
+    #: **THE ONE-FILE STUB IS NOW A CALL TO THE SET** (``survey/bootstrap.py``,
+    #: ``adcp-client-python-8wd8``).  This site had the repair first and had it right: the
+    #: already-served check read its OWN previous output and reported 1,802 of 1,817 words
+    #: as redundant.  What it could not know is that the cycle has five members, not one --
+    #: measured, ``_restored.py`` is the one whose absence still broke
+    #: ``adapter_surface.py`` phase 3 after this file and ``_adapter.py`` were stubbed.
+    OUT.write_text(bootstrap.STUB)
     sys.path.insert(0, "src")
     surface = importlib.import_module("adcp.types")
 
