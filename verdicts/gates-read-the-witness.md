@@ -432,3 +432,100 @@ never run the drop-in behavioural suite, quotes no `--since` comparison, names n
 this branch against its own base, and `git merge-base --is-ancestor 18857f167
 origin/ours/9.6.1` confirms that base is an ancestor of trunk — the same-line-of-work
 condition the instrument now checks, satisfied by construction rather than by luck.
+
+---
+
+# Round 3 — the revived census, read in full and attributed
+
+Measured on trunk `8845eef16` with `construction=constructed.whole()` supplied to
+`graded_report`'s call by hand. **Not landed** — the reason is below. 2,608 pairs in
+**8.2 min** single-process, which is what Finding 7's repair costs now that the draw is
+gone (it was ~40 min).
+
+| check | result |
+|---|---|
+| accepts | 2,538 pass · **57** `model_refused_valid` · 8 `model_dropped_a_fact` · 5 `witness_refused` |
+| admits | 1,747 pass · **861** `model_refused_admitted` |
+| liveness | 2,597 pass · 11 `no_payload` |
+| widening | 153 pass · 34 `unproved_widening` · 19 `no_declarations` |
+
+## The 861 are three causes, not 861 problems
+
+| rows | cause | owner |
+|---|---|---|
+| **781** | `url_parsing` over 346 documents — `format: uri` lowered to `Annotated[AnyUrl, UrlConstraints(host_required=True)]`, which refuses the construction's hostless `uri case 2` | **blocked on a ruling** |
+| **~60** | `literal_error`, in the 12 shared-stamp documents | `distinct` (queued) |
+| **~20** | `oneOf` 10 · `missing` 5 · `anyOf` 3 · `enum` 1 · `not` 1 | genuinely open |
+
+Median refused fraction 0.025; 374 rows refuse exactly one value of their set, 3 refuse
+the whole set. The witness:
+
+```
+aao/agent-publishers.json#   format / "at ('agent_url',): uri case 2"
+  value     {"agent_url": "urn:ietf:rfc:3986", ...}
+  error     url_parsing — Input should be a valid URL, empty host
+  document  {"type": "string", "format": "uri"}
+  model     Annotated[AnyUrl, UrlConstraints(host_required=True)]
+```
+
+## Why the 781 are not an emission defect, and why declaring them does not fix it
+
+`host_required=True` is **ruled** — `adcp-client-python-dza0`, 2026-11-11 — and its gate
+`test_a_bare_uri_admits_every_scheme_rfc_3986_does.py` **passes all 4 clauses**, gating both
+edges deliberately. The two readings disagree on one word:
+`codegen/constraints.py:193` justifies the narrowing as *"`host_required` refuses nothing any
+document **states**"* (prose: 0 of 227 bare `uri` nodes name a non-hierarchical scheme),
+while the admits check grades what a document **admits** (RFC 3986, which admits `urn:`,
+`tel:`, `mailto:`, `data:`). Both are right about their own population.
+
+Rule 9 of `docs/reading-a-document.md` says the record is owed regardless, and the record
+is empty: `__adcp_approximations__` is `()` on these classes, so the narrowing is
+**undeclared**. But declaring it **cannot** clear the census — measured:
+`check_admits(schema, accept, witnesses, *, validator_cls)` reads no approximation record
+and has **no exemption path at all**. So the three options are not equivalent and one of
+them is now eliminated:
+
+1. ~~declare the narrowing~~ — correct bookkeeping per rule 9, but moves 0 of the 781;
+2. stop the construction's `uri` cover emitting a hostless case, if the SDK's `format: uri`
+   contract is hierarchical-only — clears all 781;
+3. revisit `dza0` — clears all 781 by widening the annotation instead;
+4. give the admits check a declared-narrowing exemption — a new mechanism.
+
+## The accepts failures are ONE defect, and it is already dispatched
+
+All **57** `model_refused_valid` rows fall in 12 documents. Those 12 are **identical** — in
+both directions, 0 outside either way — to the 12 documents carrying round 1's shared
+branch stamp:
+
+```
+adagents.json                     core/package-format-snapshot.json
+core/postal-area.json             core/async-response-data.json
+core/vendor-pricing-option.json   core/package-signal-targeting.json
+core/product-filters.json         media-buy/build-creative-request.json
+core/creative-representation.json creative/sync-creatives-request.json
+media-buy/buy-products-request.json  media-buy/request-proposals-request.json
+```
+
+The mechanism is visible in the detail: `adagents.json#/oneOf/1/properties/formats/items/allOf/0`
+reports `literal_error at ('format_kind',): Input should be 'html5'` — a witness built once
+at a node 16 branch classes share, so one class takes it and fifteen refuse it. And
+`core/async-response-data.json#/anyOf/10` refuses **1,614 of 1,616** values on
+`literal_error at ('status',)`, which is the same shape at a 3-class pointer.
+
+So `distinct`'s stamping fix is the acceptance signal for 57 accepts rows and ~60 admits
+rows, not just for `ImageAsset.asset_type`.
+
+## The projection
+
+After the `uri` ruling and `distinct`'s stamping fix, this census is **~20 admits rows and
+0 accepts rows** — reviewable in one sitting. That is the state in which landing
+`graded_report` → `construction=` reports a defect list rather than a ruled decision, and
+that is the order I will take it in.
+
+## On the run loop
+
+No drop-in run from this lane: after rebasing, `git diff origin/ours/9.6.1..HEAD` is **0
+commits, 0 files**. A run of this branch *is* a run of trunk, already banked at
+`/srv/ws/dropin-trunk2`. Noted for when there is something to measure: rule 10 — both
+packages import as `adcp` and `PYTHONPATH=.:src` is inherited, so upstream's interpreter
+must be `env -u PYTHONPATH`.
