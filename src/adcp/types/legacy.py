@@ -36,7 +36,6 @@ from __future__ import annotations
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
 from adcp.types.core import CreativeAsset as LegacyCreativeAsset
-from adcp.types.core import Format as LegacyFormat
 from adcp.types.core import FormatReferenceStructuredObject as FormatReferenceStructuredObject
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatId
 from adcp.types.core import Product as LegacyProduct
@@ -83,7 +82,6 @@ __all__ = [
     "LegacyCreateMediaBuyResponse",
     "LegacyCreateMediaBuyResponse1",
     "LegacyCreativeAsset",
-    "LegacyFormat",
     "LegacyFormatId",
     "LegacyGetCreativeDeliveryResponse",
     "LegacyGetMediaBuyDeliveryResponse",
@@ -114,6 +112,7 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
+    "LegacyFormat": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.format.Format, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "coerce_legacy_asset": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.coerce_legacy_asset, which is NO-DOCUMENT-NO-SUBJECT",
     "coerce_legacy_assets": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.coerce_legacy_assets, which is NO-DOCUMENT-NO-SUBJECT",
     "infer_asset_type": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types._legacy_assets.infer_asset_type, which is NO-DOCUMENT-NO-SUBJECT",

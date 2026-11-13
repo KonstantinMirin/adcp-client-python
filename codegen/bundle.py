@@ -21,7 +21,16 @@ from collections.abc import Callable, Collection, Iterator, Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any, NamedTuple
 
-from adcp.types import _base
+#: **``import adcp.types._base`` AND NOT ``from adcp.types import _base``, which is a
+#: FACADE CALL** (the owner's reading of the generators' cycle, one site further out).
+#: The ``from X import Y`` form goes through ``adcp.types.__getattr__``, which consults
+#: the ALIAS LAYER (``__init__.py:155``, ``adapter = _adapter_module()``) before it
+#: answers -- so the compiler's own bundle reader reached a generated module for a name
+#: that has nothing to do with it, and a stale adapter row took every generator down
+#: with it.  The submodule import binds the module object directly and never calls
+#: ``__getattr__``.  It looks like a private import either way, which is why a grep for
+#: ``import_module("adcp.types")`` found three sites and not this fourth.
+import adcp.types._base as _base
 from adcp.types._base import applied_schema
 from codegen import keywords
 from codegen.refusal import BuildFailure, Kind, Refusal

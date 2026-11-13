@@ -10,9 +10,9 @@ declarations does not move.
 
 The triple, read off this module's own table::
 
-    adcp.types.AcceptancePolicyDiscovery is adcp.types.protocol.GetAdCPCapabilitiesResponseMediaBuyAcceptancePolicyDiscovery
+    adcp.types.AcceptProposalRequest is adcp.types.media_buy.AcceptProposalRequest
 
-so `from adcp.types import AcceptancePolicyDiscovery` and `from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyAcceptancePolicyDiscovery` are two spellings of one
+so `from adcp.types import AcceptProposalRequest` and `from adcp.types.media_buy import AcceptProposalRequest` are two spellings of one
 object, and `isinstance` holds against either.
 
 **WHY THIS MODULE EXISTS AT UPSTREAM'S OWN PATH.**  `adcp.types.compat` is reading 10's ONE
@@ -35,70 +35,241 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
+from adcp.types.account import GetAccountFinancialsRequest as GetAccountFinancialsRequest
+from adcp.types.account import GetAccountFinancialsResponse as GetAccountFinancialsResponse
+from adcp.types.account import ListAccountChangesRequest as ListAccountChangesRequest
+from adcp.types.account import ListAccountChangesResponse as ListAccountChangesResponse
+from adcp.types.account import ListAccountsRequest as ListAccountsRequest
+from adcp.types.account import ListAccountsResponse as ListAccountsResponse
+from adcp.types.account import ReportUsageRequest as ReportUsageRequest
+from adcp.types.account import ReportUsageResponse as ReportUsageResponse
+from adcp.types.account import SyncAccountsRequest as SyncAccountsRequest
+from adcp.types.account import SyncAccountsResponse as SyncAccountsResponse
+from adcp.types.account import SyncGovernanceRequest as SyncGovernanceRequest
 from adcp.types.account import SyncGovernanceRequestAccountsItemGovernanceAgentsItem as GovernanceAgent
 from adcp.types.account import SyncGovernanceRequestAccountsItemGovernanceAgentsItemAuthentication as Authentication
+from adcp.types.brand import AcquireRightsRequest as AcquireRightsRequest
+from adcp.types.brand import AcquireRightsResponse as AcquireRightsResponse
 from adcp.types.brand import BrandDiscoveryKellerType as KellerType
+from adcp.types.brand import GetBrandIdentityRequest as GetBrandIdentityRequest
+from adcp.types.brand import GetBrandIdentityResponse as GetBrandIdentityResponse
 from adcp.types.brand import GetBrandIdentitySuccess as GetBrandIdentitySuccessResponse
+from adcp.types.brand import GetRightsRequest as GetRightsRequest
+from adcp.types.brand import GetRightsResponse as GetRightsResponse
 from adcp.types.brand import GetRightsSuccess as GetRightsSuccessResponse
+from adcp.types.brand import UpdateRightsRequest as UpdateRightsRequest
+from adcp.types.brand import UpdateRightsResponse as UpdateRightsResponse
+from adcp.types.brand import VerifyBrandClaimRequest as VerifyBrandClaimRequest
+from adcp.types.brand import VerifyBrandClaimResponse as VerifyBrandClaimResponse
 from adcp.types.brand import VerifyBrandClaimResponseSignedResponse as VerifyBrandClaimSignedResponse
 from adcp.types.brand import VerifyBrandClaimResponseSignedResponsePayload as VerifyBrandClaimPayload
 from adcp.types.brand import VerifyBrandClaimResponseSignedSuccessPayload as VerifyBrandClaimSignedSuccessPayload
+from adcp.types.brand import VerifyBrandClaimsRequestBulk as VerifyBrandClaimsRequestBulk
+from adcp.types.brand import VerifyBrandClaimsResponseBulk as VerifyBrandClaimsResponseBulk
+from adcp.types.collection import CollectionList as CollectionList
+from adcp.types.collection import CreateCollectionListRequest as CreateCollectionListRequest
+from adcp.types.collection import CreateCollectionListResponse as CreateCollectionListResponse
+from adcp.types.collection import DeleteCollectionListRequest as DeleteCollectionListRequest
+from adcp.types.collection import DeleteCollectionListResponse as DeleteCollectionListResponse
+from adcp.types.collection import GetCollectionListRequest as GetCollectionListRequest
+from adcp.types.collection import GetCollectionListResponse as GetCollectionListResponse
+from adcp.types.collection import ListCollectionListsRequest as ListCollectionListsRequest
+from adcp.types.collection import ListCollectionListsResponse as ListCollectionListsResponse
+from adcp.types.collection import UpdateCollectionListRequest as UpdateCollectionListRequest
+from adcp.types.collection import UpdateCollectionListResponse as UpdateCollectionListResponse
+from adcp.types.compliance import ComplyTestControllerRequest as ComplyTestControllerRequest
+from adcp.types.compliance import ComplyTestControllerResponse as ComplyTestControllerResponse
 from adcp.types.constraints import CanonicalProductCatalogMatchMatchedGtinsItem as Gtin
 from adcp.types.constraints import StrMinLen1 as AcceptancePolicyProfileId
+from adcp.types.content_standards import ArtifactWebhookPayload as ArtifactWebhookPayload
+from adcp.types.content_standards import CalibrateContentRequest as CalibrateContentRequest
+from adcp.types.content_standards import CalibrateContentResponse as CalibrateContentResponse
+from adcp.types.content_standards import CreateContentStandardsRequest as CreateContentStandardsRequest
+from adcp.types.content_standards import CreateContentStandardsResponse as CreateContentStandardsResponse
+from adcp.types.content_standards import GetContentStandardsRequest as GetContentStandardsRequest
+from adcp.types.content_standards import GetContentStandardsResponse as GetContentStandardsResponse
+from adcp.types.content_standards import GetMediaBuyArtifactsRequest as GetMediaBuyArtifactsRequest
+from adcp.types.content_standards import GetMediaBuyArtifactsResponse as GetMediaBuyArtifactsResponse
+from adcp.types.content_standards import ListContentStandardsRequest as ListContentStandardsRequest
+from adcp.types.content_standards import ListContentStandardsResponse as ListContentStandardsResponse
+from adcp.types.content_standards import UpdateContentStandardsRequest as UpdateContentStandardsRequest
+from adcp.types.content_standards import UpdateContentStandardsResponse as UpdateContentStandardsResponse
+from adcp.types.content_standards import ValidateContentDeliveryRequest as ValidateContentDeliveryRequest
+from adcp.types.content_standards import ValidateContentDeliveryResponse as ValidateContentDeliveryResponse
+from adcp.types.core import AcceptancePolicyProfileIDs as AcceptancePolicyProfileIds
+from adcp.types.core import Account as Account
+from adcp.types.core import AccountAuthorization as AccountAuthorization
+from adcp.types.core import AccountReference as AccountReference
 from adcp.types.core import AccountReferenceAccountId as AccountReferenceById
 from adcp.types.core import AccountReferenceBrandOperator as AccountReferenceByNaturalKey
 from adcp.types.core import AccountReportingBucket as ReportingBucket
+from adcp.types.core import AccountWithAuthorization as AccountWithAuthorization
 from adcp.types.core import ActivationKeyKeyValue as PropertyTagActivationKey
 from adcp.types.core import ActivationKeySegmentId as PropertyIdActivationKey
+from adcp.types.core import AgentDeclarations as AgentDeclarations
+from adcp.types.core import AgentNotificationConfig as AgentNotificationConfig
+from adcp.types.core import AgentNotificationConfigState as AgentNotificationConfigState
+from adcp.types.core import AgentReportingDestination as AgentReportingDestination
+from adcp.types.core import AgentReportingDestinationState as AgentReportingDestinationState
+from adcp.types.core import AssetVariant as AssetVariant
+from adcp.types.core import AudienceEvidence as AudienceEvidence
 from adcp.types.core import AudioAsset as AudioContent
+from adcp.types.core import BrandReference as BrandReference
+from adcp.types.core import BriefAsset as BriefAsset
+from adcp.types.core import BusinessEntity as BusinessEntity
 from adcp.types.core import CSSAsset as CssContent
+from adcp.types.core import CanonicalFormatKind as CanonicalFormatKind
+from adcp.types.core import CanonicalMediaBuyAction as CanonicalMediaBuyAction
+from adcp.types.core import CanonicalProductAction as CanonicalProductAction
+from adcp.types.core import CanonicalProjectionReference as CanonicalProjectionReference
+from adcp.types.core import CardAsset as CardAsset
+from adcp.types.core import Catalog as Catalog
+from adcp.types.core import CatalogAsset as CatalogAsset
+from adcp.types.core import CatalogFieldBinding as CatalogFieldBinding
+from adcp.types.core import CatalogFieldMapping as CatalogFieldMapping
 from adcp.types.core import CatalogFieldMappingTransform as Transform
+from adcp.types.core import CatalogRequirements as CatalogRequirements
+from adcp.types.core import ContextObject as ContextObject
 from adcp.types.core import CountryCode as PrimaryCountry
+from adcp.types.core import CreativeAsset as CreativeAsset
 from adcp.types.core import CreativeAsset as LegacyCreativeAsset
 from adcp.types.core import CreativeFilters as CreativeFilters
 from adcp.types.core import CreativeFilters as LegacyCreativeFilters
 from adcp.types.core import CreativeManifest as CreativeManifest
+from adcp.types.core import CreativeVariant as CreativeVariant
 from adcp.types.core import CurrencyCode as PricingCurrency
+from adcp.types.core import DAASTAsset as DaastAsset
+from adcp.types.core import DAASTTrackerAsset as DaastTrackerAsset
+from adcp.types.core import DateRange as DateRange
+from adcp.types.core import DatetimeRange as DatetimeRange
+from adcp.types.core import DaypartTarget as DaypartTarget
+from adcp.types.core import Deployment as Deployment
 from adcp.types.core import DeploymentPlatform as PlatformDeployment
+from adcp.types.core import DownstreamConnectionRequirement as DownstreamConnectionRequirement
+from adcp.types.core import Duration as Duration
+from adcp.types.core import Error as Error
 from adcp.types.core import ErrorRecovery as Recovery
 from adcp.types.core import ErrorSource as Source
-from adcp.types.core import Format as Format
-from adcp.types.core import Format as LegacyFormat
-from adcp.types.core import FormatFormatCard as FormatCard
+from adcp.types.core import ExtensionObject as ExtensionObject
+from adcp.types.core import FormatOptionReference as FormatOptionReference
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatId
 from adcp.types.core import FormatReferenceStructuredObject as LegacyFormatReferenceStructuredObject
 from adcp.types.core import HTMLAsset as HtmlContent
 from adcp.types.core import ImageAsset as ImageContent
 from adcp.types.core import JavaScriptAsset as JavascriptContent
+from adcp.types.core import LegacyFormatFormatCard as FormatCard
+from adcp.types.core import MCPWebhookPayload as McpWebhookPayload
+from adcp.types.core import MarkdownAsset as MarkdownAsset
+from adcp.types.core import MediaBuy as MediaBuy
+from adcp.types.core import MediaBuyAvailableAction as MediaBuyAvailableAction
+from adcp.types.core import MediaBuyChangeTermID as MediaBuyChangeTermId
+from adcp.types.core import NotificationConfig as NotificationConfig
 from adcp.types.core import NotificationConfigAuthentication as NotificationAuthentication
+from adcp.types.core import OfferingAssetConstraint as OfferingAssetConstraint
+from adcp.types.core import OfferingAssetGroup as OfferingAssetGroup
+from adcp.types.core import OptimizationGoal as OptimizationGoal
+from adcp.types.core import Overlay as Overlay
 from adcp.types.core import Package as LegacyPackage
 from adcp.types.core import Package as Package
+from adcp.types.core import PackageSignalTargeting as PackageSignalTargeting
+from adcp.types.core import PackageSignalTargetingGroup as PackageSignalTargetingGroup
+from adcp.types.core import PackageSignalTargetingGroups as PackageSignalTargetingGroups
+from adcp.types.core import PaginationRequest as PaginationRequest
+from adcp.types.core import PaginationResponse as PaginationResponse
+from adcp.types.core import PixelTrackerAsset as PixelTrackerAsset
 from adcp.types.core import PixelTrackerAssetMethod as PixelTrackerMethod
 from adcp.types.core import Placement as LegacyPlacement
 from adcp.types.core import Placement as Placement
+from adcp.types.core import PlacementPresentationDocument as PlacementPresentationDocument
+from adcp.types.core import PlacementPresentationReference as PlacementPresentationReference
+from adcp.types.core import PlacementReference as PlacementReference
+from adcp.types.core import PostalArea as PostalArea
+from adcp.types.core import PreviewRendererMetadata as PreviewRendererMetadata
+from adcp.types.core import PrincipalChangedWebhook as PrincipalChangedWebhook
+from adcp.types.core import PrincipalDeclarationsState as PrincipalDeclarationsState
+from adcp.types.core import PrincipalState as PrincipalState
 from adcp.types.core import Product as LegacyProduct
 from adcp.types.core import Product as Product
+from adcp.types.core import ProductAllowedAction as ProductAllowedAction
 from adcp.types.core import ProductDeliveryMeasurement as DeliveryMeasurement
 from adcp.types.core import ProductFilters as LegacyProductFilters
 from adcp.types.core import ProductFilters as ProductFilters
 from adcp.types.core import ProductFormatDeclaration as ProductFormatDeclaration
+from adcp.types.core import ProductSignalTargetingOption as ProductSignalTargetingOption
 from adcp.types.core import ProductTrustedMatch as TrustedMatch
+from adcp.types.core import Property as Property
+from adcp.types.core import PropertyID as PropertyId
+from adcp.types.core import PropertyListReference as PropertyListReference
+from adcp.types.core import PropertyTag as PropertyTag
+from adcp.types.core import Proposal as Proposal
+from adcp.types.core import ProtocolEnvelope as ProtocolEnvelope
+from adcp.types.core import PublishedPostAsset as PublishedPostAsset
+from adcp.types.core import PublisherDesignatedPreviewProvider as PublisherDesignatedPreviewProvider
+from adcp.types.core import PushNotificationConfig as PushNotificationConfig
+from adcp.types.core import ReferenceRenderer as ReferenceRenderer
+from adcp.types.core import ReferenceRendererProvenance as ReferenceRendererProvenance
+from adcp.types.core import ReportingAdjustment as ReportingAdjustment
+from adcp.types.core import ReportingAdjustmentReceipt as ReportingAdjustmentReceipt
+from adcp.types.core import ReportingCanonicalContentDigest as ReportingCanonicalContentDigest
+from adcp.types.core import ReportingCanonicalizationContract as ReportingCanonicalizationContract
+from adcp.types.core import ReportingCapabilities as ReportingCapabilities
+from adcp.types.core import ReportingConsumerStatus as ReportingConsumerStatus
 from adcp.types.core import ReportingConsumerStatusConsumerStatus as ReportingConsumerStatusValue
 from adcp.types.core import ReportingConsumerStatusFailureCode as ReportingConsumerFailureCode
 from adcp.types.core import ReportingConsumerStatusMismatchCode as ReportingConsumerMismatchCode
+from adcp.types.core import ReportingControlTotal as ReportingControlTotal
+from adcp.types.core import ReportingDeliveryCapabilities as ReportingDeliveryCapabilities
 from adcp.types.core import ReportingDeliveryCapabilitiesOperationsContact as ReportingOperationsContact
+from adcp.types.core import ReportingDeliveryConfiguration as ReportingDeliveryConfiguration
 from adcp.types.core import ReportingDeliveryConfigurationAuthoritativeParty as ReportingAuthoritativeParty
+from adcp.types.core import ReportingDeliveryOffering as ReportingDeliveryOffering
+from adcp.types.core import ReportingFileManifest as ReportingFileManifest
+from adcp.types.core import ReportingMaterialization as ReportingMaterialization
+from adcp.types.core import ReportingObligation as ReportingObligation
+from adcp.types.core import ReportingReceipt as ReportingReceipt
+from adcp.types.core import ReportingReportDefinition as ReportingReportDefinition
+from adcp.types.core import ReportingRevision as ReportingRevision
+from adcp.types.core import ReportingStatusIssue as ReportingStatusIssue
 from adcp.types.core import ReportingStatusIssueIssueState as ReportingIssueState
 from adcp.types.core import ReportingStatusIssueRecommendedAction as ReportingIssueRecommendedAction
+from adcp.types.core import ReportingWebhook as ReportingWebhook
+from adcp.types.core import ResponsePayloadJWSEnvelope as ResponsePayloadJwsEnvelope
+from adcp.types.core import SellerAgentReference as SellerAgentReference
+from adcp.types.core import SignalDefinitionEnrichment as SignalDefinitionEnrichment
+from adcp.types.core import SignalFilters as SignalFilters
+from adcp.types.core import SignalListing as SignalListing
+from adcp.types.core import SignalPricingOption as SignalPricingOption
+from adcp.types.core import SignalRef as SignalRef
+from adcp.types.core import SignalTargeting as SignalTargeting
+from adcp.types.core import SignalTargetingExpression as SignalTargetingExpression
+from adcp.types.core import SignalTargetingRules as SignalTargetingRules
+from adcp.types.core import TargetingOverlay as TargetingOverlay
+from adcp.types.core import TargetingOverlayInput as TargetingOverlayInput
 from adcp.types.core import TextAsset as TextContent
 from adcp.types.core import URLAsset as UrlContent
+from adcp.types.core import VASTAsset as VastAsset
+from adcp.types.core import VASTTrackerAsset as VastTrackerAsset
+from adcp.types.core import VendorPricingOption as VendorPricingOption
 from adcp.types.core import VideoAsset as VideoContent
 from adcp.types.core import WebhookAsset as WebhookContent
+from adcp.types.core import WebhookChallenge as WebhookChallenge
+from adcp.types.core import WebhookChallengeResponse as WebhookChallengeResponse
+from adcp.types.core import WholesaleFeedEvent as WholesaleFeedEvent
 from adcp.types.core import WholesaleFeedEventSignal as Signal
+from adcp.types.core import WholesaleFeedWebhook as WholesaleFeedWebhook
+from adcp.types.core import ZipAsset as ZipAsset
+from adcp.types.creative import GetCreativeDeliveryRequest as GetCreativeDeliveryRequest
+from adcp.types.creative import GetCreativeDeliveryResponse as GetCreativeDeliveryResponse
 from adcp.types.creative import GetCreativeDeliveryResponse as LegacyGetCreativeDeliveryResponse
+from adcp.types.creative import GetCreativeFeaturesRequest as GetCreativeFeaturesRequest
+from adcp.types.creative import GetCreativeFeaturesResponse as GetCreativeFeaturesResponse
 from adcp.types.creative import ListCreativesRequest as LegacyListCreativesRequest
+from adcp.types.creative import ListCreativesRequest as ListCreativesRequest
 from adcp.types.creative import ListCreativesResponse as LegacyListCreativesResponse
+from adcp.types.creative import ListCreativesResponse as ListCreativesResponse
 from adcp.types.creative import ListCreativesResponseCreativesItemSnapshot as Snapshot
+from adcp.types.creative import ListTransformersRequestCreativeAgent as ListTransformersRequest
+from adcp.types.creative import ListTransformersResponseCreativeAgent as ListTransformersResponse
 from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeBatchResponse
 from adcp.types.creative import PreviewCreativeBatchResponse as LegacyPreviewCreativeResponse2
 from adcp.types.creative import PreviewCreativeRequest as LegacyPreviewCreativeRequest
@@ -108,10 +279,69 @@ from adcp.types.creative import PreviewCreativeSingleResponse as LegacyPreviewCr
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeResponse3
 from adcp.types.creative import PreviewCreativeVariantResponse as LegacyPreviewCreativeVariantResponse
 from adcp.types.creative import SyncCreativesRequest as LegacySyncCreativesRequest
+from adcp.types.creative import SyncCreativesRequest as SyncCreativesRequest
+from adcp.types.creative import SyncCreativesResponse as SyncCreativesResponse
+from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
+from adcp.types.creative import ValidateInputRequest as ValidateInputRequest
+from adcp.types.creative import ValidateInputResponse as ValidateInputResponse
+from adcp.types.enums import AccountScope as AccountScope
+from adcp.types.enums import AdCPProtocol as AdcpProtocol
+from adcp.types.enums import AdvertiserIndustry as AdvertiserIndustry
+from adcp.types.enums import AssetContentType as AssetContentType
 from adcp.types.enums import AudienceSource as AudienceSource
+from adcp.types.enums import CanonicalMediaBuyActionMode as CanonicalMediaBuyActionMode
+from adcp.types.enums import CanonicalMediaBuyActionName as CanonicalMediaBuyActionName
+from adcp.types.enums import CatalogAction as CatalogAction
+from adcp.types.enums import CatalogItemStatus as CatalogItemStatus
+from adcp.types.enums import CatalogType as CatalogType
+from adcp.types.enums import ConsentBasis as ConsentBasis
+from adcp.types.enums import ContentIDType as ContentIdType
+from adcp.types.enums import CreativeAction as CreativeAction
+from adcp.types.enums import CreativeApprovalStatus as CreativeApprovalStatus
+from adcp.types.enums import CreativeStatus as CreativeStatus
+from adcp.types.enums import DeliveryStatus as DeliveryStatus
+from adcp.types.enums import DeliveryType as DeliveryType
+from adcp.types.enums import DevicePlatform as DevicePlatform
+from adcp.types.enums import DeviceType as DeviceType
+from adcp.types.enums import ErrorCode as ErrorCode
+from adcp.types.enums import EventType as EventType
+from adcp.types.enums import FeedFormat as FeedFormat
+from adcp.types.enums import MediaBuyActionMode as MediaBuyActionMode
+from adcp.types.enums import MediaBuyStatus as MediaBuyStatus
+from adcp.types.enums import MediaBuyValidAction as MediaBuyValidAction
+from adcp.types.enums import MediaChannel as MediaChannel
+from adcp.types.enums import PaymentTerms as PaymentTerms
 from adcp.types.enums import PixelTrackingEvent as PixelTrackerEvent
+from adcp.types.enums import PricingModel as PricingModel
+from adcp.types.enums import PrincipalKind as PrincipalKind
+from adcp.types.enums import PropertyType as PropertyType
+from adcp.types.enums import SignalAvailabilityType as SignalAvailabilityType
+from adcp.types.enums import SignalAvailabilityType as SignalCatalogType
+from adcp.types.enums import SnapshotUnavailableReason as SnapshotUnavailableReason
 from adcp.types.enums import TaskStatus as GeneratedTaskStatus
+from adcp.types.enums import TaskType as TaskType
+from adcp.types.enums import UpdateFrequency as UpdateFrequency
+from adcp.types.enums import WCAGLevel as WcagLevel
+from adcp.types.error_details import AuthorizationRequiredDetails as AuthorizationRequiredDetails
+from adcp.types.error_details import UnsupportedRefinementDimensionDetails as UnsupportedRefinementDimensionDetails
+from adcp.types.governance import CheckGovernanceRequest as CheckGovernanceRequest
+from adcp.types.governance import CheckGovernanceResponse as CheckGovernanceResponse
+from adcp.types.governance import GetPlanAuditLogsRequest as GetPlanAuditLogsRequest
+from adcp.types.governance import GetPlanAuditLogsResponse as GetPlanAuditLogsResponse
+from adcp.types.governance import ReportPlanAdjustmentRequest as ReportPlanAdjustmentRequest
+from adcp.types.governance import ReportPlanAdjustmentResponse as ReportPlanAdjustmentResponse
+from adcp.types.governance import ReportPlanOutcomeRequest as ReportPlanOutcomeRequest
+from adcp.types.governance import ReportPlanOutcomeResponse as ReportPlanOutcomeResponse
+from adcp.types.governance import SyncPlansRequest as SyncPlansRequest
+from adcp.types.governance import SyncPlansResponse as SyncPlansResponse
+from adcp.types.media_buy import AcceptProposalRequest as AcceptProposalRequest
+from adcp.types.media_buy import AcceptanceContext as AcceptanceContext
+from adcp.types.media_buy import AcceptancePolicyCatalog as AcceptancePolicyCatalog
+from adcp.types.media_buy import AcceptancePolicyProfile as AcceptancePolicyProfile
+from adcp.types.media_buy import AcceptancePolicyRequirement as AcceptancePolicyRequirement
+from adcp.types.media_buy import AcceptancePolicyRule as AcceptancePolicyRule
+from adcp.types.media_buy import BudgetChangeConstraints as BudgetChangeConstraints
 from adcp.types.media_buy import BuildCreativeError as LegacyBuildCreativeResponse5
 from adcp.types.media_buy import BuildCreativeEstimate as LegacyBuildCreativeResponse4
 from adcp.types.media_buy import BuildCreativeMultiSuccess as LegacyBuildCreativeErrorResponse
@@ -123,68 +353,310 @@ from adcp.types.media_buy import BuildCreativeResponseSubmitted as LegacyBuildCr
 from adcp.types.media_buy import BuildCreativeSuccess as LegacyBuildCreativeResponse1
 from adcp.types.media_buy import BuildCreativeSuccess as LegacyBuildCreativeSuccessResponse
 from adcp.types.media_buy import BuildCreativeVariantSuccess as LegacyBuildCreativeResponse3
+from adcp.types.media_buy import BuyProductsRequest as BuyProductsRequest
+from adcp.types.media_buy import CommercialTerms as CommercialTerms
+from adcp.types.media_buy import CompatibilityPurchaseCoordinatorInput as CompatibilityPurchaseCoordinatorInput
+from adcp.types.media_buy import ControlMediaBuyRequest as ControlMediaBuyRequest
+from adcp.types.media_buy import ControlMediaBuyResponse as ControlMediaBuyResponse
+from adcp.types.media_buy import CreateMediaBuyRequest as CreateMediaBuyRequest
 from adcp.types.media_buy import CreateMediaBuyRequest as LegacyCreateMediaBuyRequest
+from adcp.types.media_buy import CreateMediaBuyResponse as CreateMediaBuyResponse
+from adcp.types.media_buy import DeclineProposalsRequest as DeclineProposalsRequest
+from adcp.types.media_buy import DeclineProposalsResponse as DeclineProposalsResponse
 from adcp.types.media_buy import EffectiveTimingConstraints as EffectiveTimingChangeConstraints
+from adcp.types.media_buy import FlightChangeConstraints as FlightChangeConstraints
+from adcp.types.media_buy import GetMediaBuyDeliveryRequest as GetMediaBuyDeliveryRequest
+from adcp.types.media_buy import GetMediaBuyDeliveryResponse as GetMediaBuyDeliveryResponse
 from adcp.types.media_buy import GetMediaBuyDeliveryResponse as LegacyGetMediaBuyDeliveryResponse
+from adcp.types.media_buy import GetMediaBuysRequest as GetMediaBuysRequest
+from adcp.types.media_buy import GetMediaBuysResponse as GetMediaBuysResponse
 from adcp.types.media_buy import GetMediaBuysResponse as LegacyGetMediaBuysResponse
+from adcp.types.media_buy import GetProductsRequest as GetProductsRequest
 from adcp.types.media_buy import GetProductsRequest as LegacyGetProductsRequest
 from adcp.types.media_buy import GetProductsRequestBuyingMode as BuyingMode
 from adcp.types.media_buy import GetProductsRequestFieldsItem as GetProductsField
+from adcp.types.media_buy import GetProductsResponse as GetProductsResponse
 from adcp.types.media_buy import GetProductsResponse as LegacyGetProductsResponse
+from adcp.types.media_buy import GetReportingStatusRequest as GetReportingStatusRequest
+from adcp.types.media_buy import GetReportingStatusResponse as GetReportingStatusResponse
 from adcp.types.media_buy import GetReportingStatusResponseObligationCounts as ReportingObligationCounts
 from adcp.types.media_buy import ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest
 from adcp.types.media_buy import ListCreativeFormatsResponse as LegacyListCreativeFormatsResponse
+from adcp.types.media_buy import ListProductsRequest as ListProductsRequest
+from adcp.types.media_buy import ListProductsResponse as ListProductsResponse
+from adcp.types.media_buy import LogEventRequest as LogEventRequest
+from adcp.types.media_buy import LogEventResponse as LogEventResponse
+from adcp.types.media_buy import MediaBuyChangeTerm as MediaBuyChangeTerm
+from adcp.types.media_buy import MediaBuyChangeTermConstraints as MediaBuyChangeTermConstraints
+from adcp.types.media_buy import MediaBuyDeliveryWebhookResult as MediaBuyDeliveryWebhookResult
 from adcp.types.media_buy import MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemStatus as MediaBuyDeliveryStatus
 from adcp.types.media_buy import PackageCountConstraints as PackageCountChangeConstraints
 from adcp.types.media_buy import PackageRequest as LegacyPackageRequest
 from adcp.types.media_buy import PackageRequest as PackageRequest
 from adcp.types.media_buy import PackageUpdate as LegacyPackageUpdate
+from adcp.types.media_buy import PackageUpdate as PackageUpdate
+from adcp.types.media_buy import ProvidePerformanceFeedbackRequest as ProvidePerformanceFeedbackRequest
+from adcp.types.media_buy import ProvidePerformanceFeedbackResponse as ProvidePerformanceFeedbackResponse
+from adcp.types.media_buy import RefineProposalsRequest as RefineProposalsRequest
+from adcp.types.media_buy import RefineProposalsResponse as RefineProposalsResponse
+from adcp.types.media_buy import RegistryAcceptancePolicyProfileReference as RegistryAcceptancePolicyProfileReference
+from adcp.types.media_buy import RequestProposalsRequest as RequestProposalsRequest
+from adcp.types.media_buy import RequestProposalsResponse as RequestProposalsResponse
+from adcp.types.media_buy import SyncAudiencesRequest as SyncAudiencesRequest
+from adcp.types.media_buy import SyncAudiencesResponse as SyncAudiencesResponse
 from adcp.types.media_buy import SyncAudiencesSuccess as SyncAudiencesSuccessResponse
+from adcp.types.media_buy import SyncCatalogsInputRequired as SyncCatalogsInputRequired
+from adcp.types.media_buy import SyncCatalogsRequest as SyncCatalogsRequest
+from adcp.types.media_buy import SyncCatalogsResponse as SyncCatalogsResponse
+from adcp.types.media_buy import SyncCatalogsSubmitted as SyncCatalogsSubmitted
 from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsSuccessResponse
+from adcp.types.media_buy import SyncCatalogsWorking as SyncCatalogsWorking
+from adcp.types.media_buy import SyncEventSourcesRequest as SyncEventSourcesRequest
+from adcp.types.media_buy import SyncEventSourcesResponse as SyncEventSourcesResponse
+from adcp.types.media_buy import SyncReportingReceiptsRequest as SyncReportingReceiptsRequest
+from adcp.types.media_buy import SyncReportingReceiptsResponse as SyncReportingReceiptsResponse
+from adcp.types.media_buy import SyncReportingStatusRequest as SyncReportingStatusRequest
+from adcp.types.media_buy import SyncReportingStatusResponse as SyncReportingStatusResponse
 from adcp.types.media_buy import UpdateMediaBuyRequest as LegacyUpdateMediaBuyRequest
+from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyRequest
+from adcp.types.media_buy import UpdateMediaBuyResponse as UpdateMediaBuyResponse
+from adcp.types.pricing_options import CPAPricingOption as CpaPricingOption
+from adcp.types.pricing_options import CPCPricingOption as CpcPricingOption
+from adcp.types.pricing_options import CPCVPricingOption as CpcvPricingOption
 from adcp.types.pricing_options import CPMPricingOption as CpmAuctionPricingOption
 from adcp.types.pricing_options import CPMPricingOption as CpmFixedRatePricingOption
+from adcp.types.pricing_options import CPMPricingOption as CpmPricingOption
+from adcp.types.pricing_options import CPPPricingOption as CppPricingOption
+from adcp.types.pricing_options import CPVPricingOption as CpvPricingOption
+from adcp.types.pricing_options import FlatRatePricingOption as FlatRatePricingOption
+from adcp.types.pricing_options import PriceGuidance as PriceGuidance
+from adcp.types.pricing_options import TimeBasedPricingOption as TimeBasedPricingOption
 from adcp.types.pricing_options import TimeBasedPricingOptionParametersTimeUnit as TimeUnit
 from adcp.types.pricing_options import VCPMPricingOption as VcpmAuctionPricingOption
 from adcp.types.pricing_options import VCPMPricingOption as VcpmFixedRatePricingOption
+from adcp.types.pricing_options import VCPMPricingOption as VcpmPricingOption
+from adcp.types.property import CreatePropertyListRequest as CreatePropertyListRequest
+from adcp.types.property import CreatePropertyListResponse as CreatePropertyListResponse
+from adcp.types.property import DeletePropertyListRequest as DeletePropertyListRequest
+from adcp.types.property import DeletePropertyListResponse as DeletePropertyListResponse
+from adcp.types.property import GetPropertyListRequest as GetPropertyListRequest
+from adcp.types.property import GetPropertyListResponse as GetPropertyListResponse
+from adcp.types.property import ListPropertyListsRequest as ListPropertyListsRequest
+from adcp.types.property import ListPropertyListsResponse as ListPropertyListsResponse
+from adcp.types.property import UpdatePropertyListRequest as UpdatePropertyListRequest
+from adcp.types.property import UpdatePropertyListResponse as UpdatePropertyListResponse
+from adcp.types.protocol import GetAdCPCapabilitiesRequest as GetAdcpCapabilitiesRequest
+from adcp.types.protocol import GetAdCPCapabilitiesResponse as GetAdcpCapabilitiesResponse
 from adcp.types.protocol import GetAdCPCapabilitiesResponseCreative as Creative
 from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyAcceptancePolicyDiscovery as AcceptancePolicyDiscovery
+from adcp.types.protocol import GetPrincipalRequest as GetPrincipalRequest
+from adcp.types.protocol import GetPrincipalResponse as GetPrincipalResponse
+from adcp.types.protocol import GetTaskStatusRequest as GetTaskStatusRequest
+from adcp.types.protocol import GetTaskStatusResponse as GetTaskStatusResponse
+from adcp.types.protocol import ListTasksRequest as ListTasksRequest
+from adcp.types.protocol import ListTasksResponse as ListTasksResponse
+from adcp.types.protocol import SyncAgentNotificationConfigsRequest as SyncAgentNotificationConfigsRequest
+from adcp.types.protocol import SyncAgentNotificationConfigsResponse as SyncAgentNotificationConfigsResponse
+from adcp.types.protocol import SyncPrincipalRequest as SyncPrincipalRequest
 from adcp.types.protocol import SyncPrincipalRequestConfiguration as PrincipalConfiguration
+from adcp.types.protocol import SyncPrincipalResponse as SyncPrincipalResponse
+from adcp.types.registries import V1V2CanonicalFormatMappingRegistry as V1V2CanonicalFormatMappingRegistry
+from adcp.types.signals import ActivateSignalRequest as ActivateSignalRequest
+from adcp.types.signals import ActivateSignalResponse as ActivateSignalResponse
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalSuccessResponse
 from adcp.types.signals import GetSignalsRequest as GetSignalsDiscoveryRequest
 from adcp.types.signals import GetSignalsRequest as GetSignalsLookupRequest
+from adcp.types.signals import GetSignalsRequest as GetSignalsRequest
+from adcp.types.signals import GetSignalsResponse as GetSignalsResponse
+from adcp.types.sponsored_intelligence import SIGetOfferingRequest as SiGetOfferingRequest
+from adcp.types.sponsored_intelligence import SIGetOfferingResponse as SiGetOfferingResponse
+from adcp.types.sponsored_intelligence import SIInitiateSessionRequest as SiInitiateSessionRequest
+from adcp.types.sponsored_intelligence import SIInitiateSessionResponse as SiInitiateSessionResponse
+from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendMessageRequest
+from adcp.types.sponsored_intelligence import SISendMessageResponse as SiSendMessageResponse
+from adcp.types.sponsored_intelligence import SITerminateSessionRequest as SiTerminateSessionRequest
+from adcp.types.sponsored_intelligence import SITerminateSessionResponse as SiTerminateSessionResponse
+from adcp.types.trusted_match import ContextMatchRequest as ContextMatchRequest
+from adcp.types.trusted_match import ContextMatchResponseRouterPublisher as ContextMatchResponse
+from adcp.types.trusted_match import IdentityMatchRequest as IdentityMatchRequest
+from adcp.types.trusted_match import IdentityMatchResponseRouterPublisher as IdentityMatchResponse
 from adcp.types.trusted_match import Offer as TmpOffer
-from adcp.types.variants import SchemaVariant as SchemaVariant
 
 __all__ = [
+    "AcceptProposalRequest",
+    "AcceptanceContext",
+    "AcceptancePolicyCatalog",
     "AcceptancePolicyDiscovery",
+    "AcceptancePolicyProfile",
     "AcceptancePolicyProfileId",
+    "AcceptancePolicyProfileIds",
+    "AcceptancePolicyRequirement",
+    "AcceptancePolicyRule",
+    "Account",
+    "AccountAuthorization",
+    "AccountReference",
     "AccountReferenceById",
     "AccountReferenceByNaturalKey",
+    "AccountScope",
+    "AccountWithAuthorization",
+    "AcquireRightsRequest",
+    "AcquireRightsResponse",
+    "ActivateSignalRequest",
+    "ActivateSignalResponse",
     "ActivateSignalSuccessResponse",
+    "AdcpProtocol",
+    "AdvertiserIndustry",
+    "AgentDeclarations",
+    "AgentNotificationConfig",
+    "AgentNotificationConfigState",
+    "AgentReportingDestination",
+    "AgentReportingDestinationState",
+    "ArtifactWebhookPayload",
+    "AssetContentType",
+    "AssetVariant",
+    "AudienceEvidence",
     "AudienceSource",
     "AudioContent",
     "Authentication",
+    "AuthorizationRequiredDetails",
+    "BrandReference",
+    "BriefAsset",
+    "BudgetChangeConstraints",
+    "BusinessEntity",
+    "BuyProductsRequest",
     "BuyingMode",
+    "CalibrateContentRequest",
+    "CalibrateContentResponse",
+    "CanonicalFormatKind",
+    "CanonicalMediaBuyAction",
+    "CanonicalMediaBuyActionMode",
+    "CanonicalMediaBuyActionName",
+    "CanonicalProductAction",
+    "CanonicalProjectionReference",
+    "CardAsset",
+    "Catalog",
+    "CatalogAction",
+    "CatalogAsset",
+    "CatalogFieldBinding",
+    "CatalogFieldMapping",
+    "CatalogItemStatus",
+    "CatalogRequirements",
+    "CatalogType",
+    "CheckGovernanceRequest",
+    "CheckGovernanceResponse",
+    "CollectionList",
+    "CommercialTerms",
+    "CompatibilityPurchaseCoordinatorInput",
+    "ComplyTestControllerRequest",
+    "ComplyTestControllerResponse",
+    "ConsentBasis",
+    "ContentIdType",
+    "ContextMatchRequest",
+    "ContextMatchResponse",
+    "ContextObject",
+    "ControlMediaBuyRequest",
+    "ControlMediaBuyResponse",
+    "CpaPricingOption",
+    "CpcPricingOption",
+    "CpcvPricingOption",
     "CpmAuctionPricingOption",
     "CpmFixedRatePricingOption",
+    "CpmPricingOption",
+    "CppPricingOption",
+    "CpvPricingOption",
+    "CreateCollectionListRequest",
+    "CreateCollectionListResponse",
+    "CreateContentStandardsRequest",
+    "CreateContentStandardsResponse",
+    "CreateMediaBuyRequest",
+    "CreateMediaBuyResponse",
+    "CreatePropertyListRequest",
+    "CreatePropertyListResponse",
     "Creative",
+    "CreativeAction",
+    "CreativeApprovalStatus",
+    "CreativeAsset",
     "CreativeFilters",
     "CreativeManifest",
+    "CreativeStatus",
+    "CreativeVariant",
     "CssContent",
+    "DaastAsset",
+    "DaastTrackerAsset",
+    "DateRange",
+    "DatetimeRange",
+    "DaypartTarget",
+    "DeclineProposalsRequest",
+    "DeclineProposalsResponse",
+    "DeleteCollectionListRequest",
+    "DeleteCollectionListResponse",
+    "DeletePropertyListRequest",
+    "DeletePropertyListResponse",
     "DeliveryMeasurement",
+    "DeliveryStatus",
+    "DeliveryType",
+    "Deployment",
+    "DevicePlatform",
+    "DeviceType",
+    "DownstreamConnectionRequirement",
+    "Duration",
     "EffectiveTimingChangeConstraints",
-    "Format",
+    "Error",
+    "ErrorCode",
+    "EventType",
+    "ExtensionObject",
+    "FeedFormat",
+    "FlatRatePricingOption",
+    "FlightChangeConstraints",
     "FormatCard",
+    "FormatOptionReference",
     "GeneratedTaskStatus",
+    "GetAccountFinancialsRequest",
+    "GetAccountFinancialsResponse",
+    "GetAdcpCapabilitiesRequest",
+    "GetAdcpCapabilitiesResponse",
+    "GetBrandIdentityRequest",
+    "GetBrandIdentityResponse",
     "GetBrandIdentitySuccessResponse",
+    "GetCollectionListRequest",
+    "GetCollectionListResponse",
+    "GetContentStandardsRequest",
+    "GetContentStandardsResponse",
+    "GetCreativeDeliveryRequest",
+    "GetCreativeDeliveryResponse",
+    "GetCreativeFeaturesRequest",
+    "GetCreativeFeaturesResponse",
+    "GetMediaBuyArtifactsRequest",
+    "GetMediaBuyArtifactsResponse",
+    "GetMediaBuyDeliveryRequest",
+    "GetMediaBuyDeliveryResponse",
+    "GetMediaBuysRequest",
+    "GetMediaBuysResponse",
+    "GetPlanAuditLogsRequest",
+    "GetPlanAuditLogsResponse",
+    "GetPrincipalRequest",
+    "GetPrincipalResponse",
     "GetProductsField",
+    "GetProductsRequest",
+    "GetProductsResponse",
+    "GetPropertyListRequest",
+    "GetPropertyListResponse",
+    "GetReportingStatusRequest",
+    "GetReportingStatusResponse",
+    "GetRightsRequest",
+    "GetRightsResponse",
     "GetRightsSuccessResponse",
     "GetSignalsDiscoveryRequest",
     "GetSignalsLookupRequest",
+    "GetSignalsRequest",
+    "GetSignalsResponse",
+    "GetTaskStatusRequest",
+    "GetTaskStatusResponse",
     "GovernanceAgent",
     "Gtin",
     "HtmlContent",
+    "IdentityMatchRequest",
+    "IdentityMatchResponse",
     "ImageContent",
     "JavascriptContent",
     "KellerType",
@@ -202,7 +674,6 @@ __all__ = [
     "LegacyCreateMediaBuyRequest",
     "LegacyCreativeAsset",
     "LegacyCreativeFilters",
-    "LegacyFormat",
     "LegacyFormatId",
     "LegacyFormatReferenceStructuredObject",
     "LegacyGetCreativeDeliveryResponse",
@@ -230,53 +701,234 @@ __all__ = [
     "LegacyProductFilters",
     "LegacySyncCreativesRequest",
     "LegacyUpdateMediaBuyRequest",
+    "ListAccountChangesRequest",
+    "ListAccountChangesResponse",
+    "ListAccountsRequest",
+    "ListAccountsResponse",
+    "ListCollectionListsRequest",
+    "ListCollectionListsResponse",
+    "ListContentStandardsRequest",
+    "ListContentStandardsResponse",
+    "ListCreativesRequest",
+    "ListCreativesResponse",
+    "ListProductsRequest",
+    "ListProductsResponse",
+    "ListPropertyListsRequest",
+    "ListPropertyListsResponse",
+    "ListTasksRequest",
+    "ListTasksResponse",
+    "ListTransformersRequest",
+    "ListTransformersResponse",
+    "LogEventRequest",
+    "LogEventResponse",
+    "MarkdownAsset",
+    "McpWebhookPayload",
+    "MediaBuy",
+    "MediaBuyActionMode",
+    "MediaBuyAvailableAction",
+    "MediaBuyChangeTerm",
+    "MediaBuyChangeTermConstraints",
+    "MediaBuyChangeTermId",
     "MediaBuyDeliveryStatus",
+    "MediaBuyDeliveryWebhookResult",
+    "MediaBuyStatus",
+    "MediaBuyValidAction",
+    "MediaChannel",
     "NotificationAuthentication",
+    "NotificationConfig",
+    "OfferingAssetConstraint",
+    "OfferingAssetGroup",
+    "OptimizationGoal",
+    "Overlay",
     "Package",
     "PackageCountChangeConstraints",
     "PackageRequest",
+    "PackageSignalTargeting",
+    "PackageSignalTargetingGroup",
+    "PackageSignalTargetingGroups",
+    "PackageUpdate",
+    "PaginationRequest",
+    "PaginationResponse",
+    "PaymentTerms",
+    "PixelTrackerAsset",
     "PixelTrackerEvent",
     "PixelTrackerMethod",
     "Placement",
+    "PlacementPresentationDocument",
+    "PlacementPresentationReference",
+    "PlacementReference",
     "PlatformDeployment",
+    "PostalArea",
+    "PreviewRendererMetadata",
+    "PriceGuidance",
     "PricingCurrency",
+    "PricingModel",
     "PrimaryCountry",
+    "PrincipalChangedWebhook",
     "PrincipalConfiguration",
+    "PrincipalDeclarationsState",
+    "PrincipalKind",
+    "PrincipalState",
     "Product",
+    "ProductAllowedAction",
     "ProductFilters",
     "ProductFormatDeclaration",
+    "ProductSignalTargetingOption",
+    "Property",
+    "PropertyId",
     "PropertyIdActivationKey",
+    "PropertyListReference",
+    "PropertyTag",
     "PropertyTagActivationKey",
+    "PropertyType",
+    "Proposal",
+    "ProtocolEnvelope",
+    "ProvidePerformanceFeedbackRequest",
+    "ProvidePerformanceFeedbackResponse",
+    "PublishedPostAsset",
+    "PublisherDesignatedPreviewProvider",
+    "PushNotificationConfig",
     "Recovery",
+    "ReferenceRenderer",
+    "ReferenceRendererProvenance",
+    "RefineProposalsRequest",
+    "RefineProposalsResponse",
+    "RegistryAcceptancePolicyProfileReference",
+    "ReportPlanAdjustmentRequest",
+    "ReportPlanAdjustmentResponse",
+    "ReportPlanOutcomeRequest",
+    "ReportPlanOutcomeResponse",
+    "ReportUsageRequest",
+    "ReportUsageResponse",
+    "ReportingAdjustment",
+    "ReportingAdjustmentReceipt",
     "ReportingAuthoritativeParty",
     "ReportingBucket",
+    "ReportingCanonicalContentDigest",
+    "ReportingCanonicalizationContract",
+    "ReportingCapabilities",
     "ReportingConsumerFailureCode",
     "ReportingConsumerMismatchCode",
+    "ReportingConsumerStatus",
     "ReportingConsumerStatusValue",
+    "ReportingControlTotal",
+    "ReportingDeliveryCapabilities",
+    "ReportingDeliveryConfiguration",
+    "ReportingDeliveryOffering",
+    "ReportingFileManifest",
     "ReportingIssueRecommendedAction",
     "ReportingIssueState",
+    "ReportingMaterialization",
+    "ReportingObligation",
     "ReportingObligationCounts",
     "ReportingOperationsContact",
-    "SchemaVariant",
+    "ReportingReceipt",
+    "ReportingReportDefinition",
+    "ReportingRevision",
+    "ReportingStatusIssue",
+    "ReportingWebhook",
+    "RequestProposalsRequest",
+    "RequestProposalsResponse",
+    "ResponsePayloadJwsEnvelope",
+    "SellerAgentReference",
+    "SiGetOfferingRequest",
+    "SiGetOfferingResponse",
+    "SiInitiateSessionRequest",
+    "SiInitiateSessionResponse",
+    "SiSendMessageRequest",
+    "SiSendMessageResponse",
+    "SiTerminateSessionRequest",
+    "SiTerminateSessionResponse",
     "Signal",
+    "SignalAvailabilityType",
+    "SignalCatalogType",
+    "SignalDefinitionEnrichment",
+    "SignalFilters",
+    "SignalListing",
+    "SignalPricingOption",
+    "SignalRef",
+    "SignalTargeting",
+    "SignalTargetingExpression",
+    "SignalTargetingRules",
     "Snapshot",
+    "SnapshotUnavailableReason",
     "Source",
+    "SyncAccountsRequest",
+    "SyncAccountsResponse",
+    "SyncAgentNotificationConfigsRequest",
+    "SyncAgentNotificationConfigsResponse",
+    "SyncAudiencesRequest",
+    "SyncAudiencesResponse",
     "SyncAudiencesSuccessResponse",
+    "SyncCatalogsInputRequired",
+    "SyncCatalogsRequest",
+    "SyncCatalogsResponse",
+    "SyncCatalogsSubmitted",
     "SyncCatalogsSuccessResponse",
+    "SyncCatalogsWorking",
+    "SyncCreativesRequest",
+    "SyncCreativesResponse",
+    "SyncCreativesResponse1",
     "SyncCreativesSuccessResponse",
+    "SyncEventSourcesRequest",
+    "SyncEventSourcesResponse",
+    "SyncGovernanceRequest",
+    "SyncPlansRequest",
+    "SyncPlansResponse",
+    "SyncPrincipalRequest",
+    "SyncPrincipalResponse",
+    "SyncReportingReceiptsRequest",
+    "SyncReportingReceiptsResponse",
+    "SyncReportingStatusRequest",
+    "SyncReportingStatusResponse",
+    "TargetingOverlay",
+    "TargetingOverlayInput",
+    "TaskType",
     "TextContent",
+    "TimeBasedPricingOption",
     "TimeUnit",
     "TmpOffer",
     "Transform",
     "TrustedMatch",
+    "UnsupportedRefinementDimensionDetails",
+    "UpdateCollectionListRequest",
+    "UpdateCollectionListResponse",
+    "UpdateContentStandardsRequest",
+    "UpdateContentStandardsResponse",
+    "UpdateFrequency",
+    "UpdateMediaBuyRequest",
+    "UpdateMediaBuyResponse",
+    "UpdatePropertyListRequest",
+    "UpdatePropertyListResponse",
+    "UpdateRightsRequest",
+    "UpdateRightsResponse",
     "UrlContent",
+    "V1V2CanonicalFormatMappingRegistry",
+    "ValidateContentDeliveryRequest",
+    "ValidateContentDeliveryResponse",
+    "ValidateInputRequest",
+    "ValidateInputResponse",
+    "VastAsset",
+    "VastTrackerAsset",
     "VcpmAuctionPricingOption",
     "VcpmFixedRatePricingOption",
+    "VcpmPricingOption",
+    "VendorPricingOption",
     "VerifyBrandClaimPayload",
+    "VerifyBrandClaimRequest",
+    "VerifyBrandClaimResponse",
     "VerifyBrandClaimSignedResponse",
     "VerifyBrandClaimSignedSuccessPayload",
+    "VerifyBrandClaimsRequestBulk",
+    "VerifyBrandClaimsResponseBulk",
     "VideoContent",
+    "WcagLevel",
+    "WebhookChallenge",
+    "WebhookChallengeResponse",
     "WebhookContent",
+    "WholesaleFeedEvent",
+    "WholesaleFeedWebhook",
+    "ZipAsset",
 ]
 
 
@@ -286,9 +938,11 @@ __all__ = [
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
 __adcp_refused__ = {
+    "AcceptProposalResponse": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "AcceptedLoss": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.legacy_purchase_continuation_input.AcceptedLoss, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AssetInstance": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'asset_type': the bare union under it admits a different set",
     "AssetInstanceType": "NO-DOCUMENT-NO-SUBJECT: upstream's expression names no arms to resolve: Literal['image', 'video', 'audio', 'text', 'html', 'url', 'css', 'javascript', '",
+    "AuthorizedAgent": "NO-DOCUMENT-NO-SUBJECT: arm 'AuthorizedAgentsByPropertyId' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgents": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsByInlineProperties": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents3, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsByPropertyId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
@@ -297,35 +951,62 @@ __adcp_refused__ = {
     "AuthorizedAgentsBySignalId": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "AuthorizedAgentsBySignalTag": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.adagents.AuthorizedAgents6, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "BrandIdentity": "DOCUMENT-WE-DO-NOT-COMPILE: upstream declares it at adcp.types.domains.brand_discovery.Brand, which is DOCUMENT-WE-DO-NOT-COMPILE",
+    "BrandSource": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.registry.BrandSource, which is NO-DOCUMENT-NO-SUBJECT",
+    "BuyProductsResponse": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "CanonicalFormatKindStr": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "CatalogGroupBinding": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.requirements.catalog_field_binding.CatalogFieldBinding1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "CpmVendorPricingOption": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.vendor_pricing_option.VendorPricingOption1, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "CreateMediaBuyErrorResponse": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.CreateMediaBuyResponse2, which is NO-DOCUMENT-NO-SUBJECT",
+    "CreateMediaBuyResponse1": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.CreateMediaBuyResponse1, which is NO-DOCUMENT-NO-SUBJECT",
     "CreateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.CreateMediaBuyResponse1, which is NO-DOCUMENT-NO-SUBJECT",
+    "CreativeApproval": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.get_media_buys_response.CreativeApproval, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "CreditLimit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.CreditLimit, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "DurationUnit": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's own tree says no-such-module",
+    "Format": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.Format, which is NO-DOCUMENT-NO-SUBJECT",
     "FormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "GroupFormatAssetUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
     "IdentityMatchTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.trusted_match.identity_match_response.TmpxMacro, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "ImageFormatAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's expression names no arms to resolve: _format_asset_class('image')",
+    "LegacyFormat": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.format.Format, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "LegacyProductFormatDeclaration": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'format_kind': the bare union under it admits a different set",
+    "MEDIA_BUY_LEGACY_STATUS_VALUES": "NOT-A-TYPE: upstream's expression names no arms to resolve: frozenset({'active', 'canceled', 'paused', 'pending_creatives', 'pending_start',",
     "MediaBuyPackage": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.get_media_buys_response.Package, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "PrincipalAppliedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.sync_principal_response.Result13, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "PrincipalCurrentResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.get_principal_response.Result2, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "PrincipalReadFailedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.get_principal_response.Result5, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalReadResult": "NO-DOCUMENT-NO-SUBJECT: arm 'PrincipalCurrentResult' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "PrincipalRecognizedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.get_principal_response.Result3, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "PrincipalSyncFailedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.sync_principal_response.Result15, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "PrincipalSyncResult": "NO-DOCUMENT-NO-SUBJECT: arm 'PrincipalAppliedResult' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "PrincipalUnconfiguredResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.get_principal_response.Result, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "PrincipalValidatedResult": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.protocol.sync_principal_response.Result, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "ProviderRegistrationTmpxMacro": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.trusted_match.provider_registration.TmpxMacro, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "PublisherDomain": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.canonical_product.PublisherDomain, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "Refine": "NO-DOCUMENT-NO-SUBJECT: upstream's expression pins discriminator 'scope': the bare union under it admits a different set",
     "RepeatableAssetGroup": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream's expression names no arms to resolve: _repeatable_asset_group_class()",
+    "SchemaVariant": "NOT-A-TYPE: upstream declares it at adcp.types.variants.SchemaVariant, which is NOT-A-TYPE",
+    "Setup": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.Setup, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncAccountsAccount": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.account.sync_accounts_response.Account, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "SyncAudiencesAudience": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.media_buy.sync_audiences_request.Audience, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UnknownFormatAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.format.UnknownFormatAsset, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UnknownGroupAsset": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.core.format.UnknownGroupAsset, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "UpdateMediaBuyResponse1": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.UpdateMediaBuyResponse1, which is NO-DOCUMENT-NO-SUBJECT",
+    "UpdateMediaBuyResponse3": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.UpdateMediaBuyResponse3, which is NO-DOCUMENT-NO-SUBJECT",
     "UpdateMediaBuySuccessResponse": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.UpdateMediaBuyResponse1, which is NO-DOCUMENT-NO-SUBJECT",
     "VendorPricingOptionUnion": "NO-DOCUMENT-NO-SUBJECT: upstream's expression carries Annotated metadata to port",
+    "VerifyBrandClaimsErrorResponse": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsErrorResponse, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "VerifyBrandClaimsPayload": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsPayload, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "VerifyBrandClaimsRequest": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_request.VerifyBrandClaimsRequest, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "VerifyBrandClaimsResponse": "NO-DOCUMENT-NO-SUBJECT: arm 'VerifyBrandClaimsErrorResponse' of their union is DOCUMENT-NO-WORD-NO-IDENTITY",
     "VerifyBrandClaimsSignedResponse": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsSignedResponse, which is DOCUMENT-NO-WORD-NO-IDENTITY",
+    "VerifyBrandClaimsSignedSuccessPayload": "DOCUMENT-NO-WORD-NO-IDENTITY: upstream declares it at adcp.types.domains.brand.verify_brand_claims_response.VerifyBrandClaimsSignedSuccessPayload, which is DOCUMENT-NO-WORD-NO-IDENTITY",
     "_generated": "UNRESOLVABLE-UPSTREAM",
+    "aliases": "NOT-A-TYPE: upstream's own tree says module",
     "canonical_creative": "UNRESOLVABLE-UPSTREAM",
     "is_canonical_format_kind": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.is_canonical_format_kind, which is NO-DOCUMENT-NO-SUBJECT",
+    "project_geo_postal_areas": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.projections.project_geo_postal_areas, which is NO-DOCUMENT-NO-SUBJECT",
     "require_canonical_format_kind": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.canonical_creative.require_canonical_format_kind, which is NO-DOCUMENT-NO-SUBJECT",
+    "unwrap_enum_value": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.media_buy_status_helpers.unwrap_enum_value, which is NO-DOCUMENT-NO-SUBJECT",
     "v31": "UNRESOLVABLE-UPSTREAM",
     "validate_union": "NO-DOCUMENT-NO-SUBJECT: upstream declares it at adcp.types.validation.validate_union, which is NO-DOCUMENT-NO-SUBJECT",
     "validation": "UNRESOLVABLE-UPSTREAM",
