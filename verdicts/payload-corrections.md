@@ -8,44 +8,77 @@ validate, so not reproducing it is what makes the payload visible. **The correct
 the payload. Not to the class, not to an assertion, and not by deselection.**
 
 Figures are from `python -m survey causes`, which reads pytest's own report and groups by
-cause. Every one is over **4 chunks read** with `/proc/vmstat` at `oom_kill 75`.
+cause. Every one is over **4 chunks read** with `/proc/vmstat` at `oom_kill 75`, and every
+comparison is against this branch's own merge-base — **never against another lane's output
+directory.** The first version of §1 broke that rule and is withdrawn there.
 
 ---
 
-## 1. The three figures, and never one alone
+## 1. The figures — RE-MEASURED, and the first set WITHDRAWN
+
+**THE FIRST VERSION OF THIS SECTION WAS WRONG AND THE ERROR WAS THE BASELINE.** It quoted
+`--since /srv/ws/dropin-keyless`, which is **another lane's output directory**. Keyless
+graded `6d6c29586bea`, which is not an ancestor of this branch, so "passed 10,572 → 11,634
+(+1,062)" was the difference between **two changes** and not the effect of this one. The
+`nocanon status` before-figure of 216 came from the same place. Both are withdrawn. The
+instrument now refuses that comparison by reading the commit each run graded; it was right
+to.
+
+Re-measured against the **canonical trunk baseline**, which is this branch's own
+merge-base. Validated first: a run of 480e6ed58 built in this lane's own worktree
+reproduces `/srv/ws/dropin-trunk` exactly — 10,765 passed / 1,039 failed / 12 errors of
+13,817 collected, and 0 in every REGRESSED/FIXED bucket — so the banked baseline is sound
+and this lane's numbers sit on it.
 
 ```
-python -m survey causes /srv/ws/dropin-status --since /srv/ws/dropin-keyless
+python -m survey causes /srv/ws/dropin-status --since /srv/ws/dropin-trunk
+   graded 480e6ed58e2e -> 8845eef16efa          (one line of work)
 
-   passed   10,572 -> 11,634   (+1,062)
-   failed    1,244 ->  1,144   (-100)
-   corrections applied            48 rows over 23 files, 97 sites
-                                  (46 adding `status`, 2 adding `budget`)
-   4 chunks read                  oom_kill 75 before and after
+   COLLECTED              13,817 -> 15,285   (+1,468)
+   REGRESSED                                       0
+   FIXED                                         154
+   newly collected and failing                    39
+   corrections applied     48 rows / 23 files / 97 sites
+                           (46 adding `status`, 2 adding `budget`)
+   4 chunks read           oom_kill 75 before and after
 ```
 
-**And the delta is not all mine, so here is my own subject isolated by the shared rule.**
-`survey causes` partitions by cause and names the lane that owns each, so the `nocanon`
-rows are the attributable figure:
+**The three figures, together and never one alone: 154 FIXED, 0 REGRESSED, 48 corrections
+over 97 sites.** `passed 10,765 → 11,842` and `failed 1,051 → 936` are printed too but are
+**not subtractable** across a population that grew by 1,468 — a test that did not run before
+cannot have regressed, and the split above is the honest reading.
+
+**+1,468 more tests RUN is a result in its own right**, and it is the provisioning fix, not
+the payload rows: 39 of those newly-collected tests fail, and they are failures the suite
+could not previously see rather than failures this branch caused.
+
+### My own subject, isolated by the shared cause rule
 
 | `nocanon` cause | baseline | after | |
 |---|---|---|---|
-| `status`: the envelope requires it and the payload omits it | **216** | **32** | 184 closed |
+| `status`: the envelope requires it and the payload omits it | **258** | **72** | 186 closed |
 | the drop-in venv is missing a dependency upstream's suite imports | **58** | **6** | 52 closed |
-| a conditional the document states and the payload does not satisfy | 68 | 68 | not this lane's subject |
+| a conditional the document states and the payload does not satisfy | 69 | 69 | not this lane's subject |
 
-28 of the 32 remaining are the pinned row deliberately withdrawn (§2); the `anyOf` block
-that was 18 `CreateMediaBuyRequest.?` in the baseline residue is gone from it entirely.
+28 of the 72 remaining are the pinned row deliberately withdrawn (§2). The baseline's
+`status` row reads 258 rather than the 216 first quoted because `presence`'s landing
+reclassified payloads that used to fail on a `None` and now get far enough to fail on the
+missing `status` — same tests, further along.
 
-**THE GATE, by node-id set and not by count: tests that passed before and fail now — 0.**
+### The one reported regression, and why it is not one
 
-`survey causes --since` also prints `newly failing: 70`, and the label reads as a
-regression. Checked against the same two reports: **69 of the 70 were not collected in the
-baseline at all and 1 was skipped.** They are in `test_property_list_integration.py` (23),
-`conformance/signing/test_webhook_sender_e2e.py` (14) and the other files whose imports the
-baseline venv could not satisfy — the provisioning fix making previously *invisible*
-failures visible, which is the opposite of a regression. §5 and §8 carry the note back to
-the rule's owner.
+`survey causes` reports `REGRESSED: 1` —
+`tests/test_validate_platform_warnings.py::test_v3_reference_seller_passes_with_no_warnings`.
+**In the baseline that test was `skipped`, not passed**, so it cannot have regressed; the
+REGRESSED bucket is counting a skip as a pass. By node-id set, *passed-in-baseline ∧
+failing-now* is **0** and *failed-in-baseline ∧ passing-now* is **154**.
+
+The failure itself is real and belongs to another lane: `MediaBuyFeatures` resolves to
+`SignalsFeatures`, so `GetAdCPCapabilitiesResponseMediaBuy.features` refuses it — an
+ambiguous flat name. It pre-exists at **9 failures in the baseline** and reads **32** here,
+the extra 23 being instances in `test_property_list_integration.py` and this file, which
+only import at all because of the provisioning fix. Newly visible, not newly broken, and
+handed to whoever owns the flat-name resolution.
 
 ---
 
@@ -339,10 +372,14 @@ second is coverage arriving.
             approximated 383 facts in 148 documents     (unmoved)
 oom_kill    75 before and after every run
 chunks      4 read on every figure quoted here
-newly failing, by node-id SET (passed before, failing now)   0
-   (`--since` reports 70; 69 were not collected in the baseline and 1 was skipped)
+REGRESSED, by node-id set (passed in baseline, failing now)  0
+   (`--since` reports 1; in the baseline that test was SKIPPED, not passed)
+FIXED (failed in baseline, passing now)                      154
+newly collected and failing (never ran before)               39
 rows at a pinned node                                        0
 rows re-measured against upstream's pristine tree            48, 0 disagreeing
+baseline validated   a run of 480e6ed58 in this lane's own worktree reproduces
+                     /srv/ws/dropin-trunk exactly, 0 in every REGRESSED/FIXED bucket
 upstream's retained tests   byte-identical in the repository; corrected only by the
                             build, from committed data, never edited in place
 ```
