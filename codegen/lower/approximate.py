@@ -135,8 +135,8 @@ def approximate(
     """
     if kind not in ir.KINDS:
         raise BuildFailure(
-            f"{kind!r} is not one of section 2's two kinds of approximation, "
-            f"{ir.KINDS}: a third kind would be a figure nothing in section 8 grades"
+            f"{kind!r} is not one of the kinds of approximation, {ir.KINDS}: "
+            "a kind nothing in section 8 grades would be a figure with no reader"
         )
     return ir.Approximation(
         document=ref.document,

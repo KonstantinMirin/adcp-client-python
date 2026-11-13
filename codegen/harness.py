@@ -100,6 +100,7 @@ from pydantic import TypeAdapter, ValidationError
 from adcp.types._base import (
     APPROXIMATIONS,
     KINDS,
+    NARROWED,
     UNDERDETERMINED,
     Approximation,
     SchemaBound,
@@ -2515,6 +2516,11 @@ class AdmitsResult:
     #: Every distinct cause this pair's refusals carry, sorted -- the pair's own category,
     #: read off pydantic and never off a sentence.
     causes: tuple[str, ...] = ()
+    #: The causes a ``NARROWED`` declaration at this node ADMITS, kept beside
+    #: :attr:`causes` rather than removed from it: the measurement is what the class
+    #: did, and the declaration only decides how it READS.  A reader comparing two runs
+    #: needs the refusal to still be there.
+    declared_causes: tuple[str, ...] = ()
     #: How many witnesses the class refused.
     refused: int = 0
     #: How many witnesses the DOCUMENT admitted and the class was therefore asked about.
@@ -2529,12 +2535,32 @@ class AdmitsResult:
     detail: str = ""
 
 
+#: **A DOCUMENT KEYWORD -> THE ERROR CODES PYDANTIC RAISES WHEN AN ANNOTATION NARROWS ON IT.**
+#:
+#: Read by :func:`check_admits` so a ``NARROWED`` declaration can be matched against what the
+#: class actually did.  It is a LOOKUP and not a decision, which is the discriminator §2 draws:
+#: every value here is a string pydantic itself produces as an error ``type``, so a wrong entry
+#: surfaces as a declaration that admits nothing (``unproved``) rather than as a silent
+#: allowlist.  The DECISION is in the declaration the emitter wrote at the node.
+#:
+#: ``maxLength`` is the entry the first one was needed for: ``AdCPUrl`` is ``HttpUrl``, whose
+#: ``UrlConstraints(max_length=2083)`` raises ``url_too_long``, and
+#: ``docs/plan/rebuild-plan.md:504`` accepts that cap in capitals.
+_NARROWED_CAUSES: dict[str, tuple[str, ...]] = {
+    "maxLength": ("url_too_long", "string_too_long"),
+    "minLength": ("string_too_short",),
+    "format": ("url_parsing", "url_scheme", "url_syntax_violation"),
+    "pattern": ("string_pattern_mismatch",),
+}
+
+
 def check_admits(
     schema: dict,
     accept: Callable[[Any], Any],
     witnesses: Iterable[tuple[Any, str, str]],
     *,
     validator_cls: Any = None,
+    declared: Collection[str] = (),
 ) -> AdmitsResult:
     """Reading 1 check 1, over the CONSTRUCTED witness set of the node's whole subtree.
 
@@ -2618,11 +2644,42 @@ def check_admits(
             "builds over this node's subtree, so the class was never asked"
         )
         return res
-    if res.refused:
+    # **A NARROWING A DECLARATION ADMITS IS DECLARED, NOT FAILED**
+    # (``adcp-client-python-fq8d``, and :data:`adcp.types._base.NARROWED`).  Reading 2
+    # gives a WIDENING a declaration and gave a NARROWING none, so a decision the project
+    # had taken on purpose -- ``AdCPUrl``'s 2,083-character cap, which
+    # ``docs/plan/rebuild-plan.md:504`` accepts in capitals -- arrived here as a failure
+    # with nowhere to be written down.  ``declared`` is the set of CAUSES the pair's
+    # ``NARROWED`` declarations admit, computed by the caller from the declarations and
+    # never from a predicate over the cause's shape: section 2's registry rule is that an
+    # entry "admits that fact and not its kind", because "a rule admitting 'the sort of
+    # bound a URL type adds' would be invisible and permanent".
+    #
+    # **IT IS NOT AN EXEMPTION.**  The refusals are still counted, still carry their rows,
+    # and a cause NO declaration names still fails the pair -- so a declaration narrows
+    # what is reported and never what is measured.  And the undeclared half is reported
+    # FIRST, so a pair with one declared cause and one undeclared one reads as a failure.
+    undeclared = tuple(c for c in res.causes if c not in declared)
+    res.declared_causes = tuple(c for c in res.causes if c in declared)
+    if res.refused and undeclared:
         res.outcome = "model_refused_admitted"
         res.detail = (
             f"the class is NARROWER than its document: it refused {res.refused} of "
-            f"{res.offered} values the document admits, on {', '.join(res.causes)}"
+            f"{res.offered} values the document admits, on {', '.join(undeclared)}"
+            + (
+                f" (and on {', '.join(res.declared_causes)}, which a NARROWED "
+                "declaration admits)"
+                if res.declared_causes
+                else ""
+            )
+        )
+        return res
+    if res.refused:
+        res.outcome = "pass"
+        res.detail = (
+            f"the class refused {res.refused} of {res.offered} values the document admits, "
+            f"on {', '.join(res.declared_causes)} -- every one admitted by a NARROWED "
+            "declaration at this node"
         )
         return res
     res.outcome = "pass"
@@ -7200,8 +7257,21 @@ def _check_pair(
     #: ``drawn_from`` and not ``pair.schema``, which is every instance check's rule here:
     #: the witness is screened against the node as the document APPLIES it, so a class an
     #: inner node admits and the enclosing conjunction refuses is never offered.
+    #: **THE NARROWED DECLARATIONS AT THIS PAIR, as the CAUSES they admit.**  ``pair.declared``
+    #: is the pair's own declarations by keyword (``render.declared_at``'s containment rule);
+    #: the ones whose kind is ``NARROWED`` are the decisions that admit a refusal here, and
+    #: :data:`_NARROWED_CAUSES` is the one place a document keyword is mapped to the error
+    #: codes pydantic raises for it.  That map is a LOOKUP and not a decision -- its entries
+    #: are pydantic's own ``type`` strings -- which is why it lives beside the check while the
+    #: DECISION lives in the declaration the emitter wrote.
+    admits_declared = {
+        cause
+        for one in (*pair.declared, *composed_declarations(pair.model))
+        if one.kind == NARROWED
+        for cause in _NARROWED_CAUSES.get(one.keyword, ())
+    }
     rep.admits = (
-        check_admits(drawn_from, pair.accept, admitted)
+        check_admits(drawn_from, pair.accept, admitted, declared=admits_declared)
         if admitted
         else AdmitsResult(outcome="unrun", detail=admits_absent)
     )

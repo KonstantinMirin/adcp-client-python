@@ -361,7 +361,7 @@ class Approximation(NamedTuple):
     #: The keyword whose fact is dropped.  It is a keyword the DOCUMENT states, by
     #: section 9's "Never approximate on a keyword the walk itself inserted".
     keyword: str
-    #: ``WIDENED`` or ``UNDERDETERMINED`` (section 2's two kinds, never summed).
+    #: ``WIDENED``, ``NARROWED`` or ``UNDERDETERMINED`` -- never summed.
     kind: str
     #: The ``codegen.keywords.Rung`` this drop took, by value.
     rung: str
@@ -374,13 +374,43 @@ class Approximation(NamedTuple):
     attribution: str
 
 
-#: The two kinds of approximation section 2 names, which are NEVER summed: "WIDENED --
-#: the annotation admits a value the document refuses ... UNDERDETERMINED -- the
-#: annotation admits exactly what the document admits, and the VALUE it constructs is
-#: not determined by the document."  Declared beside :class:`Approximation` because the
-#: artifact carries the word and both halves read it.
+#: The kinds of approximation, which are NEVER summed: "WIDENED -- the annotation admits
+#: a value the document refuses ... UNDERDETERMINED -- the annotation admits exactly what
+#: the document admits, and the VALUE it constructs is not determined by the document."
+#: Declared beside :class:`Approximation` because the artifact carries the word and both
+#: halves read it.
 WIDENED, UNDERDETERMINED = "WIDENED", "UNDERDETERMINED"
-KINDS = (WIDENED, UNDERDETERMINED)
+
+#: **NARROWED: the annotation REFUSES a value the document admits, by a decision taken
+#: on purpose** (``adcp-client-python-fq8d``).
+#:
+#: The record had two kinds and both face one way, so a decided NARROWING had nowhere to
+#: be written down -- and ``./check``'s ``approximated`` counted one direction only.  The
+#: cost of that absence is measured: the first full ``./verify`` reported **803 pairs**
+#: ``model_refused_admitted``, of which the largest block is ``AdCPUrl``'s 2,083-character
+#: cap -- a narrowing ``docs/plan/rebuild-plan.md:504`` ACCEPTS in capitals ("**`AdCPUrl`
+#: IS `HttpUrl`, AND ITS 2,083-CHARACTER CAP IS ACCEPTED**") and which therefore read as
+#: 218 failures of a decision the project had already made.  A decision with no slot in
+#: the record is indistinguishable from a defect, which is the whole reason this kind
+#: exists.
+#:
+#: **IT IS NOT AN EXEMPTION AND IT IS NOT A RATCHET.**  A ``NARROWED`` declaration carries
+#: the same four things every other kind does -- the document, the pointer, the keyword
+#: whose value is refused, and the ``fact`` in the document's own spelling -- so the
+#: verifier can still check that the narrowing is REAL (a declaration about nothing is
+#: ``unproved``, exactly as for a widening) and a reader can still find the document's
+#: statement and read it.  What it changes is only that the verdict says "declared"
+#: instead of "failed".
+#:
+#: **AND READING 1 IS NOT WEAKENED BY IT.**  Reading 1 is that a class accepts exactly
+#: what its document accepts; a narrowing BREAKS it, and declaring one does not mend it.
+#: What a declaration does is make the break REVIEWABLE: it says which decision took it,
+#: so an undeclared narrowing is a defect and a declared one is a choice somebody can
+#: disagree with.  The two must never be counted together, which is why ``KINDS`` is a
+#: tuple a reader iterates and never a total.
+NARROWED = "NARROWED"
+
+KINDS = (WIDENED, NARROWED, UNDERDETERMINED)
 
 #: **The attribute the emitted artifact carries its declarations under**, named here for
 #: the reason :class:`Approximation` is declared here: three writers spell it -- a class

@@ -49,7 +49,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from adcp.types._base import KINDS, UNDERDETERMINED, WIDENED, Approximation, SchemaRef
+from adcp.types._base import (
+    KINDS,
+    NARROWED,
+    UNDERDETERMINED,
+    WIDENED,
+    Approximation,
+    SchemaRef,
+)
 from adcp.types._runtime import Presence, Rule, ValueRule
 
 # §2's one exception, named here because :meth:`ClassDecl.__post_init__` raises it.
@@ -60,7 +67,7 @@ from codegen.refusal import BuildFailure
 
 #: **Section 7's ``Approximation``, bound here and declared in the artifact's own
 #: package.**  The section's table puts it in this layer -- "document, pointer, keyword,
-#: kind (WIDENED / UNDERDETERMINED), rung, the fact the annotation does not carry in the
+#: kind (WIDENED / NARROWED / UNDERDETERMINED), rung, the fact the annotation does not carry in the
 #: document's own spelling, and the attribution" -- and its text puts the VALUE in the
 #: emitted module: "``render.py`` writes ``__adcp_approximations__`` onto the class ... and
 #: ``verify/`` reads it as a consumer reads any other class attribute."
@@ -72,7 +79,7 @@ from codegen.refusal import BuildFailure
 #: ``adcp.types._base.Approximation``'s own docstring carries the reasoning.  The two
 #: kind words travel with it, for the reason the class does: the emitted module spells
 #: one of them and both halves read it.
-_SECTION_7_APPROXIMATION = (Approximation, WIDENED, UNDERDETERMINED, KINDS)
+_SECTION_7_APPROXIMATION = (Approximation, WIDENED, NARROWED, UNDERDETERMINED, KINDS)
 
 #: Absent is not the same as ``None``: a property whose schema declares
 #: ``default: null`` has a default and it is ``None``.
