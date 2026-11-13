@@ -629,3 +629,109 @@ could not see either cause — 18 failures read as unowned residue with signatur
 (`assert (not True)`, `assert (ReportingSourceErrorV1(…)`) that name a symptom and no cause.
 A rule can be written against `status [missing]`; none can be written against `assert (not
 True)`.
+
+---
+---
+
+# Appendix 4 — against the canonical baseline: 0 in every direction, and the row is closed
+
+## My delta, certified by the instrument rather than assembled
+
+```
+graded 480e6ed58e2e -> 1e80f401d0c8        (no ancestry warning: one line of work)
+passed 10765 -> 10765  (+0)
+failed  1051 ->  1051  (+0)
+REGRESSED (ran before, passed before, fails now):   0
+newly collected and failing (never ran before):     0
+FIXED (ran before, failed before, passes now):      0
+no longer collected (was failing, absent now):      0
+```
+
+**Zero is the predicted result and the honest one.** Of the two commits on this branch, the
+packaging fix is invisible to a drop-in run — `regenerate` copies the tree rather than
+installing a wheel, which is exactly why the defect survived a release — and three
+`logger.debug` lines move no outcome by construction. A change that moves nothing should
+report zero, measured, against a baseline on its own line of work. 4 chunks read.
+
+## And the record on the earlier `+24 / −24`, which I could not certify when I quoted it
+
+Neither `/srv/ws/dropin-full` nor `/srv/ws/dropin-reporting` records the commit it graded —
+both predate that field — so the "same line of work" property could not be read off the
+artifacts. **It can be established from the data, and I have done so rather than leave the
+figure standing on trust:**
+
+| | |
+|---|---|
+| node-id sets | **identical**, 13,818 each, 0 only-in-either — so no newly-collected confusion |
+| FIXED | **24**, all in `tests/test_legacy_asset_helpers.py` (14) and `tests/test_spec_compat_hooks.py` (10) |
+| REGRESSED | **0** |
+| any other movement | **0** |
+
+The only movement between those two runs is in the two files the `_legacy_assets` fix
+touches. So the figure survives, and it now rests on a per-test diff rather than on a
+difference of two totals. Had there been unrelated movement, this is where it would have
+shown.
+
+---
+
+## `aliasnote / the asset union read as a structure`: 2 reported, **0 real**
+
+Both remaining members are filed under this row by a SIGNATURE COLLISION, not by cause:
+
+**1. `tests/test_rootmodel_proxy.py::test_retained_rootmodel_unions_have_getattr`** —
+`ImportError: cannot import name 'VastAsset' from …asset_union`. The derivation this row is
+about is never called. The word resolves perfectly well on our flat surface —
+`adcp.types.VastAsset` is `VASTAsset` at `core/assets/vast-asset.json#` — and what fails is
+the import from **upstream's own generated module path**, which exports `AssetVariantVast`
+instead. `VastAsset1`, upstream's second per-variant class under a `RootModel`, has no subject
+of ours at all: our emission is one class per document, not a wrapper over two variants.
+**→ `namereach`'s row**, "a word upstream publishes that resolves at no module of ours".
+
+**2. `tests/conformance/reporting/test_reporting_buyer_submission_validation.py::test_cached_evidence_has_no_mutable_views_or_raw_private_diagnostics`** —
+`IndexError: tuple index out of range` on `result.outcomes[1]`. The same STRING the old
+`get_args(AssetVariant)[0]` defect produced, and a different cause entirely. The DEBUG line
+added at `submissions/submit.py:159` last round names it:
+
+```
+receipt submission refused: ValidationError: status [missing]
+```
+
+So `outcomes` is empty because the submission was refused for the missing envelope `status`,
+and `TRANSPORT_UNCERTAIN` was returned. **→ `nocanon`'s status row**, and it is attributable
+only because the swallow now reports.
+
+**So this row is closed at 0, and the swallow work is what let its last member be
+re-attributed rather than guessed at.**
+
+---
+
+## `aliasnote / STATUS_READ_FAILED masking the code that names the defect`, 101 — still not this lane's, and now provable
+
+I have reported this twice; here is the evidence rather than the claim. With the DEBUG line
+in place, the masked cause reads:
+
+```
+get_reporting_status refused: ValidationError:
+  completed.periods.periods.0.schedule.period_anchor   [required],
+  completed.periods.periods.0.schedule.period_timezone [required]
+```
+
+`core/reporting-schedule.json#/allOf/0` states
+`if {alignment: const billing_cycle} then {required: [period_anchor, period_timezone]}`, and
+the fixtures' schedule is
+`{"period_duration": "P1M", "alignment": "billing_cycle", "delivery_sla": "P1D"}`. The
+refusal is correct; the payload contradicts its document.
+
+The 101 break down by the code each test expected — `LEDGER_COUNT_MISMATCH` 20,
+`INVALID_RECEIPT_CHAIN` 14, `INVALID_LEDGER_DEPENDENCY` 9, `IMMUTABLE_RECORD_CHANGED` 8,
+`SNAPSHOT_CHANGED` 6, `LEDGER_LIMIT_EXCEEDED` 4 — and every one of them is a chain diagnosis
+that cannot run because the response never parsed. **The mask is upstream's own asserted
+contract** (`test_response_validation_failure_stays_remote_typed_and_redacted` pins the code,
+the redaction and `__context__ is None`), so there is nothing here for this lane to repair:
+the payload correction is `nocanon`'s, and it is the same family as their `status` row.
+
+Suggested rule correction, so a reader does not re-diagnose it: rename to
+`the schedule payload omits period_anchor/period_timezone under alignment=billing_cycle` and
+point it at `nocanon`. The `STATUS_READ_FAILED` string is a symptom of a swallow, and a rule
+keyed on a symptom attributes the work to whoever owns the swallow rather than to whoever
+owns the cause — which is the general finding from Appendix 2, read back on the table itself.
