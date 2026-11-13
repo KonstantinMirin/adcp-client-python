@@ -52,7 +52,7 @@ _STATUS = re.compile(r"^E?\s*status\n(?:E\s+)?\s*Field required", re.M)
 #: fault in the warning those paths already emit, as ``loc.path [type_code]``.
 #:
 #: The type codes below are the ones :data:`adcp.types._base.OmittedNotNull` produces for a
-#: null: it strikes the null arm, so what refuses is the TYPE's own keyword and the row
+#: null: it strikes the null branch, so what refuses is the TYPE's own keyword and the row
 #: reads ``string_type``/``list_type``/``model_type`` rather than anything naming null.
 #: That is why a redacted fault with one of them is the route-split cause -- stated here
 #: because it is an INFERENCE from the marker's own documented behaviour and not, like
@@ -70,7 +70,7 @@ RULES: tuple[tuple[str, str, Any], ...] = (
     ),
     (
         "presence",
-        "a swallowed refusal whose redacted fault is a struck null arm",
+        "a swallowed refusal whose redacted fault is a struck null branch",
         lambda nid, txt: bool(_SWALLOWED_NULL.search(txt)),
     ),
     (

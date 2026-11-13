@@ -8,10 +8,10 @@ judgement call.
 
 ---
 
-## 1. REQUIREDNESS IS A CONJUNCTION. Never read an arm in isolation.
+## 1. REQUIREDNESS IS A CONJUNCTION. Never read a branch in isolation.
 
 A property's requiredness is the conjunction of its own node and **every ancestor that applies
-to the same instance** — an `allOf` branch, or a `oneOf` arm inside a parent that itself states
+to the same instance** — an `allOf` branch, or a `oneOf` branch inside a parent that itself states
 `required`. draft-07 applies all of them to the instance at that pointer.
 
 **Measured cost, twice in one session.** `creative/preview-creative-response.json`:
@@ -23,8 +23,8 @@ to the same instance** — an `allOf` branch, or a `oneOf` arm inside a parent t
    oneOf/1   "PreviewBatchResultError"     required: ['errors']     success: const false
 ```
 
-Reading each arm's own `required` produced "two branches whose pinned discriminator is
-optional" — a finding that does not exist. `success` is required by the parent; the arms pin it
+Reading each branch's own `required` produced "two branches whose pinned discriminator is
+optional" — a finding that does not exist. `success` is required by the parent; the branches pin it
 and simply do not restate it. The same error, one level up, is why `status` looked optional on
 task responses: it comes from `core/protocol-envelope.json` through an `allOf`.
 
@@ -72,7 +72,7 @@ success: Literal[True] | None = None     with a CALLABLE discriminator -> dispat
 
 If a document ever pins a discriminator and does not require it (none do today), the dispatch
 must be the **callable** one the project already uses for `_BRANCH_PRESENCE`, falling back to the
-arms' distinct required-key sets. And never `Optional[Literal[...]]` under a field-name
+branches' distinct required-key sets. And never `Optional[Literal[...]]` under a field-name
 discriminator: pydantic refuses to build the adapter and takes every class of that union with it
 (`adcp-client-python-82m.23`).
 
