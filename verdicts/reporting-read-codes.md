@@ -735,3 +735,96 @@ Suggested rule correction, so a reader does not re-diagnose it: rename to
 point it at `nocanon`. The `STATUS_READ_FAILED` string is a symptom of a swallow, and a rule
 keyed on a symptom attributes the work to whoever owns the swallow rather than to whoever
 owns the cause — which is the general finding from Appendix 2, read back on the table itself.
+
+---
+---
+
+# Appendix 5 — the fast runner reproduces the banked baseline, and 11 more residue failures are named
+
+## My delta: 0 by construction, and the run reproduces trunk to the test
+
+After the rebase this branch carries **one commit over trunk and it is a verdict file** — both
+source commits are in trunk (`253f504de`, `018c77222`). So the delta is zero by construction,
+and the run confirms it by reproducing the banked trunk figures exactly:
+
+| | banked trunk | this branch's run |
+|---|---|---|
+| passed | 11,842 | **11,842** |
+| failed | 925 | **925** |
+| error | 11 | **11** |
+| skipped | 2,507 | **2,507** |
+| collected | 15,286 | 15,286 (`chunks read: 4`) |
+
+`--since /srv/ws/dropin-trunk2` could not be read — that directory has no chunk reports yet
+(`no chunk reports under …/junit; was the run given --run?`), so the baseline run had not
+finished writing when I measured. The identity above is the same statement by other means,
+and it independently confirms the runner's determinism claim from a different worktree.
+
+**The collected SET grew from 13,817 to 15,286** with the provisioning fix, which is why the
+cause table's figures move without anything regressing: 1,469 more tests run, and more causes
+become visible. `nocanon`'s status row reads 72 here against the 258 quoted on the smaller
+set — the same reclassification effect in the other direction, and not a result.
+
+## My two rows, restated against the current run
+
+* `2 aliasnote the asset union read as a structure` — **0 real**, both signature collisions,
+  evidenced in Appendix 4. Unchanged.
+* `101 aliasnote STATUS_READ_FAILED masking the code that names the defect` — **not this
+  lane's**, evidenced in Appendix 4 with the masked cause now readable. Unchanged.
+
+So this lane's row is closed and has been through two baselines.
+
+---
+
+## 11 residue failures are upstream's `RootModel` wrapper, asserted by their tests
+
+`AttributeError: 'str' object has no attribute 'root'`, 11 failures, **0 with a frame in
+`src/adcp/`** — the raise is in the test's own assertion line every time:
+
+```
+tests/conformance/reporting/test_reporting_buyer_frozen_read.py              6
+tests/conformance/reporting/test_reporting_reconciliation_profiles.py        3
+tests/conformance/reporting/test_reporting_reconciliation_boundaries.py      1
+tests/test_negotiated_catalog_purchase.py                                    1
+```
+
+Two of them read:
+
+```python
+assert client.list_requests[0].criteria.offer_filters.countries[0].root == "US"
+assert projected.resource.native_version_ref.root == native
+```
+
+**Measured, not asserted.** `core/country-code.json` states
+`{"type": "string", "pattern": "^[A-Z]{2}$"}` — a constrained SCALAR. §5 lowers such a node to
+an annotated scalar with **no class**, so there is nothing for a `RootModel` to be:
+
+```
+ours:  typing.Annotated[str, …pattern='^[A-Z]{2}$'…]      is a class?  False
+ProductOfferFilters.model_validate({"countries": ["US"]}).countries[0]
+  ==  'US'          has .root?  False
+```
+
+So the value IS the string, `countries[0] == "US"` passes, and `.root` asserts upstream's
+generator's wrapper. **→ a test EXPECTATION on an implementation detail: named, left
+failing.** No model is weakened to grow a wrapper that no document asks for, and the fix an
+alias could offer does not exist — there is no object to point at.
+
+**This family is already recognised in this repository** and only the spelling is new:
+`survey/upstream_test_character.CAUSE_RULES` carries
+`their-RootModel-wrapper-for-a-constrained-scalar`, keyed on
+`"is an invalid keyword argument for int()"` — the CONSTRUCTION spelling of the same cause.
+These 11 are the ATTRIBUTE-READ spelling of it and no rule claims them.
+
+**Suggested `survey causes` rule** (that file is `drawcost`'s, so this is a proposal and not
+an edit):
+
+> `'str' object has no attribute 'root'` →
+> *"upstream's `RootModel` wrapper for a constrained scalar; §5 lowers the node to an
+> annotated scalar with no class, so the value is the scalar and `.root` asserts the
+> wrapper"*, attributed to whichever lane owns the drop-in notes rather than to a repair,
+> because there is nothing to repair.
+
+With it, the residue drops by 11 and the table stops showing a known cause as unowned — the
+same correction the `STATUS_READ_FAILED` row needs, for the same reason: a rule keyed on a
+symptom leaves a diagnosed cause looking undiagnosed.
