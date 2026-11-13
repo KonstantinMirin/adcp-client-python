@@ -353,15 +353,16 @@ defect. With those out, **ours in the `status` family is 38, not 39** — the re
 
 ### One note back on the shared instrument
 
-`survey causes --since` reported **70 newly failing** for this run, and the label reads as a
-regression. Checked by node-id set against the same two reports: **69 of the 70 were not
-collected in the baseline at all and 1 was skipped; the count of tests that passed before and
-fail now is 0.** They are in `test_property_list_integration.py` (23),
-`conformance/signing/test_webhook_sender_e2e.py` (14) and the other files whose imports the
-baseline venv could not satisfy — so they are the provisioning fix making previously
-invisible failures visible, which is the opposite of a regression. The rule may want to split
-*passed-before-now-failing* from *newly-collected-and-failing*; the first is a gate, the
-second is coverage arriving.
+The `newly failing` label this section originally argued with is **gone** — `--since` now
+splits `REGRESSED` from `newly collected and failing`, and the reverse into `FIXED` and
+`no longer collected`, which is exactly the distinction that was missing. That reading is
+now the instrument's and no longer this verdict's to make.
+
+**One thing is left, and it is small: `REGRESSED` counts a SKIP as a pass.** It reports 1
+for `test_v3_reference_seller_passes_with_no_warnings`, whose baseline outcome is `skipped`.
+A test that did not run cannot have regressed, by the same argument the split is built on —
+so the bucket wants `was == "passed"` rather than `was != failed`. By node-id set with that
+condition applied, this branch's regressions are **0**.
 
 ---
 
