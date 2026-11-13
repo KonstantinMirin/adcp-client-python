@@ -64,9 +64,41 @@ subtraction, and the single remaining failure in its first cause is the `_genera
 documented as FINDING 1a (`tests/test_response_str.py` reads 31 passed / 1 failed, the one
 being `TestBuildCreativeResponseMessage::test_error`).
 
-**Both artifacts above collect 13,818.** The provisioning fix has since taken trunk to
-**15,285** — 1,468 more tests actually running — so every per-cause count in this file is
-on the smaller population and the two open causes below want re-reading on the larger one.
+### Re-read on the CANONICAL trunk baseline, which is now banked
+
+`/srv/ws/dropin-trunk` graded **`480e6ed58e2e`**, and that commit is an ancestor of this
+branch's HEAD — so it is this lane's baseline, ancestral, with no warning. Read directly:
+
+| | |
+|---|---|
+| collected | 13,817 (4 chunks) |
+| passed / failed / errors | 10,765 / 1,039 / 12 |
+| `namereach` `operation_id` | **31** — unchanged |
+| `namereach` a word resolving at no module | **22** — unchanged |
+| `namereach` `model_summary` | **1** — this lane's −18 landed |
+
+**So every count in this file holds on the canonical baseline**, and both open causes are
+untouched by the route split, the anyOf message fix and the revived census gates.
+
+**And one more correction, same direction as the other two.** An earlier draft of this
+section said trunk now collects **15,285**. It does not: the canonical trunk baseline
+collects **13,817**, the same population as before. 15,285 is the *status* lane's tree
+(`dropin-status`, 15,286 entries, graded `9f48d034b3c4`, **not an ancestor of trunk**) — so
+that figure was read off yet another lane's artifact, which is the very mistake this
+section exists to correct. Withdrawn.
+
+**This branch has NO behavioural delta against `dropin-trunk`.** Its only remaining commits
+are this verdict, `verdicts/the-dead-patch-layer.md` and the `survey/upstream_machinery.py`
+patch-layer mode — nothing under `src/`, and `survey/` and `verdicts/` are not laid into a
+drop-in tree. A run of this branch would reproduce `dropin-trunk` exactly, so one was
+started, found to be redundant, and killed rather than left to hold the lock.
+
+The gates that read the file this branch does change were compared against trunk's version
+of it: `tests_emit/test_the_restored_machinery.py`,
+`test_the_restored_flat_surface.py`, `test_the_adapter_writer_owns_its_paths.py`,
+`test_prose_resolves.py` and `test_every_upstream_name_resolves_or_is_noted.py` read
+**49 failed / 1,400 passed on both sides** — identical, so the new mode adds none. The
+`LIVE-RESTORE` classification is also unchanged (18 / 13 / 12 / 4 / 1).
 
 The other two causes are unmoved on purpose: both are measurements, and neither admits a
 change inside this lane's write scope. `tests/test_postal_area_compat.py` holds at 21
@@ -317,10 +349,19 @@ The second clause claims by FILE NAME. The file's 21 failures are **17 + 4**:
 
   All four expect `postal system .* is not valid for country`. Our tree **fails closed
   correctly** — `TypeAdapter(PostalArea).validate_python({"country": "US", "system":
-  "plz", ...})` raises — but with the generic branch message
-  `is not valid under any of the 2 branches [type=anyOf]`. No name is unresolved here;
-  it is an error-message fidelity question over `core/postal-area.json`'s country↔system
-  pairing, and it belongs to whichever lane owns conditional messages, not to `namereach`.
+  "plz", ...})` raises — but not with upstream's named message. No name is unresolved
+  here; it is an error-message fidelity question over `core/postal-area.json`'s
+  country↔system pairing, and it belongs to whichever lane owns conditional messages, not
+  to `namereach`.
+
+  **Re-read on `dropin-trunk`: still 4, and the anyOf message fix moved them without
+  closing them.** The message was the opaque one-liner `is not valid under any of the 2
+  branches [type=anyOf]`; it now reads `9 validation errors for …` with each branch's
+  failures enumerated. That is strictly better and it is why the fix was worth having, but
+  the regex these four assert still does not match, so the four remain. The rule at
+  `survey/causes.py:126` still carries `or "test_postal_area" in nid`, so `namereach`'s
+  row of 22 still contains them. **17 of that 22 are this cause; 4 are the message; 1 is
+  `tests/test_freezegun_models.py`, which the rule claims correctly.**
 
 A fifth, `tests/test_freezegun_models.py`, matches the first clause
 (`resolves at no module`) for a word that is not `PostalArea` — that one the rule claims
