@@ -1421,6 +1421,28 @@ def build(ns: argparse.Namespace) -> int:
     rev = verify_revision(ns.rev, wheel)
     report.say("2. the revision it was built from, by byte agreement", rev.say)
     report.say("3. the tree laid out", lay_upstream(out, rev, wheel))
+    if ns.upstream_only:
+        # **UPSTREAM'S OWN TREE, GRADED BY UPSTREAM'S OWN SUITE, AS A STANDING ARTIFACT.**
+        # Every `dropin-*` directory on this machine held a tree of OURS, so "what does
+        # upstream score on their own code" was a figure carried in notes and re-derived by
+        # hand -- which is how a baseline nobody could reproduce came to be compared
+        # against all day (``adcp-client-python-135x``).  Stopping here produces it as a
+        # report `survey.causes` reads like any other, so the comparison is a command.
+        #
+        # Nothing of ours is laid, stripped or substituted: the tree is the revision plus
+        # the wheel's bytes and that is all.  The run is still locked and chunked the same
+        # way, so the two populations are partitioned identically and subtractable.
+        print(f"\n== upstream's own tree, nothing of ours in it\n   {out}\n")
+        junit = Path(ns.junit or out / "junit")
+        with one_run_at_a_time():
+            print("== provisioning")
+            print(f"   {provision(out)}")
+            print("== the run")
+            said = run_chunks(out, junit)
+        print(f"   {said}")
+        manifest(out, {"upstream revision": rev.sha, "upstream only": True})
+        print(f"\n   reports: {junit}/*.json and {junit}/*.xml\n")
+        return 0
     report.say("3b. our machinery laid over theirs, except types/", lay_our_machinery(out))
     ours = frozenset(
         p.stem for p in (ROOT / "src" / DIST / "types").glob("*.py") if not p.name.startswith("_")
@@ -1495,6 +1517,14 @@ def main(argv: list[str] | None = None) -> int:
         "upstream and this repository, and name every file that is an EDIT",
     )
     ap.add_argument("--ours", default="HEAD", help="which revision of ours --audit compares to")
+    ap.add_argument(
+        "--upstream-only",
+        action="store_true",
+        help=(
+            "stop after laying upstream's tree and wheel: no substitution of ours, no "
+            "alias layer.  THE BASELINE EVERY OTHER RUN IS READ AGAINST"
+        ),
+    )
     ns = ap.parse_args(argv)
     if ns.audit:
         print(json.dumps(audit(ns.audit, ns.rev, ns.ours), indent=2))
