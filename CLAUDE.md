@@ -1,5 +1,19 @@
 # Python SDK Development Learnings
 
+## READ THE DOCUMENT THE WAY [docs/reading-a-document.md](docs/reading-a-document.md) SAYS
+
+Eleven rules for answering "what does the schema actually say here", each with the command
+that asks it and the measurement that cost something when it was skipped. Read it before
+concluding anything about a node. The one that costs most often, and has cost twice:
+
+**REQUIREDNESS IS A CONJUNCTION — never read a `oneOf` arm in isolation.** A property's
+requiredness is its own node's AND every ancestor's that applies to the same instance.
+`status` looks optional on a task response and is required by `core/protocol-envelope.json`
+one `allOf` up; `success` looks optional on `creative/preview-creative-response.json`'s
+batch arms and is required by their parent. Ask through `adcp.types._base._refuse_at`, which
+resolves the conjunction and gives the same answer `strict_validate` gives, rather than
+reading one node by hand.
+
 ## Type Safety & Code Generation
 
 **Auto-generate from specs when possible**
