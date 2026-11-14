@@ -1705,7 +1705,7 @@ def _refuse(schema: dict, payload: Any, name: str, *, root: dict | None = None) 
     validator = jsonschema.validators.validator_for(scope, jsonschema.Draft7Validator)
     at_the_node = validator(scope, format_checker=validator.FORMAT_CHECKER).evolve(schema=schema)
     errors = sorted(
-        at_the_node.iter_errors(payload),
+        (_deepest(e) for e in at_the_node.iter_errors(payload)),
         key=lambda e: [str(p) for p in e.absolute_path],
     )
     refuse(
@@ -2079,6 +2079,35 @@ class AdCPRootModel(SchemaBound, _UpstreamRootModel[Any]):
 #: draft-07 keyword and neither is a branch's own report, so
 #: ``BranchDispatchMixin._no_branch`` answers both with the combinator.
 _TAG_ERRORS = frozenset({"union_tag_not_found", "union_tag_invalid"})
+
+
+def _deepest(error: Any) -> Any:
+    """A combinator's error replaced by the BRANCH error that actually refused.
+
+    **THE SCHEMA HALF'S VERSION OF ``ctx["branch_type"]``, and it is a FOURTH site.**
+    ``BranchDispatchMixin`` carries a branch's own error type through ``ctx`` for a
+    ``model_validate`` caller.  A ``strict_validate`` caller comes through here instead,
+    where the cause is JSONSCHEMA's keyword -- and for ``anyOf``/``oneOf``/``not`` that
+    keyword is the combinator, with the branch's own reason hanging off
+    :attr:`jsonschema.ValidationError.context`.
+
+    Measured on ``compliance/task-completion-data.json#``, whose ``accept`` IS
+    ``strict_validate``: the witness is a URL at ``('targeting_resolution',
+    'brief_targeting', 'property_list', 'agent_url')``, the refusal read ``anyOf`` with an
+    EMPTY location and an empty ``ctx``, and the real cause -- the accepted ``AdCPUrl``
+    narrowing -- appeared only in the message.  So the pair reported a taken decision as a
+    defect, and three fixes aimed at the dispatch half moved it not at all because it never
+    went through the dispatch half.
+
+    The deepest context error by path length, which is jsonschema's own structure for "this
+    is the one that failed": a combinator's ``context`` holds one error per branch, and the
+    branch that got furthest is the one whose keyword a reader wants.  An error with no
+    ``context`` is returned unchanged, which is every non-combinator refusal.
+    """
+    context = getattr(error, "context", None)
+    if not context:
+        return error
+    return max((_deepest(inner) for inner in context), key=lambda e: len(list(e.absolute_path)))
 
 
 @functools.cache
@@ -2899,7 +2928,7 @@ class BranchDispatchMixin(_MixedInto):
                             # half beside the sentence.
                             {
                                 "detail": detail,
-                                "branch_type": row["type"],
+"branch_type": row["type"],
                                 "branch": where[1] if where is not None else str(label),
                             },
                         ),
@@ -3149,6 +3178,18 @@ class BranchDispatchMixin(_MixedInto):
         per_branch = cls._each_branchs_reason(err)
         if per_branch:
             return ValidationError.from_exception_data(cls.__name__, per_branch)
+        #: **THE FALLBACK CARRIES THE BRANCH TYPE TOO, and here the cause is MOST
+        #: determinate** (``adcp-client-python-vwgs``).  :meth:`_each_branchs_reason`
+        #: declines at ``len(arms) < 2`` -- one arm's rows are not a per-branch report --
+        #: and this row then said only "is not valid under any of the N branches".  So the
+        #: case where exactly ONE position refused, which is the easiest of all to
+        #: attribute, was the one that named no cause at all: 5 pairs reported
+        #: ``model_refused_admitted`` on a bare ``anyOf`` while their SIBLING rows read
+        #: ``anyOf:url_parsing`` and discharged against a declaration.
+        #:
+        #: ``rows[0]["type"]`` is pydantic's own string for that one refusal, carried the
+        #: same way :meth:`_each_branchs_reason` carries it, so a consumer matching on
+        #: ``ctx["branch_type"]`` gets one answer from both paths rather than one from each.
         return ValidationError.from_exception_data(
             cls.__name__,
             [
@@ -3158,7 +3199,7 @@ class BranchDispatchMixin(_MixedInto):
                         "{detail}",
                         {
                             "detail": "is not valid under any of the "
-                            f"{len(cls._branch_models)} branches"
+                            f"{len(cls._branch_models)} branches",
                         },
                     ),
                     loc=cls._common_position(value, err),
