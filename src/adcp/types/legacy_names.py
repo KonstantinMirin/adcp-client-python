@@ -16,108 +16,76 @@ same object, which is why ``isinstance`` holds across all of them.
 EVERY ROW WAS RESOLVED BY A RULE AND NEVER BY EYE -- ``survey/name_table.py`` carries the nine
 and the count each decided. None of them compares two class definitions side by side, which is
 what ``docs/plan/final-state.md`` reading 10 forbids.
+
+**ONE ROW IS ASSERTED AND NOT DERIVED, AND IT IS MARKED.** A row whose comment reads ``the
+subject this word now denotes`` is a binding of a WORD'S TARGET: not "upstream's name,
+renamed", but upstream's word bound to the subject the owner says that word denotes.
+``survey/name_table.ASSERTED`` is the one place such a binding is stated, with its reason.
+
+It is not a redirect. ``Format`` denoted ``core/format.json``'s v1 named-format definition
+here before; it denotes the canonical ``format_kind`` + ``params`` declaration now, which is
+what upstream's own runtime means by the word. Code that said ``Format`` and meant v1 receives
+the canonical declaration and is REFUSED at validation by the document's own schema, loudly, at
+the first value that distinguishes the two subjects. ``docs/migration-from-upstream.md`` says
+why and what to import instead -- the v1 definition is ``LegacyFormat``.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable as Callable
-from collections.abc import Iterator as Iterator
-from collections.abc import Sequence as Sequence
-from enum import Enum as Enum
-from typing import Annotated as AcceptedAttestationIssuers
-from typing import Annotated as AssetInstance
-from typing import Annotated as Assets30
-from typing import Annotated as AssignmentOperations
-from typing import Annotated as AuthorizedAgents
-from typing import Annotated as AuthorizedAgents7
-from typing import Annotated as AuthorizedAgents14
-from typing import Annotated as AuthorizedAgents21
-from typing import Annotated as AuthorizedAgents28
-from typing import Annotated as AuthorizedAgents35
-from typing import Annotated as AuthorizedAgents42
-from typing import Annotated as AuthorizedAgentsUnion
-from typing import Annotated as CanonicalFormatKindStr
-from typing import Annotated as CommittedMetrics
-from typing import Annotated as FormatAssetUnion
-from typing import Annotated as GeoPlaceSystemKey
-from typing import Annotated as GroupFormatAssetUnion
-from typing import Annotated as Items
-from typing import Annotated as LegacyGeneratedProductFormatDeclaration
-from typing import Annotated as LegacyProductFormatDeclaration
-from typing import Annotated as PerItemBindings
-from typing import Annotated as ProductDiscoveryProductId
-from typing import Annotated as ProductRefinementRequests1
-from typing import Annotated as RecordedCalls
-from typing import Annotated as Refine
-from typing import Annotated as RefinementApplied
-from typing import Annotated as RequestProposalsProductId
-from typing import Annotated as Results3
-from typing import Annotated as Results8
-from typing import Annotated as Results14
-from typing import Annotated as StrictBool
-from typing import Annotated as StrictFloat
-from typing import Annotated as StrictStr
-from typing import Annotated as Targets
-from typing import Annotated as Variants
-from typing import Annotated as VendorPricingOptionUnion
-from typing import ClassVar as ClassVar
-from typing import Final as Final
-from typing import Literal as AssetInstanceType
-from typing import Literal as ErrorType
-from typing import Literal as VersionedDirection
-from typing import Self as Self
-from typing import TypeVar as TypeVar
-from typing import Union as CoreSchema
-from typing import cast as cast
-from typing import get_args as get_args
-
-from pydantic.annotated_handlers import GetCoreSchemaHandler as GetCoreSchemaHandler
-from pydantic.fields import FieldInfo as FieldInfo
-from pydantic.functional_validators import AfterValidator as AfterValidator
-from pydantic.json_schema import WithJsonSchema as WithJsonSchema
-from pydantic.main import BaseModel as BaseModel
-from pydantic.networks import AnyUrl as AnyUrl
-from pydantic.networks import UrlConstraints as UrlConstraints
-from pydantic.root_model import RootModel as RootModel
-from pydantic.type_adapter import TypeAdapter as TypeAdapter
-from pydantic.types import AwareDatetime as AwareDatetime
-from pydantic_core import InitErrorDetails as InitErrorDetails
-from pydantic_core._pydantic_core import PydanticCustomError as PydanticCustomError
-from pydantic_core._pydantic_core import ValidationError as ValidationError
-
-from adcp._deferred_adapters import deferred_adapter as deferred_adapter
-from adcp.types._adapter import PrimaryCountry as BundledPrimaryCountry
 from adcp.types._base import Discriminator as Discriminator
 from adcp.types._base import Path as Path
 from adcp.types._base import Tag as Tag
+from adcp.types._base import Union as CoreSchema
 from adcp.types._base import json as json
+from adcp.types._base import re as re
 from adcp.types._geo_place_keys import TypeForm as TypeForm
 from adcp.types._legacy_assets import cache as cache
+from adcp.types._legacy_assets import coerce_legacy_asset as coerce_legacy_asset
+from adcp.types._legacy_assets import coerce_legacy_assets as coerce_legacy_assets
+from adcp.types._legacy_assets import infer_asset_type as infer_asset_type
+from adcp.types._product_format_declaration import PRODUCT_FORMAT_DECLARATION_SCHEMA as PRODUCT_FORMAT_DECLARATION_SCHEMA  # noqa: E501 -- upstream published this spelling
+from adcp.types._product_format_declaration import check_declaration_rules as check_declaration_rules  # noqa: E501 -- upstream published this spelling
 from adcp.types._product_format_declaration import get_named_validator as get_named_validator
-from adcp.types._runtime import Presence as Presence
+from adcp.types._runtime import Iterator as Iterator
 from adcp.types._runtime import model_validator as model_validator
+from adcp.types._scalar import CONSTRAINT_KEYWORDS as CONSTRAINT_KEYWORDS
+from adcp.types._scalar import DOCUMENTATION_KEYWORDS as DOCUMENTATION_KEYWORDS
 from adcp.types._scalar import GetJsonSchemaHandler as GetJsonSchemaHandler
 from adcp.types._scalar import JsonSchemaValue as JsonSchemaValue
+from adcp.types._scalar import SCALAR_BASES as SCALAR_BASES
+from adcp.types._scalar import ScalarFloat as ScalarFloat
+from adcp.types._scalar import ScalarInt as ScalarInt
+from adcp.types._scalar import ScalarStr as ScalarStr
 from adcp.types._scalar import SchemaValidator as SchemaValidator
 from adcp.types._scalar import ValidatorFunctionWrapHandler as ValidatorFunctionWrapHandler
+from adcp.types._scalar import plain_scalar as plain_scalar
 from adcp.types._scalar import warnings as warnings
-from adcp.types._schemas.a2ui import bound_value as bound_value
-from adcp.types._schemas.a2ui import component as component
-from adcp.types._schemas.a2ui import si_catalog as si_catalog
-from adcp.types._schemas.a2ui import surface as surface
-from adcp.types._schemas.a2ui import user_action as user_action
-from adcp.types._schemas.aao import agent_publishers as agent_publishers
+from adcp.types._schemas import adagents as adagents
+from adcp.types._schemas import compliance as compliance
+from adcp.types._schemas import enums as enums
+from adcp.types._schemas import formats as formats
+from adcp.types._schemas import governance as governance
+from adcp.types._schemas import pricing_options as pricing_options
+from adcp.types._schemas import protocol as protocol
+from adcp.types._schemas import sponsored_intelligence as sponsored_intelligence
+from adcp.types._schemas.a2ui.bound_value import A2UiBoundValue as A2UiBoundValue
+from adcp.types._schemas.a2ui.bound_value import A2UiBoundValue1 as A2UiBoundValue1
+from adcp.types._schemas.a2ui.bound_value import A2UiBoundValue2 as A2UiBoundValue2
+from adcp.types._schemas.a2ui.bound_value import A2UiBoundValue3 as A2UiBoundValue3
+from adcp.types._schemas.a2ui.bound_value import A2UiBoundValue4 as A2UiBoundValue4
+from adcp.types._schemas.a2ui.bound_value import A2UiBoundValue5 as A2UiBoundValue5
+from adcp.types._schemas.a2ui.component import A2UiComponent as A2UiComponent
+from adcp.types._schemas.a2ui.si_catalog import Component as Component
+from adcp.types._schemas.a2ui.si_catalog import SiComponentCatalog as SiComponentCatalog
+from adcp.types._schemas.a2ui.surface import A2UiSurface as A2UiSurface
+from adcp.types._schemas.a2ui.user_action import A2UiUserAction as A2UiUserAction
+from adcp.types._schemas.aao.agent_publishers import AaoDirectoryAgentPublishersInverseLookupResponse as AaoDirectoryAgentPublishersInverseLookupResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.aao.agent_publishers import DiscoveryMethod as DiscoveryMethod
 from adcp.types._schemas.aao.agent_publishers import PublisherEntry as PublisherEntry
-from adcp.types._schemas.account import (
-    get_account_financials_request as get_account_financials_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.account import (
-    get_account_financials_response as get_account_financials_response,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.account import get_account_financials_request as get_account_financials_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account import get_account_financials_response as get_account_financials_response  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.account import list_account_changes_request as list_account_changes_request
-from adcp.types._schemas.account import (
-    list_account_changes_response as list_account_changes_response,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.account import list_account_changes_response as list_account_changes_response  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.account import list_accounts_request as list_accounts_request
 from adcp.types._schemas.account import list_accounts_response as list_accounts_response
 from adcp.types._schemas.account import report_usage_request as report_usage_request
@@ -126,42 +94,57 @@ from adcp.types._schemas.account import sync_accounts_request as sync_accounts_r
 from adcp.types._schemas.account import sync_accounts_response as sync_accounts_response
 from adcp.types._schemas.account import sync_governance_request as sync_governance_request
 from adcp.types._schemas.account import sync_governance_response as sync_governance_response
+from adcp.types._schemas.account.get_account_financials_request import GetAccountFinancialsRequest as GetAccountFinancialsRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.account.get_account_financials_response import Balance as Balance
 from adcp.types._schemas.account.get_account_financials_response import Credit as Credit
+from adcp.types._schemas.account.get_account_financials_response import GetAccountFinancialsResponse as GetAccountFinancialsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.get_account_financials_response import GetAccountFinancialsResponse1 as GetAccountFinancialsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.get_account_financials_response import GetAccountFinancialsResponse2 as GetAccountFinancialsResponse2  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.account.get_account_financials_response import LastTopUp as LastTopUp
 from adcp.types._schemas.account.get_account_financials_response import Spend as Spend
-from adcp.types._schemas.account.list_account_changes_request import (
-    StartingPosition as StartingPosition,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.account.list_account_changes_response import (
-    SourceCoverageItem as SourceCoverageItem,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.account.list_account_changes_request import ListAccountChangesRequest as ListAccountChangesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.list_account_changes_request import StartingPosition as StartingPosition  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.list_account_changes_response import ListAccountChangesResponse as ListAccountChangesResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.list_account_changes_response import SourceCoverageItem as SourceCoverageItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.list_accounts_request import ListAccountsRequest as ListAccountsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.list_accounts_response import ListAccountsResponse as ListAccountsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.report_usage_request import ReportUsageRequest as ReportUsageRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.account.report_usage_request import UsageItem as UsageItem
+from adcp.types._schemas.account.report_usage_response import ReportUsageResponse as ReportUsageResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.sync_accounts_request import Accounts as Accounts
+from adcp.types._schemas.account.sync_accounts_request import Accounts1 as Accounts1
+from adcp.types._schemas.account.sync_accounts_request import SyncAccountsRequest as SyncAccountsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.sync_accounts_response import SyncAccountsResponse as SyncAccountsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.sync_accounts_response import SyncAccountsResponse1 as SyncAccountsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.sync_accounts_response import SyncAccountsResponse2 as SyncAccountsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.sync_governance_request import SyncGovernanceRequest as SyncGovernanceRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.sync_governance_response import SyncGovernanceResponse as SyncGovernanceResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.sync_governance_response import SyncGovernanceResponse1 as SyncGovernanceResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.account.sync_governance_response import SyncGovernanceResponse2 as SyncGovernanceResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationAuthoritativeLocation as AdcpAgentsAuthorization2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationAuthoritativeLocation as AuthorizedAgents2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistry as AuthorizedAgents5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.adagents import AdcpAgentsAuthorization as AdcpAgentsAuthorization
+from adcp.types._schemas.adagents import AdcpAgentsAuthorization1 as AdcpAgentsAuthorization1
 from adcp.types._schemas.adagents import AdcpAgentsAuthorization1 as AuthorizedAgents3
-from adcp.types._schemas.adagents import (
-    AdCPAgentsAuthorizationAuthoritativeLocation as AdcpAgentsAuthorization2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.adagents import (
-    AdCPAgentsAuthorizationAuthoritativeLocation as AuthorizedAgents2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.adagents import (
-    AdCPAgentsAuthorizationCommunityFormatRegistry as AuthorizedAgents5,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.adagents import AgentPlacementFormatDeclaration as AuthorizedAgents16
-from adcp.types._schemas.adagents import (
-    CoordinatedPlacementsFormatDeclaration as AuthorizedAgents18,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.adagents import CoordinatedPlacementsFormatDeclaration as AuthorizedAgents18  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.adagents import CustomFormatDeclaration as AuthorizedAgents19
 from adcp.types._schemas.adagents import DAASTAudioFormatDeclaration as AuthorizedAgents12
 from adcp.types._schemas.adagents import DisplayTagFormatDeclaration as AuthorizedAgents6
+from adcp.types._schemas.adagents import HTML5FormatDeclaration as AuthorizedAgents4
 from adcp.types._schemas.adagents import HostedAudioFormatDeclaration as AuthorizedAgents10
 from adcp.types._schemas.adagents import HostedVideoFormatDeclaration as AuthorizedAgents8
-from adcp.types._schemas.adagents import HTML5FormatDeclaration as AuthorizedAgents4
 from adcp.types._schemas.adagents import ImageFormatDeclaration as AuthorizedAgents1
 from adcp.types._schemas.adagents import ResponsiveCreativeFormatDeclaration as AuthorizedAgents15
-from adcp.types._schemas.adagents import (
-    SellerRenderedStatefulDisplayFormatDeclaration as AuthorizedAgents17,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.adagents import RevokedPublisherDomain as RevokedPublisherDomain
+from adcp.types._schemas.adagents import RevokedPublisherDomain1 as RevokedPublisherDomain1
+from adcp.types._schemas.adagents import RevokedPublisherDomain2 as RevokedPublisherDomain2
+from adcp.types._schemas.adagents import RevokedPublisherDomain3 as RevokedPublisherDomain3
+from adcp.types._schemas.adagents import RevokedPublisherDomain4 as RevokedPublisherDomain4
+from adcp.types._schemas.adagents import RevokedPublisherDomain5 as RevokedPublisherDomain5
+from adcp.types._schemas.adagents import RevokedPublisherDomain6 as RevokedPublisherDomain6
+from adcp.types._schemas.adagents import SellerRenderedStatefulDisplayFormatDeclaration as AuthorizedAgents17  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.adagents import SponsoredPlacementFormatDeclaration as AuthorizedAgents13
 from adcp.types._schemas.adagents import VASTAudioFormatDeclaration as AuthorizedAgents11
 from adcp.types._schemas.adagents import VASTVideoFormatDeclaration as AuthorizedAgents9
@@ -186,188 +169,183 @@ from adcp.types._schemas.brand import verify_brand_claim_request as verify_brand
 from adcp.types._schemas.brand import verify_brand_claim_response as verify_brand_claim_response
 from adcp.types._schemas.brand import verify_brand_claims_request as verify_brand_claims_request
 from adcp.types._schemas.brand import verify_brand_claims_response as verify_brand_claims_response
+from adcp.types._schemas.brand.acquire_rights_request import AcquireRightsRequest as AcquireRightsRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.brand.acquire_rights_request import Campaign as Campaign
+from adcp.types._schemas.brand.acquire_rights_response import AcquireRightsResponse as AcquireRightsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.acquire_rights_response import AcquireRightsResponse1 as AcquireRightsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.acquire_rights_response import AcquireRightsResponse2 as AcquireRightsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.acquire_rights_response import AcquireRightsResponse3 as AcquireRightsResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.acquire_rights_response import AcquireRightsResponse4 as AcquireRightsResponse4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.creative_approval_request import CreativeApprovalRequest as CreativeApprovalRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.creative_approval_response import CreativeApprovalResponse as CreativeApprovalResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.creative_approval_response import CreativeApprovalResponse1 as CreativeApprovalResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.creative_approval_response import CreativeApprovalResponse2 as CreativeApprovalResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.creative_approval_response import CreativeApprovalResponse3 as CreativeApprovalResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.creative_approval_response import CreativeApprovalResponse4 as CreativeApprovalResponse4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.get_brand_identity_request import GetBrandIdentityRequest as GetBrandIdentityRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.get_brand_identity_response import Asset as Asset
+from adcp.types._schemas.brand.get_brand_identity_response import FontRole2 as FontRole2
 from adcp.types._schemas.brand.get_brand_identity_response import Fonts as Fonts
+from adcp.types._schemas.brand.get_brand_identity_response import GetBrandIdentityResponse as GetBrandIdentityResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.get_brand_identity_response import GetBrandIdentityResponse1 as GetBrandIdentityResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.get_brand_identity_response import GetBrandIdentityResponse2 as GetBrandIdentityResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.get_brand_identity_response import Tone as Tone
 from adcp.types._schemas.brand.get_brand_identity_response import VoiceSynthesis as VoiceSynthesis
+from adcp.types._schemas.brand.get_rights_request import GetRightsRequest as GetRightsRequest
+from adcp.types._schemas.brand.get_rights_response import Excluded as Excluded
 from adcp.types._schemas.brand.get_rights_response import ExclusivityStatus as ExclusivityStatus
+from adcp.types._schemas.brand.get_rights_response import GetRightsResponse as GetRightsResponse
+from adcp.types._schemas.brand.get_rights_response import GetRightsResponse1 as GetRightsResponse1
+from adcp.types._schemas.brand.get_rights_response import GetRightsResponse2 as GetRightsResponse2
+from adcp.types._schemas.brand.get_rights_response import PreviewAsset as PreviewAsset
+from adcp.types._schemas.brand.revocation_notification import RevocationNotification as RevocationNotification  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.rights_pricing_option import RightsPricingOption as RightsPricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.rights_terms import RightsTerms as RightsTerms
+from adcp.types._schemas.brand.search_brands_request import SearchBrandsRequest as SearchBrandsRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.brand.search_brands_response import Background as Background
+from adcp.types._schemas.brand.search_brands_response import KellerType as KellerType
+from adcp.types._schemas.brand.search_brands_response import Logo as Logo
 from adcp.types._schemas.brand.search_brands_response import RelationshipTrust as RelationshipTrust
 from adcp.types._schemas.brand.search_brands_response import SearchBrandResult as SearchBrandResult
+from adcp.types._schemas.brand.search_brands_response import SearchBrandsResponse as SearchBrandsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.update_rights_request import UpdateRightsRequest as UpdateRightsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.update_rights_response import UpdateRightsResponse as UpdateRightsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.update_rights_response import UpdateRightsResponse1 as UpdateRightsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.update_rights_response import UpdateRightsResponse2 as UpdateRightsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verification_status import VerificationStatus as VerificationStatus
+from adcp.types._schemas.brand.verify_brand_claim_request import VerifyBrandClaimRequest as VerifyBrandClaimRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claim_response import VerifyBrandClaimErrorResponse as VerifyBrandClaimErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claim_response import VerifyBrandClaimResponse as VerifyBrandClaimResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claim_response import VerifyBrandClaimSignedSuccessPayload as VerifyBrandClaimSignedSuccessPayload  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claim_response import VerifyBrandClaimSuccessResponse as VerifyBrandClaimSuccessResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claims_request import ClaimEntry as ClaimEntry
+from adcp.types._schemas.brand.verify_brand_claims_request import VerifyBrandClaimsRequestBulk as VerifyBrandClaimsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claims_request import VerifyBrandClaimsRequestBulk as VerifyBrandClaimsRequestBulk  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.brand.verify_brand_claims_request import VerifyParentClaim as Claim2
 from adcp.types._schemas.brand.verify_brand_claims_request import VerifyParentClaim as ClaimEntry2
 from adcp.types._schemas.brand.verify_brand_claims_request import VerifyPropertyClaim as Claim3
 from adcp.types._schemas.brand.verify_brand_claims_request import VerifyPropertyClaim as ClaimEntry3
 from adcp.types._schemas.brand.verify_brand_claims_request import VerifySubsidiaryClaim as Claim1
-from adcp.types._schemas.brand.verify_brand_claims_request import (
-    VerifySubsidiaryClaim as ClaimEntry1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.brand.verify_brand_claims_request import (
-    VerifyTrademarkClaim as ClaimEntry4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import base_collection_source as base_collection_source
-from adcp.types._schemas.collection import collection_list as collection_list
-from adcp.types._schemas.collection import (
-    collection_list_changed_webhook as collection_list_changed_webhook,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import collection_list_filters as collection_list_filters
-from adcp.types._schemas.collection import (
-    create_collection_list_request as create_collection_list_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    create_collection_list_response as create_collection_list_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    delete_collection_list_request as delete_collection_list_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    delete_collection_list_response as delete_collection_list_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    get_collection_list_request as get_collection_list_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    get_collection_list_response as get_collection_list_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    list_collection_lists_request as list_collection_lists_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    list_collection_lists_response as list_collection_lists_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    update_collection_list_request as update_collection_list_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection import (
-    update_collection_list_response as update_collection_list_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection.collection_list_filters import (
-    IdentifiersItem as ExcludeDistributionId,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection.get_collection_list_response import (
-    IdentifiersItem as CoverageGap,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.collection.get_collection_list_response import (
-    IdentifiersItem as DistributionId,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.compliance import (
-    comply_test_controller_request as comply_test_controller_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.compliance import (
-    comply_test_controller_response as comply_test_controller_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.compliance import (
-    get_creative_features_completion as get_creative_features_completion,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.brand.verify_brand_claims_request import VerifySubsidiaryClaim as ClaimEntry1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claims_request import VerifyTrademarkClaim as ClaimEntry4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claims_response import ResultEntry as ResultEntry
+from adcp.types._schemas.brand.verify_brand_claims_response import ResultEntry1 as ResultEntry1
+from adcp.types._schemas.brand.verify_brand_claims_response import ResultEntry2 as ResultEntry2
+from adcp.types._schemas.brand.verify_brand_claims_response import VerifyBrandClaimsErrorResponse as VerifyBrandClaimsErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claims_response import VerifyBrandClaimsResponseBulk as VerifyBrandClaimsResponseBulk  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.brand.verify_brand_claims_response import VerifyBrandClaimsSignedSuccessPayload as VerifyBrandClaimsSignedSuccessPayload  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.base_collection_source import BaseCollectionSource as BaseCollectionSource  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.base_collection_source import BaseCollectionSource1 as BaseCollectionSource1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.base_collection_source import BaseCollectionSource2 as BaseCollectionSource2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.base_collection_source import BaseCollectionSource3 as BaseCollectionSource3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.collection_list import CollectionList as CollectionList
+from adcp.types._schemas.collection.collection_list_changed_webhook import CollectionListChangedWebhook as CollectionListChangedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.collection_list_filters import CollectionListFilters as CollectionListFilters  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.collection_list_filters import IdentifiersItem as ExcludeDistributionId  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.create_collection_list_request import CreateCollectionListRequest as CreateCollectionListRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.create_collection_list_response import CreateCollectionListResponse as CreateCollectionListResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.delete_collection_list_request import DeleteCollectionListRequest as DeleteCollectionListRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.delete_collection_list_response import DeleteCollectionListResponse as DeleteCollectionListResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.get_collection_list_request import GetCollectionListRequest as GetCollectionListRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.get_collection_list_response import GetCollectionListResponse as GetCollectionListResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.get_collection_list_response import IdentifiersItem as CoverageGap  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.get_collection_list_response import IdentifiersItem as DistributionId  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.list_collection_lists_request import ListCollectionListsRequest as ListCollectionListsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.list_collection_lists_response import ListCollectionListsResponse as ListCollectionListsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.update_collection_list_request import UpdateCollectionListRequest as UpdateCollectionListRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.collection.update_collection_list_response import UpdateCollectionListResponse as UpdateCollectionListResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance import comply_test_controller_request as comply_test_controller_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance import get_creative_features_completion as get_creative_features_completion  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.compliance import task_completion_data as task_completion_data
 from adcp.types._schemas.compliance.comply_test_controller_request import AdvanceTo as AdvanceTo
 from adcp.types._schemas.compliance.comply_test_controller_request import Arm as Arm
-from adcp.types._schemas.compliance.comply_test_controller_request import (
-    CreditLimit as ReportedSpend,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.compliance.comply_test_controller_response import (
-    AttestationMode as AttestationMode,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.compliance.comply_test_controller_response import (
-    ComplyTestControllerResponse1 as RecordedCalls2,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.compliance.comply_test_controller_request import ComplyTestControllerRequest as ComplyTestControllerRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_request import CreditLimit as ReportedSpend  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import AttestationMode as AttestationMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse as ComplyTestControllerResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse1 as ComplyListScenariosResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse1 as ComplyTestControllerResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse1 as RecordedCalls2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse2 as ComplyStateTransitionResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse2 as ComplyTestControllerResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse4 as ComplyErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse4 as ComplyTestControllerResponse4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse5 as ComplyTestControllerResponse5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse6 as ComplyTestControllerResponse6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse7 as ComplyTestControllerResponse7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ComplyTestControllerResponse8 as ComplyTestControllerResponse8  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.compliance.comply_test_controller_response import Forced as Forced
-from adcp.types._schemas.compliance.comply_test_controller_response import (
-    ForcedDirectiveSuccess as ComplyErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.compliance.comply_test_controller_response import (
-    ListScenariosSuccess as ComplyListScenariosResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.compliance.comply_test_controller_response import (
-    ListScenariosSuccess as RecordedCalls1,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.compliance.comply_test_controller_response import IdentifierMatchProof as IdentifierMatchProof  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.comply_test_controller_response import ListScenariosSuccess as RecordedCalls1  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.compliance.comply_test_controller_response import Purpose as Purpose
-from adcp.types._schemas.compliance.comply_test_controller_response import (
-    StateTransitionSuccess as ComplyStateTransitionResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.compliance.comply_test_controller_response import (
-    StateTransitionSuccess as ComplyTestControllerResponse3,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.compliance.comply_test_controller_response import StateTransitionSuccess as ComplyTestControllerResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.get_creative_features_completion import GetCreativeFeaturesComplianceCompletion as GetCreativeFeaturesComplianceCompletion  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.compliance.task_completion_data import ComplianceTaskCompletionData as ComplianceTaskCompletionData  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.content_standards import artifact as artifact
-from adcp.types._schemas.content_standards import (
-    artifact_webhook_payload as artifact_webhook_payload,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    calibrate_content_request as calibrate_content_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    calibrate_content_response as calibrate_content_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    create_content_standards_request as create_content_standards_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    create_content_standards_response as create_content_standards_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    get_content_standards_request as get_content_standards_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    get_content_standards_response as get_content_standards_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    get_media_buy_artifacts_request as get_media_buy_artifacts_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    get_media_buy_artifacts_response as get_media_buy_artifacts_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    list_content_standards_request as list_content_standards_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    list_content_standards_response as list_content_standards_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    update_content_standards_request as update_content_standards_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    update_content_standards_response as update_content_standards_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    validate_content_delivery_request as validate_content_delivery_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards import (
-    validate_content_delivery_response as validate_content_delivery_response,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.content_standards import content_standards as content_standards
+from adcp.types._schemas.content_standards.artifact import AssetAccess as AssetAccess
+from adcp.types._schemas.content_standards.artifact import AssetAccess1 as AssetAccess1
+from adcp.types._schemas.content_standards.artifact import AssetAccess2 as AssetAccess2
+from adcp.types._schemas.content_standards.artifact import AssetAccess3 as AssetAccess3
+from adcp.types._schemas.content_standards.artifact import Assets1 as Assets1
+from adcp.types._schemas.content_standards.artifact import Assets2 as Assets2
+from adcp.types._schemas.content_standards.artifact import Assets3 as Assets3
+from adcp.types._schemas.content_standards.artifact import Assets4 as Assets4
 from adcp.types._schemas.content_standards.artifact import ContentFormat as ContentFormat
 from adcp.types._schemas.content_standards.artifact import Identifiers as Identifiers
-from adcp.types._schemas.content_standards.get_media_buy_artifacts_request import (
-    TimeRange as TimeRange,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.content_standards.get_media_buy_artifacts_response import (
-    CollectionInfo as CollectionInfo,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.content_standards.artifact import TranscriptFormat as TranscriptFormat
+from adcp.types._schemas.content_standards.artifact import TranscriptSource as TranscriptSource
+from adcp.types._schemas.content_standards.artifact import TranscriptSource1 as TranscriptSource1
+from adcp.types._schemas.content_standards.artifact_webhook_payload import ArtifactWebhookPayload as ArtifactWebhookPayload  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.calibrate_content_request import CalibrateContentRequest as CalibrateContentRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.calibrate_content_response import CalibrateContentResponse as CalibrateContentResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.calibrate_content_response import CalibrateContentResponse1 as CalibrateContentResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.calibrate_content_response import CalibrateContentResponse2 as CalibrateContentResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.create_content_standards_request import CreateContentStandardsRequest as CreateContentStandardsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.create_content_standards_response import CreateContentStandardsResponse as CreateContentStandardsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.create_content_standards_response import CreateContentStandardsResponse1 as CreateContentStandardsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.create_content_standards_response import CreateContentStandardsResponse2 as CreateContentStandardsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_content_standards_request import GetContentStandardsRequest as GetContentStandardsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_content_standards_response import GetContentStandardsResponse as GetContentStandardsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_content_standards_response import GetContentStandardsResponse1 as GetContentStandardsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_content_standards_response import GetContentStandardsResponse2 as GetContentStandardsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_media_buy_artifacts_request import GetMediaBuyArtifactsRequest as GetMediaBuyArtifactsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_media_buy_artifacts_request import TimeRange as TimeRange  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_media_buy_artifacts_response import CollectionInfo as CollectionInfo  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_media_buy_artifacts_response import GetMediaBuyArtifactsResponse as GetMediaBuyArtifactsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_media_buy_artifacts_response import GetMediaBuyArtifactsResponse1 as GetMediaBuyArtifactsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.get_media_buy_artifacts_response import GetMediaBuyArtifactsResponse2 as GetMediaBuyArtifactsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.list_content_standards_request import ListContentStandardsRequest as ListContentStandardsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.list_content_standards_response import ListContentStandardsResponse as ListContentStandardsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.list_content_standards_response import ListContentStandardsResponse1 as ListContentStandardsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.list_content_standards_response import ListContentStandardsResponse2 as ListContentStandardsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.update_content_standards_request import UpdateContentStandardsRequest as UpdateContentStandardsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.update_content_standards_response import UpdateContentStandardsResponse as UpdateContentStandardsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.update_content_standards_response import UpdateContentStandardsResponse1 as UpdateContentStandardsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.update_content_standards_response import UpdateContentStandardsResponse2 as UpdateContentStandardsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.validate_content_delivery_request import Record as Record
+from adcp.types._schemas.content_standards.validate_content_delivery_request import ValidateContentDeliveryRequest as ValidateContentDeliveryRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.validate_content_delivery_response import ValidateContentDeliveryResponse as ValidateContentDeliveryResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.validate_content_delivery_response import ValidateContentDeliveryResponse1 as ValidateContentDeliveryResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.content_standards.validate_content_delivery_response import ValidateContentDeliveryResponse2 as ValidateContentDeliveryResponse2  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import acceptance_policy_profile_ids as acceptance_policy_profile_ids
+from adcp.types._schemas.core import account as account
 from adcp.types._schemas.core import account_authorization as account_authorization
 from adcp.types._schemas.core import account_change as account_change
-from adcp.types._schemas.core import (
-    account_change_recorded_webhook as account_change_recorded_webhook,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import account_change_recorded_webhook as account_change_recorded_webhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import account_identity_change as account_identity_change
-from adcp.types._schemas.core import (
-    account_identity_change_preview as account_identity_change_preview,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import account_identity_change_preview as account_identity_change_preview  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import account_ref as account_ref
-from adcp.types._schemas.core import (
-    account_status_changed_webhook as account_status_changed_webhook,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import account_status_changed_webhook as account_status_changed_webhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import account_timezone_capability as account_timezone_capability
 from adcp.types._schemas.core import account_with_authorization as account_with_authorization
 from adcp.types._schemas.core import activation_key as activation_key
 from adcp.types._schemas.core import ad_inventory_config as ad_inventory_config
 from adcp.types._schemas.core import agent_encryption_key as agent_encryption_key
 from adcp.types._schemas.core import agent_notification_config as agent_notification_config
-from adcp.types._schemas.core import (
-    agent_notification_config_state as agent_notification_config_state,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import agent_notification_config_state as agent_notification_config_state  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import agent_reporting_destination as agent_reporting_destination
-from adcp.types._schemas.core import (
-    agent_reporting_destination_state as agent_reporting_destination_state,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import agent_reporting_destination_state as agent_reporting_destination_state  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import agent_signing_key as agent_signing_key
 from adcp.types._schemas.core import agent_webhook_challenge as agent_webhook_challenge
 from adcp.types._schemas.core import app_item as app_item
@@ -375,7 +353,6 @@ from adcp.types._schemas.core import applicable_package_id as applicable_package
 from adcp.types._schemas.core import asset_group_vocabulary as asset_group_vocabulary
 from adcp.types._schemas.core import assets as assets
 from adcp.types._schemas.core import async_response_data as async_response_data
-from adcp.types._schemas.core import async_response_refs as async_response_refs
 from adcp.types._schemas.core import attestation_capabilities as attestation_capabilities
 from adcp.types._schemas.core import attestation_evaluation as attestation_evaluation
 from adcp.types._schemas.core import attestation_issuer as attestation_issuer
@@ -386,9 +363,7 @@ from adcp.types._schemas.core import audience_activation_method as audience_acti
 from adcp.types._schemas.core import audience_characteristic as audience_characteristic
 from adcp.types._schemas.core import audience_evidence as audience_evidence
 from adcp.types._schemas.core import audience_evidence_pin as audience_evidence_pin
-from adcp.types._schemas.core import (
-    audience_evidence_requirements as audience_evidence_requirements,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import audience_evidence_requirements as audience_evidence_requirements  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import audience_evidence_selection as audience_evidence_selection
 from adcp.types._schemas.core import audience_member as audience_member
 from adcp.types._schemas.core import audience_selector as audience_selector
@@ -398,80 +373,53 @@ from adcp.types._schemas.core import bidding_policy_capability as bidding_policy
 from adcp.types._schemas.core import brand_id as brand_id
 from adcp.types._schemas.core import brand_key as brand_key
 from adcp.types._schemas.core import brand_ref as brand_ref
-from adcp.types._schemas.core import (
-    brand_response_authorization_result as brand_response_authorization_result,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import brand_response_authorization_result as brand_response_authorization_result  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import budget_allocation as budget_allocation
 from adcp.types._schemas.core import budget_range as budget_range
 from adcp.types._schemas.core import business_entity as business_entity
 from adcp.types._schemas.core import cancellation_policy as cancellation_policy
 from adcp.types._schemas.core import canonical_account_ref as canonical_account_ref
 from adcp.types._schemas.core import canonical_audience_evidence as canonical_audience_evidence
-from adcp.types._schemas.core import (
-    canonical_audience_evidence_selection as canonical_audience_evidence_selection,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import canonical_audience_evidence_selection as canonical_audience_evidence_selection  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import canonical_budget_allocation as canonical_budget_allocation
 from adcp.types._schemas.core import canonical_delivery_forecast as canonical_delivery_forecast
 from adcp.types._schemas.core import canonical_forecast_point as canonical_forecast_point
-from adcp.types._schemas.core import (
-    canonical_forecast_vendor_metric_value as canonical_forecast_vendor_metric_value,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import canonical_forecast_vendor_metric_value as canonical_forecast_vendor_metric_value  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import canonical_format_kind as canonical_format_kind
 from adcp.types._schemas.core import canonical_format_option as canonical_format_option
 from adcp.types._schemas.core import canonical_measurement_terms as canonical_measurement_terms
-from adcp.types._schemas.core import (
-    canonical_media_buy_action_fields as canonical_media_buy_action_fields,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import canonical_media_buy_action_fields as canonical_media_buy_action_fields  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import canonical_media_buy_features as canonical_media_buy_features
 from adcp.types._schemas.core import canonical_metric_qualifier as canonical_metric_qualifier
 from adcp.types._schemas.core import canonical_optimization_goal as canonical_optimization_goal
-from adcp.types._schemas.core import (
-    canonical_performance_standard as canonical_performance_standard,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import canonical_performance_standard as canonical_performance_standard  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import canonical_placement as canonical_placement
 from adcp.types._schemas.core import canonical_pricing_option as canonical_pricing_option
 from adcp.types._schemas.core import canonical_product as canonical_product
 from adcp.types._schemas.core import canonical_product_action as canonical_product_action
 from adcp.types._schemas.core import canonical_projection_ref as canonical_projection_ref
-from adcp.types._schemas.core import (
-    canonical_projection_slot_override as canonical_projection_slot_override,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import canonical_projection_slot_override as canonical_projection_slot_override  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import canonical_proposal as canonical_proposal
-from adcp.types._schemas.core import (
-    canonical_reporting_capabilities as canonical_reporting_capabilities,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    canonical_reporting_commitment as canonical_reporting_commitment,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import canonical_reporting_capabilities as canonical_reporting_capabilities  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import canonical_reporting_commitment as canonical_reporting_commitment  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import canvas_constraint as canvas_constraint
 from adcp.types._schemas.core import capabilities_changed_webhook as capabilities_changed_webhook
 from adcp.types._schemas.core import catalog as catalog
 from adcp.types._schemas.core import catalog_field_mapping as catalog_field_mapping
-from adcp.types._schemas.core import (
-    catalog_item_availability_error as catalog_item_availability_error,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import catalog_item_availability_error as catalog_item_availability_error  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import catalog_item_availability_ref as catalog_item_availability_ref
-from adcp.types._schemas.core import (
-    catalog_item_availability_state as catalog_item_availability_state,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    catalog_item_availability_update as catalog_item_availability_update,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    catalog_item_availability_update_result as catalog_item_availability_update_result,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import catalog_item_availability_state as catalog_item_availability_state  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import catalog_item_availability_update as catalog_item_availability_update  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import catalog_item_availability_update_result as catalog_item_availability_update_result  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import catalog_item_delivery_metrics as catalog_item_delivery_metrics
-from adcp.types._schemas.core import (
-    catalog_item_reference_not_found_error as catalog_item_reference_not_found_error,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import catalog_item_reference_not_found_error as catalog_item_reference_not_found_error  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import catalog_selection as catalog_selection
 from adcp.types._schemas.core import catchment as catchment
+from adcp.types._schemas.core import collection as collection
 from adcp.types._schemas.core import collection_delivery_metrics as collection_delivery_metrics
 from adcp.types._schemas.core import collection_distribution as collection_distribution
 from adcp.types._schemas.core import collection_list_ref as collection_list_ref
-from adcp.types._schemas.core import (
-    collection_property_delivery_metrics as collection_property_delivery_metrics,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import collection_property_delivery_metrics as collection_property_delivery_metrics  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import collection_ref as collection_ref
 from adcp.types._schemas.core import collection_selection as collection_selection
 from adcp.types._schemas.core import collection_selector as collection_selector
@@ -492,13 +440,9 @@ from adcp.types._schemas.core import creative_filters as creative_filters
 from adcp.types._schemas.core import creative_item as creative_item
 from adcp.types._schemas.core import creative_locale_policy as creative_locale_policy
 from adcp.types._schemas.core import creative_localization as creative_localization
-from adcp.types._schemas.core import (
-    creative_localization_readback as creative_localization_readback,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import creative_localization_readback as creative_localization_readback  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import creative_manifest as creative_manifest
-from adcp.types._schemas.core import (
-    creative_operation_format_declaration as creative_operation_format_declaration,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import creative_operation_format_declaration as creative_operation_format_declaration  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import creative_policy as creative_policy
 from adcp.types._schemas.core import creative_representation as creative_representation
 from adcp.types._schemas.core import creative_representation_set as creative_representation_set
@@ -519,25 +463,18 @@ from adcp.types._schemas.core import delivery_provider as delivery_provider
 from adcp.types._schemas.core import delivery_recipient as delivery_recipient
 from adcp.types._schemas.core import demographic_age_range as demographic_age_range
 from adcp.types._schemas.core import demographic_predicate as demographic_predicate
-from adcp.types._schemas.core import (
-    demographic_reporting_capability as demographic_reporting_capability,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    demographic_targeting_capability as demographic_targeting_capability,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import demographic_reporting_capability as demographic_reporting_capability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import demographic_targeting_capability as demographic_targeting_capability  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import demographic_targeting_intent as demographic_targeting_intent
-from adcp.types._schemas.core import (
-    demographic_targeting_resolution as demographic_targeting_resolution,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import demographic_targeting_resolution as demographic_targeting_resolution  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import deployment as deployment
 from adcp.types._schemas.core import destination as destination
 from adcp.types._schemas.core import destination_item as destination_item
 from adcp.types._schemas.core import diagnostic_issue as diagnostic_issue
-from adcp.types._schemas.core import (
-    downstream_connection_requirement as downstream_connection_requirement,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import downstream_connection_requirement as downstream_connection_requirement  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import duration as duration
 from adcp.types._schemas.core import education_item as education_item
+from adcp.types._schemas.core import error as error
 from adcp.types._schemas.core import evaluator_spec as evaluator_spec
 from adcp.types._schemas.core import event as event
 from adcp.types._schemas.core import event_custom_data as event_custom_data
@@ -548,12 +485,8 @@ from adcp.types._schemas.core import ext as ext
 from adcp.types._schemas.core import feature_requirement as feature_requirement
 from adcp.types._schemas.core import flight_item as flight_item
 from adcp.types._schemas.core import forecast_dimension_audience as forecast_dimension_audience
-from adcp.types._schemas.core import (
-    forecast_dimension_device_platform as forecast_dimension_device_platform,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    forecast_dimension_device_type as forecast_dimension_device_type,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import forecast_dimension_device_platform as forecast_dimension_device_platform  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import forecast_dimension_device_type as forecast_dimension_device_type  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import forecast_dimension_geo as forecast_dimension_geo
 from adcp.types._schemas.core import forecast_dimension_placement as forecast_dimension_placement
 from adcp.types._schemas.core import forecast_dimension_signal as forecast_dimension_signal
@@ -570,12 +503,8 @@ from adcp.types._schemas.core import format_shape_vocabulary as format_shape_voc
 from adcp.types._schemas.core import frequency_cap as frequency_cap
 from adcp.types._schemas.core import frequency_cap_constraints as frequency_cap_constraints
 from adcp.types._schemas.core import frequency_cap_duration_unit as frequency_cap_duration_unit
-from adcp.types._schemas.core import (
-    frequency_cap_impression_constraints as frequency_cap_impression_constraints,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    frequency_cap_interval_constraints as frequency_cap_interval_constraints,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import frequency_cap_impression_constraints as frequency_cap_impression_constraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import frequency_cap_interval_constraints as frequency_cap_interval_constraints  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import frequency_cap_requirements as frequency_cap_requirements
 from adcp.types._schemas.core import generation_credential as generation_credential
 from adcp.types._schemas.core import geo_breakdown_support as geo_breakdown_support
@@ -591,12 +520,8 @@ from adcp.types._schemas.core import geo_place_system as geo_place_system
 from adcp.types._schemas.core import geo_place_type as geo_place_type
 from adcp.types._schemas.core import geo_region_requirement as geo_region_requirement
 from adcp.types._schemas.core import geo_region_support as geo_region_support
-from adcp.types._schemas.core import (
-    get_geo_place_resolution_request as get_geo_place_resolution_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    get_geo_place_resolution_response as get_geo_place_resolution_response,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import get_geo_place_resolution_request as get_geo_place_resolution_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import get_geo_place_resolution_response as get_geo_place_resolution_response  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import hotel_item as hotel_item
 from adcp.types._schemas.core import iana_timezone as iana_timezone
 from adcp.types._schemas.core import identifier as identifier
@@ -610,9 +535,7 @@ from adcp.types._schemas.core import insertion_order as insertion_order
 from adcp.types._schemas.core import installment as installment
 from adcp.types._schemas.core import installment_deadlines as installment_deadlines
 from adcp.types._schemas.core import installment_delivery_metrics as installment_delivery_metrics
-from adcp.types._schemas.core import (
-    installment_property_delivery_metrics as installment_property_delivery_metrics,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import installment_property_delivery_metrics as installment_property_delivery_metrics  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import installment_ref as installment_ref
 from adcp.types._schemas.core import inventory_list_application as inventory_list_application
 from adcp.types._schemas.core import job_item as job_item
@@ -632,25 +555,18 @@ from adcp.types._schemas.core import mcp_webhook_payload as mcp_webhook_payload
 from adcp.types._schemas.core import measurement_readiness as measurement_readiness
 from adcp.types._schemas.core import measurement_terms as measurement_terms
 from adcp.types._schemas.core import measurement_window as measurement_window
+from adcp.types._schemas.core import media_buy as media_buy
 from adcp.types._schemas.core import media_buy_available_action as media_buy_available_action
 from adcp.types._schemas.core import media_buy_available_action_id as media_buy_available_action_id
 from adcp.types._schemas.core import media_buy_change_term_id as media_buy_change_term_id
 from adcp.types._schemas.core import media_buy_features as media_buy_features
 from adcp.types._schemas.core import media_buy_frequency_cap as media_buy_frequency_cap
-from adcp.types._schemas.core import (
-    media_buy_frequency_cap_capability as media_buy_frequency_cap_capability,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    media_buy_frequency_cap_requirement as media_buy_frequency_cap_requirement,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    media_buy_frequency_cap_support as media_buy_frequency_cap_support,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import media_buy_frequency_cap_capability as media_buy_frequency_cap_capability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import media_buy_frequency_cap_requirement as media_buy_frequency_cap_requirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import media_buy_frequency_cap_support as media_buy_frequency_cap_support  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import media_buy_legacy_terms_ref as media_buy_legacy_terms_ref
 from adcp.types._schemas.core import media_buy_support as media_buy_support
-from adcp.types._schemas.core import (
-    media_buy_support_requirements as media_buy_support_requirements,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import media_buy_support_requirements as media_buy_support_requirements  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import missing_metric as missing_metric
 from adcp.types._schemas.core import negative_keyword as negative_keyword
 from adcp.types._schemas.core import notification_config as notification_config
@@ -667,19 +583,13 @@ from adcp.types._schemas.core import package as package
 from adcp.types._schemas.core import package_delivery_metric_value as package_delivery_metric_value
 from adcp.types._schemas.core import package_format_snapshot as package_format_snapshot
 from adcp.types._schemas.core import package_signal_targeting as package_signal_targeting
-from adcp.types._schemas.core import (
-    package_signal_targeting_group as package_signal_targeting_group,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    package_signal_targeting_groups as package_signal_targeting_groups,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import package_signal_targeting_group as package_signal_targeting_group  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import package_signal_targeting_groups as package_signal_targeting_groups  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import package_targeting_resolution as package_targeting_resolution
 from adcp.types._schemas.core import pagination_request as pagination_request
 from adcp.types._schemas.core import pagination_response as pagination_response
 from adcp.types._schemas.core import performance_feedback as performance_feedback
-from adcp.types._schemas.core import (
-    performance_feedback_assertion as performance_feedback_assertion,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import performance_feedback_assertion as performance_feedback_assertion  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import performance_feedback_metric as performance_feedback_metric
 from adcp.types._schemas.core import performance_standard as performance_standard
 from adcp.types._schemas.core import placement as placement
@@ -688,9 +598,7 @@ from adcp.types._schemas.core import placement_delivery_metrics as placement_del
 from adcp.types._schemas.core import placement_evidence as placement_evidence
 from adcp.types._schemas.core import placement_identity as placement_identity
 from adcp.types._schemas.core import placement_presentation as placement_presentation
-from adcp.types._schemas.core import (
-    placement_property_delivery_metrics as placement_property_delivery_metrics,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import placement_property_delivery_metrics as placement_property_delivery_metrics  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import placement_ref as placement_ref
 from adcp.types._schemas.core import placement_selection as placement_selection
 from adcp.types._schemas.core import planned_delivery as planned_delivery
@@ -711,9 +619,7 @@ from adcp.types._schemas.core import principal_state as principal_state
 from adcp.types._schemas.core import product as product
 from adcp.types._schemas.core import product_allocation as product_allocation
 from adcp.types._schemas.core import product_allowed_action as product_allowed_action
-from adcp.types._schemas.core import (
-    product_audience_evidence_requirements as product_audience_evidence_requirements,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import product_audience_evidence_requirements as product_audience_evidence_requirements  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import product_card_reference_asset as product_card_reference_asset
 from adcp.types._schemas.core import product_change_map as product_change_map
 from adcp.types._schemas.core import product_execution_requirement as product_execution_requirement
@@ -721,10 +627,9 @@ from adcp.types._schemas.core import product_filters as product_filters
 from adcp.types._schemas.core import product_format_declaration as product_format_declaration
 from adcp.types._schemas.core import product_identity as product_identity
 from adcp.types._schemas.core import product_offer_filters as product_offer_filters
-from adcp.types._schemas.core import (
-    product_signal_targeting_option as product_signal_targeting_option,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import product_signal_targeting_option as product_signal_targeting_option  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import product_targeting_resolution as product_targeting_resolution
+from adcp.types._schemas.core import property as property
 from adcp.types._schemas.core import property_delivery_metrics as property_delivery_metrics
 from adcp.types._schemas.core import property_id as property_id
 from adcp.types._schemas.core import property_list_ref as property_list_ref
@@ -742,65 +647,41 @@ from adcp.types._schemas.core import registry_event as registry_event
 from adcp.types._schemas.core import registry_feed_response as registry_feed_response
 from adcp.types._schemas.core import reporting_adjustment as reporting_adjustment
 from adcp.types._schemas.core import reporting_adjustment_receipt as reporting_adjustment_receipt
-from adcp.types._schemas.core import (
-    reporting_canonical_content_digest as reporting_canonical_content_digest,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    reporting_canonicalization_contract as reporting_canonicalization_contract,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import reporting_canonical_content_digest as reporting_canonical_content_digest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import reporting_canonicalization_contract as reporting_canonicalization_contract  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import reporting_capabilities as reporting_capabilities
 from adcp.types._schemas.core import reporting_consumer_status as reporting_consumer_status
 from adcp.types._schemas.core import reporting_control_total as reporting_control_total
 from adcp.types._schemas.core import reporting_coverage as reporting_coverage
-from adcp.types._schemas.core import (
-    reporting_dataset_share_destination as reporting_dataset_share_destination,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    reporting_delivery_capabilities as reporting_delivery_capabilities,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import reporting_dataset_share_destination as reporting_dataset_share_destination  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import reporting_delivery_capabilities as reporting_delivery_capabilities  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import reporting_delivery_config as reporting_delivery_config
-from adcp.types._schemas.core import (
-    reporting_delivery_config_state as reporting_delivery_config_state,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import reporting_delivery_config_state as reporting_delivery_config_state  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import reporting_delivery_method as reporting_delivery_method
 from adcp.types._schemas.core import reporting_delivery_offering as reporting_delivery_offering
-from adcp.types._schemas.core import (
-    reporting_delivery_offering_id as reporting_delivery_offering_id,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    reporting_delivery_ready_webhook as reporting_delivery_ready_webhook,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import reporting_delivery_offering_id as reporting_delivery_offering_id  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import reporting_delivery_ready_webhook as reporting_delivery_ready_webhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import reporting_file_compression as reporting_file_compression
 from adcp.types._schemas.core import reporting_file_entry as reporting_file_entry
 from adcp.types._schemas.core import reporting_file_manifest as reporting_file_manifest
 from adcp.types._schemas.core import reporting_file_object_ref as reporting_file_object_ref
-from adcp.types._schemas.core import (
-    reporting_ledger_changed_webhook as reporting_ledger_changed_webhook,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import reporting_ledger_changed_webhook as reporting_ledger_changed_webhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import reporting_materialization as reporting_materialization
 from adcp.types._schemas.core import reporting_native_version_ref as reporting_native_version_ref
 from adcp.types._schemas.core import reporting_obligation as reporting_obligation
 from adcp.types._schemas.core import reporting_receipt as reporting_receipt
 from adcp.types._schemas.core import reporting_reconciliation_mode as reporting_reconciliation_mode
-from adcp.types._schemas.core import (
-    reporting_reliability_statistics as reporting_reliability_statistics,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import reporting_reliability_statistics as reporting_reliability_statistics  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import reporting_report_definition as reporting_report_definition
 from adcp.types._schemas.core import reporting_resource as reporting_resource
 from adcp.types._schemas.core import reporting_revision as reporting_revision
 from adcp.types._schemas.core import reporting_schedule as reporting_schedule
 from adcp.types._schemas.core import reporting_schedule_offering as reporting_schedule_offering
-from adcp.types._schemas.core import (
-    reporting_status_changed_webhook as reporting_status_changed_webhook,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import reporting_status_changed_webhook as reporting_status_changed_webhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import reporting_status_issue as reporting_status_issue
 from adcp.types._schemas.core import reporting_verification as reporting_verification
-from adcp.types._schemas.core import (
-    reporting_verification_profile as reporting_verification_profile,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    reporting_verification_profile_set as reporting_verification_profile_set,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import reporting_verification_profile as reporting_verification_profile  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import reporting_verification_profile_set as reporting_verification_profile_set  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import reporting_webhook as reporting_webhook
 from adcp.types._schemas.core import reporting_write_destination as reporting_write_destination
 from adcp.types._schemas.core import representation_destination as representation_destination
@@ -835,16 +716,10 @@ from adcp.types._schemas.core import talent as talent
 from adcp.types._schemas.core import targeting as targeting
 from adcp.types._schemas.core import targeting_input as targeting_input
 from adcp.types._schemas.core import targeting_modification as targeting_modification
-from adcp.types._schemas.core import (
-    targeting_overlay_requirements as targeting_overlay_requirements,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import targeting_overlay_requirements as targeting_overlay_requirements  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import targeting_overlay_support as targeting_overlay_support
-from adcp.types._schemas.core import (
-    targeting_unknown_age_eligibility_constraint as targeting_unknown_age_eligibility_constraint,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core import (
-    targeting_verified_age_basis_constraint as targeting_verified_age_basis_constraint,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import targeting_unknown_age_eligibility_constraint as targeting_unknown_age_eligibility_constraint  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core import targeting_verified_age_basis_constraint as targeting_verified_age_basis_constraint  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import tasks_get_request as tasks_get_request
 from adcp.types._schemas.core import tasks_get_response as tasks_get_response
 from adcp.types._schemas.core import tasks_list_request as tasks_list_request
@@ -860,9 +735,7 @@ from adcp.types._schemas.core import vast_tracker_constraints as vast_tracker_co
 from adcp.types._schemas.core import vehicle_item as vehicle_item
 from adcp.types._schemas.core import vendor_metric_id as vendor_metric_id
 from adcp.types._schemas.core import vendor_metric_optimization as vendor_metric_optimization
-from adcp.types._schemas.core import (
-    vendor_metric_optimization_supported_metric as vendor_metric_optimization_supported_metric,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core import vendor_metric_optimization_supported_metric as vendor_metric_optimization_supported_metric  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core import vendor_metric_value as vendor_metric_value
 from adcp.types._schemas.core import vendor_pricing_option as vendor_pricing_option
 from adcp.types._schemas.core import verification_token_claims as verification_token_claims
@@ -875,24 +748,58 @@ from adcp.types._schemas.core import webhook_challenge_response as webhook_chall
 from adcp.types._schemas.core import wholesale_feed_event as wholesale_feed_event
 from adcp.types._schemas.core import wholesale_feed_webhook as wholesale_feed_webhook
 from adcp.types._schemas.core import x_entity_types as x_entity_types
-from adcp.types._schemas.core.account import Account as CoreAccount
-from adcp.types._schemas.core.account import Account as SyncAccountsAccount
-from adcp.types._schemas.core.account import Account as SyncGovernanceAccount
+from adcp.types._schemas.core.acceptance_policy_profile_ids import AcceptancePolicyProfileIds as AcceptancePolicyProfileIds  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.account import Compression as Compression
 from adcp.types._schemas.core.account import CreditLimit as CoreCreditLimit
 from adcp.types._schemas.core.account import CreditLimit as SyncAccountsCreditLimit
+from adcp.types._schemas.core.account import ReportingBucket as ReportingBucket
+from adcp.types._schemas.core.account_authorization import AccountAuthorization as AccountAuthorization  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_change import AccountChange as AccountChange
 from adcp.types._schemas.core.account_change import Actor as Actor
 from adcp.types._schemas.core.account_change import Repair as Repair
 from adcp.types._schemas.core.account_change import UnavailableReason as UnavailableReason
+from adcp.types._schemas.core.account_change_recorded_webhook import AccountChangeRecordedWebhook as AccountChangeRecordedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change import AccountIdentityChange as AccountIdentityChange  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change import AccountIdentityChange1 as AccountIdentityChange1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change import AccountIdentityChange2 as AccountIdentityChange2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change_preview import AccountIdentityChangePreview as AccountIdentityChangePreview  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change_preview import AccountIdentityChangePreview1 as AccountIdentityChangePreview1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change_preview import AccountIdentityChangePreview2 as AccountIdentityChangePreview2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change_preview import AccountIdentityChangePreview3 as AccountIdentityChangePreview3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change_preview import BlockedImpacts as BlockedImpacts  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_identity_change_preview import Effect as Effect
+from adcp.types._schemas.core.account_identity_change_preview import Effect1 as Effect1
 from adcp.types._schemas.core.account_identity_change_preview import Impact as Impact
-from adcp.types._schemas.core.account_ref import AccountReferenceAccountId as AccountIdReference
-from adcp.types._schemas.core.account_ref import (
-    AccountReferenceBrandOperator as InlineAccountReference,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.account_timezone_capability import (
-    AccountSelection as AccountSelection,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.account_identity_change_preview import NonblockingImpacts as NonblockingImpacts  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_ref import AccountReference as AccountReference
+from adcp.types._schemas.core.account_ref import AccountReference1 as AccountIdReference
+from adcp.types._schemas.core.account_ref import AccountReference1 as AccountReference1
+from adcp.types._schemas.core.account_ref import AccountReference2 as AccountReference2
+from adcp.types._schemas.core.account_ref import AccountReference2 as InlineAccountReference
+from adcp.types._schemas.core.account_status_changed_webhook import AccountStatusChangedWebhook as AccountStatusChangedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_timezone_capability import AccountSelection as AccountSelection  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_timezone_capability import AccountTimezoneCapability as AccountTimezoneCapability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.account_with_authorization import AccountWithAuthorization as AccountWithAuthorization  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.activation_key import ActivationKey as ActivationKey
+from adcp.types._schemas.core.activation_key import ActivationKey1 as ActivationKey1
+from adcp.types._schemas.core.activation_key import ActivationKey1 as PropertyIdActivationKey
+from adcp.types._schemas.core.activation_key import ActivationKey2 as ActivationKey2
+from adcp.types._schemas.core.activation_key import ActivationKey2 as PropertyTagActivationKey
+from adcp.types._schemas.core.ad_inventory_config import AdInventoryConfiguration as AdInventoryConfiguration  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.agent_encryption_key import AgentEncryptionKey as AgentEncryptionKey
+from adcp.types._schemas.core.agent_notification_config import AgentNotificationConfig as AgentNotificationConfig  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.agent_notification_config_state import AgentNotificationConfigState as AgentNotificationConfigState  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.agent_reporting_destination import AgentReportingDestination as AgentReportingDestination  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.agent_reporting_destination import AgentReportingDestination1 as AgentReportingDestination1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.agent_reporting_destination import AgentReportingDestination2 as AgentReportingDestination2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.agent_reporting_destination import AgentReportingDestination3 as AgentReportingDestination3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.agent_reporting_destination_state import AgentReportingDestinationState as AgentReportingDestinationState  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.agent_signing_key import AgentSigningKey as AgentSigningKey
+from adcp.types._schemas.core.agent_webhook_challenge import AgentWebhookChallenge as AgentWebhookChallenge  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.app_item import AppItem as AppItem
 from adcp.types._schemas.core.app_item import Platform as Platform
+from adcp.types._schemas.core.applicable_package_id import ApplicablePackageId as ApplicablePackageId  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.asset_group_vocabulary import AdcpAssetGroupVocabularyRegistry as AdcpAssetGroupVocabularyRegistry  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.assets import asset_union as asset_union
 from adcp.types._schemas.core.assets import audio_asset as audio_asset
 from adcp.types._schemas.core.assets import brief_asset as brief_asset
@@ -915,6 +822,7 @@ from adcp.types._schemas.core.assets import vast_tracker_asset as vast_tracker_a
 from adcp.types._schemas.core.assets import video_asset as video_asset
 from adcp.types._schemas.core.assets import webhook_asset as webhook_asset
 from adcp.types._schemas.core.assets import zip_asset as zip_asset
+from adcp.types._schemas.core.assets.asset_union import AssetVariant as AssetVariant
 from adcp.types._schemas.core.assets.asset_union import AssetVariantAudio as DisplayTagAsset3
 from adcp.types._schemas.core.assets.asset_union import AssetVariantAudio as MacroDeclaration3
 from adcp.types._schemas.core.assets.asset_union import AssetVariantDisplayTag as Location5
@@ -948,268 +856,575 @@ from adcp.types._schemas.core.assets.asset_union import AssetVariantVideo as Pub
 from adcp.types._schemas.core.assets.asset_union import AssetVariantVideo as Role2
 from adcp.types._schemas.core.assets.asset_union import AssetVariantVideo as VastAsset2
 from adcp.types._schemas.core.assets.asset_union import AssetVariantZip as MacroDeclaration10
+from adcp.types._schemas.core.assets.audio_asset import AudioAsset as AudioContent
+from adcp.types._schemas.core.assets.css_asset import CssAsset as CssAsset
+from adcp.types._schemas.core.assets.css_asset import CssAsset as CssContent
+from adcp.types._schemas.core.assets.daast_asset import DaastAsset as DaastAsset
+from adcp.types._schemas.core.assets.daast_asset import DaastAsset3 as DaastAsset3
+from adcp.types._schemas.core.assets.daast_asset import DaastAsset4 as DaastAsset4
+from adcp.types._schemas.core.assets.daast_asset import Location13 as Location13
+from adcp.types._schemas.core.assets.daast_tracker_asset import DaastTrackerAsset as DaastTrackerAsset  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.assets.display_tag_asset import DisplayTagAsset4 as DisplayTagAsset4
+from adcp.types._schemas.core.assets.display_tag_asset import DisplayTagAsset5 as DisplayTagAsset5
+from adcp.types._schemas.core.assets.display_tag_asset import DisplayTagAsset6 as DisplayTagAsset6
 from adcp.types._schemas.core.assets.display_tag_asset import MarkupType as MarkupType
+from adcp.types._schemas.core.assets.html_asset import HtmlAsset as HtmlAsset
+from adcp.types._schemas.core.assets.html_asset import HtmlAsset as HtmlContent
+from adcp.types._schemas.core.assets.image_asset import ImageAsset as ImageContent
+from adcp.types._schemas.core.assets.javascript_asset import JavascriptAsset as JavascriptAsset
+from adcp.types._schemas.core.assets.javascript_asset import JavascriptAsset as JavascriptContent
 from adcp.types._schemas.core.assets.published_post_asset import IdentityRef as IdentityRef
-from adcp.types._schemas.core.assets.published_post_asset import (
-    ReferenceAuthorization as ReferenceAuthorization,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.assets.published_post_asset import ReferenceAuthorization as ReferenceAuthorization  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.assets.text_asset import TextAsset as TextContent
+from adcp.types._schemas.core.assets.url_asset import UrlAsset as UrlAsset
+from adcp.types._schemas.core.assets.url_asset import UrlAsset as UrlContent
+from adcp.types._schemas.core.assets.vast_asset import VastAsset as VastAsset
+from adcp.types._schemas.core.assets.vast_asset import VastAsset3 as VastAsset3
+from adcp.types._schemas.core.assets.vast_asset import VastAsset4 as VastAsset4
+from adcp.types._schemas.core.assets.vast_tracker_asset import VastTrackerAsset as VastTrackerAsset
 from adcp.types._schemas.core.assets.video_asset import AudioBitDepth as AudioBitDepth
 from adcp.types._schemas.core.assets.video_asset import ChromaSubsampling as ChromaSubsampling
 from adcp.types._schemas.core.assets.video_asset import HdrFormat as HdrFormat
 from adcp.types._schemas.core.assets.video_asset import IntEnum as IntEnum
+from adcp.types._schemas.core.assets.video_asset import VideoAsset as VideoContent
 from adcp.types._schemas.core.assets.video_asset import VideoBitDepth as VideoBitDepth
 from adcp.types._schemas.core.assets.webhook_asset import Security as Security
+from adcp.types._schemas.core.assets.webhook_asset import WebhookAsset as WebhookContent
+from adcp.types._schemas.core.async_response_data import AdcpAsyncResponseData as AdcpAsyncResponseData  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.attestation_capabilities import AcceptedIssuer as AcceptedIssuer
+from adcp.types._schemas.core.attestation_capabilities import AttestationCapabilities as AttestationCapabilities  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.attestation_capabilities import Resolver as Resolver
+from adcp.types._schemas.core.attestation_capabilities import SupportedDeliveryMethod as SupportedDeliveryMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.attestation_issuer import AttestationIssuer as AttestationIssuer
+from adcp.types._schemas.core.attestation_issuer import AttestationIssuer1 as AttestationIssuer1
+from adcp.types._schemas.core.attestation_issuer import AttestationIssuer2 as AttestationIssuer2
+from adcp.types._schemas.core.attestation_issuer import AttestationIssuer3 as AttestationIssuer3
 from adcp.types._schemas.core.attestation_reference import EmbeddedCredential as EmbeddedCredential
+from adcp.types._schemas.core.attestation_reference import Locator as Locator
+from adcp.types._schemas.core.attestation_reference import Locator1 as Locator1
 from adcp.types._schemas.core.attestation_reference import ValidityHint as ValidityHint
-from adcp.types._schemas.core.audience_evidence_selection import (
-    AttestationEvaluation as AttestationEvaluation_1,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.attestation_subject import AttestationSubject as AttestationSubject
+from adcp.types._schemas.core.attestation_subject import AttestationSubject1 as AttestationSubject1
+from adcp.types._schemas.core.attestation_subject import AttestationSubject2 as AttestationSubject2
+from adcp.types._schemas.core.attestation_subject import AttestationSubject3 as AttestationSubject3
+from adcp.types._schemas.core.audience_activation_method import AudienceActivationMethod as AudienceActivationMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_activation_method import AudienceActivationMethod1 as AudienceActivationMethod1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_activation_method import AudienceActivationMethod2 as AudienceActivationMethod2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_activation_method import AudienceActivationMethod3 as AudienceActivationMethod3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_activation_method import AudienceActivationMethod4 as AudienceActivationMethod4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_activation_method import AudienceActivationMethod5 as AudienceActivationMethod5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_activation_method import AudienceActivationMethod6 as AudienceActivationMethod6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_activation_method import ConsumerIdentity as ConsumerIdentity
+from adcp.types._schemas.core.audience_characteristic import AudienceCharacteristic as AudienceCharacteristic  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_evidence import AttestationRef as AttestationRef
+from adcp.types._schemas.core.audience_evidence_pin import AudienceEvidencePin as AudienceEvidencePin  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_evidence_requirements import AudienceEvidenceRequirements as AudienceEvidenceRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_evidence_selection import AttestationEvaluation as AttestationEvaluation_1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_evidence_selection import AudienceEvidenceSelection as AudienceEvidenceSelection  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.audience_member import AudienceMember as AudienceMember
+from adcp.types._schemas.core.audience_selector import AudienceSelector as AudienceSelector
+from adcp.types._schemas.core.audience_selector import AudienceSelector1 as AudienceSelector1
+from adcp.types._schemas.core.audience_selector import AudienceSelector2 as AudienceSelector2
+from adcp.types._schemas.core.audience_selector import AudienceSelector3 as AudienceSelector3
+from adcp.types._schemas.core.audience_selector import AudienceSelector4 as AudienceSelector4
+from adcp.types._schemas.core.audience_source import AudienceSource1 as AudienceSource1
+from adcp.types._schemas.core.audience_source import AudienceSource2 as AudienceSource2
+from adcp.types._schemas.core.bidding_policy import BiddingPolicy as BiddingPolicy
 from adcp.types._schemas.core.bidding_policy import CostPer as CostPer
 from adcp.types._schemas.core.bidding_policy import Roas as Roas
-from adcp.types._schemas.core.bidding_policy_capability import (
-    MaxBidWithCostPer as MaxBidWithCostPer,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.bidding_policy import Strength1 as Strength1
+from adcp.types._schemas.core.bidding_policy_capability import BiddingPolicyCapability as BiddingPolicyCapability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.bidding_policy_capability import MaxBidWithCostPer as MaxBidWithCostPer  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.bidding_policy_capability import MaxBidWithRoas as MaxBidWithRoas
 from adcp.types._schemas.core.bidding_policy_capability import PolicyProfile as PolicyProfile
 from adcp.types._schemas.core.bidding_policy_capability import RoasStrength as RoasStrength
 from adcp.types._schemas.core.bidding_policy_capability import ScopeCapability as ScopeCapability
+from adcp.types._schemas.core.brand_id import BrandId as BrandId
+from adcp.types._schemas.core.brand_key import BrandKey as BrandKey
 from adcp.types._schemas.core.brand_ref import BrandKitOverride as BrandKitOverride
+from adcp.types._schemas.core.brand_ref import BrandReference as BrandReference
 from adcp.types._schemas.core.brand_ref import DataSubjectContestation as DataSubjectContestation
-from adcp.types._schemas.core.brand_response_authorization_result import (
-    BrandResponseAuthorizationResultTrusted as BrandResponseAuthorizationResult1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.brand_response_authorization_result import (
-    BrandResponseAuthorizationResultUntrusted as BrandResponseAuthorizationResult2,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.brand_response_authorization_result import BrandResponseAuthorizationResult as BrandResponseAuthorizationResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.brand_response_authorization_result import BrandResponseAuthorizationResultTrusted as BrandResponseAuthorizationResult1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.brand_response_authorization_result import BrandResponseAuthorizationResultUntrusted as BrandResponseAuthorizationResult2  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.brand_response_authorization_result import Trust as Trust
+from adcp.types._schemas.core.budget_allocation import BudgetAllocation as BudgetAllocation
+from adcp.types._schemas.core.budget_allocation import BudgetAllocation1 as BudgetAllocation1
 from adcp.types._schemas.core.budget_allocation import BudgetAllocation1 as OptimizationGoal2
+from adcp.types._schemas.core.budget_allocation import BudgetAllocation2 as BudgetAllocation2
 from adcp.types._schemas.core.budget_allocation import BudgetAllocation2 as OptimizationGoal4
 from adcp.types._schemas.core.budget_allocation import BudgetAllocation2 as Target4
 from adcp.types._schemas.core.budget_allocation import BudgetAllocationFixed as OptimizationGoal1
-from adcp.types._schemas.core.budget_allocation import (
-    BudgetAllocationSellerOptimized as OptimizationGoal3,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.budget_allocation import BudgetAllocationSellerOptimized as OptimizationGoal3  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.budget_allocation import BudgetAllocationSellerOptimized as Target3
 from adcp.types._schemas.core.business_entity import Bank as Bank
+from adcp.types._schemas.core.business_entity import BusinessEntity as BusinessEntity
 from adcp.types._schemas.core.cancellation_policy import CancellationFee as CancellationFee
+from adcp.types._schemas.core.cancellation_policy import CancellationPolicy as CancellationPolicy
+from adcp.types._schemas.core.canonical_account_ref import CanonicalAccountReference as CanonicalAccountReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_account_ref import CanonicalAccountReference1 as CanonicalAccountReference1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_account_ref import CanonicalAccountReference2 as CanonicalAccountReference2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_audience_evidence import CanonicalAudienceEvidence as CanonicalAudienceEvidence  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_audience_evidence_selection import CanonicalAudienceEvidenceSelection as CanonicalAudienceEvidenceSelection  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_budget_allocation import CanonicalBudgetAllocation as CanonicalBudgetAllocation  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_budget_allocation import CanonicalBudgetAllocation1 as CanonicalBudgetAllocation1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_budget_allocation import CanonicalBudgetAllocation2 as CanonicalBudgetAllocation2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_delivery_forecast import CanonicalDeliveryForecast as CanonicalDeliveryForecast  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_forecast_point import CanonicalForecastPoint as CanonicalForecastPoint  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_forecast_vendor_metric_value import CanonicalForecastVendorMetricValue as CanonicalForecastVendorMetricValue  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_format_kind import CanonicalFormatKind as CanonicalFormatKind  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_format_option import CanonicalFormatOption as CanonicalFormatOption  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.canonical_format_option import FormatKind as FormatKind
-from adcp.types._schemas.core.canonical_media_buy_action import (
-    CanonicalMediaBuyActionRefineProposals as CanonicalMediaBuyAction3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.canonical_placement import (
-    CanonicalDoohPlacementAttributes as CanonicalDoohPlacementAttributes,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.canonical_placement import (
-    CanonicalDoohScreenResolution as CanonicalDoohScreenResolution,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.canonical_projection_slot_override import (
-    CanonicalProjectionSlotOverride as CanonicalSlotOverride,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.canonical_measurement_terms import CanonicalMeasurementTerms as CanonicalMeasurementTerms  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_media_buy_action import Action3 as Action3
+from adcp.types._schemas.core.canonical_media_buy_action import Action4 as Action4
+from adcp.types._schemas.core.canonical_media_buy_action import CanonicalMediaBuyAction as CanonicalMediaBuyAction  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_media_buy_action import CanonicalMediaBuyAction1 as CanonicalMediaBuyAction1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_media_buy_action import CanonicalMediaBuyAction2 as CanonicalMediaBuyAction2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_media_buy_action import CanonicalMediaBuyActionRefineProposals as CanonicalMediaBuyAction3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_media_buy_features import CanonicalMediaBuyFeatures as CanonicalMediaBuyFeatures  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_metric_qualifier import CanonicalMetricQualifier as CanonicalMetricQualifier  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_optimization_goal import CanonicalOptimizationGoal as CanonicalOptimizationGoal  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_optimization_goal import CanonicalOptimizationGoal1 as CanonicalOptimizationGoal1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_optimization_goal import CanonicalOptimizationGoal2 as CanonicalOptimizationGoal2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_optimization_goal import CanonicalOptimizationGoal3 as CanonicalOptimizationGoal3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_optimization_goal import Target10 as Target10
+from adcp.types._schemas.core.canonical_performance_standard import CanonicalPerformanceStandard as CanonicalPerformanceStandard  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_placement import CanonicalDoohPlacementAttributes as CanonicalDoohPlacementAttributes  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_placement import CanonicalDoohScreenResolution as CanonicalDoohScreenResolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_placement import CanonicalProductPlacement as CanonicalProductPlacement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_placement import CanonicalProductPlacement1 as CanonicalProductPlacement1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_placement import CanonicalProductPlacement2 as CanonicalProductPlacement2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_pricing_option import CanonicalPricingOption as CanonicalPricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_product import CanonicalProduct as CanonicalProduct
+from adcp.types._schemas.core.canonical_product_action import CanonicalProductAction as CanonicalProductAction  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_projection_ref import CanonicalProjectionReference as CanonicalProjectionReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_projection_slot_override import CanonicalProjectionSlotOverride as CanonicalProjectionSlotOverride  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_projection_slot_override import CanonicalProjectionSlotOverride as CanonicalSlotOverride  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.canonical_proposal import ProposalKind as ProposalKind
+from adcp.types._schemas.core.canonical_reporting_capabilities import CanonicalReportingCapabilities as CanonicalReportingCapabilities  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_reporting_commitment import CanonicalReportingCommitment as CanonicalReportingCommitment  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_reporting_commitment import CanonicalReportingCommitment1 as CanonicalReportingCommitment1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canonical_reporting_commitment import CanonicalReportingCommitment2 as CanonicalReportingCommitment2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.canvas_constraint import CanvasConstraint as CanvasConstraint
 from adcp.types._schemas.core.canvas_constraint import Constraint as Constraint
 from adcp.types._schemas.core.canvas_constraint import Region as Region
-from adcp.types._schemas.core.catalog import Catalog as SyncCatalogResult
-from adcp.types._schemas.core.catalog import Catalog as SyncCatalogResultInternal
-from adcp.types._schemas.core.catalog_item_delivery_metrics import (
-    CatalogItemDeliveryMetrics as ByCatalogItemItem,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.capabilities_changed_webhook import CapabilitiesChangedWebhook as CapabilitiesChangedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_field_mapping import CatalogFieldMapping as CatalogFieldMapping  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_item_availability_error import CatalogItemAvailabilityError as CatalogItemAvailabilityError  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_item_availability_ref import CatalogItemAvailabilityReference as CatalogItemAvailabilityReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_item_availability_state import CatalogItemAvailabilityState as CatalogItemAvailabilityState  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_item_availability_update import CatalogItemAvailabilityUpdate as CatalogItemAvailabilityUpdate  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_item_availability_update_result import CatalogItemAvailabilityUpdateResult as CatalogItemAvailabilityUpdateResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_item_delivery_metrics import CatalogItemDeliveryMetrics as ByCatalogItemItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_item_delivery_metrics import CatalogItemDeliveryMetrics as CatalogItemDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_item_reference_not_found_error import CatalogItemReferenceNotFoundError as CatalogItemReferenceNotFoundError  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.catalog_selection import CatalogSelection as CatalogSelection
+from adcp.types._schemas.core.catchment import Catchment as Catchment
+from adcp.types._schemas.core.collection import RelatedCollection as RelatedCollection
+from adcp.types._schemas.core.collection_delivery_metrics import CollectionDeliveryMetrics as CollectionDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.collection_distribution import CollectionDistribution as CollectionDistribution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.collection_list_ref import CollectionListReference as CollectionListReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.collection_property_delivery_metrics import CollectionPropertyDeliveryMetrics as CollectionPropertyDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.collection_ref import CollectionReference as CollectionReference
+from adcp.types._schemas.core.collection_selection import CollectionSelection as CollectionSelection
+from adcp.types._schemas.core.collection_selection import CollectionSelection1 as CollectionSelection1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.collection_selection import CollectionSelection2 as CollectionSelection2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.collection_selector import CollectionSelector as CollectionSelector
+from adcp.types._schemas.core.committed_metric import CommittedMetric as CommittedMetric
+from adcp.types._schemas.core.committed_metric import CommittedMetric1 as CommittedMetric1
+from adcp.types._schemas.core.committed_metric import CommittedMetric2 as CommittedMetric2
 from adcp.types._schemas.core.committed_metric import CommittedMetricStandard as Qualifier1
+from adcp.types._schemas.core.content_rating import ContentRating as ContentRating
+from adcp.types._schemas.core.context import ContextObject as ContextObject
+from adcp.types._schemas.core.creative_approval_scope import ScopedCreativeApproval as ScopedCreativeApproval  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_asset import CreativeAsset as CreativeAsset
+from adcp.types._schemas.core.creative_asset import CreativeAsset as LegacyCreativeAsset
+from adcp.types._schemas.core.creative_assets import CreativeAssets as CreativeAssets
+from adcp.types._schemas.core.creative_assignment import CreativeAssignment as CreativeAssignment
 from adcp.types._schemas.core.creative_assignment import RotationMode as RotationMode
 from adcp.types._schemas.core.creative_brief import Compliance as Compliance
 from adcp.types._schemas.core.creative_brief import Messaging as Messaging
 from adcp.types._schemas.core.creative_brief import Objective as Objective
-from adcp.types._schemas.core.creative_policy import (
-    ProvenanceRequirements as ProvenanceRequirements,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.creative_brief import RequiredDisclosure as RequiredDisclosure
+from adcp.types._schemas.core.creative_consumption import CreativeConsumption as CreativeConsumption
+from adcp.types._schemas.core.creative_delivery_metrics import CreativeDeliveryMetrics as CreativeDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_filters import CreativeFilters as CreativeFilters
+from adcp.types._schemas.core.creative_filters import CreativeFilters as LegacyCreativeFilters
+from adcp.types._schemas.core.creative_item import CreativeItem as CreativeItem
+from adcp.types._schemas.core.creative_item import CreativeItem1 as CreativeItem1
+from adcp.types._schemas.core.creative_item import CreativeItem2 as CreativeItem2
+from adcp.types._schemas.core.creative_locale_policy import CreativeLocalePolicy as CreativeLocalePolicy  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_localization import CreativeLocalization as CreativeLocalization  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_localization import TargetVariant as TargetVariant
+from adcp.types._schemas.core.creative_localization_readback import CreativeLocalizationReadback as CreativeLocalizationReadback  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_localization_readback import ResolvedAssets as ResolvedAssets
+from adcp.types._schemas.core.creative_localization_readback import Variants1 as Variants1
+from adcp.types._schemas.core.creative_localization_readback import Variants2 as Variants2
+from adcp.types._schemas.core.creative_manifest import CreativeManifest as CreativeManifest
+from adcp.types._schemas.core.creative_operation_format_declaration import CreativeOperationFormatDeclaration as CreativeOperationFormatDeclaration  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_policy import CreativePolicy as CreativePolicy
+from adcp.types._schemas.core.creative_policy import ProvenanceRequirements as ProvenanceRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_representation import CreativeRepresentationFormatKind as CreativeRepresentation  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_representation_set import CreativeRepresentationSet as CreativeRepresentationSet  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.creative_revision_id import CreativeRevisionId as CreativeRevisionId
+from adcp.types._schemas.core.creative_variable import CreativeVariable as CreativeVariable
 from adcp.types._schemas.core.creative_variable import VariableType as VariableType
+from adcp.types._schemas.core.creative_variant import CreativeVariant as CreativeVariant
 from adcp.types._schemas.core.creative_variant import GenerationContext as GenerationContext
 from adcp.types._schemas.core.daast_tracker_constraints import DaastEvent as DaastEvent
+from adcp.types._schemas.core.daast_tracker_constraints import DaastOffset as DaastOffset
 from adcp.types._schemas.core.daast_tracker_constraints import DaastTarget as DaastTarget
-from adcp.types._schemas.core.delivery_metric_aggregate import (
-    CanonicalMetricQualifier as Qualifier3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.delivery_metric_aggregate import (
-    DeliveryMetricAggregateStandard as DeliveryMetricAggregate1,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.daast_tracker_constraints import DaastVersions as DaastVersions
+from adcp.types._schemas.core.data_provider_signal_selector import DataProviderSignalSelector as DataProviderSignalSelector  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.data_provider_signal_selector import DataProviderSignalSelector1 as DataProviderSignalSelector1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.data_provider_signal_selector import DataProviderSignalSelector2 as DataProviderSignalSelector2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.data_provider_signal_selector import DataProviderSignalSelector3 as DataProviderSignalSelector3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.date_range import DateRange as DateRange
+from adcp.types._schemas.core.datetime_range import DatetimeRange as DatetimeRange
+from adcp.types._schemas.core.daypart_target import DaypartTarget as DaypartTarget
+from adcp.types._schemas.core.deadline_policy import DeadlinePolicy as DeadlinePolicy
+from adcp.types._schemas.core.deadline_policy import MaterialStage as MaterialStage
+from adcp.types._schemas.core.delivery_breakdown_controls import DeliveryBreakdownControls as DeliveryBreakdownControls  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.delivery_forecast import DeliveryForecast as DeliveryForecast
+from adcp.types._schemas.core.delivery_metric_aggregate import CanonicalMetricQualifier as Qualifier3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.delivery_metric_aggregate import DeliveryMetricAggregate as DeliveryMetricAggregate  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.delivery_metric_aggregate import DeliveryMetricAggregate2 as DeliveryMetricAggregate2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.delivery_metric_aggregate import DeliveryMetricAggregateStandard as DeliveryMetricAggregate1  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.delivery_metrics import ByActionSourceItem as ByActionSourceItem
 from adcp.types._schemas.core.delivery_metrics import ByEventTypeItem as ByEventTypeItem
 from adcp.types._schemas.core.delivery_metrics import DoohMetrics as DoohMetrics
 from adcp.types._schemas.core.delivery_metrics import DoohMetrics as DoohMetrics1
 from adcp.types._schemas.core.delivery_metrics import EstimationBasis as EstimationBasis
 from adcp.types._schemas.core.delivery_metrics import OohMetrics as OohMetrics
+from adcp.types._schemas.core.delivery_metrics import Panel as Panel
+from adcp.types._schemas.core.delivery_metrics import Posting as Posting
 from adcp.types._schemas.core.delivery_metrics import QuartileData as QuartileData
+from adcp.types._schemas.core.delivery_metrics import TimeBasedView as TimeBasedView
 from adcp.types._schemas.core.delivery_metrics import VenueBreakdownItem as VenueBreakdownItem
 from adcp.types._schemas.core.delivery_metrics import Viewability as Viewability1
-from adcp.types._schemas.core.delivery_metrics import (
-    ViewedSecondsHistogramItem as ViewedSecondsHistogramItem,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.delivery_metrics import (
-    ViewedSecondsPercentiles as ViewedSecondsPercentiles,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.demographic_targeting_capability import (
-    UnknownHandling as UnknownHandling,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.delivery_metrics import ViewedSecondsHistogramItem as ViewedSecondsHistogramItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.delivery_metrics import ViewedSecondsPercentiles as ViewedSecondsPercentiles  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.delivery_provider import DeliveryProvider as DeliveryProvider
+from adcp.types._schemas.core.delivery_recipient import DeliveryRecipient as DeliveryRecipient
+from adcp.types._schemas.core.demographic_predicate import DemographicPredicate as DemographicPredicate  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.demographic_reporting_capability import DemographicReportingCapability as DemographicReportingCapability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.demographic_reporting_capability import ReportingMode as ReportingMode
+from adcp.types._schemas.core.demographic_targeting_capability import DemographicTargetingCapability as DemographicTargetingCapability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.demographic_targeting_capability import ExecutionMode as ExecutionMode
+from adcp.types._schemas.core.demographic_targeting_capability import UnknownHandling as UnknownHandling  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.demographic_targeting_intent import DemographicTargetingIntent as DemographicTargetingIntent  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.demographic_targeting_resolution import DemographicTargetingResolution as DemographicTargetingResolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.demographic_targeting_resolution import Execution1 as Execution1
+from adcp.types._schemas.core.demographic_targeting_resolution import Execution2 as Execution2
+from adcp.types._schemas.core.deployment import Deployment as Deployment
+from adcp.types._schemas.core.deployment import Deployment1 as Deployment1
+from adcp.types._schemas.core.deployment import Deployment2 as Deployment2
+from adcp.types._schemas.core.destination import Destination1 as Destination1
+from adcp.types._schemas.core.destination import Destination2 as Destination2
+from adcp.types._schemas.core.destination_item import DestinationItem as DestinationItem
 from adcp.types._schemas.core.destination_item import DestinationType as DestinationType
+from adcp.types._schemas.core.diagnostic_issue import DiagnosticIssue as DiagnosticIssue
 from adcp.types._schemas.core.diagnostic_issue import Severity as Severity
-from adcp.types._schemas.core.downstream_connection_requirement import (
-    ConnectionType as ConnectionType,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.downstream_connection_requirement import ConnectionType as ConnectionType  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.downstream_connection_requirement import ResourceRef as ResourceRef
 from adcp.types._schemas.core.education_item import DegreeType as DegreeType
+from adcp.types._schemas.core.education_item import EducationItem as EducationItem
 from adcp.types._schemas.core.education_item import Level as Level
 from adcp.types._schemas.core.education_item import Modality as Modality
 from adcp.types._schemas.core.error import BuyerReason as BuyerReason
 from adcp.types._schemas.core.error import DiscriminatorItem as DiscriminatorItem
+from adcp.types._schemas.core.error import Issue as Issue
 from adcp.types._schemas.core.evaluator_spec import EvalBudget as EvalBudget
+from adcp.types._schemas.core.evaluator_spec import EvaluatorSpec as EvaluatorSpec
+from adcp.types._schemas.core.evaluator_spec import EvaluatorSpec1 as EvaluatorSpec1
+from adcp.types._schemas.core.evaluator_spec import EvaluatorSpec2 as EvaluatorSpec2
+from adcp.types._schemas.core.evaluator_spec import EvaluatorSpec3 as EvaluatorSpec3
 from adcp.types._schemas.core.evaluator_spec import ObjAgentUrlFeatureId as FeatureAgent
 from adcp.types._schemas.core.evaluator_spec import RankByItem as RankByItem
 from adcp.types._schemas.core.evaluator_spec import RankByItem as RankByItem1
 from adcp.types._schemas.core.evaluator_spec import RankByItem as RankByItem2
+from adcp.types._schemas.core.event import Event as Event
+from adcp.types._schemas.core.event_custom_data import Content as Content
+from adcp.types._schemas.core.event_custom_data import EventCustomData as EventCustomData
 from adcp.types._schemas.core.event_source_health import Detail as Detail
+from adcp.types._schemas.core.event_source_health import EventSourceHealth as EventSourceHealth
+from adcp.types._schemas.core.event_surface import EventSurface as EventSurface
+from adcp.types._schemas.core.experimental_feature_id import ExperimentalFeatureId as ExperimentalFeatureId  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.ext import ExtensionObject as ExtensionObject
+from adcp.types._schemas.core.feature_requirement import FeatureRequirement as FeatureRequirement
 from adcp.types._schemas.core.feature_requirement import IfNotCovered as IfNotCovered
+from adcp.types._schemas.core.flight_item import FlightItem as FlightItem
+from adcp.types._schemas.core.forecast_dimension_audience import AudienceForecastDimension as AudienceForecastDimension  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.forecast_dimension_device_platform import DevicePlatformForecastDimension as DevicePlatformForecastDimension  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.forecast_dimension_device_type import DeviceTypeForecastDimension as DeviceTypeForecastDimension  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.forecast_dimension_geo import GeoForecastDimension as GeoForecastDimension  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.forecast_dimension_placement import PlacementForecastDimension as PlacementForecastDimension  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.forecast_dimension_signal import SignalForecastDimension as SignalForecastDimension  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.forecast_dimension_time import TimeForecastDimension as TimeForecastDimension  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.forecast_point import ForecastPoint as ForecastPoint
 from adcp.types._schemas.core.forecast_point import ViewableRate as ViewableRate
+from adcp.types._schemas.core.forecast_point_dimensions import ForecastPointDimensions as ForecastPointDimensions  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.forecast_rate_range import ForecastRateRange as ForecastRateRange
+from adcp.types._schemas.core.forecast_vendor_metric_value import ForecastVendorMetricValue as ForecastVendorMetricValue  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.format import Assets as Assets
+from adcp.types._schemas.core.format import Assets as ImageFormatAsset
+from adcp.types._schemas.core.format import Assets10 as Assets10
+from adcp.types._schemas.core.format import Assets10 as AudioFormatAsset
+from adcp.types._schemas.core.format import Assets11 as Assets11
+from adcp.types._schemas.core.format import Assets11 as TextFormatAsset
+from adcp.types._schemas.core.format import Assets12 as Assets12
+from adcp.types._schemas.core.format import Assets12 as MarkdownFormatAsset
+from adcp.types._schemas.core.format import Assets13 as Assets13
+from adcp.types._schemas.core.format import Assets13 as HtmlFormatAsset
+from adcp.types._schemas.core.format import Assets14 as Assets14
+from adcp.types._schemas.core.format import Assets14 as CssFormatAsset
+from adcp.types._schemas.core.format import Assets15 as Assets15
+from adcp.types._schemas.core.format import Assets15 as JavascriptFormatAsset
+from adcp.types._schemas.core.format import Assets16 as Assets16
+from adcp.types._schemas.core.format import Assets17 as Assets17
+from adcp.types._schemas.core.format import Assets17 as VastFormatAsset
+from adcp.types._schemas.core.format import Assets18 as Assets18
+from adcp.types._schemas.core.format import Assets18 as DaastFormatAsset
+from adcp.types._schemas.core.format import Assets19 as Assets19
+from adcp.types._schemas.core.format import Assets19 as UrlFormatAsset
+from adcp.types._schemas.core.format import Assets20 as Assets20
+from adcp.types._schemas.core.format import Assets20 as WebhookFormatAsset
+from adcp.types._schemas.core.format import Assets21 as Assets21
+from adcp.types._schemas.core.format import Assets21 as BriefFormatAsset
+from adcp.types._schemas.core.format import Assets22 as Assets22
+from adcp.types._schemas.core.format import Assets22 as CatalogFormatAsset
+from adcp.types._schemas.core.format import Assets23 as Assets23
+from adcp.types._schemas.core.format import Assets24 as Assets24
+from adcp.types._schemas.core.format import Assets25 as Assets25
+from adcp.types._schemas.core.format import Assets26 as Assets26
+from adcp.types._schemas.core.format import Assets27 as Assets27
+from adcp.types._schemas.core.format import Assets28 as Assets28
+from adcp.types._schemas.core.format import Assets29 as Assets29
+from adcp.types._schemas.core.format import Assets29 as RepeatableAssetGroup
+from adcp.types._schemas.core.format import Assets31 as Assets31
+from adcp.types._schemas.core.format import Assets31 as ImageFormatGroupAsset
+from adcp.types._schemas.core.format import Assets32 as Assets32
+from adcp.types._schemas.core.format import Assets32 as VideoFormatGroupAsset
+from adcp.types._schemas.core.format import Assets33 as Assets33
+from adcp.types._schemas.core.format import Assets33 as AudioFormatGroupAsset
+from adcp.types._schemas.core.format import Assets34 as Assets34
+from adcp.types._schemas.core.format import Assets34 as TextFormatGroupAsset
+from adcp.types._schemas.core.format import Assets35 as Assets35
+from adcp.types._schemas.core.format import Assets35 as MarkdownFormatGroupAsset
+from adcp.types._schemas.core.format import Assets36 as Assets36
+from adcp.types._schemas.core.format import Assets36 as HtmlFormatGroupAsset
+from adcp.types._schemas.core.format import Assets37 as Assets37
+from adcp.types._schemas.core.format import Assets37 as CssFormatGroupAsset
+from adcp.types._schemas.core.format import Assets38 as Assets38
+from adcp.types._schemas.core.format import Assets38 as JavascriptFormatGroupAsset
+from adcp.types._schemas.core.format import Assets39 as Assets39
+from adcp.types._schemas.core.format import Assets40 as Assets40
+from adcp.types._schemas.core.format import Assets40 as VastFormatGroupAsset
+from adcp.types._schemas.core.format import Assets41 as Assets41
+from adcp.types._schemas.core.format import Assets41 as DaastFormatGroupAsset
+from adcp.types._schemas.core.format import Assets42 as Assets42
+from adcp.types._schemas.core.format import Assets42 as UrlFormatGroupAsset
+from adcp.types._schemas.core.format import Assets43 as Assets43
+from adcp.types._schemas.core.format import Assets43 as WebhookFormatGroupAsset
+from adcp.types._schemas.core.format import Assets44 as Assets44
+from adcp.types._schemas.core.format import Assets45 as Assets45
+from adcp.types._schemas.core.format import Assets46 as Assets46
+from adcp.types._schemas.core.format import Assets47 as Assets47
+from adcp.types._schemas.core.format import Assets48 as Assets48
+from adcp.types._schemas.core.format import Assets49 as Assets49
+from adcp.types._schemas.core.format import Assets50 as Assets50
+from adcp.types._schemas.core.format import Assets51 as Assets51
+from adcp.types._schemas.core.format import Assets9 as Assets9
+from adcp.types._schemas.core.format import Assets9 as VideoFormatAsset
+from adcp.types._schemas.core.format import Assets94 as Assets94
 from adcp.types._schemas.core.format import BaseGroupAsset as BaseGroupAsset
 from adcp.types._schemas.core.format import BaseIndividualAsset as BaseIndividualAsset
 from adcp.types._schemas.core.format import Dimensions as Dimensions1
+from adcp.types._schemas.core.format import DisclosureCapability as DisclosureCapability
+from adcp.types._schemas.core.format import FormatCard as FormatCard
 from adcp.types._schemas.core.format import FormatCardDetailed as FormatCardDetailed
-from adcp.types._schemas.core.format import GroupAudioAsset as AudioFormatGroupAsset
-from adcp.types._schemas.core.format import GroupCssAsset as CssFormatGroupAsset
-from adcp.types._schemas.core.format import GroupDaastAsset as DaastFormatGroupAsset
-from adcp.types._schemas.core.format import GroupHtmlAsset as HtmlFormatGroupAsset
-from adcp.types._schemas.core.format import GroupImageAsset as ImageFormatGroupAsset
-from adcp.types._schemas.core.format import GroupJavaScriptAsset as JavascriptFormatGroupAsset
-from adcp.types._schemas.core.format import GroupMarkdownAsset as MarkdownFormatGroupAsset
-from adcp.types._schemas.core.format import GroupTextAsset as TextFormatGroupAsset
-from adcp.types._schemas.core.format import GroupUrlAsset as UrlFormatGroupAsset
-from adcp.types._schemas.core.format import GroupVastAsset as VastFormatGroupAsset
-from adcp.types._schemas.core.format import GroupVideoAsset as VideoFormatGroupAsset
-from adcp.types._schemas.core.format import GroupWebhookAsset as WebhookFormatGroupAsset
-from adcp.types._schemas.core.format import IndividualAudioAsset as AudioFormatAsset
-from adcp.types._schemas.core.format import IndividualBriefAsset as BriefFormatAsset
-from adcp.types._schemas.core.format import IndividualCatalogAsset as CatalogFormatAsset
-from adcp.types._schemas.core.format import IndividualCssAsset as CssFormatAsset
-from adcp.types._schemas.core.format import IndividualDaastAsset as DaastFormatAsset
-from adcp.types._schemas.core.format import IndividualHtmlAsset as HtmlFormatAsset
-from adcp.types._schemas.core.format import IndividualImageAsset as ImageFormatAsset
-from adcp.types._schemas.core.format import IndividualJavaScriptAsset as JavascriptFormatAsset
-from adcp.types._schemas.core.format import IndividualMarkdownAsset as MarkdownFormatAsset
-from adcp.types._schemas.core.format import IndividualTextAsset as TextFormatAsset
-from adcp.types._schemas.core.format import IndividualUrlAsset as UrlFormatAsset
-from adcp.types._schemas.core.format import IndividualVastAsset as VastFormatAsset
-from adcp.types._schemas.core.format import IndividualVideoAsset as VideoFormatAsset
-from adcp.types._schemas.core.format import IndividualWebhookAsset as WebhookFormatAsset
-from adcp.types._schemas.core.format import RepeatableGroupAsset as RepeatableAssetGroup
+from adcp.types._schemas.core.format import LegacyFormat as LegacyFormat  #  LegacyFormat: the subject this word now denotes (name_table.ASSERTED)
+from adcp.types._schemas.core.format import Renders as Renders
+from adcp.types._schemas.core.format import Renders1 as Renders1
 from adcp.types._schemas.core.format import Responsive as Responsive
-from adcp.types._schemas.core.format_option_ref import (
-    FormatOptionReference1 as FormatOptionReference2,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.format import UnknownFormatAsset as UnknownFormatAsset
+from adcp.types._schemas.core.format import UnknownGroupAsset as UnknownGroupAsset
+from adcp.types._schemas.core.format_id import FormatReferenceStructuredObject as FormatReferenceStructuredObject  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.format_id import FormatReferenceStructuredObject as LegacyFormatId
+from adcp.types._schemas.core.format_id import FormatReferenceStructuredObject as LegacyFormatReferenceStructuredObject  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.format_option_ref import FormatOptionReference as FormatOptionReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.format_option_ref import FormatOptionReference1 as FormatOptionReference1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.format_option_ref import FormatOptionReference1 as FormatOptionReference2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.format_shape_vocabulary import AdcpFormatShapeVocabularyRegistry as AdcpFormatShapeVocabularyRegistry  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.frequency_cap_duration_unit import FrequencyCapDurationUnit as FrequencyCapDurationUnit  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.frequency_cap_impression_constraints import FrequencyCapImpressionConstraints as FrequencyCapImpressionConstraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.frequency_cap_interval_constraints import FrequencyCapIntervalConstraints as FrequencyCapIntervalConstraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.generation_credential import GenerationCredential as GenerationCredential  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.geo_breakdown_support import GeographicBreakdownSupport as GeographicBreakdownSupport  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.geo_delivery_metrics import GeoDeliveryMetrics as GeoDeliveryMetrics
+from adcp.types._schemas.core.geo_metro import GeoMetro as GeoMetro
+from adcp.types._schemas.core.geo_place_area import GeographicPlaceArea as GeographicPlaceArea
+from adcp.types._schemas.core.geo_place_catalog_capability import GeographicPlaceCatalogCapability as GeographicPlaceCatalogCapability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.geo_place_catalog_entry import GeographicPlaceCatalogEntry as GeographicPlaceCatalogEntry  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.geo_place_requirement import CatalogRequirement as CatalogRequirement
+from adcp.types._schemas.core.geo_place_requirement import GeographicPlaceRequirement as GeographicPlaceRequirement  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.geo_place_resolver import Auth as Auth
+from adcp.types._schemas.core.geo_place_resolver import GeographicPlaceResolver as GeographicPlaceResolver  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.geo_place_support import GeographicPlaceSystemSupport as GeographicPlaceSystemSupport  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.geo_place_system import GeographicPlaceIdentifierSystem as GeographicPlaceIdentifierSystem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.geo_place_type import GeographicPlaceType as GeographicPlaceType
+from adcp.types._schemas.core.geo_region_requirement import GeographicRegionRequirement as GeographicRegionRequirement  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.geo_region_requirement import ObjValues as Countries1
+from adcp.types._schemas.core.geo_region_support import Countries3 as Countries3
+from adcp.types._schemas.core.geo_region_support import GeographicRegionSupport as GeographicRegionSupport  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.get_geo_place_resolution_request import GetGeographicPlaceResolutionRequest as GetGeographicPlaceResolutionRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.get_geo_place_resolution_response import GetGeographicPlaceResolutionResponse as GetGeographicPlaceResolutionResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.hotel_item import HotelItem as HotelItem
+from adcp.types._schemas.core.iana_timezone import IanaTimezoneIdentifier as IanaTimezoneIdentifier
+from adcp.types._schemas.core.impairment import Impairment as Impairment
+from adcp.types._schemas.core.indicator_scope import IndicatorScope as IndicatorScope
+from adcp.types._schemas.core.indicators_changed_webhook import IndicatorsChangedWebhook as IndicatorsChangedWebhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.indicators_changed_webhook import RelationshipKind as RelationshipKind
+from adcp.types._schemas.core.industry_identifier import IndustryIdentifier as IndustryIdentifier
+from adcp.types._schemas.core.insertion_order import InsertionOrder as InsertionOrder
 from adcp.types._schemas.core.insertion_order import Terms as Terms
 from adcp.types._schemas.core.installment import DerivativeOf as DerivativeOf
-from adcp.types._schemas.core.inventory_list_application import (
-    InventoryListApplication1 as Summary2,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.installment import Installment as Installment
+from adcp.types._schemas.core.installment_deadlines import InstallmentDeadlines as InstallmentDeadlines  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.installment_delivery_metrics import InstallmentDeliveryMetrics as InstallmentDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.installment_property_delivery_metrics import InstallmentPropertyDeliveryMetrics as InstallmentPropertyDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.installment_ref import InstallmentReference as InstallmentReference
+from adcp.types._schemas.core.inventory_list_application import InventoryListApplication as InventoryListApplication  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.inventory_list_application import InventoryListApplication1 as InventoryListApplication1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.inventory_list_application import InventoryListApplication1 as Summary2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.inventory_list_application import InventoryListApplication2 as InventoryListApplication2  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.job_item import EmploymentType as EmploymentType
 from adcp.types._schemas.core.job_item import ExperienceLevel as ExperienceLevel
+from adcp.types._schemas.core.job_item import JobItem as JobItem
 from adcp.types._schemas.core.job_item import Salary as Salary
+from adcp.types._schemas.core.keyword_delivery_metrics import KeywordDeliveryMetrics as KeywordDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.limited_series import LimitedSeries as LimitedSeries
+from adcp.types._schemas.core.locale_tag import LanguageTag as LanguageTag
+from adcp.types._schemas.core.localized_creative_asset import LocalizedCreativeAsset as LocalizedCreativeAsset  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.macro_bearing_url import MacroBearingUrl as MacroBearingUrl
+from adcp.types._schemas.core.macro_encoding import MacroEncoding as MacroEncoding
+from adcp.types._schemas.core.macro_resolution_capability import MacroProcessingCapability as MacroProcessingCapability  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.macro_resolution_capability import MappingStatus as MappingStatus
-from adcp.types._schemas.core.media_buy import MediaBuy as BundledCapabilitiesMediaBuy
-from adcp.types._schemas.core.media_buy import MediaBuy as CoreMediaBuy
-from adcp.types._schemas.core.media_buy import MediaBuy as GetMediaBuysMediaBuy
+from adcp.types._schemas.core.macro_resolution_result import MacroResolutionResult as MacroResolutionResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.macro_translation_target import MacroTranslationTarget as MacroTranslationTarget  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.material_deadline import MaterialDeadline as MaterialDeadline
+from adcp.types._schemas.core.mcp_webhook_payload import McpWebhookPayload as McpWebhookPayload
+from adcp.types._schemas.core.measurement_readiness import MeasurementReadiness as MeasurementReadiness  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.measurement_terms import MeasurementTerms as MeasurementTerms
+from adcp.types._schemas.core.measurement_window import MeasurementWindow as MeasurementWindow
+from adcp.types._schemas.core.media_buy_available_action import MediaBuyAvailableAction as MediaBuyAvailableAction  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.media_buy_available_action_id import MediaBuyAvailableActionId as MediaBuyAvailableActionId  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.media_buy_change_term_id import MediaBuyChangeTermId as MediaBuyChangeTermId  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.media_buy_features import MediaBuyFeatures as MediaBuyFeatures
+from adcp.types._schemas.core.media_buy_frequency_cap import FrequencyCap as MediaBuyFrequencyCap
+from adcp.types._schemas.core.media_buy_frequency_cap_capability import MediaBuyFrequencyCapCapability as MediaBuyFrequencyCapCapability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.media_buy_frequency_cap_requirement import MediaBuyFrequencyCapRequirement as MediaBuyFrequencyCapRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.media_buy_frequency_cap_support import MediaBuyFrequencyCapSupport as MediaBuyFrequencyCapSupport  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.media_buy_legacy_terms_ref import MediaBuyTermsReference as MediaBuyTermsReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.media_buy_support import ProductMediaBuySupport as ProductMediaBuySupport  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.media_buy_support_requirements import ProductMediaBuySupportRequirements as ProductMediaBuySupportRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.missing_metric import MissingMetric as MissingMetric
+from adcp.types._schemas.core.missing_metric import MissingMetric1 as MissingMetric1
+from adcp.types._schemas.core.missing_metric import MissingMetric2 as MissingMetric2
+from adcp.types._schemas.core.negative_keyword import NegativeKeyword as NegativeKeyword
+from adcp.types._schemas.core.notification_config import NotificationConfig as NotificationConfig
 from adcp.types._schemas.core.offering import GeoTargets as GeoTargets
+from adcp.types._schemas.core.offering_asset_group import OfferingAssetGroup as OfferingAssetGroup
+from adcp.types._schemas.core.operator_identity import OperatorIdentity as OperatorIdentity
+from adcp.types._schemas.core.operator_unit import OperatorUnit as OperatorUnit
 from adcp.types._schemas.core.opportunity_context import CloseReason as CloseReason
+from adcp.types._schemas.core.opportunity_context import Phase as Phase
+from adcp.types._schemas.core.optimization_goal import OptimizationGoal10 as OptimizationGoal10
+from adcp.types._schemas.core.optimization_goal import OptimizationGoal8 as OptimizationGoal8
+from adcp.types._schemas.core.optimization_goal import OptimizationGoal9 as OptimizationGoal9
+from adcp.types._schemas.core.optimization_goal import Target16 as Target16
+from adcp.types._schemas.core.optimization_goal import Target17 as Target17
+from adcp.types._schemas.core.outcome_measurement import OutcomeMeasurement as OutcomeMeasurement
+from adcp.types._schemas.core.outcome_target_cost_per import OutcomeTargetCostPer as OutcomeTargetCostPer  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.overlay import Bounds as Bounds
+from adcp.types._schemas.core.overlay import Overlay as Overlay
 from adcp.types._schemas.core.overlay import Visual as Visual
-from adcp.types._schemas.core.package import Package as MediaBuyPackage
-from adcp.types._schemas.core.package_format_snapshot import (
-    AgentPlacementFormatDeclaration as PackageFormatSnapshot13,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    CoordinatedPlacementsFormatDeclaration as PackageFormatSnapshot15,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    CustomFormatDeclaration as PackageFormatSnapshot16,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    DAASTAudioFormatDeclaration as PackageFormatSnapshot9,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    DisplayTagFormatDeclaration as PackageFormatSnapshot3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    HostedAudioFormatDeclaration as PackageFormatSnapshot7,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    HostedVideoFormatDeclaration as PackageFormatSnapshot5,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    HTML5FormatDeclaration as PackageFormatSnapshot2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    ImageCarouselFormatDeclaration as PackageFormatSnapshot4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    ImageFormatDeclaration as PackageFormatSnapshot1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    NativeInFeedFormatDeclaration as PackageFormatSnapshot11,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    ResponsiveCreativeFormatDeclaration as PackageFormatSnapshot12,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    SellerRenderedStatefulDisplayFormatDeclaration as PackageFormatSnapshot14,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    SponsoredPlacementFormatDeclaration as PackageFormatSnapshot10,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    VASTAudioFormatDeclaration as PackageFormatSnapshot8,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_format_snapshot import (
-    VASTVideoFormatDeclaration as PackageFormatSnapshot6,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_signal_targeting import (
-    PackageSignalTargeting as PackageSignalTargeting4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_signal_targeting import (
-    SignalTargetingExpressionBinary as PackageSignalTargeting1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_signal_targeting import (
-    SignalTargetingExpressionCategorical as PackageSignalTargeting2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.package_signal_targeting import (
-    SignalTargetingExpressionNumeric as PackageSignalTargeting3,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.package_delivery_metric_value import PackageDeliveryMetricValue as PackageDeliveryMetricValue  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import AgentPlacementFormatDeclaration as PackageFormatSnapshot13  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import CoordinatedPlacementsFormatDeclaration as PackageFormatSnapshot15  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import CustomFormatDeclaration as PackageFormatSnapshot16  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import DAASTAudioFormatDeclaration as PackageFormatSnapshot9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import DisplayTagFormatDeclaration as PackageFormatSnapshot3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import HTML5FormatDeclaration as PackageFormatSnapshot2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import HostedAudioFormatDeclaration as PackageFormatSnapshot7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import HostedVideoFormatDeclaration as PackageFormatSnapshot5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import ImageCarouselFormatDeclaration as PackageFormatSnapshot4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import ImageFormatDeclaration as PackageFormatSnapshot1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import NativeInFeedFormatDeclaration as PackageFormatSnapshot11  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import PackageFormatSnapshot as PackageFormatSnapshot  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import ResponsiveCreativeFormatDeclaration as PackageFormatSnapshot12  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import SellerRenderedStatefulDisplayFormatDeclaration as PackageFormatSnapshot14  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import SponsoredPlacementFormatDeclaration as PackageFormatSnapshot10  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import VASTAudioFormatDeclaration as PackageFormatSnapshot8  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_format_snapshot import VASTVideoFormatDeclaration as PackageFormatSnapshot6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_signal_targeting import PackageSignalTargeting as PackageSignalTargeting  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_signal_targeting import PackageSignalTargeting as PackageSignalTargeting4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_signal_targeting import SignalTargetingExpressionBinary as PackageSignalTargeting1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_signal_targeting import SignalTargetingExpressionCategorical as PackageSignalTargeting2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_signal_targeting import SignalTargetingExpressionNumeric as PackageSignalTargeting3  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.package_signal_targeting_group import Operator as Operator
+from adcp.types._schemas.core.package_signal_targeting_group import PackageSignalTargetingGroup as PackageSignalTargetingGroup  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_signal_targeting_groups import PackageSignalTargetingGroups as PackageSignalTargetingGroups  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.package_targeting_resolution import PackageTargetingResolution as PackageTargetingResolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.pagination_request import PaginationRequest as PaginationRequest
+from adcp.types._schemas.core.pagination_response import PaginationResponse as PaginationResponse
 from adcp.types._schemas.core.performance_feedback import DatetimeRange as MeasurementPeriod
-from adcp.types._schemas.core.performance_feedback import PerformanceFeedback as Performance
-from adcp.types._schemas.core.performance_feedback_assertion import (
-    ConfidenceInterval as ConfidenceInterval,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.placement import (
-    ProductDoohPlacementAttributes as ProductDoohPlacementAttributes,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.placement import (
-    ProductDoohScreenResolution as ProductDoohScreenResolution,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.placement_definition import (
-    PublisherDoohPlacementAttributes as PublisherDoohPlacementAttributes,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.placement_definition import (
-    PublisherDoohScreenResolution as PublisherDoohScreenResolution,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.performance_feedback_assertion import ConfidenceInterval as ConfidenceInterval  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.performance_feedback_metric import PerformanceFeedbackMetric as PerformanceFeedbackMetric  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.performance_feedback_metric import PerformanceFeedbackMetric1 as PerformanceFeedbackMetric1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.performance_feedback_metric import PerformanceFeedbackMetric2 as PerformanceFeedbackMetric2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.performance_standard import PerformanceStandard as PerformanceStandard
+from adcp.types._schemas.core.placement import Placement as LegacyPlacement
+from adcp.types._schemas.core.placement import ProductDoohPlacementAttributes as ProductDoohPlacementAttributes  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.placement import ProductDoohScreenResolution as ProductDoohScreenResolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.placement_definition import FormatOptions as FormatOptions
+from adcp.types._schemas.core.placement_definition import PlacementDefinition as PlacementDefinition
+from adcp.types._schemas.core.placement_definition import PublisherDoohPlacementAttributes as PublisherDoohPlacementAttributes  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.placement_definition import PublisherDoohScreenResolution as PublisherDoohScreenResolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.placement_delivery_metrics import PlacementDeliveryMetrics as PlacementDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.placement_evidence import PlacementEvidence as PlacementEvidence
+from adcp.types._schemas.core.placement_identity import PlacementIdentity as PlacementIdentity
+from adcp.types._schemas.core.placement_identity import PlacementIdentity1 as PlacementIdentity1
+from adcp.types._schemas.core.placement_identity import PlacementIdentity2 as PlacementIdentity2
 from adcp.types._schemas.core.placement_presentation import BoxDecoration as BoxDecoration
 from adcp.types._schemas.core.placement_presentation import Canvas as Canvas
+from adcp.types._schemas.core.placement_presentation import Color as Color
 from adcp.types._schemas.core.placement_presentation import CreativeSlot as CreativeSlot
 from adcp.types._schemas.core.placement_presentation import ImageDecoration as ImageDecoration
 from adcp.types._schemas.core.placement_presentation import ImageRef as ImageRef
 from adcp.types._schemas.core.placement_presentation import Layer as Layer
+from adcp.types._schemas.core.placement_presentation import PlacementPresentationDocument as PlacementPresentationDocument  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.placement_presentation import Rectangle as Rectangle
 from adcp.types._schemas.core.placement_presentation import TextDecoration as TextDecoration
+from adcp.types._schemas.core.placement_property_delivery_metrics import PlacementPropertyDeliveryMetrics as PlacementPropertyDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.placement_ref import PlacementReference as PlacementReference
+from adcp.types._schemas.core.placement_selection import PlacementSelection1 as PlacementSelection1
+from adcp.types._schemas.core.placement_selection import PlacementSelection2 as PlacementSelection2
+from adcp.types._schemas.core.planned_delivery import PlannedDelivery as PlannedDelivery
+from adcp.types._schemas.core.platform_extension_ref import PlatformExtensionReference as PlatformExtensionReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.positive_postal_area_support import PositivePostalAreaSupport as PositivePostalAreaSupport  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_area import PostalArea as PostalArea
+from adcp.types._schemas.core.postal_area import PostalArea112 as PostalArea112
+from adcp.types._schemas.core.postal_area import PostalArea113 as PostalArea113
+from adcp.types._schemas.core.postal_area import PostalArea114 as PostalArea114
+from adcp.types._schemas.core.postal_area import PostalArea115 as PostalArea115
+from adcp.types._schemas.core.postal_area import PostalArea116 as PostalArea116
+from adcp.types._schemas.core.postal_area import PostalArea117 as PostalArea117
+from adcp.types._schemas.core.postal_area import PostalArea118 as PostalArea118
+from adcp.types._schemas.core.postal_area import PostalArea119 as PostalArea119
+from adcp.types._schemas.core.postal_area import PostalArea120 as PostalArea120
+from adcp.types._schemas.core.postal_area import PostalArea2 as PostalArea2
 from adcp.types._schemas.core.postal_area import PostalAreaCountrySystemValues as System2
 from adcp.types._schemas.core.postal_area import PostalCountrySystemAUPostcode as System9
 from adcp.types._schemas.core.postal_area import PostalCountrySystemCountrySystem as PostalArea13
@@ -1218,407 +1433,506 @@ from adcp.types._schemas.core.postal_area import PostalCountrySystemINPin as Pos
 from adcp.types._schemas.core.postal_area import PostalCountrySystemUS as PostalArea1
 from adcp.types._schemas.core.postal_area import PostalCountrySystemUS as System1
 from adcp.types._schemas.core.postal_area import PostalCountrySystemZAPostalCode as PostalArea12
-from adcp.types._schemas.core.postal_country_system import Country as ProductFilterCountry
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystem2 as PostalCountrySystem4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystem3 as PostalCountrySystem6,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystemAUPostcode as PostalCountrySystem9,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystemBRCep as PostalCountrySystem10,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystemCA as PostalCountrySystem5,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystemCountrySystem as System13,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystemFRCodePostal as PostalCountrySystem8,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.postal_area_support import PostalAreaSupportAdditionalPropertyEnum as PostalAreaSupportAdditionalPropertyEnum  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystem as PostalCountrySystem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystem1 as PostalCountrySystem1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystem2 as PostalCountrySystem2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystem2 as PostalCountrySystem4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystem3 as PostalCountrySystem3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystem3 as PostalCountrySystem6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystemAUPostcode as PostalCountrySystem9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystemBRCep as PostalCountrySystem10  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystemCA as PostalCountrySystem5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystemCountrySystem as System13  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystemFRCodePostal as PostalCountrySystem8  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.postal_country_system import PostalCountrySystemINPin as System11
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystemPlz as PostalCountrySystem7,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.postal_country_system import (
-    PostalCountrySystemZAPostalCode as System12,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.preview_renderer_metadata import (
-    RenderingOrigin as PreviewRenderingOrigin,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.principal_declarations import (
-    WebhookSigningAlgorithm as WebhookSigningAlgorithm,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystemPlz as PostalCountrySystem7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.postal_country_system import PostalCountrySystemZAPostalCode as System12  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.presentation_ref import PlacementPresentationReference as PlacementPresentationReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.preview_provider import PublisherDesignatedPreviewProvider as PublisherDesignatedPreviewProvider  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.preview_renderer_metadata import PreviewRendererMetadata as PreviewRendererMetadata  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.pricing_option import PricingOption as PricingOption
+from adcp.types._schemas.core.principal_changed_webhook import PrincipalChangedWebhook as PrincipalChangedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.principal_declarations import AgentDeclarations as AgentDeclarations
+from adcp.types._schemas.core.principal_declarations import WebhookSigningAlgorithm as WebhookSigningAlgorithm  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.principal_declarations_state import Axis as Axis
+from adcp.types._schemas.core.principal_declarations_state import Exclusion as Exclusion
+from adcp.types._schemas.core.principal_declarations_state import PrincipalDeclarationsState as PrincipalDeclarationsState  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.principal_state import PrincipalState as PrincipalState
+from adcp.types._schemas.core.principal_state import RetiredDestination as RetiredDestination
 from adcp.types._schemas.core.product import AudienceActivation as AudienceActivation
+from adcp.types._schemas.core.product import DeliveryMeasurement as DeliveryMeasurement
 from adcp.types._schemas.core.product import MaterialSubmission as MaterialSubmission
 from adcp.types._schemas.core.product import MetricOptimization as MetricOptimization
+from adcp.types._schemas.core.product import Product as LegacyProduct
+from adcp.types._schemas.core.product import Product as Product
 from adcp.types._schemas.core.product import ProductCard as ProductCard
 from adcp.types._schemas.core.product import ProductCardDetailed as ProductCardDetailed
+from adcp.types._schemas.core.product import Specification as Specification
+from adcp.types._schemas.core.product import SupportedTarget5 as SupportedTarget5
+from adcp.types._schemas.core.product_allocation import ProductAllocation as ProductAllocation
+from adcp.types._schemas.core.product_allowed_action import ProductAllowedAction as ProductAllowedAction  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_audience_evidence_requirements import AcceptedAttestationIssuers1 as AcceptedAttestationIssuers1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_audience_evidence_requirements import AcceptedAttestationIssuers2 as AcceptedAttestationIssuers2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_audience_evidence_requirements import ProductAudienceEvidenceRequirements as ProductAudienceEvidenceRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_card_reference_asset import ProductCardReferenceAsset as ProductCardReferenceAsset  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_change_map import ProductChangeMap as ProductChangeMap
+from adcp.types._schemas.core.product_change_map import ProductChangeMap1 as ProductChangeMap1
 from adcp.types._schemas.core.product_execution_requirement import Connection as Connection
+from adcp.types._schemas.core.product_execution_requirement import ProductExecutionRequirement as ProductExecutionRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_execution_requirement import ProductExecutionRequirement1 as ProductExecutionRequirement1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_execution_requirement import ProductExecutionRequirement2 as ProductExecutionRequirement2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_execution_requirement import ProductExecutionRequirement3 as ProductExecutionRequirement3  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.product_filters import AdCPAudienceSync as SignalTargetingItem1
-from adcp.types._schemas.core.product_filters import (
-    RequiredGeoTargetingItem as RequiredGeoTargetingItem,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.product_filters import AudienceActivationMethods1 as AudienceActivationMethods1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_filters import AudienceActivationMethods2 as AudienceActivationMethods2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_filters import AudienceActivationMethods3 as AudienceActivationMethods3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_filters import AudienceActivationMethods4 as AudienceActivationMethods4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_filters import AudienceActivationMethods5 as AudienceActivationMethods5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_filters import ProductFilters as LegacyProductFilters
+from adcp.types._schemas.core.product_filters import ProductFilters as ProductFilters
+from adcp.types._schemas.core.product_filters import RequiredGeoTargetingItem as RequiredGeoTargetingItem  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.product_filters import SignalTargetingBinary as SignalTargetingItem2
-from adcp.types._schemas.core.product_filters import (
-    SignalTargetingCategorical as SignalTargetingItem3,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.product_filters import SignalTargetingCategorical as SignalTargetingItem3  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.product_filters import SignalTargetingItem as SignalTargetingItem
 from adcp.types._schemas.core.product_filters import SignalTargetingItem as SignalTargetingItem4
-from adcp.types._schemas.core.product_format_declaration import (
-    SellerPreference as ProductFormatSellerPreference,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.product_offer_filters import (
-    AvailabilityHorizon as AvailabilityHorizon,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.product_signal_targeting_option import (
-    ActivationStatus as ActivationStatus,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration as Format  #  Format: the subject this word now denotes (name_table.ASSERTED)
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration as ProductFormatDeclaration  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration1 as ProductFormatDeclaration1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration10 as ProductFormatDeclaration10  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration11 as ProductFormatDeclaration11  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration12 as ProductFormatDeclaration12  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration13 as ProductFormatDeclaration13  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration14 as ProductFormatDeclaration14  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration15 as ProductFormatDeclaration15  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration16 as ProductFormatDeclaration16  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration2 as ProductFormatDeclaration2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration3 as ProductFormatDeclaration3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration4 as ProductFormatDeclaration4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration5 as ProductFormatDeclaration5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration6 as ProductFormatDeclaration6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration7 as ProductFormatDeclaration7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration8 as ProductFormatDeclaration8  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration9 as ProductFormatDeclaration9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_identity import ProductIdentity as ProductIdentity
+from adcp.types._schemas.core.product_offer_filters import AvailabilityHorizon as AvailabilityHorizon  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_offer_filters import ProductOfferFilters as ProductOfferFilters  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_offer_filters import RequiredPerformanceStandard as RequiredPerformanceStandard  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_signal_targeting_option import ActivationStatus as ActivationStatus  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_signal_targeting_option import AllowedTargetingMode as AllowedTargetingMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_signal_targeting_option import ProductSignalTargetingOption as ProductSignalTargetingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.product_targeting_resolution import ProductTargetingResolution as ProductTargetingResolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.property import Property as Property
+from adcp.types._schemas.core.property_delivery_metrics import PropertyDeliveryMetrics as PropertyDeliveryMetrics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.property_id import PropertyId as PropertyId
+from adcp.types._schemas.core.property_list_ref import PropertyListReference as PropertyListReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.property_ref import PropertyReference as PropertyReference
+from adcp.types._schemas.core.property_tag import PropertyTag as PropertyTag
 from adcp.types._schemas.core.provenance import AiTool as AiTool
 from adcp.types._schemas.core.provenance import C2pa as C2pa
 from adcp.types._schemas.core.provenance import EmbeddedProvenanceItem as EmbeddedProvenanceItem
 from adcp.types._schemas.core.provenance import RenderGuidance as RenderGuidance
 from adcp.types._schemas.core.provenance import VerificationItem as VerificationItem
-from adcp.types._schemas.core.publisher_property_selector import (
-    PublisherPropertySelectorAll as PublisherPropertiesInternal,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.publisher_property_selector import (
-    PublisherPropertySelectorById as PublisherPropertiesByIdInternal,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.publisher_property_selector import (
-    PublisherPropertySelectorByTag as PublisherPropertiesByTagInternal,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.provenance import Watermark as Watermark
+from adcp.types._schemas.core.publisher_property_selector import PublisherPropertySelector as PublisherPropertySelector  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.publisher_property_selector import PublisherPropertySelector1 as PublisherPropertiesInternal  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.publisher_property_selector import PublisherPropertySelector1 as PublisherPropertySelector1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.publisher_property_selector import PublisherPropertySelector2 as PublisherPropertiesByIdInternal  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.publisher_property_selector import PublisherPropertySelector2 as PublisherPropertySelector2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.publisher_property_selector import PublisherPropertySelector3 as PublisherPropertiesByTagInternal  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.publisher_property_selector import PublisherPropertySelector3 as PublisherPropertySelector3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.push_notification_config import PushNotificationConfig as PushNotificationConfig  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.real_estate_item import ListingType as ListingType
+from adcp.types._schemas.core.real_estate_item import RealEstateItem as RealEstateItem
+from adcp.types._schemas.core.reference_asset import ReferenceAsset as ReferenceAsset
+from adcp.types._schemas.core.reference_renderer import ReferenceRenderer as ReferenceRenderer
+from adcp.types._schemas.core.reference_renderer import ReferenceRendererProvenance as ReferenceRendererProvenance  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.registry_event import AgentProfilePayload as AgentProfilePayload
 from adcp.types._schemas.core.registry_event import AuthorizationPayload as AuthorizationPayload
 from adcp.types._schemas.core.registry_event import AuthorizationPayload as Payload12
 from adcp.types._schemas.core.registry_event import AuthorizationPayload as Payload13
 from adcp.types._schemas.core.registry_event import AuthorizationPayload as Payload14
 from adcp.types._schemas.core.registry_event import AuthorizationType as AuthorizationType
+from adcp.types._schemas.core.registry_event import ChangedFields as ChangedFields
 from adcp.types._schemas.core.registry_event import Classification as Classification
 from adcp.types._schemas.core.registry_event import CollectionIdentifier as CollectionIdentifier
 from adcp.types._schemas.core.registry_event import CollectionPayload as CollectionPayload
 from adcp.types._schemas.core.registry_event import CompliancePayload as CompliancePayload
 from adcp.types._schemas.core.registry_event import CompliancePayload as Payload7
+from adcp.types._schemas.core.registry_event import ComplianceStatus as ComplianceStatus
 from adcp.types._schemas.core.registry_event import GradingProfile as GradingProfile
+from adcp.types._schemas.core.registry_event import Payload1 as Payload1
+from adcp.types._schemas.core.registry_event import Payload2 as Payload2
+from adcp.types._schemas.core.registry_event import Payload5 as Payload5
+from adcp.types._schemas.core.registry_event import Payload6 as Payload6
+from adcp.types._schemas.core.registry_event import Payload8 as Payload8
+from adcp.types._schemas.core.registry_event import Payload9 as Payload9
 from adcp.types._schemas.core.registry_event import PropertyPayload as PropertyPayload
-from adcp.types._schemas.core.registry_event import (
-    PublisherAdagentsPayload as PublisherAdagentsPayload,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAgentComplianceChangedAgent as RegistryEvent13,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.registry_event import PropertySource as PropertySource
+from adcp.types._schemas.core.registry_event import PublisherAdagentsPayload as PublisherAdagentsPayload  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEvent as RegistryEvent
+from adcp.types._schemas.core.registry_event import RegistryEventAgentComplianceChangedAgent as RegistryEvent13  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.registry_event import RegistryEventAgentDiscoveredAgent as Payload10
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAgentDiscoveredAgent as RegistryEvent10,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAgentProfileUpdatedAgent as RegistryEvent12,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.registry_event import RegistryEventAgentDiscoveredAgent as RegistryEvent10  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventAgentProfileUpdatedAgent as RegistryEvent12  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.registry_event import RegistryEventAgentRemovedAgent as Payload11
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAgentRemovedAgent as RegistryEvent11,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAgentVerificationEarnedAgent as RegistryEvent14,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAgentVerificationLostAgent as RegistryEvent15,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAuthorizationGrantedAuthorization as RegistryEvent18,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAuthorizationModifiedAuthorization as RegistryEvent20,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventAuthorizationRevokedAuthorization as RegistryEvent19,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventCollectionCreatedCollection as RegistryEvent6,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventCollectionMergedCollection as RegistryEvent8,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventCollectionRemovedCollection as RegistryEvent9,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventCollectionUpdatedCollection as RegistryEvent7,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPropertyCreatedProperty as RegistryEvent1,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.registry_event import RegistryEventAgentRemovedAgent as RegistryEvent11  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventAgentVerificationEarnedAgent as RegistryEvent14  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventAgentVerificationLostAgent as RegistryEvent15  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventAuthorizationGrantedAuthorization as RegistryEvent18  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventAuthorizationModifiedAuthorization as RegistryEvent20  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventAuthorizationRevokedAuthorization as RegistryEvent19  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventCollectionCreatedCollection as RegistryEvent6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventCollectionMergedCollection as RegistryEvent8  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventCollectionRemovedCollection as RegistryEvent9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventCollectionUpdatedCollection as RegistryEvent7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventPropertyCreatedProperty as RegistryEvent1  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.registry_event import RegistryEventPropertyMergedProperty as Payload3
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPropertyMergedProperty as RegistryEvent3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPropertyReactivatedProperty as RegistryEvent5,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.registry_event import RegistryEventPropertyMergedProperty as RegistryEvent3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventPropertyReactivatedProperty as RegistryEvent5  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.registry_event import RegistryEventPropertyStaleProperty as Payload4
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPropertyStaleProperty as RegistryEvent4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPropertyUpdatedProperty as RegistryEvent2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPublisherAdagentsChangedPublisher as RegistryEvent17,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.registry_event import (
-    RegistryEventPublisherAdagentsDiscoveredPublisher as RegistryEvent16,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.registry_event import RegistryEventPropertyStaleProperty as RegistryEvent4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventPropertyUpdatedProperty as RegistryEvent2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventPublisherAdagentsChangedPublisher as RegistryEvent17  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import RegistryEventPublisherAdagentsDiscoveredPublisher as RegistryEvent16  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.registry_event import Storyboard as Storyboard
+from adcp.types._schemas.core.registry_event import StoryboardStatus as StoryboardStatus
+from adcp.types._schemas.core.registry_event import StringArray as StringArray
+from adcp.types._schemas.core.registry_event import Tracks as Tracks
 from adcp.types._schemas.core.registry_feed_response import Freshness as Freshness
-from adcp.types._schemas.core.reporting_canonicalization_contract import (
-    AdditionalItem as AdditionalItem,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.registry_feed_response import RegistryFeedResponse as RegistryFeedResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_adjustment import AccountingPeriod as AccountingPeriod
+from adcp.types._schemas.core.reporting_adjustment import ReportingAdjustment as ReportingAdjustment
+from adcp.types._schemas.core.reporting_adjustment_receipt import ReportingAdjustmentReceipt as ReportingAdjustmentReceipt  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_adjustment_receipt import ReportingAdjustmentRejectionCode as ReportingAdjustmentRejectionCode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_canonical_content_digest import ReportingCanonicalContentDigest as ReportingCanonicalContentDigest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_canonicalization_contract import AdditionalItem as AdditionalItem  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_canonicalization_contract import EmptyReport as EmptyReport
-from adcp.types._schemas.core.reporting_canonicalization_contract import (
-    GoldenVectors as GoldenVectors,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_canonicalization_contract import (
-    OrderingEncoding as OrderingEncoding,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.reporting_canonicalization_contract import GoldenVectors as GoldenVectors  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_canonicalization_contract import OrderingEncoding as OrderingEncoding  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_canonicalization_contract import ReportingCanonicalizationContract as ReportingCanonicalizationContract  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_canonicalization_contract import ReportingPrimaryKey as ReportingPrimaryKey  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_capabilities import ReportingCapabilities as ReportingCapabilities  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_consumer_status import ConsumerStatus as ConsumerStatus
+from adcp.types._schemas.core.reporting_consumer_status import ConsumerStatus as ReportingConsumerStatusValue  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_consumer_status import FailureCode as FailureCode
+from adcp.types._schemas.core.reporting_consumer_status import FailureCode as ReportingConsumerFailureCode  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_consumer_status import MismatchCode as MismatchCode
+from adcp.types._schemas.core.reporting_consumer_status import MismatchCode as ReportingConsumerMismatchCode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_consumer_status import ReportingConsumerStatus as ReportingConsumerStatus  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_control_total import ReportingControlTotal as ReportingControlTotal  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_control_total import ReportingControlTotal1 as ReportingControlTotal1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_control_total import ReportingControlTotal2 as ReportingControlTotal2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_coverage import Limitation as Limitation
+from adcp.types._schemas.core.reporting_coverage import ReportingCoverage as ReportingCoverage
+from adcp.types._schemas.core.reporting_coverage import ReportingMediaBuyId as ReportingMediaBuyId
+from adcp.types._schemas.core.reporting_coverage import ReportingPackageId as ReportingPackageId
 from adcp.types._schemas.core.reporting_dataset_share_destination import Recipient as Recipient
-from adcp.types._schemas.core.reporting_dataset_share_destination import (
-    ReportingCloud as ReportingCloud,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_capabilities import (
-    OperationsContact as OperationsContact,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_config import (
-    AuthoritativeParty as AuthoritativeParty,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_config import (
-    CoverageRequirement as CoverageRequirement,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_config_state import (
-    ReportingDeliveryConfigLifecycleState as ReportingDeliveryConfigLifecycleState,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_method import (
-    ReportingOrchestration as ReportingOrchestration,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_offering import (
-    ProducerIdentity as ProducerIdentity,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_offering import (
-    ReportingDeliveryPattern as ReportingDeliveryPattern,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_offering import (
-    ReportingFeedPurpose as ReportingFeedPurpose,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_delivery_offering import (
-    ReportingProfile as ReportingProfile,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.reporting_dataset_share_destination import ReportingCloud as ReportingCloud  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_dataset_share_destination import ReportingDatasetShareDestination as ReportingDatasetShareDestination  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_dataset_share_destination import ReportingDatasetShareDestination1 as ReportingDatasetShareDestination1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_dataset_share_destination import ReportingDatasetShareDestination2 as ReportingDatasetShareDestination2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_capabilities import OperationsContact as OperationsContact  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_capabilities import OperationsContact as ReportingOperationsContact  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_capabilities import ReportingDeliveryCapabilities as ReportingDeliveryCapabilities  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_config import AuthoritativeParty as AuthoritativeParty  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_config import AuthoritativeParty as ReportingAuthoritativeParty  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_config import CoverageRequirement as CoverageRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_config import ReportingDeliveryConfiguration as ReportingDeliveryConfiguration  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_config_state import ReportingDeliveryConfigLifecycleState as ReportingDeliveryConfigLifecycleState  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_config_state import ReportingDeliveryConfigurationState as ReportingDeliveryConfigurationState  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_method import ReportingDeliveryMethod as ReportingDeliveryMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_method import ReportingDeliveryMethod1 as ReportingDeliveryMethod1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_method import ReportingDeliveryMethod2 as ReportingDeliveryMethod2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_method import ReportingDeliveryMethod3 as ReportingDeliveryMethod3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_method import ReportingOrchestration as ReportingOrchestration  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_offering import DestinationMode as DestinationMode
+from adcp.types._schemas.core.reporting_delivery_offering import Method as PixelTrackerMethod
+from adcp.types._schemas.core.reporting_delivery_offering import ProducerIdentity as ProducerIdentity  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_offering import ReportingDeliveryOffering as ReportingDeliveryOffering  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_offering import ReportingDeliveryPattern as ReportingDeliveryPattern  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_offering import ReportingFeedPurpose as ReportingFeedPurpose  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_offering import ReportingProfile as ReportingProfile  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_delivery_offering_id import ReportingDeliveryOfferingId as ReportingDeliveryOfferingId  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_delivery_ready_webhook import Readiness as Readiness
+from adcp.types._schemas.core.reporting_delivery_ready_webhook import ReportingDeliveryReadyWebhook as ReportingDeliveryReadyWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_file_compression import ReportingFileCompression as ReportingFileCompression  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_file_entry import ReportingFileEntry as ReportingFileEntry
+from adcp.types._schemas.core.reporting_file_manifest import ReportingFileManifest as ReportingFileManifest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_file_object_ref import ReportingFileObjectReference as ReportingFileObjectReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_ledger_changed_webhook import ReportingLedgerChangedWebhook as ReportingLedgerChangedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_materialization import ReportingMaterialization as ReportingMaterialization  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_native_version_ref import ReportingNativeVersionReference as ReportingNativeVersionReference  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_obligation import ProductionStatus as ProductionStatus
-from adcp.types._schemas.core.reporting_obligation import (
-    ReconciliationStatus as ReconciliationStatus,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_reliability_statistics import (
-    AdjustmentMagnitudeItem as AdjustmentMagnitudeItem,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.reporting_obligation import ReconciliationStatus as ReconciliationStatus  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_obligation import ReportingObligation as ReportingObligation
+from adcp.types._schemas.core.reporting_receipt import ReportingReceipt as ReportingReceipt
+from adcp.types._schemas.core.reporting_reconciliation_mode import ReportingReconciliationMode as ReportingReconciliationMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_reliability_statistics import AdjustmentMagnitudeItem as AdjustmentMagnitudeItem  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_reliability_statistics import Basis as Basis
-from adcp.types._schemas.core.reporting_reliability_statistics import (
-    LatencyPercentiles as LatencyPercentiles,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_reliability_statistics import (
-    ReportingReliabilityMeasurementPeriod as ReportingReliabilityMeasurementPeriod,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.reporting_reliability_statistics import LatencyPercentiles as LatencyPercentiles  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_reliability_statistics import ReportingReliabilityMeasurementPeriod as ReportingReliabilityMeasurementPeriod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_reliability_statistics import ReportingReliabilityStatistics as ReportingReliabilityStatistics  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_report_definition import Aggregation as Aggregation
 from adcp.types._schemas.core.reporting_report_definition import Calendar as Calendar
-from adcp.types._schemas.core.reporting_report_definition import (
-    ReportCalendarTimezoneBasis as ReportCalendarTimezoneBasis,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_report_definition import (
-    RestatementPolicy as RestatementPolicy,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.reporting_report_definition import FinalityPolicies as FinalityPolicies  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_report_definition import FinalityPolicies1 as FinalityPolicies1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_report_definition import FinalityPolicies2 as FinalityPolicies2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_report_definition import ReportCalendarTimezoneBasis as ReportCalendarTimezoneBasis  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_report_definition import ReportingReportDefinition as ReportingReportDefinition  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_report_definition import RestatementPolicy as RestatementPolicy  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_resource import Immutability as Immutability
+from adcp.types._schemas.core.reporting_resource import ReportingReaderCompatibilityItem as ReportingReaderCompatibilityItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_resource import ReportingResource as ReportingResource
 from adcp.types._schemas.core.reporting_revision import DataThroughPrecision as DataThroughPrecision
 from adcp.types._schemas.core.reporting_revision import FinalityBasis as FinalityBasis
-from adcp.types._schemas.core.reporting_schedule import (
-    ReportingScheduleAlignment as ReportingScheduleAlignment,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_schedule_offering import (
-    PeriodAnchorPolicy as PeriodAnchorPolicy,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.reporting_schedule_offering import (
-    PeriodTimezonePolicy as PeriodTimezonePolicy,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.reporting_revision import ReportingRevision as ReportingRevision
+from adcp.types._schemas.core.reporting_schedule import ReportingSchedule as ReportingSchedule
+from adcp.types._schemas.core.reporting_schedule import ReportingScheduleAlignment as ReportingScheduleAlignment  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_schedule_offering import PeriodAnchorPolicy as PeriodAnchorPolicy  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_schedule_offering import PeriodTimezonePolicy as PeriodTimezonePolicy  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_schedule_offering import ReportingScheduleOffering as ReportingScheduleOffering  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_status_changed_webhook import ReportingStatusChangedWebhook as ReportingStatusChangedWebhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_status_issue import IssueState as IssueState
+from adcp.types._schemas.core.reporting_status_issue import IssueState as ReportingIssueState
 from adcp.types._schemas.core.reporting_status_issue import RecommendedAction as RecommendedAction
-from adcp.types._schemas.core.reporting_status_issue import (
-    ReportingStatusSeverity as ReportingStatusSeverity,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.reporting_status_issue import RecommendedAction as ReportingIssueRecommendedAction  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_status_issue import ReportingStatusIssue as ReportingStatusIssue  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_status_issue import ReportingStatusSeverity as ReportingStatusSeverity  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_status_issue import ResponsibleParty as ResponsibleParty
-from adcp.types._schemas.core.reporting_verification import (
-    NativeCommitEvidence as NativeCommitEvidence,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.reporting_verification import NativeCommitEvidence as NativeCommitEvidence  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_verification import ObservedThrough as ObservedThrough
+from adcp.types._schemas.core.reporting_verification import PhysicalChecksums as PhysicalChecksums
+from adcp.types._schemas.core.reporting_verification import PhysicalChecksums1 as PhysicalChecksums1
+from adcp.types._schemas.core.reporting_verification import ReportingVerification as ReportingVerification  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.reporting_verification import VerificationPath as VerificationPath
+from adcp.types._schemas.core.reporting_verification_profile import ReportingVerificationProfile as ReportingVerificationProfile  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_verification_profile_set import ReportingVerificationProfileSet as ReportingVerificationProfileSet  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_webhook import ReportingWebhook as ReportingWebhook
+from adcp.types._schemas.core.reporting_write_destination import ReportingWriteDestination as ReportingWriteDestination  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_write_destination import ReportingWriteDestination1 as ReportingWriteDestination1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.reporting_write_destination import ReportingWriteDestination2 as ReportingWriteDestination2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.representation_destination import RepresentationDestination as RepresentationDestination  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.representation_rejection import RepresentationRejection as RepresentationRejection  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.representation_selection import RepresentationSelection as RepresentationSelection  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.requirements import asset_requirements as asset_requirements
-from adcp.types._schemas.core.requirements import (
-    audio_asset_requirements as audio_asset_requirements,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.requirements import audio_asset_requirements as audio_asset_requirements  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.requirements import catalog_field_binding as catalog_field_binding
 from adcp.types._schemas.core.requirements import catalog_requirements as catalog_requirements
 from adcp.types._schemas.core.requirements import css_asset_requirements as css_asset_requirements
-from adcp.types._schemas.core.requirements import (
-    daast_asset_requirements as daast_asset_requirements,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.requirements import daast_asset_requirements as daast_asset_requirements  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.requirements import html_asset_requirements as html_asset_requirements
-from adcp.types._schemas.core.requirements import (
-    image_asset_requirements as image_asset_requirements,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.requirements import (
-    javascript_asset_requirements as javascript_asset_requirements,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.requirements import (
-    markdown_asset_requirements as markdown_asset_requirements,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.requirements import (
-    offering_asset_constraint as offering_asset_constraint,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.requirements import image_asset_requirements as image_asset_requirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements import javascript_asset_requirements as javascript_asset_requirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements import markdown_asset_requirements as markdown_asset_requirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements import offering_asset_constraint as offering_asset_constraint  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.requirements import text_asset_requirements as text_asset_requirements
 from adcp.types._schemas.core.requirements import url_asset_requirements as url_asset_requirements
 from adcp.types._schemas.core.requirements import vast_asset_requirements as vast_asset_requirements
-from adcp.types._schemas.core.requirements import (
-    video_asset_requirements as video_asset_requirements,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.requirements import (
-    webhook_asset_requirements as webhook_asset_requirements,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.requirements.catalog_field_binding import (
-    AssetPoolBinding as AssetPoolBinding,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.requirements.catalog_field_binding import (
-    CatalogFieldBindingCatalogGroup as CatalogGroupBinding,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.requirements.catalog_field_binding import (
-    ScalarBinding as ScalarBinding,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.requirements import video_asset_requirements as video_asset_requirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements import webhook_asset_requirements as webhook_asset_requirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.asset_requirements import AssetRequirements as AssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.audio_asset_requirements import AudioAssetRequirements as AudioAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.catalog_field_binding import AssetPoolBinding as AssetPoolBinding  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.catalog_field_binding import CatalogFieldBinding as CatalogFieldBinding  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.catalog_field_binding import CatalogFieldBinding1 as CatalogFieldBinding1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.catalog_field_binding import CatalogFieldBinding1 as CatalogGroupBinding  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.catalog_field_binding import ScalarBinding as ScalarBinding  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.catalog_requirements import CatalogRequirements as CatalogRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.css_asset_requirements import CssAssetRequirements as CssAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.daast_asset_requirements import DaastAssetRequirements as DaastAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.html_asset_requirements import HtmlAssetRequirements as HtmlAssetRequirements  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.requirements.html_asset_requirements import Sandbox as Sandbox
-from adcp.types._schemas.core.requirements.javascript_asset_requirements import (
-    ModuleType as ModuleType,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.response_payload_jws_envelope import (
-    ResponsePayload as ResponsePayload,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.requirements.image_asset_requirements import Bleed as Bleed
+from adcp.types._schemas.core.requirements.image_asset_requirements import Bleed1 as Bleed1
+from adcp.types._schemas.core.requirements.image_asset_requirements import ImageAssetRequirements as ImageAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.javascript_asset_requirements import JavascriptAssetRequirements as JavascriptAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.javascript_asset_requirements import ModuleType as ModuleType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.markdown_asset_requirements import MarkdownAssetRequirements as MarkdownAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.offering_asset_constraint import OfferingAssetConstraint as OfferingAssetConstraint  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.text_asset_requirements import TextAssetRequirements as TextAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.url_asset_requirements import UrlAssetRequirements as UrlAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.vast_asset_requirements import VastAssetRequirements as VastAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.video_asset_requirements import VideoAssetRequirements as VideoAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.requirements.webhook_asset_requirements import WebhookAssetRequirements as WebhookAssetRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.response import ProtocolResponse as ProtocolResponse
+from adcp.types._schemas.core.response_payload_jws_envelope import ResponsePayload as ResponsePayload  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.response_payload_jws_envelope import ResponsePayloadJwsEnvelope as ResponsePayloadJwsEnvelope  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.rights_attestation_evaluation import Reference as Reference
+from adcp.types._schemas.core.rights_attestation_evaluation import RightsAttestationEvaluation as RightsAttestationEvaluation  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.rights_constraint import ApprovalStatus as ApprovalStatus
 from adcp.types._schemas.core.rights_constraint import GrantStatus as GrantStatus
 from adcp.types._schemas.core.rights_constraint import RightsAgent as RightsAgent
-from adcp.types._schemas.core.signal_coverage_forecast import (
-    BucketCompleteness as BucketCompleteness,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.rights_constraint import RightsConstraint as RightsConstraint
+from adcp.types._schemas.core.seller_agent_ref import SellerAgentReference as SellerAgentReference
+from adcp.types._schemas.core.signal_coverage_forecast import BucketCompleteness as BucketCompleteness  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.signal_coverage_forecast import BucketSemantics as BucketSemantics
+from adcp.types._schemas.core.signal_coverage_forecast import Point as Point
+from adcp.types._schemas.core.signal_coverage_forecast import SignalCoverageForecast as SignalCoverageForecast  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.signal_definition import AiActRiskClass as AiActRiskClass
 from adcp.types._schemas.core.signal_definition import AudienceScope as AudienceScope
+from adcp.types._schemas.core.signal_definition import Channel as Channel
+from adcp.types._schemas.core.signal_definition import DataSource as DataSource
+from adcp.types._schemas.core.signal_definition import MatchKey as MatchKey
 from adcp.types._schemas.core.signal_definition import ParentMatchBehavior as ParentMatchBehavior
-from adcp.types._schemas.core.signal_definition import (
-    PreOnboardingPrecisionLevel as PreOnboardingPrecisionLevel,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.signal_definition import PreOnboardingPrecisionLevel as PreOnboardingPrecisionLevel  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.signal_definition import SeedSource as SeedSource
+from adcp.types._schemas.core.signal_definition import SignalDefinition as SignalDefinition
+from adcp.types._schemas.core.signal_definition import Value as Value
+from adcp.types._schemas.core.signal_definition import ValueMapping as ValueMapping
+from adcp.types._schemas.core.signal_definition_enrichment import SignalDefinitionEnrichment as SignalDefinitionEnrichment  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.signal_filters import SignalFilters as SignalFilters
+from adcp.types._schemas.core.signal_id import SignalId as SignalId
+from adcp.types._schemas.core.signal_id import SignalId8 as SignalId8
+from adcp.types._schemas.core.signal_id import SignalId9 as SignalId9
+from adcp.types._schemas.core.signal_modeling_disclosure import SignalModelingDisclosure as SignalModelingDisclosure  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.signal_pricing import VendorPricing as VendorPricing
+from adcp.types._schemas.core.signal_pricing import VendorPricing1 as VendorPricing1
+from adcp.types._schemas.core.signal_pricing import VendorPricing2 as VendorPricing2
+from adcp.types._schemas.core.signal_pricing import VendorPricing3 as VendorPricing3
+from adcp.types._schemas.core.signal_pricing import VendorPricing4 as VendorPricing4
+from adcp.types._schemas.core.signal_pricing import VendorPricing5 as VendorPricing5
+from adcp.types._schemas.core.signal_pricing_option import SignalPricingOption as SignalPricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.signal_ref import SignalRef as SignalRef
+from adcp.types._schemas.core.signal_ref import SignalRef1 as SignalRef1
+from adcp.types._schemas.core.signal_ref import SignalRef2 as SignalRef2
+from adcp.types._schemas.core.signal_ref import SignalRef3 as SignalRef3
+from adcp.types._schemas.core.signal_selection_group_rule import SignalSelectionGroupRule as SignalSelectionGroupRule  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.signal_targeting import SignalTargeting as SignalTargeting
+from adcp.types._schemas.core.signal_targeting import SignalTargeting1 as SignalTargeting1
+from adcp.types._schemas.core.signal_targeting import SignalTargeting2 as SignalTargeting2
+from adcp.types._schemas.core.signal_targeting import SignalTargeting3 as SignalTargeting3
+from adcp.types._schemas.core.signal_targeting_expression import SignalTargetingExpression as SignalTargetingExpression  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.signal_targeting_expression import SignalTargetingExpression1 as SignalTargetingExpression1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.signal_targeting_expression import SignalTargetingExpression2 as SignalTargetingExpression2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.signal_targeting_expression import SignalTargetingExpression3 as SignalTargetingExpression3  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.signal_targeting_rules import ResolutionModel as ResolutionModel
+from adcp.types._schemas.core.signal_targeting_rules import SignalTargetingRules as SignalTargetingRules  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.sla_window import SlaWindow as SlaWindow
+from adcp.types._schemas.core.special import Special as Special
+from adcp.types._schemas.core.spot_reporting_capability import SpotReportingCapability as SpotReportingCapability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.start_timing import StartTiming as StartTiming
+from adcp.types._schemas.core.store_item import StoreItem as StoreItem
+from adcp.types._schemas.core.talent import Talent as Talent
+from adcp.types._schemas.core.targeting import StoreCatchment as StoreCatchment
+from adcp.types._schemas.core.targeting import TargetingOverlay as TargetingOverlay
+from adcp.types._schemas.core.targeting_input import TargetingOverlayInput as TargetingOverlayInput
 from adcp.types._schemas.core.targeting_modification import Selector as Selector
+from adcp.types._schemas.core.targeting_modification import TargetingModification as TargetingModification  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_modification import TargetingModification1 as TargetingModification1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_modification import TargetingModification2 as TargetingModification2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import BrowserRequirement as BrowserRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import BrowserRequirement1 as BrowserRequirement1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import DaypartRequirement as DaypartRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import DaypartRequirement1 as DaypartRequirement1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import KeywordRequirement as KeywordRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import KeywordRequirement1 as KeywordRequirement1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import MetroRequirement as MetroRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import MetroRequirement1 as MetroRequirement1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_requirements import TargetingOverlayRequirements as TargetingOverlayRequirements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_overlay_support import BrowserSupport as BrowserSupport
+from adcp.types._schemas.core.targeting_overlay_support import BrowserSupport1 as BrowserSupport1
+from adcp.types._schemas.core.targeting_overlay_support import CountrySupport as CountrySupport
+from adcp.types._schemas.core.targeting_overlay_support import CountrySupport1 as CountrySupport1
+from adcp.types._schemas.core.targeting_overlay_support import DaypartSupport as DaypartSupport
+from adcp.types._schemas.core.targeting_overlay_support import DaypartSupport1 as DaypartSupport1
 from adcp.types._schemas.core.targeting_overlay_support import IanaTimezones as IanaTimezones
-from adcp.types._schemas.core.targeting_overlay_support import (
-    PlaceCatalogSupport as PlaceCatalogSupport,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.targeting_overlay_support import KeywordSupport as KeywordSupport
+from adcp.types._schemas.core.targeting_overlay_support import KeywordSupport1 as KeywordSupport1
+from adcp.types._schemas.core.targeting_overlay_support import MetroSupport as MetroSupport
+from adcp.types._schemas.core.targeting_overlay_support import MetroSupport1 as MetroSupport1
+from adcp.types._schemas.core.targeting_overlay_support import PlaceCatalogSupport as PlaceCatalogSupport  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.targeting_overlay_support import PlaceSupport as PlaceSupport
-from adcp.types._schemas.core.tracker_execution_selector import (
-    TrackerExecutionSelector1 as TrackerExecutionSelector2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.tracker_execution_selector import (
-    TrackerExecutionSelectorVastTracker as TrackerExecutionSelector3,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.targeting_overlay_support import Supported as Supported
+from adcp.types._schemas.core.targeting_overlay_support import TargetingOverlaySupport as TargetingOverlaySupport  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_unknown_age_eligibility_constraint import TargetingUnknownAgeEligibilityConstraint as TargetingUnknownAgeEligibilityConstraint  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.targeting_verified_age_basis_constraint import TargetingVerifiedAgeBasisConstraint as TargetingVerifiedAgeBasisConstraint  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.tasks_get_request import TasksGetRequest as TasksGetRequest
+from adcp.types._schemas.core.tasks_get_response import TasksGetResponse as TasksGetResponse
+from adcp.types._schemas.core.tasks_list_request import TasksListRequest as TasksListRequest
+from adcp.types._schemas.core.tasks_list_response import Domain as Domain
+from adcp.types._schemas.core.tasks_list_response import DomainBreakdown as DomainBreakdown
+from adcp.types._schemas.core.tasks_list_response import TasksListResponse as TasksListResponse
+from adcp.types._schemas.core.tracker_execution_contract import TrackerExecutionContract as TrackerExecutionContract  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.tracker_execution_selector import TrackerExecutionSelector as TrackerExecutionSelector  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.tracker_execution_selector import TrackerExecutionSelector1 as TrackerExecutionSelector1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.tracker_execution_selector import TrackerExecutionSelector1 as TrackerExecutionSelector2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.tracker_execution_selector import TrackerExecutionSelectorVastTracker as TrackerExecutionSelector3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.transformer import BrandAgent as BrandAgent
+from adcp.types._schemas.core.transformer import Transformer as Transformer
 from adcp.types._schemas.core.transformer import VoiceSynthesisRefItem as VoiceSynthesisRefItem
+from adcp.types._schemas.core.transformer_param import Option as Option
+from adcp.types._schemas.core.transformer_param import TransformerParam as TransformerParam
 from adcp.types._schemas.core.transformer_param import ValueSource as ValueSource
+from adcp.types._schemas.core.truncation_sentinel import FieldTruncation as FieldTruncation
+from adcp.types._schemas.core.truncation_sentinel import TruncationSentinel as TruncationSentinel
+from adcp.types._schemas.core.user_match import UserMatch as UserMatch
+from adcp.types._schemas.core.vast_media_file_requirements import VastMediafileRequirements as VastMediafileRequirements  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.vast_tracker_constraints import VastEvent as VastEvent
+from adcp.types._schemas.core.vast_tracker_constraints import VastOffset as VastOffset
 from adcp.types._schemas.core.vast_tracker_constraints import VastTarget as VastTarget
+from adcp.types._schemas.core.vast_tracker_constraints import VastVersions as VastVersions
 from adcp.types._schemas.core.vehicle_item import BodyStyle as BodyStyle
 from adcp.types._schemas.core.vehicle_item import FuelType as FuelType
 from adcp.types._schemas.core.vehicle_item import Mileage as Mileage
 from adcp.types._schemas.core.vehicle_item import Transmission as Transmission
+from adcp.types._schemas.core.vehicle_item import VehicleItem as VehicleItem
+from adcp.types._schemas.core.vendor_metric_id import VendorMetricId as VendorMetricId
+from adcp.types._schemas.core.vendor_metric_optimization_supported_metric import VendorMetricOptimizationSupportedMetric as VendorMetricOptimizationSupportedMetric  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.vendor_metric_value import VendorMetricValue as VendorMetricValue
 from adcp.types._schemas.core.vendor_pricing_option import CpmPricing as VendorPricingOption1
 from adcp.types._schemas.core.vendor_pricing_option import CustomPricing as VendorPricingOption5
 from adcp.types._schemas.core.vendor_pricing_option import FlatFeePricing as VendorPricingOption3
-from adcp.types._schemas.core.vendor_pricing_option import (
-    PercentOfMediaPricing as VendorPricingOption2,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.core.vendor_pricing_option import PerUnitPricing as VendorPricingOption4
-from adcp.types._schemas.core.vendor_pricing_option import (
-    VendorPricingOption as VendorPricingOption6,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.verification_token_claims import (
-    VerificationTokenGradingProfile as VerificationTokenGradingProfile,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.vendor_pricing_option import PercentOfMediaPricing as VendorPricingOption2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.vendor_pricing_option import VendorPricingOption as VendorPricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.vendor_pricing_option import VendorPricingOption as VendorPricingOption6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.verification_token_claims import AgenticadvertisingOrgVerificationTokenClaims as AgenticadvertisingOrgVerificationTokenClaims  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.verification_token_claims import VerificationTokenGradingProfile as VerificationTokenGradingProfile  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.verification_token_claims import VerificationTokenMode as VerificationTokenMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.warning_resource import WarningAffectedResource as WarningAffectedResource  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.webhook_activity_record import WebhookActivityRecord as WebhookActivityRecord  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.webhook_challenge import WebhookChallenge as WebhookChallenge
+from adcp.types._schemas.core.webhook_challenge_response import WebhookChallengeResponse as WebhookChallengeResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.core.wholesale_feed_event import AffectedEntityType as AffectedEntityType
+from adcp.types._schemas.core.wholesale_feed_event import AppliesTo as AppliesTo
+from adcp.types._schemas.core.wholesale_feed_event import AppliesTo1 as AppliesTo1
+from adcp.types._schemas.core.wholesale_feed_event import AppliesTo2 as AppliesTo2
+from adcp.types._schemas.core.wholesale_feed_event import Payload as Payload
+from adcp.types._schemas.core.wholesale_feed_event import Payload17 as Payload17
+from adcp.types._schemas.core.wholesale_feed_event import Payload18 as Payload18
+from adcp.types._schemas.core.wholesale_feed_event import Payload20 as Payload20
+from adcp.types._schemas.core.wholesale_feed_event import Payload21 as Payload21
+from adcp.types._schemas.core.wholesale_feed_event import Payload22 as Payload22
+from adcp.types._schemas.core.wholesale_feed_event import Payload23 as Payload23
+from adcp.types._schemas.core.wholesale_feed_event import Payload24 as Payload24
 from adcp.types._schemas.core.wholesale_feed_event import RemovalReason as RemovalReason
 from adcp.types._schemas.core.wholesale_feed_event import Signal as GetSignalsSignal
 from adcp.types._schemas.core.wholesale_feed_event import Signal as WholesaleFeedSignal
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventProductCreatedProduct as WholesaleFeedEvent1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventProductPricedProduct as WholesaleFeedEvent3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventProductRemovedProduct as WholesaleFeedEvent4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventProductUpdatedProduct as WholesaleFeedEvent2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventSignalCreatedSignal as WholesaleFeedEvent5,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventSignalPricedSignal as WholesaleFeedEvent7,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventSignalRemovedSignal as WholesaleFeedEvent8,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventSignalUpdatedSignal as WholesaleFeedEvent6,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventWholesaleFeedBulkChangeFeed as WholesaleFeedEvent9,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.core.wholesale_feed_event import (
-    WholesaleFeedEventWholesaleFeedBulkChangeFeedPayload as Payload25,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEvent as WholesaleFeedEvent
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventProductCreatedProduct as WholesaleFeedEvent1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventProductPricedProduct as WholesaleFeedEvent3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventProductRemovedProduct as WholesaleFeedEvent4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventProductUpdatedProduct as WholesaleFeedEvent2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventSignalCreatedSignal as WholesaleFeedEvent5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventSignalPricedSignal as WholesaleFeedEvent7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventSignalRemovedSignal as WholesaleFeedEvent8  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventSignalUpdatedSignal as WholesaleFeedEvent6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventWholesaleFeedBulkChangeFeed as WholesaleFeedEvent9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_event import WholesaleFeedEventWholesaleFeedBulkChangeFeedPayload as Payload25  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.wholesale_feed_webhook import WholesaleFeedWebhook as WholesaleFeedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.core.x_entity_types import XEntityTypes as XEntityTypes
 from adcp.types._schemas.creative import audit_observation as audit_observation
-from adcp.types._schemas.creative import (
-    creative_assignment_changed_webhook as creative_assignment_changed_webhook,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.creative import creative_assignment_changed_webhook as creative_assignment_changed_webhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.creative import creative_feature_result as creative_feature_result
 from adcp.types._schemas.creative import creative_purged_webhook as creative_purged_webhook
-from adcp.types._schemas.creative import (
-    creative_status_changed_webhook as creative_status_changed_webhook,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative import (
-    get_creative_delivery_request as get_creative_delivery_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative import (
-    get_creative_delivery_response as get_creative_delivery_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative import (
-    get_creative_features_request as get_creative_features_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative import (
-    get_creative_features_response as get_creative_features_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative import (
-    get_creative_features_terminal_success as get_creative_features_terminal_success,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.creative import creative_status_changed_webhook as creative_status_changed_webhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative import get_creative_delivery_request as get_creative_delivery_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative import get_creative_delivery_response as get_creative_delivery_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative import get_creative_features_async_response_submitted as get_creative_features_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative import get_creative_features_request as get_creative_features_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative import get_creative_features_response as get_creative_features_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative import get_creative_features_terminal_success as get_creative_features_terminal_success  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.creative import list_creatives_request as list_creatives_request
 from adcp.types._schemas.creative import list_creatives_response as list_creatives_response
 from adcp.types._schemas.creative import list_transformers_request as list_transformers_request
@@ -1626,6 +1940,9 @@ from adcp.types._schemas.creative import list_transformers_response as list_tran
 from adcp.types._schemas.creative import preview_creative_request as preview_creative_request
 from adcp.types._schemas.creative import preview_creative_response as preview_creative_response
 from adcp.types._schemas.creative import preview_render as preview_render
+from adcp.types._schemas.creative import sync_creatives_async_response_input_required as sync_creatives_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative import sync_creatives_async_response_submitted as sync_creatives_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative import sync_creatives_async_response_working as sync_creatives_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.creative import sync_creatives_request as sync_creatives_request
 from adcp.types._schemas.creative import sync_creatives_response as sync_creatives_response
 from adcp.types._schemas.creative import validate_input_request as validate_input_request
@@ -1633,34 +1950,83 @@ from adcp.types._schemas.creative import validate_input_response as validate_inp
 from adcp.types._schemas.creative import validate_input_result as validate_input_result
 from adcp.types._schemas.creative import video_brief as video_brief
 from adcp.types._schemas.creative.audit_observation import ClaimedValue as ClaimedValue
+from adcp.types._schemas.creative.audit_observation import CreativeAuditObservation as CreativeAuditObservation  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.creative_assignment_changed_webhook import CreativeAssignmentChangedWebhook as CreativeAssignmentChangedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.creative_feature_result import CreativeFeatureResult as CreativeFeatureResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.creative_purged_webhook import CreativePurgedWebhook as CreativePurgedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.creative_status_changed_webhook import CreativeStatusChangedWebhook as CreativeStatusChangedWebhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.creative.creative_status_changed_webhook import From as From
-from adcp.types._schemas.creative.list_creatives_request import (
-    AssignmentProjection as AssignmentProjection,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.creative.get_creative_delivery_request import GetCreativeDeliveryRequest as GetCreativeDeliveryRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.get_creative_delivery_response import GetCreativeDeliveryResponse as GetCreativeDeliveryResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.get_creative_delivery_response import GetCreativeDeliveryResponse as LegacyGetCreativeDeliveryResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.get_creative_features_request import GetCreativeFeaturesRequest as GetCreativeFeaturesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.get_creative_features_response import GetCreativeFeaturesResponse as GetCreativeFeaturesResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.get_creative_features_response import GetCreativeFeaturesResponse1 as GetCreativeFeaturesResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.get_creative_features_response import GetCreativeFeaturesResponse2 as GetCreativeFeaturesResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.get_creative_features_response import GetCreativeFeaturesResponse3 as GetCreativeFeaturesResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.get_creative_features_terminal_success import GetCreativeFeaturesSuccess as GetCreativeFeaturesSuccess  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_creative_formats_request import ListCreativeFormatsRequestCreativeAgent as ListCreativeFormatsRequestCreativeAgent  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_creative_formats_response import ListCreativeFormatsResponseCreativeAgent as ListCreativeFormatsResponseCreativeAgent  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_creatives_request import AssignmentProjection as AssignmentProjection  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_creatives_request import ListCreativesRequest as LegacyListCreativesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_creatives_request import ListCreativesRequest as ListCreativesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_creatives_response import AssignedPackage as AssignedPackage
 from adcp.types._schemas.creative.list_creatives_response import Assignments as Assignments
-from adcp.types._schemas.creative.list_creatives_response import (
-    LocalizationUnavailable as LocalizationUnavailable,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.creative.list_creatives_response import Creatives as Creatives
+from adcp.types._schemas.creative.list_creatives_response import Creatives1 as Creatives1
+from adcp.types._schemas.creative.list_creatives_response import ListCreativesResponse as LegacyListCreativesResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_creatives_response import ListCreativesResponse as ListCreativesResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_creatives_response import LocalizationUnavailable as LocalizationUnavailable  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.creative.list_creatives_response import Purge as Purge
 from adcp.types._schemas.creative.list_creatives_response import StatusSummary as StatusSummary
-from adcp.types._schemas.creative.list_transformers_request import (
-    ExpandPaginationItem as ExpandPaginationItem,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.preview_creative_request import (
-    BuildCreativeSuccessPreviewPreviewsItemInput as Input10,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.creative.list_transformers_request import ExpandPaginationItem as ExpandPaginationItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_transformers_request import ListTransformersRequestCreativeAgent as ListTransformersRequestCreativeAgent  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.list_transformers_response import ListTransformersResponseCreativeAgent as ListTransformersResponseCreativeAgent  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_request import BuildCreativeSuccessPreviewPreviewsItemInput as Input10  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_request import PreviewCreativeRequest as LegacyPreviewCreativeRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_request import PreviewCreativeRequest as PreviewCreativeRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_request import Request as Request
 from adcp.types._schemas.creative.preview_creative_request import RequestType as RequestType
-from adcp.types._schemas.creative.preview_creative_response import (
-    PreviewCreativeSubmitted as LegacyPreviewCreativeResponse4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.creative.preview_creative_response import (
-    PreviewCreativeSubmitted as LegacyPreviewCreativeSubmittedResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse as PreviewCreativeResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse1 as LegacyPreviewCreativeResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse1 as LegacyPreviewCreativeSingleResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse1 as PreviewCreativeResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse2 as LegacyPreviewCreativeBatchResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse2 as LegacyPreviewCreativeResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse2 as PreviewCreativeResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse3 as LegacyPreviewCreativeResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse3 as LegacyPreviewCreativeVariantResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse3 as PreviewCreativeResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse4 as LegacyPreviewCreativeResponse4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse4 as LegacyPreviewCreativeSubmittedResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_creative_response import PreviewCreativeResponse4 as PreviewCreativeResponse4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.preview_render import PreviewRender as PreviewRender
+from adcp.types._schemas.creative.preview_render import PreviewRender1 as PreviewRender1
+from adcp.types._schemas.creative.preview_render import PreviewRender2 as PreviewRender2
+from adcp.types._schemas.creative.preview_render import PreviewRender3 as PreviewRender3
+from adcp.types._schemas.creative.sync_creatives_request import Assignment as Assignment
+from adcp.types._schemas.creative.sync_creatives_request import AssignmentOperations1 as AssignmentOperations1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.sync_creatives_request import AssignmentOperations2 as AssignmentOperations2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.sync_creatives_request import AssignmentOperations3 as AssignmentOperations3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.sync_creatives_request import SyncCreativesRequest as LegacySyncCreativesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.sync_creatives_request import SyncCreativesRequest as SyncCreativesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.sync_creatives_response import SyncCreativesResponse as SyncCreativesResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.sync_creatives_response import SyncCreativesResponse1 as SyncCreativesResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.sync_creatives_response import SyncCreativesResponse2 as SyncCreativesResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.sync_creatives_response import SyncCreativesResponse3 as SyncCreativesResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.validate_input_request import Targets1 as Targets1
+from adcp.types._schemas.creative.validate_input_request import Targets2 as Targets2
+from adcp.types._schemas.creative.validate_input_request import Targets3 as Targets3
+from adcp.types._schemas.creative.validate_input_request import Targets4 as Targets4
+from adcp.types._schemas.creative.validate_input_request import ValidateInputRequest as ValidateInputRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.validate_input_response import ValidateInputResponse as ValidateInputResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.creative.validate_input_result import ResultKind as ResultKind
+from adcp.types._schemas.creative.validate_input_result import ValidateInputResult as ValidateInputResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.creative.video_brief import Segment as Segment
+from adcp.types._schemas.creative.video_brief import VideoBrief as VideoBrief
 from adcp.types._schemas.enums import account_currency_mode as account_currency_mode
 from adcp.types._schemas.enums import account_scope as account_scope
 from adcp.types._schemas.enums import account_status as account_status
-from adcp.types._schemas.enums import action_not_allowed_reason as action_not_allowed_reason
 from adcp.types._schemas.enums import action_source as action_source
 from adcp.types._schemas.enums import activation_method as activation_method
 from adcp.types._schemas.enums import adcp_protocol as adcp_protocol
@@ -1670,7 +2036,6 @@ from adcp.types._schemas.enums import age_determination_basis as age_determinati
 from adcp.types._schemas.enums import age_verification_method as age_verification_method
 from adcp.types._schemas.enums import assessment_status as assessment_status
 from adcp.types._schemas.enums import asset_content_type as asset_content_type
-from adcp.types._schemas.enums import attestation_claim as attestation_claim
 from adcp.types._schemas.enums import attribution_methodology as attribution_methodology
 from adcp.types._schemas.enums import attribution_model as attribution_model
 from adcp.types._schemas.enums import audience_evidence_methodology as audience_evidence_methodology
@@ -1688,9 +2053,7 @@ from adcp.types._schemas.enums import brand_agent_type as brand_agent_type
 from adcp.types._schemas.enums import browser_family as browser_family
 from adcp.types._schemas.enums import c2pa_watermark_action as c2pa_watermark_action
 from adcp.types._schemas.enums import canceled_by as canceled_by
-from adcp.types._schemas.enums import (
-    canonical_media_buy_action_mode as canonical_media_buy_action_mode,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.enums import canonical_media_buy_action_mode as canonical_media_buy_action_mode  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.enums import catalog_action as catalog_action
 from adcp.types._schemas.enums import catalog_item_status as catalog_item_status
 from adcp.types._schemas.enums import catalog_type as catalog_type
@@ -1719,7 +2082,6 @@ from adcp.types._schemas.enums import daast_tracking_event as daast_tracking_eve
 from adcp.types._schemas.enums import daast_version as daast_version
 from adcp.types._schemas.enums import day_of_week as day_of_week
 from adcp.types._schemas.enums import daypart_timezone_mode as daypart_timezone_mode
-from adcp.types._schemas.enums import delegation_authority as delegation_authority
 from adcp.types._schemas.enums import delivery_recipient_cloud as delivery_recipient_cloud
 from adcp.types._schemas.enums import delivery_status as delivery_status
 from adcp.types._schemas.enums import delivery_type as delivery_type
@@ -1735,9 +2097,6 @@ from adcp.types._schemas.enums import distance_unit as distance_unit
 from adcp.types._schemas.enums import distribution_identifier_type as distribution_identifier_type
 from adcp.types._schemas.enums import dooh_motion_type as dooh_motion_type
 from adcp.types._schemas.enums import embedded_provenance_method as embedded_provenance_method
-from adcp.types._schemas.enums import error_code as error_code
-from adcp.types._schemas.enums import error_scope as error_scope
-from adcp.types._schemas.enums import escalation_severity as escalation_severity
 from adcp.types._schemas.enums import event_type as event_type
 from adcp.types._schemas.enums import exclusivity as exclusivity
 from adcp.types._schemas.enums import feature_check_status as feature_check_status
@@ -1750,14 +2109,10 @@ from adcp.types._schemas.enums import format_id_parameter as format_id_parameter
 from adcp.types._schemas.enums import frame_rate_type as frame_rate_type
 from adcp.types._schemas.enums import frequency_cap_control_mode as frequency_cap_control_mode
 from adcp.types._schemas.enums import frequency_cap_mutable_field as frequency_cap_mutable_field
-from adcp.types._schemas.enums import frequency_cap_scope as frequency_cap_scope
 from adcp.types._schemas.enums import genre_taxonomy as genre_taxonomy
 from adcp.types._schemas.enums import geo_level as geo_level
 from adcp.types._schemas.enums import gop_type as gop_type
-from adcp.types._schemas.enums import governance_decision as governance_decision
 from adcp.types._schemas.enums import governance_domain as governance_domain
-from adcp.types._schemas.enums import governance_mode as governance_mode
-from adcp.types._schemas.enums import governance_phase as governance_phase
 from adcp.types._schemas.enums import history_entry_type as history_entry_type
 from adcp.types._schemas.enums import http_method as http_method
 from adcp.types._schemas.enums import identifier_types as identifier_types
@@ -1781,21 +2136,16 @@ from adcp.types._schemas.enums import markdown_flavor as markdown_flavor
 from adcp.types._schemas.enums import match_id_type as match_id_type
 from adcp.types._schemas.enums import match_type as match_type
 from adcp.types._schemas.enums import media_buy_action_mode as media_buy_action_mode
-from adcp.types._schemas.enums import (
-    media_buy_frequency_cap_control_mode as media_buy_frequency_cap_control_mode,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.enums import media_buy_frequency_cap_control_mode as media_buy_frequency_cap_control_mode  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.enums import media_buy_health as media_buy_health
 from adcp.types._schemas.enums import media_buy_status as media_buy_status
 from adcp.types._schemas.enums import media_buy_valid_action as media_buy_valid_action
-from adcp.types._schemas.enums import metric_scope as metric_scope
 from adcp.types._schemas.enums import metric_type as metric_type
 from adcp.types._schemas.enums import metro_system as metro_system
 from adcp.types._schemas.enums import moov_atom_position as moov_atom_position
 from adcp.types._schemas.enums import motion_level as motion_level
 from adcp.types._schemas.enums import notification_type as notification_type
-from adcp.types._schemas.enums import offering_availability_status as offering_availability_status
 from adcp.types._schemas.enums import outcome_target_cost_strength as outcome_target_cost_strength
-from adcp.types._schemas.enums import outcome_type as outcome_type
 from adcp.types._schemas.enums import pacing as pacing
 from adcp.types._schemas.enums import payment_terms as payment_terms
 from adcp.types._schemas.enums import performance_baseline as performance_baseline
@@ -1807,36 +2157,25 @@ from adcp.types._schemas.enums import postal_system as postal_system
 from adcp.types._schemas.enums import preview_output_format as preview_output_format
 from adcp.types._schemas.enums import pricing_model as pricing_model
 from adcp.types._schemas.enums import pricing_structure as pricing_structure
-from adcp.types._schemas.enums import principal_kind as principal_kind
 from adcp.types._schemas.enums import production_quality as production_quality
 from adcp.types._schemas.enums import property_type as property_type
 from adcp.types._schemas.enums import proposal_decline_reason as proposal_decline_reason
 from adcp.types._schemas.enums import proposal_refinement_reason as proposal_refinement_reason
 from adcp.types._schemas.enums import proposal_status as proposal_status
-from adcp.types._schemas.enums import publisher_identifier_types as publisher_identifier_types
-from adcp.types._schemas.enums import purchase_type as purchase_type
 from adcp.types._schemas.enums import reach_aggregation as reach_aggregation
 from adcp.types._schemas.enums import reach_unit as reach_unit
-from adcp.types._schemas.enums import (
-    reporting_destination_setup_state as reporting_destination_setup_state,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.enums import reporting_destination_setup_state as reporting_destination_setup_state  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.enums import reporting_finality as reporting_finality
 from adcp.types._schemas.enums import reporting_frequency as reporting_frequency
 from adcp.types._schemas.enums import reporting_health as reporting_health
-from adcp.types._schemas.enums import (
-    representation_selection_strategy as representation_selection_strategy,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.enums import request_signing_error_code as request_signing_error_code
+from adcp.types._schemas.enums import representation_selection_strategy as representation_selection_strategy  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.enums import response_type as response_type
 from adcp.types._schemas.enums import restricted_attribute as restricted_attribute
 from adcp.types._schemas.enums import right_type as right_type
 from adcp.types._schemas.enums import right_use as right_use
 from adcp.types._schemas.enums import rights_billing_period as rights_billing_period
 from adcp.types._schemas.enums import scan_type as scan_type
-from adcp.types._schemas.enums import seller_policy_decline_reason as seller_policy_decline_reason
-from adcp.types._schemas.enums import si_session_status as si_session_status
 from adcp.types._schemas.enums import signal_catalog_type as signal_catalog_type
-from adcp.types._schemas.enums import signal_source as signal_source
 from adcp.types._schemas.enums import signal_value_type as signal_value_type
 from adcp.types._schemas.enums import snapshot_unavailable_reason as snapshot_unavailable_reason
 from adcp.types._schemas.enums import social_placement_surface as social_placement_surface
@@ -1869,71 +2208,241 @@ from adcp.types._schemas.enums import watermark_media_type as watermark_media_ty
 from adcp.types._schemas.enums import wcag_level as wcag_level
 from adcp.types._schemas.enums import webhook_response_type as webhook_response_type
 from adcp.types._schemas.enums import webhook_security_method as webhook_security_method
-from adcp.types._schemas.enums.auth_scheme import AuthenticationScheme as Scheme
-from adcp.types._schemas.enums.co_branding_requirement import CoBrandingRequirement as CoBranding
-from adcp.types._schemas.enums.creative_agent_capability import (
-    CreativeAgentCapability as Capability,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.enums.landing_page_requirement import LandingPageRequirement as LandingPage
-from adcp.types._schemas.enums.legacy_postal_system import (
-    CountryFusedPostalCodeSystem as LegacyPostalCodeSystem,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.enums.preview_output_format import PreviewOutputFormat as OutputFormat
-from adcp.types._schemas.enums.reporting_frequency import (
-    ReportingFrequency as AvailableReportingFrequency,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.enums.signal_catalog_type import SignalAvailabilityType as SignalType
-from adcp.types._schemas.enums.url_asset_type import URLAssetType as UrlType
-from adcp.types._schemas.enums.vast_tracking_event import VASTTrackingEvent as TrackingEvent
-from adcp.types._schemas.enums.webhook_response_type import WebhookResponseType as ResponseType
-from adcp.types._schemas.error_details import accessibility_violation as accessibility_violation
-from adcp.types._schemas.error_details import account_moved as account_moved
-from adcp.types._schemas.error_details import account_setup_required as account_setup_required
-from adcp.types._schemas.error_details import action_not_allowed as action_not_allowed
-from adcp.types._schemas.error_details import agent_permission_denied as agent_permission_denied
-from adcp.types._schemas.error_details import audience_too_small as audience_too_small
-from adcp.types._schemas.error_details import authorization_required as authorization_required
-from adcp.types._schemas.error_details import (
-    billing_not_permitted_for_agent as billing_not_permitted_for_agent,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.error_details import billing_not_supported as billing_not_supported
-from adcp.types._schemas.error_details import budget_too_low as budget_too_low
-from adcp.types._schemas.error_details import conflict as conflict
-from adcp.types._schemas.error_details import creative_rejected as creative_rejected
-from adcp.types._schemas.error_details import (
-    creative_representation_unresolved as creative_representation_unresolved,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.error_details import (
-    creative_revision_content_mismatch as creative_revision_content_mismatch,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.error_details import (
-    execution_requirement_unmet as execution_requirement_unmet,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.error_details import (
-    governance_agent_not_accepted as governance_agent_not_accepted,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.error_details import macro_resolution_failed as macro_resolution_failed
-from adcp.types._schemas.error_details import policy_violation as policy_violation
-from adcp.types._schemas.error_details import rate_limited as rate_limited
-from adcp.types._schemas.error_details import requote_required as requote_required
-from adcp.types._schemas.error_details import stale_response as stale_response
-from adcp.types._schemas.error_details import (
-    unsupported_refinement_dimension as unsupported_refinement_dimension,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.error_details import vast_version_mismatch as vast_version_mismatch
-from adcp.types._schemas.error_details import vendor_error_codes as vendor_error_codes
-from adcp.types._schemas.error_details import version_unsupported as version_unsupported
+from adcp.types._schemas.enums.account_currency_mode import AccountCurrencyMode as AccountCurrencyMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.account_scope import AccountScope as AccountScope
+from adcp.types._schemas.enums.account_status import AccountStatus as AccountStatus
+from adcp.types._schemas.enums.action_not_allowed_reason import ActionNotAllowedReason as ActionNotAllowedReason  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.action_source import ActionSource as ActionSource
+from adcp.types._schemas.enums.activation_method import CreativeActivationMethod as CreativeActivationMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.adcp_protocol import AdcpProtocol as AdcpProtocol
+from adcp.types._schemas.enums.adjustment_kind import PriceAdjustmentKind as PriceAdjustmentKind
+from adcp.types._schemas.enums.advertiser_industry import AdvertiserIndustry as AdvertiserIndustry
+from adcp.types._schemas.enums.age_determination_basis import AgeDeterminationBasis as AgeDeterminationBasis  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.age_verification_method import AgeVerificationMethod as AgeVerificationMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.assessment_status import AssessmentStatus as AssessmentStatus
+from adcp.types._schemas.enums.asset_content_type import AssetContentType as AssetContentType
+from adcp.types._schemas.enums.attestation_claim import AttestationClaim as AttestationClaim
+from adcp.types._schemas.enums.attribution_methodology import AttributionMethodology as AttributionMethodology  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.attribution_model import AttributionModel as AttributionModel
+from adcp.types._schemas.enums.audience_evidence_methodology import AudienceEvidenceMethodology as AudienceEvidenceMethodology  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.audience_resolution_method import AudienceResolutionMethod as AudienceResolutionMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.audience_status import AudienceStatus as AudienceStatus
+from adcp.types._schemas.enums.audience_subject_type import AudienceSubjectType as AudienceSubjectType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.audio_channel_layout import AudioChannelLayout as AudioChannelLayout
+from adcp.types._schemas.enums.audio_distribution_type import AudioDistributionType as AudioDistributionType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.auth_scheme import AuthenticationScheme as AuthenticationScheme
+from adcp.types._schemas.enums.availability_status import AvailabilityStatus as AvailabilityStatus
+from adcp.types._schemas.enums.available_metric import AvailableMetric as AvailableMetric
+from adcp.types._schemas.enums.billing_party import BillingParty as BillingParty
+from adcp.types._schemas.enums.binary_verdict import BinaryVerdict as BinaryVerdict
+from adcp.types._schemas.enums.brand_agent_type import BrandAgentType as BrandAgentType
+from adcp.types._schemas.enums.browser_family import BrowserFamily as BrowserFamily
+from adcp.types._schemas.enums.c2pa_watermark_action import C2PaWatermarkAction as C2PaWatermarkAction  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.canceled_by import CanceledBy as CanceledBy
+from adcp.types._schemas.enums.canonical_media_buy_action import CanonicalMediaBuyActionName as CanonicalMediaBuyActionName  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.canonical_media_buy_action_mode import CanonicalMediaBuyActionMode as CanonicalMediaBuyActionMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.catalog_action import CatalogAction as CatalogAction
+from adcp.types._schemas.enums.catalog_item_status import CatalogItemStatus as CatalogItemStatus
+from adcp.types._schemas.enums.catalog_type import CatalogType as CatalogType
+from adcp.types._schemas.enums.channels import MediaChannel as MediaChannel
+from adcp.types._schemas.enums.cloud_storage_protocol import CloudStorageProtocol as CloudStorageProtocol  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.co_branding_requirement import CoBrandingRequirement as CoBrandingRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.collection_cadence import CollectionCadence as CollectionCadence
+from adcp.types._schemas.enums.collection_kind import CollectionKind as CollectionKind
+from adcp.types._schemas.enums.collection_relationship import CollectionRelationship as CollectionRelationship  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.collection_status import CollectionStatus as CollectionStatus
+from adcp.types._schemas.enums.completion_source import CompletionSource as CompletionSource
+from adcp.types._schemas.enums.consent_basis import ConsentBasis as ConsentBasis
+from adcp.types._schemas.enums.content_id_type import ContentIdType as ContentIdType
+from adcp.types._schemas.enums.content_rating_system import ContentRatingSystem as ContentRatingSystem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.creative_action import CreativeAction as CreativeAction
+from adcp.types._schemas.enums.creative_agent_capability import CreativeAgentCapability as CreativeAgentCapability  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.creative_approval_status import CreativeApprovalStatus as CreativeApprovalStatus  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.creative_event_reason_code import CreativeEventReasonCode as CreativeEventReasonCode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.creative_identifier_type import CreativeIdentifierType as CreativeIdentifierType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.creative_quality import CreativeQuality as CreativeQuality
+from adcp.types._schemas.enums.creative_selection_strategy import CreativeSelectionStrategy as CreativeSelectionStrategy  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.creative_sort_field import CreativeSortField as CreativeSortField
+from adcp.types._schemas.enums.creative_status import CreativeStatus as CreativeStatus
+from adcp.types._schemas.enums.ctv_ad_experience import CtvAdExperience as CtvAdExperience
+from adcp.types._schemas.enums.daast_tracking_event import DaastTrackingEvent as DaastTrackingEvent
+from adcp.types._schemas.enums.daast_version import DaastVersion as DaastVersion
+from adcp.types._schemas.enums.day_of_week import DayOfWeek as DayOfWeek
+from adcp.types._schemas.enums.daypart_timezone_mode import DaypartTimezoneMode as DaypartTimezoneMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.delegation_authority import DelegationAuthority as DelegationAuthority  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.delivery_recipient_cloud import DeliveryRecipientCloud as DeliveryRecipientCloud  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.delivery_status import DeliveryStatus as DeliveryStatus
+from adcp.types._schemas.enums.delivery_type import DeliveryType as DeliveryType
+from adcp.types._schemas.enums.demographic_system import DemographicSystem as DemographicSystem
+from adcp.types._schemas.enums.derivative_type import DerivativeType as DerivativeType
+from adcp.types._schemas.enums.digital_source_type import DigitalSourceType as DigitalSourceType
+from adcp.types._schemas.enums.dimension_unit import DimensionUnit as DimensionUnit
+from adcp.types._schemas.enums.disclosure_persistence import DisclosurePersistence as DisclosurePersistence  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.disclosure_position import DisclosurePosition as DisclosurePosition
+from adcp.types._schemas.enums.distance_unit import DistanceUnit as DistanceUnit
+from adcp.types._schemas.enums.distribution_identifier_type import DistributionIdentifierType as DistributionIdentifierType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.dooh_motion_type import DoohMotionType as DoohMotionType
+from adcp.types._schemas.enums.embedded_provenance_method import EmbeddedProvenanceMethod as EmbeddedProvenanceMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.error_code import ErrorCode as ErrorCode
+from adcp.types._schemas.enums.error_scope import ErrorScope as ErrorScope
+from adcp.types._schemas.enums.escalation_severity import EscalationSeverity as EscalationSeverity
+from adcp.types._schemas.enums.feature_check_status import FeatureCheckStatus as FeatureCheckStatus
+from adcp.types._schemas.enums.feed_format import FeedFormat as FeedFormat
+from adcp.types._schemas.enums.feedback_source import FeedbackSource as FeedbackSource
+from adcp.types._schemas.enums.forecast_method import ForecastMethod as ForecastMethod
+from adcp.types._schemas.enums.forecast_range_unit import ForecastRangeUnit as ForecastRangeUnit
+from adcp.types._schemas.enums.forecastable_metric import ForecastableMetric as ForecastableMetric
+from adcp.types._schemas.enums.format_id_parameter import FormatIdParameter as FormatIdParameter
+from adcp.types._schemas.enums.frame_rate_type import FrameRateType as FrameRateType
+from adcp.types._schemas.enums.frequency_cap_control_mode import FrequencyCapControlMode as FrequencyCapControlMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.frequency_cap_mutable_field import FrequencyCapMutableField as FrequencyCapMutableField  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.frequency_cap_scope import FrequencyCapScope as FrequencyCapScope
+from adcp.types._schemas.enums.genre_taxonomy import GenreTaxonomy as GenreTaxonomy
+from adcp.types._schemas.enums.geo_level import GeographicTargetingLevel as GeographicTargetingLevel
+from adcp.types._schemas.enums.gop_type import GopType as GopType
+from adcp.types._schemas.enums.governance_decision import GovernanceDecision as GovernanceDecision
+from adcp.types._schemas.enums.governance_domain import GovernanceDomain as GovernanceDomain
+from adcp.types._schemas.enums.governance_mode import GovernanceMode as GovernanceMode
+from adcp.types._schemas.enums.governance_phase import GovernancePhase as GovernancePhase
+from adcp.types._schemas.enums.history_entry_type import HistoryEntryType as HistoryEntryType
+from adcp.types._schemas.enums.http_method import HttpMethod as HttpMethod
+from adcp.types._schemas.enums.identifier_types import PropertyIdentifierTypes as PropertyIdentifierTypes  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.impairment_offline_state import ImpairmentOfflineState as ImpairmentOfflineState  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.impairment_reason_code import ImpairmentReasonCode as ImpairmentReasonCode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.indicator_type import IndicatorType as IndicatorType
+from adcp.types._schemas.enums.installment_status import InstallmentStatus as InstallmentStatus
+from adcp.types._schemas.enums.javascript_module_type import JavascriptModuleType as JavascriptModuleType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.landing_page_requirement import LandingPageRequirement as LandingPageRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.legacy_postal_system import CountryFusedPostalCodeSystem as CountryFusedPostalCodeSystem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.lift_dimension import LiftDimension as LiftDimension
+from adcp.types._schemas.enums.logo_slot import LogoSlot as LogoSlot
+from adcp.types._schemas.enums.macro_dialect import MacroDialectFamily as MacroDialectFamily
+from adcp.types._schemas.enums.macro_mapping_status import MacroMappingStatus as MacroMappingStatus
+from adcp.types._schemas.enums.macro_processing_operation import MacroProcessingOperation as MacroProcessingOperation  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.macro_resolution_reason import MacroResolutionReason as MacroResolutionReason  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.macro_resolver import MacroProcessingActor as MacroProcessingActor
+from adcp.types._schemas.enums.macro_value_context import MacroValueContext as MacroValueContext
+from adcp.types._schemas.enums.makegood_remedy import MakegoodRemedy as MakegoodRemedy
+from adcp.types._schemas.enums.markdown_flavor import MarkdownFlavor as MarkdownFlavor
+from adcp.types._schemas.enums.match_id_type import MatchIdType as MatchIdType
+from adcp.types._schemas.enums.match_type import MatchType as MatchType
+from adcp.types._schemas.enums.media_buy_action_mode import MediaBuyActionMode as MediaBuyActionMode
+from adcp.types._schemas.enums.media_buy_frequency_cap_control_mode import MediaBuyFrequencyCapControlMode as MediaBuyFrequencyCapControlMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.media_buy_health import MediaBuyHealth as MediaBuyHealth
+from adcp.types._schemas.enums.media_buy_status import MediaBuyStatus as MediaBuyStatus
+from adcp.types._schemas.enums.media_buy_valid_action import MediaBuyValidAction as MediaBuyValidAction  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.metric_scope import MetricScope as MetricScope
+from adcp.types._schemas.enums.metric_type import MetricType as MetricType
+from adcp.types._schemas.enums.metro_system import MetroAreaSystem as MetroAreaSystem
+from adcp.types._schemas.enums.moov_atom_position import MoovAtomPosition as MoovAtomPosition
+from adcp.types._schemas.enums.motion_level import CreativeMotionLevel as CreativeMotionLevel
+from adcp.types._schemas.enums.offering_availability_status import OfferingAvailabilityStatus as OfferingAvailabilityStatus  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.outcome_target_cost_strength import OutcomeTargetCostStrength as OutcomeTargetCostStrength  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.outcome_type import OutcomeType as OutcomeType
+from adcp.types._schemas.enums.performance_baseline import PerformanceBaseline as PerformanceBaseline  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.performance_standard_metric import PerformanceStandardMetric as PerformanceStandardMetric  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.pixel_tracking_event import PixelTrackingEvent as PixelTrackingEvent
+from adcp.types._schemas.enums.policy_category import PolicyCategory as PolicyCategory
+from adcp.types._schemas.enums.policy_enforcement import PolicyEnforcementLevel as PolicyEnforcementLevel  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.postal_system import PostalCodeSystem as PostalCodeSystem
+from adcp.types._schemas.enums.preview_output_format import PreviewOutputFormat as PreviewOutputFormat  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.pricing_structure import PricingStructure as PricingStructure
+from adcp.types._schemas.enums.principal_kind import PrincipalKind as PrincipalKind
+from adcp.types._schemas.enums.production_quality import ProductionQuality as ProductionQuality
+from adcp.types._schemas.enums.proposal_decline_reason import ProposalDeclineReason as ProposalDeclineReason  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.proposal_refinement_reason import ProposalRefinementReason as ProposalRefinementReason  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.proposal_status import ProposalStatus as ProposalStatus
+from adcp.types._schemas.enums.publisher_identifier_types import PublisherIdentifierTypes as PublisherIdentifierTypes  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.purchase_type import PurchaseType as PurchaseType
+from adcp.types._schemas.enums.reach_aggregation import ReachAggregation as ReachAggregation
+from adcp.types._schemas.enums.reach_unit import ReachUnit as ReachUnit
+from adcp.types._schemas.enums.reporting_destination_setup_state import ReportingDestinationSetupState as ReportingDestinationSetupState  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.reporting_finality import ReportingFinality as ReportingFinality
+from adcp.types._schemas.enums.reporting_health import ReportingHealth as ReportingHealth
+from adcp.types._schemas.enums.representation_selection_strategy import RepresentationSelectionStrategy as RepresentationSelectionStrategy  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.request_signing_error_code import RequestSigningErrorCode as RequestSigningErrorCode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.response_type import TmpResponseType as TmpResponseType
+from adcp.types._schemas.enums.restricted_attribute import RestrictedAttribute as RestrictedAttribute  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.right_type import RightType as RightType
+from adcp.types._schemas.enums.right_use import RightUse as RightUse
+from adcp.types._schemas.enums.rights_billing_period import RightsBillingPeriod as RightsBillingPeriod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.scan_type import ScanType as ScanType
+from adcp.types._schemas.enums.seller_policy_decline_reason import SellerPolicyDeclineReason as SellerPolicyDeclineReason  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.si_session_status import SiSessionStatus as SiSessionStatus
+from adcp.types._schemas.enums.signal_catalog_type import SignalAvailabilityType as SignalAvailabilityType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.signal_catalog_type import SignalCatalogType as SignalCatalogType
+from adcp.types._schemas.enums.signal_source import SignalSource as SignalSource
+from adcp.types._schemas.enums.signal_value_type import SignalValueType as SignalValueType
+from adcp.types._schemas.enums.snapshot_unavailable_reason import SnapshotUnavailableReason as SnapshotUnavailableReason  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.social_placement_surface import SocialPlacementSurface as SocialPlacementSurface  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.sort_direction import SortDirection as SortDirection
+from adcp.types._schemas.enums.sort_metric import SortMetric as SortMetric
+from adcp.types._schemas.enums.special_category import SpecialCategory as SpecialCategory
+from adcp.types._schemas.enums.specialism import AdcpSpecialism as AdcpSpecialism
+from adcp.types._schemas.enums.sponsored_placement_type import SponsoredPlacementType as SponsoredPlacementType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.talent_role import TalentRole as TalentRole
+from adcp.types._schemas.enums.task_status import TaskStatus as TaskStatus
+from adcp.types._schemas.enums.task_type import TaskType as TaskType
+from adcp.types._schemas.enums.tracker_execution_actor import TrackerExecutionActor as TrackerExecutionActor  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.tracker_firing_path import TrackerFiringPath as TrackerFiringPath
+from adcp.types._schemas.enums.transport_mode import TransportMode as TransportMode
+from adcp.types._schemas.enums.travel_time_unit import TravelTimeUnit as TravelTimeUnit
+from adcp.types._schemas.enums.uid_type import UidType as UidType
+from adcp.types._schemas.enums.universal_macro import UniversalMacro as UniversalMacro
+from adcp.types._schemas.enums.update_frequency import UpdateFrequency as UpdateFrequency
+from adcp.types._schemas.enums.url_asset_type import UrlAssetType as UrlAssetType
+from adcp.types._schemas.enums.validation_mode import ValidationMode as ValidationMode
+from adcp.types._schemas.enums.vast_media_delivery_method import VastMediaDeliveryMethod as VastMediaDeliveryMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.vast_tracking_event import VastTrackingEvent as VastTrackingEvent
+from adcp.types._schemas.enums.vast_version import VastVersion as VastVersion
+from adcp.types._schemas.enums.vendor_relationship import VendorRelationship as VendorRelationship
+from adcp.types._schemas.enums.video_placement_type import VideoPlacementType as VideoPlacementType
+from adcp.types._schemas.enums.view_threshold_basis import ViewThresholdBasis as ViewThresholdBasis
+from adcp.types._schemas.enums.viewability_standard import ViewabilityStandard as ViewabilityStandard  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.warning_code import WarningCode as WarningCode
+from adcp.types._schemas.enums.watermark_media_type import WatermarkMediaType as WatermarkMediaType
+from adcp.types._schemas.enums.wcag_level import WcagLevel as WcagLevel
+from adcp.types._schemas.enums.webhook_response_type import WebhookResponseType as WebhookResponseType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.enums.webhook_security_method import WebhookSecurityMethod as WebhookSecurityMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.accessibility_violation import AccessibilityViolationDetails as AccessibilityViolationDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.accessibility_violation import FailureKind as FailureKind
+from adcp.types._schemas.error_details.account_moved import AccountMovedDetails as AccountMovedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.account_setup_required import AccountSetupRequiredDetails as AccountSetupRequiredDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.action_not_allowed import ActionNotAllowedDetails as ActionNotAllowedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.agent_permission_denied import AgentPermissionDeniedDetails as AgentPermissionDeniedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.audience_too_small import AudienceTooSmallDetails as AudienceTooSmallDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.authorization_required import AuthorizationRequiredDetails as AuthorizationRequiredDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.billing_not_permitted_for_agent import BillingNotPermittedForAgentDetails as BillingNotPermittedForAgentDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.billing_not_supported import BillingNotSupportedDetails as BillingNotSupportedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.budget_too_low import BudgetTooLowDetails as BudgetTooLowDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.conflict import ConflictDetails as ConflictDetails
+from adcp.types._schemas.error_details.creative_rejected import CreativeRejectedDetails as CreativeRejectedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.creative_representation_unresolved import CreativeRepresentationUnresolvedDetails as CreativeRepresentationUnresolvedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.creative_revision_content_mismatch import CreativeRevisionContentMismatchDetails as CreativeRevisionContentMismatchDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.execution_requirement_unmet import ExecutionRequirementUnmetDetails as ExecutionRequirementUnmetDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.execution_requirement_unmet import UnmetRequirement as UnmetRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.governance_agent_not_accepted import GovernanceAgentNotAcceptedDetails as GovernanceAgentNotAcceptedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.governance_agent_not_accepted import GovernanceAgentNotAcceptedDetails1 as GovernanceAgentNotAcceptedDetails1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.governance_agent_not_accepted import GovernanceAgentNotAcceptedDetails2 as GovernanceAgentNotAcceptedDetails2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.macro_resolution_failed import MacroResolutionFailedDetails as MacroResolutionFailedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.policy_violation import PolicyViolationDetails as PolicyViolationDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.rate_limited import RateLimitedDetails as RateLimitedDetails
+from adcp.types._schemas.error_details.requote_required import RequoteRequiredDetails as RequoteRequiredDetails  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.error_details.stale_response import OriginalError as OriginalError
+from adcp.types._schemas.error_details.stale_response import StaleResponseDetails as StaleResponseDetails  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.error_details.stale_response import Upstream as Upstream
-from adcp.types._schemas.error_details.vast_version_mismatch import (
-    AssetOutsideAcceptedVersionIntersection as VastVersionMismatchDetails1,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.error_details.unsupported_refinement_dimension import UnsupportedRefinementDimensionDetails as UnsupportedRefinementDimensionDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.vast_version_mismatch import AssetOutsideAcceptedVersionIntersection as VastVersionMismatchDetails1  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.error_details.vast_version_mismatch import DocumentRole as DocumentRole
-from adcp.types._schemas.error_details.vast_version_mismatch import (
-    InspectedDocumentVersionMismatch as VastVersionMismatchDetails2,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.error_details.vast_version_mismatch import InspectedDocumentVersionMismatch as VastVersionMismatchDetails2  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.error_details.vast_version_mismatch import MismatchReason as MismatchReason
-from adcp.types._schemas.extensions import extension_meta as extension_meta
+from adcp.types._schemas.error_details.vast_version_mismatch import VastVersionMismatchDetails as VastVersionMismatchDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.vast_version_mismatch import VastVersionMismatchDetails3 as VastVersionMismatchDetails3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.vendor_error_codes import Codes as Codes
+from adcp.types._schemas.error_details.vendor_error_codes import VendorErrorCodeRegistry as VendorErrorCodeRegistry  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.error_details.vendor_error_codes import Vendors as Vendors
+from adcp.types._schemas.error_details.version_unsupported import VersionUnsupportedDetails as VersionUnsupportedDetails  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.extensions.extension_meta import AdcpExtensionFileSchema as AdcpExtensionFileSchema  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats import canonical as canonical
 from adcp.types._schemas.formats.canonical import agent_placement as agent_placement
 from adcp.types._schemas.formats.canonical import audio_daast as audio_daast
@@ -1946,240 +2455,213 @@ from adcp.types._schemas.formats.canonical import image as image
 from adcp.types._schemas.formats.canonical import image_carousel as image_carousel
 from adcp.types._schemas.formats.canonical import native_in_feed as native_in_feed
 from adcp.types._schemas.formats.canonical import responsive_creative as responsive_creative
-from adcp.types._schemas.formats.canonical import (
-    seller_rendered_stateful_display as seller_rendered_stateful_display,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.formats.canonical import seller_rendered_stateful_display as seller_rendered_stateful_display  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats.canonical import sponsored_placement as sponsored_placement
 from adcp.types._schemas.formats.canonical import video_hosted as video_hosted
 from adcp.types._schemas.formats.canonical import video_vast as video_vast
-from adcp.types._schemas.formats.canonical._base import (
-    CompositionModel as CanonicalCompositionModel,  # noqa: E501 -- upstream published this spelling
-)
 from adcp.types._schemas.formats.canonical._base import CompositionModel as CompositionModel
 from adcp.types._schemas.formats.canonical._base import ReferenceMutability as ReferenceMutability
-from adcp.types._schemas.formats.canonical.agent_placement import (
-    CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement as CanonicalFormatAgentPlacement,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.formats.canonical._base import Slot as Slot
+from adcp.types._schemas.formats.canonical.agent_placement import CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement as CanonicalFormatAgentPlacement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.agent_placement import CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement as CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats.canonical.agent_placement import OutputModality as OutputModality
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement as Params12,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatDAASTAudio as Params8,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatDisplayTag as Params3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatHostedAudio as Params7,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatHostedVideo as Params5,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatHTML5Banner as Params2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatImageCarousel as Params4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatNativeInFeed as Params10,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatResponsiveCreative as Params11,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatSellerRenderedStatefulDisplay as Params13,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven as Params9,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    CanonicalFormatVASTVideo as Params6,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.coordinated_placements import (
-    ServingPolicy as ServingPolicy,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.formats.canonical.audio_daast import CanonicalFormatDaastAudio as CanonicalFormatDaastAudio  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.audio_hosted import AudioChannel as AudioChannel
+from adcp.types._schemas.formats.canonical.audio_hosted import CanonicalFormatHostedAudio as CanonicalFormatHostedAudio  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.audio_vast import CanonicalFormatVastAudio as CanonicalFormatVastAudio  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement as Params12  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatCoordinatedPlacements as CanonicalFormatCoordinatedPlacements  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatDAASTAudio as Params8  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatDisplayTag as Params3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatHTML5Banner as Params2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatHostedAudio as Params7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatHostedVideo as Params5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatImageCarousel as Params4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatNativeInFeed as Params10  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatResponsiveCreative as Params11  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatSellerRenderedStatefulDisplay as Params13  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven as Params9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import CanonicalFormatVASTVideo as Params6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components1 as Components1
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components10 as Components10  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components11 as Components11  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components12 as Components12  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components13 as Components13  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components2 as Components2
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components3 as Components3
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components4 as Components4
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components5 as Components5
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components6 as Components6
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components7 as Components7
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components8 as Components8
+from adcp.types._schemas.formats.canonical.coordinated_placements import Components9 as Components9
+from adcp.types._schemas.formats.canonical.coordinated_placements import ServingPolicy as ServingPolicy  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.coordinated_placements import SharedSlot as SharedSlot
+from adcp.types._schemas.formats.canonical.display_tag import CanonicalFormatDisplayTag as CanonicalFormatDisplayTag  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.display_tag import SupportedDeliveryType as SupportedDeliveryType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.display_tag import SupportedTagType as SupportedTagType
+from adcp.types._schemas.formats.canonical.html5 import CanonicalFormatHtml5Banner as CanonicalFormatHtml5Banner  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats.canonical.html5 import MraidVersion as MraidVersion
+from adcp.types._schemas.formats.canonical.image import CanonicalFormatImage as CanonicalFormatImage
 from adcp.types._schemas.formats.canonical.image import MotionLevel as MotionLevel
+from adcp.types._schemas.formats.canonical.image_carousel import AllowedCardMediaAssetType as AllowedCardMediaAssetType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.image_carousel import CanonicalFormatImageCarousel as CanonicalFormatImageCarousel  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.native_in_feed import CanonicalFormatNativeInFeed as CanonicalFormatNativeInFeed  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats.canonical.native_in_feed import FocusBehavior as FocusBehavior
 from adcp.types._schemas.formats.canonical.native_in_feed import IconSize as IconSize
 from adcp.types._schemas.formats.canonical.native_in_feed import MenuPlacement as MenuPlacement
-from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import (
-    Anchoring as Anchoring,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import (
-    MediaEvent as MediaEvent,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.formats.canonical.responsive_creative import CanonicalFormatResponsiveCreative as CanonicalFormatResponsiveCreative  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import Anchoring as Anchoring  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import Breakpoint as Breakpoint  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import CanonicalFormatSellerRenderedStatefulDisplay as CanonicalFormatSellerRenderedStatefulDisplay  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import MediaEvent as MediaEvent  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import Motion as Motion
 from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import Reveal as Reveal
-from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import (
-    ScrollReference as ScrollReference,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import (
-    SupplyMode as SupplyMode,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import (
-    Trigger as Trigger,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import (
-    UserControls as UserControls,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import (
-    VideoPlayback as VideoPlayback,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import (
-    WidthMode as WidthMode,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.formats.canonical.sponsored_placement import (
-    CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven as CanonicalFormatSponsoredPlacement,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import ScrollReference as ScrollReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import State as State
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import SupplyMode as SupplyMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import TransitionMode9 as TransitionMode9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import Trigger as Trigger  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import UserControls as UserControls  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import VideoPlayback as VideoPlayback  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.seller_rendered_stateful_display import WidthMode as WidthMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.sponsored_placement import CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven as CanonicalFormatSponsoredPlacement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.sponsored_placement import CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven as CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats.canonical.sponsored_placement import FanoutMode as FanoutMode
-from adcp.types._schemas.formats.canonical.sponsored_placement import (
-    ItemProductionModel as ItemProductionModel,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.formats.canonical.sponsored_placement import ItemProductionModel as ItemProductionModel  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.sponsored_placement import SupportedIdType as SupportedIdType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.formats.canonical.video_hosted import CanonicalFormatHostedVideo as CanonicalFormatHostedVideo  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats.canonical.video_hosted import Captions as Captions
 from adcp.types._schemas.formats.canonical.video_hosted import VideoCodec as VideoCodec
+from adcp.types._schemas.formats.canonical.video_vast import CanonicalFormatVastVideo as CanonicalFormatVastVideo  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.formats.canonical.video_vast import CreativeType as CreativeType
 from adcp.types._schemas.formats.canonical.video_vast import VpaidVersion as VpaidVersion
 from adcp.types._schemas.governance import accepted_governance_agents as accepted_governance_agents
-from adcp.types._schemas.governance import attribute_definition as attribute_definition
-from adcp.types._schemas.governance import audience_constraints as audience_constraints
-from adcp.types._schemas.governance import check_governance_request as check_governance_request
-from adcp.types._schemas.governance import check_governance_response as check_governance_response
-from adcp.types._schemas.governance import (
-    get_plan_audit_logs_request as get_plan_audit_logs_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance import (
-    get_plan_audit_logs_response as get_plan_audit_logs_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance import policy_category_definition as policy_category_definition
 from adcp.types._schemas.governance import policy_entry as policy_entry
-from adcp.types._schemas.governance import policy_ref as policy_ref
-from adcp.types._schemas.governance import (
-    report_plan_adjustment_request as report_plan_adjustment_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance import (
-    report_plan_adjustment_response as report_plan_adjustment_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance import (
-    report_plan_outcome_request as report_plan_outcome_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance import (
-    report_plan_outcome_response as report_plan_outcome_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance import reported_outcome_error as reported_outcome_error
-from adcp.types._schemas.governance import sync_plans_request as sync_plans_request
-from adcp.types._schemas.governance import sync_plans_response as sync_plans_response
-from adcp.types._schemas.governance.check_governance_request import (
-    AttestationResourceSubject as CheckGovernanceRequest1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.check_governance_request import (
-    AttestationResourceSubject as RuntimeAttestation1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.check_governance_request import (
-    AudienceDistribution as AudienceDistribution,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.check_governance_request import (
-    AudienceDistribution as AudienceDistribution1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.check_governance_request import (
-    CheckGovernanceRequest as CheckGovernanceRequest2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.check_governance_request import (
-    CheckGovernanceRequest as CheckGovernanceRequest3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.check_governance_request import (
-    CheckGovernanceRequestDeliveryMetrics as DeliveryMetrics2,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.governance.accepted_governance_agents import AcceptedGovernanceAgents as AcceptedGovernanceAgents  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.accepted_governance_agents import AnyOf1 as AnyOf1
+from adcp.types._schemas.governance.accepted_governance_agents import AnyOf2 as AnyOf2
+from adcp.types._schemas.governance.accepted_governance_agents import VerificationMode as VerificationMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.attribute_definition import AttributeDefinition as AttributeDefinition  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.attribute_definition import RegulatoryBasi as RegulatoryBasi
+from adcp.types._schemas.governance.audience_constraints import AudienceConstraints as AudienceConstraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_request import AttestationResourceSubject as CheckGovernanceRequest1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_request import AttestationResourceSubject as RuntimeAttestation1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_request import AudienceDistribution as AudienceDistribution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_request import AudienceDistribution as AudienceDistribution1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_request import CheckGovernanceRequest as CheckGovernanceRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_request import CheckGovernanceRequest as CheckGovernanceRequest2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_request import CheckGovernanceRequest as CheckGovernanceRequest3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_request import CheckGovernanceRequestDeliveryMetrics as DeliveryMetrics2  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.governance.check_governance_request import Money as ExecutionCommitment
 from adcp.types._schemas.governance.check_governance_request import Money as ProposedCommitment
-from adcp.types._schemas.governance.check_governance_response import (
-    CanonicalPayload as CanonicalPayload,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.governance.check_governance_response import CanonicalPayload as CanonicalPayload  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_response import CheckGovernanceResponse as CheckGovernanceResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.check_governance_response import RuntimeAttestationEvaluation as RuntimeAttestationEvaluation  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.get_plan_audit_logs_request import GetPlanAuditLogsRequest as GetPlanAuditLogsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.get_plan_audit_logs_response import ChannelAllocation as ChannelAllocation  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.governance.get_plan_audit_logs_response import DriftMetrics as DriftMetrics
-from adcp.types._schemas.governance.get_plan_audit_logs_response import (
-    EscalationRateTrend as EscalationRateTrend,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.get_plan_audit_logs_response import (
-    ObjStartEnd as DeliveryReportingPeriod,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.governance.get_plan_audit_logs_response import Entry as Entry
+from adcp.types._schemas.governance.get_plan_audit_logs_response import Escalation as Escalation
+from adcp.types._schemas.governance.get_plan_audit_logs_response import EscalationRateTrend as EscalationRateTrend  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.get_plan_audit_logs_response import GetPlanAuditLogsResponse as GetPlanAuditLogsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.get_plan_audit_logs_response import GovernedAction as GovernedAction  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.get_plan_audit_logs_response import ObjStartEnd as DeliveryReportingPeriod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.get_plan_audit_logs_response import RuntimeAttestation as RuntimeAttestation  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.governance.get_plan_audit_logs_response import Statuses as Statuses
 from adcp.types._schemas.governance.get_plan_audit_logs_response import Thresholds as Thresholds
+from adcp.types._schemas.governance.policy_category_definition import Facet as Facet
+from adcp.types._schemas.governance.policy_category_definition import PolicyCategoryDefinition as PolicyCategoryDefinition  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.policy_category_definition import RegulatoryFramework as RegulatoryFramework  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.governance.policy_entry import Exemplar as Exemplar
 from adcp.types._schemas.governance.policy_entry import Issuer as Issuer
+from adcp.types._schemas.governance.policy_entry import PolicyEntry as PolicyEntry
+from adcp.types._schemas.governance.policy_ref import PolicyReference as PolicyReference
 from adcp.types._schemas.governance.report_plan_adjustment_request import Decision as Decision
-from adcp.types._schemas.governance.report_plan_outcome_request import (
-    SellerResponse as SellerResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.governance.report_plan_outcome_response import (
-    DeliveryPeriodState as DeliveryPeriodState,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.governance.report_plan_adjustment_request import ReportPlanAdjustmentRequest as ReportPlanAdjustmentRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.report_plan_adjustment_response import ReportPlanAdjustmentResponse as ReportPlanAdjustmentResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.report_plan_outcome_request import ReportPlanOutcomeRequest as ReportPlanOutcomeRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.report_plan_outcome_request import SellerResponse as SellerResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.report_plan_outcome_response import DeliveryPeriodState as DeliveryPeriodState  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.governance.report_plan_outcome_response import OutcomeState as OutcomeState
-from adcp.types._schemas.governance.reported_outcome_error import (
-    ClassificationSource as ClassificationSource,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.governance.report_plan_outcome_response import ReportPlanOutcomeResponse as ReportPlanOutcomeResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.reported_outcome_error import BoundedObject as BoundedObject
+from adcp.types._schemas.governance.reported_outcome_error import BoundedScalar as BoundedScalar
+from adcp.types._schemas.governance.reported_outcome_error import BoundedValue as BoundedValue
+from adcp.types._schemas.governance.reported_outcome_error import BoundedValueLevel2 as BoundedValueLevel2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.reported_outcome_error import BoundedValueLevel3 as BoundedValueLevel3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.reported_outcome_error import ClassificationSource as ClassificationSource  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.reported_outcome_error import ReportedOutcomeError as ReportedOutcomeError  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.governance.sync_plans_request import Allocations as Allocations
+from adcp.types._schemas.governance.sync_plans_request import Budget2 as Budget2
 from adcp.types._schemas.governance.sync_plans_request import BudgetLimit as BudgetLimit
 from adcp.types._schemas.governance.sync_plans_request import Channels as Channels
+from adcp.types._schemas.governance.sync_plans_request import Delegation as Delegation
+from adcp.types._schemas.governance.sync_plans_request import MixTargets as MixTargets
+from adcp.types._schemas.governance.sync_plans_request import SyncPlansRequest as SyncPlansRequest
 from adcp.types._schemas.governance.sync_plans_request import TotalBudgetCap as TotalBudgetCap
+from adcp.types._schemas.governance.sync_plans_response import ResolvedPolicy as ResolvedPolicy
+from adcp.types._schemas.governance.sync_plans_response import Status51 as Status51
+from adcp.types._schemas.governance.sync_plans_response import SyncPlansResponse as SyncPlansResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import accept_proposal_async_response_input_required as accept_proposal_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import accept_proposal_async_response_submitted as accept_proposal_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import accept_proposal_async_response_working as accept_proposal_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import accept_proposal_request as accept_proposal_request
 from adcp.types._schemas.media_buy import accept_proposal_response as accept_proposal_response
 from adcp.types._schemas.media_buy import acceptance_context as acceptance_context
 from adcp.types._schemas.media_buy import acceptance_policy_catalog as acceptance_policy_catalog
 from adcp.types._schemas.media_buy import acceptance_policy_profile as acceptance_policy_profile
-from adcp.types._schemas.media_buy import (
-    acceptance_policy_profile_ref as acceptance_policy_profile_ref,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    acceptance_policy_requirement as acceptance_policy_requirement,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy import acceptance_policy_profile_ref as acceptance_policy_profile_ref  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import acceptance_policy_requirement as acceptance_policy_requirement  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import acceptance_policy_rule as acceptance_policy_rule
+from adcp.types._schemas.media_buy import build_creative_async_response_input_required as build_creative_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import build_creative_async_response_submitted as build_creative_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import build_creative_async_response_working as build_creative_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import build_creative_request as build_creative_request
 from adcp.types._schemas.media_buy import build_creative_response as build_creative_response
+from adcp.types._schemas.media_buy import buy_products_async_response_input_required as buy_products_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import buy_products_async_response_submitted as buy_products_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import buy_products_async_response_working as buy_products_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import buy_products_request as buy_products_request
 from adcp.types._schemas.media_buy import buy_products_response as buy_products_response
 from adcp.types._schemas.media_buy import change_term as change_term
 from adcp.types._schemas.media_buy import change_term_constraints as change_term_constraints
 from adcp.types._schemas.media_buy import commercial_terms as commercial_terms
+from adcp.types._schemas.media_buy import control_media_buy_async_response_input_required as control_media_buy_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import control_media_buy_async_response_submitted as control_media_buy_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import control_media_buy_async_response_working as control_media_buy_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import control_media_buy_request as control_media_buy_request
 from adcp.types._schemas.media_buy import control_media_buy_response as control_media_buy_response
+from adcp.types._schemas.media_buy import create_media_buy_async_response_input_required as create_media_buy_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import create_media_buy_async_response_submitted as create_media_buy_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import create_media_buy_async_response_working as create_media_buy_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import create_media_buy_request as create_media_buy_request
 from adcp.types._schemas.media_buy import create_media_buy_response as create_media_buy_response
+from adcp.types._schemas.media_buy import decline_proposals_async_response_input_required as decline_proposals_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import decline_proposals_async_response_submitted as decline_proposals_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import decline_proposals_async_response_working as decline_proposals_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import decline_proposals_request as decline_proposals_request
 from adcp.types._schemas.media_buy import decline_proposals_response as decline_proposals_response
-from adcp.types._schemas.media_buy import (
-    get_media_buy_delivery_request as get_media_buy_delivery_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    get_media_buy_delivery_response as get_media_buy_delivery_response,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy import get_media_buy_delivery_request as get_media_buy_delivery_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import get_media_buy_delivery_response as get_media_buy_delivery_response  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import get_media_buys_request as get_media_buys_request
 from adcp.types._schemas.media_buy import get_media_buys_response as get_media_buys_response
+from adcp.types._schemas.media_buy import get_products_async_response_input_required as get_products_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import get_products_async_response_submitted as get_products_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import get_products_async_response_working as get_products_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import get_products_rejected as get_products_rejected
 from adcp.types._schemas.media_buy import get_products_request as get_products_request
 from adcp.types._schemas.media_buy import get_products_response as get_products_response
-from adcp.types._schemas.media_buy import (
-    get_products_targeting_resolution as get_products_targeting_resolution,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    get_reporting_status_request as get_reporting_status_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    get_reporting_status_response as get_reporting_status_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    legacy_purchase_continuation_input as legacy_purchase_continuation_input,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy import get_products_targeting_resolution as get_products_targeting_resolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import get_reporting_status_request as get_reporting_status_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import get_reporting_status_response as get_reporting_status_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import legacy_purchase_continuation_input as legacy_purchase_continuation_input  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import list_products_request as list_products_request
 from adcp.types._schemas.media_buy import list_products_response as list_products_response
 from adcp.types._schemas.media_buy import log_event_request as log_event_request
 from adcp.types._schemas.media_buy import log_event_response as log_event_response
-from adcp.types._schemas.media_buy import (
-    media_buy_commitment_response as media_buy_commitment_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    media_buy_delivery_webhook_result as media_buy_delivery_webhook_result,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy import media_buy_commitment_response as media_buy_commitment_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import media_buy_delivery_webhook_result as media_buy_delivery_webhook_result  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import outcome_target as outcome_target
 from adcp.types._schemas.media_buy import package_control as package_control
 from adcp.types._schemas.media_buy import package_request as package_request
@@ -2192,170 +2674,237 @@ from adcp.types._schemas.media_buy import product_refinement as product_refineme
 from adcp.types._schemas.media_buy import proposal_budget_constraint as proposal_budget_constraint
 from adcp.types._schemas.media_buy import proposal_decline as proposal_decline
 from adcp.types._schemas.media_buy import proposal_refinement as proposal_refinement
-from adcp.types._schemas.media_buy import (
-    provide_performance_feedback_request as provide_performance_feedback_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    provide_performance_feedback_response as provide_performance_feedback_response,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy import provide_performance_feedback_request as provide_performance_feedback_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import provide_performance_feedback_response as provide_performance_feedback_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import refine_proposals_async_response_input_required as refine_proposals_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import refine_proposals_async_response_submitted as refine_proposals_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import refine_proposals_async_response_working as refine_proposals_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import refine_proposals_request as refine_proposals_request
 from adcp.types._schemas.media_buy import refine_proposals_response as refine_proposals_response
+from adcp.types._schemas.media_buy import request_proposals_async_response_input_required as request_proposals_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import request_proposals_async_response_submitted as request_proposals_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import request_proposals_async_response_working as request_proposals_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import request_proposals_request as request_proposals_request
 from adcp.types._schemas.media_buy import request_proposals_response as request_proposals_response
 from adcp.types._schemas.media_buy import sync_audiences_request as sync_audiences_request
 from adcp.types._schemas.media_buy import sync_audiences_response as sync_audiences_response
+from adcp.types._schemas.media_buy import sync_catalogs_async_response_input_required as sync_catalogs_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import sync_catalogs_async_response_submitted as sync_catalogs_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import sync_catalogs_async_response_working as sync_catalogs_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import sync_catalogs_request as sync_catalogs_request
 from adcp.types._schemas.media_buy import sync_catalogs_response as sync_catalogs_response
 from adcp.types._schemas.media_buy import sync_event_sources_request as sync_event_sources_request
 from adcp.types._schemas.media_buy import sync_event_sources_response as sync_event_sources_response
-from adcp.types._schemas.media_buy import (
-    sync_reporting_receipts_request as sync_reporting_receipts_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    sync_reporting_receipts_response as sync_reporting_receipts_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    sync_reporting_status_request as sync_reporting_status_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy import (
-    sync_reporting_status_response as sync_reporting_status_response,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy import sync_reporting_receipts_request as sync_reporting_receipts_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import sync_reporting_receipts_response as sync_reporting_receipts_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import sync_reporting_status_request as sync_reporting_status_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import sync_reporting_status_response as sync_reporting_status_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import update_media_buy_async_response_input_required as update_media_buy_async_response_input_required  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import update_media_buy_async_response_submitted as update_media_buy_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy import update_media_buy_async_response_working as update_media_buy_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy import update_media_buy_request as update_media_buy_request
 from adcp.types._schemas.media_buy import update_media_buy_response as update_media_buy_response
+from adcp.types._schemas.media_buy.accept_proposal_request import AcceptProposalRequest as AcceptProposalRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.accept_proposal_response import AcceptProposalResponse as AcceptProposalResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_context import AcceptanceContext as AcceptanceContext
+from adcp.types._schemas.media_buy.acceptance_policy_catalog import AcceptancePolicyCatalog as AcceptancePolicyCatalog  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_profile import AcceptancePolicyProfile as AcceptancePolicyProfile  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_profile import PolicyRef as PolicyRef
+from adcp.types._schemas.media_buy.acceptance_policy_profile_ref import RegistryAcceptancePolicyProfileReference as RegistryAcceptancePolicyProfileReference  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement as AcceptancePolicyRequirement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement1 as AcceptancePolicyRequirement1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement10 as AcceptancePolicyRequirement10  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement11 as AcceptancePolicyRequirement11  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement12 as AcceptancePolicyRequirement12  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement13 as AcceptancePolicyRequirement13  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement14 as AcceptancePolicyRequirement14  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement15 as AcceptancePolicyRequirement15  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement16 as AcceptancePolicyRequirement16  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement17 as AcceptancePolicyRequirement17  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement2 as AcceptancePolicyRequirement2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement3 as AcceptancePolicyRequirement3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement4 as AcceptancePolicyRequirement4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement5 as AcceptancePolicyRequirement5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement6 as AcceptancePolicyRequirement6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement7 as AcceptancePolicyRequirement7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement8 as AcceptancePolicyRequirement8  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_requirement import AcceptancePolicyRequirement9 as AcceptancePolicyRequirement9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_rule import AcceptancePolicyRule as AcceptancePolicyRule  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.acceptance_policy_rule import AppliesToEnum as AppliesToEnum
 from adcp.types._schemas.media_buy.acceptance_policy_rule import Disposition as Disposition
-from adcp.types._schemas.media_buy.build_creative_request import (
-    BuildCreativeSuccessPreviewPreviewsItemInput as PreviewInput,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.build_creative_request import BuildCreativeRequest as BuildCreativeRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_request import BuildCreativeRequest as LegacyBuildCreativeRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_request import BuildCreativeSuccessPreviewPreviewsItemInput as PreviewInput  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.build_creative_request import Dimension as Dimension
 from adcp.types._schemas.media_buy.build_creative_request import KeepMode as KeepMode
 from adcp.types._schemas.media_buy.build_creative_request import MaxSpend as MaxSpend
-from adcp.types._schemas.media_buy.build_creative_request import (
-    SignalConditionsItem as SignalCondition4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_request import (
-    SignalTargetingBinary as SignalCondition1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_request import (
-    SignalTargetingCategorical as SignalCondition2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.build_creative_request import (
-    SignalTargetingNumeric as SignalCondition3,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.build_creative_request import SignalConditionsItem as SignalCondition4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_request import SignalTargetingBinary as SignalCondition1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_request import SignalTargetingCategorical as SignalCondition2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_request import SignalTargetingNumeric as SignalCondition3  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.build_creative_request import VariantAxis as VariantAxis
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse as BuildCreativeResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse1 as BuildCreativeResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse1 as LegacyBuildCreativeResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse1 as LegacyBuildCreativeSuccessResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse2 as BuildCreativeResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse2 as LegacyBuildCreativeErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse2 as LegacyBuildCreativeResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse3 as BuildCreativeResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse3 as LegacyBuildCreativeResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse4 as BuildCreativeResponse4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse4 as LegacyBuildCreativeResponse4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse5 as BuildCreativeResponse5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse5 as LegacyBuildCreativeResponse5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse6 as BuildCreativeResponse6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse6 as LegacyBuildCreativeResponse6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.build_creative_response import BuildCreativeResponse6 as LegacyBuildCreativeSubmittedResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.build_creative_response import CatalogItemRef as CatalogItemRef
 from adcp.types._schemas.media_buy.build_creative_response import Estimate as Estimate
 from adcp.types._schemas.media_buy.build_creative_response import Eval as Eval
-from adcp.types._schemas.media_buy.build_creative_response import (
-    VariantsItem as BuildCreativeVariant,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.build_creative_response import PerLeaf as PerLeaf
+from adcp.types._schemas.media_buy.build_creative_response import Preview4 as Preview4
+from adcp.types._schemas.media_buy.build_creative_response import Variant as BuildCreativeVariant
+from adcp.types._schemas.media_buy.build_creative_response import Variant as Variant
+from adcp.types._schemas.media_buy.buy_products_request import BuyProductsRequest as BuyProductsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.buy_products_response import BuyProductsResponse as BuyProductsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term import AllowedStatus as AllowedStatus
+from adcp.types._schemas.media_buy.change_term import MediaBuyChangeTerm as MediaBuyChangeTerm
+from adcp.types._schemas.media_buy.change_term_constraints import BudgetChangeConstraints as BudgetChangeConstraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term_constraints import FlightChangeConstraints as FlightChangeConstraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term_constraints import MediaBuyChangeTermConstraints as MediaBuyChangeTermConstraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term_constraints import MediaBuyChangeTermConstraints1 as MediaBuyChangeTermConstraints1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term_constraints import MediaBuyChangeTermConstraints2 as MediaBuyChangeTermConstraints2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term_constraints import MediaBuyChangeTermConstraints3 as MediaBuyChangeTermConstraints3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term_constraints import MediaBuyChangeTermConstraints3 as PackageCountChangeConstraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term_constraints import MediaBuyChangeTermConstraints4 as EffectiveTimingChangeConstraints  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.change_term_constraints import MediaBuyChangeTermConstraints4 as MediaBuyChangeTermConstraints4  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.change_term_constraints import Money as Money
 from adcp.types._schemas.media_buy.commercial_terms import CancellationTerms as CancellationTerms
+from adcp.types._schemas.media_buy.commercial_terms import CommercialTerms as CommercialTerms
 from adcp.types._schemas.media_buy.commercial_terms import Money as Fee
-from adcp.types._schemas.media_buy.create_media_buy_request import (
-    ArtifactWebhook as ArtifactWebhook,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.commercial_terms import ReportingCommitment as ReportingCommitment  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.control_media_buy_request import ControlMediaBuyRequest as ControlMediaBuyRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.control_media_buy_response import ControlMediaBuyResponse as ControlMediaBuyResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.control_media_buy_response import ControlMediaBuyResponse1 as ControlMediaBuyResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.control_media_buy_response import ControlMediaBuyResponse2 as ControlMediaBuyResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.control_media_buy_response import ControlMediaBuyResponse3 as ControlMediaBuyResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_request import ArtifactWebhook as ArtifactWebhook  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.create_media_buy_request import BatchFrequency as BatchFrequency
+from adcp.types._schemas.media_buy.create_media_buy_request import CreateMediaBuyRequest as CreateMediaBuyRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_request import CreateMediaBuyRequest as LegacyCreateMediaBuyRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.create_media_buy_request import DeliveryMode as DeliveryMode
-from adcp.types._schemas.media_buy.create_media_buy_response import (
-    CreateMediaBuyError as LegacyCreateMediaBuyErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.create_media_buy_response import (
-    CreateMediaBuyError as LegacyCreateMediaBuyResponse2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.create_media_buy_response import (
-    CreateMediaBuyResponseSubmitted as CreateMediaBuySubmittedResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.create_media_buy_response import (
-    CreateMediaBuyResponseSubmitted as LegacyCreateMediaBuyResponse3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.create_media_buy_response import (
-    CreateMediaBuyResponseSubmitted as LegacyCreateMediaBuySubmittedResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.create_media_buy_response import (
-    CreateMediaBuySuccess as LegacyCreateMediaBuySuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.decline_proposals_response import (
-    DeclineProposalsResponse1 as DeclineProposalsResponse2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.decline_proposals_response import (
-    DeclineProposalsResponse1 as Results2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.decline_proposals_response import (
-    DeclineProposalsResponseResults as Results1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_media_buy_delivery_request import (
-    DeliveryBreakdownControls as CatalogItem,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse as CreateMediaBuyResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse1 as CreateMediaBuyResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse1 as LegacyCreateMediaBuyResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse1 as LegacyCreateMediaBuySuccessResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse2 as CreateMediaBuyResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse2 as LegacyCreateMediaBuyErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse2 as LegacyCreateMediaBuyResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse3 as CreateMediaBuyResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse3 as CreateMediaBuySubmittedResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse3 as LegacyCreateMediaBuyResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse3 as LegacyCreateMediaBuySubmittedResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.decline_proposals_request import DeclineProposalsRequest as DeclineProposalsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.decline_proposals_response import DeclineProposalsResponse as DeclineProposalsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.decline_proposals_response import DeclineProposalsResponse1 as DeclineProposalsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.decline_proposals_response import DeclineProposalsResponse1 as DeclineProposalsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.decline_proposals_response import DeclineProposalsResponse1 as Results2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.decline_proposals_response import DeclineProposalsResponseResults as Results1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_request import DeliveryBreakdownControls as CatalogItem  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.get_media_buy_delivery_request import Demographic as Demographic
-from adcp.types._schemas.media_buy.get_media_buy_delivery_request import (
-    ReportingDimensions as ReportingDimensions,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.get_media_buy_delivery_request import GetMediaBuyDeliveryRequest as GetMediaBuyDeliveryRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_request import ReportingDimensions as ReportingDimensions  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.get_media_buy_delivery_request import Spot as Spot
-from adcp.types._schemas.media_buy.get_media_buy_delivery_response import (
-    AggregatedTotals as AggregatedTotals,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_media_buy_delivery_response import (
-    ByAudienceItem as ByAudienceItem,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_media_buy_delivery_response import (
-    ByDemographicItem as ByDemographicItem,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_media_buy_delivery_response import (
-    ByDevicePlatformItem as ByDevicePlatformItem,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_media_buy_delivery_response import (
-    ByDeviceTypeItem as ByDeviceTypeItem,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_media_buy_delivery_response import (
-    ByFormatItem as ByFormatItem,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import AggregatedTotals as AggregatedTotals  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import ByAudienceItem as ByAudienceItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import ByDemographicItem as ByDemographicItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import ByDevicePlatformItem as ByDevicePlatformItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import ByDeviceTypeItem as ByDeviceTypeItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import ByFormatItem as ByFormatItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import ByPackageItem1 as ByPackageItem1  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.get_media_buy_delivery_response import BySpotItem as BySpotItem
-from adcp.types._schemas.media_buy.get_media_buy_delivery_response import (
-    ReportingRevisionBinding as ReportingRevisionBinding,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_media_buys_response import (
-    ObjCanceledAtCanceledByReason as Cancellation1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_products_async_response_input_required import (
-    GetProductsInputRequired as GetProductsInputRequiredResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_products_async_response_submitted import (
-    GetProductsSubmitted as GetProductsSubmittedResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_products_async_response_working import (
-    GetProductsWorking as GetProductsWorkingResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_products_response import (
-    FilterDiagnostics as FilterDiagnostics,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_products_response import (
-    GetProductsResponse as GetProductsSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import GetMediaBuyDeliveryResponse as GetMediaBuyDeliveryResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import GetMediaBuyDeliveryResponse as LegacyGetMediaBuyDeliveryResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import ReportingRevisionBinding as ReportingRevisionBinding  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buy_delivery_response import Window as Window
+from adcp.types._schemas.media_buy.get_media_buys_request import GetMediaBuysRequest as GetMediaBuysRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buys_response import CreativeApproval as CreativeApproval  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buys_response import GetMediaBuysResponse as GetMediaBuysResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buys_response import GetMediaBuysResponse as LegacyGetMediaBuysResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_media_buys_response import ObjCanceledAtCanceledByReason as Cancellation1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_async_response_input_required import GetProductsInputRequired as GetProductsInputRequiredResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_async_response_submitted import GetProductsSubmitted as GetProductsSubmittedResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_async_response_working import GetProductsWorking as GetProductsWorkingResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_rejected import GetProductsRejected as GetProductsRejected  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_request import Action9 as Action9
+from adcp.types._schemas.media_buy.get_products_request import Fields as Fields
+from adcp.types._schemas.media_buy.get_products_request import GetProductsRequest as GetProductsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_request import GetProductsRequest as LegacyGetProductsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_request import Refine1 as Refine1
+from adcp.types._schemas.media_buy.get_products_request import Refine2 as Refine2
+from adcp.types._schemas.media_buy.get_products_request import Refine3 as Refine3
+from adcp.types._schemas.media_buy.get_products_response import ExcludedBy as ExcludedBy
+from adcp.types._schemas.media_buy.get_products_response import FilterDiagnostics as FilterDiagnostics  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_response import GetProductsResponse as GetProductsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_response import GetProductsResponse as GetProductsSuccessResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_response import GetProductsResponse as LegacyGetProductsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_response import RefinementApplied1 as RefinementApplied1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_response import RefinementApplied2 as RefinementApplied2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_products_response import RefinementApplied3 as RefinementApplied3  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.get_products_response import Semantics as Semantics
-from adcp.types._schemas.media_buy.get_reporting_status_request import (
-    ReportingStatusView as ReportingStatusView,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.get_reporting_status_response import (
-    ObligationCounts as ObligationCounts,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.get_products_targeting_resolution import ProductDiscoveryTargetingResolution as ProductDiscoveryTargetingResolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_reporting_status_request import GetReportingStatusRequest as GetReportingStatusRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_reporting_status_request import ReportingStatusView as ReportingStatusView  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_reporting_status_response import DeliveryConfigGeneration as DeliveryConfigGeneration  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_reporting_status_response import GetReportingStatusResponse as GetReportingStatusResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_reporting_status_response import ObligationCounts as ObligationCounts  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.get_reporting_status_response import ObligationCounts as ReportingObligationCounts  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.legacy_purchase_continuation_input import CompatibilityPurchaseCoordinatorInput as CompatibilityPurchaseCoordinatorInput  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.list_creative_formats_request import ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.list_creative_formats_request import ListCreativeFormatsRequest as ListCreativeFormatsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.list_creative_formats_response import ListCreativeFormatsResponse as LegacyListCreativeFormatsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.list_creative_formats_response import ListCreativeFormatsResponse as ListCreativeFormatsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.list_products_request import ListProductsRequest as ListProductsRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.list_products_response import IncompleteItem as IncompleteItem3
-from adcp.types._schemas.media_buy.list_products_response import (
-    ListProductsResponseListed as ListProductsResponse1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.list_products_response import (
-    ListProductsResponseUnchanged as ListProductsResponse2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.package_request import (
-    ObjScopeMetricIdQualifier as CommittedMetrics1,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.list_products_response import ListProductsResponse as ListProductsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.list_products_response import ListProductsResponseListed as ListProductsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.list_products_response import ListProductsResponseUnchanged as ListProductsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.log_event_request import LogEventRequest as LogEventRequest
+from adcp.types._schemas.media_buy.log_event_response import LogEventResponse as LogEventResponse
+from adcp.types._schemas.media_buy.log_event_response import LogEventResponse1 as LogEventResponse1
+from adcp.types._schemas.media_buy.log_event_response import LogEventResponse2 as LogEventResponse2
+from adcp.types._schemas.media_buy.log_event_response import PartialFailure as PartialFailure
+from adcp.types._schemas.media_buy.media_buy_commitment_response import MediaBuyCommitmentResponse as MediaBuyCommitmentResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.media_buy_commitment_response import MediaBuyCommitmentResponse1 as MediaBuyCommitmentResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.media_buy_commitment_response import MediaBuyCommitmentResponse2 as MediaBuyCommitmentResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.media_buy_commitment_response import MediaBuyCommitmentResponse3 as MediaBuyCommitmentResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.media_buy_commitment_response import PurchaseBinding as PurchaseBinding  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.media_buy_delivery_webhook_result import MediaBuyDeliveryWebhookResult as MediaBuyDeliveryWebhookResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.outcome_target import Goal as Goal
+from adcp.types._schemas.media_buy.outcome_target import Goal1 as Goal1
+from adcp.types._schemas.media_buy.outcome_target import OutcomeTarget as OutcomeTarget
+from adcp.types._schemas.media_buy.package_control import PackageControl as PackageControl
+from adcp.types._schemas.media_buy.package_request import CommittedMetrics2 as CommittedMetrics2
+from adcp.types._schemas.media_buy.package_request import ObjScopeMetricIdQualifier as CommittedMetrics1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.package_request import PackageRequest as LegacyPackageRequest
+from adcp.types._schemas.media_buy.package_request import PackageRequest as PackageRequest
 from adcp.types._schemas.media_buy.package_request import PackageRequest as PublicPackageRequest
 from adcp.types._schemas.media_buy.package_update import KeywordTarget as KeywordTargetsAddItem
 from adcp.types._schemas.media_buy.package_update import NegativeKeyword as KeywordTargetsRemoveItem
 from adcp.types._schemas.media_buy.package_update import NegativeKeyword as NegativeKeywordsAddItem
-from adcp.types._schemas.media_buy.package_update import (
-    NegativeKeyword as NegativeKeywordsRemoveItem,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.package_update import NegativeKeyword as NegativeKeywordsRemoveItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.package_update import PackageUpdate as LegacyPackageUpdate
+from adcp.types._schemas.media_buy.package_update import PackageUpdate as PackageUpdate
 from adcp.types._schemas.media_buy.package_update import PackageUpdate as PublicPackageUpdate
+from adcp.types._schemas.media_buy.product_discovery_criteria import ProductDiscoveryCriteria as ProductDiscoveryCriteria  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.product_fields import ProductResponseField as ProductResponseField  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.product_fields import ProductResponseFields as ProductResponseFields  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.product_purchase import ProductPurchase as ProductPurchase
+from adcp.types._schemas.media_buy.product_purchase_input import ProductPurchaseInput as ProductPurchaseInput  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.product_refinement import ProductRefinementRequests as ProductRefinementRequests  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.proposal_budget_constraint import ProposalBudgetConstraint as ProposalBudgetConstraint  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.proposal_decline import ProposalDecline as ProposalDecline
 from adcp.types._schemas.media_buy.proposal_refinement import Alternatives as Alternatives
 from adcp.types._schemas.media_buy.proposal_refinement import Constraints as Constraints
 from adcp.types._schemas.media_buy.proposal_refinement import Constraints as Constraints1
@@ -2367,85 +2916,74 @@ from adcp.types._schemas.media_buy.proposal_refinement import Constraints as Con
 from adcp.types._schemas.media_buy.proposal_refinement import Constraints as Constraints7
 from adcp.types._schemas.media_buy.proposal_refinement import Cpm as Cpm
 from adcp.types._schemas.media_buy.proposal_refinement import Impressions as Impressions
-from adcp.types._schemas.media_buy.proposal_refinement import (
-    ProposalRefinement as ProposalRefinement2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.proposal_refinement import (
-    ProposalRefinement as ProposalRefinement9,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.refine_proposals_response import (
-    RefineProposalsResponseCompleted as RefineProposalsResponse1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.refine_proposals_response import (
-    RefineProposalsResponseSubmitted as Proposal2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.refine_proposals_response import (
-    RefineProposalsResponseSubmitted as RefineProposalsResponse2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    IncompleteItem as IncompleteItem5,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    IncompleteItem as IncompleteItem6,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    IncompleteItem as IncompleteItem7,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    RequestProposalsResponseProductsAvailableCompleted as PurchaseContinuation2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    RequestProposalsResponseProductsAvailableCompleted as RequestProposalsResponse2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    RequestProposalsResponseProposedCompleted as PurchaseContinuation1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    RequestProposalsResponseProposedCompleted as RequestProposalsResponse1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    RequestProposalsResponseRejectedCompleted as PurchaseContinuation3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    RequestProposalsResponseRejectedCompleted as RequestProposalsResponse3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    RequestProposalsResponseSubmitted as PurchaseContinuation4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    RequestProposalsResponseSubmitted as RequestProposalsResponse4,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.request_proposals_response import (
-    SourceAdcpVersion as SourceAdcpVersion,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.proposal_refinement import ProposalRefinement as ProposalRefinement2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.proposal_refinement import ProposalRefinement as ProposalRefinement9  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.provide_performance_feedback_request import ProvidePerformanceFeedbackRequest as ProvidePerformanceFeedbackRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.provide_performance_feedback_response import ProvidePerformanceFeedbackResponse as ProvidePerformanceFeedbackResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.provide_performance_feedback_response import ProvidePerformanceFeedbackResponse1 as ProvidePerformanceFeedbackResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.provide_performance_feedback_response import ProvidePerformanceFeedbackResponse2 as ProvidePerformanceFeedbackResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.refine_proposals_request import RefineProposalsRequest as RefineProposalsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.refine_proposals_response import RefineProposalsResponse as RefineProposalsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.refine_proposals_response import RefineProposalsResponseCompleted as RefineProposalsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.refine_proposals_response import RefineProposalsResponseSubmitted as Proposal2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.refine_proposals_response import RefineProposalsResponseSubmitted as RefineProposalsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_request import RequestProposalsRequest as RequestProposalsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import IncompleteItem as IncompleteItem5  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import IncompleteItem as IncompleteItem6  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import IncompleteItem as IncompleteItem7  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import Loss as Loss
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponse as RequestProposalsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponseProductsAvailableCompleted as PurchaseContinuation2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponseProductsAvailableCompleted as RequestProposalsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponseProposedCompleted as PurchaseContinuation1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponseProposedCompleted as RequestProposalsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponseRejectedCompleted as PurchaseContinuation3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponseRejectedCompleted as RequestProposalsResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponseSubmitted as PurchaseContinuation4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import RequestProposalsResponseSubmitted as RequestProposalsResponse4  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.request_proposals_response import SourceAdcpVersion as SourceAdcpVersion  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.media_buy.sync_audiences_request import AudienceType as AudienceType
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuyError as LegacyUpdateMediaBuyErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuyError as LegacyUpdateMediaBuyResponse2,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuyError as UpdateMediaBuyErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuyResponseSubmitted as LegacyUpdateMediaBuyResponse3,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuyResponseSubmitted as LegacyUpdateMediaBuySubmittedResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuyResponseSubmitted as UpdateMediaBuySubmittedResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuySuccess as LegacyUpdateMediaBuyResponse1,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuySuccess as LegacyUpdateMediaBuySuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.media_buy.update_media_buy_response import (
-    UpdateMediaBuySuccess as UpdateMediaBuySuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.media_buy.sync_audiences_request import SyncAudiencesRequest as SyncAudiencesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_audiences_response import MatchBreakdown as MatchBreakdown
+from adcp.types._schemas.media_buy.sync_audiences_response import SyncAudiencesResponse as SyncAudiencesResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_audiences_response import SyncAudiencesResponse1 as SyncAudiencesResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_audiences_response import SyncAudiencesResponse2 as SyncAudiencesResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_audiences_response import SyncAudiencesResponse3 as SyncAudiencesResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_catalogs_request import SyncCatalogsRequest as SyncCatalogsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_catalogs_response import ItemIssue as ItemIssue
+from adcp.types._schemas.media_buy.sync_catalogs_response import SyncCatalogsResponse as SyncCatalogsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_catalogs_response import SyncCatalogsResponse1 as SyncCatalogsResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_catalogs_response import SyncCatalogsResponse2 as SyncCatalogsResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_catalogs_response import SyncCatalogsResponse3 as SyncCatalogsResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_event_sources_request import SyncEventSourcesRequest as SyncEventSourcesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_event_sources_response import SyncEventSourcesResponse as SyncEventSourcesResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_event_sources_response import SyncEventSourcesResponse1 as SyncEventSourcesResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_event_sources_response import SyncEventSourcesResponse2 as SyncEventSourcesResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_reporting_receipts_request import SyncReportingReceiptsRequest as SyncReportingReceiptsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_reporting_receipts_response import Results20 as Results20
+from adcp.types._schemas.media_buy.sync_reporting_receipts_response import Results21 as Results21
+from adcp.types._schemas.media_buy.sync_reporting_receipts_response import Results22 as Results22
+from adcp.types._schemas.media_buy.sync_reporting_receipts_response import Results23 as Results23
+from adcp.types._schemas.media_buy.sync_reporting_receipts_response import SyncReportingReceiptsResponse as SyncReportingReceiptsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_reporting_status_request import SyncReportingStatusRequest as SyncReportingStatusRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.sync_reporting_status_response import Results26 as Results26
+from adcp.types._schemas.media_buy.sync_reporting_status_response import Results27 as Results27
+from adcp.types._schemas.media_buy.sync_reporting_status_response import SyncReportingStatusResponse as SyncReportingStatusResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_request import UpdateMediaBuyRequest as LegacyUpdateMediaBuyRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_request import UpdateMediaBuyRequest as UpdateMediaBuyRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse as UpdateMediaBuyResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse1 as LegacyUpdateMediaBuyResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse1 as LegacyUpdateMediaBuySuccessResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse1 as UpdateMediaBuyResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse1 as UpdateMediaBuySuccessResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse2 as LegacyUpdateMediaBuyErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse2 as LegacyUpdateMediaBuyResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse2 as UpdateMediaBuyErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse2 as UpdateMediaBuyResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse3 as LegacyUpdateMediaBuyResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse3 as LegacyUpdateMediaBuySubmittedResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse3 as UpdateMediaBuyResponse3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse3 as UpdateMediaBuySubmittedResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.pricing_options import cpa_option as cpa_option
 from adcp.types._schemas.pricing_options import cpc_option as cpc_option
 from adcp.types._schemas.pricing_options import cpcv_option as cpcv_option
@@ -2458,414 +2996,332 @@ from adcp.types._schemas.pricing_options import price_guidance as price_guidance
 from adcp.types._schemas.pricing_options import revenue_share_option as revenue_share_option
 from adcp.types._schemas.pricing_options import time_option as time_option
 from adcp.types._schemas.pricing_options import vcpm_option as vcpm_option
-from adcp.types._schemas.property import authorization_result as authorization_result
-from adcp.types._schemas.property import base_property_source as base_property_source
-from adcp.types._schemas.property import (
-    create_property_list_request as create_property_list_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import (
-    create_property_list_response as create_property_list_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import (
-    delete_property_list_request as delete_property_list_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import (
-    delete_property_list_response as delete_property_list_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import delivery_record as delivery_record
-from adcp.types._schemas.property import get_property_list_request as get_property_list_request
-from adcp.types._schemas.property import get_property_list_response as get_property_list_response
-from adcp.types._schemas.property import list_property_lists_request as list_property_lists_request
-from adcp.types._schemas.property import (
-    list_property_lists_response as list_property_lists_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import property_error as property_error
-from adcp.types._schemas.property import property_feature as property_feature
-from adcp.types._schemas.property import property_feature_definition as property_feature_definition
-from adcp.types._schemas.property import property_feature_result as property_feature_result
-from adcp.types._schemas.property import property_feature_value as property_feature_value
-from adcp.types._schemas.property import property_list as property_list
-from adcp.types._schemas.property import (
-    property_list_changed_webhook as property_list_changed_webhook,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import property_list_filters as property_list_filters
-from adcp.types._schemas.property import (
-    update_property_list_request as update_property_list_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import (
-    update_property_list_response as update_property_list_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import (
-    validate_property_delivery_request as validate_property_delivery_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import (
-    validate_property_delivery_response as validate_property_delivery_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.property import validation_result as validation_result
+from adcp.types._schemas.pricing_options.cpa_option import CpaPricingOption as CpaPricingOption
+from adcp.types._schemas.pricing_options.cpc_option import CpcPricingOption as CpcPricingOption
+from adcp.types._schemas.pricing_options.cpcv_option import CpcvPricingOption as CpcvPricingOption
+from adcp.types._schemas.pricing_options.cpm_option import CpmPricingOption as CpmAuctionPricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.pricing_options.cpm_option import CpmPricingOption as CpmFixedRatePricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.pricing_options.cpm_option import CpmPricingOption as CpmPricingOption
+from adcp.types._schemas.pricing_options.cpp_option import CppPricingOption as CppPricingOption
+from adcp.types._schemas.pricing_options.cpv_option import CpvPricingOption as CpvPricingOption
+from adcp.types._schemas.pricing_options.cpv_option import ViewThreshold1 as ViewThreshold1
+from adcp.types._schemas.pricing_options.flat_rate_option import FlatRatePricingOption as FlatRatePricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.pricing_options.price_breakdown import Adjustment as Adjustment
+from adcp.types._schemas.pricing_options.price_breakdown import PriceBreakdown as PriceBreakdown
+from adcp.types._schemas.pricing_options.price_guidance import PriceGuidance as PriceGuidance
+from adcp.types._schemas.pricing_options.revenue_share_option import RevenueSharePricingOption as RevenueSharePricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.pricing_options.time_option import TimeBasedPricingOption as TimeBasedPricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.pricing_options.time_option import TimeUnit as TimeUnit
+from adcp.types._schemas.pricing_options.vcpm_option import VcpmPricingOption as VcpmAuctionPricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.pricing_options.vcpm_option import VcpmPricingOption as VcpmFixedRatePricingOption  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.pricing_options.vcpm_option import VcpmPricingOption as VcpmPricingOption
+from adcp.types._schemas.property.authorization_result import AuthorizationResult as AuthorizationResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.base_property_source import BasePropertySource as BasePropertySource  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.base_property_source import BasePropertySource1 as BasePropertySource1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.base_property_source import BasePropertySource2 as BasePropertySource2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.base_property_source import BasePropertySource3 as BasePropertySource3  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.create_property_list_request import CreatePropertyListRequest as CreatePropertyListRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.create_property_list_response import CreatePropertyListResponse as CreatePropertyListResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.delete_property_list_request import DeletePropertyListRequest as DeletePropertyListRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.delete_property_list_response import DeletePropertyListResponse as DeletePropertyListResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.delivery_record import DeliveryRecord as DeliveryRecord
+from adcp.types._schemas.property.get_property_list_request import GetPropertyListRequest as GetPropertyListRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.get_property_list_response import GetPropertyListResponse as GetPropertyListResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.list_property_lists_request import ListPropertyListsRequest as ListPropertyListsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.list_property_lists_response import ListPropertyListsResponse as ListPropertyListsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.property_error import PropertyError as PropertyError
+from adcp.types._schemas.property.property_feature_definition import PropertyFeatureDefinition as PropertyFeatureDefinition  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.property.property_feature_result import CoverageStatus as CoverageStatus
+from adcp.types._schemas.property.property_feature_result import PropertyFeatureResult as PropertyFeatureResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.property_feature_value import PropertyFeatureValue as PropertyFeatureValue  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.property_list import PropertyList as PropertyList
+from adcp.types._schemas.property.property_list_changed_webhook import PropertyListChangedWebhook as PropertyListChangedWebhook  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.property_list_filters import PropertyListFilters as PropertyListFilters  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.update_property_list_request import UpdatePropertyListRequest as UpdatePropertyListRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.update_property_list_response import UpdatePropertyListResponse as UpdatePropertyListResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.validate_property_delivery_request import ValidatePropertyDeliveryRequest as ValidatePropertyDeliveryRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.property.validate_property_delivery_response import Aggregate as Aggregate
-from adcp.types._schemas.property.validate_property_delivery_response import (
-    AuthorizationSummary as AuthorizationSummary,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.property.validate_property_delivery_response import AuthorizationSummary as AuthorizationSummary  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.property.validate_property_delivery_response import ValidatePropertyDeliveryResponse as ValidatePropertyDeliveryResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.property.validation_result import Requirement as Requirement
-from adcp.types._schemas.protocol import (
-    get_adcp_capabilities_request as get_adcp_capabilities_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol import (
-    get_adcp_capabilities_response as get_adcp_capabilities_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol import get_principal_request as get_principal_request
-from adcp.types._schemas.protocol import get_principal_response as get_principal_response
-from adcp.types._schemas.protocol import get_task_status_request as get_task_status_request
-from adcp.types._schemas.protocol import get_task_status_response as get_task_status_response
-from adcp.types._schemas.protocol import list_tasks_request as list_tasks_request
-from adcp.types._schemas.protocol import list_tasks_response as list_tasks_response
-from adcp.types._schemas.protocol import (
-    sync_agent_notification_configs_request as sync_agent_notification_configs_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol import (
-    sync_agent_notification_configs_response as sync_agent_notification_configs_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol import sync_principal_request as sync_principal_request
-from adcp.types._schemas.protocol import sync_principal_response as sync_principal_response
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    AcceptancePolicyDiscovery as BundledAcceptancePolicyDiscovery,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.property.validation_result import ValidationResult as ValidationResult
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as get_adcp_capabilities_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as get_adcp_capabilities_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as get_principal_request
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as get_principal_response
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as get_task_status_request
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as get_task_status_response
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as list_tasks_request
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as list_tasks_response
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as sync_agent_notification_configs_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as sync_agent_notification_configs_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as sync_principal_request
+from adcp.types._schemas.protocol import get_adcp_capabilities_response as sync_principal_response
+from adcp.types._schemas.protocol.get_adcp_capabilities_request import GetAdcpCapabilitiesRequest as GetAdcpCapabilitiesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import AcceptancePolicyDiscovery as AcceptancePolicyDiscovery  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import AcceptancePolicyDiscovery as BundledAcceptancePolicyDiscovery  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Accreditation as Accreditation  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Adcp as Adcp
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    AudienceTargeting as AudienceTargeting,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import AudienceTargeting as AudienceTargeting  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Brand as Brand
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    BudgetCapping as BudgetCapping,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    BudgetCappingTimezoneBasis as BudgetCappingTimezoneBasis,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    CapabilityChanges as CapabilityChanges,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    CapabilityReportingDeliveryMethod as CapabilityReportingDeliveryMethod,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    ComplianceTesting as ComplianceTesting,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    CompromiseNotification as CompromiseNotification,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    CoversContentDigest as CoversContentDigest,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import Creative as BuildCreative
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    Creative as BuildCreativeCreative,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import Creative as DeliveryCreative
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    Creative as ListCreativesCanonicalCreative,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    Creative as ListCreativesCreative,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    Creative as ListCreativesCreativeItem,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    Creative as ListCreativesLegacyCreative,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    Creative as SyncCreativeResult,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    Creative as SyncCreativeResultInternal,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    Creative as SyncCreativesCreative,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    CreativeApprovalMode as CreativeApprovalMode,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    CreativeSpecs as CreativeSpecs,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import BudgetCapping as BudgetCapping  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import BudgetCappingTimezoneBasis as BudgetCappingTimezoneBasis  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import CapabilityChanges as CapabilityChanges  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import CapabilityReportingDeliveryMethod as CapabilityReportingDeliveryMethod  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import ChangeFeed as ChangeFeed
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import ComplianceTesting as ComplianceTesting  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import CompromiseNotification as CompromiseNotification  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import CoversContentDigest as CoversContentDigest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import CreativeApprovalMode as CreativeApprovalMode  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import CreativeSpecs as CreativeSpecs  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Endpoint as Endpoint
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    FrequencyCapping as FrequencyCapping,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import ExtensionsSupportedItem as ExtensionsSupportedItem  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Features as Features
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import FrequencyCapping as FrequencyCapping  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import GeoMetros as GeoMetros
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import GetAdcpCapabilitiesResponse as GetAdcpCapabilitiesResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Governance as Governance
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    GovernanceEnforcement as GovernanceEnforcement,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import GovernanceEnforcement as GovernanceEnforcement  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Idempotency as Idempotency
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import IdempotencySupported as IdempotencySupported  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import IdempotencyUnsupported as IdempotencyUnsupported  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import IdentityUpdates as IdentityUpdates  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import KeyOrigins as KeyOrigins
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    KeywordTargets as KeywordTargets,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import KeywordTargets as KeywordTargets  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Language as Language
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import LifecycleTool as LifecycleTool  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Localization as Localization
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    MatchingLatencyHours as MatchingLatencyHours,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import MatchingLatencyHours as MatchingLatencyHours  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Measurement as Measurement
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    MeasurementGateway as MeasurementGateway,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    NegativeKeywords as NegativeKeywords,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import MeasurementGateway as MeasurementGateway  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import NegativeKeywords as NegativeKeywords  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Notifications as Notifications  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Notifications2 as Notifications2  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Oauth as Oauth
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Preview as Preview
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Principal as Principal
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    RegistrationTask as RegistrationTask,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    RelationshipNotifications as RelationshipNotifications,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    ReportingVerificationProfileSet as Tasks,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    RepresentationResolution as RepresentationResolution,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    RequestSigning as RequestSigning,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    RightsAttestations as RightsAttestations,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    RuntimeAttestations as RuntimeAttestations,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    SignalActivation as SignalActivation,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    SignalsFeatures as SignalsFeatures,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    SponsoredIntelligence as SponsoredIntelligence,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import PropagationSurface as PropagationSurface  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import RegistrationTask as RegistrationTask  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import RelationshipNotifications as RelationshipNotifications  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import ReportingDestinationOffering as ReportingDestinationOffering  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import ReportingVerificationProfileSet as Tasks  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import RepresentationResolution as RepresentationResolution  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import RequestSigning as RequestSigning  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import RightsAttestations as RightsAttestations  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import RuntimeAttestations as RuntimeAttestations  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SignalActivation as SignalActivation  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SignalsFeatures as SignalsFeatures  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SponsoredIntelligence as SponsoredIntelligence  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SupportedChange as SupportedChange  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SupportedDimension as SupportedDimension  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SupportedFormat as SupportedFormat  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SupportedIdentifierType as SupportedIdentifierType  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SupportedProtocol as SupportedProtocol  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SupportedScope as SupportedScope  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import SupportedSection as SupportedSection  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.get_adcp_capabilities_response import Targeting as Targeting
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    VastValidation as VastValidation,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    WebhookSigning as WebhookSigning,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    WholesaleFeedVersioning as WholesaleFeedVersioning,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.protocol.get_adcp_capabilities_response import (
-    WholesaleFeedWebhooks as WholesaleFeedWebhooks,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks1 as Tasks1
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks2 as Tasks2
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks3 as Tasks3
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks4 as Tasks4
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks5 as Tasks5
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks6 as Tasks6
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks7 as Tasks7
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks8 as Tasks8
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Tasks9 as Tasks9
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Transport1 as Transport1
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import Type6 as Type6
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import VastValidation as VastValidation  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import WebhookSigning as WebhookSigning  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import WholesaleFeedVersioning as WholesaleFeedVersioning  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_adcp_capabilities_response import WholesaleFeedWebhooks as WholesaleFeedWebhooks  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_principal_request import GetPrincipalRequest as GetPrincipalRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_principal_response import GetPrincipalResponse as GetPrincipalResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_principal_response import PrincipalCurrentResult as PrincipalCurrentResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_principal_response import PrincipalReadFailedResult as PrincipalReadFailedResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_principal_response import PrincipalRecognizedResult as PrincipalRecognizedResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_principal_response import PrincipalUnconfiguredResult as PrincipalUnconfiguredResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_principal_response import Result2 as Result2
+from adcp.types._schemas.protocol.get_principal_response import Result3 as Result3
+from adcp.types._schemas.protocol.get_principal_response import Result5 as Result5
+from adcp.types._schemas.protocol.get_task_status_request import GetTaskStatusRequest as GetTaskStatusRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.get_task_status_response import GetTaskStatusResponse as GetTaskStatusResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.list_tasks_request import ListTasksRequest as ListTasksRequest
+from adcp.types._schemas.protocol.list_tasks_response import ListTasksResponse as ListTasksResponse
+from adcp.types._schemas.protocol.sync_agent_notification_configs_request import SyncAgentNotificationConfigsRequest as SyncAgentNotificationConfigsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.sync_agent_notification_configs_response import SyncAgentNotificationConfigsResponse as SyncAgentNotificationConfigsResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.protocol.sync_principal_request import Configuration as Configuration
-from adcp.types._schemas.registries import v1_canonical_mapping as v1_canonical_mapping
-from adcp.types._schemas.registries.v1_canonical_mapping import V2 as V1CanonicalV2Projection  # noqa: N811 -- upstream published this spelling
-from adcp.types._schemas.registries.v1_canonical_mapping import V2 as V2
+from adcp.types._schemas.protocol.sync_principal_request import Configuration as PrincipalConfiguration  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.sync_principal_request import SyncPrincipalRequest as SyncPrincipalRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.sync_principal_response import Action33 as Action33
+from adcp.types._schemas.protocol.sync_principal_response import PrincipalAppliedResult as PrincipalAppliedResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.sync_principal_response import PrincipalSyncFailedResult as PrincipalSyncFailedResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.sync_principal_response import PrincipalValidatedResult as PrincipalValidatedResult  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.protocol.sync_principal_response import Result13 as Result13
+from adcp.types._schemas.protocol.sync_principal_response import Result15 as Result15
+from adcp.types._schemas.protocol.sync_principal_response import SyncPrincipalResponse as SyncPrincipalResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.registries.v1_canonical_mapping import MappingsItem as Mapping
+from adcp.types._schemas.registries.v1_canonical_mapping import ParameterMapping as ParameterMapping
 from adcp.types._schemas.registries.v1_canonical_mapping import Structural as Structural
 from adcp.types._schemas.registries.v1_canonical_mapping import Structural as V1CanonicalStructural
-from adcp.types._schemas.registries.v1_canonical_mapping import (
-    V1PatternFormatIdGlob as V1CanonicalGlobPattern,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.registries.v1_canonical_mapping import (
-    V1PatternStructural as V1CanonicalStructuralPattern,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.registries.v1_canonical_mapping import V1Pattern as V1CanonicalGlobPattern
+from adcp.types._schemas.registries.v1_canonical_mapping import V1Pattern as V1Pattern
+from adcp.types._schemas.registries.v1_canonical_mapping import V1Pattern1 as V1CanonicalStructuralPattern  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.registries.v1_canonical_mapping import V1Pattern1 as V1Pattern1
+from adcp.types._schemas.registries.v1_canonical_mapping import V1V2CanonicalFormatMappingRegistry as V1V2CanonicalFormatMappingRegistry  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.registries.v1_canonical_mapping import V2 as V1CanonicalV2Projection  # noqa: N811 -- upstream published this spelling
+from adcp.types._schemas.registries.v1_canonical_mapping import V2 as V2
 from adcp.types._schemas.signals import activate_signal_request as activate_signal_request
 from adcp.types._schemas.signals import activate_signal_response as activate_signal_response
+from adcp.types._schemas.signals import get_signals_async_response_submitted as get_signals_async_response_submitted  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.signals import get_signals_async_response_working as get_signals_async_response_working  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.signals import get_signals_request as get_signals_request
 from adcp.types._schemas.signals import get_signals_response as get_signals_response
-from adcp.types._schemas.signals.get_signals_async_response_submitted import (
-    GetSignalsSubmitted as GetSignalsSubmittedResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.signals.get_signals_async_response_working import (
-    GetSignalsWorking as GetSignalsWorkingResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.signals.get_signals_response import (
-    GetSignalsResponse as GetSignalsSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.signals.activate_signal_request import ActivateSignalRequest as ActivateSignalRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.signals.activate_signal_response import ActivateSignalResponse as ActivateSignalResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.signals.activate_signal_response import ActivateSignalResponse1 as ActivateSignalResponse1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.signals.activate_signal_response import ActivateSignalResponse2 as ActivateSignalResponse2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.signals.get_signals_async_response_submitted import GetSignalsSubmitted as GetSignalsSubmittedResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.signals.get_signals_async_response_working import GetSignalsWorking as GetSignalsWorkingResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.signals.get_signals_request import GetSignalsRequest as GetSignalsRequest
+from adcp.types._schemas.signals.get_signals_response import GetSignalsResponse as GetSignalsResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.signals.get_signals_response import GetSignalsResponse as GetSignalsSuccessResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_capabilities
-from adcp.types._schemas.sponsored_intelligence import si_context_use as si_context_use
-from adcp.types._schemas.sponsored_intelligence import (
-    si_get_offering_request as si_get_offering_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import (
-    si_get_offering_response as si_get_offering_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import si_identity as si_identity
-from adcp.types._schemas.sponsored_intelligence import (
-    si_initiate_session_request as si_initiate_session_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import (
-    si_initiate_session_response as si_initiate_session_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import (
-    si_send_message_request as si_send_message_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import (
-    si_send_message_response as si_send_message_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import si_sponsored_context as si_sponsored_context
-from adcp.types._schemas.sponsored_intelligence import (
-    si_sponsored_context_receipt as si_sponsored_context_receipt,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import (
-    si_terminate_session_request as si_terminate_session_request,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import (
-    si_terminate_session_response as si_terminate_session_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence import si_ui_element as si_ui_element
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_context_use
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_get_offering_request
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_get_offering_response
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_identity
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_initiate_session_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_initiate_session_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_send_message_request
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_send_message_response
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_sponsored_context
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_sponsored_context_receipt  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_terminate_session_request  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_terminate_session_response  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence import si_capabilities as si_ui_element
 from adcp.types._schemas.sponsored_intelligence.si_capabilities import A2ui as A2ui
+from adcp.types._schemas.sponsored_intelligence.si_capabilities import Avatar as Avatar
 from adcp.types._schemas.sponsored_intelligence.si_capabilities import Commerce as Commerce
 from adcp.types._schemas.sponsored_intelligence.si_capabilities import Modalities as Modalities
-from adcp.types._schemas.sponsored_intelligence.si_identity import (
-    PrivacyPolicyAcknowledged as PrivacyPolicyAcknowledged,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence.si_identity import (
-    ShippingAddress as ShippingAddress,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.sponsored_intelligence.si_capabilities import SiCapabilities as SiCapabilities  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_capabilities import StandardEnum as StandardEnum
+from adcp.types._schemas.sponsored_intelligence.si_capabilities import Video as Video
+from adcp.types._schemas.sponsored_intelligence.si_capabilities import Voice as Voice
+from adcp.types._schemas.sponsored_intelligence.si_context_use import SiContextUse as SiContextUse
+from adcp.types._schemas.sponsored_intelligence.si_get_offering_request import SiGetOfferingRequest as SiGetOfferingRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_get_offering_response import MatchingProduct as MatchingProduct  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_get_offering_response import SiGetOfferingResponse as SiGetOfferingResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_identity import ConsentScopeEnum as ConsentScopeEnum  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_identity import PrivacyPolicyAcknowledged as PrivacyPolicyAcknowledged  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_identity import ShippingAddress as ShippingAddress  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_identity import SiIdentity as SiIdentity
 from adcp.types._schemas.sponsored_intelligence.si_identity import User as User
-from adcp.types._schemas.sponsored_intelligence.si_send_message_request import (
-    ActionResponse as ActionResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence.si_send_message_response import (
-    ContextForCheckout as ContextForCheckout,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.sponsored_intelligence.si_initiate_session_request import SiInitiateSessionRequest as SiInitiateSessionRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_initiate_session_response import SiInitiateSessionResponse as SiInitiateSessionResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_send_message_request import ActionResponse as ActionResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_send_message_request import SiSendMessageRequest as SiSendMessageRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_send_message_response import ContextForCheckout as ContextForCheckout  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.sponsored_intelligence.si_send_message_response import Handoff as Handoff
-from adcp.types._schemas.sponsored_intelligence.si_sponsored_context import (
-    DisclosureObligation as DisclosureObligation,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence.si_sponsored_context import (
-    PayingPrincipal as PayingPrincipal,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.sponsored_intelligence.si_send_message_response import SiSendMessageResponse as SiSendMessageResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_sponsored_context import DisclosureObligation as DisclosureObligation  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_sponsored_context import PayingPrincipal as PayingPrincipal  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.sponsored_intelligence.si_sponsored_context import Proximity as Proximity
+from adcp.types._schemas.sponsored_intelligence.si_sponsored_context import SiSponsoredContext as SiSponsoredContext  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.sponsored_intelligence.si_sponsored_context import Timing as Timing
-from adcp.types._schemas.sponsored_intelligence.si_sponsored_context_receipt import (
-    DisclosureCommitment as DisclosureCommitment,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence.si_sponsored_context_receipt import (
-    HostReceipt as HostReceipt,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence.si_terminate_session_request import (
-    TerminationContext as TerminationContext,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence.si_terminate_session_request import (
-    TransactionIntent as TransactionIntent,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence.si_terminate_session_response import (
-    AcpHandoff as AcpHandoff,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.sponsored_intelligence.si_terminate_session_response import (
-    FollowUp as FollowUp,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.trusted_match import available_package as available_package
-from adcp.types._schemas.trusted_match import context_match_request as context_match_request
-from adcp.types._schemas.trusted_match import context_match_response as context_match_response
-from adcp.types._schemas.trusted_match import identity_match_request as identity_match_request
-from adcp.types._schemas.trusted_match import identity_match_response as identity_match_response
-from adcp.types._schemas.trusted_match import offer as offer
-from adcp.types._schemas.trusted_match import offer_price as offer_price
-from adcp.types._schemas.trusted_match import (
-    provider_context_match_response as provider_context_match_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.trusted_match import (
-    provider_identity_match_response as provider_identity_match_response,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.trusted_match import provider_registration as provider_registration
-from adcp.types._schemas.trusted_match import (
-    publisher_targeting_kv_config as publisher_targeting_kv_config,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types._schemas.trusted_match import publisher_tmpx_config as publisher_tmpx_config
-from adcp.types._schemas.trusted_match import tmpx_chunk as tmpx_chunk
+from adcp.types._schemas.sponsored_intelligence.si_sponsored_context_receipt import DisclosureCommitment as DisclosureCommitment  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_sponsored_context_receipt import HostReceipt as HostReceipt  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_sponsored_context_receipt import SiSponsoredContextReceipt as SiSponsoredContextReceipt  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_sponsored_context_receipt import Status46 as Status46  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_terminate_session_request import SiTerminateSessionRequest as SiTerminateSessionRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_terminate_session_request import TerminationContext as TerminationContext  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_terminate_session_request import TransactionIntent as TransactionIntent  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_terminate_session_response import AcpHandoff as AcpHandoff  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_terminate_session_response import FollowUp as FollowUp  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_terminate_session_response import SiTerminateSessionResponse as SiTerminateSessionResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.sponsored_intelligence.si_ui_element import SiUiElement as SiUiElement
+from adcp.types._schemas.trusted_match.available_package import AvailablePackage as AvailablePackage
+from adcp.types._schemas.trusted_match.context_match_request import ArtifactRef as ArtifactRef
+from adcp.types._schemas.trusted_match.context_match_request import ContextMatchRequest as ContextMatchRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types._schemas.trusted_match.context_match_request import ContextSignals as ContextSignals
 from adcp.types._schemas.trusted_match.context_match_request import Sentiment as Sentiment
+from adcp.types._schemas.trusted_match.context_match_response import ContextMatchResponseRouterPublisher as ContextMatchResponseRouterPublisher  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.context_match_response import SignalsByProvider as SignalsByProvider  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.error import TmpError as TmpError
 from adcp.types._schemas.trusted_match.identity_match_request import Attestation as Attestation
 from adcp.types._schemas.trusted_match.identity_match_request import Consent as Consent
-from adcp.types._schemas.trusted_match.identity_match_request import (
-    VerificationLevel as VerificationLevel,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types._schemas.trusted_match.identity_match_request import IdentityMatchRequest as IdentityMatchRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.identity_match_request import SealedCredential as SealedCredential  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.identity_match_request import VerificationLevel as VerificationLevel  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.identity_match_response import IdentityMatchResponse as IdentityMatchResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.identity_match_response import IdentityMatchResponseRouterPublisher as IdentityMatchResponseRouterPublisher  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.identity_match_response import TmpxProviders as TmpxProviders
+from adcp.types._schemas.trusted_match.offer import Offer as Offer
+from adcp.types._schemas.trusted_match.offer import Offer as TmpOffer
 from adcp.types._schemas.trusted_match.offer_price import Model as Model
+from adcp.types._schemas.trusted_match.offer_price import OfferPrice as OfferPrice
+from adcp.types._schemas.trusted_match.provider_context_match_response import ContextMatchResponseProviderRouter as ContextMatchResponseProviderRouter  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.provider_identity_match_response import IdentityMatchResponseProviderRouter as IdentityMatchResponseProviderRouter  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.provider_registration import TmpProviderRegistration as TmpProviderRegistration  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.provider_registration import TmpProviderRegistration1 as TmpProviderRegistration1  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.provider_registration import TmpProviderRegistration2 as TmpProviderRegistration2  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.publisher_targeting_kv_config import PublisherTargetingKvMapping as PublisherTargetingKvMapping  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.publisher_tmpx_config import PublisherTmpxMacroMapping as PublisherTmpxMacroMapping  # noqa: E501 -- upstream published this spelling
+from adcp.types._schemas.trusted_match.tmpx_chunk import TmpxChunk as TmpxChunk
 from adcp.types._wire import EmailStr as EmailStr
 from adcp.types._wire import SchemaSerializer as SchemaSerializer
 from adcp.types._wire import datetime as datetime
+from adcp.types._wire import rfc3339 as rfc3339
 from adcp.types._wire import uuid as uuid
+from adcp.types.aliases import AccountReferenceById as AccountReferenceById
+from adcp.types.aliases import AccountReferenceByNaturalKey as AccountReferenceByNaturalKey
 from adcp.types.aliases import AcquireRightsAcquiredResponse as AcquireRightsAcquiredResponse
 from adcp.types.aliases import AcquireRightsErrorResponse as AcquireRightsErrorResponse
 from adcp.types.aliases import AcquireRightsPendingResponse as AcquireRightsPendingResponse
 from adcp.types.aliases import AcquireRightsRejectedResponse as AcquireRightsRejectedResponse
 from adcp.types.aliases import ActivateSignalErrorResponse as ActivateSignalErrorResponse
+from adcp.types.aliases import ActivateSignalSuccessResponse as ActivateSignalSuccessResponse
 from adcp.types.aliases import AgentDeployment as AgentDeployment
 from adcp.types.aliases import AgentDestination as AgentDestination
 from adcp.types.aliases import BothPreviewRender as BothPreviewRender
 from adcp.types.aliases import CalibrateContentErrorResponse as CalibrateContentErrorResponse
 from adcp.types.aliases import CalibrateContentSuccessResponse as CalibrateContentSuccessResponse
-from adcp.types.aliases import (
-    CreateContentStandardsErrorResponse as CreateContentStandardsErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    CreateContentStandardsSuccessResponse as CreateContentStandardsSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.aliases import CreateContentStandardsErrorResponse as CreateContentStandardsErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import CreateContentStandardsSuccessResponse as CreateContentStandardsSuccessResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types.aliases import CreateMediaBuyErrorResponse as CreateMediaBuyErrorResponse
 from adcp.types.aliases import CreateMediaBuySuccessResponse as CreateMediaBuySuccessResponse
-from adcp.types.aliases import (
-    GetAccountFinancialsErrorResponse as GetAccountFinancialsErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    GetAccountFinancialsSuccessResponse as GetAccountFinancialsSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.aliases import GetAccountFinancialsErrorResponse as GetAccountFinancialsErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import GetAccountFinancialsSuccessResponse as GetAccountFinancialsSuccessResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types.aliases import GetBrandIdentityErrorResponse as GetBrandIdentityErrorResponse
+from adcp.types.aliases import GetBrandIdentitySuccessResponse as GetBrandIdentitySuccessResponse
 from adcp.types.aliases import GetContentStandardsErrorResponse as GetContentStandardsErrorResponse
-from adcp.types.aliases import (
-    GetContentStandardsSuccessResponse as GetContentStandardsSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    GetCreativeDeliveryByBuyerRefRequest as GetCreativeDeliveryByBuyerRefRequest,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    GetCreativeDeliveryByCreativeRequest as GetCreativeDeliveryByCreativeRequest,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    GetCreativeDeliveryByMediaBuyRequest as GetCreativeDeliveryByMediaBuyRequest,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.aliases import GetContentStandardsSuccessResponse as GetContentStandardsSuccessResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import GetCreativeDeliveryByBuyerRefRequest as GetCreativeDeliveryByBuyerRefRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import GetCreativeDeliveryByCreativeRequest as GetCreativeDeliveryByCreativeRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import GetCreativeDeliveryByMediaBuyRequest as GetCreativeDeliveryByMediaBuyRequest  # noqa: E501 -- upstream published this spelling
 from adcp.types.aliases import GetCreativeFeaturesErrorResponse as GetCreativeFeaturesErrorResponse
-from adcp.types.aliases import (
-    GetCreativeFeaturesSuccessResponse as GetCreativeFeaturesSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    GetMediaBuyArtifactsErrorResponse as GetMediaBuyArtifactsErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    GetMediaBuyArtifactsSuccessResponse as GetMediaBuyArtifactsSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.aliases import GetCreativeFeaturesSuccessResponse as GetCreativeFeaturesSuccessResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import GetMediaBuyArtifactsErrorResponse as GetMediaBuyArtifactsErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import GetMediaBuyArtifactsSuccessResponse as GetMediaBuyArtifactsSuccessResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types.aliases import GetProductsBriefRequest as GetProductsBriefRequest
 from adcp.types.aliases import GetProductsRefineRequest as GetProductsRefineRequest
 from adcp.types.aliases import GetProductsWholesaleRequest as GetProductsWholesaleRequest
 from adcp.types.aliases import GetRightsErrorResponse as GetRightsErrorResponse
+from adcp.types.aliases import GetRightsSuccessResponse as GetRightsSuccessResponse
+from adcp.types.aliases import GetSignalsDiscoveryRequest as GetSignalsDiscoveryRequest
+from adcp.types.aliases import GetSignalsLookupRequest as GetSignalsLookupRequest
 from adcp.types.aliases import HtmlPreviewRender as HtmlPreviewRender
 from adcp.types.aliases import KeyValueActivationKey as KeyValueActivationKey
-from adcp.types.aliases import (
-    ListContentStandardsErrorResponse as ListContentStandardsErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    ListContentStandardsSuccessResponse as ListContentStandardsSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.aliases import ListContentStandardsErrorResponse as ListContentStandardsErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import ListContentStandardsSuccessResponse as ListContentStandardsSuccessResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types.aliases import LogEventErrorResponse as LogEventErrorResponse
 from adcp.types.aliases import LogEventSuccessResponse as LogEventSuccessResponse
+from adcp.types.aliases import PlatformDeployment as PlatformDeployment
 from adcp.types.aliases import PlatformDestination as PlatformDestination
-from adcp.types.aliases import (
-    ProvidePerformanceFeedbackByBuyerRefRequest as ProvidePerformanceFeedbackByBuyerRefRequest,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    ProvidePerformanceFeedbackByMediaBuyRequest as ProvidePerformanceFeedbackByMediaBuyRequest,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    ProvidePerformanceFeedbackErrorResponse as ProvidePerformanceFeedbackErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    ProvidePerformanceFeedbackSuccessResponse as ProvidePerformanceFeedbackSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.aliases import ProvidePerformanceFeedbackByBuyerRefRequest as ProvidePerformanceFeedbackByBuyerRefRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import ProvidePerformanceFeedbackByMediaBuyRequest as ProvidePerformanceFeedbackByMediaBuyRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import ProvidePerformanceFeedbackErrorResponse as ProvidePerformanceFeedbackErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import ProvidePerformanceFeedbackSuccessResponse as ProvidePerformanceFeedbackSuccessResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types.aliases import PublisherProperties as PublisherProperties
 from adcp.types.aliases import PublisherPropertiesAll as PublisherPropertiesAll
 from adcp.types.aliases import PublisherPropertiesById as PublisherPropertiesById
@@ -2877,27 +3333,22 @@ from adcp.types.aliases import SyncAccountsErrorResponse as SyncAccountsErrorRes
 from adcp.types.aliases import SyncAccountsSuccessResponse as SyncAccountsSuccessResponse
 from adcp.types.aliases import SyncAudiencesErrorResponse as SyncAudiencesErrorResponse
 from adcp.types.aliases import SyncAudiencesSubmittedResponse as SyncAudiencesSubmittedResponse
+from adcp.types.aliases import SyncAudiencesSuccessResponse as SyncAudiencesSuccessResponse
 from adcp.types.aliases import SyncCatalogsErrorResponse as SyncCatalogsErrorResponse
 from adcp.types.aliases import SyncCatalogsSubmittedResponse as SyncCatalogsSubmittedResponse
+from adcp.types.aliases import SyncCatalogsSuccessResponse as SyncCatalogsSuccessResponse
 from adcp.types.aliases import SyncCreativesErrorResponse as SyncCreativesErrorResponse
 from adcp.types.aliases import SyncCreativesSubmittedResponse as SyncCreativesSubmittedResponse
+from adcp.types.aliases import SyncCreativesSuccessResponse as SyncCreativesSuccessResponse
 from adcp.types.aliases import SyncEventSourcesErrorResponse as SyncEventSourcesErrorResponse
 from adcp.types.aliases import SyncEventSourcesSuccessResponse as SyncEventSourcesSuccessResponse
-from adcp.types.aliases import (
-    UpdateContentStandardsErrorResponse as UpdateContentStandardsErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    UpdateContentStandardsSuccessResponse as UpdateContentStandardsSuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.aliases import UpdateContentStandardsErrorResponse as UpdateContentStandardsErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import UpdateContentStandardsSuccessResponse as UpdateContentStandardsSuccessResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types.aliases import UpdateMediaBuyPackagesRequest as UpdateMediaBuyPackagesRequest
 from adcp.types.aliases import UpdateMediaBuyPropertiesRequest as UpdateMediaBuyPropertiesRequest
 from adcp.types.aliases import UrlPreviewRender as UrlPreviewRender
-from adcp.types.aliases import (
-    ValidateContentDeliveryErrorResponse as ValidateContentDeliveryErrorResponse,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.aliases import (
-    ValidateContentDeliverySuccessResponse as ValidateContentDeliverySuccessResponse,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.aliases import ValidateContentDeliveryErrorResponse as ValidateContentDeliveryErrorResponse  # noqa: E501 -- upstream published this spelling
+from adcp.types.aliases import ValidateContentDeliverySuccessResponse as ValidateContentDeliverySuccessResponse  # noqa: E501 -- upstream published this spelling
 from adcp.types.base import BeforeValidator as BeforeValidator
 from adcp.types.base import Generic as Generic
 from adcp.types.base import MessageFormatter as MessageFormatter
@@ -2905,12 +3356,16 @@ from adcp.types.base import MockValSer as MockValSer
 from adcp.types.base import NoExplicitNull as NoExplicitNull
 from adcp.types.base import PydanticSerializationError as PydanticSerializationError
 from adcp.types.base import PydanticUndefined as PydanticUndefined
+from adcp.types.base import RegistryBaseModel as RegistryBaseModel
 from adcp.types.base import SchemaInt as SchemaInt
 from adcp.types.base import SerializationInfo as SerializationInfo
 from adcp.types.base import SerializerFunctionWrapHandler as SerializerFunctionWrapHandler
 from adcp.types.base import StrictInt as StrictInt
 from adcp.types.base import WireUrl as WireUrl
 from adcp.types.base import copy as copy
+from adcp.types.base import defer_model_rebuild as defer_model_rebuild
+from adcp.types.base import inherit_field as inherit_field
+from adcp.types.base import is_no_explicit_null as is_no_explicit_null
 from adcp.types.base import model_serializer as model_serializer
 from adcp.types.base import os as os
 from adcp.types.base import set_model_mocks as set_model_mocks
@@ -2919,17 +3374,28 @@ from adcp.types.capabilities import CapabilitiesContentStandards as Capabilities
 from adcp.types.capabilities import CapabilitiesCreative as CapabilitiesCreative
 from adcp.types.capabilities import CapabilitiesMediaBuy as CapabilitiesMediaBuy
 from adcp.types.capabilities import CapabilitiesPreview as CapabilitiesPreview
-from adcp.types.capabilities import (
-    CapabilitiesPreviewRenderingOrigin as CapabilitiesPreviewRenderingOrigin,  # noqa: E501 -- upstream published this spelling
-)
+from adcp.types.capabilities import CapabilitiesPreviewRenderingOrigin as CapabilitiesPreviewRenderingOrigin  # noqa: E501 -- upstream published this spelling
 from adcp.types.capabilities import CapabilitiesPreviewRoute as CapabilitiesPreviewRoute
 from adcp.types.capabilities import ExperimentalFeature as ExperimentalFeature
+from adcp.types.capabilities import LegacyPostalCodeSystem as LegacyPostalCodeSystem
 from adcp.types.capabilities import Transport as Transport
+from adcp.types.compat import C2paWatermarkAction as C2paWatermarkAction
+from adcp.types.compat import ContextMatchResponse as ContextMatchResponse
+from adcp.types.compat import Ext as Ext
+from adcp.types.compat import FormatId as FormatId
+from adcp.types.compat import ListTransformersRequest as ListTransformersRequest
+from adcp.types.compat import ListTransformersResponse as ListTransformersResponse
+from adcp.types.compat import MacroDialect as MacroDialect
+from adcp.types.compat import MacroResolver as MacroResolver
+from adcp.types.compat import PlatformExtensionRef as PlatformExtensionRef
+from adcp.types.compat import SiSponsoredContextDeclaredBy as SiSponsoredContextDeclaredBy
+from adcp.types.compat import V1CanonicalMapping as V1CanonicalMapping
+from adcp.types.compat import VerifyBrandClaimsResponse as VerifyBrandClaimsResponse
 from adcp.types.constraints import T as T
-from adcp.types.core import DEFAULT_MAX_RESPONSE_BYTES as DEFAULT_MAX_RESPONSE_BYTES
 from adcp.types.core import Activity as Activity
 from adcp.types.core import ActivityType as ActivityType
 from adcp.types.core import AgentConfig as AgentConfig
+from adcp.types.core import DEFAULT_MAX_RESPONSE_BYTES as DEFAULT_MAX_RESPONSE_BYTES
 from adcp.types.core import DebugInfo as DebugInfo
 from adcp.types.core import Member as Member
 from adcp.types.core import NeedsInputInfo as NeedsInputInfo
@@ -2940,133 +3406,595 @@ from adcp.types.core import WebhookMetadata as WebhookMetadata
 from adcp.types.core import is_loopback_http_uri as is_loopback_http_uri
 from adcp.types.domains import ModuleSpec as ModuleSpec
 from adcp.types.domains import generated as generated
-from adcp.types.legacy import LegacyCreateMediaBuyResponse as LegacyCreateMediaBuyResponse
-from adcp.types.legacy import LegacyCreateMediaBuyResponse1 as LegacyCreateMediaBuyResponse1
-from adcp.types.legacy import LegacySyncCreativesResponse as LegacySyncCreativesResponse
-from adcp.types.legacy import LegacyUpdateMediaBuyResponse as LegacyUpdateMediaBuyResponse
-from adcp.types.projections import field_validator as field_validator
-from adcp.types.projections import normalize_to_release_precision as normalize_to_release_precision
+from adcp.types.error_narrowing import narrow_union_errors as narrow_union_errors
+from adcp.types.media_buy_status_helpers import MEDIA_BUY_LEGACY_STATUS_VALUES as MEDIA_BUY_LEGACY_STATUS_VALUES  # noqa: E501 -- upstream published this spelling
+from adcp.types.media_buy_status_helpers import unwrap_enum_value as unwrap_enum_value
+from adcp.types.registry import ActivityRevision as ActivityRevision
+from adcp.types.registry import AdagentsAuthorizationType as AdagentsAuthorizationType
+from adcp.types.registry import AdagentsAuthorizedAgent as AdagentsAuthorizedAgent
+from adcp.types.registry import AdagentsDiscoveryMethod as AdagentsDiscoveryMethod
+from adcp.types.registry import AdagentsJson as AdagentsJson
+from adcp.types.registry import AdagentsPublisherProperty as AdagentsPublisherProperty
+from adcp.types.registry import AdagentsValidationIssue as AdagentsValidationIssue
+from adcp.types.registry import AdagentsValidationResult as AdagentsValidationResult
+from adcp.types.registry import AdagentsValidationSeverity as AdagentsValidationSeverity
+from adcp.types.registry import AdagentsValidationWarning as AdagentsValidationWarning
+from adcp.types.registry import Agent as Agent
+from adcp.types.registry import Agent1 as Agent1
+from adcp.types.registry import AgentAuthStatus as AgentAuthStatus
+from adcp.types.registry import AgentCapabilities as AgentCapabilities
+from adcp.types.registry import AgentCompliance as AgentCompliance
+from adcp.types.registry import AgentComplianceDetail as AgentComplianceDetail
+from adcp.types.registry import AgentContact as AgentContact
+from adcp.types.registry import AgentCreativeCapabilities as AgentCreativeCapabilities
+from adcp.types.registry import AgentDetailedContact as AgentDetailedContact
+from adcp.types.registry import AgentHealth as AgentHealth
+from adcp.types.registry import AgentLifecycleStage as AgentLifecycleStage
+from adcp.types.registry import AgentMember as AgentMember
+from adcp.types.registry import AgentProtocol as AgentProtocol
+from adcp.types.registry import AgentSource as AgentSource
+from adcp.types.registry import AgentStandardOperations as AgentStandardOperations
+from adcp.types.registry import AgentStats as AgentStats
+from adcp.types.registry import AgentTool as AgentTool
+from adcp.types.registry import AgentType as AgentType
+from adcp.types.registry import AgentVerification as AgentVerification
+from adcp.types.registry import Applied as Applied
+from adcp.types.registry import AuthType as AuthType
+from adcp.types.registry import AuthorizedAgent as AuthorizedAgent
+from adcp.types.registry import AuthorizedAgent2 as AuthorizedAgent2
+from adcp.types.registry import AuthorizedByItem as AuthorizedByItem
+from adcp.types.registry import BrandActivity as BrandActivity
+from adcp.types.registry import BrandJson as BrandJson
+from adcp.types.registry import BrandRegistryItem as BrandRegistryItem
+from adcp.types.registry import BrandRegistrySource as BrandRegistrySource
+from adcp.types.registry import BrandSource as BrandSource
+from adcp.types.registry import BrandSummary as BrandSummary
+from adcp.types.registry import Code1 as Code1
+from adcp.types.registry import CollectionRef as CollectionRef
+from adcp.types.registry import CommunityMirrorAdagentsJson as CommunityMirrorAdagentsJson
+from adcp.types.registry import CommunityMirrorCatalogDocument as CommunityMirrorCatalogDocument
+from adcp.types.registry import CommunityMirrorDeleteResponse as CommunityMirrorDeleteResponse
+from adcp.types.registry import CommunityMirrorGetResponse as CommunityMirrorGetResponse
+from adcp.types.registry import CommunityMirrorListResponse as CommunityMirrorListResponse
+from adcp.types.registry import CommunityMirrorPublishCollectionsRequest as AdcpAgentsAuthorization25  # noqa: E501 -- upstream published this spelling
+from adcp.types.registry import CommunityMirrorPublishCollectionsRequest as CommunityMirrorPublishCollectionsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.registry import CommunityMirrorPublishError as CommunityMirrorPublishError
+from adcp.types.registry import CommunityMirrorPublishFormatsRequest as AdcpAgentsAuthorization22
+from adcp.types.registry import CommunityMirrorPublishFormatsRequest as CommunityMirrorPublishFormatsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.registry import CommunityMirrorPublishPlacementsRequest as AdcpAgentsAuthorization24
+from adcp.types.registry import CommunityMirrorPublishPlacementsRequest as CommunityMirrorPublishPlacementsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.registry import CommunityMirrorPublishPropertiesRequest as AdcpAgentsAuthorization23
+from adcp.types.registry import CommunityMirrorPublishPropertiesRequest as CommunityMirrorPublishPropertiesRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.registry import CommunityMirrorPublishRequest as CommunityMirrorPublishRequest
+from adcp.types.registry import CommunityMirrorPublishResponse as CommunityMirrorPublishResponse
+from adcp.types.registry import CommunityMirrorPublishSignalsRequest as AdcpAgentsAuthorization26
+from adcp.types.registry import CommunityMirrorPublishSignalsRequest as CommunityMirrorPublishSignalsRequest  # noqa: E501 -- upstream published this spelling
+from adcp.types.registry import CommunityMirrorSummary as CommunityMirrorSummary
+from adcp.types.registry import CompanySearchResult as CompanySearchResult
+from adcp.types.registry import ComplianceRun as ComplianceRun
+from adcp.types.registry import ComplianceStepDiagnostic as ComplianceStepDiagnostic
+from adcp.types.registry import CreateAdagentsData as CreateAdagentsData
+from adcp.types.registry import CreateAdagentsResponse as CreateAdagentsResponse
+from adcp.types.registry import CreateOrganizationInput as CreateOrganizationInput
+from adcp.types.registry import CreateOrganizationResponse as CreateOrganizationResponse
+from adcp.types.registry import CredentialSaveValidationError as CredentialSaveValidationError
+from adcp.types.registry import DomainAuthorizedAgent as DomainAuthorizedAgent
+from adcp.types.registry import DomainLookupResult as DomainLookupResult
+from adcp.types.registry import FederatedAgentWithDetails as FederatedAgentWithDetails
+from adcp.types.registry import FederatedPublisher as FederatedPublisher
+from adcp.types.registry import FeedEvent as FeedEvent
+from adcp.types.registry import FeedPage as FeedPage
+from adcp.types.registry import FieldModel as FieldModel
+from adcp.types.registry import Files as Files
+from adcp.types.registry import FindCompanyResult as FindCompanyResult
+from adcp.types.registry import FormatSummary as FormatSummary
+from adcp.types.registry import Hosting as Hosting
+from adcp.types.registry import MeasurementCapabilities as MeasurementCapabilities
+from adcp.types.registry import MemberAgent as MemberAgent
+from adcp.types.registry import MemberAgentInput as MemberAgentInput
+from adcp.types.registry import MemberAgentListResponse as MemberAgentListResponse
+from adcp.types.registry import MemberAgentPatch as MemberAgentPatch
+from adcp.types.registry import MemberAgentResponse as MemberAgentResponse
+from adcp.types.registry import MemberAgentType as MemberAgentType
+from adcp.types.registry import MemberAgentTypeInput as MemberAgentTypeInput
+from adcp.types.registry import MemberAgentVisibility as MemberAgentVisibility
+from adcp.types.registry import MemberAgentVisibilityWarning as MemberAgentVisibilityWarning
+from adcp.types.registry import MonitoringSettings as MonitoringSettings
+from adcp.types.registry import Observation as Observation
+from adcp.types.registry import OperatorLookupResult as OperatorLookupResult
+from adcp.types.registry import Organization as Organization
+from adcp.types.registry import OrganizationCompanyType as OrganizationCompanyType
+from adcp.types.registry import OrganizationRevenueTier as OrganizationRevenueTier
+from adcp.types.registry import OutboundRequest as OutboundRequest
+from adcp.types.registry import Policy as Policy
+from adcp.types.registry import PolicyExemplarFail as PolicyExemplarFail
+from adcp.types.registry import PolicyExemplarPass as PolicyExemplarPass
+from adcp.types.registry import PolicyExemplars as PolicyExemplars
+from adcp.types.registry import PolicyHistory as PolicyHistory
+from adcp.types.registry import PolicyReviewStatus as PolicyReviewStatus
+from adcp.types.registry import PolicyRevision as PolicyRevision
+from adcp.types.registry import PolicySourceType as PolicySourceType
+from adcp.types.registry import PolicySummary as PolicySummary
+from adcp.types.registry import Property1 as Property1
+from adcp.types.registry import PropertyActivity as PropertyActivity
+from adcp.types.registry import PropertyIdentifier as PropertyIdentifier
+from adcp.types.registry import PropertyRegistryItem as PropertyRegistryItem
+from adcp.types.registry import PropertyRegistrySource as PropertyRegistrySource
+from adcp.types.registry import PropertySummary as PropertySummary
+from adcp.types.registry import PublisherLookupResult as PublisherLookupResult
+from adcp.types.registry import PublisherPropertySelectionType as PublisherPropertySelectionType
+from adcp.types.registry import RateLimitError as RateLimitError
+from adcp.types.registry import RegistryApiError as RegistryApiError
+from adcp.types.registry import RegistryMetadata as RegistryMetadata
+from adcp.types.registry import Requested as Requested
+from adcp.types.registry import ResolvedBrand as ResolvedBrand
+from adcp.types.registry import ResolvedProperty as ResolvedProperty
+from adcp.types.registry import ResolvedPropertyEntry as ResolvedPropertyEntry
+from adcp.types.registry import RollupTruncated as RollupTruncated
+from adcp.types.registry import SalesAgentClaim as SalesAgentClaim
+from adcp.types.registry import SignalsCapabilities as SignalsCapabilities
+from adcp.types.registry import Source5 as Source5
+from adcp.types.registry import Source6 as Source6
+from adcp.types.registry import SpecialismStatus as SpecialismStatus
+from adcp.types.registry import Status1 as Status1
+from adcp.types.registry import Status2 as Status2
+from adcp.types.registry import Status3 as Status3
+from adcp.types.registry import Status4 as Status4
+from adcp.types.registry import Step as Step
+from adcp.types.registry import StoryboardDetail as StoryboardDetail
+from adcp.types.registry import StoryboardStatus1 as StoryboardStatus1
+from adcp.types.registry import StoryboardSummary as StoryboardSummary
+from adcp.types.registry import SuccessLiteral as SuccessLiteral
+from adcp.types.registry import TrackDetail as TrackDetail
+from adcp.types.registry import VerdictSource as VerdictSource
+from adcp.types.registry import VerificationBadge as VerificationBadge
+from adcp.types.registry import VerifiedByAao as VerifiedByAao
+from adcp.types.registry import VerifiedRole as VerifiedRole
+from adcp.types.registry import VerifiedSpecialism as VerifiedSpecialism
+from adcp.types.variants import SchemaVariant as SchemaVariant
 
 __all__ = [
+    "A2UiBoundValue",
+    "A2UiBoundValue1",
+    "A2UiBoundValue2",
+    "A2UiBoundValue3",
+    "A2UiBoundValue4",
+    "A2UiBoundValue5",
+    "A2UiComponent",
+    "A2UiSurface",
+    "A2UiUserAction",
     "A2ui",
-    "AcceptedAttestationIssuers",
+    "AaoDirectoryAgentPublishersInverseLookupResponse",
+    "AcceptProposalRequest",
+    "AcceptProposalResponse",
+    "AcceptanceContext",
+    "AcceptancePolicyCatalog",
+    "AcceptancePolicyDiscovery",
+    "AcceptancePolicyProfile",
+    "AcceptancePolicyProfileIds",
+    "AcceptancePolicyRequirement",
+    "AcceptancePolicyRequirement1",
+    "AcceptancePolicyRequirement10",
+    "AcceptancePolicyRequirement11",
+    "AcceptancePolicyRequirement12",
+    "AcceptancePolicyRequirement13",
+    "AcceptancePolicyRequirement14",
+    "AcceptancePolicyRequirement15",
+    "AcceptancePolicyRequirement16",
+    "AcceptancePolicyRequirement17",
+    "AcceptancePolicyRequirement2",
+    "AcceptancePolicyRequirement3",
+    "AcceptancePolicyRequirement4",
+    "AcceptancePolicyRequirement5",
+    "AcceptancePolicyRequirement6",
+    "AcceptancePolicyRequirement7",
+    "AcceptancePolicyRequirement8",
+    "AcceptancePolicyRequirement9",
+    "AcceptancePolicyRule",
+    "AcceptedAttestationIssuers1",
+    "AcceptedAttestationIssuers2",
+    "AcceptedGovernanceAgents",
+    "AcceptedIssuer",
+    "AccessibilityViolationDetails",
+    "AccountAuthorization",
+    "AccountChange",
+    "AccountChangeRecordedWebhook",
+    "AccountCurrencyMode",
     "AccountIdReference",
+    "AccountIdentityChange",
+    "AccountIdentityChange1",
+    "AccountIdentityChange2",
+    "AccountIdentityChangePreview",
+    "AccountIdentityChangePreview1",
+    "AccountIdentityChangePreview2",
+    "AccountIdentityChangePreview3",
+    "AccountMovedDetails",
+    "AccountReference",
+    "AccountReference1",
+    "AccountReference2",
+    "AccountReferenceById",
+    "AccountReferenceByNaturalKey",
+    "AccountScope",
     "AccountSelection",
+    "AccountSetupRequiredDetails",
+    "AccountStatus",
+    "AccountStatusChangedWebhook",
+    "AccountTimezoneCapability",
+    "AccountWithAuthorization",
+    "AccountingPeriod",
+    "Accounts",
+    "Accounts1",
+    "Accreditation",
     "AcpHandoff",
     "AcquireRightsAcquiredResponse",
     "AcquireRightsErrorResponse",
     "AcquireRightsPendingResponse",
     "AcquireRightsRejectedResponse",
+    "AcquireRightsRequest",
+    "AcquireRightsResponse",
+    "AcquireRightsResponse1",
+    "AcquireRightsResponse2",
+    "AcquireRightsResponse3",
+    "AcquireRightsResponse4",
+    "Action3",
+    "Action33",
+    "Action4",
+    "Action9",
+    "ActionNotAllowedDetails",
+    "ActionNotAllowedReason",
     "ActionResponse",
+    "ActionSource",
     "ActivateSignalErrorResponse",
+    "ActivateSignalRequest",
+    "ActivateSignalResponse",
+    "ActivateSignalResponse1",
+    "ActivateSignalResponse2",
+    "ActivateSignalSuccessResponse",
+    "ActivationKey",
+    "ActivationKey1",
+    "ActivationKey2",
     "ActivationStatus",
     "Activity",
+    "ActivityRevision",
     "ActivityType",
     "Actor",
+    "AdInventoryConfiguration",
+    "AdagentsAuthorizationType",
+    "AdagentsAuthorizedAgent",
+    "AdagentsDiscoveryMethod",
+    "AdagentsJson",
+    "AdagentsPublisherProperty",
+    "AdagentsValidationIssue",
+    "AdagentsValidationResult",
+    "AdagentsValidationSeverity",
+    "AdagentsValidationWarning",
     "Adcp",
+    "AdcpAgentsAuthorization",
+    "AdcpAgentsAuthorization1",
     "AdcpAgentsAuthorization2",
+    "AdcpAgentsAuthorization22",
+    "AdcpAgentsAuthorization23",
+    "AdcpAgentsAuthorization24",
+    "AdcpAgentsAuthorization25",
+    "AdcpAgentsAuthorization26",
+    "AdcpAssetGroupVocabularyRegistry",
+    "AdcpAsyncResponseData",
+    "AdcpExtensionFileSchema",
+    "AdcpFormatShapeVocabularyRegistry",
+    "AdcpProtocol",
+    "AdcpSpecialism",
     "AdditionalItem",
+    "Adjustment",
     "AdjustmentMagnitudeItem",
     "AdvanceTo",
+    "AdvertiserIndustry",
     "AffectedEntityType",
-    "AfterValidator",
+    "AgeDeterminationBasis",
+    "AgeVerificationMethod",
+    "Agent",
+    "Agent1",
+    "AgentAuthStatus",
+    "AgentCapabilities",
+    "AgentCompliance",
+    "AgentComplianceDetail",
     "AgentConfig",
+    "AgentContact",
+    "AgentCreativeCapabilities",
+    "AgentDeclarations",
     "AgentDeployment",
     "AgentDestination",
+    "AgentDetailedContact",
+    "AgentEncryptionKey",
+    "AgentHealth",
+    "AgentLifecycleStage",
+    "AgentMember",
+    "AgentNotificationConfig",
+    "AgentNotificationConfigState",
+    "AgentPermissionDeniedDetails",
     "AgentProfilePayload",
+    "AgentProtocol",
+    "AgentReportingDestination",
+    "AgentReportingDestination1",
+    "AgentReportingDestination2",
+    "AgentReportingDestination3",
+    "AgentReportingDestinationState",
+    "AgentSigningKey",
+    "AgentSource",
+    "AgentStandardOperations",
+    "AgentStats",
+    "AgentTool",
+    "AgentType",
+    "AgentVerification",
+    "AgentWebhookChallenge",
+    "AgenticadvertisingOrgVerificationTokenClaims",
     "Aggregate",
     "AggregatedTotals",
     "Aggregation",
     "AiActRiskClass",
     "AiTool",
+    "Allocations",
+    "AllowedCardMediaAssetType",
+    "AllowedStatus",
+    "AllowedTargetingMode",
     "Alternatives",
     "Anchoring",
-    "AnyUrl",
+    "AnyOf1",
+    "AnyOf2",
+    "AppItem",
+    "ApplicablePackageId",
+    "Applied",
+    "AppliesTo",
+    "AppliesTo1",
+    "AppliesTo2",
+    "AppliesToEnum",
     "ApprovalStatus",
     "Arm",
+    "ArtifactRef",
     "ArtifactWebhook",
-    "AssetInstance",
-    "AssetInstanceType",
+    "ArtifactWebhookPayload",
+    "AssessmentStatus",
+    "Asset",
+    "AssetAccess",
+    "AssetAccess1",
+    "AssetAccess2",
+    "AssetAccess3",
+    "AssetContentType",
     "AssetPoolBinding",
-    "Assets30",
-    "AssignmentOperations",
+    "AssetRequirements",
+    "AssetVariant",
+    "Assets",
+    "Assets1",
+    "Assets10",
+    "Assets11",
+    "Assets12",
+    "Assets13",
+    "Assets14",
+    "Assets15",
+    "Assets16",
+    "Assets17",
+    "Assets18",
+    "Assets19",
+    "Assets2",
+    "Assets20",
+    "Assets21",
+    "Assets22",
+    "Assets23",
+    "Assets24",
+    "Assets25",
+    "Assets26",
+    "Assets27",
+    "Assets28",
+    "Assets29",
+    "Assets3",
+    "Assets31",
+    "Assets32",
+    "Assets33",
+    "Assets34",
+    "Assets35",
+    "Assets36",
+    "Assets37",
+    "Assets38",
+    "Assets39",
+    "Assets4",
+    "Assets40",
+    "Assets41",
+    "Assets42",
+    "Assets43",
+    "Assets44",
+    "Assets45",
+    "Assets46",
+    "Assets47",
+    "Assets48",
+    "Assets49",
+    "Assets50",
+    "Assets51",
+    "Assets9",
+    "Assets94",
+    "AssignedPackage",
+    "Assignment",
+    "AssignmentOperations1",
+    "AssignmentOperations2",
+    "AssignmentOperations3",
     "AssignmentProjection",
     "Assignments",
     "Attestation",
+    "AttestationCapabilities",
+    "AttestationClaim",
     "AttestationEvaluation_1",
+    "AttestationIssuer",
+    "AttestationIssuer1",
+    "AttestationIssuer2",
+    "AttestationIssuer3",
     "AttestationMode",
+    "AttestationRef",
+    "AttestationSubject",
+    "AttestationSubject1",
+    "AttestationSubject2",
+    "AttestationSubject3",
+    "AttributeDefinition",
+    "AttributionMethodology",
+    "AttributionModel",
     "AudienceActivation",
+    "AudienceActivationMethod",
+    "AudienceActivationMethod1",
+    "AudienceActivationMethod2",
+    "AudienceActivationMethod3",
+    "AudienceActivationMethod4",
+    "AudienceActivationMethod5",
+    "AudienceActivationMethod6",
+    "AudienceActivationMethods1",
+    "AudienceActivationMethods2",
+    "AudienceActivationMethods3",
+    "AudienceActivationMethods4",
+    "AudienceActivationMethods5",
+    "AudienceCharacteristic",
+    "AudienceConstraints",
     "AudienceDistribution",
     "AudienceDistribution1",
+    "AudienceEvidenceMethodology",
+    "AudienceEvidencePin",
+    "AudienceEvidenceRequirements",
+    "AudienceEvidenceSelection",
+    "AudienceForecastDimension",
+    "AudienceMember",
+    "AudienceResolutionMethod",
     "AudienceScope",
+    "AudienceSelector",
+    "AudienceSelector1",
+    "AudienceSelector2",
+    "AudienceSelector3",
+    "AudienceSelector4",
+    "AudienceSource1",
+    "AudienceSource2",
+    "AudienceStatus",
+    "AudienceSubjectType",
     "AudienceTargeting",
+    "AudienceTooSmallDetails",
     "AudienceType",
+    "AudioAssetRequirements",
     "AudioBitDepth",
+    "AudioChannel",
+    "AudioChannelLayout",
+    "AudioContent",
+    "AudioDistributionType",
     "AudioFormatAsset",
     "AudioFormatGroupAsset",
     "Auth",
+    "AuthType",
+    "AuthenticationScheme",
     "AuthoritativeParty",
     "AuthorizationPayload",
+    "AuthorizationRequiredDetails",
+    "AuthorizationResult",
     "AuthorizationSummary",
     "AuthorizationType",
-    "AuthorizedAgents",
+    "AuthorizedAgent",
+    "AuthorizedAgent2",
     "AuthorizedAgents1",
     "AuthorizedAgents10",
     "AuthorizedAgents11",
     "AuthorizedAgents12",
     "AuthorizedAgents13",
-    "AuthorizedAgents14",
     "AuthorizedAgents15",
     "AuthorizedAgents16",
     "AuthorizedAgents17",
     "AuthorizedAgents18",
     "AuthorizedAgents19",
     "AuthorizedAgents2",
-    "AuthorizedAgents21",
-    "AuthorizedAgents28",
     "AuthorizedAgents3",
-    "AuthorizedAgents35",
     "AuthorizedAgents4",
-    "AuthorizedAgents42",
     "AuthorizedAgents5",
     "AuthorizedAgents6",
-    "AuthorizedAgents7",
     "AuthorizedAgents8",
     "AuthorizedAgents9",
-    "AuthorizedAgentsUnion",
+    "AuthorizedByItem",
     "AvailabilityHorizon",
-    "AvailableReportingFrequency",
-    "AwareDatetime",
+    "AvailabilityStatus",
+    "AvailableMetric",
+    "AvailablePackage",
+    "Avatar",
     "Axis",
     "Background",
     "Balance",
     "Bank",
+    "BaseCollectionSource",
+    "BaseCollectionSource1",
+    "BaseCollectionSource2",
+    "BaseCollectionSource3",
     "BaseGroupAsset",
     "BaseIndividualAsset",
-    "BaseModel",
+    "BasePropertySource",
+    "BasePropertySource1",
+    "BasePropertySource2",
+    "BasePropertySource3",
     "Basis",
     "BatchFrequency",
     "BeforeValidator",
+    "BiddingPolicy",
+    "BiddingPolicyCapability",
+    "BillingNotPermittedForAgentDetails",
+    "BillingNotSupportedDetails",
+    "BillingParty",
+    "BinaryVerdict",
+    "Bleed",
+    "Bleed1",
+    "BlockedImpacts",
     "BodyStyle",
     "BothPreviewRender",
+    "BoundedObject",
+    "BoundedScalar",
+    "BoundedValue",
+    "BoundedValueLevel2",
+    "BoundedValueLevel3",
     "Bounds",
     "BoxDecoration",
     "Brand",
+    "BrandActivity",
+    "BrandAgent",
+    "BrandAgentType",
+    "BrandId",
+    "BrandJson",
+    "BrandKey",
     "BrandKitOverride",
+    "BrandReference",
+    "BrandRegistryItem",
+    "BrandRegistrySource",
+    "BrandResponseAuthorizationResult",
     "BrandResponseAuthorizationResult1",
     "BrandResponseAuthorizationResult2",
+    "BrandSource",
+    "BrandSummary",
+    "Breakpoint",
     "BriefFormatAsset",
+    "BrowserFamily",
+    "BrowserRequirement",
+    "BrowserRequirement1",
+    "BrowserSupport",
+    "BrowserSupport1",
     "BucketCompleteness",
     "BucketSemantics",
+    "Budget2",
+    "BudgetAllocation",
+    "BudgetAllocation1",
+    "BudgetAllocation2",
     "BudgetCapping",
     "BudgetCappingTimezoneBasis",
+    "BudgetChangeConstraints",
     "BudgetLimit",
-    "BuildCreative",
-    "BuildCreativeCreative",
+    "BudgetTooLowDetails",
+    "BuildCreativeRequest",
+    "BuildCreativeResponse",
+    "BuildCreativeResponse1",
+    "BuildCreativeResponse2",
+    "BuildCreativeResponse3",
+    "BuildCreativeResponse4",
+    "BuildCreativeResponse5",
+    "BuildCreativeResponse6",
     "BuildCreativeVariant",
     "BundledAcceptancePolicyDiscovery",
-    "BundledCapabilitiesMediaBuy",
-    "BundledPrimaryCountry",
+    "BusinessEntity",
+    "BuyProductsRequest",
+    "BuyProductsResponse",
     "BuyerReason",
     "ByActionSourceItem",
     "ByAudienceItem",
@@ -3076,81 +4004,236 @@ __all__ = [
     "ByDeviceTypeItem",
     "ByEventTypeItem",
     "ByFormatItem",
+    "ByPackageItem1",
     "BySpotItem",
+    "C2PaWatermarkAction",
     "C2pa",
+    "C2paWatermarkAction",
+    "CONSTRAINT_KEYWORDS",
     "Calendar",
     "CalibrateContentErrorResponse",
+    "CalibrateContentRequest",
+    "CalibrateContentResponse",
+    "CalibrateContentResponse1",
+    "CalibrateContentResponse2",
     "CalibrateContentSuccessResponse",
-    "Callable",
     "Campaign",
+    "CanceledBy",
     "Cancellation1",
     "CancellationFee",
+    "CancellationPolicy",
     "CancellationTerms",
-    "CanonicalCompositionModel",
+    "CanonicalAccountReference",
+    "CanonicalAccountReference1",
+    "CanonicalAccountReference2",
+    "CanonicalAudienceEvidence",
+    "CanonicalAudienceEvidenceSelection",
+    "CanonicalBudgetAllocation",
+    "CanonicalBudgetAllocation1",
+    "CanonicalBudgetAllocation2",
+    "CanonicalDeliveryForecast",
     "CanonicalDoohPlacementAttributes",
     "CanonicalDoohScreenResolution",
+    "CanonicalForecastPoint",
+    "CanonicalForecastVendorMetricValue",
     "CanonicalFormatAgentPlacement",
-    "CanonicalFormatKindStr",
+    "CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement",
+    "CanonicalFormatCoordinatedPlacements",
+    "CanonicalFormatDaastAudio",
+    "CanonicalFormatDisplayTag",
+    "CanonicalFormatHostedAudio",
+    "CanonicalFormatHostedVideo",
+    "CanonicalFormatHtml5Banner",
+    "CanonicalFormatImage",
+    "CanonicalFormatImageCarousel",
+    "CanonicalFormatKind",
+    "CanonicalFormatNativeInFeed",
+    "CanonicalFormatOption",
+    "CanonicalFormatResponsiveCreative",
+    "CanonicalFormatSellerRenderedStatefulDisplay",
     "CanonicalFormatSponsoredPlacement",
+    "CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven",
+    "CanonicalFormatVastAudio",
+    "CanonicalFormatVastVideo",
+    "CanonicalMeasurementTerms",
+    "CanonicalMediaBuyAction",
+    "CanonicalMediaBuyAction1",
+    "CanonicalMediaBuyAction2",
     "CanonicalMediaBuyAction3",
+    "CanonicalMediaBuyActionMode",
+    "CanonicalMediaBuyActionName",
+    "CanonicalMediaBuyFeatures",
+    "CanonicalMetricQualifier",
+    "CanonicalOptimizationGoal",
+    "CanonicalOptimizationGoal1",
+    "CanonicalOptimizationGoal2",
+    "CanonicalOptimizationGoal3",
     "CanonicalPayload",
+    "CanonicalPerformanceStandard",
+    "CanonicalPricingOption",
+    "CanonicalProduct",
+    "CanonicalProductAction",
+    "CanonicalProductPlacement",
+    "CanonicalProductPlacement1",
+    "CanonicalProductPlacement2",
+    "CanonicalProjectionReference",
+    "CanonicalProjectionSlotOverride",
+    "CanonicalReportingCapabilities",
+    "CanonicalReportingCommitment",
+    "CanonicalReportingCommitment1",
+    "CanonicalReportingCommitment2",
     "CanonicalSlotOverride",
     "Canvas",
+    "CanvasConstraint",
     "CapabilitiesAccount",
+    "CapabilitiesChangedWebhook",
     "CapabilitiesContentStandards",
     "CapabilitiesCreative",
     "CapabilitiesMediaBuy",
     "CapabilitiesPreview",
     "CapabilitiesPreviewRenderingOrigin",
     "CapabilitiesPreviewRoute",
-    "Capability",
     "CapabilityChanges",
     "CapabilityReportingDeliveryMethod",
     "Captions",
+    "CatalogAction",
+    "CatalogFieldBinding",
+    "CatalogFieldBinding1",
+    "CatalogFieldMapping",
     "CatalogFormatAsset",
     "CatalogGroupBinding",
     "CatalogItem",
+    "CatalogItemAvailabilityError",
+    "CatalogItemAvailabilityReference",
+    "CatalogItemAvailabilityState",
+    "CatalogItemAvailabilityUpdate",
+    "CatalogItemAvailabilityUpdateResult",
+    "CatalogItemDeliveryMetrics",
     "CatalogItemRef",
+    "CatalogItemReferenceNotFoundError",
+    "CatalogItemStatus",
     "CatalogRequirement",
+    "CatalogRequirements",
+    "CatalogSelection",
+    "CatalogType",
+    "Catchment",
+    "ChangeFeed",
+    "ChangedFields",
+    "Channel",
+    "ChannelAllocation",
     "Channels",
+    "CheckGovernanceRequest",
     "CheckGovernanceRequest1",
     "CheckGovernanceRequest2",
     "CheckGovernanceRequest3",
+    "CheckGovernanceResponse",
     "ChromaSubsampling",
     "Claim1",
     "Claim2",
     "Claim3",
+    "ClaimEntry",
     "ClaimEntry1",
     "ClaimEntry2",
     "ClaimEntry3",
     "ClaimEntry4",
     "ClaimedValue",
-    "ClassVar",
     "Classification",
     "ClassificationSource",
     "CloseReason",
-    "CoBranding",
+    "CloudStorageProtocol",
+    "CoBrandingRequirement",
+    "Code1",
+    "Codes",
+    "CollectionCadence",
+    "CollectionDeliveryMetrics",
+    "CollectionDistribution",
     "CollectionIdentifier",
     "CollectionInfo",
+    "CollectionKind",
+    "CollectionList",
+    "CollectionListChangedWebhook",
+    "CollectionListFilters",
+    "CollectionListReference",
     "CollectionPayload",
+    "CollectionPropertyDeliveryMetrics",
+    "CollectionRef",
+    "CollectionReference",
+    "CollectionRelationship",
+    "CollectionSelection",
+    "CollectionSelection1",
+    "CollectionSelection2",
+    "CollectionSelector",
+    "CollectionStatus",
+    "Color",
     "Commerce",
-    "CommittedMetrics",
+    "CommercialTerms",
+    "CommittedMetric",
+    "CommittedMetric1",
+    "CommittedMetric2",
     "CommittedMetrics1",
+    "CommittedMetrics2",
+    "CommunityMirrorAdagentsJson",
+    "CommunityMirrorCatalogDocument",
+    "CommunityMirrorDeleteResponse",
+    "CommunityMirrorGetResponse",
+    "CommunityMirrorListResponse",
+    "CommunityMirrorPublishCollectionsRequest",
+    "CommunityMirrorPublishError",
+    "CommunityMirrorPublishFormatsRequest",
+    "CommunityMirrorPublishPlacementsRequest",
+    "CommunityMirrorPublishPropertiesRequest",
+    "CommunityMirrorPublishRequest",
+    "CommunityMirrorPublishResponse",
+    "CommunityMirrorPublishSignalsRequest",
+    "CommunityMirrorSummary",
+    "CompanySearchResult",
+    "CompatibilityPurchaseCoordinatorInput",
+    "CompletionSource",
     "Compliance",
     "CompliancePayload",
+    "ComplianceRun",
+    "ComplianceStatus",
+    "ComplianceStepDiagnostic",
+    "ComplianceTaskCompletionData",
     "ComplianceTesting",
     "ComplyErrorResponse",
     "ComplyListScenariosResponse",
     "ComplyStateTransitionResponse",
+    "ComplyTestControllerRequest",
+    "ComplyTestControllerResponse",
+    "ComplyTestControllerResponse1",
+    "ComplyTestControllerResponse2",
     "ComplyTestControllerResponse3",
+    "ComplyTestControllerResponse4",
+    "ComplyTestControllerResponse5",
+    "ComplyTestControllerResponse6",
+    "ComplyTestControllerResponse7",
+    "ComplyTestControllerResponse8",
+    "Component",
+    "Components1",
+    "Components10",
+    "Components11",
+    "Components12",
+    "Components13",
+    "Components2",
+    "Components3",
+    "Components4",
+    "Components5",
+    "Components6",
+    "Components7",
+    "Components8",
+    "Components9",
     "CompositionModel",
     "Compression",
     "CompromiseNotification",
     "ConfidenceInterval",
     "Configuration",
+    "ConflictDetails",
     "Connection",
     "ConnectionType",
     "Consent",
+    "ConsentBasis",
+    "ConsentScopeEnum",
     "Constraint",
     "Constraints",
     "Constraints1",
@@ -3160,235 +4243,682 @@ __all__ = [
     "Constraints5",
     "Constraints6",
     "Constraints7",
+    "ConsumerIdentity",
     "ConsumerStatus",
+    "Content",
     "ContentFormat",
+    "ContentIdType",
+    "ContentRating",
+    "ContentRatingSystem",
     "ContextForCheckout",
+    "ContextMatchRequest",
+    "ContextMatchResponse",
+    "ContextMatchResponseProviderRouter",
+    "ContextMatchResponseRouterPublisher",
+    "ContextObject",
     "ContextSignals",
-    "CoreAccount",
+    "ControlMediaBuyRequest",
+    "ControlMediaBuyResponse",
+    "ControlMediaBuyResponse1",
+    "ControlMediaBuyResponse2",
+    "ControlMediaBuyResponse3",
     "CoreCreditLimit",
-    "CoreMediaBuy",
     "CoreSchema",
     "CostPer",
     "Countries1",
+    "Countries3",
+    "CountryFusedPostalCodeSystem",
+    "CountrySupport",
+    "CountrySupport1",
     "CoverageGap",
     "CoverageRequirement",
     "CoverageStatus",
     "CoversContentDigest",
+    "CpaPricingOption",
+    "CpcPricingOption",
+    "CpcvPricingOption",
     "Cpm",
+    "CpmAuctionPricingOption",
+    "CpmFixedRatePricingOption",
+    "CpmPricingOption",
+    "CppPricingOption",
+    "CpvPricingOption",
+    "CreateAdagentsData",
+    "CreateAdagentsResponse",
+    "CreateCollectionListRequest",
+    "CreateCollectionListResponse",
     "CreateContentStandardsErrorResponse",
+    "CreateContentStandardsRequest",
+    "CreateContentStandardsResponse",
+    "CreateContentStandardsResponse1",
+    "CreateContentStandardsResponse2",
     "CreateContentStandardsSuccessResponse",
     "CreateMediaBuyErrorResponse",
+    "CreateMediaBuyRequest",
+    "CreateMediaBuyResponse",
+    "CreateMediaBuyResponse1",
+    "CreateMediaBuyResponse2",
+    "CreateMediaBuyResponse3",
     "CreateMediaBuySubmittedResponse",
     "CreateMediaBuySuccessResponse",
+    "CreateOrganizationInput",
+    "CreateOrganizationResponse",
+    "CreatePropertyListRequest",
+    "CreatePropertyListResponse",
+    "CreativeAction",
+    "CreativeActivationMethod",
+    "CreativeAgentCapability",
+    "CreativeApproval",
     "CreativeApprovalMode",
+    "CreativeApprovalRequest",
+    "CreativeApprovalResponse",
+    "CreativeApprovalResponse1",
+    "CreativeApprovalResponse2",
+    "CreativeApprovalResponse3",
+    "CreativeApprovalResponse4",
+    "CreativeApprovalStatus",
+    "CreativeAsset",
+    "CreativeAssets",
+    "CreativeAssignment",
+    "CreativeAssignmentChangedWebhook",
+    "CreativeAuditObservation",
+    "CreativeConsumption",
+    "CreativeDeliveryMetrics",
+    "CreativeEventReasonCode",
+    "CreativeFeatureResult",
+    "CreativeFilters",
+    "CreativeIdentifierType",
+    "CreativeItem",
+    "CreativeItem1",
+    "CreativeItem2",
+    "CreativeLocalePolicy",
+    "CreativeLocalization",
+    "CreativeLocalizationReadback",
+    "CreativeManifest",
+    "CreativeMotionLevel",
+    "CreativeOperationFormatDeclaration",
+    "CreativePolicy",
+    "CreativePurgedWebhook",
+    "CreativeQuality",
+    "CreativeRejectedDetails",
+    "CreativeRepresentation",
+    "CreativeRepresentationSet",
+    "CreativeRepresentationUnresolvedDetails",
+    "CreativeRevisionContentMismatchDetails",
+    "CreativeRevisionId",
+    "CreativeSelectionStrategy",
     "CreativeSlot",
+    "CreativeSortField",
     "CreativeSpecs",
+    "CreativeStatus",
+    "CreativeStatusChangedWebhook",
     "CreativeType",
+    "CreativeVariable",
+    "CreativeVariant",
+    "Creatives",
+    "Creatives1",
+    "CredentialSaveValidationError",
     "Credit",
+    "CssAsset",
+    "CssAssetRequirements",
+    "CssContent",
     "CssFormatAsset",
     "CssFormatGroupAsset",
+    "CtvAdExperience",
     "DEFAULT_MAX_RESPONSE_BYTES",
+    "DOCUMENTATION_KEYWORDS",
+    "DaastAsset",
     "DaastAsset1",
     "DaastAsset2",
+    "DaastAsset3",
+    "DaastAsset4",
+    "DaastAssetRequirements",
     "DaastEvent",
     "DaastFormatAsset",
     "DaastFormatGroupAsset",
+    "DaastOffset",
     "DaastTarget",
+    "DaastTrackerAsset",
+    "DaastTrackingEvent",
+    "DaastVersion",
+    "DaastVersions",
+    "DataProviderSignalSelector",
+    "DataProviderSignalSelector1",
+    "DataProviderSignalSelector2",
+    "DataProviderSignalSelector3",
+    "DataSource",
     "DataSubjectContestation",
     "DataThroughPrecision",
+    "DateRange",
+    "DatetimeRange",
+    "DayOfWeek",
+    "DaypartRequirement",
+    "DaypartRequirement1",
+    "DaypartSupport",
+    "DaypartSupport1",
+    "DaypartTarget",
+    "DaypartTimezoneMode",
+    "DeadlinePolicy",
     "DebugInfo",
     "Decision",
+    "DeclineProposalsRequest",
+    "DeclineProposalsResponse",
+    "DeclineProposalsResponse1",
     "DeclineProposalsResponse2",
     "DegreeType",
-    "DeliveryCreative",
+    "Delegation",
+    "DelegationAuthority",
+    "DeleteCollectionListRequest",
+    "DeleteCollectionListResponse",
+    "DeletePropertyListRequest",
+    "DeletePropertyListResponse",
+    "DeliveryBreakdownControls",
+    "DeliveryConfigGeneration",
+    "DeliveryForecast",
+    "DeliveryMeasurement",
+    "DeliveryMetricAggregate",
     "DeliveryMetricAggregate1",
+    "DeliveryMetricAggregate2",
     "DeliveryMetrics2",
     "DeliveryMode",
     "DeliveryPeriodState",
+    "DeliveryProvider",
+    "DeliveryRecipient",
+    "DeliveryRecipientCloud",
+    "DeliveryRecord",
     "DeliveryReportingPeriod",
+    "DeliveryStatus",
+    "DeliveryType",
     "Demographic",
+    "DemographicPredicate",
+    "DemographicReportingCapability",
+    "DemographicSystem",
+    "DemographicTargetingCapability",
+    "DemographicTargetingIntent",
+    "DemographicTargetingResolution",
+    "Deployment",
+    "Deployment1",
+    "Deployment2",
     "DerivativeOf",
+    "DerivativeType",
+    "Destination1",
+    "Destination2",
+    "DestinationItem",
+    "DestinationMode",
     "DestinationType",
     "Detail",
+    "DevicePlatformForecastDimension",
+    "DeviceTypeForecastDimension",
+    "DiagnosticIssue",
+    "DigitalSourceType",
     "Dimension",
+    "DimensionUnit",
     "Dimensions1",
+    "DisclosureCapability",
     "DisclosureCommitment",
     "DisclosureObligation",
+    "DisclosurePersistence",
+    "DisclosurePosition",
+    "DiscoveryMethod",
     "Discriminator",
     "DiscriminatorItem",
     "DisplayTagAsset1",
     "DisplayTagAsset2",
     "DisplayTagAsset3",
+    "DisplayTagAsset4",
+    "DisplayTagAsset5",
+    "DisplayTagAsset6",
     "Disposition",
+    "DistanceUnit",
     "DistributionId",
+    "DistributionIdentifierType",
     "DocumentRole",
+    "Domain",
+    "DomainAuthorizedAgent",
+    "DomainBreakdown",
+    "DomainLookupResult",
     "DoohMetrics",
     "DoohMetrics1",
+    "DoohMotionType",
     "DriftMetrics",
+    "EducationItem",
+    "Effect",
+    "Effect1",
+    "EffectiveTimingChangeConstraints",
     "EmailStr",
     "EmbeddedCredential",
     "EmbeddedProvenanceItem",
+    "EmbeddedProvenanceMethod",
     "EmploymentType",
     "EmptyReport",
     "Endpoint",
-    "Enum",
-    "ErrorType",
+    "Entry",
+    "ErrorCode",
+    "ErrorScope",
+    "Escalation",
     "EscalationRateTrend",
+    "EscalationSeverity",
     "Estimate",
     "EstimationBasis",
     "Eval",
     "EvalBudget",
+    "EvaluatorSpec",
+    "EvaluatorSpec1",
+    "EvaluatorSpec2",
+    "EvaluatorSpec3",
+    "Event",
+    "EventCustomData",
+    "EventSourceHealth",
+    "EventSurface",
     "ExcludeDistributionId",
+    "Excluded",
+    "ExcludedBy",
+    "Exclusion",
     "ExclusivityStatus",
+    "Execution1",
+    "Execution2",
     "ExecutionCommitment",
+    "ExecutionMode",
+    "ExecutionRequirementUnmetDetails",
     "Exemplar",
     "ExpandPaginationItem",
     "ExperienceLevel",
     "ExperimentalFeature",
+    "ExperimentalFeatureId",
+    "Ext",
+    "ExtensionObject",
+    "ExtensionsSupportedItem",
+    "Facet",
     "FailureCode",
+    "FailureKind",
     "FanoutMode",
     "FeatureAgent",
+    "FeatureCheckStatus",
+    "FeatureRequirement",
+    "Features",
+    "FederatedAgentWithDetails",
+    "FederatedPublisher",
     "Fee",
-    "FieldInfo",
+    "FeedEvent",
+    "FeedFormat",
+    "FeedPage",
+    "FeedbackSource",
+    "FieldModel",
+    "FieldTruncation",
+    "Fields",
+    "Files",
     "FilterDiagnostics",
-    "Final",
     "FinalityBasis",
+    "FinalityPolicies",
+    "FinalityPolicies1",
+    "FinalityPolicies2",
+    "FindCompanyResult",
+    "FlatRatePricingOption",
+    "FlightChangeConstraints",
+    "FlightItem",
     "FocusBehavior",
     "FollowUp",
+    "FontRole2",
     "Fonts",
     "Forced",
-    "FormatAssetUnion",
+    "ForecastMethod",
+    "ForecastPoint",
+    "ForecastPointDimensions",
+    "ForecastRangeUnit",
+    "ForecastRateRange",
+    "ForecastVendorMetricValue",
+    "ForecastableMetric",
+    "Format",
+    "FormatCard",
     "FormatCardDetailed",
+    "FormatId",
+    "FormatIdParameter",
     "FormatKind",
+    "FormatOptionReference",
+    "FormatOptionReference1",
     "FormatOptionReference2",
+    "FormatOptions",
+    "FormatReferenceStructuredObject",
+    "FormatSummary",
+    "FrameRateType",
+    "FrequencyCapControlMode",
+    "FrequencyCapDurationUnit",
+    "FrequencyCapImpressionConstraints",
+    "FrequencyCapIntervalConstraints",
+    "FrequencyCapMutableField",
+    "FrequencyCapScope",
     "FrequencyCapping",
     "Freshness",
     "From",
     "FuelType",
     "GenerationContext",
+    "GenerationCredential",
     "Generic",
+    "GenreTaxonomy",
+    "GeoDeliveryMetrics",
+    "GeoForecastDimension",
+    "GeoMetro",
     "GeoMetros",
-    "GeoPlaceSystemKey",
     "GeoTargets",
+    "GeographicBreakdownSupport",
+    "GeographicPlaceArea",
+    "GeographicPlaceCatalogCapability",
+    "GeographicPlaceCatalogEntry",
+    "GeographicPlaceIdentifierSystem",
+    "GeographicPlaceRequirement",
+    "GeographicPlaceResolver",
+    "GeographicPlaceSystemSupport",
+    "GeographicPlaceType",
+    "GeographicRegionRequirement",
+    "GeographicRegionSupport",
+    "GeographicTargetingLevel",
     "GetAccountFinancialsErrorResponse",
+    "GetAccountFinancialsRequest",
+    "GetAccountFinancialsResponse",
+    "GetAccountFinancialsResponse1",
+    "GetAccountFinancialsResponse2",
     "GetAccountFinancialsSuccessResponse",
+    "GetAdcpCapabilitiesRequest",
+    "GetAdcpCapabilitiesResponse",
     "GetBrandIdentityErrorResponse",
+    "GetBrandIdentityRequest",
+    "GetBrandIdentityResponse",
+    "GetBrandIdentityResponse1",
+    "GetBrandIdentityResponse2",
+    "GetBrandIdentitySuccessResponse",
+    "GetCollectionListRequest",
+    "GetCollectionListResponse",
     "GetContentStandardsErrorResponse",
+    "GetContentStandardsRequest",
+    "GetContentStandardsResponse",
+    "GetContentStandardsResponse1",
+    "GetContentStandardsResponse2",
     "GetContentStandardsSuccessResponse",
-    "GetCoreSchemaHandler",
     "GetCreativeDeliveryByBuyerRefRequest",
     "GetCreativeDeliveryByCreativeRequest",
     "GetCreativeDeliveryByMediaBuyRequest",
+    "GetCreativeDeliveryRequest",
+    "GetCreativeDeliveryResponse",
+    "GetCreativeFeaturesComplianceCompletion",
     "GetCreativeFeaturesErrorResponse",
+    "GetCreativeFeaturesRequest",
+    "GetCreativeFeaturesResponse",
+    "GetCreativeFeaturesResponse1",
+    "GetCreativeFeaturesResponse2",
+    "GetCreativeFeaturesResponse3",
+    "GetCreativeFeaturesSuccess",
     "GetCreativeFeaturesSuccessResponse",
+    "GetGeographicPlaceResolutionRequest",
+    "GetGeographicPlaceResolutionResponse",
     "GetJsonSchemaHandler",
     "GetMediaBuyArtifactsErrorResponse",
+    "GetMediaBuyArtifactsRequest",
+    "GetMediaBuyArtifactsResponse",
+    "GetMediaBuyArtifactsResponse1",
+    "GetMediaBuyArtifactsResponse2",
     "GetMediaBuyArtifactsSuccessResponse",
-    "GetMediaBuysMediaBuy",
+    "GetMediaBuyDeliveryRequest",
+    "GetMediaBuyDeliveryResponse",
+    "GetMediaBuysRequest",
+    "GetMediaBuysResponse",
+    "GetPlanAuditLogsRequest",
+    "GetPlanAuditLogsResponse",
+    "GetPrincipalRequest",
+    "GetPrincipalResponse",
     "GetProductsBriefRequest",
     "GetProductsInputRequiredResponse",
     "GetProductsRefineRequest",
+    "GetProductsRejected",
+    "GetProductsRequest",
+    "GetProductsResponse",
     "GetProductsSubmittedResponse",
     "GetProductsSuccessResponse",
     "GetProductsWholesaleRequest",
     "GetProductsWorkingResponse",
+    "GetPropertyListRequest",
+    "GetPropertyListResponse",
+    "GetReportingStatusRequest",
+    "GetReportingStatusResponse",
     "GetRightsErrorResponse",
+    "GetRightsRequest",
+    "GetRightsResponse",
+    "GetRightsResponse1",
+    "GetRightsResponse2",
+    "GetRightsSuccessResponse",
+    "GetSignalsDiscoveryRequest",
+    "GetSignalsLookupRequest",
+    "GetSignalsRequest",
+    "GetSignalsResponse",
     "GetSignalsSignal",
     "GetSignalsSubmittedResponse",
     "GetSignalsSuccessResponse",
     "GetSignalsWorkingResponse",
+    "GetTaskStatusRequest",
+    "GetTaskStatusResponse",
+    "Goal",
+    "Goal1",
     "GoldenVectors",
+    "GopType",
     "Governance",
+    "GovernanceAgentNotAcceptedDetails",
+    "GovernanceAgentNotAcceptedDetails1",
+    "GovernanceAgentNotAcceptedDetails2",
+    "GovernanceDecision",
+    "GovernanceDomain",
     "GovernanceEnforcement",
+    "GovernanceMode",
+    "GovernancePhase",
+    "GovernedAction",
     "GradingProfile",
     "GrantStatus",
-    "GroupFormatAssetUnion",
     "Handoff",
     "HdrFormat",
+    "HistoryEntryType",
     "HostReceipt",
+    "Hosting",
+    "HotelItem",
+    "HtmlAsset",
+    "HtmlAssetRequirements",
+    "HtmlContent",
     "HtmlFormatAsset",
     "HtmlFormatGroupAsset",
     "HtmlPreviewRender",
+    "HttpMethod",
+    "IanaTimezoneIdentifier",
     "IanaTimezones",
     "IconSize",
+    "Idempotency",
+    "IdempotencySupported",
+    "IdempotencyUnsupported",
+    "IdentifierMatchProof",
     "Identifiers",
+    "IdentityMatchRequest",
+    "IdentityMatchResponse",
+    "IdentityMatchResponseProviderRouter",
+    "IdentityMatchResponseRouterPublisher",
     "IdentityRef",
+    "IdentityUpdates",
     "IfNotCovered",
+    "ImageAssetRequirements",
+    "ImageContent",
     "ImageDecoration",
     "ImageFormatAsset",
     "ImageFormatGroupAsset",
     "ImageRef",
     "Immutability",
     "Impact",
+    "Impairment",
+    "ImpairmentOfflineState",
+    "ImpairmentReasonCode",
     "Impressions",
     "IncompleteItem3",
     "IncompleteItem5",
     "IncompleteItem6",
     "IncompleteItem7",
-    "InitErrorDetails",
+    "IndicatorScope",
+    "IndicatorType",
+    "IndicatorsChangedWebhook",
+    "IndustryIdentifier",
     "InlineAccountReference",
     "Input10",
+    "InsertionOrder",
+    "Installment",
+    "InstallmentDeadlines",
+    "InstallmentDeliveryMetrics",
+    "InstallmentPropertyDeliveryMetrics",
+    "InstallmentReference",
+    "InstallmentStatus",
     "IntEnum",
+    "InventoryListApplication",
+    "InventoryListApplication1",
+    "InventoryListApplication2",
+    "Issue",
     "IssueState",
     "Issuer",
+    "ItemIssue",
     "ItemProductionModel",
-    "Items",
     "Iterator",
+    "JavascriptAsset",
+    "JavascriptAssetRequirements",
+    "JavascriptContent",
     "JavascriptFormatAsset",
     "JavascriptFormatGroupAsset",
+    "JavascriptModuleType",
+    "JobItem",
     "JsonSchemaValue",
     "Jurisdiction2",
     "KeepMode",
+    "KellerType",
     "KeyOrigins",
     "KeyValueActivationKey",
+    "KeywordDeliveryMetrics",
+    "KeywordRequirement",
+    "KeywordRequirement1",
+    "KeywordSupport",
+    "KeywordSupport1",
     "KeywordTargets",
     "KeywordTargetsAddItem",
     "KeywordTargetsRemoveItem",
-    "LandingPage",
+    "LandingPageRequirement",
+    "Language",
+    "LanguageTag",
     "LastTopUp",
     "LatencyPercentiles",
     "Layer",
+    "LegacyBuildCreativeErrorResponse",
+    "LegacyBuildCreativeRequest",
+    "LegacyBuildCreativeResponse1",
+    "LegacyBuildCreativeResponse2",
+    "LegacyBuildCreativeResponse3",
+    "LegacyBuildCreativeResponse4",
+    "LegacyBuildCreativeResponse5",
+    "LegacyBuildCreativeResponse6",
+    "LegacyBuildCreativeSubmittedResponse",
+    "LegacyBuildCreativeSuccessResponse",
     "LegacyCreateMediaBuyErrorResponse",
-    "LegacyCreateMediaBuyResponse",
+    "LegacyCreateMediaBuyRequest",
     "LegacyCreateMediaBuyResponse1",
     "LegacyCreateMediaBuyResponse2",
     "LegacyCreateMediaBuyResponse3",
     "LegacyCreateMediaBuySubmittedResponse",
     "LegacyCreateMediaBuySuccessResponse",
-    "LegacyGeneratedProductFormatDeclaration",
+    "LegacyCreativeAsset",
+    "LegacyCreativeFilters",
+    "LegacyFormat",
+    "LegacyFormatId",
+    "LegacyFormatReferenceStructuredObject",
+    "LegacyGetCreativeDeliveryResponse",
+    "LegacyGetMediaBuyDeliveryResponse",
+    "LegacyGetMediaBuysResponse",
+    "LegacyGetProductsRequest",
+    "LegacyGetProductsResponse",
+    "LegacyListCreativeFormatsRequest",
+    "LegacyListCreativeFormatsResponse",
+    "LegacyListCreativesRequest",
+    "LegacyListCreativesResponse",
+    "LegacyPackageRequest",
+    "LegacyPackageUpdate",
+    "LegacyPlacement",
     "LegacyPostalCodeSystem",
+    "LegacyPreviewCreativeBatchResponse",
+    "LegacyPreviewCreativeRequest",
+    "LegacyPreviewCreativeResponse1",
+    "LegacyPreviewCreativeResponse2",
+    "LegacyPreviewCreativeResponse3",
     "LegacyPreviewCreativeResponse4",
+    "LegacyPreviewCreativeSingleResponse",
     "LegacyPreviewCreativeSubmittedResponse",
-    "LegacyProductFormatDeclaration",
-    "LegacySyncCreativesResponse",
+    "LegacyPreviewCreativeVariantResponse",
+    "LegacyProduct",
+    "LegacyProductFilters",
+    "LegacySyncCreativesRequest",
     "LegacyUpdateMediaBuyErrorResponse",
-    "LegacyUpdateMediaBuyResponse",
+    "LegacyUpdateMediaBuyRequest",
     "LegacyUpdateMediaBuyResponse1",
     "LegacyUpdateMediaBuyResponse2",
     "LegacyUpdateMediaBuyResponse3",
     "LegacyUpdateMediaBuySubmittedResponse",
     "LegacyUpdateMediaBuySuccessResponse",
     "Level",
+    "LifecycleTool",
+    "LiftDimension",
+    "Limitation",
+    "LimitedSeries",
+    "ListAccountChangesRequest",
+    "ListAccountChangesResponse",
+    "ListAccountsRequest",
+    "ListAccountsResponse",
+    "ListCollectionListsRequest",
+    "ListCollectionListsResponse",
     "ListContentStandardsErrorResponse",
+    "ListContentStandardsRequest",
+    "ListContentStandardsResponse",
+    "ListContentStandardsResponse1",
+    "ListContentStandardsResponse2",
     "ListContentStandardsSuccessResponse",
-    "ListCreativesCanonicalCreative",
-    "ListCreativesCreative",
-    "ListCreativesCreativeItem",
-    "ListCreativesLegacyCreative",
+    "ListCreativeFormatsRequest",
+    "ListCreativeFormatsRequestCreativeAgent",
+    "ListCreativeFormatsResponse",
+    "ListCreativeFormatsResponseCreativeAgent",
+    "ListCreativesRequest",
+    "ListCreativesResponse",
+    "ListProductsRequest",
+    "ListProductsResponse",
     "ListProductsResponse1",
     "ListProductsResponse2",
+    "ListPropertyListsRequest",
+    "ListPropertyListsResponse",
+    "ListTasksRequest",
+    "ListTasksResponse",
+    "ListTransformersRequest",
+    "ListTransformersRequestCreativeAgent",
+    "ListTransformersResponse",
+    "ListTransformersResponseCreativeAgent",
     "ListingType",
     "Localization",
     "LocalizationUnavailable",
+    "LocalizedCreativeAsset",
     "Location1",
+    "Location13",
     "Location2",
     "Location4",
     "Location5",
     "Location6",
     "Location8",
     "Location9",
+    "Locator",
+    "Locator1",
     "LogEventErrorResponse",
+    "LogEventRequest",
+    "LogEventResponse",
+    "LogEventResponse1",
+    "LogEventResponse2",
     "LogEventSuccessResponse",
+    "Logo",
+    "LogoSlot",
+    "Loss",
+    "MEDIA_BUY_LEGACY_STATUS_VALUES",
+    "MacroBearingUrl",
     "MacroBearingUrl1",
     "MacroBearingUrl2",
     "MacroDeclaration1",
@@ -3401,29 +4931,102 @@ __all__ = [
     "MacroDeclaration7",
     "MacroDeclaration8",
     "MacroDeclaration9",
+    "MacroDialect",
+    "MacroDialectFamily",
+    "MacroEncoding",
+    "MacroMappingStatus",
+    "MacroProcessingActor",
+    "MacroProcessingCapability",
+    "MacroProcessingOperation",
+    "MacroResolutionFailedDetails",
+    "MacroResolutionReason",
+    "MacroResolutionResult",
+    "MacroResolver",
+    "MacroTranslationTarget",
+    "MacroValueContext",
+    "MakegoodRemedy",
     "Mapping",
     "MappingStatus",
+    "MarkdownAssetRequirements",
+    "MarkdownFlavor",
     "MarkdownFormatAsset",
     "MarkdownFormatGroupAsset",
     "MarkupType",
+    "MatchBreakdown",
+    "MatchIdType",
+    "MatchKey",
+    "MatchType",
     "MatchingLatencyHours",
+    "MatchingProduct",
+    "MaterialDeadline",
+    "MaterialStage",
     "MaterialSubmission",
     "MaxBidWithCostPer",
     "MaxBidWithRoas",
     "MaxSpend",
+    "McpWebhookPayload",
     "Measurement",
+    "MeasurementCapabilities",
     "MeasurementGateway",
     "MeasurementPeriod",
-    "MediaBuyPackage",
+    "MeasurementReadiness",
+    "MeasurementTerms",
+    "MeasurementWindow",
+    "MediaBuyActionMode",
+    "MediaBuyAvailableAction",
+    "MediaBuyAvailableActionId",
+    "MediaBuyChangeTerm",
+    "MediaBuyChangeTermConstraints",
+    "MediaBuyChangeTermConstraints1",
+    "MediaBuyChangeTermConstraints2",
+    "MediaBuyChangeTermConstraints3",
+    "MediaBuyChangeTermConstraints4",
+    "MediaBuyChangeTermId",
+    "MediaBuyCommitmentResponse",
+    "MediaBuyCommitmentResponse1",
+    "MediaBuyCommitmentResponse2",
+    "MediaBuyCommitmentResponse3",
+    "MediaBuyDeliveryWebhookResult",
+    "MediaBuyFeatures",
+    "MediaBuyFrequencyCap",
+    "MediaBuyFrequencyCapCapability",
+    "MediaBuyFrequencyCapControlMode",
+    "MediaBuyFrequencyCapRequirement",
+    "MediaBuyFrequencyCapSupport",
+    "MediaBuyHealth",
+    "MediaBuyStatus",
+    "MediaBuyTermsReference",
+    "MediaBuyValidAction",
+    "MediaChannel",
     "MediaEvent",
     "Member",
+    "MemberAgent",
+    "MemberAgentInput",
+    "MemberAgentListResponse",
+    "MemberAgentPatch",
+    "MemberAgentResponse",
+    "MemberAgentType",
+    "MemberAgentTypeInput",
+    "MemberAgentVisibility",
+    "MemberAgentVisibilityWarning",
     "MenuPlacement",
     "MessageFormatter",
     "Messaging",
     "MetricOptimization",
+    "MetricScope",
+    "MetricType",
+    "MetroAreaSystem",
+    "MetroRequirement",
+    "MetroRequirement1",
+    "MetroSupport",
+    "MetroSupport1",
     "Mileage",
     "MismatchCode",
     "MismatchReason",
+    "MissingMetric",
+    "MissingMetric1",
+    "MissingMetric2",
+    "MixTargets",
     "MockValSer",
     "Modalities",
     "Modality",
@@ -3431,31 +5034,65 @@ __all__ = [
     "ModuleSpec",
     "ModuleType",
     "Money",
+    "MonitoringSettings",
+    "MoovAtomPosition",
     "Motion",
     "MotionLevel",
     "MraidVersion",
     "NativeCommitEvidence",
     "NeedsInputInfo",
+    "NegativeKeyword",
     "NegativeKeywords",
     "NegativeKeywordsAddItem",
     "NegativeKeywordsRemoveItem",
     "NoExplicitNull",
+    "NonblockingImpacts",
+    "NotificationConfig",
+    "Notifications",
+    "Notifications2",
     "Oauth",
     "Objective",
     "ObligationCounts",
+    "Observation",
     "ObservedThrough",
+    "Offer",
+    "OfferPrice",
+    "OfferingAssetConstraint",
+    "OfferingAssetGroup",
+    "OfferingAvailabilityStatus",
     "OohMetrics",
     "OperationsContact",
     "Operator",
+    "OperatorIdentity",
+    "OperatorLookupResult",
+    "OperatorUnit",
     "OptimizationGoal1",
+    "OptimizationGoal10",
     "OptimizationGoal2",
     "OptimizationGoal3",
     "OptimizationGoal4",
+    "OptimizationGoal8",
+    "OptimizationGoal9",
+    "Option",
     "OrderingEncoding",
+    "Organization",
+    "OrganizationCompanyType",
+    "OrganizationRevenueTier",
     "OriginalError",
+    "OutboundRequest",
+    "OutcomeMeasurement",
     "OutcomeState",
-    "OutputFormat",
+    "OutcomeTarget",
+    "OutcomeTargetCostPer",
+    "OutcomeTargetCostStrength",
+    "OutcomeType",
     "OutputModality",
+    "Overlay",
+    "PRODUCT_FORMAT_DECLARATION_SCHEMA",
+    "PackageControl",
+    "PackageCountChangeConstraints",
+    "PackageDeliveryMetricValue",
+    "PackageFormatSnapshot",
     "PackageFormatSnapshot1",
     "PackageFormatSnapshot10",
     "PackageFormatSnapshot11",
@@ -3472,10 +5109,20 @@ __all__ = [
     "PackageFormatSnapshot7",
     "PackageFormatSnapshot8",
     "PackageFormatSnapshot9",
+    "PackageRequest",
+    "PackageSignalTargeting",
     "PackageSignalTargeting1",
     "PackageSignalTargeting2",
     "PackageSignalTargeting3",
     "PackageSignalTargeting4",
+    "PackageSignalTargetingGroup",
+    "PackageSignalTargetingGroups",
+    "PackageTargetingResolution",
+    "PackageUpdate",
+    "PaginationRequest",
+    "PaginationResponse",
+    "Panel",
+    "ParameterMapping",
     "Params10",
     "Params11",
     "Params12",
@@ -3489,66 +5136,246 @@ __all__ = [
     "Params8",
     "Params9",
     "ParentMatchBehavior",
+    "PartialFailure",
     "Path",
     "PayingPrincipal",
+    "Payload",
+    "Payload1",
     "Payload10",
     "Payload11",
     "Payload12",
     "Payload13",
     "Payload14",
+    "Payload17",
+    "Payload18",
+    "Payload2",
+    "Payload20",
+    "Payload21",
+    "Payload22",
+    "Payload23",
+    "Payload24",
     "Payload25",
     "Payload3",
     "Payload4",
+    "Payload5",
+    "Payload6",
     "Payload7",
-    "PerItemBindings",
-    "Performance",
+    "Payload8",
+    "Payload9",
+    "PerLeaf",
+    "PerformanceBaseline",
+    "PerformanceFeedbackMetric",
+    "PerformanceFeedbackMetric1",
+    "PerformanceFeedbackMetric2",
+    "PerformanceStandard",
+    "PerformanceStandardMetric",
     "PeriodAnchorPolicy",
     "PeriodTimezonePolicy",
+    "Phase",
+    "PhysicalChecksums",
+    "PhysicalChecksums1",
+    "PixelTrackerMethod",
+    "PixelTrackingEvent",
     "PlaceCatalogSupport",
     "PlaceSupport",
+    "PlacementDefinition",
+    "PlacementDeliveryMetrics",
+    "PlacementEvidence",
+    "PlacementForecastDimension",
+    "PlacementIdentity",
+    "PlacementIdentity1",
+    "PlacementIdentity2",
+    "PlacementPresentationDocument",
+    "PlacementPresentationReference",
+    "PlacementPropertyDeliveryMetrics",
+    "PlacementReference",
+    "PlacementSelection1",
+    "PlacementSelection2",
+    "PlannedDelivery",
     "Platform",
+    "PlatformDeployment",
     "PlatformDestination",
+    "PlatformExtensionRef",
+    "PlatformExtensionReference",
+    "Point",
+    "Policy",
+    "PolicyCategory",
+    "PolicyCategoryDefinition",
+    "PolicyEnforcementLevel",
+    "PolicyEntry",
     "PolicyExemplar",
+    "PolicyExemplarFail",
+    "PolicyExemplarPass",
+    "PolicyExemplars",
+    "PolicyHistory",
     "PolicyProfile",
+    "PolicyRef",
+    "PolicyReference",
+    "PolicyReviewStatus",
+    "PolicyRevision",
+    "PolicySourceType",
+    "PolicySummary",
+    "PolicyViolationDetails",
+    "PositivePostalAreaSupport",
+    "PostalArea",
     "PostalArea1",
     "PostalArea11",
+    "PostalArea112",
+    "PostalArea113",
+    "PostalArea114",
+    "PostalArea115",
+    "PostalArea116",
+    "PostalArea117",
+    "PostalArea118",
+    "PostalArea119",
     "PostalArea12",
+    "PostalArea120",
     "PostalArea13",
+    "PostalArea2",
+    "PostalAreaSupportAdditionalPropertyEnum",
+    "PostalCodeSystem",
+    "PostalCountrySystem",
+    "PostalCountrySystem1",
     "PostalCountrySystem10",
+    "PostalCountrySystem2",
+    "PostalCountrySystem3",
     "PostalCountrySystem4",
     "PostalCountrySystem5",
     "PostalCountrySystem6",
     "PostalCountrySystem7",
     "PostalCountrySystem8",
     "PostalCountrySystem9",
+    "Posting",
     "PreOnboardingPrecisionLevel",
-    "Presence",
     "Preview",
+    "Preview4",
+    "PreviewAsset",
+    "PreviewCreativeRequest",
+    "PreviewCreativeResponse",
+    "PreviewCreativeResponse1",
+    "PreviewCreativeResponse2",
+    "PreviewCreativeResponse3",
+    "PreviewCreativeResponse4",
     "PreviewInput",
-    "PreviewRenderingOrigin",
+    "PreviewOutputFormat",
+    "PreviewRender",
+    "PreviewRender1",
+    "PreviewRender2",
+    "PreviewRender3",
+    "PreviewRendererMetadata",
+    "PriceAdjustmentKind",
+    "PriceBreakdown",
+    "PriceGuidance",
+    "PricingOption",
+    "PricingStructure",
     "Principal",
+    "PrincipalAppliedResult",
+    "PrincipalChangedWebhook",
+    "PrincipalConfiguration",
+    "PrincipalCurrentResult",
+    "PrincipalDeclarationsState",
+    "PrincipalKind",
+    "PrincipalReadFailedResult",
+    "PrincipalRecognizedResult",
+    "PrincipalState",
+    "PrincipalSyncFailedResult",
+    "PrincipalUnconfiguredResult",
+    "PrincipalValidatedResult",
     "PrivacyPolicyAcknowledged",
     "ProducerIdentity",
+    "Product",
+    "ProductAllocation",
+    "ProductAllowedAction",
+    "ProductAudienceEvidenceRequirements",
     "ProductCard",
     "ProductCardDetailed",
+    "ProductCardReferenceAsset",
     "ProductCatalog",
-    "ProductDiscoveryProductId",
+    "ProductChangeMap",
+    "ProductChangeMap1",
+    "ProductDiscoveryCriteria",
+    "ProductDiscoveryTargetingResolution",
     "ProductDoohPlacementAttributes",
     "ProductDoohScreenResolution",
-    "ProductFilterCountry",
-    "ProductFormatSellerPreference",
-    "ProductRefinementRequests1",
+    "ProductExecutionRequirement",
+    "ProductExecutionRequirement1",
+    "ProductExecutionRequirement2",
+    "ProductExecutionRequirement3",
+    "ProductFilters",
+    "ProductFormatDeclaration",
+    "ProductFormatDeclaration1",
+    "ProductFormatDeclaration10",
+    "ProductFormatDeclaration11",
+    "ProductFormatDeclaration12",
+    "ProductFormatDeclaration13",
+    "ProductFormatDeclaration14",
+    "ProductFormatDeclaration15",
+    "ProductFormatDeclaration16",
+    "ProductFormatDeclaration2",
+    "ProductFormatDeclaration3",
+    "ProductFormatDeclaration4",
+    "ProductFormatDeclaration5",
+    "ProductFormatDeclaration6",
+    "ProductFormatDeclaration7",
+    "ProductFormatDeclaration8",
+    "ProductFormatDeclaration9",
+    "ProductIdentity",
+    "ProductMediaBuySupport",
+    "ProductMediaBuySupportRequirements",
+    "ProductOfferFilters",
+    "ProductPurchase",
+    "ProductPurchaseInput",
+    "ProductRefinementRequests",
+    "ProductResponseField",
+    "ProductResponseFields",
+    "ProductSignalTargetingOption",
+    "ProductTargetingResolution",
+    "ProductionQuality",
     "ProductionStatus",
+    "PropagationSurface",
+    "Property",
+    "Property1",
+    "PropertyActivity",
+    "PropertyDeliveryMetrics",
+    "PropertyError",
+    "PropertyFeatureDefinition",
+    "PropertyFeatureResult",
+    "PropertyFeatureValue",
+    "PropertyId",
+    "PropertyIdActivationKey",
+    "PropertyIdentifier",
+    "PropertyIdentifierTypes",
+    "PropertyList",
+    "PropertyListChangedWebhook",
+    "PropertyListFilters",
+    "PropertyListReference",
     "PropertyPayload",
+    "PropertyReference",
+    "PropertyRegistryItem",
+    "PropertyRegistrySource",
+    "PropertySource",
+    "PropertySummary",
+    "PropertyTag",
+    "PropertyTagActivationKey",
     "Proposal2",
+    "ProposalBudgetConstraint",
+    "ProposalDecline",
+    "ProposalDeclineReason",
     "ProposalKind",
     "ProposalRefinement2",
     "ProposalRefinement9",
+    "ProposalRefinementReason",
+    "ProposalStatus",
     "ProposedCommitment",
+    "ProtocolResponse",
     "ProvenanceRequirements",
     "ProvidePerformanceFeedbackByBuyerRefRequest",
     "ProvidePerformanceFeedbackByMediaBuyRequest",
     "ProvidePerformanceFeedbackErrorResponse",
+    "ProvidePerformanceFeedbackRequest",
+    "ProvidePerformanceFeedbackResponse",
+    "ProvidePerformanceFeedbackResponse1",
+    "ProvidePerformanceFeedbackResponse2",
     "ProvidePerformanceFeedbackSuccessResponse",
     "Proximity",
     "PublicPackageRequest",
@@ -3556,9 +5383,12 @@ __all__ = [
     "PublishedPostAsset1",
     "PublishedPostAsset2",
     "PublisherAdagentsPayload",
+    "PublisherDesignatedPreviewProvider",
     "PublisherDoohPlacementAttributes",
     "PublisherDoohScreenResolution",
     "PublisherEntry",
+    "PublisherIdentifierTypes",
+    "PublisherLookupResult",
     "PublisherProperties",
     "PublisherPropertiesAll",
     "PublisherPropertiesById",
@@ -3566,13 +5396,22 @@ __all__ = [
     "PublisherPropertiesByTag",
     "PublisherPropertiesByTagInternal",
     "PublisherPropertiesInternal",
+    "PublisherPropertySelectionType",
+    "PublisherPropertySelector",
+    "PublisherPropertySelector1",
+    "PublisherPropertySelector2",
+    "PublisherPropertySelector3",
+    "PublisherTargetingKvMapping",
+    "PublisherTmpxMacroMapping",
+    "PurchaseBinding",
     "PurchaseContinuation1",
     "PurchaseContinuation2",
     "PurchaseContinuation3",
     "PurchaseContinuation4",
+    "PurchaseType",
     "Purge",
     "Purpose",
-    "PydanticCustomError",
+    "PushNotificationConfig",
     "PydanticSerializationError",
     "PydanticUndefined",
     "Qualifier1",
@@ -3581,24 +5420,42 @@ __all__ = [
     "RankByItem",
     "RankByItem1",
     "RankByItem2",
+    "RateLimitError",
+    "RateLimitedDetails",
+    "ReachAggregation",
+    "ReachUnit",
     "Readiness",
+    "RealEstateItem",
     "Recipient",
     "RecommendedAction",
     "ReconciliationStatus",
-    "RecordedCalls",
+    "Record",
     "RecordedCalls1",
     "RecordedCalls2",
     "Rectangle",
     "Reference",
+    "ReferenceAsset",
     "ReferenceAuthorization",
     "ReferenceAuthorization1",
     "ReferenceMutability",
-    "Refine",
+    "ReferenceRenderer",
+    "ReferenceRendererProvenance",
+    "Refine1",
+    "Refine2",
+    "Refine3",
+    "RefineProposalsRequest",
+    "RefineProposalsResponse",
     "RefineProposalsResponse1",
     "RefineProposalsResponse2",
-    "RefinementApplied",
+    "RefinementApplied1",
+    "RefinementApplied2",
+    "RefinementApplied3",
     "Region",
     "RegistrationTask",
+    "RegistryAcceptancePolicyProfileReference",
+    "RegistryApiError",
+    "RegistryBaseModel",
+    "RegistryEvent",
     "RegistryEvent1",
     "RegistryEvent10",
     "RegistryEvent11",
@@ -3619,131 +5476,398 @@ __all__ = [
     "RegistryEvent7",
     "RegistryEvent8",
     "RegistryEvent9",
+    "RegistryFeedResponse",
+    "RegistryMetadata",
+    "RegulatoryBasi",
+    "RegulatoryFramework",
+    "RelatedCollection",
     "RelationshipKind",
     "RelationshipNotifications",
     "RelationshipTrust",
     "RemovalReason",
     "RenderGuidance",
+    "Renders",
+    "Renders1",
     "Repair",
     "RepeatableAssetGroup",
     "ReportCalendarTimezoneBasis",
+    "ReportPlanAdjustmentRequest",
+    "ReportPlanAdjustmentResponse",
+    "ReportPlanOutcomeRequest",
+    "ReportPlanOutcomeResponse",
+    "ReportUsageRequest",
+    "ReportUsageResponse",
+    "ReportedOutcomeError",
     "ReportedSpend",
+    "ReportingAdjustment",
+    "ReportingAdjustmentReceipt",
+    "ReportingAdjustmentRejectionCode",
+    "ReportingAuthoritativeParty",
+    "ReportingBucket",
+    "ReportingCanonicalContentDigest",
+    "ReportingCanonicalizationContract",
+    "ReportingCapabilities",
     "ReportingCloud",
+    "ReportingCommitment",
+    "ReportingConsumerFailureCode",
+    "ReportingConsumerMismatchCode",
+    "ReportingConsumerStatus",
+    "ReportingConsumerStatusValue",
+    "ReportingControlTotal",
+    "ReportingControlTotal1",
+    "ReportingControlTotal2",
+    "ReportingCoverage",
+    "ReportingDatasetShareDestination",
+    "ReportingDatasetShareDestination1",
+    "ReportingDatasetShareDestination2",
+    "ReportingDeliveryCapabilities",
     "ReportingDeliveryConfigLifecycleState",
+    "ReportingDeliveryConfiguration",
+    "ReportingDeliveryConfigurationState",
+    "ReportingDeliveryMethod",
+    "ReportingDeliveryMethod1",
+    "ReportingDeliveryMethod2",
+    "ReportingDeliveryMethod3",
+    "ReportingDeliveryOffering",
+    "ReportingDeliveryOfferingId",
     "ReportingDeliveryPattern",
+    "ReportingDeliveryReadyWebhook",
+    "ReportingDestinationOffering",
+    "ReportingDestinationSetupState",
     "ReportingDimensions",
     "ReportingFeedPurpose",
+    "ReportingFileCompression",
+    "ReportingFileEntry",
+    "ReportingFileManifest",
+    "ReportingFileObjectReference",
+    "ReportingFinality",
+    "ReportingHealth",
+    "ReportingIssueRecommendedAction",
+    "ReportingIssueState",
+    "ReportingLedgerChangedWebhook",
+    "ReportingMaterialization",
+    "ReportingMediaBuyId",
+    "ReportingMode",
+    "ReportingNativeVersionReference",
+    "ReportingObligation",
+    "ReportingObligationCounts",
+    "ReportingOperationsContact",
     "ReportingOrchestration",
+    "ReportingPackageId",
+    "ReportingPrimaryKey",
     "ReportingProfile",
+    "ReportingReaderCompatibilityItem",
+    "ReportingReceipt",
+    "ReportingReconciliationMode",
     "ReportingReliabilityMeasurementPeriod",
+    "ReportingReliabilityStatistics",
+    "ReportingReportDefinition",
+    "ReportingResource",
+    "ReportingRevision",
     "ReportingRevisionBinding",
+    "ReportingSchedule",
     "ReportingScheduleAlignment",
+    "ReportingScheduleOffering",
+    "ReportingStatusChangedWebhook",
+    "ReportingStatusIssue",
     "ReportingStatusSeverity",
     "ReportingStatusView",
+    "ReportingVerification",
+    "ReportingVerificationProfile",
+    "ReportingVerificationProfileSet",
+    "ReportingWebhook",
+    "ReportingWriteDestination",
+    "ReportingWriteDestination1",
+    "ReportingWriteDestination2",
+    "RepresentationDestination",
+    "RepresentationRejection",
     "RepresentationResolution",
-    "RequestProposalsProductId",
+    "RepresentationSelection",
+    "RepresentationSelectionStrategy",
+    "Request",
+    "RequestProposalsRequest",
+    "RequestProposalsResponse",
     "RequestProposalsResponse1",
     "RequestProposalsResponse2",
     "RequestProposalsResponse3",
     "RequestProposalsResponse4",
     "RequestSigning",
+    "RequestSigningErrorCode",
     "RequestType",
+    "Requested",
+    "RequiredDisclosure",
     "RequiredGeoTargetingItem",
+    "RequiredPerformanceStandard",
     "Requirement",
+    "RequoteRequiredDetails",
     "ResolutionModel",
+    "ResolvedAssets",
+    "ResolvedBrand",
+    "ResolvedPolicy",
+    "ResolvedProperty",
+    "ResolvedPropertyEntry",
+    "Resolver",
     "ResourceRef",
     "ResponsePayload",
-    "ResponseType",
+    "ResponsePayloadJwsEnvelope",
     "ResponsibleParty",
     "Responsive",
     "RestatementPolicy",
+    "RestrictedAttribute",
+    "Result13",
+    "Result15",
+    "Result2",
+    "Result3",
+    "Result5",
+    "ResultEntry",
+    "ResultEntry1",
+    "ResultEntry2",
     "ResultKind",
     "Results1",
-    "Results14",
     "Results2",
-    "Results3",
-    "Results8",
+    "Results20",
+    "Results21",
+    "Results22",
+    "Results23",
+    "Results26",
+    "Results27",
+    "RetiredDestination",
     "Reveal",
+    "RevenueSharePricingOption",
+    "RevocationNotification",
+    "RevokedPublisherDomain",
+    "RevokedPublisherDomain1",
+    "RevokedPublisherDomain2",
+    "RevokedPublisherDomain3",
+    "RevokedPublisherDomain4",
+    "RevokedPublisherDomain5",
+    "RevokedPublisherDomain6",
+    "RightType",
+    "RightUse",
     "RightsAgent",
+    "RightsAttestationEvaluation",
     "RightsAttestations",
+    "RightsBillingPeriod",
+    "RightsConstraint",
+    "RightsPricingOption",
+    "RightsTerms",
     "Roas",
     "RoasStrength",
     "Role2",
-    "RootModel",
+    "RollupTruncated",
     "RotationMode",
+    "RuntimeAttestation",
     "RuntimeAttestation1",
+    "RuntimeAttestationEvaluation",
     "RuntimeAttestations",
+    "SCALAR_BASES",
     "Salary",
+    "SalesAgentClaim",
     "Sandbox",
     "ScalarBinding",
+    "ScalarFloat",
+    "ScalarInt",
+    "ScalarStr",
+    "ScanType",
     "SchemaInt",
     "SchemaSerializer",
     "SchemaValidator",
-    "Scheme",
+    "SchemaVariant",
     "ScopeCapability",
+    "ScopedCreativeApproval",
     "ScrollReference",
+    "SealedCredential",
     "SearchBrandResult",
+    "SearchBrandsRequest",
+    "SearchBrandsResponse",
     "Security",
+    "SeedSource",
+    "Segment",
     "SegmentIdActivationKey",
     "Selector",
-    "Self",
+    "SellerAgentReference",
+    "SellerPolicyDeclineReason",
     "SellerResponse",
     "Semantics",
     "Sentiment",
-    "Sequence",
     "SerializationInfo",
     "SerializerFunctionWrapHandler",
     "ServingPolicy",
     "Severity",
+    "SharedSlot",
     "ShippingAddress",
+    "SiCapabilities",
+    "SiComponentCatalog",
+    "SiContextUse",
+    "SiGetOfferingRequest",
+    "SiGetOfferingResponse",
+    "SiIdentity",
+    "SiInitiateSessionRequest",
+    "SiInitiateSessionResponse",
     "SiSendActionResponseRequest",
+    "SiSendMessageRequest",
+    "SiSendMessageResponse",
     "SiSendTextMessageRequest",
+    "SiSessionStatus",
+    "SiSponsoredContext",
+    "SiSponsoredContextDeclaredBy",
+    "SiSponsoredContextReceipt",
+    "SiTerminateSessionRequest",
+    "SiTerminateSessionResponse",
+    "SiUiElement",
     "SignalActivation",
+    "SignalAvailabilityType",
+    "SignalCatalogType",
     "SignalCondition1",
     "SignalCondition2",
     "SignalCondition3",
     "SignalCondition4",
+    "SignalCoverageForecast",
+    "SignalDefinition",
+    "SignalDefinitionEnrichment",
+    "SignalFilters",
+    "SignalForecastDimension",
+    "SignalId",
+    "SignalId8",
+    "SignalId9",
+    "SignalModelingDisclosure",
+    "SignalPricingOption",
+    "SignalRef",
+    "SignalRef1",
+    "SignalRef2",
+    "SignalRef3",
+    "SignalSelectionGroupRule",
+    "SignalSource",
+    "SignalTargeting",
+    "SignalTargeting1",
+    "SignalTargeting2",
+    "SignalTargeting3",
+    "SignalTargetingExpression",
+    "SignalTargetingExpression1",
+    "SignalTargetingExpression2",
+    "SignalTargetingExpression3",
     "SignalTargetingItem",
     "SignalTargetingItem1",
     "SignalTargetingItem2",
     "SignalTargetingItem3",
     "SignalTargetingItem4",
-    "SignalType",
+    "SignalTargetingRules",
+    "SignalValueType",
+    "SignalsByProvider",
+    "SignalsCapabilities",
     "SignalsFeatures",
+    "SlaWindow",
+    "Slot",
+    "SnapshotUnavailableReason",
+    "SocialPlacementSurface",
+    "SortDirection",
+    "SortMetric",
+    "Source5",
+    "Source6",
     "SourceAdcpVersion",
     "SourceCoverageItem",
+    "Special",
+    "SpecialCategory",
+    "SpecialismStatus",
+    "Specification",
     "Spend",
     "SponsoredIntelligence",
+    "SponsoredPlacementType",
     "Spot",
+    "SpotReportingCapability",
+    "StaleResponseDetails",
+    "StandardEnum",
+    "StartTiming",
     "StartingPosition",
+    "State",
+    "Status1",
+    "Status2",
+    "Status3",
+    "Status4",
+    "Status46",
+    "Status51",
     "StatusSummary",
     "Statuses",
-    "StrictBool",
-    "StrictFloat",
+    "Step",
+    "StoreCatchment",
+    "StoreItem",
+    "Storyboard",
+    "StoryboardDetail",
+    "StoryboardStatus",
+    "StoryboardStatus1",
+    "StoryboardSummary",
+    "Strength1",
     "StrictInt",
-    "StrictStr",
+    "StringArray",
     "Structural",
     "SubmittedInfo",
+    "SuccessLiteral",
     "Summary2",
     "SupplyMode",
-    "SyncAccountsAccount",
+    "Supported",
+    "SupportedChange",
+    "SupportedDeliveryMethod",
+    "SupportedDeliveryType",
+    "SupportedDimension",
+    "SupportedFormat",
+    "SupportedIdType",
+    "SupportedIdentifierType",
+    "SupportedProtocol",
+    "SupportedScope",
+    "SupportedSection",
+    "SupportedTagType",
+    "SupportedTarget5",
     "SyncAccountsCreditLimit",
     "SyncAccountsErrorResponse",
+    "SyncAccountsRequest",
+    "SyncAccountsResponse",
+    "SyncAccountsResponse1",
+    "SyncAccountsResponse2",
     "SyncAccountsSuccessResponse",
+    "SyncAgentNotificationConfigsRequest",
+    "SyncAgentNotificationConfigsResponse",
     "SyncAudiencesErrorResponse",
+    "SyncAudiencesRequest",
+    "SyncAudiencesResponse",
+    "SyncAudiencesResponse1",
+    "SyncAudiencesResponse2",
+    "SyncAudiencesResponse3",
     "SyncAudiencesSubmittedResponse",
-    "SyncCatalogResult",
-    "SyncCatalogResultInternal",
+    "SyncAudiencesSuccessResponse",
     "SyncCatalogsErrorResponse",
+    "SyncCatalogsRequest",
+    "SyncCatalogsResponse",
+    "SyncCatalogsResponse1",
+    "SyncCatalogsResponse2",
+    "SyncCatalogsResponse3",
     "SyncCatalogsSubmittedResponse",
-    "SyncCreativeResult",
-    "SyncCreativeResultInternal",
-    "SyncCreativesCreative",
+    "SyncCatalogsSuccessResponse",
     "SyncCreativesErrorResponse",
+    "SyncCreativesRequest",
+    "SyncCreativesResponse",
+    "SyncCreativesResponse1",
+    "SyncCreativesResponse2",
+    "SyncCreativesResponse3",
     "SyncCreativesSubmittedResponse",
+    "SyncCreativesSuccessResponse",
     "SyncEventSourcesErrorResponse",
+    "SyncEventSourcesRequest",
+    "SyncEventSourcesResponse",
+    "SyncEventSourcesResponse1",
+    "SyncEventSourcesResponse2",
     "SyncEventSourcesSuccessResponse",
-    "SyncGovernanceAccount",
+    "SyncGovernanceRequest",
+    "SyncGovernanceResponse",
+    "SyncGovernanceResponse1",
+    "SyncGovernanceResponse2",
+    "SyncPlansRequest",
+    "SyncPlansResponse",
+    "SyncPrincipalRequest",
+    "SyncPrincipalResponse",
+    "SyncReportingReceiptsRequest",
+    "SyncReportingReceiptsResponse",
+    "SyncReportingStatusRequest",
+    "SyncReportingStatusResponse",
     "System1",
     "System11",
     "System12",
@@ -3753,106 +5877,284 @@ __all__ = [
     "System9",
     "T",
     "Tag",
+    "Talent",
+    "TalentRole",
     "Target1",
+    "Target10",
+    "Target16",
+    "Target17",
     "Target3",
     "Target4",
+    "TargetVariant",
     "Targeting",
-    "Targets",
+    "TargetingModification",
+    "TargetingModification1",
+    "TargetingModification2",
+    "TargetingOverlay",
+    "TargetingOverlayInput",
+    "TargetingOverlayRequirements",
+    "TargetingOverlaySupport",
+    "TargetingUnknownAgeEligibilityConstraint",
+    "TargetingVerifiedAgeBasisConstraint",
+    "Targets1",
+    "Targets2",
+    "Targets3",
+    "Targets4",
     "TaskResult",
+    "TaskStatus",
+    "TaskType",
     "Tasks",
+    "Tasks1",
+    "Tasks2",
+    "Tasks3",
+    "Tasks4",
+    "Tasks5",
+    "Tasks6",
+    "Tasks7",
+    "Tasks8",
+    "Tasks9",
+    "TasksGetRequest",
+    "TasksGetResponse",
+    "TasksListRequest",
+    "TasksListResponse",
     "TerminationContext",
     "Terms",
+    "TextAssetRequirements",
+    "TextContent",
     "TextDecoration",
     "TextFormatAsset",
     "TextFormatGroupAsset",
     "Thresholds",
+    "TimeBasedPricingOption",
+    "TimeBasedView",
+    "TimeForecastDimension",
     "TimeRange",
+    "TimeUnit",
     "Timing",
+    "TmpError",
+    "TmpOffer",
+    "TmpProviderRegistration",
+    "TmpProviderRegistration1",
+    "TmpProviderRegistration2",
+    "TmpResponseType",
+    "TmpxChunk",
+    "TmpxProviders",
+    "Tone",
     "TotalBudgetCap",
+    "TrackDetail",
+    "TrackerExecutionActor",
+    "TrackerExecutionContract",
+    "TrackerExecutionSelector",
+    "TrackerExecutionSelector1",
     "TrackerExecutionSelector2",
     "TrackerExecutionSelector3",
-    "TrackingEvent",
+    "TrackerFiringPath",
+    "Tracks",
     "TransactionIntent",
+    "TranscriptFormat",
+    "TranscriptSource",
+    "TranscriptSource1",
+    "Transformer",
+    "TransformerParam",
+    "TransitionMode9",
     "Transmission",
     "Transport",
+    "Transport1",
+    "TransportMode",
+    "TravelTimeUnit",
     "Trigger",
+    "TruncationSentinel",
     "Trust",
-    "TypeAdapter",
+    "Type6",
     "TypeForm",
-    "TypeVar",
+    "UidType",
     "UnavailableReason",
+    "UniversalMacro",
+    "UnknownFormatAsset",
+    "UnknownGroupAsset",
     "UnknownHandling",
+    "UnmetRequirement",
+    "UnsupportedRefinementDimensionDetails",
+    "UpdateCollectionListRequest",
+    "UpdateCollectionListResponse",
     "UpdateContentStandardsErrorResponse",
+    "UpdateContentStandardsRequest",
+    "UpdateContentStandardsResponse",
+    "UpdateContentStandardsResponse1",
+    "UpdateContentStandardsResponse2",
     "UpdateContentStandardsSuccessResponse",
+    "UpdateFrequency",
     "UpdateMediaBuyErrorResponse",
     "UpdateMediaBuyPackagesRequest",
     "UpdateMediaBuyPropertiesRequest",
+    "UpdateMediaBuyRequest",
+    "UpdateMediaBuyResponse",
+    "UpdateMediaBuyResponse1",
+    "UpdateMediaBuyResponse2",
+    "UpdateMediaBuyResponse3",
     "UpdateMediaBuySubmittedResponse",
     "UpdateMediaBuySuccessResponse",
+    "UpdatePropertyListRequest",
+    "UpdatePropertyListResponse",
+    "UpdateRightsRequest",
+    "UpdateRightsResponse",
+    "UpdateRightsResponse1",
+    "UpdateRightsResponse2",
     "Upstream",
-    "UrlConstraints",
+    "UrlAsset",
+    "UrlAssetRequirements",
+    "UrlAssetType",
+    "UrlContent",
     "UrlFormatAsset",
     "UrlFormatGroupAsset",
     "UrlPreviewRender",
-    "UrlType",
     "UsageItem",
     "User",
     "UserControls",
+    "UserMatch",
     "V1CanonicalGlobPattern",
+    "V1CanonicalMapping",
     "V1CanonicalStructural",
     "V1CanonicalStructuralPattern",
     "V1CanonicalV2Projection",
+    "V1Pattern",
+    "V1Pattern1",
+    "V1V2CanonicalFormatMappingRegistry",
     "V2",
     "ValidateContentDeliveryErrorResponse",
+    "ValidateContentDeliveryRequest",
+    "ValidateContentDeliveryResponse",
+    "ValidateContentDeliveryResponse1",
+    "ValidateContentDeliveryResponse2",
     "ValidateContentDeliverySuccessResponse",
-    "ValidationError",
+    "ValidateInputRequest",
+    "ValidateInputResponse",
+    "ValidateInputResult",
+    "ValidatePropertyDeliveryRequest",
+    "ValidatePropertyDeliveryResponse",
+    "ValidationMode",
+    "ValidationResult",
     "ValidatorFunctionWrapHandler",
     "ValidityHint",
+    "Value",
+    "ValueMapping",
     "ValueSource",
     "VariableType",
+    "Variant",
     "VariantAxis",
-    "Variants",
+    "Variants1",
+    "Variants2",
+    "VastAsset",
     "VastAsset1",
     "VastAsset2",
+    "VastAsset3",
+    "VastAsset4",
+    "VastAssetRequirements",
     "VastEvent",
     "VastFormatAsset",
     "VastFormatGroupAsset",
+    "VastMediaDeliveryMethod",
+    "VastMediafileRequirements",
+    "VastOffset",
     "VastTarget",
+    "VastTrackerAsset",
+    "VastTrackingEvent",
     "VastValidation",
+    "VastVersion",
+    "VastVersionMismatchDetails",
     "VastVersionMismatchDetails1",
     "VastVersionMismatchDetails2",
+    "VastVersionMismatchDetails3",
+    "VastVersions",
+    "VcpmAuctionPricingOption",
+    "VcpmFixedRatePricingOption",
+    "VcpmPricingOption",
+    "VehicleItem",
+    "VendorErrorCodeRegistry",
+    "VendorMetricId",
+    "VendorMetricOptimizationSupportedMetric",
+    "VendorMetricValue",
+    "VendorPricing",
+    "VendorPricing1",
+    "VendorPricing2",
+    "VendorPricing3",
+    "VendorPricing4",
+    "VendorPricing5",
+    "VendorPricingOption",
     "VendorPricingOption1",
     "VendorPricingOption2",
     "VendorPricingOption3",
     "VendorPricingOption4",
     "VendorPricingOption5",
     "VendorPricingOption6",
-    "VendorPricingOptionUnion",
+    "VendorRelationship",
+    "Vendors",
     "VenueBreakdownItem",
+    "VerdictSource",
+    "VerificationBadge",
     "VerificationItem",
     "VerificationLevel",
+    "VerificationMode",
     "VerificationPath",
+    "VerificationStatus",
     "VerificationTokenGradingProfile",
+    "VerificationTokenMode",
+    "VerifiedByAao",
+    "VerifiedRole",
+    "VerifiedSpecialism",
     "VerifyAgent1",
-    "VersionedDirection",
+    "VerifyBrandClaimErrorResponse",
+    "VerifyBrandClaimRequest",
+    "VerifyBrandClaimResponse",
+    "VerifyBrandClaimSignedSuccessPayload",
+    "VerifyBrandClaimSuccessResponse",
+    "VerifyBrandClaimsErrorResponse",
+    "VerifyBrandClaimsRequest",
+    "VerifyBrandClaimsRequestBulk",
+    "VerifyBrandClaimsResponse",
+    "VerifyBrandClaimsResponseBulk",
+    "VerifyBrandClaimsSignedSuccessPayload",
+    "VersionUnsupportedDetails",
+    "Video",
+    "VideoAssetRequirements",
     "VideoBitDepth",
+    "VideoBrief",
     "VideoCodec",
+    "VideoContent",
     "VideoFormatAsset",
     "VideoFormatGroupAsset",
+    "VideoPlacementType",
     "VideoPlayback",
+    "ViewThreshold1",
+    "ViewThresholdBasis",
     "Viewability1",
+    "ViewabilityStandard",
     "ViewableRate",
     "ViewedSecondsHistogramItem",
     "ViewedSecondsPercentiles",
     "Visual",
+    "Voice",
     "VoiceSynthesis",
     "VoiceSynthesisRefItem",
     "VpaidVersion",
+    "WarningAffectedResource",
+    "WarningCode",
+    "Watermark",
+    "WatermarkMediaType",
+    "WcagLevel",
+    "WebhookActivityRecord",
+    "WebhookAssetRequirements",
+    "WebhookChallenge",
+    "WebhookChallengeResponse",
+    "WebhookContent",
     "WebhookFormatAsset",
     "WebhookFormatGroupAsset",
     "WebhookMetadata",
+    "WebhookResponseType",
+    "WebhookSecurityMethod",
     "WebhookSigning",
     "WebhookSigningAlgorithm",
+    "WholesaleFeedEvent",
     "WholesaleFeedEvent1",
     "WholesaleFeedEvent2",
     "WholesaleFeedEvent3",
@@ -3864,10 +6166,15 @@ __all__ = [
     "WholesaleFeedEvent9",
     "WholesaleFeedSignal",
     "WholesaleFeedVersioning",
+    "WholesaleFeedWebhook",
     "WholesaleFeedWebhooks",
     "WidthMode",
+    "Window",
     "WireUrl",
-    "WithJsonSchema",
+    "XEntityTypes",
+    "accept_proposal_async_response_input_required",
+    "accept_proposal_async_response_submitted",
+    "accept_proposal_async_response_working",
     "accept_proposal_request",
     "accept_proposal_response",
     "acceptance_context",
@@ -3878,31 +6185,28 @@ __all__ = [
     "acceptance_policy_requirement",
     "acceptance_policy_rule",
     "accepted_governance_agents",
-    "accessibility_violation",
+    "account",
     "account_authorization",
     "account_change",
     "account_change_recorded_webhook",
     "account_currency_mode",
     "account_identity_change",
     "account_identity_change_preview",
-    "account_moved",
     "account_ref",
     "account_scope",
-    "account_setup_required",
     "account_status",
     "account_status_changed_webhook",
     "account_timezone_capability",
     "account_with_authorization",
     "acquire_rights_request",
     "acquire_rights_response",
-    "action_not_allowed",
-    "action_not_allowed_reason",
     "action_source",
     "activate_signal_request",
     "activate_signal_response",
     "activation_key",
     "activation_method",
     "ad_inventory_config",
+    "adagents",
     "adcp_protocol",
     "adjustment_kind",
     "advertiser_industry",
@@ -3911,9 +6215,7 @@ __all__ = [
     "agent_encryption_key",
     "agent_notification_config",
     "agent_notification_config_state",
-    "agent_permission_denied",
     "agent_placement",
-    "agent_publishers",
     "agent_reporting_destination",
     "agent_reporting_destination_state",
     "agent_signing_key",
@@ -3921,7 +6223,6 @@ __all__ = [
     "app_item",
     "applicable_package_id",
     "artifact",
-    "artifact_webhook_payload",
     "assessment_status",
     "asset_content_type",
     "asset_group_vocabulary",
@@ -3929,20 +6230,16 @@ __all__ = [
     "asset_union",
     "assets",
     "async_response_data",
-    "async_response_refs",
     "attestation_capabilities",
-    "attestation_claim",
     "attestation_evaluation",
     "attestation_issuer",
     "attestation_reference",
     "attestation_subject",
-    "attribute_definition",
     "attribution_methodology",
     "attribution_model",
     "attribution_window",
     "audience_activation_method",
     "audience_characteristic",
-    "audience_constraints",
     "audience_evidence",
     "audience_evidence_methodology",
     "audience_evidence_pin",
@@ -3953,7 +6250,6 @@ __all__ = [
     "audience_selector",
     "audience_status",
     "audience_subject_type",
-    "audience_too_small",
     "audio_asset",
     "audio_asset_requirements",
     "audio_channel_layout",
@@ -3963,21 +6259,13 @@ __all__ = [
     "audio_vast",
     "audit_observation",
     "auth_scheme",
-    "authorization_required",
-    "authorization_result",
     "authorized_agent_base",
     "availability_status",
     "available_metric",
-    "available_package",
-    "base_collection_source",
-    "base_property_source",
     "bidding_policy",
     "bidding_policy_capability",
-    "billing_not_permitted_for_agent",
-    "billing_not_supported",
     "billing_party",
     "binary_verdict",
-    "bound_value",
     "brand_agent_type",
     "brand_id",
     "brand_key",
@@ -3987,16 +6275,19 @@ __all__ = [
     "browser_family",
     "budget_allocation",
     "budget_range",
-    "budget_too_low",
+    "build_creative_async_response_input_required",
+    "build_creative_async_response_submitted",
+    "build_creative_async_response_working",
     "build_creative_request",
     "build_creative_response",
     "business_entity",
+    "buy_products_async_response_input_required",
+    "buy_products_async_response_submitted",
+    "buy_products_async_response_working",
     "buy_products_request",
     "buy_products_response",
     "c2pa_watermark_action",
     "cache",
-    "calibrate_content_request",
-    "calibrate_content_response",
     "canceled_by",
     "cancellation_policy",
     "canonical",
@@ -4028,7 +6319,6 @@ __all__ = [
     "canvas_constraint",
     "capabilities_changed_webhook",
     "card_asset",
-    "cast",
     "catalog",
     "catalog_action",
     "catalog_asset",
@@ -4049,17 +6339,16 @@ __all__ = [
     "change_term",
     "change_term_constraints",
     "channels",
-    "check_governance_request",
-    "check_governance_response",
+    "check_declaration_rules",
     "cloud_storage_protocol",
     "co_branding_requirement",
+    "coerce_legacy_asset",
+    "coerce_legacy_assets",
+    "collection",
     "collection_cadence",
     "collection_delivery_metrics",
     "collection_distribution",
     "collection_kind",
-    "collection_list",
-    "collection_list_changed_webhook",
-    "collection_list_filters",
     "collection_list_ref",
     "collection_property_delivery_metrics",
     "collection_ref",
@@ -4073,17 +6362,17 @@ __all__ = [
     "compact_task_submitted",
     "compact_task_working",
     "completion_source",
+    "compliance",
     "comply_test_controller_request",
-    "comply_test_controller_response",
-    "component",
-    "conflict",
     "consent_basis",
     "content_id_type",
     "content_rating",
     "content_rating_system",
+    "content_standards",
     "context",
-    "context_match_request",
-    "context_match_response",
+    "control_media_buy_async_response_input_required",
+    "control_media_buy_async_response_submitted",
+    "control_media_buy_async_response_working",
     "control_media_buy_request",
     "control_media_buy_response",
     "coordinated_placements",
@@ -4094,14 +6383,11 @@ __all__ = [
     "cpm_option",
     "cpp_option",
     "cpv_option",
-    "create_collection_list_request",
-    "create_collection_list_response",
-    "create_content_standards_request",
-    "create_content_standards_response",
+    "create_media_buy_async_response_input_required",
+    "create_media_buy_async_response_submitted",
+    "create_media_buy_async_response_working",
     "create_media_buy_request",
     "create_media_buy_response",
-    "create_property_list_request",
-    "create_property_list_response",
     "creative_action",
     "creative_agent_capability",
     "creative_approval_request",
@@ -4128,11 +6414,8 @@ __all__ = [
     "creative_policy",
     "creative_purged_webhook",
     "creative_quality",
-    "creative_rejected",
     "creative_representation",
     "creative_representation_set",
-    "creative_representation_unresolved",
-    "creative_revision_content_mismatch",
     "creative_revision_id",
     "creative_selection_strategy",
     "creative_sort_field",
@@ -4157,14 +6440,12 @@ __all__ = [
     "daypart_target",
     "daypart_timezone_mode",
     "deadline_policy",
+    "decline_proposals_async_response_input_required",
+    "decline_proposals_async_response_submitted",
+    "decline_proposals_async_response_working",
     "decline_proposals_request",
     "decline_proposals_response",
-    "deferred_adapter",
-    "delegation_authority",
-    "delete_collection_list_request",
-    "delete_collection_list_response",
-    "delete_property_list_request",
-    "delete_property_list_response",
+    "defer_model_rebuild",
     "delivery_breakdown_controls",
     "delivery_forecast",
     "delivery_metric_aggregate",
@@ -4172,7 +6453,6 @@ __all__ = [
     "delivery_provider",
     "delivery_recipient",
     "delivery_recipient_cloud",
-    "delivery_record",
     "delivery_status",
     "delivery_type",
     "demographic_age_range",
@@ -4202,9 +6482,8 @@ __all__ = [
     "duration",
     "education_item",
     "embedded_provenance_method",
-    "error_code",
-    "error_scope",
-    "escalation_severity",
+    "enums",
+    "error",
     "evaluator_spec",
     "event",
     "event_custom_data",
@@ -4212,15 +6491,12 @@ __all__ = [
     "event_surface",
     "event_type",
     "exclusivity",
-    "execution_requirement_unmet",
     "experimental_feature_id",
     "ext",
-    "extension_meta",
     "feature_check_status",
     "feature_requirement",
     "feed_format",
     "feedback_source",
-    "field_validator",
     "flat_rate_option",
     "flight_item",
     "forecast_dimension_audience",
@@ -4243,6 +6519,7 @@ __all__ = [
     "format_id_parameter",
     "format_option_ref",
     "format_shape_vocabulary",
+    "formats",
     "frame_rate_type",
     "frequency_cap",
     "frequency_cap_constraints",
@@ -4252,7 +6529,6 @@ __all__ = [
     "frequency_cap_interval_constraints",
     "frequency_cap_mutable_field",
     "frequency_cap_requirements",
-    "frequency_cap_scope",
     "generated",
     "generation_credential",
     "genre_taxonomy",
@@ -4274,52 +6550,44 @@ __all__ = [
     "get_account_financials_response",
     "get_adcp_capabilities_request",
     "get_adcp_capabilities_response",
-    "get_args",
     "get_brand_identity_request",
     "get_brand_identity_response",
-    "get_collection_list_request",
-    "get_collection_list_response",
-    "get_content_standards_request",
-    "get_content_standards_response",
     "get_creative_delivery_request",
     "get_creative_delivery_response",
+    "get_creative_features_async_response_submitted",
     "get_creative_features_completion",
     "get_creative_features_request",
     "get_creative_features_response",
     "get_creative_features_terminal_success",
     "get_geo_place_resolution_request",
     "get_geo_place_resolution_response",
-    "get_media_buy_artifacts_request",
-    "get_media_buy_artifacts_response",
     "get_media_buy_delivery_request",
     "get_media_buy_delivery_response",
     "get_media_buys_request",
     "get_media_buys_response",
     "get_named_validator",
-    "get_plan_audit_logs_request",
-    "get_plan_audit_logs_response",
     "get_principal_request",
     "get_principal_response",
+    "get_products_async_response_input_required",
+    "get_products_async_response_submitted",
+    "get_products_async_response_working",
     "get_products_rejected",
     "get_products_request",
     "get_products_response",
     "get_products_targeting_resolution",
-    "get_property_list_request",
-    "get_property_list_response",
     "get_reporting_status_request",
     "get_reporting_status_response",
     "get_rights_request",
     "get_rights_response",
+    "get_signals_async_response_submitted",
+    "get_signals_async_response_working",
     "get_signals_request",
     "get_signals_response",
     "get_task_status_request",
     "get_task_status_response",
     "gop_type",
-    "governance_agent_not_accepted",
-    "governance_decision",
+    "governance",
     "governance_domain",
-    "governance_mode",
-    "governance_phase",
     "history_entry_type",
     "hotel_item",
     "html5",
@@ -4329,8 +6597,6 @@ __all__ = [
     "iana_timezone",
     "identifier",
     "identifier_types",
-    "identity_match_request",
-    "identity_match_response",
     "image",
     "image_asset",
     "image_asset_requirements",
@@ -4344,6 +6610,8 @@ __all__ = [
     "indicator_type",
     "indicators_changed_webhook",
     "industry_identifier",
+    "infer_asset_type",
+    "inherit_field",
     "insertion_order",
     "installment",
     "installment_deadlines",
@@ -4353,6 +6621,7 @@ __all__ = [
     "installment_status",
     "inventory_list_application",
     "is_loopback_http_uri",
+    "is_no_explicit_null",
     "javascript_asset",
     "javascript_asset_requirements",
     "javascript_module_type",
@@ -4369,16 +6638,10 @@ __all__ = [
     "list_account_changes_response",
     "list_accounts_request",
     "list_accounts_response",
-    "list_collection_lists_request",
-    "list_collection_lists_response",
-    "list_content_standards_request",
-    "list_content_standards_response",
     "list_creatives_request",
     "list_creatives_response",
     "list_products_request",
     "list_products_response",
-    "list_property_lists_request",
-    "list_property_lists_response",
     "list_tasks_request",
     "list_tasks_response",
     "list_transformers_request",
@@ -4395,7 +6658,6 @@ __all__ = [
     "macro_mapping_status",
     "macro_processing_operation",
     "macro_resolution_capability",
-    "macro_resolution_failed",
     "macro_resolution_reason",
     "macro_resolution_result",
     "macro_resolver",
@@ -4412,6 +6674,7 @@ __all__ = [
     "measurement_readiness",
     "measurement_terms",
     "measurement_window",
+    "media_buy",
     "media_buy_action_mode",
     "media_buy_available_action",
     "media_buy_available_action_id",
@@ -4430,7 +6693,6 @@ __all__ = [
     "media_buy_support",
     "media_buy_support_requirements",
     "media_buy_valid_action",
-    "metric_scope",
     "metric_type",
     "metro_system",
     "missing_metric",
@@ -4438,17 +6700,14 @@ __all__ = [
     "model_validator",
     "moov_atom_position",
     "motion_level",
+    "narrow_union_errors",
     "native_in_feed",
     "negative_keyword",
-    "normalize_to_release_precision",
     "notification_config",
     "notification_type",
-    "offer",
-    "offer_price",
     "offering",
     "offering_asset_constraint",
     "offering_asset_group",
-    "offering_availability_status",
     "operator_identity",
     "operator_unit",
     "opportunity_context",
@@ -4458,7 +6717,6 @@ __all__ = [
     "outcome_target",
     "outcome_target_cost_per",
     "outcome_target_cost_strength",
-    "outcome_type",
     "overlay",
     "pacing",
     "package",
@@ -4491,14 +6749,12 @@ __all__ = [
     "placement_property_delivery_metrics",
     "placement_ref",
     "placement_selection",
+    "plain_scalar",
     "planned_delivery",
     "platform_extension_ref",
     "policy_category",
-    "policy_category_definition",
     "policy_enforcement",
     "policy_entry",
-    "policy_ref",
-    "policy_violation",
     "positive_postal_area_support",
     "postal_area",
     "postal_area_support",
@@ -4516,11 +6772,11 @@ __all__ = [
     "price_guidance",
     "pricing_model",
     "pricing_option",
+    "pricing_options",
     "pricing_structure",
     "principal_changed_webhook",
     "principal_declarations",
     "principal_declarations_state",
-    "principal_kind",
     "principal_state",
     "product",
     "product_allocation",
@@ -4541,16 +6797,9 @@ __all__ = [
     "product_signal_targeting_option",
     "product_targeting_resolution",
     "production_quality",
+    "property",
     "property_delivery_metrics",
-    "property_error",
-    "property_feature",
-    "property_feature_definition",
-    "property_feature_result",
-    "property_feature_value",
     "property_id",
-    "property_list",
-    "property_list_changed_webhook",
-    "property_list_filters",
     "property_list_ref",
     "property_ref",
     "property_tag",
@@ -4562,37 +6811,29 @@ __all__ = [
     "proposal_refinement",
     "proposal_refinement_reason",
     "proposal_status",
+    "protocol",
     "protocol_envelope",
     "provenance",
     "provide_performance_feedback_request",
     "provide_performance_feedback_response",
-    "provider_context_match_response",
-    "provider_identity_match_response",
-    "provider_registration",
     "published_post_asset",
-    "publisher_identifier_types",
     "publisher_property_selector",
-    "publisher_targeting_kv_config",
-    "publisher_tmpx_config",
-    "purchase_type",
     "push_notification_config",
-    "rate_limited",
+    "re",
     "reach_aggregation",
     "reach_unit",
     "real_estate_item",
     "reference_asset",
     "reference_renderer",
+    "refine_proposals_async_response_input_required",
+    "refine_proposals_async_response_submitted",
+    "refine_proposals_async_response_working",
     "refine_proposals_request",
     "refine_proposals_response",
     "registry_event",
     "registry_feed_response",
-    "report_plan_adjustment_request",
-    "report_plan_adjustment_response",
-    "report_plan_outcome_request",
-    "report_plan_outcome_response",
     "report_usage_request",
     "report_usage_response",
-    "reported_outcome_error",
     "reporting_adjustment",
     "reporting_adjustment_receipt",
     "reporting_canonical_content_digest",
@@ -4640,11 +6881,12 @@ __all__ = [
     "representation_rejection",
     "representation_selection",
     "representation_selection_strategy",
+    "request_proposals_async_response_input_required",
+    "request_proposals_async_response_submitted",
+    "request_proposals_async_response_working",
     "request_proposals_request",
     "request_proposals_response",
-    "request_signing_error_code",
     "requirements",
-    "requote_required",
     "response",
     "response_payload_jws_envelope",
     "response_type",
@@ -4652,6 +6894,7 @@ __all__ = [
     "restricted_attribute",
     "revenue_share_option",
     "revocation_notification",
+    "rfc3339",
     "right_type",
     "right_use",
     "rights_attestation_evaluation",
@@ -4663,11 +6906,9 @@ __all__ = [
     "search_brands_request",
     "search_brands_response",
     "seller_agent_ref",
-    "seller_policy_decline_reason",
     "seller_rendered_stateful_display",
     "set_model_mocks",
     "si_capabilities",
-    "si_catalog",
     "si_context_use",
     "si_get_offering_request",
     "si_get_offering_response",
@@ -4676,7 +6917,6 @@ __all__ = [
     "si_initiate_session_response",
     "si_send_message_request",
     "si_send_message_response",
-    "si_session_status",
     "si_sponsored_context",
     "si_sponsored_context_receipt",
     "si_terminate_session_request",
@@ -4694,7 +6934,6 @@ __all__ = [
     "signal_pricing_option",
     "signal_ref",
     "signal_selection_group_rule",
-    "signal_source",
     "signal_targeting",
     "signal_targeting_expression",
     "signal_targeting_rules",
@@ -4707,29 +6946,32 @@ __all__ = [
     "special",
     "special_category",
     "specialism",
+    "sponsored_intelligence",
     "sponsored_placement",
     "sponsored_placement_type",
     "spot_reporting_capability",
-    "stale_response",
     "start_timing",
     "store_item",
-    "surface",
     "sync_accounts_request",
     "sync_accounts_response",
     "sync_agent_notification_configs_request",
     "sync_agent_notification_configs_response",
     "sync_audiences_request",
     "sync_audiences_response",
+    "sync_catalogs_async_response_input_required",
+    "sync_catalogs_async_response_submitted",
+    "sync_catalogs_async_response_working",
     "sync_catalogs_request",
     "sync_catalogs_response",
+    "sync_creatives_async_response_input_required",
+    "sync_creatives_async_response_submitted",
+    "sync_creatives_async_response_working",
     "sync_creatives_request",
     "sync_creatives_response",
     "sync_event_sources_request",
     "sync_event_sources_response",
     "sync_governance_request",
     "sync_governance_response",
-    "sync_plans_request",
-    "sync_plans_response",
     "sync_principal_request",
     "sync_principal_response",
     "sync_reporting_receipts_request",
@@ -4755,7 +6997,6 @@ __all__ = [
     "text_asset",
     "text_asset_requirements",
     "time_option",
-    "tmpx_chunk",
     "tracker_execution_actor",
     "tracker_execution_contract",
     "tracker_execution_selector",
@@ -4767,34 +7008,24 @@ __all__ = [
     "truncation_sentinel",
     "uid_type",
     "universal_macro",
-    "unsupported_refinement_dimension",
-    "update_collection_list_request",
-    "update_collection_list_response",
-    "update_content_standards_request",
-    "update_content_standards_response",
+    "unwrap_enum_value",
     "update_frequency",
+    "update_media_buy_async_response_input_required",
+    "update_media_buy_async_response_submitted",
+    "update_media_buy_async_response_working",
     "update_media_buy_request",
     "update_media_buy_response",
-    "update_property_list_request",
-    "update_property_list_response",
     "update_rights_request",
     "update_rights_response",
     "url_asset",
     "url_asset_requirements",
     "url_asset_type",
-    "user_action",
     "user_match",
     "uuid",
-    "v1_canonical_mapping",
-    "validate_content_delivery_request",
-    "validate_content_delivery_response",
     "validate_input_request",
     "validate_input_response",
     "validate_input_result",
-    "validate_property_delivery_request",
-    "validate_property_delivery_response",
     "validation_mode",
-    "validation_result",
     "vast_asset",
     "vast_asset_requirements",
     "vast_media_delivery_method",
@@ -4803,10 +7034,8 @@ __all__ = [
     "vast_tracker_constraints",
     "vast_tracking_event",
     "vast_version",
-    "vast_version_mismatch",
     "vcpm_option",
     "vehicle_item",
-    "vendor_error_codes",
     "vendor_metric_id",
     "vendor_metric_optimization",
     "vendor_metric_optimization_supported_metric",
@@ -4820,7 +7049,6 @@ __all__ = [
     "verify_brand_claims_request",
     "verify_brand_claims_response",
     "version_envelope",
-    "version_unsupported",
     "video_asset",
     "video_asset_requirements",
     "video_brief",
@@ -4852,6 +7080,18 @@ __all__ = [
 #: Words whose rows disagree about the subject -- DECLINED, never
 #: last-wins.  Each is reachable at its own domain path.
 __adcp_ambiguous__ = {
+    "AcceptProposalInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_input_required.AcceptProposalInputRequired",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_input_required.AcceptProposalInputRequired",
+    ],
+    "AcceptProposalSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_submitted.AcceptProposalSubmitted",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_submitted.AcceptProposalSubmitted",
+    ],
+    "AcceptProposalWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_working.AcceptProposalWorking",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_working.AcceptProposalWorking",
+    ],
     "AcceptedProposal": [
         "adcp.types._schemas.media_buy.get_media_buys_response.AcceptedProposal",
         "adcp.types._schemas.media_buy.media_buy_commitment_response.AcceptedProposal",
@@ -4865,6 +7105,15 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.assets.javascript_asset.Accessibility",
         "adcp.types._schemas.core.assets.zip_asset.Accessibility",
         "adcp.types._schemas.core.format.Accessibility",
+    ],
+    "Account": [
+        "adcp.types._schemas.account.sync_governance_request.Account",
+        "adcp.types._schemas.account.sync_governance_response.Account",
+        "adcp.types._schemas.compliance.comply_test_controller_request.Account",
+        "adcp.types._schemas.core.account.Account",
+        "adcp.types._schemas.core.account_with_authorization.Account",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.Account",
+        "adcp.types._schemas.sponsored_intelligence.si_sponsored_context.Account",
     ],
     "AccountingMode": [
         "adcp.types._schemas.governance.get_plan_audit_logs_response.AccountingMode",
@@ -4892,6 +7141,970 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.audience_evidence_selection.ActionBinding",
         "adcp.types._schemas.core.rights_attestation_evaluation.ActionBinding",
         "adcp.types._schemas.governance.check_governance_response.ActionBinding",
+    ],
+    "AdCPBaseModel": [
+        "adcp.types._schemas.a2ui.bound_value.AdCPBaseModel",
+        "adcp.types._schemas.a2ui.component.AdCPBaseModel",
+        "adcp.types._schemas.a2ui.si_catalog.AdCPBaseModel",
+        "adcp.types._schemas.a2ui.surface.AdCPBaseModel",
+        "adcp.types._schemas.a2ui.user_action.AdCPBaseModel",
+        "adcp.types._schemas.aao.agent_publishers.AdCPBaseModel",
+        "adcp.types._schemas.account.list_account_changes_response.AdCPBaseModel",
+        "adcp.types._schemas.account.report_usage_request.AdCPBaseModel",
+        "adcp.types._schemas.account.sync_accounts_request.AdCPBaseModel",
+        "adcp.types._schemas.account.sync_governance_request.AdCPBaseModel",
+        "adcp.types._schemas.account.sync_governance_response.AdCPBaseModel",
+        "adcp.types._schemas.adagents.AdCPBaseModel",
+        "adcp.types._schemas.brand.acquire_rights_request.AdCPBaseModel",
+        "adcp.types._schemas.brand.revocation_notification.AdCPBaseModel",
+        "adcp.types._schemas.brand.rights_pricing_option.AdCPBaseModel",
+        "adcp.types._schemas.brand.rights_terms.AdCPBaseModel",
+        "adcp.types._schemas.brand.search_brands_response.AdCPBaseModel",
+        "adcp.types._schemas.brand.verify_brand_claim_response.AdCPBaseModel",
+        "adcp.types._schemas.brand.verify_brand_claims_response.AdCPBaseModel",
+        "adcp.types._schemas.collection.base_collection_source.AdCPBaseModel",
+        "adcp.types._schemas.collection.collection_list.AdCPBaseModel",
+        "adcp.types._schemas.collection.collection_list_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.collection.collection_list_filters.AdCPBaseModel",
+        "adcp.types._schemas.collection.get_collection_list_request.AdCPBaseModel",
+        "adcp.types._schemas.collection.get_collection_list_response.AdCPBaseModel",
+        "adcp.types._schemas.compliance.comply_test_controller_request.AdCPBaseModel",
+        "adcp.types._schemas.compliance.comply_test_controller_response.AdCPBaseModel",
+        "adcp.types._schemas.compliance.get_creative_features_completion.AdCPBaseModel",
+        "adcp.types._schemas.content_standards.artifact.AdCPBaseModel",
+        "adcp.types._schemas.content_standards.artifact_webhook_payload.AdCPBaseModel",
+        "adcp.types._schemas.content_standards.content_standards.AdCPBaseModel",
+        "adcp.types._schemas.content_standards.create_content_standards_request.AdCPBaseModel",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_request.AdCPBaseModel",
+        "adcp.types._schemas.content_standards.update_content_standards_request.AdCPBaseModel",
+        "adcp.types._schemas.content_standards.validate_content_delivery_request.AdCPBaseModel",
+        "adcp.types._schemas.core.account.AdCPBaseModel",
+        "adcp.types._schemas.core.account_authorization.AdCPBaseModel",
+        "adcp.types._schemas.core.account_change.AdCPBaseModel",
+        "adcp.types._schemas.core.account_change_recorded_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.account_identity_change.AdCPBaseModel",
+        "adcp.types._schemas.core.account_identity_change_preview.AdCPBaseModel",
+        "adcp.types._schemas.core.account_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.account_status_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.account_timezone_capability.AdCPBaseModel",
+        "adcp.types._schemas.core.activation_key.AdCPBaseModel",
+        "adcp.types._schemas.core.ad_inventory_config.AdCPBaseModel",
+        "adcp.types._schemas.core.agent_encryption_key.AdCPBaseModel",
+        "adcp.types._schemas.core.agent_notification_config.AdCPBaseModel",
+        "adcp.types._schemas.core.agent_notification_config_state.AdCPBaseModel",
+        "adcp.types._schemas.core.agent_reporting_destination.AdCPBaseModel",
+        "adcp.types._schemas.core.agent_reporting_destination_state.AdCPBaseModel",
+        "adcp.types._schemas.core.agent_signing_key.AdCPBaseModel",
+        "adcp.types._schemas.core.agent_webhook_challenge.AdCPBaseModel",
+        "adcp.types._schemas.core.app_item.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.asset_union.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.audio_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.card_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.css_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.daast_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.daast_tracker_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.display_tag_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.html_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.image_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.javascript_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.markdown_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.pixel_tracker_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.published_post_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.text_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.url_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.vast_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.vast_tracker_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.video_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.webhook_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.assets.zip_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.annotations",
+        "adcp.types._schemas.core.attestation_capabilities.AdCPBaseModel",
+        "adcp.types._schemas.core.attestation_evaluation.AdCPBaseModel",
+        "adcp.types._schemas.core.attestation_issuer.AdCPBaseModel",
+        "adcp.types._schemas.core.attestation_reference.AdCPBaseModel",
+        "adcp.types._schemas.core.attestation_subject.AdCPBaseModel",
+        "adcp.types._schemas.core.attribution_window.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_activation_method.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_characteristic.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_evidence.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_evidence_pin.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_evidence_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_evidence_selection.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_member.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_selector.AdCPBaseModel",
+        "adcp.types._schemas.core.audience_source.AdCPBaseModel",
+        "adcp.types._schemas.core.authorized_agent_base.AdCPBaseModel",
+        "adcp.types._schemas.core.bidding_policy.AdCPBaseModel",
+        "adcp.types._schemas.core.bidding_policy_capability.AdCPBaseModel",
+        "adcp.types._schemas.core.brand_key.AdCPBaseModel",
+        "adcp.types._schemas.core.brand_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.brand_response_authorization_result.AdCPBaseModel",
+        "adcp.types._schemas.core.budget_allocation.AdCPBaseModel",
+        "adcp.types._schemas.core.budget_range.AdCPBaseModel",
+        "adcp.types._schemas.core.business_entity.AdCPBaseModel",
+        "adcp.types._schemas.core.cancellation_policy.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_account_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_audience_evidence.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_audience_evidence_selection.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_budget_allocation.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_delivery_forecast.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_forecast_point.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_forecast_vendor_metric_value.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_format_option.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_measurement_terms.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_media_buy_action_fields.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_media_buy_features.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_metric_qualifier.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_optimization_goal.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_performance_standard.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_placement.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_pricing_option.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_product.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_product_action.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_projection_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_projection_slot_override.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_proposal.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_reporting_capabilities.AdCPBaseModel",
+        "adcp.types._schemas.core.canonical_reporting_commitment.AdCPBaseModel",
+        "adcp.types._schemas.core.canvas_constraint.AdCPBaseModel",
+        "adcp.types._schemas.core.capabilities_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.catalog.AdCPBaseModel",
+        "adcp.types._schemas.core.catalog_field_mapping.AdCPBaseModel",
+        "adcp.types._schemas.core.catalog_item_availability_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.catalog_item_availability_state.AdCPBaseModel",
+        "adcp.types._schemas.core.catalog_item_availability_update.AdCPBaseModel",
+        "adcp.types._schemas.core.catalog_item_availability_update_result.AdCPBaseModel",
+        "adcp.types._schemas.core.catalog_item_reference_not_found_error.AdCPBaseModel",
+        "adcp.types._schemas.core.catalog_selection.AdCPBaseModel",
+        "adcp.types._schemas.core.catchment.AdCPBaseModel",
+        "adcp.types._schemas.core.collection.AdCPBaseModel",
+        "adcp.types._schemas.core.collection_distribution.AdCPBaseModel",
+        "adcp.types._schemas.core.collection_list_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.collection_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.collection_selection.AdCPBaseModel",
+        "adcp.types._schemas.core.collection_selector.AdCPBaseModel",
+        "adcp.types._schemas.core.committed_metric.AdCPBaseModel",
+        "adcp.types._schemas.core.compact_task_input_required.AdCPBaseModel",
+        "adcp.types._schemas.core.compact_task_working.AdCPBaseModel",
+        "adcp.types._schemas.core.content_rating.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_approval_scope.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_assignment.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_brief.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_consumption.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_filters.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_item.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_locale_policy.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_localization.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_localization_readback.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_manifest.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_operation_format_declaration.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_policy.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_representation.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_representation_set.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_variable.AdCPBaseModel",
+        "adcp.types._schemas.core.creative_variant.AdCPBaseModel",
+        "adcp.types._schemas.core.daast_tracker_constraints.AdCPBaseModel",
+        "adcp.types._schemas.core.data_provider_signal_selector.AdCPBaseModel",
+        "adcp.types._schemas.core.date_range.AdCPBaseModel",
+        "adcp.types._schemas.core.datetime_range.AdCPBaseModel",
+        "adcp.types._schemas.core.daypart_target.AdCPBaseModel",
+        "adcp.types._schemas.core.deadline_policy.AdCPBaseModel",
+        "adcp.types._schemas.core.delivery_breakdown_controls.AdCPBaseModel",
+        "adcp.types._schemas.core.delivery_forecast.AdCPBaseModel",
+        "adcp.types._schemas.core.delivery_metric_aggregate.AdCPBaseModel",
+        "adcp.types._schemas.core.delivery_metrics.AdCPBaseModel",
+        "adcp.types._schemas.core.delivery_provider.AdCPBaseModel",
+        "adcp.types._schemas.core.delivery_recipient.AdCPBaseModel",
+        "adcp.types._schemas.core.demographic_age_range.AdCPBaseModel",
+        "adcp.types._schemas.core.demographic_predicate.AdCPBaseModel",
+        "adcp.types._schemas.core.demographic_reporting_capability.AdCPBaseModel",
+        "adcp.types._schemas.core.demographic_targeting_capability.AdCPBaseModel",
+        "adcp.types._schemas.core.demographic_targeting_intent.AdCPBaseModel",
+        "adcp.types._schemas.core.demographic_targeting_resolution.AdCPBaseModel",
+        "adcp.types._schemas.core.deployment.AdCPBaseModel",
+        "adcp.types._schemas.core.destination.AdCPBaseModel",
+        "adcp.types._schemas.core.destination_item.AdCPBaseModel",
+        "adcp.types._schemas.core.diagnostic_issue.AdCPBaseModel",
+        "adcp.types._schemas.core.downstream_connection_requirement.AdCPBaseModel",
+        "adcp.types._schemas.core.duration.AdCPBaseModel",
+        "adcp.types._schemas.core.education_item.AdCPBaseModel",
+        "adcp.types._schemas.core.error.AdCPBaseModel",
+        "adcp.types._schemas.core.evaluator_spec.AdCPBaseModel",
+        "adcp.types._schemas.core.event.AdCPBaseModel",
+        "adcp.types._schemas.core.event_custom_data.AdCPBaseModel",
+        "adcp.types._schemas.core.event_source_health.AdCPBaseModel",
+        "adcp.types._schemas.core.event_surface.AdCPBaseModel",
+        "adcp.types._schemas.core.feature_requirement.AdCPBaseModel",
+        "adcp.types._schemas.core.flight_item.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_dimension_audience.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_dimension_device_platform.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_dimension_device_type.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_dimension_geo.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_dimension_placement.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_dimension_signal.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_dimension_time.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_point.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_range.AdCPBaseModel",
+        "adcp.types._schemas.core.forecast_vendor_metric_value.AdCPBaseModel",
+        "adcp.types._schemas.core.format.AdCPBaseModel",
+        "adcp.types._schemas.core.format_id.AdCPBaseModel",
+        "adcp.types._schemas.core.format_option_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.frequency_cap.AdCPBaseModel",
+        "adcp.types._schemas.core.frequency_cap_constraints.AdCPBaseModel",
+        "adcp.types._schemas.core.frequency_cap_impression_constraints.AdCPBaseModel",
+        "adcp.types._schemas.core.frequency_cap_interval_constraints.AdCPBaseModel",
+        "adcp.types._schemas.core.frequency_cap_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.generation_credential.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_breakdown_support.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_metro.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_place_area.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_place_catalog_capability.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_place_catalog_entry.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_place_requirement.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_place_resolver.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_place_support.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_region_requirement.AdCPBaseModel",
+        "adcp.types._schemas.core.geo_region_support.AdCPBaseModel",
+        "adcp.types._schemas.core.get_geo_place_resolution_request.AdCPBaseModel",
+        "adcp.types._schemas.core.get_geo_place_resolution_response.AdCPBaseModel",
+        "adcp.types._schemas.core.hotel_item.AdCPBaseModel",
+        "adcp.types._schemas.core.identifier.AdCPBaseModel",
+        "adcp.types._schemas.core.impairment.AdCPBaseModel",
+        "adcp.types._schemas.core.indicator.AdCPBaseModel",
+        "adcp.types._schemas.core.indicator_bearing.AdCPBaseModel",
+        "adcp.types._schemas.core.indicator_scope.AdCPBaseModel",
+        "adcp.types._schemas.core.indicators_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.industry_identifier.AdCPBaseModel",
+        "adcp.types._schemas.core.insertion_order.AdCPBaseModel",
+        "adcp.types._schemas.core.installment.AdCPBaseModel",
+        "adcp.types._schemas.core.installment_deadlines.AdCPBaseModel",
+        "adcp.types._schemas.core.installment_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.inventory_list_application.AdCPBaseModel",
+        "adcp.types._schemas.core.job_item.AdCPBaseModel",
+        "adcp.types._schemas.core.keyword_target.AdCPBaseModel",
+        "adcp.types._schemas.core.limited_series.AdCPBaseModel",
+        "adcp.types._schemas.core.macro_declaration.AdCPBaseModel",
+        "adcp.types._schemas.core.macro_encoding.AdCPBaseModel",
+        "adcp.types._schemas.core.macro_resolution_capability.AdCPBaseModel",
+        "adcp.types._schemas.core.macro_resolution_result.AdCPBaseModel",
+        "adcp.types._schemas.core.macro_translation_target.AdCPBaseModel",
+        "adcp.types._schemas.core.material_deadline.AdCPBaseModel",
+        "adcp.types._schemas.core.mcp_webhook_payload.AdCPBaseModel",
+        "adcp.types._schemas.core.measurement_readiness.AdCPBaseModel",
+        "adcp.types._schemas.core.measurement_terms.AdCPBaseModel",
+        "adcp.types._schemas.core.measurement_window.AdCPBaseModel",
+        "adcp.types._schemas.core.media_buy.AdCPBaseModel",
+        "adcp.types._schemas.core.media_buy_available_action.AdCPBaseModel",
+        "adcp.types._schemas.core.media_buy_features.AdCPBaseModel",
+        "adcp.types._schemas.core.media_buy_support.AdCPBaseModel",
+        "adcp.types._schemas.core.media_buy_support_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.missing_metric.AdCPBaseModel",
+        "adcp.types._schemas.core.negative_keyword.AdCPBaseModel",
+        "adcp.types._schemas.core.notification_config.AdCPBaseModel",
+        "adcp.types._schemas.core.offering.AdCPBaseModel",
+        "adcp.types._schemas.core.offering_asset_group.AdCPBaseModel",
+        "adcp.types._schemas.core.operator_identity.AdCPBaseModel",
+        "adcp.types._schemas.core.operator_unit.AdCPBaseModel",
+        "adcp.types._schemas.core.opportunity_context.AdCPBaseModel",
+        "adcp.types._schemas.core.optimization_goal.AdCPBaseModel",
+        "adcp.types._schemas.core.outcome_measurement.AdCPBaseModel",
+        "adcp.types._schemas.core.outcome_target_cost_per.AdCPBaseModel",
+        "adcp.types._schemas.core.overlay.AdCPBaseModel",
+        "adcp.types._schemas.core.package.AdCPBaseModel",
+        "adcp.types._schemas.core.package_delivery_metric_value.AdCPBaseModel",
+        "adcp.types._schemas.core.package_format_snapshot.AdCPBaseModel",
+        "adcp.types._schemas.core.package_signal_targeting.AdCPBaseModel",
+        "adcp.types._schemas.core.package_signal_targeting_group.AdCPBaseModel",
+        "adcp.types._schemas.core.package_signal_targeting_groups.AdCPBaseModel",
+        "adcp.types._schemas.core.package_targeting_resolution.AdCPBaseModel",
+        "adcp.types._schemas.core.pagination_request.AdCPBaseModel",
+        "adcp.types._schemas.core.pagination_response.AdCPBaseModel",
+        "adcp.types._schemas.core.performance_feedback.AdCPBaseModel",
+        "adcp.types._schemas.core.performance_feedback_assertion.AdCPBaseModel",
+        "adcp.types._schemas.core.performance_feedback_metric.AdCPBaseModel",
+        "adcp.types._schemas.core.performance_standard.AdCPBaseModel",
+        "adcp.types._schemas.core.placement.AdCPBaseModel",
+        "adcp.types._schemas.core.placement_definition.AdCPBaseModel",
+        "adcp.types._schemas.core.placement_evidence.AdCPBaseModel",
+        "adcp.types._schemas.core.placement_identity.AdCPBaseModel",
+        "adcp.types._schemas.core.placement_presentation.AdCPBaseModel",
+        "adcp.types._schemas.core.placement_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.placement_selection.AdCPBaseModel",
+        "adcp.types._schemas.core.planned_delivery.AdCPBaseModel",
+        "adcp.types._schemas.core.platform_extension_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.postal_area.AdCPBaseModel",
+        "adcp.types._schemas.core.postal_area_support.AdCPBaseModel",
+        "adcp.types._schemas.core.postal_country_system.AdCPBaseModel",
+        "adcp.types._schemas.core.presentation_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.preview_provider.AdCPBaseModel",
+        "adcp.types._schemas.core.preview_renderer_metadata.AdCPBaseModel",
+        "adcp.types._schemas.core.price.AdCPBaseModel",
+        "adcp.types._schemas.core.principal_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.principal_declarations.AdCPBaseModel",
+        "adcp.types._schemas.core.principal_declarations_state.AdCPBaseModel",
+        "adcp.types._schemas.core.principal_state.AdCPBaseModel",
+        "adcp.types._schemas.core.product.AdCPBaseModel",
+        "adcp.types._schemas.core.product_allocation.AdCPBaseModel",
+        "adcp.types._schemas.core.product_allowed_action.AdCPBaseModel",
+        "adcp.types._schemas.core.product_audience_evidence_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.product_card_reference_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.product_execution_requirement.AdCPBaseModel",
+        "adcp.types._schemas.core.product_filters.AdCPBaseModel",
+        "adcp.types._schemas.core.product_format_declaration.AdCPBaseModel",
+        "adcp.types._schemas.core.product_identity.AdCPBaseModel",
+        "adcp.types._schemas.core.product_offer_filters.AdCPBaseModel",
+        "adcp.types._schemas.core.product_targeting_resolution.AdCPBaseModel",
+        "adcp.types._schemas.core.property.AdCPBaseModel",
+        "adcp.types._schemas.core.property_list_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.property_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.proposal.AdCPBaseModel",
+        "adcp.types._schemas.core.protocol_envelope.AdCPBaseModel",
+        "adcp.types._schemas.core.provenance.AdCPBaseModel",
+        "adcp.types._schemas.core.publisher_property_selector.AdCPBaseModel",
+        "adcp.types._schemas.core.push_notification_config.AdCPBaseModel",
+        "adcp.types._schemas.core.real_estate_item.AdCPBaseModel",
+        "adcp.types._schemas.core.reference_asset.AdCPBaseModel",
+        "adcp.types._schemas.core.reference_renderer.AdCPBaseModel",
+        "adcp.types._schemas.core.registry_event.AdCPBaseModel",
+        "adcp.types._schemas.core.registry_feed_response.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_adjustment.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_adjustment_receipt.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_canonical_content_digest.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_canonicalization_contract.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_capabilities.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_consumer_status.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_control_total.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_coverage.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_dataset_share_destination.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_delivery_capabilities.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_delivery_config.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_delivery_config_state.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_delivery_method.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_delivery_offering.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_delivery_ready_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_file_entry.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_file_manifest.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_ledger_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_materialization.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_obligation.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_receipt.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_reliability_statistics.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_report_definition.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_resource.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_revision.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_schedule.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_schedule_offering.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_status_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_status_issue.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_verification.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_webhook.AdCPBaseModel",
+        "adcp.types._schemas.core.reporting_write_destination.AdCPBaseModel",
+        "adcp.types._schemas.core.representation_destination.AdCPBaseModel",
+        "adcp.types._schemas.core.representation_rejection.AdCPBaseModel",
+        "adcp.types._schemas.core.representation_selection.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.audio_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.catalog_field_binding.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.catalog_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.css_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.daast_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.html_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.image_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.javascript_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.markdown_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.offering_asset_constraint.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.text_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.url_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.vast_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.video_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.requirements.webhook_asset_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.response.AdCPBaseModel",
+        "adcp.types._schemas.core.response_payload_jws_envelope.AdCPBaseModel",
+        "adcp.types._schemas.core.rights_attestation_evaluation.AdCPBaseModel",
+        "adcp.types._schemas.core.rights_constraint.AdCPBaseModel",
+        "adcp.types._schemas.core.seller_agent_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_coverage_forecast.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_definition.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_definition_enrichment.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_filters.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_id.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_listing.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_modeling_disclosure.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_pricing.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_ref.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_selection_group_rule.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_targeting.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_targeting_expression.AdCPBaseModel",
+        "adcp.types._schemas.core.signal_targeting_rules.AdCPBaseModel",
+        "adcp.types._schemas.core.sla_window.AdCPBaseModel",
+        "adcp.types._schemas.core.special.AdCPBaseModel",
+        "adcp.types._schemas.core.spot_reporting_capability.AdCPBaseModel",
+        "adcp.types._schemas.core.store_item.AdCPBaseModel",
+        "adcp.types._schemas.core.talent.AdCPBaseModel",
+        "adcp.types._schemas.core.targeting.AdCPBaseModel",
+        "adcp.types._schemas.core.targeting_input.AdCPBaseModel",
+        "adcp.types._schemas.core.targeting_modification.AdCPBaseModel",
+        "adcp.types._schemas.core.targeting_overlay_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.targeting_overlay_support.AdCPBaseModel",
+        "adcp.types._schemas.core.tasks_get_response.AdCPBaseModel",
+        "adcp.types._schemas.core.tasks_list_request.AdCPBaseModel",
+        "adcp.types._schemas.core.tasks_list_response.AdCPBaseModel",
+        "adcp.types._schemas.core.tracker_execution_contract.AdCPBaseModel",
+        "adcp.types._schemas.core.tracker_execution_selector.AdCPBaseModel",
+        "adcp.types._schemas.core.transformer.AdCPBaseModel",
+        "adcp.types._schemas.core.transformer_param.AdCPBaseModel",
+        "adcp.types._schemas.core.truncation_sentinel.AdCPBaseModel",
+        "adcp.types._schemas.core.user_match.AdCPBaseModel",
+        "adcp.types._schemas.core.vast_media_file_requirements.AdCPBaseModel",
+        "adcp.types._schemas.core.vast_tracker_constraints.AdCPBaseModel",
+        "adcp.types._schemas.core.vehicle_item.AdCPBaseModel",
+        "adcp.types._schemas.core.vendor_metric_optimization.AdCPBaseModel",
+        "adcp.types._schemas.core.vendor_metric_optimization_supported_metric.AdCPBaseModel",
+        "adcp.types._schemas.core.vendor_metric_value.AdCPBaseModel",
+        "adcp.types._schemas.core.vendor_pricing_option.AdCPBaseModel",
+        "adcp.types._schemas.core.verification_token_claims.AdCPBaseModel",
+        "adcp.types._schemas.core.version_envelope.AdCPBaseModel",
+        "adcp.types._schemas.core.warning.AdCPBaseModel",
+        "adcp.types._schemas.core.warning_resource.AdCPBaseModel",
+        "adcp.types._schemas.core.webhook_activity_record.AdCPBaseModel",
+        "adcp.types._schemas.core.webhook_challenge.AdCPBaseModel",
+        "adcp.types._schemas.core.webhook_challenge_response.AdCPBaseModel",
+        "adcp.types._schemas.core.wholesale_feed_event.AdCPBaseModel",
+        "adcp.types._schemas.core.wholesale_feed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.creative.audit_observation.AdCPBaseModel",
+        "adcp.types._schemas.creative.creative_assignment_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.creative.creative_feature_result.AdCPBaseModel",
+        "adcp.types._schemas.creative.creative_purged_webhook.AdCPBaseModel",
+        "adcp.types._schemas.creative.creative_status_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.creative.get_creative_delivery_response.AdCPBaseModel",
+        "adcp.types._schemas.creative.get_creative_features_async_response_submitted.AdCPBaseModel",
+        "adcp.types._schemas.creative.get_creative_features_terminal_success.AdCPBaseModel",
+        "adcp.types._schemas.creative.list_creative_formats_response.AdCPBaseModel",
+        "adcp.types._schemas.creative.list_creatives_request.AdCPBaseModel",
+        "adcp.types._schemas.creative.list_creatives_response.AdCPBaseModel",
+        "adcp.types._schemas.creative.list_transformers_request.AdCPBaseModel",
+        "adcp.types._schemas.creative.preview_creative_request.AdCPBaseModel",
+        "adcp.types._schemas.creative.preview_render.AdCPBaseModel",
+        "adcp.types._schemas.creative.sync_creatives_async_response_input_required.AdCPBaseModel",
+        "adcp.types._schemas.creative.sync_creatives_async_response_submitted.AdCPBaseModel",
+        "adcp.types._schemas.creative.sync_creatives_async_response_working.AdCPBaseModel",
+        "adcp.types._schemas.creative.sync_creatives_request.AdCPBaseModel",
+        "adcp.types._schemas.creative.validate_input_request.AdCPBaseModel",
+        "adcp.types._schemas.creative.validate_input_result.AdCPBaseModel",
+        "adcp.types._schemas.creative.video_brief.AdCPBaseModel",
+        "adcp.types._schemas.error_details.accessibility_violation.AdCPBaseModel",
+        "adcp.types._schemas.error_details.account_moved.AdCPBaseModel",
+        "adcp.types._schemas.error_details.account_setup_required.AdCPBaseModel",
+        "adcp.types._schemas.error_details.action_not_allowed.AdCPBaseModel",
+        "adcp.types._schemas.error_details.agent_permission_denied.AdCPBaseModel",
+        "adcp.types._schemas.error_details.audience_too_small.AdCPBaseModel",
+        "adcp.types._schemas.error_details.authorization_required.AdCPBaseModel",
+        "adcp.types._schemas.error_details.billing_not_permitted_for_agent.AdCPBaseModel",
+        "adcp.types._schemas.error_details.billing_not_supported.AdCPBaseModel",
+        "adcp.types._schemas.error_details.budget_too_low.AdCPBaseModel",
+        "adcp.types._schemas.error_details.conflict.AdCPBaseModel",
+        "adcp.types._schemas.error_details.creative_rejected.AdCPBaseModel",
+        "adcp.types._schemas.error_details.creative_representation_unresolved.AdCPBaseModel",
+        "adcp.types._schemas.error_details.creative_revision_content_mismatch.AdCPBaseModel",
+        "adcp.types._schemas.error_details.execution_requirement_unmet.AdCPBaseModel",
+        "adcp.types._schemas.error_details.governance_agent_not_accepted.AdCPBaseModel",
+        "adcp.types._schemas.error_details.macro_resolution_failed.AdCPBaseModel",
+        "adcp.types._schemas.error_details.policy_violation.AdCPBaseModel",
+        "adcp.types._schemas.error_details.rate_limited.AdCPBaseModel",
+        "adcp.types._schemas.error_details.requote_required.AdCPBaseModel",
+        "adcp.types._schemas.error_details.stale_response.AdCPBaseModel",
+        "adcp.types._schemas.error_details.unsupported_refinement_dimension.AdCPBaseModel",
+        "adcp.types._schemas.error_details.vast_version_mismatch.AdCPBaseModel",
+        "adcp.types._schemas.error_details.vendor_error_codes.AdCPBaseModel",
+        "adcp.types._schemas.extensions.extension_meta.AdCPBaseModel",
+        "adcp.types._schemas.formats.canonical._base.AdCPBaseModel",
+        "adcp.types._schemas.formats.canonical.coordinated_placements.AdCPBaseModel",
+        "adcp.types._schemas.formats.canonical.display_tag.AdCPBaseModel",
+        "adcp.types._schemas.formats.canonical.html5.AdCPBaseModel",
+        "adcp.types._schemas.formats.canonical.image.AdCPBaseModel",
+        "adcp.types._schemas.formats.canonical.native_in_feed.AdCPBaseModel",
+        "adcp.types._schemas.formats.canonical.seller_rendered_stateful_display.AdCPBaseModel",
+        "adcp.types._schemas.governance.accepted_governance_agents.AdCPBaseModel",
+        "adcp.types._schemas.governance.attribute_definition.AdCPBaseModel",
+        "adcp.types._schemas.governance.audience_constraints.AdCPBaseModel",
+        "adcp.types._schemas.governance.check_governance_request.AdCPBaseModel",
+        "adcp.types._schemas.governance.check_governance_response.AdCPBaseModel",
+        "adcp.types._schemas.governance.get_plan_audit_logs_response.AdCPBaseModel",
+        "adcp.types._schemas.governance.policy_category_definition.AdCPBaseModel",
+        "adcp.types._schemas.governance.policy_entry.AdCPBaseModel",
+        "adcp.types._schemas.governance.policy_ref.AdCPBaseModel",
+        "adcp.types._schemas.governance.report_plan_adjustment_request.AdCPBaseModel",
+        "adcp.types._schemas.governance.report_plan_adjustment_response.AdCPBaseModel",
+        "adcp.types._schemas.governance.report_plan_outcome_request.AdCPBaseModel",
+        "adcp.types._schemas.governance.report_plan_outcome_response.AdCPBaseModel",
+        "adcp.types._schemas.governance.reported_outcome_error.AdCPBaseModel",
+        "adcp.types._schemas.governance.sync_plans_request.AdCPBaseModel",
+        "adcp.types._schemas.governance.sync_plans_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.accept_proposal_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.acceptance_context.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.acceptance_policy_catalog.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.acceptance_policy_profile.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.acceptance_policy_profile_ref.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.acceptance_policy_requirement.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.acceptance_policy_rule.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.build_creative_async_response_input_required.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.build_creative_async_response_submitted.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.build_creative_async_response_working.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.build_creative_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.buy_products_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.change_term.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.change_term_constraints.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.commercial_terms.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.control_media_buy_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_input_required.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_submitted.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_working.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.create_media_buy_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.decline_proposals_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_media_buys_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_products_async_response_input_required.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_products_async_response_submitted.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_products_async_response_working.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_products_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_products_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_products_targeting_resolution.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.get_reporting_status_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.legacy_purchase_continuation_input.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.list_products_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.media_buy_commitment_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.media_buy_delivery_webhook_result.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.outcome_target.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.package_control.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.package_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.package_update.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.product_discovery_criteria.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.product_purchase.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.product_purchase_input.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.proposal_budget_constraint.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.proposal_decline.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.proposal_refinement.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.refine_proposals_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.request_proposals_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.sync_audiences_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_input_required.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_submitted.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_working.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.sync_event_sources_request.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.sync_reporting_receipts_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.sync_reporting_status_response.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_input_required.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_submitted.AdCPBaseModel",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_working.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.cpa_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.cpc_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.cpcv_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.cpm_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.cpp_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.cpv_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.flat_rate_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.price_breakdown.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.price_guidance.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.revenue_share_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.time_option.AdCPBaseModel",
+        "adcp.types._schemas.pricing_options.vcpm_option.AdCPBaseModel",
+        "adcp.types._schemas.property.authorization_result.AdCPBaseModel",
+        "adcp.types._schemas.property.base_property_source.AdCPBaseModel",
+        "adcp.types._schemas.property.delivery_record.AdCPBaseModel",
+        "adcp.types._schemas.property.property_error.AdCPBaseModel",
+        "adcp.types._schemas.property.property_feature.AdCPBaseModel",
+        "adcp.types._schemas.property.property_feature_definition.AdCPBaseModel",
+        "adcp.types._schemas.property.property_feature_result.AdCPBaseModel",
+        "adcp.types._schemas.property.property_feature_value.AdCPBaseModel",
+        "adcp.types._schemas.property.property_list.AdCPBaseModel",
+        "adcp.types._schemas.property.property_list_changed_webhook.AdCPBaseModel",
+        "adcp.types._schemas.property.property_list_filters.AdCPBaseModel",
+        "adcp.types._schemas.property.validate_property_delivery_response.AdCPBaseModel",
+        "adcp.types._schemas.property.validation_result.AdCPBaseModel",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.AdCPBaseModel",
+        "adcp.types._schemas.protocol.get_principal_response.AdCPBaseModel",
+        "adcp.types._schemas.protocol.sync_principal_request.AdCPBaseModel",
+        "adcp.types._schemas.protocol.sync_principal_response.AdCPBaseModel",
+        "adcp.types._schemas.registries.v1_canonical_mapping.AdCPBaseModel",
+        "adcp.types._schemas.signals.get_signals_async_response_submitted.AdCPBaseModel",
+        "adcp.types._schemas.signals.get_signals_async_response_working.AdCPBaseModel",
+        "adcp.types._schemas.signals.get_signals_response.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_capabilities.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_response.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_identity.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_response.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_request.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_response.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_sponsored_context.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_sponsored_context_receipt.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_request.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_response.AdCPBaseModel",
+        "adcp.types._schemas.sponsored_intelligence.si_ui_element.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.available_package.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.context_match_request.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.context_match_response.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.error.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.identity_match_request.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.identity_match_response.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.offer.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.offer_price.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.provider_context_match_response.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.provider_registration.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.publisher_targeting_kv_config.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.publisher_tmpx_config.AdCPBaseModel",
+        "adcp.types._schemas.trusted_match.tmpx_chunk.AdCPBaseModel",
+    ],
+    "AdCPRootModel": [
+        "adcp.types._schemas.core.acceptance_policy_profile_ids.AdCPRootModel",
+        "adcp.types._schemas.core.asset_group_vocabulary.AdCPRootModel",
+        "adcp.types._schemas.core.forecast_point_dimensions.AdCPRootModel",
+        "adcp.types._schemas.core.format_shape_vocabulary.AdCPRootModel",
+        "adcp.types._schemas.core.reporting_verification_profile_set.AdCPRootModel",
+        "adcp.types._schemas.core.targeting_unknown_age_eligibility_constraint.AdCPRootModel",
+        "adcp.types._schemas.core.targeting_verified_age_basis_constraint.AdCPRootModel",
+        "adcp.types._schemas.media_buy.product_fields.AdCPRootModel",
+        "adcp.types._schemas.media_buy.product_refinement.AdCPRootModel",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.ReportingVerificationProfileSet",
+    ],
+    "AdcpRequest": [
+        "adcp.types._schemas.account.get_account_financials_request.AdcpRequest",
+        "adcp.types._schemas.account.list_account_changes_request.AdcpRequest",
+        "adcp.types._schemas.account.list_accounts_request.AdcpRequest",
+        "adcp.types._schemas.account.report_usage_request.AdcpRequest",
+        "adcp.types._schemas.account.sync_accounts_request.AdcpRequest",
+        "adcp.types._schemas.account.sync_governance_request.AdcpRequest",
+        "adcp.types._schemas.brand.acquire_rights_request.AdcpRequest",
+        "adcp.types._schemas.brand.get_brand_identity_request.AdcpRequest",
+        "adcp.types._schemas.brand.get_rights_request.AdcpRequest",
+        "adcp.types._schemas.brand.update_rights_request.AdcpRequest",
+        "adcp.types._schemas.brand.verify_brand_claim_request.AdcpRequest",
+        "adcp.types._schemas.brand.verify_brand_claims_request.AdcpRequest",
+        "adcp.types._schemas.collection.create_collection_list_request.AdcpRequest",
+        "adcp.types._schemas.collection.delete_collection_list_request.AdcpRequest",
+        "adcp.types._schemas.collection.get_collection_list_request.AdcpRequest",
+        "adcp.types._schemas.collection.list_collection_lists_request.AdcpRequest",
+        "adcp.types._schemas.collection.update_collection_list_request.AdcpRequest",
+        "adcp.types._schemas.compliance.comply_test_controller_request.AdcpRequest",
+        "adcp.types._schemas.content_standards.calibrate_content_request.AdcpRequest",
+        "adcp.types._schemas.content_standards.create_content_standards_request.AdcpRequest",
+        "adcp.types._schemas.content_standards.get_content_standards_request.AdcpRequest",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_request.AdcpRequest",
+        "adcp.types._schemas.content_standards.list_content_standards_request.AdcpRequest",
+        "adcp.types._schemas.content_standards.update_content_standards_request.AdcpRequest",
+        "adcp.types._schemas.content_standards.validate_content_delivery_request.AdcpRequest",
+        "adcp.types._schemas.creative.get_creative_delivery_request.AdcpRequest",
+        "adcp.types._schemas.creative.get_creative_features_request.AdcpRequest",
+        "adcp.types._schemas.creative.list_creatives_request.AdcpRequest",
+        "adcp.types._schemas.creative.list_transformers_request.AdcpRequest",
+        "adcp.types._schemas.creative.preview_creative_request.AdcpRequest",
+        "adcp.types._schemas.creative.sync_creatives_request.AdcpRequest",
+        "adcp.types._schemas.creative.validate_input_request.AdcpRequest",
+        "adcp.types._schemas.governance.check_governance_request.AdcpRequest",
+        "adcp.types._schemas.governance.get_plan_audit_logs_request.AdcpRequest",
+        "adcp.types._schemas.governance.report_plan_adjustment_request.AdcpRequest",
+        "adcp.types._schemas.governance.report_plan_outcome_request.AdcpRequest",
+        "adcp.types._schemas.governance.sync_plans_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.accept_proposal_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.build_creative_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.buy_products_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.control_media_buy_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.create_media_buy_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.decline_proposals_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.get_media_buys_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.get_products_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.get_reporting_status_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.list_creative_formats_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.list_products_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.log_event_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.provide_performance_feedback_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.refine_proposals_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.request_proposals_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.sync_audiences_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.sync_catalogs_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.sync_event_sources_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.sync_reporting_receipts_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.sync_reporting_status_request.AdcpRequest",
+        "adcp.types._schemas.media_buy.update_media_buy_request.AdcpRequest",
+        "adcp.types._schemas.property.create_property_list_request.AdcpRequest",
+        "adcp.types._schemas.property.delete_property_list_request.AdcpRequest",
+        "adcp.types._schemas.property.get_property_list_request.AdcpRequest",
+        "adcp.types._schemas.property.list_property_lists_request.AdcpRequest",
+        "adcp.types._schemas.property.update_property_list_request.AdcpRequest",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_request.AdcpRequest",
+        "adcp.types._schemas.protocol.get_principal_request.AdcpRequest",
+        "adcp.types._schemas.protocol.get_task_status_request.AdcpRequest",
+        "adcp.types._schemas.protocol.list_tasks_request.AdcpRequest",
+        "adcp.types._schemas.protocol.sync_agent_notification_configs_request.AdcpRequest",
+        "adcp.types._schemas.protocol.sync_principal_request.AdcpRequest",
+        "adcp.types._schemas.signals.activate_signal_request.AdcpRequest",
+        "adcp.types._schemas.signals.get_signals_request.AdcpRequest",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_request.AdcpRequest",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_request.AdcpRequest",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_request.AdcpRequest",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_request.AdcpRequest",
+    ],
+    "AdcpResponse": [
+        "adcp.types._schemas.account.get_account_financials_response.AdcpResponse",
+        "adcp.types._schemas.account.list_account_changes_response.AdcpResponse",
+        "adcp.types._schemas.account.list_accounts_response.AdcpResponse",
+        "adcp.types._schemas.account.report_usage_response.AdcpResponse",
+        "adcp.types._schemas.account.sync_accounts_response.AdcpResponse",
+        "adcp.types._schemas.account.sync_governance_response.AdcpResponse",
+        "adcp.types._schemas.brand.acquire_rights_response.AdcpResponse",
+        "adcp.types._schemas.brand.get_brand_identity_response.AdcpResponse",
+        "adcp.types._schemas.brand.get_rights_response.AdcpResponse",
+        "adcp.types._schemas.brand.update_rights_response.AdcpResponse",
+        "adcp.types._schemas.brand.verify_brand_claim_response.AdcpResponse",
+        "adcp.types._schemas.brand.verify_brand_claims_response.AdcpResponse",
+        "adcp.types._schemas.collection.create_collection_list_response.AdcpResponse",
+        "adcp.types._schemas.collection.delete_collection_list_response.AdcpResponse",
+        "adcp.types._schemas.collection.get_collection_list_response.AdcpResponse",
+        "adcp.types._schemas.collection.list_collection_lists_response.AdcpResponse",
+        "adcp.types._schemas.collection.update_collection_list_response.AdcpResponse",
+        "adcp.types._schemas.compliance.comply_test_controller_response.AdcpResponse",
+        "adcp.types._schemas.content_standards.calibrate_content_response.AdcpResponse",
+        "adcp.types._schemas.content_standards.create_content_standards_response.AdcpResponse",
+        "adcp.types._schemas.content_standards.get_content_standards_response.AdcpResponse",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.AdcpResponse",
+        "adcp.types._schemas.content_standards.list_content_standards_response.AdcpResponse",
+        "adcp.types._schemas.content_standards.update_content_standards_response.AdcpResponse",
+        "adcp.types._schemas.content_standards.validate_content_delivery_response.AdcpResponse",
+        "adcp.types._schemas.creative.get_creative_delivery_response.AdcpResponse",
+        "adcp.types._schemas.creative.get_creative_features_response.AdcpResponse",
+        "adcp.types._schemas.creative.list_creatives_response.AdcpResponse",
+        "adcp.types._schemas.creative.list_transformers_response.AdcpResponse",
+        "adcp.types._schemas.creative.preview_creative_response.AdcpResponse",
+        "adcp.types._schemas.creative.sync_creatives_response.AdcpResponse",
+        "adcp.types._schemas.creative.validate_input_response.AdcpResponse",
+        "adcp.types._schemas.governance.check_governance_response.AdcpResponse",
+        "adcp.types._schemas.governance.get_plan_audit_logs_response.AdcpResponse",
+        "adcp.types._schemas.governance.report_plan_adjustment_response.AdcpResponse",
+        "adcp.types._schemas.governance.report_plan_outcome_response.AdcpResponse",
+        "adcp.types._schemas.governance.sync_plans_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.build_creative_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.control_media_buy_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.create_media_buy_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.decline_proposals_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.get_media_buys_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.get_products_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.get_reporting_status_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.list_creative_formats_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.list_products_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.log_event_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.provide_performance_feedback_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.refine_proposals_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.request_proposals_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.sync_audiences_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.sync_catalogs_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.sync_event_sources_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.sync_reporting_receipts_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.sync_reporting_status_response.AdcpResponse",
+        "adcp.types._schemas.media_buy.update_media_buy_response.AdcpResponse",
+        "adcp.types._schemas.property.create_property_list_response.AdcpResponse",
+        "adcp.types._schemas.property.delete_property_list_response.AdcpResponse",
+        "adcp.types._schemas.property.get_property_list_response.AdcpResponse",
+        "adcp.types._schemas.property.list_property_lists_response.AdcpResponse",
+        "adcp.types._schemas.property.update_property_list_response.AdcpResponse",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.AdcpResponse",
+        "adcp.types._schemas.protocol.get_principal_response.AdcpResponse",
+        "adcp.types._schemas.protocol.get_task_status_response.AdcpResponse",
+        "adcp.types._schemas.protocol.list_tasks_response.AdcpResponse",
+        "adcp.types._schemas.protocol.sync_agent_notification_configs_response.AdcpResponse",
+        "adcp.types._schemas.protocol.sync_principal_response.AdcpResponse",
+        "adcp.types._schemas.signals.activate_signal_response.AdcpResponse",
+        "adcp.types._schemas.signals.get_signals_response.AdcpResponse",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_response.AdcpResponse",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_response.AdcpResponse",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_response.AdcpResponse",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_response.AdcpResponse",
+    ],
+    "AdcpVersionEnvelope": [
+        "adcp.types._schemas.account.get_account_financials_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.get_account_financials_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.list_account_changes_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.list_account_changes_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.list_accounts_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.list_accounts_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.report_usage_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.report_usage_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.sync_accounts_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.sync_accounts_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.sync_governance_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.account.sync_governance_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.acquire_rights_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.acquire_rights_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.creative_approval_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.creative_approval_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.get_brand_identity_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.get_brand_identity_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.get_rights_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.get_rights_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.search_brands_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.update_rights_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.update_rights_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.verify_brand_claim_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.verify_brand_claims_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.brand.verify_brand_claims_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.create_collection_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.create_collection_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.delete_collection_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.delete_collection_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.get_collection_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.get_collection_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.list_collection_lists_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.list_collection_lists_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.update_collection_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.collection.update_collection_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.compliance.comply_test_controller_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.compliance.comply_test_controller_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.calibrate_content_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.calibrate_content_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.create_content_standards_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.create_content_standards_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.get_content_standards_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.get_content_standards_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.list_content_standards_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.list_content_standards_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.update_content_standards_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.update_content_standards_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.validate_content_delivery_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.content_standards.validate_content_delivery_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.core.compact_task_submitted.AdCPVersionEnvelope",
+        "adcp.types._schemas.core.tasks_get_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.core.tasks_get_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.core.tasks_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.core.tasks_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.core.version_envelope.AdcpVersionEnvelope",
+        "adcp.types._schemas.creative.get_creative_delivery_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.get_creative_delivery_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.get_creative_features_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.get_creative_features_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.list_creative_formats_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.list_creative_formats_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.list_creatives_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.list_creatives_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.list_transformers_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.list_transformers_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.preview_creative_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.preview_creative_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.sync_creatives_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.sync_creatives_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.creative.validate_input_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.error_details.version_unsupported.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.check_governance_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.check_governance_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.get_plan_audit_logs_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.get_plan_audit_logs_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.report_plan_adjustment_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.report_plan_adjustment_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.report_plan_outcome_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.report_plan_outcome_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.sync_plans_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.governance.sync_plans_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.accept_proposal_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.build_creative_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.build_creative_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.buy_products_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.control_media_buy_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.create_media_buy_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.create_media_buy_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.decline_proposals_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_media_buys_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_media_buys_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_products_rejected.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_products_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_products_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_reporting_status_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.get_reporting_status_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.list_creative_formats_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.list_creative_formats_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.list_products_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.log_event_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.log_event_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.package_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.provide_performance_feedback_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.provide_performance_feedback_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.refine_proposals_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.request_proposals_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_audiences_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_audiences_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_catalogs_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_catalogs_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_event_sources_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_event_sources_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_reporting_receipts_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_reporting_receipts_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_reporting_status_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.sync_reporting_status_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.update_media_buy_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.media_buy.update_media_buy_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.create_property_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.create_property_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.delete_property_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.delete_property_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.get_property_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.get_property_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.list_property_lists_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.list_property_lists_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.update_property_list_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.update_property_list_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.validate_property_delivery_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.property.validate_property_delivery_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.get_principal_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.get_principal_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.get_task_status_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.get_task_status_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.list_tasks_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.list_tasks_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.sync_agent_notification_configs_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.sync_agent_notification_configs_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.sync_principal_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.protocol.sync_principal_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.signals.activate_signal_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.signals.activate_signal_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.signals.get_signals_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.signals.get_signals_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_request.AdCPVersionEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.trusted_match.context_match_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.trusted_match.identity_match_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.trusted_match.provider_context_match_response.AdCPVersionEnvelope",
+        "adcp.types._schemas.trusted_match.provider_identity_match_response.AdCPVersionEnvelope",
     ],
     "Address": [
         "adcp.types._schemas.core.business_entity.Address",
@@ -5688,7 +8901,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.trusted_match.publisher_targeting_kv_config.Annotated",
         "adcp.types._schemas.trusted_match.publisher_tmpx_config.Annotated",
         "adcp.types._schemas.trusted_match.tmpx_chunk.Annotated",
-        "typing.Annotated",
     ],
     "Any": [
         "adcp.types._schemas.a2ui.component.Any",
@@ -5763,7 +8975,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.sponsored_intelligence.si_terminate_session_response.Any",
         "adcp.types._schemas.sponsored_intelligence.si_ui_element.Any",
         "adcp.types._schemas.trusted_match.identity_match_request.Any",
-        "typing.Any",
     ],
     "Area": [
         "adcp.types._schemas.core.account_identity_change_preview.Area",
@@ -5772,6 +8983,12 @@ __adcp_ambiguous__ = {
     "Art9Basis": [
         "adcp.types._schemas.core.signal_definition.Art9Basis",
         "adcp.types._schemas.core.signal_definition_enrichment.Art9Basis",
+    ],
+    "Artifact": [
+        "adcp.types._schemas.content_standards.artifact.Artifact",
+        "adcp.types._schemas.content_standards.artifact_webhook_payload.ArtifactsItem",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.Artifact",
+        "adcp.types._schemas.core.creative_variant.Artifact",
     ],
     "AssetSource": [
         "adcp.types._schemas.core.canonical_projection_ref.AssetSource",
@@ -5784,10 +9001,59 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.formats.canonical._base.AssetType",
         "adcp.types._schemas.formats.canonical.coordinated_placements.AssetType",
     ],
+    "AttestationEvaluation": [
+        "adcp.types._schemas.core.attestation_evaluation.AttestationEvaluation",
+        "adcp.types._schemas.core.audience_evidence_selection.AttestationEvaluationsItem",
+        "adcp.types._schemas.core.rights_attestation_evaluation.AttestationEvaluation",
+        "adcp.types._schemas.governance.check_governance_response.AttestationEvaluation",
+    ],
+    "AttestationReference": [
+        "adcp.types._schemas.core.attestation_reference.AttestationReference",
+        "adcp.types._schemas.core.audience_evidence.AttestationReference",
+        "adcp.types._schemas.core.rights_attestation_evaluation.AttestationReference",
+        "adcp.types._schemas.core.rights_constraint.AttestationReference",
+        "adcp.types._schemas.governance.check_governance_request.AttestationReference",
+    ],
+    "AttributionWindow": [
+        "adcp.types._schemas.core.attribution_window.AttributionWindow",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.AttributionWindow",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.AttributionWindow",
+    ],
+    "Audience": [
+        "adcp.types._schemas.core.signal_modeling_disclosure.Audience",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.Audience",
+        "adcp.types._schemas.media_buy.sync_audiences_request.Audience",
+    ],
+    "AudienceEvidence": [
+        "adcp.types._schemas.core.audience_evidence.AudienceEvidence",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.AudienceEvidence",
+    ],
+    "AudienceSource": [
+        "adcp.types._schemas.core.audience_source.AudienceSource",
+        "adcp.types._schemas.enums.audience_source.AudienceSource",
+    ],
+    "AudioAsset": [
+        "adcp.types._schemas.core.assets.asset_union.AudioAsset",
+        "adcp.types._schemas.core.assets.audio_asset.AudioAsset",
+    ],
     "AudioCodec": [
         "adcp.types._schemas.core.requirements.video_asset_requirements.AudioCodec",
         "adcp.types._schemas.formats.canonical.audio_hosted.AudioCodec",
         "adcp.types._schemas.formats.canonical.video_hosted.AudioCodec",
+    ],
+    "Authentication": [
+        "adcp.types._schemas.account.sync_governance_request.Authentication",
+        "adcp.types._schemas.core.agent_notification_config.Authentication",
+        "adcp.types._schemas.core.agent_notification_config_state.Authentication",
+        "adcp.types._schemas.core.attestation_capabilities.Authentication",
+        "adcp.types._schemas.core.notification_config.Authentication",
+        "adcp.types._schemas.core.push_notification_config.Authentication",
+        "adcp.types._schemas.core.reporting_webhook.Authentication",
+        "adcp.types._schemas.media_buy.create_media_buy_request.Authentication",
+    ],
+    "AuthorizedAgentBaseFields": [
+        "adcp.types._schemas.adagents.AuthorizedAgentBaseFields",
+        "adcp.types._schemas.core.authorized_agent_base.AuthorizedAgentBaseFields",
     ],
     "Availability": [
         "adcp.types._schemas.core.catalog_item_availability_state.Availability",
@@ -5802,11 +9068,63 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.canonical_measurement_terms.BillingMeasurement",
         "adcp.types._schemas.core.measurement_terms.BillingMeasurement",
     ],
+    "BrandContext": [
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.BrandContext",
+        "adcp.types._schemas.content_standards.validate_content_delivery_request.ObjBrandIdSkuId",
+    ],
+    "BriefAsset": [
+        "adcp.types._schemas.core.assets.asset_union.BriefAsset",
+        "adcp.types._schemas.core.assets.brief_asset.BriefAsset",
+    ],
+    "Budget": [
+        "adcp.types._schemas.governance.get_plan_audit_logs_response.Budget",
+        "adcp.types._schemas.governance.sync_plans_request.BudgetReallocationThreshold",
+    ],
+    "BudgetRange": [
+        "adcp.types._schemas.core.budget_range.BudgetRange",
+        "adcp.types._schemas.core.product_filters.BudgetRange",
+    ],
+    "BuildCreativeInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.BuildCreativeInputRequired",
+        "adcp.types._schemas.media_buy.build_creative_async_response_input_required.BuildCreativeInputRequired",
+    ],
+    "BuildCreativeSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.BuildCreativeSubmitted",
+        "adcp.types._schemas.media_buy.build_creative_async_response_submitted.BuildCreativeSubmitted",
+    ],
+    "BuildCreativeWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.BuildCreativeWorking",
+        "adcp.types._schemas.media_buy.build_creative_async_response_working.BuildCreativeWorking",
+    ],
+    "BuyProductsInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_input_required.BuyProductsInputRequired",
+        "adcp.types._schemas.media_buy.buy_products_async_response_input_required.BuyProductsInputRequired",
+    ],
+    "BuyProductsSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_submitted.BuyProductsSubmitted",
+        "adcp.types._schemas.media_buy.buy_products_async_response_submitted.BuyProductsSubmitted",
+    ],
+    "BuyProductsWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_working.BuyProductsWorking",
+        "adcp.types._schemas.media_buy.buy_products_async_response_working.BuyProductsWorking",
+    ],
+    "BuyerAgent": [
+        "adcp.types._schemas.core.audience_activation_method.BuyerAgent",
+        "adcp.types._schemas.core.product_filters.ObjAgentUrl",
+    ],
     "BuyerAssetAcceptance": [
         "adcp.types._schemas.formats.canonical.audio_hosted.BuyerAssetAcceptance",
         "adcp.types._schemas.formats.canonical.image.BuyerAssetAcceptance",
         "adcp.types._schemas.formats.canonical.native_in_feed.BuyerAssetAcceptance",
         "adcp.types._schemas.formats.canonical.video_hosted.BuyerAssetAcceptance",
+    ],
+    "BuyingMode": [
+        "adcp.types._schemas.media_buy.get_products_request.BuyingMode",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.BuyingMode",
+    ],
+    "ByPackageItem": [
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.ByPackageItem",
+        "adcp.types._schemas.media_buy.media_buy_delivery_webhook_result.ByPackageItem",
     ],
     "CacheScope": [
         "adcp.types._schemas.core.wholesale_feed_webhook.CacheScope",
@@ -5819,9 +9137,59 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.content_standards.create_content_standards_request.CalibrationExemplars",
         "adcp.types._schemas.content_standards.update_content_standards_request.CalibrationExemplars",
     ],
+    "Cancellation": [
+        "adcp.types._schemas.core.media_buy.Cancellation",
+        "adcp.types._schemas.core.package.Cancellation",
+        "adcp.types._schemas.media_buy.get_media_buys_response.ObjCanceledAtCanceledByReason",
+    ],
+    "CanonicalFormatBase": [
+        "adcp.types._schemas.formats.canonical._base.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.agent_placement.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.audio_daast.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.audio_hosted.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.audio_vast.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.coordinated_placements.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.display_tag.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.html5.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.image.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.image_carousel.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.native_in_feed.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.responsive_creative.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.seller_rendered_stateful_display.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.sponsored_placement.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.video_hosted.CanonicalFormatBase",
+        "adcp.types._schemas.formats.canonical.video_vast.CanonicalFormatBase",
+    ],
+    "CanonicalMediaBuyActionFields": [
+        "adcp.types._schemas.core.canonical_media_buy_action.CanonicalMediaBuyActionFields",
+        "adcp.types._schemas.core.canonical_media_buy_action_fields.CanonicalMediaBuyActionFields",
+    ],
+    "CanonicalProposal": [
+        "adcp.types._schemas.core.canonical_proposal.CanonicalProposal",
+        "adcp.types._schemas.media_buy.get_media_buys_response.CanonicalProposal",
+        "adcp.types._schemas.media_buy.media_buy_commitment_response.CanonicalProposal",
+        "adcp.types._schemas.media_buy.request_proposals_response.CanonicalProposal",
+    ],
+    "CardAsset": [
+        "adcp.types._schemas.core.assets.asset_union.CardAsset",
+        "adcp.types._schemas.core.assets.card_asset.CardAsset",
+    ],
+    "Catalog": [
+        "adcp.types._schemas.core.assets.catalog_asset.Catalog",
+        "adcp.types._schemas.core.catalog.Catalog",
+        "adcp.types._schemas.media_buy.sync_catalogs_response.Catalog",
+    ],
+    "CatalogAsset": [
+        "adcp.types._schemas.core.assets.asset_union.CatalogAsset",
+        "adcp.types._schemas.core.assets.catalog_asset.CatalogAsset",
+    ],
     "CatalogMatch": [
         "adcp.types._schemas.core.canonical_product.CatalogMatch",
         "adcp.types._schemas.core.product.CatalogMatch",
+    ],
+    "Category": [
+        "adcp.types._schemas.core.event_surface.Category",
+        "adcp.types._schemas.governance.sync_plans_response.Category",
     ],
     "ChangeKind": [
         "adcp.types._schemas.core.indicators_changed_webhook.ChangeKind",
@@ -5841,6 +9209,17 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.brand.verify_brand_claim_response.ClaimType",
         "adcp.types._schemas.brand.verify_brand_claims_response.ClaimType",
     ],
+    "Code": [
+        "adcp.types._schemas.core.reporting_status_issue.Code",
+        "adcp.types._schemas.core.representation_rejection.Code",
+        "adcp.types._schemas.media_buy.media_buy_commitment_response.Code",
+        "adcp.types._schemas.property.property_error.Code",
+        "adcp.types._schemas.trusted_match.error.Code",
+    ],
+    "Collection": [
+        "adcp.types._schemas.collection.get_collection_list_response.CollectionsItem",
+        "adcp.types._schemas.core.collection.Collection",
+    ],
     "ColorSpace": [
         "adcp.types._schemas.core.assets.video_asset.ColorSpace",
         "adcp.types._schemas.core.requirements.image_asset_requirements.ColorSpace",
@@ -5848,6 +9227,56 @@ __adcp_ambiguous__ = {
     "Colors": [
         "adcp.types._schemas.brand.get_brand_identity_response.Colors",
         "adcp.types._schemas.core.brand_ref.Colors",
+    ],
+    "CompactTaskInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_input_required.AcceptProposalInputRequired",
+        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_input_required.BuyProductsInputRequired",
+        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_input_required.ControlMediaBuyInputRequired",
+        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_input_required.DeclineProposalsInputRequired",
+        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_input_required.RefineProposalsInputRequired",
+        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_input_required.RequestProposalsInputRequired",
+        "adcp.types._schemas.core.compact_task_input_required.CompactTaskInputRequired",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_input_required.CompactTaskInputRequired",
+        "adcp.types._schemas.media_buy.buy_products_async_response_input_required.CompactTaskInputRequired",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_input_required.CompactTaskInputRequired",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_input_required.CompactTaskInputRequired",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_input_required.CompactTaskInputRequired",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_input_required.CompactTaskInputRequired",
+    ],
+    "CompactTaskSubmitted": [
+        "adcp.types._schemas.core.compact_task_submitted.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_submitted.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.buy_products_async_response_submitted.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_submitted.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_submitted.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.decline_proposals_response.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_submitted.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.refine_proposals_response.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_submitted.CompactTaskSubmitted",
+        "adcp.types._schemas.media_buy.request_proposals_response.CompactTaskSubmitted",
+    ],
+    "CompactTaskWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_working.AcceptProposalWorking",
+        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_working.BuyProductsWorking",
+        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_working.ControlMediaBuyWorking",
+        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_working.DeclineProposalsWorking",
+        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_working.RefineProposalsWorking",
+        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_working.RequestProposalsWorking",
+        "adcp.types._schemas.core.compact_task_working.CompactTaskWorking",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_working.CompactTaskWorking",
+        "adcp.types._schemas.media_buy.buy_products_async_response_working.CompactTaskWorking",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_working.CompactTaskWorking",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_working.CompactTaskWorking",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_working.CompactTaskWorking",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_working.CompactTaskWorking",
+    ],
+    "Components": [
+        "adcp.types._schemas.formats.canonical.coordinated_placements.Components",
+        "adcp.types._schemas.sponsored_intelligence.si_capabilities.Components",
+    ],
+    "Condition": [
+        "adcp.types._schemas.core.vehicle_item.Condition",
+        "adcp.types._schemas.governance.check_governance_response.Condition",
     ],
     "ConfigDict": [
         "adcp.types._schemas.a2ui.bound_value.ConfigDict",
@@ -6570,11 +9999,35 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.trusted_match.publisher_targeting_kv_config.ConfigDict",
         "adcp.types._schemas.trusted_match.publisher_tmpx_config.ConfigDict",
         "adcp.types._schemas.trusted_match.tmpx_chunk.ConfigDict",
-        "pydantic.config.ConfigDict",
+    ],
+    "Contact": [
+        "adcp.types._schemas.adagents.Contact",
+        "adcp.types._schemas.core.business_entity.Contact",
+    ],
+    "ContentStandards": [
+        "adcp.types._schemas.content_standards.content_standards.ContentStandards",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.ContentStandards",
+    ],
+    "ControlMediaBuyInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_input_required.ControlMediaBuyInputRequired",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_input_required.ControlMediaBuyInputRequired",
+    ],
+    "ControlMediaBuySubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_submitted.ControlMediaBuySubmitted",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_submitted.ControlMediaBuySubmitted",
+    ],
+    "ControlMediaBuyWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_working.ControlMediaBuyWorking",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_working.ControlMediaBuyWorking",
     ],
     "ConversionTracking": [
         "adcp.types._schemas.core.product.ConversionTracking",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.ConversionTracking",
+    ],
+    "Countries": [
+        "adcp.types._schemas.core.geo_region_requirement.ObjAllValues",
+        "adcp.types._schemas.core.geo_region_support.Countries",
+        "adcp.types._schemas.core.registry_event.Countries",
     ],
     "Country": [
         "adcp.types._schemas.core.postal_area.Country",
@@ -6588,9 +10041,41 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.forecast_point.CoverageRate",
         "adcp.types._schemas.core.signal_coverage_forecast.CoverageRate",
     ],
+    "CreateMediaBuyInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.CreateMediaBuyInputRequired",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_input_required.CreateMediaBuyInputRequired",
+    ],
+    "CreateMediaBuySubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.CreateMediaBuySubmitted",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_submitted.CreateMediaBuySubmitted",
+    ],
+    "CreateMediaBuyWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.CreateMediaBuyWorking",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_working.CreateMediaBuyWorking",
+    ],
+    "Creative": [
+        "adcp.types._schemas.creative.get_creative_delivery_response.Creative",
+        "adcp.types._schemas.creative.list_creatives_response.Creative",
+        "adcp.types._schemas.creative.sync_creatives_response.Creative",
+        "adcp.types._schemas.media_buy.build_creative_response.Creative",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.DeliveryBreakdownControls",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.Creative",
+    ],
+    "CreativeAgent": [
+        "adcp.types._schemas.creative.list_creative_formats_response.CreativeAgent",
+        "adcp.types._schemas.media_buy.list_creative_formats_response.CreativeAgentsItem",
+    ],
+    "CreativeBrief": [
+        "adcp.types._schemas.core.assets.brief_asset.CreativeBrief",
+        "adcp.types._schemas.core.creative_brief.CreativeBrief",
+    ],
     "CreditLimit": [
         "adcp.types._schemas.account.sync_accounts_response.CreditLimit",
         "adcp.types._schemas.core.account.CreditLimit",
+    ],
+    "DaastTrackerConstraints": [
+        "adcp.types._schemas.core.daast_tracker_constraints.DaastTrackerConstraints",
+        "adcp.types._schemas.core.tracker_execution_selector.DAASTTrackerConstraints",
     ],
     "DataSubjectRights": [
         "adcp.types._schemas.core.signal_definition.DataSubjectRights",
@@ -6608,9 +10093,47 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.provenance.DeclaredBy",
         "adcp.types._schemas.sponsored_intelligence.si_sponsored_context.DeclaredBy",
     ],
+    "DeclineProposalsInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_input_required.DeclineProposalsInputRequired",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_input_required.DeclineProposalsInputRequired",
+    ],
+    "DeclineProposalsSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_submitted.DeclineProposalsSubmitted",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_submitted.DeclineProposalsSubmitted",
+    ],
+    "DeclineProposalsWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_working.DeclineProposalsWorking",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_working.DeclineProposalsWorking",
+    ],
+    "DelegationType": [
+        "adcp.types._schemas.adagents.DelegationType",
+        "adcp.types._schemas.core.registry_event.DelegationType",
+    ],
     "Delivery": [
         "adcp.types._schemas.governance.get_plan_audit_logs_response.Delivery",
         "adcp.types._schemas.governance.report_plan_outcome_request.Delivery",
+    ],
+    "DeliveryAuth": [
+        "adcp.types._schemas.core.agent_webhook_challenge.DeliveryAuth",
+        "adcp.types._schemas.core.webhook_challenge.ObjModeCredentialFingerprint",
+    ],
+    "DeliveryMetrics": [
+        "adcp.types._schemas.core.catalog_item_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.collection_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.collection_property_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.creative_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.creative_variant.DeliveryMetrics",
+        "adcp.types._schemas.core.delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.geo_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.installment_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.installment_property_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.keyword_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.placement_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.placement_property_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.core.property_delivery_metrics.DeliveryMetrics",
+        "adcp.types._schemas.governance.check_governance_request.CheckGovernanceRequestDeliveryMetrics",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.DeliveryMetrics",
+        "adcp.types._schemas.media_buy.media_buy_delivery_webhook_result.DeliveryMetrics",
     ],
     "DeliveryReconciliationStatus": [
         "adcp.types._schemas.governance.get_plan_audit_logs_response.DeliveryReconciliationStatus",
@@ -6620,14 +10143,40 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.governance.check_governance_response.DeliveryStatement",
         "adcp.types._schemas.governance.get_plan_audit_logs_response.DeliveryStatement",
     ],
+    "DemographicAgeRange": [
+        "adcp.types._schemas.core.demographic_age_range.DemographicAgeRange",
+        "adcp.types._schemas.core.demographic_targeting_intent.DemographicAgeRange",
+    ],
     "Demographics": [
         "adcp.types._schemas.core.targeting_overlay_requirements.Demographics",
         "adcp.types._schemas.core.targeting_overlay_support.Demographics",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.Demographics",
     ],
+    "Destination": [
+        "adcp.types._schemas.core.destination.Destination",
+        "adcp.types._schemas.core.flight_item.FlightItemDestination",
+    ],
     "Details": [
         "adcp.types._schemas.core.tasks_get_response.Details",
         "adcp.types._schemas.creative.audit_observation.Details",
+    ],
+    "DevicePlatform": [
+        "adcp.types._schemas.enums.device_platform.DevicePlatform",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.ReportingDimensionsDevicePlatform",
+    ],
+    "DeviceType": [
+        "adcp.types._schemas.enums.device_type.DeviceType",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.ReportingDimensionsDeviceType",
+    ],
+    "Dimensions": [
+        "adcp.types._schemas.core.format.Dimensions",
+        "adcp.types._schemas.creative.preview_render.Dimensions",
+        "adcp.types._schemas.registries.v1_canonical_mapping.Dimensions",
+    ],
+    "Direction": [
+        "adcp.types._schemas.core.audience_activation_method.Direction",
+        "adcp.types._schemas.core.evaluator_spec.Direction",
+        "adcp.types._schemas.formats.canonical.seller_rendered_stateful_display.Direction",
     ],
     "Disclosure": [
         "adcp.types._schemas.brand.acquire_rights_response.Disclosure",
@@ -6638,9 +10187,28 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.DiscoveryMode",
         "adcp.types._schemas.signals.get_signals_request.DiscoveryMode",
     ],
+    "DisplayTagAsset": [
+        "adcp.types._schemas.core.assets.asset_union.DisplayTagAsset",
+        "adcp.types._schemas.core.assets.display_tag_asset.DisplayTagAsset",
+    ],
+    "DownstreamConnectionRequirement": [
+        "adcp.types._schemas.core.downstream_connection_requirement.DownstreamConnectionRequirement",
+        "adcp.types._schemas.core.product_execution_requirement.DownstreamConnectionRequirement",
+    ],
+    "Duration": [
+        "adcp.types._schemas.core.audience_evidence_requirements.Duration",
+        "adcp.types._schemas.core.duration.Duration",
+        "adcp.types._schemas.core.product_audience_evidence_requirements.Duration",
+    ],
     "EntityType": [
         "adcp.types._schemas.core.registry_event.EntityType",
         "adcp.types._schemas.core.wholesale_feed_event.EntityType",
+    ],
+    "Error": [
+        "adcp.types._schemas.core.catalog_item_availability_error.Error",
+        "adcp.types._schemas.core.error.Error",
+        "adcp.types._schemas.core.tasks_get_response.ObjCodeMessageDetails",
+        "adcp.types._schemas.protocol.get_task_status_response.ObjCodeMessageDetails",
     ],
     "Evaluation": [
         "adcp.types._schemas.core.audience_evidence_selection.Evaluation",
@@ -6650,6 +10218,14 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.canonical_optimization_goal.EventSource",
         "adcp.types._schemas.core.optimization_goal.EventSource",
         "adcp.types._schemas.media_buy.sync_event_sources_request.EventSource",
+    ],
+    "EventType": [
+        "adcp.types._schemas.core.delivery_metrics.EventType",
+        "adcp.types._schemas.core.notification_config.EventType",
+        "adcp.types._schemas.core.registry_event.EventType",
+        "adcp.types._schemas.core.wholesale_feed_event.EventType",
+        "adcp.types._schemas.enums.event_type.EventType",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.EventType",
     ],
     "Evidence": [
         "adcp.types._schemas.core.performance_feedback_assertion.Evidence",
@@ -6667,6 +10243,14 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.canonical_audience_evidence.EvidenceType",
         "adcp.types._schemas.governance.get_plan_audit_logs_response.EvidenceType",
         "adcp.types._schemas.governance.report_plan_adjustment_request.EvidenceType",
+    ],
+    "Exclusivity": [
+        "adcp.types._schemas.brand.rights_terms.Exclusivity",
+        "adcp.types._schemas.enums.exclusivity.Exclusivity",
+    ],
+    "Execution": [
+        "adcp.types._schemas.core.demographic_targeting_resolution.Execution",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.Execution",
     ],
     "Exemplars": [
         "adcp.types._schemas.core.evaluator_spec.CalibrationExemplars",
@@ -7403,7 +10987,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.trusted_match.publisher_targeting_kv_config.Field",
         "adcp.types._schemas.trusted_match.publisher_tmpx_config.Field",
         "adcp.types._schemas.trusted_match.tmpx_chunk.Field",
-        "pydantic.fields.Field",
     ],
     "Field1": [
         "adcp.types._schemas.brand.get_brand_identity_request.Field1",
@@ -7429,6 +11012,24 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.governance.sync_plans_request.ObjStartEnd",
         "adcp.types._schemas.media_buy.proposal_refinement.Flight",
     ],
+    "ForecastRange": [
+        "adcp.types._schemas.core.forecast_point.ForecastRange",
+        "adcp.types._schemas.core.forecast_range.ForecastRange",
+        "adcp.types._schemas.core.forecast_rate_range.ForecastRange",
+    ],
+    "FrequencyCap": [
+        "adcp.types._schemas.core.frequency_cap.FrequencyCap",
+        "adcp.types._schemas.core.media_buy_frequency_cap.FrequencyCap",
+    ],
+    "FrequencyCapConstraints": [
+        "adcp.types._schemas.core.frequency_cap_constraints.FrequencyCapConstraints",
+        "adcp.types._schemas.core.media_buy_frequency_cap_capability.FrequencyCapConstraints",
+        "adcp.types._schemas.core.media_buy_frequency_cap_support.FrequencyCapConstraints",
+    ],
+    "FrequencyCapRequirements": [
+        "adcp.types._schemas.core.frequency_cap_requirements.FrequencyCapRequirements",
+        "adcp.types._schemas.core.media_buy_frequency_cap_requirement.FrequencyCapRequirements",
+    ],
     "Geo": [
         "adcp.types._schemas.core.planned_delivery.Geo",
         "adcp.types._schemas.media_buy.get_media_buy_delivery_request.Geo",
@@ -7447,9 +11048,74 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.product_filters.GeoProximityItem",
         "adcp.types._schemas.core.targeting.GeoProximityItem",
     ],
+    "Geometry": [
+        "adcp.types._schemas.core.catchment.ObjTypeCoordinates",
+        "adcp.types._schemas.core.product_filters.ObjTypeCoordinates",
+        "adcp.types._schemas.core.targeting.Geometry",
+    ],
+    "GetCreativeFeaturesSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted.GetCreativeFeaturesSubmitted",
+        "adcp.types._schemas.creative.get_creative_features_async_response_submitted.GetCreativeFeaturesSubmitted",
+    ],
+    "GetProductsInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.GetProductsInputRequired",
+        "adcp.types._schemas.media_buy.get_products_async_response_input_required.GetProductsInputRequired",
+    ],
+    "GetProductsSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.GetProductsSubmitted",
+        "adcp.types._schemas.media_buy.get_products_async_response_submitted.GetProductsSubmitted",
+    ],
+    "GetProductsWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.GetProductsWorking",
+        "adcp.types._schemas.media_buy.get_products_async_response_working.GetProductsWorking",
+    ],
+    "GetSignalsSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.GetSignalsSubmitted",
+        "adcp.types._schemas.signals.get_signals_async_response_submitted.GetSignalsSubmitted",
+    ],
+    "GetSignalsWorking": [
+        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.GetSignalsWorking",
+        "adcp.types._schemas.signals.get_signals_async_response_working.GetSignalsWorking",
+    ],
+    "GovernanceAgent": [
+        "adcp.types._schemas.account.sync_governance_request.GovernanceAgent",
+        "adcp.types._schemas.account.sync_governance_response.ObjUrl",
+        "adcp.types._schemas.core.account.GovernanceAgent",
+    ],
+    "HistoryItem": [
+        "adcp.types._schemas.core.tasks_get_response.HistoryItem",
+        "adcp.types._schemas.media_buy.get_media_buys_response.HistoryItem",
+        "adcp.types._schemas.protocol.get_task_status_response.ObjTimestampTypeData",
+    ],
+    "House": [
+        "adcp.types._schemas.brand.get_brand_identity_response.House",
+        "adcp.types._schemas.brand.search_brands_response.ObjDomainName",
+    ],
     "HumanOversight": [
         "adcp.types._schemas.core.provenance.HumanOversight",
         "adcp.types._schemas.creative.audit_observation.HumanOversight",
+    ],
+    "IdType": [
+        "adcp.types._schemas.core.delivery_metrics.IdType",
+        "adcp.types._schemas.core.signal_definition.IdType",
+    ],
+    "Identifier": [
+        "adcp.types._schemas.collection.base_collection_source.Identifier",
+        "adcp.types._schemas.core.canonical_placement.IdentifiersItem",
+        "adcp.types._schemas.core.collection_distribution.Identifier",
+        "adcp.types._schemas.core.delivery_metrics.Identifier",
+        "adcp.types._schemas.core.identifier.Identifier",
+        "adcp.types._schemas.core.placement.IdentifiersItem",
+        "adcp.types._schemas.core.placement_definition.Identifier",
+        "adcp.types._schemas.core.property.IdentifiersItem",
+    ],
+    "Identity": [
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.Identity",
+        "adcp.types._schemas.trusted_match.identity_match_request.Identity",
+    ],
+    "ImageAsset": [
+        "adcp.types._schemas.core.assets.asset_union.ImageAsset",
+        "adcp.types._schemas.core.assets.image_asset.ImageAsset",
     ],
     "ImageFormat": [
         "adcp.types._schemas.formats.canonical.image.ImageFormat",
@@ -7460,6 +11126,16 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.media_buy.list_products_response.IncompleteItem",
         "adcp.types._schemas.media_buy.request_proposals_response.IncompleteItem",
         "adcp.types._schemas.signals.get_signals_response.IncompleteItem",
+    ],
+    "Indicator": [
+        "adcp.types._schemas.core.indicator.Indicator",
+        "adcp.types._schemas.creative.list_creatives_response.Indicator",
+        "adcp.types._schemas.media_buy.get_media_buys_response.Indicator",
+    ],
+    "IndicatorBearingResourceState": [
+        "adcp.types._schemas.core.indicator_bearing.IndicatorBearingResourceState",
+        "adcp.types._schemas.creative.list_creatives_response.IndicatorBearingResourceState",
+        "adcp.types._schemas.media_buy.get_media_buys_response.IndicatorBearingResourceState",
     ],
     "Initiator": [
         "adcp.types._schemas.creative.creative_purged_webhook.Initiator",
@@ -7490,6 +11166,15 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.provenance.Jurisdiction",
         "adcp.types._schemas.core.signal_modeling_disclosure.Jurisdiction",
         "adcp.types._schemas.sponsored_intelligence.si_sponsored_context.Jurisdiction",
+    ],
+    "Keyword": [
+        "adcp.types._schemas.core.product_filters.Keyword",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.DeliveryBreakdownControls",
+    ],
+    "KeywordTarget": [
+        "adcp.types._schemas.core.keyword_target.KeywordTarget",
+        "adcp.types._schemas.core.targeting.KeywordTarget",
+        "adcp.types._schemas.core.targeting_input.KeywordTarget",
     ],
     "Kind": [
         "adcp.types._schemas.account.list_account_changes_response.Kind",
@@ -7736,7 +11421,27 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.trusted_match.provider_context_match_response.Literal",
         "adcp.types._schemas.trusted_match.provider_identity_match_response.Literal",
         "adcp.types._schemas.trusted_match.provider_registration.Literal",
-        "typing.Literal",
+    ],
+    "LocaleFallback": [
+        "adcp.types._schemas.core.creative_localization.LocaleFallbacksItem",
+        "adcp.types._schemas.core.creative_localization_readback.LocaleFallback",
+    ],
+    "Location": [
+        "adcp.types._schemas.core.assets.daast_asset.Location",
+        "adcp.types._schemas.core.assets.url_asset.Location",
+        "adcp.types._schemas.core.destination_item.Location",
+        "adcp.types._schemas.core.hotel_item.ObjLatLng",
+        "adcp.types._schemas.core.macro_declaration.Location",
+        "adcp.types._schemas.core.real_estate_item.ObjLatLng",
+        "adcp.types._schemas.core.store_item.ObjLatLng",
+        "adcp.types._schemas.core.vehicle_item.ObjLatLng",
+    ],
+    "MacroDeclaration": [
+        "adcp.types._schemas.core.assets.daast_asset.MacroDeclaration",
+        "adcp.types._schemas.core.assets.display_tag_asset.MacroDeclaration",
+        "adcp.types._schemas.core.assets.url_asset.MacroDeclaration",
+        "adcp.types._schemas.core.assets.vast_asset.MacroDeclaration",
+        "adcp.types._schemas.core.macro_declaration.MacroDeclaration",
     ],
     "MacroDeclaration_1": [
         "adcp.types._schemas.core.assets.daast_tracker_asset.MacroDeclarationsItem",
@@ -7749,9 +11454,18 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.canonical_measurement_terms.MakegoodPolicy",
         "adcp.types._schemas.core.measurement_terms.MakegoodPolicy",
     ],
+    "MarkdownAsset": [
+        "adcp.types._schemas.core.assets.asset_union.MarkdownAsset",
+        "adcp.types._schemas.core.assets.markdown_asset.MarkdownAsset",
+    ],
     "MaximumAge": [
         "adcp.types._schemas.core.audience_evidence_requirements.MaximumAge",
         "adcp.types._schemas.core.product_audience_evidence_requirements.MaximumAge",
+    ],
+    "MediaBuy": [
+        "adcp.types._schemas.core.media_buy.MediaBuy",
+        "adcp.types._schemas.media_buy.get_media_buys_response.MediaBuy",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.MediaBuy",
     ],
     "MediaBuyDelivery": [
         "adcp.types._schemas.media_buy.get_media_buy_delivery_response.MediaBuyDelivery",
@@ -7771,6 +11485,13 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.signal_definition.Methodology",
         "adcp.types._schemas.core.signal_definition_enrichment.Methodology",
     ],
+    "Metric": [
+        "adcp.types._schemas.compliance.comply_test_controller_request.Metric",
+        "adcp.types._schemas.core.canonical_optimization_goal.Metric",
+        "adcp.types._schemas.core.optimization_goal.Metric",
+        "adcp.types._schemas.core.reporting_report_definition.Metric",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.Metric",
+    ],
     "Metrics": [
         "adcp.types._schemas.core.canonical_forecast_point.Metrics",
         "adcp.types._schemas.core.forecast_point.Metrics",
@@ -7782,6 +11503,15 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.product_offer_filters.ObjSystemCode",
         "adcp.types._schemas.trusted_match.context_match_request.Metro",
     ],
+    "Mode": [
+        "adcp.types._schemas.core.account_timezone_capability.Mode",
+        "adcp.types._schemas.core.agent_webhook_challenge.Mode",
+        "adcp.types._schemas.core.bidding_policy_capability.Mode",
+        "adcp.types._schemas.core.canonical_placement.Mode",
+        "adcp.types._schemas.core.placement.Mode",
+        "adcp.types._schemas.media_buy.build_creative_request.Mode",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.Mode",
+    ],
     "Modeling": [
         "adcp.types._schemas.core.signal_definition.Modeling",
         "adcp.types._schemas.core.signal_definition_enrichment.Modeling",
@@ -7790,15 +11520,39 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.transformer.Multiplicity",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.Multiplicity",
     ],
+    "NotificationType": [
+        "adcp.types._schemas.enums.notification_type.NotificationType",
+        "adcp.types._schemas.media_buy.media_buy_delivery_webhook_result.NotificationType",
+    ],
+    "Offering": [
+        "adcp.types._schemas.core.offering.Offering",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_response.Offering",
+    ],
     "Onboarder": [
         "adcp.types._schemas.core.signal_definition.Onboarder",
         "adcp.types._schemas.core.signal_definition_enrichment.Onboarder",
+    ],
+    "Operation": [
+        "adcp.types._schemas.compliance.comply_test_controller_request.Operation",
+        "adcp.types._schemas.core.macro_resolution_capability.Operation",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.Operation",
     ],
     "Opportunity": [
         "adcp.types._schemas.media_buy.accept_proposal_request.Opportunity",
         "adcp.types._schemas.media_buy.buy_products_request.Opportunity",
         "adcp.types._schemas.media_buy.create_media_buy_request.Opportunity",
         "adcp.types._schemas.media_buy.request_proposals_request.Opportunity",
+    ],
+    "OpportunityContext": [
+        "adcp.types._schemas.core.opportunity_context.OpportunityContext",
+        "adcp.types._schemas.media_buy.accept_proposal_request.OpportunityContext",
+        "adcp.types._schemas.media_buy.buy_products_request.OpportunityContext",
+        "adcp.types._schemas.media_buy.create_media_buy_request.OpportunityContext",
+        "adcp.types._schemas.media_buy.request_proposals_request.OpportunityContext",
+    ],
+    "OptimizationGoal": [
+        "adcp.types._schemas.core.budget_allocation.OptimizationGoal",
+        "adcp.types._schemas.core.optimization_goal.OptimizationGoal",
     ],
     "Orientation": [
         "adcp.types._schemas.formats.canonical.video_hosted.Orientation",
@@ -7816,6 +11570,22 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.media_buy.refine_proposals_response.Outcome",
         "adcp.types._schemas.media_buy.request_proposals_response.Outcome",
     ],
+    "Pacing": [
+        "adcp.types._schemas.enums.pacing.Pacing",
+        "adcp.types._schemas.governance.check_governance_request.Pacing",
+    ],
+    "Package": [
+        "adcp.types._schemas.core.package.Package",
+        "adcp.types._schemas.governance.report_plan_outcome_request.Package",
+        "adcp.types._schemas.media_buy.get_media_buys_response.Package",
+    ],
+    "Pagination": [
+        "adcp.types._schemas.collection.get_collection_list_request.Pagination",
+        "adcp.types._schemas.content_standards.artifact_webhook_payload.Pagination",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_request.ObjMaxResultsCursor",
+        "adcp.types._schemas.creative.get_creative_delivery_response.Pagination",
+        "adcp.types._schemas.property.get_property_list_request.ObjMaxResultsCursor",
+    ],
     "Parameters": [
         "adcp.types._schemas.pricing_options.cpp_option.Parameters",
         "adcp.types._schemas.pricing_options.cpv_option.Parameters",
@@ -7825,6 +11595,40 @@ __adcp_ambiguous__ = {
     "Params": [
         "adcp.types._schemas.compliance.comply_test_controller_request.Params",
         "adcp.types._schemas.formats.canonical.coordinated_placements.CanonicalFormatImage",
+    ],
+    "PaymentTerms": [
+        "adcp.types._schemas.core.insertion_order.PaymentTerms",
+        "adcp.types._schemas.enums.payment_terms.PaymentTerms",
+    ],
+    "PerformanceFeedback": [
+        "adcp.types._schemas.core.performance_feedback.PerformanceFeedback",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.PerformanceFeedback",
+    ],
+    "PerformanceFeedbackAssertion": [
+        "adcp.types._schemas.core.performance_feedback_assertion.PerformanceFeedbackAssertion",
+        "adcp.types._schemas.media_buy.provide_performance_feedback_request.PerformanceFeedbackAssertion",
+    ],
+    "Period": [
+        "adcp.types._schemas.core.job_item.Period",
+        "adcp.types._schemas.core.price.Period",
+        "adcp.types._schemas.core.reporting_consumer_status.Period",
+        "adcp.types._schemas.core.reporting_file_manifest.ObjStartEndSourceTimezone",
+        "adcp.types._schemas.core.reporting_obligation.ObjStartEndSourceTimezone",
+        "adcp.types._schemas.core.reporting_revision.ObjStartEndSourceTimezone",
+        "adcp.types._schemas.core.signal_pricing.Period",
+        "adcp.types._schemas.media_buy.get_reporting_status_request.ObjStartEnd",
+    ],
+    "PixelTrackerAsset": [
+        "adcp.types._schemas.core.assets.asset_union.PixelTrackerAsset",
+        "adcp.types._schemas.core.assets.pixel_tracker_asset.PixelTrackerAsset",
+    ],
+    "Placement": [
+        "adcp.types._schemas.core.placement.Placement",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.ReportingDimensionsPlacement",
+    ],
+    "PlacementSelection": [
+        "adcp.types._schemas.core.placement_selection.PlacementSelection",
+        "adcp.types._schemas.core.targeting_overlay_support.PlacementSelection",
     ],
     "Plan": [
         "adcp.types._schemas.governance.get_plan_audit_logs_response.Plan",
@@ -7839,6 +11643,26 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.governance.sync_plans_request.Portfolio",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.Portfolio",
     ],
+    "PostalAreaSupport": [
+        "adcp.types._schemas.core.positive_postal_area_support.PostalAreaSupport",
+        "adcp.types._schemas.core.postal_area_support.PostalAreaSupport",
+    ],
+    "Preview2": [
+        "adcp.types._schemas.creative.preview_creative_response.PreviewCreativeResponse1",
+        "adcp.types._schemas.media_buy.build_creative_response.Preview2",
+    ],
+    "Preview3": [
+        "adcp.types._schemas.creative.preview_creative_response.Preview3",
+        "adcp.types._schemas.media_buy.build_creative_response.BuildCreativeMultiSuccess",
+    ],
+    "Price": [
+        "adcp.types._schemas.core.price.Price",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_response.Price",
+    ],
+    "PricingModel": [
+        "adcp.types._schemas.core.canonical_pricing_option.PricingModel",
+        "adcp.types._schemas.enums.pricing_model.PricingModel",
+    ],
     "ProductPayloadView": [
         "adcp.types._schemas.core.notification_config.ProductPayloadView",
         "adcp.types._schemas.core.wholesale_feed_webhook.ProductPayloadView",
@@ -7846,6 +11670,107 @@ __adcp_ambiguous__ = {
     "Progress": [
         "adcp.types._schemas.core.tasks_get_response.Progress",
         "adcp.types._schemas.protocol.get_task_status_response.Progress",
+    ],
+    "PropertyFeature": [
+        "adcp.types._schemas.adagents.PropertyFeature",
+        "adcp.types._schemas.property.property_feature.PropertyFeature",
+    ],
+    "PropertyType": [
+        "adcp.types._schemas.core.real_estate_item.PropertyType",
+        "adcp.types._schemas.enums.property_type.PropertyType",
+    ],
+    "Proposal": [
+        "adcp.types._schemas.core.proposal.Proposal",
+        "adcp.types._schemas.media_buy.refine_proposals_response.ResultsItemFinalizedProposal",
+    ],
+    "ProposalRefinement": [
+        "adcp.types._schemas.media_buy.proposal_refinement.ProposalRefinement",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.ProposalRefinement",
+    ],
+    "ProtocolEnvelope": [
+        "adcp.types._schemas.account.get_account_financials_response.ProtocolEnvelope",
+        "adcp.types._schemas.account.list_account_changes_response.ProtocolEnvelope",
+        "adcp.types._schemas.account.list_accounts_response.ProtocolEnvelope",
+        "adcp.types._schemas.account.report_usage_response.ProtocolEnvelope",
+        "adcp.types._schemas.account.sync_accounts_response.ProtocolEnvelope",
+        "adcp.types._schemas.account.sync_governance_response.ProtocolEnvelope",
+        "adcp.types._schemas.brand.acquire_rights_response.ProtocolEnvelope",
+        "adcp.types._schemas.brand.creative_approval_response.ProtocolEnvelope",
+        "adcp.types._schemas.brand.get_brand_identity_response.ProtocolEnvelope",
+        "adcp.types._schemas.brand.get_rights_response.ProtocolEnvelope",
+        "adcp.types._schemas.brand.search_brands_response.ProtocolEnvelope",
+        "adcp.types._schemas.brand.update_rights_response.ProtocolEnvelope",
+        "adcp.types._schemas.brand.verify_brand_claim_response.ProtocolEnvelope",
+        "adcp.types._schemas.brand.verify_brand_claims_response.ProtocolEnvelope",
+        "adcp.types._schemas.collection.create_collection_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.collection.delete_collection_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.collection.get_collection_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.collection.list_collection_lists_response.ProtocolEnvelope",
+        "adcp.types._schemas.collection.update_collection_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.compliance.comply_test_controller_response.ProtocolEnvelope",
+        "adcp.types._schemas.content_standards.calibrate_content_response.ProtocolEnvelope",
+        "adcp.types._schemas.content_standards.create_content_standards_response.ProtocolEnvelope",
+        "adcp.types._schemas.content_standards.get_content_standards_response.ProtocolEnvelope",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.ProtocolEnvelope",
+        "adcp.types._schemas.content_standards.list_content_standards_response.ProtocolEnvelope",
+        "adcp.types._schemas.content_standards.update_content_standards_response.ProtocolEnvelope",
+        "adcp.types._schemas.content_standards.validate_content_delivery_response.ProtocolEnvelope",
+        "adcp.types._schemas.core.compact_task_submitted.ProtocolEnvelope",
+        "adcp.types._schemas.core.protocol_envelope.ProtocolEnvelope",
+        "adcp.types._schemas.core.tasks_get_response.ProtocolEnvelope",
+        "adcp.types._schemas.core.tasks_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.creative.get_creative_delivery_response.ProtocolEnvelope",
+        "adcp.types._schemas.creative.get_creative_features_response.ProtocolEnvelope",
+        "adcp.types._schemas.creative.list_creative_formats_response.ProtocolEnvelope",
+        "adcp.types._schemas.creative.list_creatives_response.ProtocolEnvelope",
+        "adcp.types._schemas.creative.list_transformers_response.ProtocolEnvelope",
+        "adcp.types._schemas.creative.preview_creative_response.ProtocolEnvelope",
+        "adcp.types._schemas.creative.sync_creatives_response.ProtocolEnvelope",
+        "adcp.types._schemas.creative.validate_input_response.ProtocolEnvelope",
+        "adcp.types._schemas.governance.get_plan_audit_logs_response.ProtocolEnvelope",
+        "adcp.types._schemas.governance.sync_plans_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.build_creative_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.create_media_buy_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.get_media_buys_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.get_products_rejected.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.get_products_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.get_reporting_status_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.list_creative_formats_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.log_event_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.provide_performance_feedback_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.sync_audiences_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.sync_catalogs_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.sync_event_sources_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.sync_reporting_receipts_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.sync_reporting_status_response.ProtocolEnvelope",
+        "adcp.types._schemas.media_buy.update_media_buy_response.ProtocolEnvelope",
+        "adcp.types._schemas.property.create_property_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.property.delete_property_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.property.get_property_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.property.list_property_lists_response.ProtocolEnvelope",
+        "adcp.types._schemas.property.update_property_list_response.ProtocolEnvelope",
+        "adcp.types._schemas.property.validate_property_delivery_response.ProtocolEnvelope",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.ProtocolEnvelope",
+        "adcp.types._schemas.protocol.get_principal_response.ProtocolEnvelope",
+        "adcp.types._schemas.protocol.get_task_status_response.ProtocolEnvelope",
+        "adcp.types._schemas.protocol.list_tasks_response.ProtocolEnvelope",
+        "adcp.types._schemas.protocol.sync_agent_notification_configs_response.ProtocolEnvelope",
+        "adcp.types._schemas.protocol.sync_principal_response.ProtocolEnvelope",
+        "adcp.types._schemas.signals.activate_signal_response.ProtocolEnvelope",
+        "adcp.types._schemas.signals.get_signals_response.ProtocolEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_response.ProtocolEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_response.ProtocolEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_response.ProtocolEnvelope",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_response.ProtocolEnvelope",
+        "adcp.types._schemas.trusted_match.context_match_response.ProtocolEnvelope",
+        "adcp.types._schemas.trusted_match.identity_match_response.ProtocolEnvelope",
+        "adcp.types._schemas.trusted_match.provider_context_match_response.ProtocolEnvelope",
+        "adcp.types._schemas.trusted_match.provider_identity_match_response.ProtocolEnvelope",
+    ],
+    "Provenance": [
+        "adcp.types._schemas.core.provenance.Provenance",
+        "adcp.types._schemas.core.reference_renderer.Provenance",
     ],
     "Provider": [
         "adcp.types._schemas.content_standards.artifact.Provider",
@@ -7855,6 +11780,10 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.reporting_delivery_offering.ObjDomain",
         "adcp.types._schemas.core.reporting_report_definition.ObjDomain",
         "adcp.types._schemas.core.reporting_write_destination.ObjDomain",
+    ],
+    "PublishedPostAsset": [
+        "adcp.types._schemas.core.assets.asset_union.PublishedPostAsset",
+        "adcp.types._schemas.core.assets.published_post_asset.PublishedPostAsset",
     ],
     "PurgeKind": [
         "adcp.types._schemas.compliance.comply_test_controller_request.PurgeKind",
@@ -7887,9 +11816,52 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.Range",
         "adcp.types._schemas.signals.get_signals_response.ObjMinMax",
     ],
+    "ReachWindow": [
+        "adcp.types._schemas.compliance.comply_test_controller_request.ObjKindPeriod",
+        "adcp.types._schemas.core.delivery_metrics.ReachWindow",
+    ],
+    "Reason": [
+        "adcp.types._schemas.adagents.Reason",
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.core.brand_response_authorization_result.Reason",
+        "adcp.types._schemas.core.capabilities_changed_webhook.Reason",
+        "adcp.types._schemas.core.catalog_item_availability_update.Reason",
+        "adcp.types._schemas.core.principal_changed_webhook.Reason",
+        "adcp.types._schemas.core.reporting_coverage.Reason",
+        "adcp.types._schemas.creative.sync_creatives_async_response_input_required.Reason",
+        "adcp.types._schemas.error_details.execution_requirement_unmet.Reason",
+        "adcp.types._schemas.media_buy.build_creative_async_response_input_required.Reason",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_input_required.Reason",
+        "adcp.types._schemas.media_buy.get_products_async_response_input_required.Reason",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_input_required.Reason",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_input_required.Reason",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_request.Reason",
+    ],
     "ReasonCode": [
         "adcp.types._schemas.core.account_status_changed_webhook.ReasonCode",
         "adcp.types._schemas.core.reporting_adjustment.ReasonCode",
+    ],
+    "Recovery": [
+        "adcp.types._schemas.core.error.Recovery",
+        "adcp.types._schemas.error_details.vendor_error_codes.Recovery",
+        "adcp.types._schemas.governance.reported_outcome_error.Recovery",
+    ],
+    "RefineProposalsInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_input_required.RefineProposalsInputRequired",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_input_required.RefineProposalsInputRequired",
+    ],
+    "RefineProposalsSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_submitted.RefineProposalsSubmitted",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_submitted.RefineProposalsSubmitted",
+    ],
+    "RefineProposalsWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_working.RefineProposalsWorking",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_working.RefineProposalsWorking",
     ],
     "RefreshCadence": [
         "adcp.types._schemas.core.signal_definition.RefreshCadence",
@@ -7902,6 +11874,31 @@ __adcp_ambiguous__ = {
     "RenderingOrigin": [
         "adcp.types._schemas.core.preview_renderer_metadata.RenderingOrigin",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.RenderingOrigin",
+    ],
+    "ReportingFrequency": [
+        "adcp.types._schemas.core.reporting_webhook.ReportingFrequency",
+        "adcp.types._schemas.enums.reporting_frequency.ReportingFrequency",
+    ],
+    "ReportingPeriod": [
+        "adcp.types._schemas.creative.get_creative_delivery_response.ReportingPeriod",
+        "adcp.types._schemas.governance.check_governance_request.ObjStartEnd",
+        "adcp.types._schemas.governance.check_governance_response.ObjStartEnd",
+        "adcp.types._schemas.governance.get_plan_audit_logs_response.ObjStartEnd",
+        "adcp.types._schemas.governance.report_plan_outcome_request.ObjStartEnd",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.ObjStartEndTimezone",
+        "adcp.types._schemas.media_buy.media_buy_delivery_webhook_result.ReportingPeriod",
+    ],
+    "RequestProposalsInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_input_required.RequestProposalsInputRequired",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_input_required.RequestProposalsInputRequired",
+    ],
+    "RequestProposalsSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_submitted.RequestProposalsSubmitted",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_submitted.RequestProposalsSubmitted",
+    ],
+    "RequestProposalsWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_working.RequestProposalsWorking",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_working.RequestProposalsWorking",
     ],
     "RequiredVendorMetric": [
         "adcp.types._schemas.core.product_filters.RequiredVendorMetric",
@@ -7919,6 +11916,11 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.impairment.ResourceType",
         "adcp.types._schemas.core.warning_resource.ResourceType",
     ],
+    "Response": [
+        "adcp.types._schemas.creative.preview_creative_response.Response",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_response.Response",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_response.Response",
+    ],
     "Result": [
         "adcp.types._schemas.content_standards.validate_content_delivery_response.Result",
         "adcp.types._schemas.core.provenance.Result",
@@ -7929,7 +11931,6 @@ __adcp_ambiguous__ = {
     "Results": [
         "adcp.types._schemas.media_buy.sync_reporting_receipts_response.Results",
         "adcp.types._schemas.media_buy.sync_reporting_status_response.Results",
-        "typing.Annotated",
     ],
     "Right": [
         "adcp.types._schemas.brand.get_rights_response.Right",
@@ -7938,6 +11939,16 @@ __adcp_ambiguous__ = {
     "Rights": [
         "adcp.types._schemas.brand.get_brand_identity_response.Rights",
         "adcp.types._schemas.brand.search_brands_response.Rights",
+    ],
+    "Role": [
+        "adcp.types._schemas.content_standards.artifact.Role",
+        "adcp.types._schemas.core.business_entity.Role",
+        "adcp.types._schemas.core.product_card_reference_asset.Role",
+        "adcp.types._schemas.core.provenance.Role",
+        "adcp.types._schemas.core.reference_asset.Role",
+        "adcp.types._schemas.core.requirements.url_asset_requirements.Role",
+        "adcp.types._schemas.core.verification_token_claims.Role",
+        "adcp.types._schemas.sponsored_intelligence.si_sponsored_context.Role",
     ],
     "Route": [
         "adcp.types._schemas.core.preview_provider.Route",
@@ -7968,6 +11979,23 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.creative_operation_format_declaration.SellerPreference",
         "adcp.types._schemas.core.product_format_declaration.SellerPreference",
     ],
+    "Setup": [
+        "adcp.types._schemas.account.sync_accounts_response.ObjUrlMessageExpiresAt",
+        "adcp.types._schemas.core.account.Setup",
+        "adcp.types._schemas.core.account_status_changed_webhook.Setup",
+        "adcp.types._schemas.core.agent_reporting_destination_state.Setup",
+        "adcp.types._schemas.core.reporting_delivery_config_state.Setup",
+        "adcp.types._schemas.media_buy.sync_event_sources_response.Setup",
+    ],
+    "Signal": [
+        "adcp.types._schemas.core.wholesale_feed_event.Signal",
+        "adcp.types._schemas.signals.get_signals_response.SignalsItem",
+    ],
+    "SignalListing": [
+        "adcp.types._schemas.core.product_signal_targeting_option.SignalListing",
+        "adcp.types._schemas.core.signal_listing.SignalListing",
+        "adcp.types._schemas.core.wholesale_feed_event.SignalListing",
+    ],
     "Signals": [
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.Signals",
         "adcp.types._schemas.trusted_match.context_match_response.Signals",
@@ -7978,6 +12006,10 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.formats.canonical.html5.Size",
         "adcp.types._schemas.formats.canonical.image.Size",
     ],
+    "Snapshot": [
+        "adcp.types._schemas.creative.list_creatives_response.Snapshot",
+        "adcp.types._schemas.media_buy.get_media_buys_response.Snapshot",
+    ],
     "Sort": [
         "adcp.types._schemas.core.tasks_list_request.Sort",
         "adcp.types._schemas.creative.list_creatives_request.Sort",
@@ -7986,6 +12018,18 @@ __adcp_ambiguous__ = {
     "SortApplied": [
         "adcp.types._schemas.core.tasks_list_response.SortApplied",
         "adcp.types._schemas.creative.list_creatives_response.SortApplied",
+    ],
+    "Source": [
+        "adcp.types._schemas.core.creative_localization.Source",
+        "adcp.types._schemas.core.creative_representation.Source",
+        "adcp.types._schemas.core.error.Source",
+        "adcp.types._schemas.core.reporting_report_definition.Source",
+        "adcp.types._schemas.governance.get_plan_audit_logs_response.Source",
+        "adcp.types._schemas.governance.policy_entry.Source",
+        "adcp.types._schemas.governance.report_plan_outcome_request.Source",
+        "adcp.types._schemas.governance.sync_plans_response.Source",
+        "adcp.types._schemas.media_buy.list_creative_formats_response.Source",
+        "adcp.types._schemas.media_buy.sync_audiences_response.Source",
     ],
     "Status": [
         "adcp.types._schemas.aao.agent_publishers.Status",
@@ -8478,7 +12522,13 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.trusted_match.identity_match_request.StrEnum",
         "adcp.types._schemas.trusted_match.offer_price.StrEnum",
         "adcp.types._schemas.trusted_match.provider_registration.StrEnum",
-        "enum.StrEnum",
+    ],
+    "Subject": [
+        "adcp.types._schemas.core.audience_evidence.Subject",
+        "adcp.types._schemas.core.rights_attestation_evaluation.ObjTypeResourceType",
+        "adcp.types._schemas.core.rights_constraint.ObjTypeResourceType",
+        "adcp.types._schemas.governance.check_governance_request.Subject",
+        "adcp.types._schemas.media_buy.acceptance_context.Subject",
     ],
     "Summary": [
         "adcp.types._schemas.content_standards.validate_content_delivery_response.Summary",
@@ -8490,9 +12540,38 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.vendor_metric_optimization_supported_metric.SupportedTarget",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.SupportedTarget",
     ],
+    "SyncCatalogsInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required.SyncCatalogsInputRequired",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_input_required.SyncCatalogsInputRequired",
+    ],
+    "SyncCatalogsSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.SyncCatalogsSubmitted",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_submitted.SyncCatalogsSubmitted",
+    ],
+    "SyncCatalogsWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.SyncCatalogsWorking",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_working.SyncCatalogsWorking",
+    ],
+    "SyncCreativesInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required.SyncCreativesInputRequired",
+        "adcp.types._schemas.creative.sync_creatives_async_response_input_required.SyncCreativesInputRequired",
+    ],
+    "SyncCreativesSubmitted": [
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.SyncCreativesSubmitted",
+        "adcp.types._schemas.creative.sync_creatives_async_response_submitted.SyncCreativesSubmitted",
+    ],
+    "SyncCreativesWorking": [
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.SyncCreativesWorking",
+        "adcp.types._schemas.creative.sync_creatives_async_response_working.SyncCreativesWorking",
+    ],
     "System": [
         "adcp.types._schemas.core.postal_area.System",
         "adcp.types._schemas.core.postal_country_system.System",
+    ],
+    "TYPE_CHECKING": [
+        "adcp.types._schemas.formats.canonical",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response",
+        "adcp.types._schemas.sponsored_intelligence.si_capabilities",
     ],
     "Target": [
         "adcp.types._schemas.core.assets.vast_tracker_asset.Target",
@@ -8502,14 +12581,30 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.canonical_optimization_goal.TargetFrequency",
         "adcp.types._schemas.core.optimization_goal.TargetFrequency",
     ],
+    "TargetingKv": [
+        "adcp.types._schemas.trusted_match.context_match_response.TargetingKv",
+        "adcp.types._schemas.trusted_match.provider_context_match_response.ObjKeyValue",
+    ],
     "TargetingMode": [
         "adcp.types._schemas.core.product_filters.TargetingMode",
         "adcp.types._schemas.core.signal_selection_group_rule.TargetingMode",
+    ],
+    "Task": [
+        "adcp.types._schemas.core.account_change.Task",
+        "adcp.types._schemas.core.canonical_media_buy_action_fields.Task",
+        "adcp.types._schemas.core.media_buy_available_action.Task",
+        "adcp.types._schemas.core.response_payload_jws_envelope.Task",
+        "adcp.types._schemas.core.tasks_list_response.Task",
+        "adcp.types._schemas.protocol.list_tasks_response.TasksItem",
     ],
     "Taxonomy": [
         "adcp.types._schemas.core.audience_characteristic.Taxonomy",
         "adcp.types._schemas.core.signal_definition.Taxonomy",
         "adcp.types._schemas.core.signal_definition_enrichment.Taxonomy",
+    ],
+    "TextAsset": [
+        "adcp.types._schemas.core.assets.asset_union.TextAsset",
+        "adcp.types._schemas.core.assets.text_asset.TextAsset",
     ],
     "TotalBudget": [
         "adcp.types._schemas.core.insertion_order.TotalBudget",
@@ -8524,6 +12619,14 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.canonical_proposal.TotalBudgetGuidance",
         "adcp.types._schemas.core.proposal.TotalBudgetGuidance",
     ],
+    "Totals": [
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.Totals",
+        "adcp.types._schemas.media_buy.media_buy_delivery_webhook_result.Totals",
+    ],
+    "Transform": [
+        "adcp.types._schemas.core.catalog_field_mapping.Transform",
+        "adcp.types._schemas.registries.v1_canonical_mapping.Transform",
+    ],
     "Transition": [
         "adcp.types._schemas.core.impairment.Transition",
         "adcp.types._schemas.creative.creative_status_changed_webhook.Transition",
@@ -8532,6 +12635,16 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.catchment.TravelTime",
         "adcp.types._schemas.core.product_filters.TravelTime",
         "adcp.types._schemas.core.targeting.TravelTime",
+    ],
+    "TrustedMatch": [
+        "adcp.types._schemas.core.product.TrustedMatch",
+        "adcp.types._schemas.core.product_filters.TrustedMatch",
+        "adcp.types._schemas.core.product_offer_filters.ObjProvidersResponseTypes",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.TrustedMatch",
+    ],
+    "Uid": [
+        "adcp.types._schemas.core.audience_member.Uid",
+        "adcp.types._schemas.core.user_match.UidsItem",
     ],
     "UnavailableBehavior": [
         "adcp.types._schemas.core.macro_declaration.UnavailableBehavior",
@@ -8551,17 +12664,41 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.core.creative_localization.UnmatchedLocaleAction",
         "adcp.types._schemas.core.creative_localization_readback.UnmatchedLocaleAction",
     ],
+    "UpdateMediaBuyInputRequired": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required.UpdateMediaBuyInputRequired",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_input_required.UpdateMediaBuyInputRequired",
+    ],
+    "UpdateMediaBuySubmitted": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.UpdateMediaBuySubmitted",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_submitted.UpdateMediaBuySubmitted",
+    ],
+    "UpdateMediaBuyWorking": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.UpdateMediaBuyWorking",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_working.UpdateMediaBuyWorking",
+    ],
     "VariantDimension": [
         "adcp.types._schemas.core.transformer.VariantDimension",
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.VariantDimension",
+    ],
+    "VastTrackerConstraints": [
+        "adcp.types._schemas.core.tracker_execution_selector.VASTTrackerConstraints",
+        "adcp.types._schemas.core.vast_tracker_constraints.VastTrackerConstraints",
     ],
     "VendorMetric": [
         "adcp.types._schemas.core.canonical_reporting_capabilities.VendorMetric",
         "adcp.types._schemas.core.reporting_capabilities.VendorMetric",
     ],
+    "VendorMetricOptimization": [
+        "adcp.types._schemas.core.vendor_metric_optimization.VendorMetricOptimization",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.VendorMetricOptimization",
+    ],
     "VerifyAgent": [
         "adcp.types._schemas.core.attestation_reference.VerifyAgent",
         "adcp.types._schemas.core.provenance.VerifyAgent",
+    ],
+    "VideoAsset": [
+        "adcp.types._schemas.core.assets.asset_union.VideoAsset",
+        "adcp.types._schemas.core.assets.video_asset.VideoAsset",
     ],
     "Viewability": [
         "adcp.types._schemas.core.canonical_forecast_point.Viewability",
@@ -8573,78 +12710,1092 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.error_details.accessibility_violation.Violation",
         "adcp.types._schemas.property.authorization_result.Violation",
     ],
+    "Warning": [
+        "adcp.types._schemas.core.warning.Warning",
+        "adcp.types._schemas.media_buy.control_media_buy_response.Warning",
+        "adcp.types._schemas.media_buy.media_buy_commitment_response.Warning",
+    ],
     "Warning_1": [
         "adcp.types._schemas.core.warning.Warning",
         "adcp.types._schemas.media_buy.control_media_buy_response.ControlApplied",
         "adcp.types._schemas.media_buy.media_buy_commitment_response.CommittedMediaBuy",
     ],
-    "accept_proposal_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_input_required",
-        "adcp.types._schemas.media_buy.accept_proposal_async_response_input_required",
+    "WebhookAsset": [
+        "adcp.types._schemas.core.assets.asset_union.WebhookAsset",
+        "adcp.types._schemas.core.assets.webhook_asset.WebhookAsset",
     ],
-    "accept_proposal_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_submitted",
-        "adcp.types._schemas.media_buy.accept_proposal_async_response_submitted",
+    "WireDatetime": [
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
     ],
-    "accept_proposal_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_working",
-        "adcp.types._schemas.media_buy.accept_proposal_async_response_working",
+    "ZipAsset": [
+        "adcp.types._schemas.core.assets.asset_union.ZipAsset",
+        "adcp.types._schemas.core.assets.zip_asset.ZipAsset",
+    ],
+    "annotations": [
+        "adcp.types._schemas.a2ui.bound_value.annotations",
+        "adcp.types._schemas.a2ui.component.annotations",
+        "adcp.types._schemas.a2ui.si_catalog.annotations",
+        "adcp.types._schemas.a2ui.surface.annotations",
+        "adcp.types._schemas.a2ui.user_action.annotations",
+        "adcp.types._schemas.aao.agent_publishers.annotations",
+        "adcp.types._schemas.account.get_account_financials_request.annotations",
+        "adcp.types._schemas.account.get_account_financials_response.annotations",
+        "adcp.types._schemas.account.list_account_changes_request.annotations",
+        "adcp.types._schemas.account.list_account_changes_response.annotations",
+        "adcp.types._schemas.account.list_accounts_request.annotations",
+        "adcp.types._schemas.account.list_accounts_response.annotations",
+        "adcp.types._schemas.account.report_usage_request.annotations",
+        "adcp.types._schemas.account.report_usage_response.annotations",
+        "adcp.types._schemas.account.sync_accounts_request.annotations",
+        "adcp.types._schemas.account.sync_accounts_response.annotations",
+        "adcp.types._schemas.account.sync_governance_request.annotations",
+        "adcp.types._schemas.account.sync_governance_response.annotations",
+        "adcp.types._schemas.adagents.annotations",
+        "adcp.types._schemas.brand.acquire_rights_request.annotations",
+        "adcp.types._schemas.brand.acquire_rights_response.annotations",
+        "adcp.types._schemas.brand.annotations",
+        "adcp.types._schemas.brand.creative_approval_request.annotations",
+        "adcp.types._schemas.brand.creative_approval_response.annotations",
+        "adcp.types._schemas.brand.get_brand_identity_request.annotations",
+        "adcp.types._schemas.brand.get_brand_identity_response.annotations",
+        "adcp.types._schemas.brand.get_rights_request.annotations",
+        "adcp.types._schemas.brand.get_rights_response.annotations",
+        "adcp.types._schemas.brand.revocation_notification.annotations",
+        "adcp.types._schemas.brand.rights_pricing_option.annotations",
+        "adcp.types._schemas.brand.rights_terms.annotations",
+        "adcp.types._schemas.brand.search_brands_request.annotations",
+        "adcp.types._schemas.brand.search_brands_response.annotations",
+        "adcp.types._schemas.brand.update_rights_request.annotations",
+        "adcp.types._schemas.brand.update_rights_response.annotations",
+        "adcp.types._schemas.brand.verification_status.annotations",
+        "adcp.types._schemas.brand.verify_brand_claim_request.annotations",
+        "adcp.types._schemas.brand.verify_brand_claim_response.annotations",
+        "adcp.types._schemas.brand.verify_brand_claims_request.annotations",
+        "adcp.types._schemas.brand.verify_brand_claims_response.annotations",
+        "adcp.types._schemas.collection.base_collection_source.annotations",
+        "adcp.types._schemas.collection.collection_list.annotations",
+        "adcp.types._schemas.collection.collection_list_changed_webhook.annotations",
+        "adcp.types._schemas.collection.collection_list_filters.annotations",
+        "adcp.types._schemas.collection.create_collection_list_request.annotations",
+        "adcp.types._schemas.collection.create_collection_list_response.annotations",
+        "adcp.types._schemas.collection.delete_collection_list_request.annotations",
+        "adcp.types._schemas.collection.delete_collection_list_response.annotations",
+        "adcp.types._schemas.collection.get_collection_list_request.annotations",
+        "adcp.types._schemas.collection.get_collection_list_response.annotations",
+        "adcp.types._schemas.collection.list_collection_lists_request.annotations",
+        "adcp.types._schemas.collection.list_collection_lists_response.annotations",
+        "adcp.types._schemas.collection.update_collection_list_request.annotations",
+        "adcp.types._schemas.collection.update_collection_list_response.annotations",
+        "adcp.types._schemas.compliance.comply_test_controller_request.annotations",
+        "adcp.types._schemas.compliance.comply_test_controller_response.annotations",
+        "adcp.types._schemas.compliance.get_creative_features_completion.annotations",
+        "adcp.types._schemas.compliance.task_completion_data.annotations",
+        "adcp.types._schemas.content_standards.artifact.annotations",
+        "adcp.types._schemas.content_standards.artifact_webhook_payload.annotations",
+        "adcp.types._schemas.content_standards.calibrate_content_request.annotations",
+        "adcp.types._schemas.content_standards.calibrate_content_response.annotations",
+        "adcp.types._schemas.content_standards.content_standards.annotations",
+        "adcp.types._schemas.content_standards.create_content_standards_request.annotations",
+        "adcp.types._schemas.content_standards.create_content_standards_response.annotations",
+        "adcp.types._schemas.content_standards.get_content_standards_request.annotations",
+        "adcp.types._schemas.content_standards.get_content_standards_response.annotations",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_request.annotations",
+        "adcp.types._schemas.content_standards.get_media_buy_artifacts_response.annotations",
+        "adcp.types._schemas.content_standards.list_content_standards_request.annotations",
+        "adcp.types._schemas.content_standards.list_content_standards_response.annotations",
+        "adcp.types._schemas.content_standards.update_content_standards_request.annotations",
+        "adcp.types._schemas.content_standards.update_content_standards_response.annotations",
+        "adcp.types._schemas.content_standards.validate_content_delivery_request.annotations",
+        "adcp.types._schemas.content_standards.validate_content_delivery_response.annotations",
+        "adcp.types._schemas.core.acceptance_policy_profile_ids.annotations",
+        "adcp.types._schemas.core.account.annotations",
+        "adcp.types._schemas.core.account_authorization.annotations",
+        "adcp.types._schemas.core.account_change.annotations",
+        "adcp.types._schemas.core.account_change_recorded_webhook.annotations",
+        "adcp.types._schemas.core.account_identity_change.annotations",
+        "adcp.types._schemas.core.account_identity_change_preview.annotations",
+        "adcp.types._schemas.core.account_ref.annotations",
+        "adcp.types._schemas.core.account_status_changed_webhook.annotations",
+        "adcp.types._schemas.core.account_timezone_capability.annotations",
+        "adcp.types._schemas.core.account_with_authorization.annotations",
+        "adcp.types._schemas.core.activation_key.annotations",
+        "adcp.types._schemas.core.ad_inventory_config.annotations",
+        "adcp.types._schemas.core.agent_encryption_key.annotations",
+        "adcp.types._schemas.core.agent_notification_config.annotations",
+        "adcp.types._schemas.core.agent_notification_config_state.annotations",
+        "adcp.types._schemas.core.agent_reporting_destination.annotations",
+        "adcp.types._schemas.core.agent_reporting_destination_state.annotations",
+        "adcp.types._schemas.core.agent_signing_key.annotations",
+        "adcp.types._schemas.core.agent_webhook_challenge.annotations",
+        "adcp.types._schemas.core.app_item.annotations",
+        "adcp.types._schemas.core.applicable_package_id.annotations",
+        "adcp.types._schemas.core.asset_group_vocabulary.annotations",
+        "adcp.types._schemas.core.assets.asset_union.annotations",
+        "adcp.types._schemas.core.assets.audio_asset.annotations",
+        "adcp.types._schemas.core.assets.brief_asset.annotations",
+        "adcp.types._schemas.core.assets.card_asset.annotations",
+        "adcp.types._schemas.core.assets.catalog_asset.annotations",
+        "adcp.types._schemas.core.assets.css_asset.annotations",
+        "adcp.types._schemas.core.assets.daast_asset.annotations",
+        "adcp.types._schemas.core.assets.daast_tracker_asset.annotations",
+        "adcp.types._schemas.core.assets.display_tag_asset.annotations",
+        "adcp.types._schemas.core.assets.html_asset.annotations",
+        "adcp.types._schemas.core.assets.image_asset.annotations",
+        "adcp.types._schemas.core.assets.javascript_asset.annotations",
+        "adcp.types._schemas.core.assets.markdown_asset.annotations",
+        "adcp.types._schemas.core.assets.pixel_tracker_asset.annotations",
+        "adcp.types._schemas.core.assets.published_post_asset.annotations",
+        "adcp.types._schemas.core.assets.text_asset.annotations",
+        "adcp.types._schemas.core.assets.url_asset.annotations",
+        "adcp.types._schemas.core.assets.vast_asset.annotations",
+        "adcp.types._schemas.core.assets.vast_tracker_asset.annotations",
+        "adcp.types._schemas.core.assets.video_asset.annotations",
+        "adcp.types._schemas.core.assets.webhook_asset.annotations",
+        "adcp.types._schemas.core.assets.zip_asset.annotations",
+        "adcp.types._schemas.core.async_response_data.annotations",
+        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working.annotations",
+        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted.annotations",
+        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working.annotations",
+        "adcp.types._schemas.core.attestation_capabilities.annotations",
+        "adcp.types._schemas.core.attestation_evaluation.annotations",
+        "adcp.types._schemas.core.attestation_issuer.annotations",
+        "adcp.types._schemas.core.attestation_reference.annotations",
+        "adcp.types._schemas.core.attestation_subject.annotations",
+        "adcp.types._schemas.core.attribution_window.annotations",
+        "adcp.types._schemas.core.audience_activation_method.annotations",
+        "adcp.types._schemas.core.audience_characteristic.annotations",
+        "adcp.types._schemas.core.audience_evidence.annotations",
+        "adcp.types._schemas.core.audience_evidence_pin.annotations",
+        "adcp.types._schemas.core.audience_evidence_requirements.annotations",
+        "adcp.types._schemas.core.audience_evidence_selection.annotations",
+        "adcp.types._schemas.core.audience_member.annotations",
+        "adcp.types._schemas.core.audience_selector.annotations",
+        "adcp.types._schemas.core.audience_source.annotations",
+        "adcp.types._schemas.core.authorized_agent_base.annotations",
+        "adcp.types._schemas.core.bidding_policy.annotations",
+        "adcp.types._schemas.core.bidding_policy_capability.annotations",
+        "adcp.types._schemas.core.brand_id.annotations",
+        "adcp.types._schemas.core.brand_key.annotations",
+        "adcp.types._schemas.core.brand_ref.annotations",
+        "adcp.types._schemas.core.brand_response_authorization_result.annotations",
+        "adcp.types._schemas.core.budget_allocation.annotations",
+        "adcp.types._schemas.core.budget_range.annotations",
+        "adcp.types._schemas.core.business_entity.annotations",
+        "adcp.types._schemas.core.cancellation_policy.annotations",
+        "adcp.types._schemas.core.canonical_account_ref.annotations",
+        "adcp.types._schemas.core.canonical_audience_evidence.annotations",
+        "adcp.types._schemas.core.canonical_audience_evidence_selection.annotations",
+        "adcp.types._schemas.core.canonical_budget_allocation.annotations",
+        "adcp.types._schemas.core.canonical_delivery_forecast.annotations",
+        "adcp.types._schemas.core.canonical_forecast_point.annotations",
+        "adcp.types._schemas.core.canonical_forecast_vendor_metric_value.annotations",
+        "adcp.types._schemas.core.canonical_format_kind.annotations",
+        "adcp.types._schemas.core.canonical_format_option.annotations",
+        "adcp.types._schemas.core.canonical_measurement_terms.annotations",
+        "adcp.types._schemas.core.canonical_media_buy_action.annotations",
+        "adcp.types._schemas.core.canonical_media_buy_action_fields.annotations",
+        "adcp.types._schemas.core.canonical_media_buy_features.annotations",
+        "adcp.types._schemas.core.canonical_metric_qualifier.annotations",
+        "adcp.types._schemas.core.canonical_optimization_goal.annotations",
+        "adcp.types._schemas.core.canonical_performance_standard.annotations",
+        "adcp.types._schemas.core.canonical_placement.annotations",
+        "adcp.types._schemas.core.canonical_pricing_option.annotations",
+        "adcp.types._schemas.core.canonical_product.annotations",
+        "adcp.types._schemas.core.canonical_product_action.annotations",
+        "adcp.types._schemas.core.canonical_projection_ref.annotations",
+        "adcp.types._schemas.core.canonical_projection_slot_override.annotations",
+        "adcp.types._schemas.core.canonical_proposal.annotations",
+        "adcp.types._schemas.core.canonical_reporting_capabilities.annotations",
+        "adcp.types._schemas.core.canonical_reporting_commitment.annotations",
+        "adcp.types._schemas.core.canvas_constraint.annotations",
+        "adcp.types._schemas.core.capabilities_changed_webhook.annotations",
+        "adcp.types._schemas.core.catalog.annotations",
+        "adcp.types._schemas.core.catalog_field_mapping.annotations",
+        "adcp.types._schemas.core.catalog_item_availability_error.annotations",
+        "adcp.types._schemas.core.catalog_item_availability_ref.annotations",
+        "adcp.types._schemas.core.catalog_item_availability_state.annotations",
+        "adcp.types._schemas.core.catalog_item_availability_update.annotations",
+        "adcp.types._schemas.core.catalog_item_availability_update_result.annotations",
+        "adcp.types._schemas.core.catalog_item_delivery_metrics.annotations",
+        "adcp.types._schemas.core.catalog_item_reference_not_found_error.annotations",
+        "adcp.types._schemas.core.catalog_selection.annotations",
+        "adcp.types._schemas.core.catchment.annotations",
+        "adcp.types._schemas.core.collection.annotations",
+        "adcp.types._schemas.core.collection_delivery_metrics.annotations",
+        "adcp.types._schemas.core.collection_distribution.annotations",
+        "adcp.types._schemas.core.collection_list_ref.annotations",
+        "adcp.types._schemas.core.collection_property_delivery_metrics.annotations",
+        "adcp.types._schemas.core.collection_ref.annotations",
+        "adcp.types._schemas.core.collection_selection.annotations",
+        "adcp.types._schemas.core.collection_selector.annotations",
+        "adcp.types._schemas.core.committed_metric.annotations",
+        "adcp.types._schemas.core.compact_task_input_required.annotations",
+        "adcp.types._schemas.core.compact_task_submitted.annotations",
+        "adcp.types._schemas.core.compact_task_working.annotations",
+        "adcp.types._schemas.core.content_rating.annotations",
+        "adcp.types._schemas.core.context.annotations",
+        "adcp.types._schemas.core.creative_approval_scope.annotations",
+        "adcp.types._schemas.core.creative_asset.annotations",
+        "adcp.types._schemas.core.creative_assets.annotations",
+        "adcp.types._schemas.core.creative_assignment.annotations",
+        "adcp.types._schemas.core.creative_brief.annotations",
+        "adcp.types._schemas.core.creative_consumption.annotations",
+        "adcp.types._schemas.core.creative_delivery_metrics.annotations",
+        "adcp.types._schemas.core.creative_filters.annotations",
+        "adcp.types._schemas.core.creative_item.annotations",
+        "adcp.types._schemas.core.creative_locale_policy.annotations",
+        "adcp.types._schemas.core.creative_localization.annotations",
+        "adcp.types._schemas.core.creative_localization_readback.annotations",
+        "adcp.types._schemas.core.creative_manifest.annotations",
+        "adcp.types._schemas.core.creative_operation_format_declaration.annotations",
+        "adcp.types._schemas.core.creative_policy.annotations",
+        "adcp.types._schemas.core.creative_representation.annotations",
+        "adcp.types._schemas.core.creative_representation_set.annotations",
+        "adcp.types._schemas.core.creative_revision_id.annotations",
+        "adcp.types._schemas.core.creative_variable.annotations",
+        "adcp.types._schemas.core.creative_variant.annotations",
+        "adcp.types._schemas.core.daast_tracker_constraints.annotations",
+        "adcp.types._schemas.core.data_provider_signal_selector.annotations",
+        "adcp.types._schemas.core.date_range.annotations",
+        "adcp.types._schemas.core.datetime_range.annotations",
+        "adcp.types._schemas.core.daypart_target.annotations",
+        "adcp.types._schemas.core.deadline_policy.annotations",
+        "adcp.types._schemas.core.delivery_breakdown_controls.annotations",
+        "adcp.types._schemas.core.delivery_forecast.annotations",
+        "adcp.types._schemas.core.delivery_metric_aggregate.annotations",
+        "adcp.types._schemas.core.delivery_metrics.annotations",
+        "adcp.types._schemas.core.delivery_provider.annotations",
+        "adcp.types._schemas.core.delivery_recipient.annotations",
+        "adcp.types._schemas.core.demographic_age_range.annotations",
+        "adcp.types._schemas.core.demographic_predicate.annotations",
+        "adcp.types._schemas.core.demographic_reporting_capability.annotations",
+        "adcp.types._schemas.core.demographic_targeting_capability.annotations",
+        "adcp.types._schemas.core.demographic_targeting_intent.annotations",
+        "adcp.types._schemas.core.demographic_targeting_resolution.annotations",
+        "adcp.types._schemas.core.deployment.annotations",
+        "adcp.types._schemas.core.destination.annotations",
+        "adcp.types._schemas.core.destination_item.annotations",
+        "adcp.types._schemas.core.diagnostic_issue.annotations",
+        "adcp.types._schemas.core.downstream_connection_requirement.annotations",
+        "adcp.types._schemas.core.duration.annotations",
+        "adcp.types._schemas.core.education_item.annotations",
+        "adcp.types._schemas.core.error.annotations",
+        "adcp.types._schemas.core.evaluator_spec.annotations",
+        "adcp.types._schemas.core.event.annotations",
+        "adcp.types._schemas.core.event_custom_data.annotations",
+        "adcp.types._schemas.core.event_source_health.annotations",
+        "adcp.types._schemas.core.event_surface.annotations",
+        "adcp.types._schemas.core.experimental_feature_id.annotations",
+        "adcp.types._schemas.core.ext.annotations",
+        "adcp.types._schemas.core.feature_requirement.annotations",
+        "adcp.types._schemas.core.flight_item.annotations",
+        "adcp.types._schemas.core.forecast_dimension_audience.annotations",
+        "adcp.types._schemas.core.forecast_dimension_device_platform.annotations",
+        "adcp.types._schemas.core.forecast_dimension_device_type.annotations",
+        "adcp.types._schemas.core.forecast_dimension_geo.annotations",
+        "adcp.types._schemas.core.forecast_dimension_placement.annotations",
+        "adcp.types._schemas.core.forecast_dimension_signal.annotations",
+        "adcp.types._schemas.core.forecast_dimension_time.annotations",
+        "adcp.types._schemas.core.forecast_point.annotations",
+        "adcp.types._schemas.core.forecast_point_dimensions.annotations",
+        "adcp.types._schemas.core.forecast_range.annotations",
+        "adcp.types._schemas.core.forecast_rate_range.annotations",
+        "adcp.types._schemas.core.forecast_vendor_metric_value.annotations",
+        "adcp.types._schemas.core.format.annotations",
+        "adcp.types._schemas.core.format_id.annotations",
+        "adcp.types._schemas.core.format_option_ref.annotations",
+        "adcp.types._schemas.core.format_shape_vocabulary.annotations",
+        "adcp.types._schemas.core.frequency_cap.annotations",
+        "adcp.types._schemas.core.frequency_cap_constraints.annotations",
+        "adcp.types._schemas.core.frequency_cap_duration_unit.annotations",
+        "adcp.types._schemas.core.frequency_cap_impression_constraints.annotations",
+        "adcp.types._schemas.core.frequency_cap_interval_constraints.annotations",
+        "adcp.types._schemas.core.frequency_cap_requirements.annotations",
+        "adcp.types._schemas.core.generation_credential.annotations",
+        "adcp.types._schemas.core.geo_breakdown_support.annotations",
+        "adcp.types._schemas.core.geo_delivery_metrics.annotations",
+        "adcp.types._schemas.core.geo_metro.annotations",
+        "adcp.types._schemas.core.geo_place_area.annotations",
+        "adcp.types._schemas.core.geo_place_catalog_capability.annotations",
+        "adcp.types._schemas.core.geo_place_catalog_entry.annotations",
+        "adcp.types._schemas.core.geo_place_requirement.annotations",
+        "adcp.types._schemas.core.geo_place_resolver.annotations",
+        "adcp.types._schemas.core.geo_place_support.annotations",
+        "adcp.types._schemas.core.geo_place_system.annotations",
+        "adcp.types._schemas.core.geo_place_type.annotations",
+        "adcp.types._schemas.core.geo_region_requirement.annotations",
+        "adcp.types._schemas.core.geo_region_support.annotations",
+        "adcp.types._schemas.core.get_geo_place_resolution_request.annotations",
+        "adcp.types._schemas.core.get_geo_place_resolution_response.annotations",
+        "adcp.types._schemas.core.hotel_item.annotations",
+        "adcp.types._schemas.core.iana_timezone.annotations",
+        "adcp.types._schemas.core.identifier.annotations",
+        "adcp.types._schemas.core.impairment.annotations",
+        "adcp.types._schemas.core.indicator.annotations",
+        "adcp.types._schemas.core.indicator_bearing.annotations",
+        "adcp.types._schemas.core.indicator_scope.annotations",
+        "adcp.types._schemas.core.indicators_changed_webhook.annotations",
+        "adcp.types._schemas.core.industry_identifier.annotations",
+        "adcp.types._schemas.core.insertion_order.annotations",
+        "adcp.types._schemas.core.installment.annotations",
+        "adcp.types._schemas.core.installment_deadlines.annotations",
+        "adcp.types._schemas.core.installment_delivery_metrics.annotations",
+        "adcp.types._schemas.core.installment_property_delivery_metrics.annotations",
+        "adcp.types._schemas.core.installment_ref.annotations",
+        "adcp.types._schemas.core.inventory_list_application.annotations",
+        "adcp.types._schemas.core.job_item.annotations",
+        "adcp.types._schemas.core.keyword_delivery_metrics.annotations",
+        "adcp.types._schemas.core.keyword_target.annotations",
+        "adcp.types._schemas.core.limited_series.annotations",
+        "adcp.types._schemas.core.locale_tag.annotations",
+        "adcp.types._schemas.core.localized_creative_asset.annotations",
+        "adcp.types._schemas.core.macro_bearing_url.annotations",
+        "adcp.types._schemas.core.macro_declaration.annotations",
+        "adcp.types._schemas.core.macro_encoding.annotations",
+        "adcp.types._schemas.core.macro_resolution_capability.annotations",
+        "adcp.types._schemas.core.macro_resolution_result.annotations",
+        "adcp.types._schemas.core.macro_translation_target.annotations",
+        "adcp.types._schemas.core.material_deadline.annotations",
+        "adcp.types._schemas.core.mcp_webhook_payload.annotations",
+        "adcp.types._schemas.core.measurement_readiness.annotations",
+        "adcp.types._schemas.core.measurement_terms.annotations",
+        "adcp.types._schemas.core.measurement_window.annotations",
+        "adcp.types._schemas.core.media_buy.annotations",
+        "adcp.types._schemas.core.media_buy_available_action.annotations",
+        "adcp.types._schemas.core.media_buy_available_action_id.annotations",
+        "adcp.types._schemas.core.media_buy_change_term_id.annotations",
+        "adcp.types._schemas.core.media_buy_features.annotations",
+        "adcp.types._schemas.core.media_buy_frequency_cap.annotations",
+        "adcp.types._schemas.core.media_buy_frequency_cap_capability.annotations",
+        "adcp.types._schemas.core.media_buy_frequency_cap_requirement.annotations",
+        "adcp.types._schemas.core.media_buy_frequency_cap_support.annotations",
+        "adcp.types._schemas.core.media_buy_legacy_terms_ref.annotations",
+        "adcp.types._schemas.core.media_buy_support.annotations",
+        "adcp.types._schemas.core.media_buy_support_requirements.annotations",
+        "adcp.types._schemas.core.missing_metric.annotations",
+        "adcp.types._schemas.core.negative_keyword.annotations",
+        "adcp.types._schemas.core.notification_config.annotations",
+        "adcp.types._schemas.core.offering.annotations",
+        "adcp.types._schemas.core.offering_asset_group.annotations",
+        "adcp.types._schemas.core.operator_identity.annotations",
+        "adcp.types._schemas.core.operator_unit.annotations",
+        "adcp.types._schemas.core.opportunity_context.annotations",
+        "adcp.types._schemas.core.optimization_goal.annotations",
+        "adcp.types._schemas.core.outcome_measurement.annotations",
+        "adcp.types._schemas.core.outcome_target_cost_per.annotations",
+        "adcp.types._schemas.core.overlay.annotations",
+        "adcp.types._schemas.core.package.annotations",
+        "adcp.types._schemas.core.package_delivery_metric_value.annotations",
+        "adcp.types._schemas.core.package_format_snapshot.annotations",
+        "adcp.types._schemas.core.package_signal_targeting.annotations",
+        "adcp.types._schemas.core.package_signal_targeting_group.annotations",
+        "adcp.types._schemas.core.package_signal_targeting_groups.annotations",
+        "adcp.types._schemas.core.package_targeting_resolution.annotations",
+        "adcp.types._schemas.core.pagination_request.annotations",
+        "adcp.types._schemas.core.pagination_response.annotations",
+        "adcp.types._schemas.core.performance_feedback.annotations",
+        "adcp.types._schemas.core.performance_feedback_assertion.annotations",
+        "adcp.types._schemas.core.performance_feedback_metric.annotations",
+        "adcp.types._schemas.core.performance_standard.annotations",
+        "adcp.types._schemas.core.placement.annotations",
+        "adcp.types._schemas.core.placement_definition.annotations",
+        "adcp.types._schemas.core.placement_delivery_metrics.annotations",
+        "adcp.types._schemas.core.placement_evidence.annotations",
+        "adcp.types._schemas.core.placement_identity.annotations",
+        "adcp.types._schemas.core.placement_presentation.annotations",
+        "adcp.types._schemas.core.placement_property_delivery_metrics.annotations",
+        "adcp.types._schemas.core.placement_ref.annotations",
+        "adcp.types._schemas.core.placement_selection.annotations",
+        "adcp.types._schemas.core.planned_delivery.annotations",
+        "adcp.types._schemas.core.platform_extension_ref.annotations",
+        "adcp.types._schemas.core.positive_postal_area_support.annotations",
+        "adcp.types._schemas.core.postal_area.annotations",
+        "adcp.types._schemas.core.postal_area_support.annotations",
+        "adcp.types._schemas.core.postal_country_system.annotations",
+        "adcp.types._schemas.core.presentation_ref.annotations",
+        "adcp.types._schemas.core.preview_provider.annotations",
+        "adcp.types._schemas.core.preview_renderer_metadata.annotations",
+        "adcp.types._schemas.core.price.annotations",
+        "adcp.types._schemas.core.pricing_option.annotations",
+        "adcp.types._schemas.core.principal_changed_webhook.annotations",
+        "adcp.types._schemas.core.principal_declarations.annotations",
+        "adcp.types._schemas.core.principal_declarations_state.annotations",
+        "adcp.types._schemas.core.principal_state.annotations",
+        "adcp.types._schemas.core.product.annotations",
+        "adcp.types._schemas.core.product_allocation.annotations",
+        "adcp.types._schemas.core.product_allowed_action.annotations",
+        "adcp.types._schemas.core.product_audience_evidence_requirements.annotations",
+        "adcp.types._schemas.core.product_card_reference_asset.annotations",
+        "adcp.types._schemas.core.product_change_map.annotations",
+        "adcp.types._schemas.core.product_execution_requirement.annotations",
+        "adcp.types._schemas.core.product_filters.annotations",
+        "adcp.types._schemas.core.product_format_declaration.annotations",
+        "adcp.types._schemas.core.product_identity.annotations",
+        "adcp.types._schemas.core.product_offer_filters.annotations",
+        "adcp.types._schemas.core.product_signal_targeting_option.annotations",
+        "adcp.types._schemas.core.product_targeting_resolution.annotations",
+        "adcp.types._schemas.core.property.annotations",
+        "adcp.types._schemas.core.property_delivery_metrics.annotations",
+        "adcp.types._schemas.core.property_id.annotations",
+        "adcp.types._schemas.core.property_list_ref.annotations",
+        "adcp.types._schemas.core.property_ref.annotations",
+        "adcp.types._schemas.core.property_tag.annotations",
+        "adcp.types._schemas.core.proposal.annotations",
+        "adcp.types._schemas.core.protocol_envelope.annotations",
+        "adcp.types._schemas.core.provenance.annotations",
+        "adcp.types._schemas.core.publisher_property_selector.annotations",
+        "adcp.types._schemas.core.push_notification_config.annotations",
+        "adcp.types._schemas.core.real_estate_item.annotations",
+        "adcp.types._schemas.core.reference_asset.annotations",
+        "adcp.types._schemas.core.reference_renderer.annotations",
+        "adcp.types._schemas.core.registry_event.annotations",
+        "adcp.types._schemas.core.registry_feed_response.annotations",
+        "adcp.types._schemas.core.reporting_adjustment.annotations",
+        "adcp.types._schemas.core.reporting_adjustment_receipt.annotations",
+        "adcp.types._schemas.core.reporting_canonical_content_digest.annotations",
+        "adcp.types._schemas.core.reporting_canonicalization_contract.annotations",
+        "adcp.types._schemas.core.reporting_capabilities.annotations",
+        "adcp.types._schemas.core.reporting_consumer_status.annotations",
+        "adcp.types._schemas.core.reporting_control_total.annotations",
+        "adcp.types._schemas.core.reporting_coverage.annotations",
+        "adcp.types._schemas.core.reporting_dataset_share_destination.annotations",
+        "adcp.types._schemas.core.reporting_delivery_capabilities.annotations",
+        "adcp.types._schemas.core.reporting_delivery_config.annotations",
+        "adcp.types._schemas.core.reporting_delivery_config_state.annotations",
+        "adcp.types._schemas.core.reporting_delivery_method.annotations",
+        "adcp.types._schemas.core.reporting_delivery_offering.annotations",
+        "adcp.types._schemas.core.reporting_delivery_offering_id.annotations",
+        "adcp.types._schemas.core.reporting_delivery_ready_webhook.annotations",
+        "adcp.types._schemas.core.reporting_file_compression.annotations",
+        "adcp.types._schemas.core.reporting_file_entry.annotations",
+        "adcp.types._schemas.core.reporting_file_manifest.annotations",
+        "adcp.types._schemas.core.reporting_file_object_ref.annotations",
+        "adcp.types._schemas.core.reporting_ledger_changed_webhook.annotations",
+        "adcp.types._schemas.core.reporting_materialization.annotations",
+        "adcp.types._schemas.core.reporting_native_version_ref.annotations",
+        "adcp.types._schemas.core.reporting_obligation.annotations",
+        "adcp.types._schemas.core.reporting_receipt.annotations",
+        "adcp.types._schemas.core.reporting_reconciliation_mode.annotations",
+        "adcp.types._schemas.core.reporting_reliability_statistics.annotations",
+        "adcp.types._schemas.core.reporting_report_definition.annotations",
+        "adcp.types._schemas.core.reporting_resource.annotations",
+        "adcp.types._schemas.core.reporting_revision.annotations",
+        "adcp.types._schemas.core.reporting_schedule.annotations",
+        "adcp.types._schemas.core.reporting_schedule_offering.annotations",
+        "adcp.types._schemas.core.reporting_status_changed_webhook.annotations",
+        "adcp.types._schemas.core.reporting_status_issue.annotations",
+        "adcp.types._schemas.core.reporting_verification.annotations",
+        "adcp.types._schemas.core.reporting_verification_profile.annotations",
+        "adcp.types._schemas.core.reporting_verification_profile_set.annotations",
+        "adcp.types._schemas.core.reporting_webhook.annotations",
+        "adcp.types._schemas.core.reporting_write_destination.annotations",
+        "adcp.types._schemas.core.representation_destination.annotations",
+        "adcp.types._schemas.core.representation_rejection.annotations",
+        "adcp.types._schemas.core.representation_selection.annotations",
+        "adcp.types._schemas.core.requirements.asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.audio_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.catalog_field_binding.annotations",
+        "adcp.types._schemas.core.requirements.catalog_requirements.annotations",
+        "adcp.types._schemas.core.requirements.css_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.daast_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.html_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.image_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.javascript_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.markdown_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.offering_asset_constraint.annotations",
+        "adcp.types._schemas.core.requirements.text_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.url_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.vast_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.video_asset_requirements.annotations",
+        "adcp.types._schemas.core.requirements.webhook_asset_requirements.annotations",
+        "adcp.types._schemas.core.response.annotations",
+        "adcp.types._schemas.core.response_payload_jws_envelope.annotations",
+        "adcp.types._schemas.core.rights_attestation_evaluation.annotations",
+        "adcp.types._schemas.core.rights_constraint.annotations",
+        "adcp.types._schemas.core.seller_agent_ref.annotations",
+        "adcp.types._schemas.core.signal_coverage_forecast.annotations",
+        "adcp.types._schemas.core.signal_definition.annotations",
+        "adcp.types._schemas.core.signal_definition_enrichment.annotations",
+        "adcp.types._schemas.core.signal_filters.annotations",
+        "adcp.types._schemas.core.signal_id.annotations",
+        "adcp.types._schemas.core.signal_listing.annotations",
+        "adcp.types._schemas.core.signal_modeling_disclosure.annotations",
+        "adcp.types._schemas.core.signal_pricing.annotations",
+        "adcp.types._schemas.core.signal_pricing_option.annotations",
+        "adcp.types._schemas.core.signal_ref.annotations",
+        "adcp.types._schemas.core.signal_selection_group_rule.annotations",
+        "adcp.types._schemas.core.signal_targeting.annotations",
+        "adcp.types._schemas.core.signal_targeting_expression.annotations",
+        "adcp.types._schemas.core.signal_targeting_rules.annotations",
+        "adcp.types._schemas.core.sla_window.annotations",
+        "adcp.types._schemas.core.special.annotations",
+        "adcp.types._schemas.core.spot_reporting_capability.annotations",
+        "adcp.types._schemas.core.start_timing.annotations",
+        "adcp.types._schemas.core.store_item.annotations",
+        "adcp.types._schemas.core.talent.annotations",
+        "adcp.types._schemas.core.targeting.annotations",
+        "adcp.types._schemas.core.targeting_input.annotations",
+        "adcp.types._schemas.core.targeting_modification.annotations",
+        "adcp.types._schemas.core.targeting_overlay_requirements.annotations",
+        "adcp.types._schemas.core.targeting_overlay_support.annotations",
+        "adcp.types._schemas.core.targeting_unknown_age_eligibility_constraint.annotations",
+        "adcp.types._schemas.core.targeting_verified_age_basis_constraint.annotations",
+        "adcp.types._schemas.core.tasks_get_request.annotations",
+        "adcp.types._schemas.core.tasks_get_response.annotations",
+        "adcp.types._schemas.core.tasks_list_request.annotations",
+        "adcp.types._schemas.core.tasks_list_response.annotations",
+        "adcp.types._schemas.core.tracker_execution_contract.annotations",
+        "adcp.types._schemas.core.tracker_execution_selector.annotations",
+        "adcp.types._schemas.core.transformer.annotations",
+        "adcp.types._schemas.core.transformer_param.annotations",
+        "adcp.types._schemas.core.truncation_sentinel.annotations",
+        "adcp.types._schemas.core.user_match.annotations",
+        "adcp.types._schemas.core.vast_media_file_requirements.annotations",
+        "adcp.types._schemas.core.vast_tracker_constraints.annotations",
+        "adcp.types._schemas.core.vehicle_item.annotations",
+        "adcp.types._schemas.core.vendor_metric_id.annotations",
+        "adcp.types._schemas.core.vendor_metric_optimization.annotations",
+        "adcp.types._schemas.core.vendor_metric_optimization_supported_metric.annotations",
+        "adcp.types._schemas.core.vendor_metric_value.annotations",
+        "adcp.types._schemas.core.vendor_pricing_option.annotations",
+        "adcp.types._schemas.core.verification_token_claims.annotations",
+        "adcp.types._schemas.core.version_envelope.annotations",
+        "adcp.types._schemas.core.warning.annotations",
+        "adcp.types._schemas.core.warning_resource.annotations",
+        "adcp.types._schemas.core.webhook_activity_record.annotations",
+        "adcp.types._schemas.core.webhook_challenge.annotations",
+        "adcp.types._schemas.core.webhook_challenge_response.annotations",
+        "adcp.types._schemas.core.wholesale_feed_event.annotations",
+        "adcp.types._schemas.core.wholesale_feed_webhook.annotations",
+        "adcp.types._schemas.core.x_entity_types.annotations",
+        "adcp.types._schemas.creative.audit_observation.annotations",
+        "adcp.types._schemas.creative.creative_assignment_changed_webhook.annotations",
+        "adcp.types._schemas.creative.creative_feature_result.annotations",
+        "adcp.types._schemas.creative.creative_purged_webhook.annotations",
+        "adcp.types._schemas.creative.creative_status_changed_webhook.annotations",
+        "adcp.types._schemas.creative.get_creative_delivery_request.annotations",
+        "adcp.types._schemas.creative.get_creative_delivery_response.annotations",
+        "adcp.types._schemas.creative.get_creative_features_async_response_submitted.annotations",
+        "adcp.types._schemas.creative.get_creative_features_request.annotations",
+        "adcp.types._schemas.creative.get_creative_features_response.annotations",
+        "adcp.types._schemas.creative.get_creative_features_terminal_success.annotations",
+        "adcp.types._schemas.creative.list_creative_formats_request.annotations",
+        "adcp.types._schemas.creative.list_creative_formats_response.annotations",
+        "adcp.types._schemas.creative.list_creatives_request.annotations",
+        "adcp.types._schemas.creative.list_creatives_response.annotations",
+        "adcp.types._schemas.creative.list_transformers_request.annotations",
+        "adcp.types._schemas.creative.list_transformers_response.annotations",
+        "adcp.types._schemas.creative.preview_creative_request.annotations",
+        "adcp.types._schemas.creative.preview_creative_response.annotations",
+        "adcp.types._schemas.creative.preview_render.annotations",
+        "adcp.types._schemas.creative.sync_creatives_async_response_input_required.annotations",
+        "adcp.types._schemas.creative.sync_creatives_async_response_submitted.annotations",
+        "adcp.types._schemas.creative.sync_creatives_async_response_working.annotations",
+        "adcp.types._schemas.creative.sync_creatives_request.annotations",
+        "adcp.types._schemas.creative.sync_creatives_response.annotations",
+        "adcp.types._schemas.creative.validate_input_request.annotations",
+        "adcp.types._schemas.creative.validate_input_response.annotations",
+        "adcp.types._schemas.creative.validate_input_result.annotations",
+        "adcp.types._schemas.creative.video_brief.annotations",
+        "adcp.types._schemas.enums.account_currency_mode.annotations",
+        "adcp.types._schemas.enums.account_scope.annotations",
+        "adcp.types._schemas.enums.account_status.annotations",
+        "adcp.types._schemas.enums.action_not_allowed_reason.annotations",
+        "adcp.types._schemas.enums.action_source.annotations",
+        "adcp.types._schemas.enums.activation_method.annotations",
+        "adcp.types._schemas.enums.adcp_protocol.annotations",
+        "adcp.types._schemas.enums.adjustment_kind.annotations",
+        "adcp.types._schemas.enums.advertiser_industry.annotations",
+        "adcp.types._schemas.enums.age_determination_basis.annotations",
+        "adcp.types._schemas.enums.age_verification_method.annotations",
+        "adcp.types._schemas.enums.assessment_status.annotations",
+        "adcp.types._schemas.enums.asset_content_type.annotations",
+        "adcp.types._schemas.enums.attestation_claim.annotations",
+        "adcp.types._schemas.enums.attribution_methodology.annotations",
+        "adcp.types._schemas.enums.attribution_model.annotations",
+        "adcp.types._schemas.enums.audience_evidence_methodology.annotations",
+        "adcp.types._schemas.enums.audience_resolution_method.annotations",
+        "adcp.types._schemas.enums.audience_source.annotations",
+        "adcp.types._schemas.enums.audience_status.annotations",
+        "adcp.types._schemas.enums.audience_subject_type.annotations",
+        "adcp.types._schemas.enums.audio_channel_layout.annotations",
+        "adcp.types._schemas.enums.audio_distribution_type.annotations",
+        "adcp.types._schemas.enums.auth_scheme.annotations",
+        "adcp.types._schemas.enums.availability_status.annotations",
+        "adcp.types._schemas.enums.available_metric.annotations",
+        "adcp.types._schemas.enums.billing_party.annotations",
+        "adcp.types._schemas.enums.binary_verdict.annotations",
+        "adcp.types._schemas.enums.brand_agent_type.annotations",
+        "adcp.types._schemas.enums.browser_family.annotations",
+        "adcp.types._schemas.enums.c2pa_watermark_action.annotations",
+        "adcp.types._schemas.enums.canceled_by.annotations",
+        "adcp.types._schemas.enums.canonical_media_buy_action.annotations",
+        "adcp.types._schemas.enums.canonical_media_buy_action_mode.annotations",
+        "adcp.types._schemas.enums.catalog_action.annotations",
+        "adcp.types._schemas.enums.catalog_item_status.annotations",
+        "adcp.types._schemas.enums.catalog_type.annotations",
+        "adcp.types._schemas.enums.channels.annotations",
+        "adcp.types._schemas.enums.cloud_storage_protocol.annotations",
+        "adcp.types._schemas.enums.co_branding_requirement.annotations",
+        "adcp.types._schemas.enums.collection_cadence.annotations",
+        "adcp.types._schemas.enums.collection_kind.annotations",
+        "adcp.types._schemas.enums.collection_relationship.annotations",
+        "adcp.types._schemas.enums.collection_status.annotations",
+        "adcp.types._schemas.enums.completion_source.annotations",
+        "adcp.types._schemas.enums.consent_basis.annotations",
+        "adcp.types._schemas.enums.content_id_type.annotations",
+        "adcp.types._schemas.enums.content_rating_system.annotations",
+        "adcp.types._schemas.enums.creative_action.annotations",
+        "adcp.types._schemas.enums.creative_agent_capability.annotations",
+        "adcp.types._schemas.enums.creative_approval_status.annotations",
+        "adcp.types._schemas.enums.creative_event_reason_code.annotations",
+        "adcp.types._schemas.enums.creative_identifier_type.annotations",
+        "adcp.types._schemas.enums.creative_quality.annotations",
+        "adcp.types._schemas.enums.creative_selection_strategy.annotations",
+        "adcp.types._schemas.enums.creative_sort_field.annotations",
+        "adcp.types._schemas.enums.creative_status.annotations",
+        "adcp.types._schemas.enums.ctv_ad_experience.annotations",
+        "adcp.types._schemas.enums.daast_tracking_event.annotations",
+        "adcp.types._schemas.enums.daast_version.annotations",
+        "adcp.types._schemas.enums.day_of_week.annotations",
+        "adcp.types._schemas.enums.daypart_timezone_mode.annotations",
+        "adcp.types._schemas.enums.delegation_authority.annotations",
+        "adcp.types._schemas.enums.delivery_recipient_cloud.annotations",
+        "adcp.types._schemas.enums.delivery_status.annotations",
+        "adcp.types._schemas.enums.delivery_type.annotations",
+        "adcp.types._schemas.enums.demographic_system.annotations",
+        "adcp.types._schemas.enums.derivative_type.annotations",
+        "adcp.types._schemas.enums.device_platform.annotations",
+        "adcp.types._schemas.enums.device_type.annotations",
+        "adcp.types._schemas.enums.digital_source_type.annotations",
+        "adcp.types._schemas.enums.dimension_unit.annotations",
+        "adcp.types._schemas.enums.disclosure_persistence.annotations",
+        "adcp.types._schemas.enums.disclosure_position.annotations",
+        "adcp.types._schemas.enums.distance_unit.annotations",
+        "adcp.types._schemas.enums.distribution_identifier_type.annotations",
+        "adcp.types._schemas.enums.dooh_motion_type.annotations",
+        "adcp.types._schemas.enums.embedded_provenance_method.annotations",
+        "adcp.types._schemas.enums.error_code.annotations",
+        "adcp.types._schemas.enums.error_scope.annotations",
+        "adcp.types._schemas.enums.escalation_severity.annotations",
+        "adcp.types._schemas.enums.event_type.annotations",
+        "adcp.types._schemas.enums.exclusivity.annotations",
+        "adcp.types._schemas.enums.feature_check_status.annotations",
+        "adcp.types._schemas.enums.feed_format.annotations",
+        "adcp.types._schemas.enums.feedback_source.annotations",
+        "adcp.types._schemas.enums.forecast_method.annotations",
+        "adcp.types._schemas.enums.forecast_range_unit.annotations",
+        "adcp.types._schemas.enums.forecastable_metric.annotations",
+        "adcp.types._schemas.enums.format_id_parameter.annotations",
+        "adcp.types._schemas.enums.frame_rate_type.annotations",
+        "adcp.types._schemas.enums.frequency_cap_control_mode.annotations",
+        "adcp.types._schemas.enums.frequency_cap_mutable_field.annotations",
+        "adcp.types._schemas.enums.frequency_cap_scope.annotations",
+        "adcp.types._schemas.enums.genre_taxonomy.annotations",
+        "adcp.types._schemas.enums.geo_level.annotations",
+        "adcp.types._schemas.enums.gop_type.annotations",
+        "adcp.types._schemas.enums.governance_decision.annotations",
+        "adcp.types._schemas.enums.governance_domain.annotations",
+        "adcp.types._schemas.enums.governance_mode.annotations",
+        "adcp.types._schemas.enums.governance_phase.annotations",
+        "adcp.types._schemas.enums.history_entry_type.annotations",
+        "adcp.types._schemas.enums.http_method.annotations",
+        "adcp.types._schemas.enums.identifier_types.annotations",
+        "adcp.types._schemas.enums.impairment_offline_state.annotations",
+        "adcp.types._schemas.enums.impairment_reason_code.annotations",
+        "adcp.types._schemas.enums.indicator_type.annotations",
+        "adcp.types._schemas.enums.installment_status.annotations",
+        "adcp.types._schemas.enums.javascript_module_type.annotations",
+        "adcp.types._schemas.enums.landing_page_requirement.annotations",
+        "adcp.types._schemas.enums.legacy_postal_system.annotations",
+        "adcp.types._schemas.enums.lift_dimension.annotations",
+        "adcp.types._schemas.enums.logo_slot.annotations",
+        "adcp.types._schemas.enums.macro_dialect.annotations",
+        "adcp.types._schemas.enums.macro_mapping_status.annotations",
+        "adcp.types._schemas.enums.macro_processing_operation.annotations",
+        "adcp.types._schemas.enums.macro_resolution_reason.annotations",
+        "adcp.types._schemas.enums.macro_resolver.annotations",
+        "adcp.types._schemas.enums.macro_value_context.annotations",
+        "adcp.types._schemas.enums.makegood_remedy.annotations",
+        "adcp.types._schemas.enums.markdown_flavor.annotations",
+        "adcp.types._schemas.enums.match_id_type.annotations",
+        "adcp.types._schemas.enums.match_type.annotations",
+        "adcp.types._schemas.enums.media_buy_action_mode.annotations",
+        "adcp.types._schemas.enums.media_buy_frequency_cap_control_mode.annotations",
+        "adcp.types._schemas.enums.media_buy_health.annotations",
+        "adcp.types._schemas.enums.media_buy_status.annotations",
+        "adcp.types._schemas.enums.media_buy_valid_action.annotations",
+        "adcp.types._schemas.enums.metric_scope.annotations",
+        "adcp.types._schemas.enums.metric_type.annotations",
+        "adcp.types._schemas.enums.metro_system.annotations",
+        "adcp.types._schemas.enums.moov_atom_position.annotations",
+        "adcp.types._schemas.enums.motion_level.annotations",
+        "adcp.types._schemas.enums.notification_type.annotations",
+        "adcp.types._schemas.enums.offering_availability_status.annotations",
+        "adcp.types._schemas.enums.outcome_target_cost_strength.annotations",
+        "adcp.types._schemas.enums.outcome_type.annotations",
+        "adcp.types._schemas.enums.pacing.annotations",
+        "adcp.types._schemas.enums.payment_terms.annotations",
+        "adcp.types._schemas.enums.performance_baseline.annotations",
+        "adcp.types._schemas.enums.performance_standard_metric.annotations",
+        "adcp.types._schemas.enums.pixel_tracking_event.annotations",
+        "adcp.types._schemas.enums.policy_category.annotations",
+        "adcp.types._schemas.enums.policy_enforcement.annotations",
+        "adcp.types._schemas.enums.postal_system.annotations",
+        "adcp.types._schemas.enums.preview_output_format.annotations",
+        "adcp.types._schemas.enums.pricing_model.annotations",
+        "adcp.types._schemas.enums.pricing_structure.annotations",
+        "adcp.types._schemas.enums.principal_kind.annotations",
+        "adcp.types._schemas.enums.production_quality.annotations",
+        "adcp.types._schemas.enums.property_type.annotations",
+        "adcp.types._schemas.enums.proposal_decline_reason.annotations",
+        "adcp.types._schemas.enums.proposal_refinement_reason.annotations",
+        "adcp.types._schemas.enums.proposal_status.annotations",
+        "adcp.types._schemas.enums.publisher_identifier_types.annotations",
+        "adcp.types._schemas.enums.purchase_type.annotations",
+        "adcp.types._schemas.enums.reach_aggregation.annotations",
+        "adcp.types._schemas.enums.reach_unit.annotations",
+        "adcp.types._schemas.enums.reporting_destination_setup_state.annotations",
+        "adcp.types._schemas.enums.reporting_finality.annotations",
+        "adcp.types._schemas.enums.reporting_frequency.annotations",
+        "adcp.types._schemas.enums.reporting_health.annotations",
+        "adcp.types._schemas.enums.representation_selection_strategy.annotations",
+        "adcp.types._schemas.enums.request_signing_error_code.annotations",
+        "adcp.types._schemas.enums.response_type.annotations",
+        "adcp.types._schemas.enums.restricted_attribute.annotations",
+        "adcp.types._schemas.enums.right_type.annotations",
+        "adcp.types._schemas.enums.right_use.annotations",
+        "adcp.types._schemas.enums.rights_billing_period.annotations",
+        "adcp.types._schemas.enums.scan_type.annotations",
+        "adcp.types._schemas.enums.seller_policy_decline_reason.annotations",
+        "adcp.types._schemas.enums.si_session_status.annotations",
+        "adcp.types._schemas.enums.signal_catalog_type.annotations",
+        "adcp.types._schemas.enums.signal_source.annotations",
+        "adcp.types._schemas.enums.signal_value_type.annotations",
+        "adcp.types._schemas.enums.snapshot_unavailable_reason.annotations",
+        "adcp.types._schemas.enums.social_placement_surface.annotations",
+        "adcp.types._schemas.enums.sort_direction.annotations",
+        "adcp.types._schemas.enums.sort_metric.annotations",
+        "adcp.types._schemas.enums.special_category.annotations",
+        "adcp.types._schemas.enums.specialism.annotations",
+        "adcp.types._schemas.enums.sponsored_placement_type.annotations",
+        "adcp.types._schemas.enums.talent_role.annotations",
+        "adcp.types._schemas.enums.task_status.annotations",
+        "adcp.types._schemas.enums.task_type.annotations",
+        "adcp.types._schemas.enums.tracker_execution_actor.annotations",
+        "adcp.types._schemas.enums.tracker_firing_path.annotations",
+        "adcp.types._schemas.enums.transport_mode.annotations",
+        "adcp.types._schemas.enums.travel_time_unit.annotations",
+        "adcp.types._schemas.enums.uid_type.annotations",
+        "adcp.types._schemas.enums.universal_macro.annotations",
+        "adcp.types._schemas.enums.update_frequency.annotations",
+        "adcp.types._schemas.enums.url_asset_type.annotations",
+        "adcp.types._schemas.enums.validation_mode.annotations",
+        "adcp.types._schemas.enums.vast_media_delivery_method.annotations",
+        "adcp.types._schemas.enums.vast_tracking_event.annotations",
+        "adcp.types._schemas.enums.vast_version.annotations",
+        "adcp.types._schemas.enums.vendor_relationship.annotations",
+        "adcp.types._schemas.enums.video_placement_type.annotations",
+        "adcp.types._schemas.enums.view_threshold_basis.annotations",
+        "adcp.types._schemas.enums.viewability_standard.annotations",
+        "adcp.types._schemas.enums.warning_code.annotations",
+        "adcp.types._schemas.enums.watermark_media_type.annotations",
+        "adcp.types._schemas.enums.wcag_level.annotations",
+        "adcp.types._schemas.enums.webhook_response_type.annotations",
+        "adcp.types._schemas.enums.webhook_security_method.annotations",
+        "adcp.types._schemas.error_details.accessibility_violation.annotations",
+        "adcp.types._schemas.error_details.account_moved.annotations",
+        "adcp.types._schemas.error_details.account_setup_required.annotations",
+        "adcp.types._schemas.error_details.action_not_allowed.annotations",
+        "adcp.types._schemas.error_details.agent_permission_denied.annotations",
+        "adcp.types._schemas.error_details.audience_too_small.annotations",
+        "adcp.types._schemas.error_details.authorization_required.annotations",
+        "adcp.types._schemas.error_details.billing_not_permitted_for_agent.annotations",
+        "adcp.types._schemas.error_details.billing_not_supported.annotations",
+        "adcp.types._schemas.error_details.budget_too_low.annotations",
+        "adcp.types._schemas.error_details.conflict.annotations",
+        "adcp.types._schemas.error_details.creative_rejected.annotations",
+        "adcp.types._schemas.error_details.creative_representation_unresolved.annotations",
+        "adcp.types._schemas.error_details.creative_revision_content_mismatch.annotations",
+        "adcp.types._schemas.error_details.execution_requirement_unmet.annotations",
+        "adcp.types._schemas.error_details.governance_agent_not_accepted.annotations",
+        "adcp.types._schemas.error_details.macro_resolution_failed.annotations",
+        "adcp.types._schemas.error_details.policy_violation.annotations",
+        "adcp.types._schemas.error_details.rate_limited.annotations",
+        "adcp.types._schemas.error_details.requote_required.annotations",
+        "adcp.types._schemas.error_details.stale_response.annotations",
+        "adcp.types._schemas.error_details.unsupported_refinement_dimension.annotations",
+        "adcp.types._schemas.error_details.vast_version_mismatch.annotations",
+        "adcp.types._schemas.error_details.vendor_error_codes.annotations",
+        "adcp.types._schemas.error_details.version_unsupported.annotations",
+        "adcp.types._schemas.extensions.extension_meta.annotations",
+        "adcp.types._schemas.formats.canonical",
+        "adcp.types._schemas.formats.canonical._base.annotations",
+        "adcp.types._schemas.formats.canonical.agent_placement.annotations",
+        "adcp.types._schemas.formats.canonical.audio_daast.annotations",
+        "adcp.types._schemas.formats.canonical.audio_hosted.annotations",
+        "adcp.types._schemas.formats.canonical.audio_vast.annotations",
+        "adcp.types._schemas.formats.canonical.coordinated_placements.annotations",
+        "adcp.types._schemas.formats.canonical.display_tag.annotations",
+        "adcp.types._schemas.formats.canonical.html5.annotations",
+        "adcp.types._schemas.formats.canonical.image.annotations",
+        "adcp.types._schemas.formats.canonical.image_carousel.annotations",
+        "adcp.types._schemas.formats.canonical.native_in_feed.annotations",
+        "adcp.types._schemas.formats.canonical.responsive_creative.annotations",
+        "adcp.types._schemas.formats.canonical.seller_rendered_stateful_display.annotations",
+        "adcp.types._schemas.formats.canonical.sponsored_placement.annotations",
+        "adcp.types._schemas.formats.canonical.video_hosted.annotations",
+        "adcp.types._schemas.formats.canonical.video_vast.annotations",
+        "adcp.types._schemas.governance.accepted_governance_agents.annotations",
+        "adcp.types._schemas.governance.attribute_definition.annotations",
+        "adcp.types._schemas.governance.audience_constraints.annotations",
+        "adcp.types._schemas.governance.check_governance_request.annotations",
+        "adcp.types._schemas.governance.check_governance_response.annotations",
+        "adcp.types._schemas.governance.get_plan_audit_logs_request.annotations",
+        "adcp.types._schemas.governance.get_plan_audit_logs_response.annotations",
+        "adcp.types._schemas.governance.policy_category_definition.annotations",
+        "adcp.types._schemas.governance.policy_entry.annotations",
+        "adcp.types._schemas.governance.policy_ref.annotations",
+        "adcp.types._schemas.governance.report_plan_adjustment_request.annotations",
+        "adcp.types._schemas.governance.report_plan_adjustment_response.annotations",
+        "adcp.types._schemas.governance.report_plan_outcome_request.annotations",
+        "adcp.types._schemas.governance.report_plan_outcome_response.annotations",
+        "adcp.types._schemas.governance.reported_outcome_error.annotations",
+        "adcp.types._schemas.governance.sync_plans_request.annotations",
+        "adcp.types._schemas.governance.sync_plans_response.annotations",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.accept_proposal_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.accept_proposal_request.annotations",
+        "adcp.types._schemas.media_buy.accept_proposal_response.annotations",
+        "adcp.types._schemas.media_buy.acceptance_context.annotations",
+        "adcp.types._schemas.media_buy.acceptance_policy_catalog.annotations",
+        "adcp.types._schemas.media_buy.acceptance_policy_profile.annotations",
+        "adcp.types._schemas.media_buy.acceptance_policy_profile_ref.annotations",
+        "adcp.types._schemas.media_buy.acceptance_policy_requirement.annotations",
+        "adcp.types._schemas.media_buy.acceptance_policy_rule.annotations",
+        "adcp.types._schemas.media_buy.build_creative_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.build_creative_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.build_creative_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.build_creative_request.annotations",
+        "adcp.types._schemas.media_buy.build_creative_response.annotations",
+        "adcp.types._schemas.media_buy.buy_products_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.buy_products_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.buy_products_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.buy_products_request.annotations",
+        "adcp.types._schemas.media_buy.buy_products_response.annotations",
+        "adcp.types._schemas.media_buy.change_term.annotations",
+        "adcp.types._schemas.media_buy.change_term_constraints.annotations",
+        "adcp.types._schemas.media_buy.commercial_terms.annotations",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.control_media_buy_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.control_media_buy_request.annotations",
+        "adcp.types._schemas.media_buy.control_media_buy_response.annotations",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.create_media_buy_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.create_media_buy_request.annotations",
+        "adcp.types._schemas.media_buy.create_media_buy_response.annotations",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.decline_proposals_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.decline_proposals_request.annotations",
+        "adcp.types._schemas.media_buy.decline_proposals_response.annotations",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_request.annotations",
+        "adcp.types._schemas.media_buy.get_media_buy_delivery_response.annotations",
+        "adcp.types._schemas.media_buy.get_media_buys_request.annotations",
+        "adcp.types._schemas.media_buy.get_media_buys_response.annotations",
+        "adcp.types._schemas.media_buy.get_products_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.get_products_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.get_products_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.get_products_rejected.annotations",
+        "adcp.types._schemas.media_buy.get_products_request.annotations",
+        "adcp.types._schemas.media_buy.get_products_response.annotations",
+        "adcp.types._schemas.media_buy.get_products_targeting_resolution.annotations",
+        "adcp.types._schemas.media_buy.get_reporting_status_request.annotations",
+        "adcp.types._schemas.media_buy.get_reporting_status_response.annotations",
+        "adcp.types._schemas.media_buy.legacy_purchase_continuation_input.annotations",
+        "adcp.types._schemas.media_buy.list_creative_formats_request.annotations",
+        "adcp.types._schemas.media_buy.list_creative_formats_response.annotations",
+        "adcp.types._schemas.media_buy.list_products_request.annotations",
+        "adcp.types._schemas.media_buy.list_products_response.annotations",
+        "adcp.types._schemas.media_buy.log_event_request.annotations",
+        "adcp.types._schemas.media_buy.log_event_response.annotations",
+        "adcp.types._schemas.media_buy.media_buy_commitment_response.annotations",
+        "adcp.types._schemas.media_buy.media_buy_delivery_webhook_result.annotations",
+        "adcp.types._schemas.media_buy.outcome_target.annotations",
+        "adcp.types._schemas.media_buy.package_control.annotations",
+        "adcp.types._schemas.media_buy.package_request.annotations",
+        "adcp.types._schemas.media_buy.package_update.annotations",
+        "adcp.types._schemas.media_buy.product_discovery_criteria.annotations",
+        "adcp.types._schemas.media_buy.product_fields.annotations",
+        "adcp.types._schemas.media_buy.product_purchase.annotations",
+        "adcp.types._schemas.media_buy.product_purchase_input.annotations",
+        "adcp.types._schemas.media_buy.product_refinement.annotations",
+        "adcp.types._schemas.media_buy.proposal_budget_constraint.annotations",
+        "adcp.types._schemas.media_buy.proposal_decline.annotations",
+        "adcp.types._schemas.media_buy.proposal_refinement.annotations",
+        "adcp.types._schemas.media_buy.provide_performance_feedback_request.annotations",
+        "adcp.types._schemas.media_buy.provide_performance_feedback_response.annotations",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.refine_proposals_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.refine_proposals_request.annotations",
+        "adcp.types._schemas.media_buy.refine_proposals_response.annotations",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.request_proposals_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.request_proposals_request.annotations",
+        "adcp.types._schemas.media_buy.request_proposals_response.annotations",
+        "adcp.types._schemas.media_buy.sync_audiences_request.annotations",
+        "adcp.types._schemas.media_buy.sync_audiences_response.annotations",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.sync_catalogs_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.sync_catalogs_request.annotations",
+        "adcp.types._schemas.media_buy.sync_catalogs_response.annotations",
+        "adcp.types._schemas.media_buy.sync_event_sources_request.annotations",
+        "adcp.types._schemas.media_buy.sync_event_sources_response.annotations",
+        "adcp.types._schemas.media_buy.sync_reporting_receipts_request.annotations",
+        "adcp.types._schemas.media_buy.sync_reporting_receipts_response.annotations",
+        "adcp.types._schemas.media_buy.sync_reporting_status_request.annotations",
+        "adcp.types._schemas.media_buy.sync_reporting_status_response.annotations",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_input_required.annotations",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_submitted.annotations",
+        "adcp.types._schemas.media_buy.update_media_buy_async_response_working.annotations",
+        "adcp.types._schemas.media_buy.update_media_buy_request.annotations",
+        "adcp.types._schemas.media_buy.update_media_buy_response.annotations",
+        "adcp.types._schemas.pricing_options.cpa_option.annotations",
+        "adcp.types._schemas.pricing_options.cpc_option.annotations",
+        "adcp.types._schemas.pricing_options.cpcv_option.annotations",
+        "adcp.types._schemas.pricing_options.cpm_option.annotations",
+        "adcp.types._schemas.pricing_options.cpp_option.annotations",
+        "adcp.types._schemas.pricing_options.cpv_option.annotations",
+        "adcp.types._schemas.pricing_options.flat_rate_option.annotations",
+        "adcp.types._schemas.pricing_options.price_breakdown.annotations",
+        "adcp.types._schemas.pricing_options.price_guidance.annotations",
+        "adcp.types._schemas.pricing_options.revenue_share_option.annotations",
+        "adcp.types._schemas.pricing_options.time_option.annotations",
+        "adcp.types._schemas.pricing_options.vcpm_option.annotations",
+        "adcp.types._schemas.property.authorization_result.annotations",
+        "adcp.types._schemas.property.base_property_source.annotations",
+        "adcp.types._schemas.property.create_property_list_request.annotations",
+        "adcp.types._schemas.property.create_property_list_response.annotations",
+        "adcp.types._schemas.property.delete_property_list_request.annotations",
+        "adcp.types._schemas.property.delete_property_list_response.annotations",
+        "adcp.types._schemas.property.delivery_record.annotations",
+        "adcp.types._schemas.property.get_property_list_request.annotations",
+        "adcp.types._schemas.property.get_property_list_response.annotations",
+        "adcp.types._schemas.property.list_property_lists_request.annotations",
+        "adcp.types._schemas.property.list_property_lists_response.annotations",
+        "adcp.types._schemas.property.property_error.annotations",
+        "adcp.types._schemas.property.property_feature.annotations",
+        "adcp.types._schemas.property.property_feature_definition.annotations",
+        "adcp.types._schemas.property.property_feature_result.annotations",
+        "adcp.types._schemas.property.property_feature_value.annotations",
+        "adcp.types._schemas.property.property_list.annotations",
+        "adcp.types._schemas.property.property_list_changed_webhook.annotations",
+        "adcp.types._schemas.property.property_list_filters.annotations",
+        "adcp.types._schemas.property.update_property_list_request.annotations",
+        "adcp.types._schemas.property.update_property_list_response.annotations",
+        "adcp.types._schemas.property.validate_property_delivery_request.annotations",
+        "adcp.types._schemas.property.validate_property_delivery_response.annotations",
+        "adcp.types._schemas.property.validation_result.annotations",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_request.annotations",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response",
+        "adcp.types._schemas.protocol.get_adcp_capabilities_response.annotations",
+        "adcp.types._schemas.protocol.get_principal_request.annotations",
+        "adcp.types._schemas.protocol.get_principal_response.annotations",
+        "adcp.types._schemas.protocol.get_task_status_request.annotations",
+        "adcp.types._schemas.protocol.get_task_status_response.annotations",
+        "adcp.types._schemas.protocol.list_tasks_request.annotations",
+        "adcp.types._schemas.protocol.list_tasks_response.annotations",
+        "adcp.types._schemas.protocol.sync_agent_notification_configs_request.annotations",
+        "adcp.types._schemas.protocol.sync_agent_notification_configs_response.annotations",
+        "adcp.types._schemas.protocol.sync_principal_request.annotations",
+        "adcp.types._schemas.protocol.sync_principal_response.annotations",
+        "adcp.types._schemas.registries.v1_canonical_mapping.annotations",
+        "adcp.types._schemas.signals.activate_signal_request.annotations",
+        "adcp.types._schemas.signals.activate_signal_response.annotations",
+        "adcp.types._schemas.signals.get_signals_async_response_submitted.annotations",
+        "adcp.types._schemas.signals.get_signals_async_response_working.annotations",
+        "adcp.types._schemas.signals.get_signals_request.annotations",
+        "adcp.types._schemas.signals.get_signals_response.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_capabilities",
+        "adcp.types._schemas.sponsored_intelligence.si_capabilities.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_context_use.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_request.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_get_offering_response.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_identity.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_request.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_initiate_session_response.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_request.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_send_message_response.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_sponsored_context.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_sponsored_context_receipt.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_request.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_terminate_session_response.annotations",
+        "adcp.types._schemas.sponsored_intelligence.si_ui_element.annotations",
+        "adcp.types._schemas.trusted_match.available_package.annotations",
+        "adcp.types._schemas.trusted_match.context_match_request.annotations",
+        "adcp.types._schemas.trusted_match.context_match_response.annotations",
+        "adcp.types._schemas.trusted_match.error.annotations",
+        "adcp.types._schemas.trusted_match.identity_match_request.annotations",
+        "adcp.types._schemas.trusted_match.identity_match_response.annotations",
+        "adcp.types._schemas.trusted_match.offer.annotations",
+        "adcp.types._schemas.trusted_match.offer_price.annotations",
+        "adcp.types._schemas.trusted_match.provider_context_match_response.annotations",
+        "adcp.types._schemas.trusted_match.provider_identity_match_response.annotations",
+        "adcp.types._schemas.trusted_match.provider_registration.annotations",
+        "adcp.types._schemas.trusted_match.publisher_targeting_kv_config.annotations",
+        "adcp.types._schemas.trusted_match.publisher_tmpx_config.annotations",
+        "adcp.types._schemas.trusted_match.tmpx_chunk.annotations",
     ],
     "audience_source": [
         "adcp.types._schemas.core.audience_source",
         "adcp.types._schemas.enums.audience_source",
     ],
-    "build_creative_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required",
-        "adcp.types._schemas.media_buy.build_creative_async_response_input_required",
-    ],
-    "build_creative_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted",
-        "adcp.types._schemas.media_buy.build_creative_async_response_submitted",
-    ],
-    "build_creative_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.build_creative_async_response_working",
-        "adcp.types._schemas.media_buy.build_creative_async_response_working",
-    ],
-    "buy_products_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_input_required",
-        "adcp.types._schemas.media_buy.buy_products_async_response_input_required",
-    ],
-    "buy_products_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_submitted",
-        "adcp.types._schemas.media_buy.buy_products_async_response_submitted",
-    ],
-    "buy_products_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.buy_products_async_response_working",
-        "adcp.types._schemas.media_buy.buy_products_async_response_working",
-    ],
     "canonical_media_buy_action": [
         "adcp.types._schemas.core.canonical_media_buy_action",
         "adcp.types._schemas.enums.canonical_media_buy_action",
-    ],
-    "control_media_buy_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_input_required",
-        "adcp.types._schemas.media_buy.control_media_buy_async_response_input_required",
-    ],
-    "control_media_buy_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_submitted",
-        "adcp.types._schemas.media_buy.control_media_buy_async_response_submitted",
-    ],
-    "control_media_buy_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_working",
-        "adcp.types._schemas.media_buy.control_media_buy_async_response_working",
-    ],
-    "create_media_buy_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required",
-        "adcp.types._schemas.media_buy.create_media_buy_async_response_input_required",
-    ],
-    "create_media_buy_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted",
-        "adcp.types._schemas.media_buy.create_media_buy_async_response_submitted",
-    ],
-    "create_media_buy_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working",
-        "adcp.types._schemas.media_buy.create_media_buy_async_response_working",
     ],
     "date": [
         "adcp.types._schemas.account.get_account_financials_response.date",
@@ -8664,46 +13815,6 @@ __adcp_ambiguous__ = {
         "adcp.types._schemas.protocol.get_adcp_capabilities_response.date",
         "adcp.types._schemas.registries.v1_canonical_mapping.date",
     ],
-    "decline_proposals_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_input_required",
-        "adcp.types._schemas.media_buy.decline_proposals_async_response_input_required",
-    ],
-    "decline_proposals_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_submitted",
-        "adcp.types._schemas.media_buy.decline_proposals_async_response_submitted",
-    ],
-    "decline_proposals_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_working",
-        "adcp.types._schemas.media_buy.decline_proposals_async_response_working",
-    ],
-    "error": [
-        "adcp.types._schemas.core.error",
-        "adcp.types._schemas.trusted_match.error",
-    ],
-    "get_creative_features_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted",
-        "adcp.types._schemas.creative.get_creative_features_async_response_submitted",
-    ],
-    "get_products_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required",
-        "adcp.types._schemas.media_buy.get_products_async_response_input_required",
-    ],
-    "get_products_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted",
-        "adcp.types._schemas.media_buy.get_products_async_response_submitted",
-    ],
-    "get_products_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.get_products_async_response_working",
-        "adcp.types._schemas.media_buy.get_products_async_response_working",
-    ],
-    "get_signals_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_submitted",
-        "adcp.types._schemas.signals.get_signals_async_response_submitted",
-    ],
-    "get_signals_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.signals.get_signals_async_response_working",
-        "adcp.types._schemas.signals.get_signals_async_response_working",
-    ],
     "list_creative_formats_request": [
         "adcp.types._schemas.creative.list_creative_formats_request",
         "adcp.types._schemas.media_buy.list_creative_formats_request",
@@ -8711,65 +13822,5 @@ __adcp_ambiguous__ = {
     "list_creative_formats_response": [
         "adcp.types._schemas.creative.list_creative_formats_response",
         "adcp.types._schemas.media_buy.list_creative_formats_response",
-    ],
-    "refine_proposals_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_input_required",
-        "adcp.types._schemas.media_buy.refine_proposals_async_response_input_required",
-    ],
-    "refine_proposals_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_submitted",
-        "adcp.types._schemas.media_buy.refine_proposals_async_response_submitted",
-    ],
-    "refine_proposals_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_working",
-        "adcp.types._schemas.media_buy.refine_proposals_async_response_working",
-    ],
-    "request_proposals_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_input_required",
-        "adcp.types._schemas.media_buy.request_proposals_async_response_input_required",
-    ],
-    "request_proposals_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_submitted",
-        "adcp.types._schemas.media_buy.request_proposals_async_response_submitted",
-    ],
-    "request_proposals_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.request_proposals_async_response_working",
-        "adcp.types._schemas.media_buy.request_proposals_async_response_working",
-    ],
-    "sync_catalogs_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required",
-        "adcp.types._schemas.media_buy.sync_catalogs_async_response_input_required",
-    ],
-    "sync_catalogs_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted",
-        "adcp.types._schemas.media_buy.sync_catalogs_async_response_submitted",
-    ],
-    "sync_catalogs_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working",
-        "adcp.types._schemas.media_buy.sync_catalogs_async_response_working",
-    ],
-    "sync_creatives_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required",
-        "adcp.types._schemas.creative.sync_creatives_async_response_input_required",
-    ],
-    "sync_creatives_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted",
-        "adcp.types._schemas.creative.sync_creatives_async_response_submitted",
-    ],
-    "sync_creatives_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.creative.sync_creatives_async_response_working",
-        "adcp.types._schemas.creative.sync_creatives_async_response_working",
-    ],
-    "update_media_buy_async_response_input_required": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required",
-        "adcp.types._schemas.media_buy.update_media_buy_async_response_input_required",
-    ],
-    "update_media_buy_async_response_submitted": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted",
-        "adcp.types._schemas.media_buy.update_media_buy_async_response_submitted",
-    ],
-    "update_media_buy_async_response_working": [
-        "adcp.types._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working",
-        "adcp.types._schemas.media_buy.update_media_buy_async_response_working",
     ],
 }
